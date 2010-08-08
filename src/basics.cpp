@@ -72,13 +72,6 @@ void dh_assert(const char * const filename, const unsigned int lineNumber)
     std::cerr << "Filename: " << filename << std::endl;
     std::cerr << "Line number: " << lineNumber << std::endl;
 
-	std::cerr << "Do you wish to continue?(y/n)";
-	char y = 'a';
-	while (y != 'n' && y != 'y')
-		std::cin >> y;
-
-	if (y != 'y')
-		exit(1);
 }
 
 void ucharToHexStr(unsigned char c, std::string &s)
