@@ -1,0 +1,520 @@
+#!/bin/bash
+
+#
+#	getDeps- The dependency handler you're using when your not using
+#	a dependency handler. (Downloads dependencies for 3Depict)
+#	Copyright (C) 2010, D Haley 
+#
+#	This program is free software: you can redistribute it and/or modify
+#	it under the terms of the GNU General Public License as published by
+#	the Free Software Foundation, either version 3 of the License, or
+#	(at your option) any later version.
+#
+#	This program is distributed in the hope that it will be useful,
+#	but WITHOUT ANY WARRANTY; without even the implied warranty of
+#	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#	GNU General Public License for more details.
+#
+#	You should have received a copy of the GNU General Public License
+#	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+PNG_DIR="/usr/local"
+
+#Dependency ID, URL and name
+DEPIDS=( 0 1 2 3 4 5 )
+DEPNAMES=( libpng freetype ftgl wxwidgets mathgl dylibbundler)
+DEPURLS=(http://downloads.sourceforge.net/project/libpng/01-libpng-master/1.4.3/libpng-1.4.3.tar.gz http://downloads.sourceforge.net/project/freetype/freetype2/2.4.1/freetype-2.4.1.tar.gz http://downloads.sourceforge.net/project/ftgl/FTGL%20Source/2.1.3%7Erc5/ftgl-2.1.3-rc5.tar.gz http://downloads.sourceforge.net/project/wxwindows/2.8.11/wxWidgets-2.8.11.tar.gz http://downloads.sourceforge.net/project/mathgl/mathgl/mathgl%201.10.2.1/mathgl-1.10.2.1.tgz http://downloads.sourceforge.net/project/macdylibbundler/macdylibbundler/0.3.1/dylibbundler0.3.1.zip)
+DEPFILENAMES=(libpng-1.4.3.tar.gz freetype-2.4.1.tar.gz ftgl-2.1.3-rc5.tar.gz  wxWidgets-2.8.11.tar.gz mathgl-1.10.2.1.tgz dylibbundler0.3.1.zip)
+DEPMDSUM=(df3521f61a1b8b69489d297c0ca8c1f8 2c4f33ee9242be7ec5e876952ae99755 fcf4d0567b7de9875d4e99a9f7423633 ce80389e1b70d6a518c80b7b715b763e 4122428797fd0c25a096c377b9ffe44a 8feedad7224e6b928a9c65dc939a48bb)
+
+OS_NAME=`uname`
+
+
+case $OS_NAME in
+	Darwin) 
+		#Mac OSX has an undocumented md5sum compat function. use it
+		alias md5sum='md5 '
+		;;
+	MINGW*)
+		#This doesn't work under windows.
+		echo "This is not functional under windows. Have fun downloading the deps."
+		echo "It took me days to get it right: it is faster to install a different operating system"
+		echo "should take about an hour, even if you don't know what you are doing"
+		echo "---------------"
+		echo " If you want to fix this, please do, and send me the fix!"
+		echo "---------------"
+		exit 1
+		;;
+	*)
+	;;
+esac
+
+
+
+if [  x$OS_NAME == x"Linux" ] ; then
+	echo "--------"
+	echo "Are you sure you need to run this?? "
+	echo "You are running linux -- use your package manager"
+	echo "to install : ${dep_names[*]}"
+	echo "Otherwise you could break your system..."
+	echo "--------"
+	echo
+fi
+
+if [ $# -ne 2 ] ; then
+
+	#User did not specify a proxy, try to detect?
+
+	#Check the http proxy variable
+	if [ x"$http_proxy" == x"" ] ; then 
+		if [ x"$OS_NAME" == x"Darwin" ] ; then
+			#Not sure this works.
+			##Are we using mac? Try to get the proxy automagically
+			PROXY=`system_profiler SPNetworkDataType|grep "HTTP Proxy Server"|awk {'sub(/^.*:[ \t]*/, "", $0); print $0;'}`
+			echo "using proxy as : $PROXY ; hope this works"
+
+			http_proxy=$PROXY
+			echo "using $1 as the proxy server"
+		else
+			echo "Proxy not found... Hope you dont need one."
+			echo "	You can set one by passing it as an argument (./getdeps nameofproxy), if required"
+			echo " eg: ./getdeps http://www-cache.usyd.edu.au:8080"
+			echo
+			echo "Or you can set it at the command line with "
+			echo " export http_proxy=your_proxy_server:12345" 
+			echo "(where 12345 is the proxy server \"port\"), usually 8080 or 8000"
+		fi
+	else
+		echo "using $1 as the proxy server"
+	fi
+elif [ $# -eq 1 ] ; then
+	http_proxy=$1
+	echo "using $1 as the proxy server"
+else
+	echo "usage : getDeps [proxyserver]"
+	exit 1
+fi
+
+sleep 1;
+
+#############
+echo "Checking your compilers...."
+echo "-----"
+echo "Testing gcc..."
+
+echo "int main(int argc, char *argv[]) { return 0; } ; " > gcctest.c
+
+
+gcc gcctest.c -o gcctest
+
+if [ ! -f gcctest ] ; then
+	echo "You do not have gcc (C compiler) installed?? Install it into your PATH, then try again."
+	exit 1
+fi
+rm gcctest.c gcctest
+
+echo "Testing g++..."
+echo "int main(int argc, char *argv[]) { return 0; } ; " > gcctest.cpp
+
+g++ gcctest.cpp -o gcctest
+if [ ! -f gcctest ] ; then
+	echo "You do not have g++ (C++ compiler) installed?? Install it into your PATH, then try again."
+	exit 1
+fi
+
+rm gcctest.cpp gcctest
+
+echo "-----"
+
+
+
+echo "Compilers found! good!"
+echo 
+########
+echo "OK, we need to download some libraries, compile them, and try to install them."
+echo " This is a bit of a long-shot, but this script will try to do this automagically."
+echo " Ensure your net connection is good."
+
+echo "---------"
+echo "Let's go!"
+echo "---------"
+
+HAVE_ALL_DEPS=0
+if [ -d sources ] ; then
+	echo "OK, found the \"sources\" folder. cool"
+else
+	echo "making the source folder"
+	mkdir sources
+fi
+
+echo "Looking for dependencies"
+
+for i in ${DEPIDS[*]}
+do
+	j=${DEPFILENAMES[$i]}
+	k=${DEPURLS[$i]}
+
+	if [ ! -f "sources/$j" ] ; then
+		echo "Missing sources/$j. Will attempt to download"
+
+		#use CURL to download the file and save it to source/$k	
+		curl -L --progress-bar $k -o sources/$j
+			
+		if [ $? -ne 0 ] ; then
+			echo "Couldn't download dependency : $j, from $k :"
+			echo "try to find it online, and put it in the sources folder"
+		fi
+
+		if [ ! -f "sources/$j" ] ; then
+			echo 
+			echo "That's not right... i was told it was downloaded, but now I can't find it."
+			echo "Something is wrong, you may have to download the file yourself,"
+			echo " and place it in the sources folder"
+			echo
+			echo "Try $k"
+			echo "or look online for \"$j\""
+			echo 
+			echo "will continue in 8 seconds..."
+			sleep 8
+		fi
+	else
+		echo "found $j; this is good"
+	fi
+
+
+done
+
+echo
+echo
+echo " -------------------------"
+echo
+echo
+########
+
+
+
+########
+
+echo "So it looks like we have downloaded all the files."
+echo "I'm just going to check the integrity of these files first."
+echo 
+
+echo "Count down!"
+COUNTDOWN=7
+while [ $COUNTDOWN -gt 0 ] ; 
+do 
+
+	echo "$COUNTDOWN  ..."
+	sleep 1
+	COUNTDOWN=`expr $COUNTDOWN - 1`
+done
+
+for i in ${DEPIDS[*]}
+do
+	j=${DEPFILENAMES[$i]}
+
+	HASH_SUM=`md5sum sources/$j | awk '{print $1} '`
+
+	if [ x"$HASH_SUM" != x"${DEPMDSUM[$i]}" ] ; then
+		echo "Warning! The file contents for sources/$j appear to be wrong (hash mismatch). "
+		echo "I recommend pressing ctrl+c and downloading the file manually and overwriting it"
+
+		echo "continuing in 20 seconds. Press ctrl+c to abort (recommended)"
+		sleep 20
+	else
+		echo " $j looks OK. Good -- moving on"
+		sleep 1
+	fi
+done
+########
+
+
+
+########
+echo "------------------------------"
+echo "          Extraction"
+echo
+
+
+if [ -d decompress ] ; then
+	echo "deleting existing decompress folder"
+	rm -rf ./decompress
+fi
+
+
+echo " Decompressing archives; this can be slow..."
+
+
+
+mkdir -p decompress
+
+if [ $? -ne 0 ] ; then
+	echo "Oh dear, I couldn't make a folder called \"decompress\". Thats odd. giving up"
+	exit 1
+fi
+
+cd decompress
+for i in ${DEPIDS[*]}
+do
+	j=${DEPFILENAMES[$i]}
+
+	echo "Extracting $j"
+	if [ x"`echo $j | grep \.tar\.gz`" != x"" ] ; then
+		tar -zxf ../sources/$j 
+	elif [  x"`echo $j | grep \.tgz`" != x"" ] ; then
+		tar -zxf ../sources/$j 
+	elif [ x"`echo $j | grep \.zip`" != x"" ] ; then
+		unzip ../sources/$j 
+	else
+		echo "$j apparently not a tar-gz or zip file! aborting!"
+		exit 1
+	fi
+	
+	if [ $? -ne 0 ] ; then
+		echo "There was a problem extracting $j, aborting"
+		exit 1
+	fi
+done
+########
+
+
+
+sleep 2
+
+
+echo "Re-arranging build directory"
+########
+
+#FTGL has a tilde in the filename, but not the download, move it.
+mv "ftgl-2.1.3~rc5" "ftgl-2.1.3-rc5"
+#Dylibbundler doesn't put version in filename. move it
+mv "dylibbundler" "dylibbundler0.3.1"
+
+
+########
+
+
+echo "------------------------------"
+echo "          Compilation"
+
+
+
+########
+for i in ${DEPIDS[*]}
+do
+	j=${DEPFILENAMES[$i]}
+
+	#Strip the extention from the filename
+	if [ x"`echo $j | grep \.tar\.gz`" != x"" ] ; then
+		foldername=${j%.tar.gz}
+	elif [  x"`echo $j | grep \.tgz`" != x"" ] ; then
+		foldername=${j%.tgz}
+	elif [ x"`echo $j | grep \.zip`" != x"" ] ; then
+		foldername=${j%.zip}
+	else
+		echo "$j apparently not a tar-gz or zip file! aborting!"
+		exit 1
+	fi
+		
+	pushd $foldername
+
+	echo "Attempting to compile ${DEPNAMES[$i]}"
+	case "${DEPNAMES[$i]}" in
+		libpng)
+			# Compile libpng
+			case "$OS_NAME" in
+				Darwin)
+					make -f scripts/makefile.darwin 
+					;;
+				Linux)
+					make -f scripts/makefile.linux
+					;;
+				*)
+					echo "Unable to build libpng, unknown platform"
+					exit 1
+					;;
+			esac
+
+			if [ $? -ne 0 ] ; then
+				echo "Damn. unable to build. aborting"
+				exit 1
+			fi
+
+			echo "I want to install ${DEPNAMES[$i]} to the system:"
+			#install
+			sudo make install
+			if [ $? -ne 0 ] ; then
+				echo "Damn. unable to install. aborting"
+				exit 1
+			fi
+
+			;;
+		wxwidgets)
+			# Configure wxwidgets; to let it find this bits its wants
+			./configure --enable-unicode --with-opengl
+
+			if [ $? -ne 0 ] ; then
+				echo "Damn. unable to configure. aborting"
+				exit 1
+			fi
+
+			echo "OK, configure was good. Building, this will take a while"
+			sleep 2
+
+			make
+
+			if [ $? -ne 0 ] ; then
+				echo "Damn. unable to build. aborting"
+				exit 1
+			fi
+
+			echo "I want to install ${DEPNAMES[$i]} to the system:"
+			#install
+			sudo make install
+			if [ $? -ne 0 ] ; then
+				echo "Damn. unable to install. aborting"
+				exit 1
+			fi
+			;;
+
+		freetype)
+			# Configure freetype
+			./configure 
+
+			if [ $? -ne 0 ] ; then
+				echo "Damn. unable to configure. aborting"
+				exit 1
+			fi
+
+			echo "OK, configure was good. Building, this will take a while"
+			sleep 2
+
+			make
+
+			if [ $? -ne 0 ] ; then
+				echo "Damn. unable to build. aborting"
+				exit 1
+			fi
+
+			echo "I want to install ${DEPNAMES[$i]} to the system:"
+			#install
+			sudo make install
+			if [ $? -ne 0 ] ; then
+				echo "Damn. unable to install. aborting"
+				exit 1
+			fi
+			;;
+
+		ftgl)
+			# Configure ftgl
+			./configure 
+
+			if [ $? -ne 0 ] ; then
+				echo "Damn. unable to configure. aborting"
+				exit 1
+			fi
+
+			echo "OK, configure was good. Building, this will take a while"
+			sleep 2
+
+			make
+
+			if [ $? -ne 0 ] ; then
+				echo "Damn. unable to build. aborting"
+				exit 1
+			fi
+
+			echo "I want to install ${DEPNAMES[$i]} to the system:"
+			#install
+			sudo make install
+			if [ $? -ne 0 ] ; then
+				echo "Damn. unable to install. aborting"
+				exit 1
+			fi
+			;;
+
+		mathgl)
+			# Configure mathgl. Disable GNU scientific library to remove that dependency
+			./configure --disable-gsl \
+				CFLAGS="-I$PNG_DIR/include" \
+				CXXFLAGS="-I$PNG_DIR/include" \
+				CPPFLAGS="-I$PNG_DIR/include" \
+				LDFLAGS="-L$PNG_DIR/lib"
+
+			if [ $? -ne 0 ] ; then
+				echo "Damn. unable to configure. aborting"
+				exit 1
+			fi
+
+			echo "OK, configure was good. Building, this will take a while"
+			sleep 2
+
+			make
+
+			if [ $? -ne 0 ] ; then
+				echo "Damn. unable to build. aborting"
+				exit 1
+			fi
+
+			echo "I want to install ${DEPNAMES[$i]} to the system:"
+			#install
+			sudo make install
+# just assume it installed OK, for this library
+#			if [ $? -ne 0 ] ; then
+#				echo "Damn. unable to install. aborting"
+#				exit 1
+#			fi
+			;;
+
+		dylibbundler)
+			#Only build under mac osx
+			case $OS_NAME in
+				Darwin)
+					#build
+					make
+					if [ $? -ne 0 ] ; then
+						echo "Damn. unable to build. aborting"
+						exit 1
+					fi
+					echo "I want to install ${DEPNAMES[$i]} to the system:"
+					#install
+					sudo make install
+					if [ $? -ne 0 ] ; then
+						echo "Damn. unable to install. aborting"
+						exit 1
+					fi
+				;;
+				*)
+				#do nothing
+				;;
+			esac
+
+			;;
+
+		*)
+			echo "There is a bug in the script. I do not know the dependency ${DEPNAMES[$i]}. Aborting"
+			exit 1
+			;;
+	esac
+	
+
+ 
+	popd
+done
+
+
+	
+########
+
+echo "------------------------------"
+echo "          All done!"
+
+echo 
+
+echo " You should hopefully be able to build and run 3Depict now!"
+echo 
+echo
+
+
+
+

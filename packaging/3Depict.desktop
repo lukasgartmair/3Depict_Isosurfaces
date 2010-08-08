@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Comment=Valued point cloud visualisation and analysis
+TryExec=3Depict
+Exec=3Depict %F
+Icon=3Depict
+Name=3Depict
+

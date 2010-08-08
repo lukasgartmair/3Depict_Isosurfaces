@@ -1,0 +1,51 @@
+#!/bin/bash
+#
+
+#This will make the mac .app bundle
+
+if [ $1 = '--update-config=yes' ]; then
+	echo "Updating configuration files"
+
+	autoreconf
+
+	PNG_DIR="/usr/local"
+	GL_DIR="/usr/X11"
+	./configure --with-freetype=/usr/local \
+		--with-wx-prefix=/usr/local \
+		--with-xml-config=/opt/local/bin/xml2-config \
+		CFLAGS="-I$PNG_DIR/include -I$GL_DIR/include" \
+		CXXFLAGS="-I$PNG_DIR/include -I$GL_DIR/include" \
+		CPPFLAGS="-I$PNG_DIR/include -I$GL_DIR/include" \
+		LDFLAGS="-L$PNG_DIR/lib -lpng"
+
+	if [ $? -ne 0 ]; then
+		echo "Configure unsuccessful - exiting"
+		exit
+	fi
+
+
+	make clean
+fi
+
+make
+
+if [ $? -ne 0 ]; then
+	echo "Make unsuccessful - exiting"
+	exit
+fi
+
+echo "Updating .app bundle..."
+mkdir -p ./main.app/Contents/MacOS/
+cp ./src/3Depict ./main.app/Contents/MacOS/main
+cp src/tex-source/3Depict-icon.icns ./main.app/Contents/Resources/wxmac.icns
+touch ./main.app/Contents/PkgInfo
+touch ./main.app/Contents/info.plist
+
+# relabel libraries for packaging
+dylibbundler -od -b -x ./main.app/Contents/MacOS/main -d ./main.app/Contents/libs -i /usr/lib
+
+#copy textures
+cp -R ./src/textures ./main.app/Contents/Resources
+
+echo "Done"
+
