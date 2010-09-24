@@ -1,1 +1,25 @@
-* Tue, Jul 27: Unreleased
+
+
+* September 24 : 0.0.2
+
+	- Files with arbitrary number of data channels can now be loaded,
+	but only one channel at a time can be analysed.
+	- Many functions are now openMP parallellised, and thus will
+	take advantage of multiple CPUs, if enabled at compile time
+	- Simple animation support (PNG sequences in an orbit)
+	- Voxelisation support; voxel data can be generated using the new
+	Voxelise filter. Supported visualisation methods are Isosurfaces and
+	point clouds.
+	- Undo/redo support : filter operations can now be undone, and redone.
+	- Windows build: we now have a windows build.
+	- Improved rangefile parsing. This should now work on every range file
+	I have ever met. If you have one where it does not work, let us know.
+	- Several filters have been improved to be easier to use (eg transform
+	filter)
+	- Some core functions have been optimised (eg rotation, composition
+	profiles), and should be significantly faster.
+	- Many bugfixes -- program should be significantly more stable, but
+	requires testing (please help us with this if you can )
+
+* August 11 : Released 0.0.1
+	- Initial release

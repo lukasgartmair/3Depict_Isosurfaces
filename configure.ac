@@ -13,7 +13,7 @@ dnl Test for wx-widgets
 dnl ----------
 AM_OPTIONS_WXCONFIG
 
-AM_PATH_WXCONFIG(2.5.3, wxWin=1)
+AM_PATH_WXCONFIG([2.5.3], [wxWin=1])
 
 if test "$wxWin" != 1; then
 AC_MSG_ERROR([
