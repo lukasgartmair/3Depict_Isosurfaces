@@ -31,6 +31,11 @@
 #include <list>
 #include <utility>
 
+#if defined(WIN32) || defined(WIN64)
+#include <wx/wx.h>
+#include <wx/msw/registry.h>
+#endif
+
 class Point3D;
 class K3DTree;
 
@@ -76,17 +81,27 @@ inline std::string locateDataFile(const char *name)
 
 #if defined(WIN32) || defined(WIN64)
 
-	wxRegKey *pRegKey = new wxRegKey("Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\3Depict.exe");
+	//This must match the key used in the installer
+	wxRegKey *pRegKey = new wxRegKey(_("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\3Depict.exe"));
 
 	if( pRegKey->Exists() )
 	{
 		//Now we are talkin. Regkey exists
 		//OK, lets see if this dir actually exists or if we are being lied to (old dead regkey, for example)
-
-		//TODO: Implement me
-
-
+		wxString keyVal;
+		//Get the default key
+		pRegKey->QueryValue(_(""),keyVal);
+		//Strip the "3Depict.exe" from the key string
+		std::string s;
+		s = (const char *)keyVal.mb_str();
+		
+		if(s.size() > 11)
+		{
+			s=s.substr(0,s.size()-11);			
+			return s + std::string(name);
+		}
 	}
+
 #endif	
 
 	//Mac

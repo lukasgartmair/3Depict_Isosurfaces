@@ -19,7 +19,8 @@ class MyArtProvider : public wxArtProvider
 			if (id == _T("MY_ART_ID_ICON"))
 				return wxBitmap(_Depict);
 
-			ASSERT(false);
+			wxBitmap b;
+			return b;
 
 		}
 };

@@ -22,7 +22,7 @@
 #define QUAT_H
 
 //needed for sincos
-#ifndef __APPLE__
+#ifdef __LINUX__ 
 #ifdef __GNUC__
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
