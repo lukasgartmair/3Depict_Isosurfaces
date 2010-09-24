@@ -93,9 +93,10 @@ protected:
     wxMenuItem *checkMenuRawDataPane;
     wxMenuItem *checkMenuSpectraList;
     wxMenuItem *checkViewFullscreen;
+    wxMenuItem *checkViewLegend;
 
-    wxMenuItem *editUndoMenuItem;
-    wxMenuItem *fileSaveAs;
+    wxMenuItem *editUndoMenuItem,*editRedoMenuItem;
+    wxMenuItem *fileSave;
     wxMenu *recentFilesMenu;
     wxFileHistory *recentHistory;
 
@@ -218,6 +219,7 @@ public:
     virtual void OnControlUnsplit(wxSplitterEvent &event);
     virtual void OnSpectraUnsplit(wxSplitterEvent &event);
     virtual void OnViewSpectraList(wxCommandEvent &event); 
+    virtual void OnViewPlotLegend(wxCommandEvent &event); 
     virtual void OnViewBackground(wxCommandEvent &event);
     virtual void OnClose(wxCloseEvent &evt);
     virtual void OnComboCameraSetFocus(wxFocusEvent &evt);
@@ -228,6 +230,7 @@ public:
     virtual void OnFileExportImage(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnFileExportIons(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnFileExportRange(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnFileExportVideo(wxCommandEvent &event);
     virtual void OnRecentFile(wxCommandEvent &event); // wxGlade: <event_handler>
 
     virtual void OnTreeEndLabelEdit(wxTreeEvent &evt);

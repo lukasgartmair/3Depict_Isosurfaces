@@ -34,7 +34,6 @@ using std::ifstream;
 using std::ios;
 
 BEGIN_EVENT_TABLE(MathGLPane, wxPanel)
-	EVT_PAINT(MathGLPane::render)
 	EVT_MOTION(MathGLPane::mouseMoved)
 	EVT_LEFT_DOWN(MathGLPane::mouseDown)
 	EVT_LEFT_UP(MathGLPane::mouseReleased)
@@ -56,7 +55,7 @@ wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 	dragging=false;
 	thePlot=0;	
 	gr=0;
-//	SetBackgroundStyle(wxBG_STYLE_CUSTOM); Only if using wxAutoBufferedPaintDC
+	SetBackgroundStyle(wxBG_STYLE_CUSTOM);// Only if using wxAutoBufferedPaintDC
 }
 
 void MathGLPane::setPlot(Multiplot *newPlot)
@@ -79,8 +78,7 @@ MathGLPane::~MathGLPane()
 
 void MathGLPane::render(wxPaintEvent &event)
 {
-	wxPaintDC *dc = new wxPaintDC(this); //This works, but flickers under windows
-	//wxAutoBufferedPaintDC   *dc=new wxAutoBufferedPaintDC(this); //This does not work  under windows
+	wxAutoBufferedPaintDC   *dc=new wxAutoBufferedPaintDC(this); //This does not work  under windows? (I had double paint events before in my event table -- this might work now)
 
 	
 	if(!thePlot || !plotSelList)
@@ -109,6 +107,7 @@ void MathGLPane::render(wxPaintEvent &event)
 
 	if(!nItems)
 	{
+		dc->Clear();
 
 		int clientW,clientH;
 		GetClientSize(&clientW,&clientH);
@@ -293,8 +292,6 @@ void MathGLPane::mouseMoved(wxMouseEvent& event)
 	//Update mouse cursor
 	//---------------
 	//Draw a rectangle between the start and end positions
-	wxCoord tlX,tlY,wRect,hRect;
-
 	bool useNiceAxis=0;
 
 	//Compute the MGL coords

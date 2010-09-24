@@ -1,5 +1,17 @@
-3depict (0.0.1.296-1) unstable; urgency=low
+3depict (0.0.2-1) unstable; urgency=low
 
-  * Initial release (Closes: #9999) 
+  * New upstream version
 
- -- D Haley <mycae@yahoo.com>  Sat, 24 Jul 2010 23:23:50 +0100
+ -- D Haley <mycae@yahoo.com>  Wed, 22 Sep 2010 20:09:24 +0100
+
+3depict (0.0.1-2) unstable; urgency=low
+
+  * Remove patches for mathgl 1.9 compatibility due to new mathgl 1.10
+
+ -- D Haley <mycae@yahoo.com>  Sat, 21 Aug 2010 08:55:13 +1000
+
+3depict (0.0.1-1) unstable; urgency=low
+
+  * Initial release (Closes: #592460) 
+
+ -- D Haley <mycae@yahoo.com>  Mon, 09 Aug 2010 21:23:50 +0100

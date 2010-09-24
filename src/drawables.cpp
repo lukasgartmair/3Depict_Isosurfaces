@@ -28,11 +28,12 @@
 
 #include "drawables.h"
 
+#include "colourmap.h"
+
+#include "IsoSurface.h"
 
 #include <limits>
 #include "quat.h"
-
-//DEBUG ONLY
 
 //OpenGL debugging macro
 #if DEBUG
@@ -53,6 +54,7 @@
 //Static class variables
 //====
 const Camera *DrawGLText::curCamera = 0;
+const Camera *DrawField3D::curCam = 0;
 //==
 
 
@@ -177,6 +179,61 @@ void DrawVector::draw() const
 		glVertex3f(origin[0],origin[1],origin[2]);
 		glVertex3f(vector[0]+origin[0],vector[1]+origin[1],vector[2]+origin[2]);
 	glEnd();
+}
+
+DrawTriangle::DrawTriangle() : r(1.0f), g(1.0f),b(1.0f),a(1.0f)
+{
+}
+
+DrawTriangle::~DrawTriangle()
+{
+}
+
+void DrawTriangle::setVertex(unsigned int ui, const Point3D &pt)
+{
+	ASSERT(ui < 3);
+	vertices[ui] = pt;
+}
+
+void DrawTriangle::setColour(float rnew, float gnew, float bnew, float anew)
+{
+	r=rnew;
+	g=gnew;
+	b=bnew;
+	a=anew;
+}
+
+void DrawTriangle::draw() const
+{
+	glColor4f(r,g,b,a);
+	glBegin(GL_TRIANGLES);
+		glVertex3f((vertices[0])[0],
+			(vertices[0])[1], (vertices[0])[2]);
+		glVertex3f((vertices[1])[0],
+			(vertices[1])[1], (vertices[1])[2]);
+		glVertex3f((vertices[2])[0],
+			(vertices[2])[1], (vertices[2])[2]);
+	glEnd();
+}
+
+DrawableObj * DrawTriangle::clone() const
+{
+	DrawTriangle *d = new DrawTriangle;
+
+	d->r=r;
+	d->g=g;
+	d->b=b;
+	d->a=a;
+
+	d->vertices[0]=vertices[0];	
+	d->vertices[1]=vertices[1];	
+	d->vertices[2]=vertices[2];	
+	
+	d->active=active;
+	d->canSelect=canSelect;
+	d->wantsLight=wantsLight;
+
+	return d;
 }
 
 DrawSphere::DrawSphere() : radius(1.0f), latSegments(8),longSegments(8)
@@ -538,6 +595,7 @@ bool DrawDispList::startList(bool execute)
 {
 	//Ensure that the user has appropriately closed the list
 	ASSERT(!listActive);
+	boundBox.setInverseLimits();
 	
 	//If the list is already genned, clear it
 	if(listNum)
@@ -567,6 +625,7 @@ bool DrawDispList::endList()
 {
 	glEndList();
 
+	ASSERT(boundBox.isValid());
 	listActive=false;	
 	return (glGetError() ==0);
 }
@@ -1046,6 +1105,7 @@ void DrawTexturedQuadOverlay::draw() const
 DrawableObj* DrawTexturedQuadOverlay::clone() const
 {
 	ASSERT(false);
+	return 0;
 }
 
 bool DrawTexturedQuadOverlay::setTexture(const char *textureFile)
@@ -1063,24 +1123,355 @@ void DrawTexturedQuadOverlay::getBoundingBox(BoundCube &b) const
 }
 
 
+
+DrawField3D::DrawField3D() : alphaVal(0.2f), pointSize(1.0f), drawBoundBox(true),volumeGrid(false), volumeRenderMode(0), field(0) 
+{
+	boxColour.r = boxColour.g = boxColour.b = boxColour.a = 1.0f;
+	ptsCacheOK=false;
+}
+
+DrawField3D::~DrawField3D()
+{
+	if(field)
+		delete field;
+}
+
+
+void DrawField3D::getBoundingBox(BoundCube &b) const
+{
+	ASSERT(field)
+	b.setBounds(field->getMinBounds(),field->getMaxBounds());
+}
+
+DrawableObj *DrawField3D::clone() const
+{
+	DrawField3D *d = new DrawField3D;
+
+	d->alphaVal=alphaVal;
+	d->pointSize=pointSize;
+	d->drawBoundBox=drawBoundBox;
+	d->boxColour=boxColour;
+	d->volumeGrid=volumeGrid;
+	d->colourMapBound[0] = d->colourMapBound[0];
+	d->colourMapBound[1] = d->colourMapBound[1];
+
+	d->colourMapID = colourMapID;
+
+	d->volumeRenderMode=volumeRenderMode;
+	if(field)
+	{
+		Voxels<float> *v  = new Voxels<float>;
+		field->clone(*v);
+		d->field=v;
+	}
+	else
+		d->field=0;
+
+	return d;
+
+}
+
+void DrawField3D::setField(const Voxels<float> *newField)
+{
+	field=newField;
+}
+
+void DrawField3D::setRenderMode(unsigned int mode)
+{
+	volumeRenderMode=mode;
+}
+
+void DrawField3D::setColourMinMax()
+{
+	colourMapBound[0]=field->min();
+	colourMapBound[1]=field->max();
+
+	ASSERT(colourMapBound[0] <=colourMapBound[1]);
+}
+
+			
+void DrawField3D::draw() const
+{
+
+	ASSERT(field);
+
+	//Depend upon the render mode
+	switch(volumeRenderMode)
+	{
+		case VOLUME_POINTS:
+		{
+			unsigned long long fieldSizeX,fieldSizeY,fieldSizeZ;
+			Point3D p;
+
+			field->getSize(fieldSizeX,fieldSizeY, fieldSizeZ);
+
+			//We need to generate some points, then sort them by distance
+			//from eye (back to front), otherwise they will not blend properly
+			std::vector<std::pair<float,unsigned int >  > eyeDists;
+
+			Point3D camOrigin = curCam->getOrigin();
+
+			if(!ptsCacheOK)
+			{
+				ptsCache.clear();
+				for(unsigned int uiX=0; uiX<fieldSizeX; uiX++)
+				{
+					for(unsigned int uiY=0; uiY<fieldSizeY; uiY++)
+					{
+						for(unsigned int uiZ=0; uiZ<fieldSizeZ; uiZ++)
+						{
+							float v;
+							v=field->getData(uiX,uiY,uiZ);
+							if(v > std::numeric_limits<float>::epsilon())
+							{
+								RGBThis rgb;
+								//Set colour and point loc
+								colourMapWrap(colourMapID,rgb.v,
+										field->getData(uiX,uiY,uiZ), 
+										colourMapBound[0],colourMapBound[1]);
+								
+								ptsCache.push_back(make_pair(field->getPoint(uiX,uiY,uiZ),rgb));
+							}
+						}
+					}
+				}
+					
+
+				ptsCacheOK=true;
+			}
+			eyeDists.resize(ptsCache.size());
+			
+			//Set up an original index for the eye distances
+			#pragma omp parallel for
+			for(unsigned int ui=0;ui<ptsCache.size();ui++)
+			{
+				eyeDists[ui].first=ptsCache[ui].first.sqrDist(camOrigin);
+				eyeDists[ui].second=ui;
+			}
+
+			ComparePairFirstReverse cmp;
+			std::sort(eyeDists.begin(),eyeDists.end(),cmp);	
+
+			//render each element in the field as a point
+			//the colour of the point is determined by its scalar value
+			glPointSize(pointSize);
+			glBegin(GL_POINTS);
+			for(unsigned int ui=0;ui<ptsCache.size();ui++)
+			{
+				unsigned int idx;
+				idx=eyeDists[ui].second;
+				//Tell openGL about it
+				glColor4f(((float)(ptsCache[idx].second.v[0]))/255.0f, 
+						((float)(ptsCache[idx].second.v[1]))/255.0f,
+						((float)(ptsCache[idx].second.v[2]))/255.0f, 
+						alphaVal);
+				glVertex3f(ptsCache[idx].first[0],ptsCache[idx].first[1],ptsCache[idx].first[2]);
+			}
+			glEnd();
+			break;
+		}
+
+		default:
+			//Not implemented
+			ASSERT(false); 
+	}
+
+	//Draw the bounding box as required
+	if(drawBoundBox)
+	{
+		Point3D pMin,pMax;
+		pMin=field->getMinBounds();
+		pMax=field->getMaxBounds();
+	
+
+		glColor4f(boxColour.r, boxColour.g,boxColour.b,boxColour.a);
+		//Draw lines between field min and max
+		glBegin(GL_LINES);
+			//Bottom corner out
+			glVertex3f(pMin[0],pMin[1],pMin[2]);
+			glVertex3f(pMax[0],pMin[1],pMin[2]);
+			
+			glVertex3f(pMin[0],pMin[1],pMin[2]);
+			glVertex3f(pMin[0],pMax[1],pMin[2]);
+
+			glVertex3f(pMin[0],pMin[1],pMin[2]);
+			glVertex3f(pMin[0],pMin[1],pMax[2]);
+			
+			//Top Corner out
+			glVertex3f(pMax[0],pMax[1],pMax[2]);
+			glVertex3f(pMin[0],pMax[1],pMax[2]);
+		
+			glVertex3f(pMax[0],pMax[1],pMax[2]);
+			glVertex3f(pMax[0],pMin[1],pMax[2]);
+			
+			glVertex3f(pMax[0],pMax[1],pMax[2]);
+			glVertex3f(pMax[0],pMax[1],pMin[2]);
+
+			//Missing pieces - in a across down across shape
+			glVertex3f(pMin[0],pMax[1],pMin[2]);
+			glVertex3f(pMax[0],pMax[1],pMin[2]);
+			
+			glVertex3f(pMax[0],pMax[1],pMin[2]);
+			glVertex3f(pMax[0],pMin[1],pMin[2]);
+
+			glVertex3f(pMax[0],pMin[1],pMin[2]);
+			glVertex3f(pMax[0],pMin[1],pMax[2]);
+			
+			glVertex3f(pMax[0],pMin[1],pMax[2]);
+			glVertex3f(pMin[0],pMin[1],pMax[2]);
+			
+			glVertex3f(pMin[0],pMin[1],pMax[2]);
+			glVertex3f(pMin[0],pMax[1],pMax[2]);
+
+			glVertex3f(pMin[0],pMax[1],pMax[2]);
+			glVertex3f(pMin[0],pMax[1],pMin[2]);
+		glEnd();
+	}
+	//Draw the projections
+}
+
+void DrawField3D::setAlpha(float newAlpha)
+{
+	alphaVal=newAlpha;
+}
+
+void DrawField3D::setPointSize(float size)
+{
+	pointSize=size;
+}
+
+void DrawField3D::setMapColours(unsigned int mapID)
+{
+	ASSERT(mapID < NUM_COLOURMAPS);
+	colourMapID= mapID;
+}
+
+void DrawField3D::setBoxColours(float rNew, float gNew, float bNew, float aNew)
+{
+	boxColour.r = rNew;
+	boxColour.g = gNew;
+	boxColour.b = bNew;
+	boxColour.a = aNew;
+
+}
+
+
+DrawIsoSurface::DrawIsoSurface()
+{
+	cacheOK=false;
+	drawMode=DRAW_SMOOTH;
+	threshold=0.5;
+	voxels=0;
+	
+	r=0.5;
+	g=0.5;
+	b=0.5;
+	a=1.0;	
+}
+
+DrawIsoSurface::~DrawIsoSurface()
+{
+	if(voxels)
+		delete voxels;
+}
+
+void DrawIsoSurface::swapVoxels(Voxels<float> *f)
+{
+	std::swap(f,voxels);
+	cacheOK=false;
+	mesh.clear();
+}
+
+DrawableObj* DrawIsoSurface::clone() const
+{	
+	DrawIsoSurface *d= new DrawIsoSurface;
+
+	d->cacheOK=cacheOK;
+	d->drawMode=drawMode;
+	d->threshold=threshold;
+	voxels->clone(*(d->voxels));
+	d->r=r;
+	d->g=g;
+	d->b=b;
+	d->a=a;
+
+
+	d->active=active;
+	d->canSelect=canSelect;
+	d->wantsLight=wantsLight;
+
+	return d;
+}
+
+void DrawIsoSurface::updateMesh() const
+{
+
+	mesh.clear();
+	marchingCubes(*voxels, threshold,mesh);
+
+	cacheOK=true;
+
+}
+
+void DrawIsoSurface::getBoundingBox(BoundCube &b) const
+{
+	if(voxels)
+	{
+		b.setBounds(voxels->getMinBounds(),
+				voxels->getMaxBounds());
+	}
+	else
+		b.setInverseLimits();
+}
+
+void DrawIsoSurface::draw() const
+{
+
+	if(!cacheOK)
+	{
+		//Hmm, we don't have a cached copy of the isosurface mesh.
+		//we will need to compute one, it would seem.
+		updateMesh();
+	}
+
+	//This could be optimised by using triangle strips
+	//rather than direct triangles.
+	glColor4f(r,g,b,a);
+	glPushAttrib(GL_CULL_FACE);
+	glDisable(GL_CULL_FACE);	
+	glBegin(GL_TRIANGLES);	
+	for(unsigned int ui=0;ui<mesh.size();ui++)
+	{
+		glNormal3fv(mesh[ui].normal[0].getValueArr());
+		glVertex3fv(mesh[ui].p[0].getValueArr());
+		glNormal3fv(mesh[ui].normal[1].getValueArr());
+		glVertex3fv(mesh[ui].p[1].getValueArr()),
+		glNormal3fv(mesh[ui].normal[2].getValueArr());
+		glVertex3fv(mesh[ui].p[2].getValueArr());
+	}
+	glPopAttrib();
+	glEnd();
+}
+
+
 #ifdef HPMC_GPU_ISOSURFACE
 
 //HPMC on GPU Isosurface code is GPL
 // See class definition for licence 
 
 //TODO: REmove me
-using std::cerr;
 using std::endl;
 
 
 DrawIsoSurfaceWithShader::DrawIsoSurfaceWithShader()
 {
+	dataset=0;
 	shadersOK=false;
 	wireframe=false;
 		
 	//TODO: Make this static, once-only?? Have some global drawinit code?
 	GLenum err = glewInit();
-	shadersOK= (GLEW_OK != err) &&(GLEW_ARB_vertex_program);
+	shadersOK= (GLEW_OK == err) &&(GLEW_ARB_vertex_program);
 	
 	//Create shaders
 	 shaded_vertex_shader =
@@ -1119,19 +1510,58 @@ DrawIsoSurfaceWithShader::DrawIsoSurfaceWithShader()
 		"    gl_FrontColor = gl_Color;\n"
 		"}\n";
 
+
 }
 
 
 DrawIsoSurfaceWithShader::~DrawIsoSurfaceWithShader()
 {
+	if(dataset)
+		delete[] dataset;
 }
 
 
-bool DrawIsoSurfaceWithShader::init(unsigned int dataX,
-		unsigned int dataY, unsigned int dataZ, const char *dataset)
+
+void DrawIsoSurfaceWithShader::getBoundingBox(BoundCube &b) const
+{
+	b=bounds;
+}
+
+void DrawIsoSurfaceWithShader::setScalarThresh(float thresh)
+{
+	threshold=(float)(thresh/trueMax*255.0f);
+}
+
+
+bool DrawIsoSurfaceWithShader::init(const Voxels<float> &f)
 {
 	if(!shadersOK)
 		return false;
+
+	unsigned long long nX,nY,nZ;
+
+	f.getSize(nX,nY,nZ);
+	try
+	{
+		dataset = new char[nX*nY*nZ];
+	}
+	catch(std::bad_alloc)
+	{
+		return false;
+	}
+
+	//This algorithm does not handle voxel fields with negative values
+	ASSERT(f.min() >= 0.0f);
+	trueMax=f.max();
+
+	bounds.setBounds(f.getMinBounds(),f.getMaxBounds());
+
+	for(unsigned int ui=0;ui<nX*nY*nZ; ui++)
+		dataset[ui]=(float)(f.getData(ui)/trueMax*255.0f);
+
+	volume_size_x=nX;
+	volume_size_y=nY;
+	volume_size_z=nZ;
 
 	// --- upload volume ------------------------------------------------------
 
@@ -1245,7 +1675,6 @@ void DrawIsoSurfaceWithShader::linkProgram( GLuint program, const std::string& w
 	GLint linkstatus;
 	glGetProgramiv( program, GL_LINK_STATUS, &linkstatus );
 	if ( linkstatus != GL_TRUE ) {
-		cerr << "Linking of " << what << " failed, infolog:" << endl;
 
 		GLint logsize;
 		glGetProgramiv( program, GL_INFO_LOG_LENGTH, &logsize );
@@ -1253,10 +1682,6 @@ void DrawIsoSurfaceWithShader::linkProgram( GLuint program, const std::string& w
 		if ( logsize > 0 ) {
 			GLchar *infolog = new char[ logsize+1 ];
 			glGetProgramInfoLog( program, logsize, NULL, infolog );
-			cerr << infolog << endl;
-		}
-		else {
-			cerr << "Empty log message" << endl;
 		}
 		shadersOK=false;
 	}
@@ -1268,6 +1693,7 @@ void DrawIsoSurfaceWithShader::draw() const
 	ASSERT(shadersOK);
 	HPMCbuildHistopyramid( hpmc_h, threshold );
 
+	//TODO: FIXME:  Does not work??! Go back to examples and look again
 		
 	// --- render surface ------------------------------------------------------
 	if ( !wireframe ) {
@@ -1293,7 +1719,6 @@ void DrawIsoSurfaceWithShader::compileShader( GLuint shader, const std::string& 
 	GLint compile_status;
 	glGetShaderiv( shader, GL_COMPILE_STATUS, &compile_status );
 	if ( compile_status != GL_TRUE ) {
-		cerr << "Compilation of " << what << " failed, infolog:" << endl;
 
 		GLint logsize;
 		glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &logsize );
@@ -1301,13 +1726,13 @@ void DrawIsoSurfaceWithShader::compileShader( GLuint shader, const std::string& 
 		if ( logsize > 0 ) {
 			GLchar *infolog = new char[ logsize+1 ];
 			glGetProgramInfoLog( shader, logsize, NULL, infolog );
-			cerr << infolog << endl;
 		}
 		else {
-			cerr << "Empty log message" << endl;
 		}
 		shadersOK=false;
 	}
 }
+
+
 
 #endif

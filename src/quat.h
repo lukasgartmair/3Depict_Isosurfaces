@@ -21,6 +21,14 @@
 #ifndef QUAT_H
 #define QUAT_H
 
+//needed for sincos
+#ifndef __APPLE__
+#ifdef __GNUC__
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#endif
+#endif
 //needed for sin and cos
 #include <math.h>
 
@@ -80,5 +88,4 @@ void quat_rot_rollyawpitch(Point3f *point, float rollAngle,float yawAngle,float 
 #ifdef __cplusplus
 }
 #endif
-//TODO: determine if we need an array version of the quat_rot_pyr/ryp funcs
 #endif

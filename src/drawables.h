@@ -23,12 +23,13 @@
 //Note, this define is repeated in drawables.cpp
 //to avoid exposing glew.h in this header,
 //which complains bitterly about header orders.
-//#define HPMC_GPU_ISOSURFACE 0
+//#define HPMC_GPU_ISOSURFACE
 
 #include "APTClasses.h"
 #include "cameras.h"
 #include "textures.h"
-
+#include "voxels.h"
+#include "IsoSurface.h"
 
 //STL includes
 #include <vector>
@@ -75,11 +76,12 @@ enum
 };
 
 
-//TODO: Make sure all solids support this (how to tell glu??)
 //!Primitve drawing mode. (wireframe/solid)
 enum
 {
 	DRAW_WIREFRAME,
+	DRAW_FLAT,
+	DRAW_SMOOTH,
 };
 
 #include "basics.h"
@@ -102,7 +104,7 @@ class DrawableObj
 		DrawableObj();
 		
 		//!Clone object
-		virtual DrawableObj* clone() const = 0;
+//		virtual DrawableObj* clone() const = 0;
 
 		//!Set the active state of the object
 		void setActive(bool active);
@@ -239,6 +241,7 @@ class DrawTriangle : public DrawableObj
 	protected:
 		//!The vertices of the triangle
 		Point3D vertices[3];
+		Point3D vertNorm[3];
 		//!Colour data - red, green, blue, alpha
 		float r,g,b,a;
 	public:
@@ -251,6 +254,8 @@ class DrawTriangle : public DrawableObj
 
 		//!Set one of three vertices (0-2) locations
 		void setVertex(unsigned int, const Point3D &);
+		//!Set the vertex normals
+		void setVertexNorm(unsigned int, const Point3D &);
 		//!Set the colour of the triangle
 		void setColour(float r, float g, float b, float a);
 		//!Draw the triangle
@@ -675,6 +680,140 @@ class DrawTexturedQuadOverlay : public DrawableObj
 };
 
 
+struct RGBThis
+{
+	unsigned char v[3];
+};
+//!This class allows for the visualisation of 3D scalar fields
+class DrawField3D : public DrawableObj
+{
+	private:
+		mutable std::vector<std::pair<Point3D,RGBThis> > ptsCache;
+		mutable bool ptsCacheOK;
+	protected:
+		//CurCam
+		static const Camera *curCam;
+		//!Alpha transparancy of objects in field
+		float alphaVal;
+
+		//!Size of points in the field -
+		//only meaningful if the render mode is set to alpha blended points
+		float pointSize;
+
+		//!True if the scalar field's bounding box is to be drawn
+		bool drawBoundBox;
+
+		//!Colours for the bounding boxes
+		Colour boxColour;
+		
+		//!True if volume grid is enabled
+		bool volumeGrid;
+
+		//!Colour map lower and upper bounds
+		float colourMapBound[2];
+
+		//!Which colourmap to use
+		unsigned int colourMapID;
+
+		//!Sets the render mode for the 3D volume 
+		/* Possible modes
+		 * 0: Alpha blended points
+		 */
+		unsigned int volumeRenderMode;
+		//!The scalar field - used to store data values
+		const Voxels<float> *field;
+	public:
+		//!Default Constructor
+		DrawField3D();
+		//!Destructor
+		virtual ~DrawField3D();
+
+		//!Clone
+		DrawableObj *clone() const;
+
+		//!Get the bounding box for this object
+		void getBoundingBox(BoundCube &b) const;
+		
+		//!Set the render mode (see volumeRenderMode variable for details)
+		void setRenderMode(unsigned int);
+		
+		//!Set the field pointer 
+		void setField(const Voxels<float> *field); 
+
+		//!Set the alpha value for elemnts
+		void setAlpha(float alpha);
+
+		//!Set the colour bar minima and maxima from current field values
+		void setColourMinMax();
+
+		//!Set the colourMap ID
+		void setColourMapID(unsigned int i){ colourMapID=i;};
+
+		//!Render the field
+		void draw() const;
+
+		//!Set the size of points
+		void setPointSize(float size);
+		
+		//!Set the colours that ar ebeing used in the tempMap
+		void setMapColours(unsigned int map);
+
+		//!Set the coour of the bounding box
+		void setBoxColours(float r, float g, float b, float a);
+		//!Set the current camera
+		static void setCurCamera(const Camera *c){curCam=c;};
+
+};
+
+class DrawIsoSurface: public DrawableObj
+{
+private:
+	mutable bool cacheOK;
+
+	//!should we draw the thing 
+	//	- in wireframe
+	//	-Flat
+	//	-Smooth
+	//
+	unsigned int drawMode;
+
+	//!Isosurface scalar threshold
+	float threshold;
+
+	Voxels<float> *voxels;	
+
+	mutable vector<TriangleWithVertexNorm> mesh;
+
+	//!Warning. Although I declare this as const, I do some naughty mutating to the cache.
+	void updateMesh() const;	
+	
+	//!Point colour (r,g,b,a) range: [0.0f,1.0f]
+	float r,g,b,a;
+public:
+
+	DrawIsoSurface();
+	~DrawIsoSurface();
+
+	//!Clone object
+	DrawableObj* clone() const;
+
+	//!Transfer ownership of data pointer to class
+	void swapVoxels(Voxels<float> *v);
+
+	//!Set the drawing method
+
+	//Draw
+	void draw() const;
+
+	//!Set the isosurface value
+	void setScalarThresh(float thresh) { threshold=thresh;cacheOK=false;mesh.clear();};
+
+	//!Get the bouding box (of the entire scalar field)	
+	void getBoundingBox(BoundCube &b) const ;
+		
+	//!Sets the color of the point to be drawn
+	void setColour(float rP, float gP, float bP, float alpha) { r=rP;g=gP;b=bP;a=alpha;} ;
+};
 
 #ifdef HPMC_GPU_ISOSURFACE
 //!A class to use GPU shaders to draw isosurfaces
@@ -711,6 +850,8 @@ private:
 	bool shadersOK;
 	//should we draw the thing in wireframe?
 	bool wireframe;
+	//Pointer to data
+	char *dataset;
 
 
 	struct HPMCConstants* hpmc_c;
@@ -739,8 +880,14 @@ private:
 	GLuint flat_v;
 	GLuint flat_p;
 
-	//Isosurface scalar threshold
+	//Isosurface scalar threshold (true value)
 	float threshold;
+
+	//true data maximum
+	float trueMax;
+
+	//Voxel data Bounding box
+	BoundCube bounds;
 	
 	//Compile shader for video card	
 	void compileShader( GLuint shader, const std::string& what );
@@ -752,12 +899,16 @@ public:
 	~DrawIsoSurfaceWithShader();
 
 	//initialise dataset and shaders
-	bool init(unsigned int dataX,
-		unsigned int dataY, unsigned int dataZ, const char *dataset);
+	bool init(const Voxels<float> &v);
 	//Draw
 	void draw() const;
 
-	void setScalarThresh(float thresh) { threshold=thresh;};
+	//Can the shader run?
+	bool canRun() const{return shadersOK;};
+
+	void setScalarThresh(float thresh) ;
+
+	void getBoundingBox(BoundCube &b) const;
 };
 #endif
 

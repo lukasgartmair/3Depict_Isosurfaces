@@ -48,11 +48,41 @@ enum
   PLOT_TYPE_ENDOFENUM,
 };
 
+enum
+{
+	PLOT_ERROR_NONE,
+	PLOT_ERROR_MOVING_AVERAGE,
+	PLOT_ERROR_ENDOFENUM
+};
+
+enum{
+	EDGE_MODE_HOLD,
+};
+
+//!Structure to handle error bar drawing in plot
+struct PLOT_ERROR
+{
+	//!Plot data estimator mode
+	unsigned int mode;
+	//!Number of data points for moving average
+	unsigned int movingAverageNum;
+	//!Edge mode
+	unsigned int edgeMode;
+};
+
+
+
 //!Return a human readable string for a given plot type
 std::string plotString(unsigned int plotType);
 
+//!Return a human readable string for the plot error mode
+std::string plotErrmodeString(unsigned int errMode);
+
 //!Return the plot type given a human readable string
 unsigned int plotID(const std::string &plotString);
+
+//!Return the error mode type, given the human readable string
+unsigned int plotErrmodeID(const std::string &s);
 
 class PlotData
 {
@@ -60,7 +90,7 @@ class PlotData
 		//!Bounding box for data
 		float minX,maxX,minY,maxY;
 		//!Data
-		std::vector<float> xValues,yValues;
+		std::vector<float> xValues,yValues,errBars;
 		//!Colour of trace
 		float r,g,b;
 		//!Is trace visible?
@@ -80,6 +110,7 @@ class PlotData
 		//!integer to show which of the n plots that the parent generated
 		//that this data is represented by
 		unsigned int parentPlotIndex;
+
 };
 
 class PlotRegion
@@ -113,12 +144,15 @@ class Multiplot
 		//!User maximum  bounds
 		float xUserMax,yUserMax;
 
+		//!Swtich to enable or disable drawing of the plot legend
+		bool drawLegend;	
+
 		//!Nasty hack to get nearest mathgl named colour from a given RGB
 		//R,G,B in [0,1]
 		char getNearestMathglColour(float r, float g, float b) const;
 	public:
 		//!Constructor
-		Multiplot(){applyUserBounds=false;plotChanged=true;};
+		Multiplot(){applyUserBounds=false;plotChanged=true;drawLegend=true;};
 
 		//!Has the contents of the plot changed since the last call to resetChange?
 		bool hasChanged() const { return plotChanged;};
@@ -139,8 +173,8 @@ class Multiplot
 
 		//!Add a plot to the multiplot, with the given XY data. 
 		unsigned int addPlot(const std::vector<float> &vX, const std::vector<float> &vY,
-					bool logarithmic=false);
-		unsigned int addPlot(const std::vector<std::pair<float, float> > &data,
+					const PLOT_ERROR &errMode, bool logarithmic=false);
+		unsigned int addPlot(const std::vector<std::pair<float, float> > &data, const PLOT_ERROR &p,
 				bool logarithmic=false);
 		//!Re-set the plot datya for a given plot
 		void setPlotData(unsigned int plotUniqueID,
@@ -188,8 +222,11 @@ class Multiplot
 
 		//!Retrieve the raw data associated with the currently visible plots. 
 		//note that this is the FULL data not the zoomed data for the current user bounds
-		void getRawData(std::vector<std::vector<std::pair< float,float> > > &rawData,
-				std::vector<std::pair<std::wstring,std::wstring> > &labels) const;
+		void getRawData(std::vector<std::vector<std::vector<float> > > &rawData,
+				std::vector<std::vector<std::wstring> > &labels) const;
+
+		//!Set whether to enable the legend or not
+		void setLegendVisible(bool vis) { drawLegend=vis;plotChanged=true;};
 };
 
 #endif

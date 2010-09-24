@@ -110,6 +110,17 @@ class EqualWithCallback
 };
 //----
 
+//C file peek function
+inline int fpeek(FILE *stream)
+{
+	int c;
+
+	c = fgetc(stream);
+	ungetc(c, stream);
+
+	return c;
+}
+
 
 //!Property types for wxPropertyGrid
 enum
@@ -134,7 +145,7 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 							RandNumGen &rng, size_t num,unsigned int &progress,bool (*callback)())
 {
 	//If there are not enough points, just copy it across in whole
-	if(source.size() < num)
+	if(source.size() <= num)
 	{
 		num=source.size();
 		result.resize(source.size());

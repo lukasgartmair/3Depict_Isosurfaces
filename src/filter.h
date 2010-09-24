@@ -33,6 +33,7 @@ class FilterStreamData;
 #include "drawables.h"
 #include "select.h"
 #include "plot.h"
+#include "voxels.h"
 
 //This MUST go after the other headers,
 //as there is some kind of symbol clash...
@@ -56,6 +57,7 @@ enum
 	FILTER_TYPE_TRANSFORM,
 	FILTER_TYPE_EXTERNALPROC,
 	FILTER_TYPE_SPATIAL_ANALYSIS,
+	FILTER_TYPE_VOXELS,
 };
 
 //!Filter state output formats
@@ -80,17 +82,26 @@ enum
 	COMPPROFILE_PRIMITIVE_END, //Not actually a primitive, just end of enum
 };
 
+//!Possible mode for selection of origin in transform filter
+enum
+{
+	TRANSFORM_ORIGINMODE_SELECT,
+	TRANSFORM_ORIGINMODE_CENTREBOUND,
+	TRANSFORM_ORIGINMODE_MASSCENTRE,
+	TRANSFORM_ORIGINMODE_END, // Not actually origin mode, just end of enum
+};
 //Stream data types. note that bitmasks are occasionally used, so we are limited in
 //the number of stream types that we can have.
 //Current bitmask using functions are
 //	VisController::safeDeleteFilterList
-const unsigned int NUM_STREAM_TYPES=4;
+const unsigned int NUM_STREAM_TYPES=5;
 enum
 {
 	STREAM_TYPE_IONS=1,
 	STREAM_TYPE_PLOT=2,
 	STREAM_TYPE_DRAW=4,
 	STREAM_TYPE_RANGE=8,
+	STREAM_TYPE_VOXEL=16,
 };
 
 
@@ -101,7 +112,17 @@ enum
 {
 	//IonStreamData
 	ION_REPRESENT_POINTS,
+	
+};
 
+//Representations
+enum 
+{
+	//VoxelStreamData
+	VOXEL_REPRESENT_POINTCLOUD,
+	VOXEL_REPRESENT_ISOSURF,
+	VOXEL_REPRESENT_END,
+	
 };
 
 //Error codes for each of the filters. 
@@ -163,6 +184,21 @@ enum
 	SPATIAL_ANALYSIS_ABORT_ERR=1,
 };
 
+enum
+{
+	FILE_TYPE_NULL,
+	FILE_TYPE_XML,
+	FILE_TYPE_POS,
+};
+enum
+{
+	VOXEL_NORMALISETYPE_NONE,// straight count
+	VOXEL_NORMALISETYPE_VOLUME,// density
+	VOXEL_NORMALISETYPE_ALLATOMSINVOXEL, // concentration
+	VOXEL_NORMALISETYPE_COUNT2INVOXEL,// ratio count1/count2
+	VOXEL_NORMALISETYPE_MAX, // keep this at the end so it's a bookend for the last value
+};
+
 //---
 //
 
@@ -211,22 +247,41 @@ class FilterProperties
 //!Point with m-t-c value data
 class IonStreamData : public FilterStreamData
 {
-	public:
-		IonStreamData(){ streamType=STREAM_TYPE_IONS;
-				representationType = ION_REPRESENT_POINTS; 
-				r=1.0,g=0.0,b=0.0,a=1.0;ionSize=2.0;valueType="Mass-to-Charge";};
-		void clear();
-		size_t GetNumBasicObjects() const  { return data.size();};
+public:
+	IonStreamData(){ streamType=STREAM_TYPE_IONS;
+		representationType = ION_REPRESENT_POINTS; 
+		r=1.0,g=0.0,b=0.0,a=1.0;ionSize=2.0;valueType="Mass-to-Charge";};
+	void clear();
+	size_t GetNumBasicObjects() const  { return data.size();};
+	
+	unsigned int representationType;
+	float r,g,b,a;
+	float ionSize;
+	
+	//!The name for the type of data -- nominally "mass-to-charge"
+	std::string valueType;
+	
+	//!Apply filter to input data stream	
+	std::vector<IonHit> data;
+};
 
-		unsigned int representationType;
-		float r,g,b,a;
-		float ionSize;
-
-		//!The name for the type of data -- nominally "mass-to-charge"
-		std::string valueType;
-
-		//!Apply filter to input data stream	
-		std::vector<IonHit> data;
+//!Point with m-t-c value data
+class VoxelStreamData : public FilterStreamData
+{
+public:
+	VoxelStreamData(){ streamType=STREAM_TYPE_VOXEL;
+		representationType = VOXEL_REPRESENT_POINTCLOUD; 
+		r=1.0,g=0.0,b=0.0,a=0.3;splatSize=2.0;isoLevel=0.5;};
+	size_t GetNumBasicObjects() const { return data.getSize();};
+	void clear();
+	
+	unsigned int representationType;
+	float r,g,b,a;
+	float splatSize;
+	float isoLevel;
+	//!Apply filter to input data stream	
+	Voxels<float> data;
+		
 };
 
 //!Plotting data
@@ -234,7 +289,7 @@ class PlotStreamData : public FilterStreamData
 {
 	public:
 		PlotStreamData(){ streamType=STREAM_TYPE_PLOT;
-				plotType=PLOT_TYPE_LINES;
+				plotType=PLOT_TYPE_LINES;errDat.mode=PLOT_ERROR_NONE;
 				r=1.0,g=0.0,b=0.0,a=1.0;logarithmic=false;};
 		void clear() {xyData.clear();};
 		size_t GetNumBasicObjects() const { return xyData.size();};
@@ -257,6 +312,8 @@ class PlotStreamData : public FilterStreamData
 		const Filter *parent;
 		//!Parent filter index
 		unsigned int index;
+		//!Error bar mode
+		PLOT_ERROR errDat;
 };
 
 //!Drawable objects, for 3D decoration. 
@@ -283,10 +340,10 @@ class RangeStreamData :  public FilterStreamData
 		//!range file filter from whence this propagated. Do not delete[] pointer at all, this class does not OWN the range data
 		//it merely provides access to existing data.
 		RangeFile *rangeFile;
-		//This points to the owning filter's enabled ranges
-		vector<char> *enabledRanges;
-		//This points to the owning filter's enabled ions
-		vector<char> *enabledIons;
+		//Enabled ranges from source filter
+		vector<char> enabledRanges;
+		//Enabled ions from source filter 
+		vector<char> enabledIons;
 
 		
 
@@ -298,8 +355,16 @@ class RangeStreamData :  public FilterStreamData
 		size_t GetNumBasicObjects() const { return 0; }
 
 		//!Unlink the pointer
-		void clear() { rangeFile=0;enabledRanges=0;};
+		void clear() { rangeFile=0;enabledRanges.clear();enabledIons.clear();};
 
+		void operator=(const RangeStreamData &rsd)
+		{
+			rangeFile = rsd.rangeFile;
+			enabledRanges.resize(rsd.enabledRanges.size());
+			enabledIons.resize(rsd.enabledIons.size());
+			for (size_t i = 0; i < rsd.enabledRanges.size(); i++) enabledRanges[i] = rsd.enabledRanges[i];
+			for (size_t i = 0; i < rsd.enabledIons.size(); i++) enabledRanges[i] = rsd.enabledIons[i];
+		}
 };
 
 //FIXME: Lookup how to use static members. cant remember of top of my head. no interwebs.
@@ -318,8 +383,6 @@ class Filter
 		//THis is initialised to -1, which is considered invalid
 		unsigned int numStreamsLastRefresh[NUM_STREAM_TYPES];
 	
-		//!Is this filter active?
-		bool enabled;
 
 		//!User settable labelling string (human readable ID, etc etc)
 		std::string userString;
@@ -333,8 +396,6 @@ class Filter
 		//!Duplicate filter contents, excluding cache.
 		virtual Filter *cloneUncached() const = 0;
 
-		bool isEnabled() const {return enabled;};
-
 		//!Apply filter to new data, updating cache as needed. Vector of returned pointers must be deleted manually, first checking ->cached.
 		virtual unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &dataOut,
@@ -344,6 +405,11 @@ class Filter
 		//!Get (approx) number of bytes required for cache
 		virtual size_t numBytesForCache(size_t nObjects) const =0;
 
+		//!Initialise the filter's internal state using limited filter stream data propagation
+		//NOTE: CONTENTS MAY NOT BE CACHED.
+		virtual void initFilter(const std::vector<const FilterStreamData *> &dataIn,
+				std::vector<const FilterStreamData *> &dataOut);
+
 		//!return type ID
 		virtual unsigned int getType() const=0;
 
@@ -352,9 +418,6 @@ class Filter
 
 		//!Enable/disable caching for this filter
 		void setCaching(bool enableCache) {cache=enableCache;};
-
-		//!Get the filter output data from this filter
-		void getOutputData(std::vector<FilterStreamData *> * &getOut);
 
 		//!Have cached output data?
 		bool haveCache() const;
@@ -423,6 +486,16 @@ class PosLoadFilter:public Filter
 
 		//!Default ion size (view size)
 		float ionSize;
+	
+		//!Number of columns & type of file
+		int numColumns, fileType;
+
+		//!index of columns into pos file
+		static const int INDEX_LENGTH = 4;
+		int index[INDEX_LENGTH];//x,y,z,value
+
+		//!Is pos load enabled?
+		bool enabled;
 
 		//!Volume restricted load?
 		bool volumeRestrict;
@@ -437,6 +510,7 @@ class PosLoadFilter:public Filter
 		//!Set the source string
 		void setFilename(const char *name);
 		void setFilename(const std::string &name);
+		void guessNumColumns();
 		//!Get filter type (returns FILTER_TYPE_POSLOAD)
 		unsigned int getType() const { return FILTER_TYPE_POSLOAD;};
 
@@ -470,6 +544,9 @@ class PosLoadFilter:public Filter
 		
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
+	
+		//!Get the label for the chosen value column
+	std::string getValueLabel();
 };
 
 
@@ -543,12 +620,17 @@ class RangeFileFilter : public Filter
 		//!Assumed file format when loading.
 		unsigned int assumedFileFormat;
 
+		void guessFormat(const std::string &s);
+
 	public:
 		//!range file -- whilst this is public, I am not advocating its use directly..
 		RangeFile rng;
 
 		//!Set the format to assume when loading file
 		void setFormat(unsigned int format);
+	
+		std::vector<char> getEnabledRanges() {return enabledRanges;};
+		void setEnabledRanges(vector<char> i) {enabledRanges = i;};
 
 
 		RangeFileFilter(); 
@@ -560,6 +642,10 @@ class RangeFileFilter : public Filter
 		virtual size_t numBytesForCache(size_t nObjects) const;
 		//!Returns FILTER_TYPE_RANGEFILE
 		unsigned int getType() const { return FILTER_TYPE_RANGEFILE;};
+		
+		//!Propagates a range stream data through the filter init stage. Blocks any other range stream datas
+		virtual void initFilter(const std::vector<const FilterStreamData *> &dataIn,
+				std::vector<const FilterStreamData *> &dataOut);
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &getOut, 
@@ -785,6 +871,11 @@ class CompositionProfileFilter : public Filter
 		std::vector< std::vector<float > > spectraCache;
 		float r,g,b,a;
 		unsigned int plotType;
+	
+		PLOT_ERROR errMode;
+
+		//!Do we have a range file above us in our filter tree? This is set by ::initFilter
+		bool haveRangeParent;
 		
 		//!internal function for binning an ion dependant upon range data
 		void binIon(unsigned int targetBin, const RangeStreamData* rng, const std::map<unsigned int,unsigned int> &ionIDMapping,
@@ -800,6 +891,9 @@ class CompositionProfileFilter : public Filter
 		//!Get approx number of bytes for caching output
 		size_t numBytesForCache(size_t nObjects) const;
 
+		//!Initialise filter, check for upstream range
+		void initFilter(const std::vector<const FilterStreamData *> &dataIn,
+				std::vector<const FilterStreamData *> &dataOut);
 		//!update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 						std::vector<const FilterStreamData *> &getOut, 
@@ -824,6 +918,103 @@ class CompositionProfileFilter : public Filter
 		bool readState(xmlNodePtr &node);
 		//!Set internal property value using a selection binding  
 		void setPropFromBinding(const SelectionBinding &b) ;
+};
+
+//!Filter that does voxelisation for various primitives (copid from CompositionFilter)
+class VoxeliseFilter : public Filter
+{
+private:
+	const static size_t INDEX_LENGTH = 3;
+
+	//Enabled ions for numerator/denom
+	vector<char> enabledIons[2];
+
+	//!Stepping mode - fixed width or fixed number of bins
+	bool fixedWidth;
+	
+	//!number of bins (if using fixed bins)
+	unsigned long long nBins[INDEX_LENGTH];
+	//!Width of each bin (if using fixed wdith)
+	Point3D binWidth;
+	//!boundcube for the input data points
+	BoundCube bc;
+	
+	//!density-based or count-based	
+	int normaliseType;
+	bool numeratorAll, denominatorAll;
+	//This is filter's enabled ranges
+	RangeStreamData *rsdIncoming;
+	
+	float r,g,b,a;
+
+	//!3D Point Representation size
+	float splatSize;
+
+	//!Isosurface level
+	float isoLevel;
+	//!Default output representation mode
+	unsigned int representation;
+public:
+	VoxeliseFilter();
+	//!Duplicate filter contents, excluding cache.
+	Filter *cloneUncached() const;
+	
+	//!Get approx number of bytes for caching output
+	size_t numBytesForCache(size_t nObjects) const;
+
+	unsigned int getType() const { return FILTER_TYPE_VOXELS;};
+	
+	void initFilter(const std::vector<const FilterStreamData *> &dataIn,
+					std::vector<const FilterStreamData *> &dataOut);
+	//!update filter
+	unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
+						 std::vector<const FilterStreamData *> &getOut, 
+						 unsigned int &progress, bool (*callback)(void));
+	
+	virtual std::string typeString() const { return std::string("Voxelisation");};
+
+	//!Get the human-readable options for the normalisation, based upon enum 
+	std::string getNormaliseTypeString(int type) const;
+	//!Get the human-readable options for the visual representation (enum)
+	std::string getRepresentTypeString(int type) const;
+	
+	//!Get the properties of the filter, in key-value form. First vector is for each output.
+	void getProperties(FilterProperties &propertyList) const;
+	
+	//!Set the properties for the nth filter. Returns true if prop set OK
+	bool setProperty(unsigned int set,unsigned int key, 
+					 const std::string &value, bool &needUpdate);
+	//!Get the human readable error string associated with a particular error code during refresh(...)
+	std::string getErrString(unsigned int code) const;
+	
+	//!Dump state to output stream, using specified format
+	bool writeState(std::ofstream &f,unsigned int format, 
+					unsigned int depth=0) const;
+	//!Read the state of the filter from XML file. If this
+	//fails, filter will be in an undefined state.
+	bool readState(xmlNodePtr &node);
+	//!Set internal property value using a selection binding  
+	void setPropFromBinding(const SelectionBinding &b) ;
+	
+	VoxeliseFilter operator=(const VoxeliseFilter &v);
+	
+	//!calculate the widths of the bins in 3D
+	void calculateWidthsFromNumBins(Point3D &widths, unsigned long long *nb) {
+		Point3D low, high;
+		bc.getBounds(low, high);
+		for (int i = 0; i < 3; i++) {
+			widths[i] = (high[i] - low[i])/(float)nb[i];
+		}
+	}
+	//!set the number of the bins in 3D
+	void calculateNumBinsFromWidths(Point3D &widths, unsigned long long *nb) {
+		Point3D low, high;
+		bc.getBounds(low, high);
+		for (int i = 0; i < 3; i++) {
+			if (low[i] == high[i]) nb[i] = 1;
+			else nb[i] = (unsigned long long)((high[i] - low[i])/(float)widths[i]) + 1;
+		}
+	}
 };
 
 //!Bounding box filter
@@ -892,11 +1083,19 @@ class TransformFilter : public Filter
 		//!Transform mode (scale, rotate, translate)
 		unsigned int transformMode;
 
+		//!Show origin if needed;
+		bool showOrigin;
+		//!Mode for selection of origin for transform
+		unsigned int originMode;
 		//!Scalar values for transformation (scaling factors, rotation angle )
 		vector<float> scalarParams;
 		//!Vector values for transformation (translation or rotation vectors)
 		vector<Point3D> vectorParams;
 
+		//!Should we show the origin primitive markers?
+		bool showPrimitive;
+			
+		std::string getOriginTypeString(unsigned int i) const;
 	public:
 		TransformFilter(); 
 		//!Duplicate filter contents, excluding cache.
@@ -930,7 +1129,8 @@ class TransformFilter : public Filter
 		//fails, filter will be in an undefined state.
 		bool readState(xmlNodePtr &node);
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
-		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
+		void setPropFromBinding(const SelectionBinding &b);
+
 };
 
 //!External program filter

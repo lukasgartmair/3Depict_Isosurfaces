@@ -45,6 +45,18 @@ void quat_mult(Quaternion *result, Quaternion *q1, Quaternion *q2)
 
 }
 
+//quaternion multiplication
+void quat_mult_no_second_a(Quaternion *result, Quaternion *q1, Quaternion *q2)
+{
+
+	//12 mutliplications, 8 additions, 1 negation
+	result->a = (-q1->b*q2->b-q1->c*q2->c -q1->d*q2->d);
+	result->b = (q1->a*q2->b +q1->c*q2->d -q1->d*q2->c);
+	result->c = (q1->a*q2->c -q1->b*q2->d +q1->d*q2->b);
+	result->d = (q1->a*q2->d +q1->b*q2->c -q1->c*q2->b );
+
+}
+
 //this is a little optimisation that doesnt calculate the a component for
 //the returned quaternion. Note that the result is specific to quaternion rotation 
 void quat_pointmult(Point3f *result, Quaternion *q1, Quaternion *q2)
@@ -64,22 +76,29 @@ void quat_pointmult(Point3f *result, Quaternion *q1, Quaternion *q2)
 //Note result is stored in returned point
 void quat_rot(Point3f *point, Point3f *rotVec, float angle)
 {
-	float sinCoeff;
+	double sinCoeff;
        	Quaternion rotQuat;
 	Quaternion pointQuat;
 	Quaternion conjQuat;
 	Quaternion temp;
 	
 	//remember this value so we dont recompute it
-	sinCoeff=sin(angle*0.5f);
+#ifdef _GNU_SOURCE
+	double cosCoeff;
+	//GNU provides sincos which is about twice the speed of sin/cos separately
+	sincos(angle*0.5f,&sinCoeff,&cosCoeff);
+	rotQuat.a=cosCoeff;
+#else
+	angle*=0.5f;
+	sinCoeff=sin(angle);
 	
-	rotQuat.a = cos(angle*0.5f);
-	
+	rotQuat.a = cos(angle);
+#endif	
 	rotQuat.b=sinCoeff*rotVec->fx;
 	rotQuat.c=sinCoeff*rotVec->fy;
 	rotQuat.d=sinCoeff*rotVec->fz;
 
-	pointQuat.a =0.0f;
+//	pointQuat.a =0.0f; This is implied in the pointQuat multiplcation function
 	pointQuat.b = point->fx;
 	pointQuat.c = point->fy;
 	pointQuat.d = point->fz;
@@ -90,7 +109,7 @@ void quat_rot(Point3f *point, Point3f *rotVec, float angle)
 	conjQuat.d = -rotQuat.d;
 
 	//perform  rotation
-	quat_mult(&temp,&rotQuat,&pointQuat);
+	quat_mult_no_second_a(&temp,&rotQuat,&pointQuat);
 	quat_pointmult(point, &temp,&conjQuat);
 
 }
@@ -100,11 +119,17 @@ void quat_rot(Point3f *point, Point3f *rotVec, float angle)
 void quat_get_rot_quats(Point3f *rotVec, float angle, 
 		Quaternion *rotQuat, Quaternion *conjQuat)
 {
+	double sinCoeff;
+#ifdef _GNU_SOURCE
+	double cosCoeff;
+	//GNU provides sincos which is about twice the speed of sin/cos separately
+	sincos(angle*0.5f,&sinCoeff,&cosCoeff);
+	rotQuat->a=cosCoeff;
+#else
 	angle*=0.5f;
-	//remember this value so we dont recompute it
-	float sinCoeff=sin(angle);
-	
+	sinCoeff=sin(angle);
 	rotQuat->a = cos(angle);
+#endif	
 	
 	rotQuat->b=sinCoeff*rotVec->fx;
 	rotQuat->c=sinCoeff*rotVec->fy;
@@ -121,12 +146,12 @@ void quat_get_rot_quats(Point3f *rotVec, float angle,
 void quat_rot_apply_quats(Point3f *point, Quaternion *rotQuat, Quaternion *conjQuat)
 {
 	Quaternion pointQuat,temp;
-	pointQuat.a =0.0f;
+//	pointQuat.a =0.0f; No need to set this, as we do not use it in the multiplciation function
 	pointQuat.b = point->fx;
 	pointQuat.c = point->fy;
 	pointQuat.d = point->fz;
 	//perform  rotation
-	quat_mult(&temp,rotQuat,&pointQuat);
+	quat_mult_no_second_a(&temp,rotQuat,&pointQuat);
 	quat_pointmult(point, &temp,conjQuat);
 }
 

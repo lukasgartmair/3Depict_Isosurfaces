@@ -18,14 +18,18 @@
 #ifdef __cplusplus 
 	extern "C" { 
 #endif
+		
+#include "pngread.h"
 
 //Unavailable definitions under mac & windows (not sure why)
 #if defined(__APPLE__) || defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
+#ifndef png_infopp_NULL
 #define png_infopp_NULL (png_infopp)NULL
+#endif
+#ifndef int_p_NULL
 #define int_p_NULL (int*)NULL
 #endif
-
-#include "pngread.h"
+#endif
 
 int check_if_png(const char *file_name, FILE **fp, unsigned int bytes_to_check)
 {
@@ -43,7 +47,7 @@ int check_if_png(const char *file_name, FILE **fp, unsigned int bytes_to_check)
       Return nonzero (true) if they match */
 
 
-   return(!png_sig_cmp(buf, (png_size_t)0, bytes_to_check));
+   return(!png_sig_cmp((png_byte*)buf, (png_size_t)0, bytes_to_check));
 }
 
 /* Read a PNG file.  You may want to return an error code if the read
@@ -217,14 +221,14 @@ int read_png(FILE *fp, unsigned int sig_read, png_bytep **row_pointers,
    /* Allocate the memory to hold the image using the fields of info_ptr. */
 
    /* The easiest way to read the image: */
-   if (!(*row_pointers = malloc(*height * sizeof(png_bytep)))) {
+   if (!(*row_pointers = (png_byte**)malloc(*height * sizeof(png_bytep)))) {
      return (-1);
    }
    int row;
 
    for (row = 0; row < *height; row++)
    {
-      (*row_pointers)[row] = png_malloc(png_ptr, png_get_rowbytes(png_ptr,
+      (*row_pointers)[row] = (png_byte*)png_malloc(png_ptr, png_get_rowbytes(png_ptr,
          info_ptr));
    }
 

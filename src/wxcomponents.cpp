@@ -532,10 +532,6 @@ void CopyGrid::saveData()
 
 void CopyGrid::OnKey(wxKeyEvent &event)
 {
-	if(event.MetaDown())
-	{
-		std::cerr << "Meta down" << std::endl;
-	}
 
 
 
@@ -589,9 +585,6 @@ void CopyGrid::copyData()
 	{
             for(int  c=0; c<cols; c++)
 	    {
-		int rVal,cVal;
-		rVal = coordTL.GetRow() + r;
-		cVal = coordTL.GetCol()+ c;
                 data+= stlStr(GetCellValue(coordTL.GetRow() + r,
 						coordTL.GetCol()+ c));
                 if(c < cols - 1)

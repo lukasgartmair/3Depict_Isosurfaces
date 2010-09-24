@@ -31,6 +31,10 @@
 #include <wx/filename.h>
 #include <wx/dir.h>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 using std::list;
 using std::vector;
 using std::string;
@@ -40,8 +44,9 @@ using std::make_pair;
 const unsigned int NUM_CALLBACK=50000;
 const size_t MAX_IONS_LOAD_DEFAULT=5*1024*1024/sizeof(IONHIT); //5 MB worth.
 
-const unsigned int NUM_COLOURMAPS=9;
 const unsigned int MAX_NUM_COLOURS=256;
+// Tp prevent the dropdown lists from getting too unwieldy, set an artificial maximum
+const unsigned int MAX_NUM_FILE_COLS=5000; 
 
 const unsigned int SPECTRUM_MAX_BINS=100000;
 
@@ -49,7 +54,8 @@ const unsigned int SPECTRUM_MAX_BINS=100000;
 const char *STREAM_NAMES[] = { "Ion",
 				"Plot",
 				"Draw",
-				"Range"};
+				"Range",
+				"Voxel"};
 
 //Key types for clipping 
 enum
@@ -60,15 +66,12 @@ enum
 	KEY_IONCLIP_PRIMITIVE_SHOW,
 	KEY_IONCLIP_PRIMITIVE_INVERTCLIP,
 	KEY_IONCLIP_NORMAL,
-	KEY_IONCLIP_ENABLED,
 
-	KEY_IONCOLOURFILTER_ENABLED,
 	KEY_IONCOLOURFILTER_COLOURMAP,
 	KEY_IONCOLOURFILTER_MAPSTART,
 	KEY_IONCOLOURFILTER_MAPEND,
 	KEY_IONCOLOURFILTER_NCOLOURS,
 
-	KEY_SPECTRUM_ENABLED,
 	KEY_SPECTRUM_BINWIDTH,
 	KEY_SPECTRUM_AUTOEXTREMA,
 	KEY_SPECTRUM_MIN,
@@ -82,8 +85,12 @@ enum
 	KEY_POSLOAD_COLOUR,
 	KEY_POSLOAD_IONSIZE,
 	KEY_POSLOAD_ENABLED,
+	KEY_POSLOAD_SELECTED_COLUMN0,
+	KEY_POSLOAD_SELECTED_COLUMN1,
+	KEY_POSLOAD_SELECTED_COLUMN2,
+	KEY_POSLOAD_SELECTED_COLUMN3,
+	KEY_POSLOAD_NUMBER_OF_COLUMNS,
 
-	KEY_IONDOWNSAMPLE_ENABLED,
 	KEY_IONDOWNSAMPLE_FRACTION,
 	KEY_IONDOWNSAMPLE_FIXEDOUT,
 	KEY_IONDOWNSAMPLE_COUNT,
@@ -93,7 +100,6 @@ enum
 	KEY_RANGE_START,
 	KEY_RANGE_END,
 
-	KEY_COMPPROFILE_ENABLED,
 	KEY_COMPPROFILE_BINWIDTH,
 	KEY_COMPPROFILE_FIXEDBINS,
 	KEY_COMPPROFILE_NORMAL,
@@ -105,8 +111,9 @@ enum
 	KEY_COMPPROFILE_SHOWPRIMITIVE,
 	KEY_COMPPROFILE_NORMALISE,
 	KEY_COMPPROFILE_COLOUR,
+	KEY_COMPPROFILE_ERRMODE,
+	KEY_COMPPROFILE_AVGWINSIZE,
 
-	KEY_BOUNDINGBOX_ENABLED,
 	KEY_BOUNDINGBOX_VISIBLE,
 	KEY_BOUNDINGBOX_COUNT_X,
 	KEY_BOUNDINGBOX_COUNT_Y,
@@ -120,24 +127,39 @@ enum
 	KEY_BOUNDINGBOX_SPACING_Y,
 	KEY_BOUNDINGBOX_SPACING_Z,
 
-	KEY_TRANSFORM_ENABLED,
 	KEY_TRANSFORM_MODE,
 	KEY_TRANSFORM_SCALEFACTOR,
 	KEY_TRANSFORM_ORIGIN,
+	KEY_TRANSFORM_ORIGINMODE,
 	KEY_TRANSFORM_ROTATE_ANGLE,
 	KEY_TRANSFORM_ROTATE_AXIS,
+	
 
-	KEY_EXTERNALPROGRAM_ENABLED,
 	KEY_EXTERNALPROGRAM_COMMAND,
 	KEY_EXTERNALPROGRAM_WORKDIR,
 	KEY_EXTERNALPROGRAM_ALWAYSCACHE,
 
-	KEY_SPATIALANALYSIS_ENABLED,
 	KEY_SPATIALANALYSIS_STOPMODE,
 	KEY_SPATIALANALYSIS_ALGORITHM,
 	KEY_SPATIALANALYSIS_DISTMAX,
 	KEY_SPATIALANALYSIS_NNMAX,
 
+	KEY_VOXEL_FIXEDWIDTH,
+	KEY_VOXEL_NBINSX,
+	KEY_VOXEL_NBINSY,
+	KEY_VOXEL_NBINSZ,
+	KEY_VOXEL_WIDTHBINSX,
+	KEY_VOXEL_WIDTHBINSY,
+	KEY_VOXEL_WIDTHBINSZ,
+	KEY_VOXEL_COUNT_TYPE,
+	KEY_VOXEL_NORMALISE_TYPE,
+	KEY_VOXEL_SPOTSIZE,
+	KEY_VOXEL_TRANSPARANCY,
+	KEY_VOXEL_COLOUR,
+	KEY_VOXEL_ISOLEVEL,
+	KEY_VOXEL_REPRESENTATION_MODE,
+	KEY_VOXEL_ENABLE_NUMERATOR,
+	KEY_VOXEL_ENABLE_DENOMINATOR,
 };
 
 //Keys for binding IDs
@@ -180,6 +202,7 @@ enum{
 	SPATIAL_DENSITY_RADIUS,
 	SPATIAL_DENSITY_ENUM_END
 };
+
 
 size_t numElements(const vector<const FilterStreamData *> &v)
 {
@@ -232,6 +255,11 @@ void IonStreamData::clear()
 	data.clear();
 }
 
+void VoxelStreamData::clear()
+{
+	data.clear();
+}
+
 void DrawStreamData::clear()
 {
 	for(unsigned int ui=0; ui<drawables.size(); ui++)
@@ -245,7 +273,6 @@ DrawStreamData::~DrawStreamData()
 
 Filter::Filter()
 {
-	enabled=true;
 	cacheOK=false;
 	cache=true;
 	progress=0;
@@ -279,16 +306,22 @@ bool Filter::haveCache() const
 	return cacheOK;
 }
 
-void Filter::getOutputData(vector<FilterStreamData *> * &getOut)
-{
-	getOut = &filterOutputs;	
-}
-
 void Filter::getSelectionDevices(vector<SelectionDevice *> &outD)
 {
 	outD.resize(devices.size());
 
 	std::copy(devices.begin(),devices.end(),outD.begin());
+
+#ifdef DEBUG
+	for(unsigned int ui=0;ui<outD.size();ui++)
+	{
+		ASSERT(outD[ui]);
+		//Ensure that pointers coming in are valid, by attempting to perform an operation on them
+		vector<std::pair<const Filter *,SelectionBinding> > tmp;
+		outD[ui]->getModifiedBindings(tmp);
+		tmp.clear();
+	}
+#endif
 }
 
 void Filter::updateOutputInfo(const std::vector<const FilterStreamData *> &dataOut)
@@ -299,14 +332,16 @@ void Filter::updateOutputInfo(const std::vector<const FilterStreamData *> &dataO
 	
 	//Count the different types of output stream.
 	for(unsigned int ui=0;ui<dataOut.size();ui++)
+	{
+		ASSERT(getBitNum(dataOut[ui]->getStreamType()) < NUM_STREAM_TYPES);
 		numStreamsLastRefresh[getBitNum(dataOut[ui]->getStreamType())]++;
+	}
 }
 
 unsigned int Filter::getNumOutput(unsigned int streamType) const
 {
 	ASSERT(streamType < NUM_STREAM_TYPES);
 	return numStreamsLastRefresh[streamType];
-
 }
 
 std::string Filter::getUserString() const
@@ -317,20 +352,34 @@ std::string Filter::getUserString() const
 		return typeString();
 }
 
+void Filter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
+				std::vector<const FilterStreamData *> &dataOut)
+{
+	dataOut.resize(dataIn.size());
+	std::copy(dataIn.begin(),dataIn.end(),dataOut.begin());
+}
+
+
 // == Pos load filter ==
 PosLoadFilter::PosLoadFilter()
 {
-    cache=true;
-    maxIons=MAX_IONS_LOAD_DEFAULT;
-    //default ion colour is red.
-    r=a=1.0f;
-    g=b=0.0f;
+	cache=true;
+	maxIons=MAX_IONS_LOAD_DEFAULT;
+	fileType=FILE_TYPE_POS;
+	//default ion colour is red.
+	r=a=1.0f;
+	g=b=0.0f;
 
-    enabled=true;
-    volumeRestrict=false;
-    bound.setInverseLimits();
-    //Ion size is 1.0 units (rel. size).. 
-    ionSize=2.0;
+	enabled=true;
+	volumeRestrict=false;
+	bound.setInverseLimits();
+	//Ion size (rel. size)..
+	ionSize=2.0;
+
+	numColumns = 4;
+	for (int i  = 0; i < numColumns; i++) {
+		index[i] = i;
+	}
 }
 
 Filter *PosLoadFilter::cloneUncached() const
@@ -345,6 +394,13 @@ Filter *PosLoadFilter::cloneUncached() const
 	p->a=a;	
 	p->bound.setBounds(bound);
 	p->volumeRestrict=volumeRestrict;
+	p->numColumns=numColumns;
+	p->fileType=fileType;
+	p->enabled=enabled;
+
+	for(size_t ui=0;ui<INDEX_LENGTH;ui++)
+		p->index[ui]=index[ui];
+
 	//We are copying wether to cache or not,
 	//not the cache itself
 	p->cache=cache;
@@ -353,17 +409,43 @@ Filter *PosLoadFilter::cloneUncached() const
 	p->progress=progress;
 	p->userString=userString;
 
+	// this is for a pos file
+	memcpy(p->index, index, sizeof(int) * 4);
+	p->numColumns=numColumns;
+
 	return p;
 }
 
 void PosLoadFilter::setFilename(const char *name)
 {
 	ionFilename = name;
+	guessNumColumns();
 }
 
 void PosLoadFilter::setFilename(const std::string &name)
 {
 	ionFilename = name;
+	guessNumColumns();
+}
+
+void PosLoadFilter::guessNumColumns()
+{
+	//Test the extention to determine what we will do
+	string extension;
+	if(ionFilename.size() > 4)
+		extension = ionFilename.substr ( ionFilename.size() - 4, 4 );
+
+	//Set extention to lowercase version
+	for(size_t ui=0;ui<extension.size();ui++)
+		extension[ui] = tolower(extension[ui]);
+
+	if( extension == std::string(".pos")) {
+		numColumns = 4;
+		fileType = FILE_TYPE_POS;
+		return;
+	}
+	fileType = FILE_TYPE_NULL;
+	numColumns = 4;
 }
 
 //!Get (approx) number of bytes required for cache
@@ -378,6 +460,11 @@ size_t PosLoadFilter::numBytesForCache(size_t nObjects) const
 
 
 	return result;	
+}
+
+string PosLoadFilter::getValueLabel()
+{
+	return std::string("Mass-to-Charge (amu/e)");
 }
 
 unsigned int PosLoadFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
@@ -396,18 +483,24 @@ unsigned int PosLoadFilter::refresh(const std::vector<const FilterStreamData *> 
 		return 0;
 	}
 
+	if(!enabled)
+	{
+		for(unsigned int ui=0;ui<dataIn.size();ui++)
+			getOut.push_back(dataIn[ui]);
+
+		return 0;
+	}
+
 	IonStreamData *ionData = new IonStreamData;
 
 
-	int index[4] = {
-		0, 1, 2, 3};
 	unsigned int uiErr;	
 	if(!volumeRestrict)
 	{
 		if(maxIons)
 		{
 			//Load the pos file, limiting how much you pull from it
-			if((uiErr = LimitLoadPosFile(4, index, ionData->data, ionFilename.c_str(),
+			if((uiErr = LimitLoadPosFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
 								maxIons,progress,callback)))
 			{
 				clearCache();
@@ -418,7 +511,7 @@ unsigned int PosLoadFilter::refresh(const std::vector<const FilterStreamData *> 
 		else
 		{
 			//Load the pos file
-			if((uiErr = GenericLoadFloatFile(4, index, ionData->data, ionFilename.c_str(),
+			if((uiErr = GenericLoadFloatFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
 								progress,callback)))
 			{
 				clearCache();
@@ -461,6 +554,7 @@ unsigned int PosLoadFilter::refresh(const std::vector<const FilterStreamData *> 
 	ionData->b = b;
 	ionData->a = a;
 	ionData->ionSize=ionSize;
+	ionData->valueType=getValueLabel();
 
 	if(cache)
 	{
@@ -473,7 +567,6 @@ unsigned int PosLoadFilter::refresh(const std::vector<const FilterStreamData *> 
 
 	for(unsigned int ui=0;ui<dataIn.size();ui++)
 		getOut.push_back(dataIn[ui]);
-
 
 	//Append the ion data 
 	getOut.push_back(ionData);
@@ -493,7 +586,40 @@ void PosLoadFilter::getProperties(FilterProperties &propertyList) const
 	s.push_back(std::make_pair("File", ionFilename));
 	type.push_back(PROPERTY_TYPE_STRING);
 	keys.push_back(KEY_POSLOAD_FILE);
+	
+	string colStr;
+	stream_cast(colStr,numColumns);
+	s.push_back(std::make_pair("Number of columns", colStr));
+	keys.push_back(KEY_POSLOAD_NUMBER_OF_COLUMNS);
+	type.push_back(PROPERTY_TYPE_INTEGER);
 
+	vector<pair<unsigned int,string> > choices;
+	for (int i = 0; i < numColumns; i++) {
+		string tmp;
+		stream_cast(tmp,i);
+		choices.push_back(make_pair(i,tmp));
+	}
+	
+	colStr= choiceString(choices,index[0]);
+	s.push_back(std::make_pair("x", colStr));
+	keys.push_back(KEY_POSLOAD_SELECTED_COLUMN0);
+	type.push_back(PROPERTY_TYPE_CHOICE);
+	
+	colStr= choiceString(choices,index[1]);
+	s.push_back(std::make_pair("y", colStr));
+	keys.push_back(KEY_POSLOAD_SELECTED_COLUMN1);
+	type.push_back(PROPERTY_TYPE_CHOICE);
+	
+	colStr= choiceString(choices,index[2]);
+	s.push_back(std::make_pair("z", colStr));
+	keys.push_back(KEY_POSLOAD_SELECTED_COLUMN2);
+	type.push_back(PROPERTY_TYPE_CHOICE);
+	
+	colStr= choiceString(choices,index[3]);
+	s.push_back(std::make_pair("value", colStr));
+	keys.push_back(KEY_POSLOAD_SELECTED_COLUMN3);
+	type.push_back(PROPERTY_TYPE_CHOICE);
+	
 	string tmpStr;
 	stream_cast(tmpStr,enabled);
 	s.push_back(std::make_pair("Enabled", tmpStr));
@@ -531,6 +657,8 @@ void PosLoadFilter::getProperties(FilterProperties &propertyList) const
 bool PosLoadFilter::setProperty( unsigned int set, unsigned int key, 
 					const std::string &value, bool &needUpdate)
 {
+	
+	needUpdate=false;
 	switch(key)
 	{
 		case KEY_POSLOAD_FILE:
@@ -575,10 +703,10 @@ bool PosLoadFilter::setProperty( unsigned int set, unsigned int key,
 			if(stream_cast(ltmp,value))
 				return false;
 
-			if(ltmp*1024*1024/sizeof(IONHIT) != maxIons)
+			if(ltmp*(1024*1024/sizeof(IONHIT)) != maxIons)
 			{
 				//Convert from MB to ions.			
-				maxIons = ltmp*1024*1024/sizeof(IONHIT);
+				maxIons = ltmp*(1024*1024/sizeof(IONHIT));
 				needUpdate=true;
 				//Invalidate cache
 				clearCache();
@@ -594,14 +722,33 @@ bool PosLoadFilter::setProperty( unsigned int set, unsigned int key,
 			if(newB != b || newR != r ||
 				newG !=g || newA != a)
 			{
-				needUpdate=true;
 				r=newR/255.0;
 				g=newG/255.0;
 				b=newB/255.0;
 				a=newA/255.0;
 
-				clearCache();
+
+				//Check the cache, updating it if needed
+				if(cacheOK)
+				{
+					for(unsigned int ui=0;ui<filterOutputs.size();ui++)
+					{
+						if(filterOutputs[ui]->getStreamType() == STREAM_TYPE_IONS)
+						{
+							IonStreamData *i;
+							i=(IonStreamData *)filterOutputs[ui];
+							i->r=r;
+							i->g=g;
+							i->b=b;
+							i->a=a;
+						}
+					}
+
+				}
+				needUpdate=true;
 			}
+
+
 			break;
 		}
 		case KEY_POSLOAD_IONSIZE:
@@ -616,8 +763,105 @@ bool PosLoadFilter::setProperty( unsigned int set, unsigned int key,
 
 			ionSize=ltmp;
 			needUpdate=true;
-			clearCache();
 
+			//Check the cache, updating it if needed
+			if(cacheOK)
+			{
+				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
+				{
+					if(filterOutputs[ui]->getStreamType() == STREAM_TYPE_IONS)
+					{
+						IonStreamData *i;
+						i=(IonStreamData *)filterOutputs[ui];
+						i->ionSize=ionSize;
+					}
+				}
+			}
+			needUpdate=true;
+
+			break;
+		}
+		case KEY_POSLOAD_SELECTED_COLUMN0:
+		{
+			std::string tmp;
+			int ltmp;
+			if(stream_cast(ltmp,value))
+				return false;
+			
+			if(ltmp < 0 || ltmp >= numColumns)
+				return false;
+			
+			index[0]=ltmp;
+			needUpdate=true;
+			clearCache();
+			
+			break;
+		}
+		case KEY_POSLOAD_SELECTED_COLUMN1:
+		{
+			std::string tmp;
+			int ltmp;
+			if(stream_cast(ltmp,value))
+				return false;
+			
+			if(ltmp < 0 || ltmp >= numColumns)
+				return false;
+			
+			index[1]=ltmp;
+			needUpdate=true;
+			clearCache();
+			
+			break;
+		}
+		case KEY_POSLOAD_SELECTED_COLUMN2:
+		{
+			std::string tmp;
+			int ltmp;
+			if(stream_cast(ltmp,value))
+				return false;
+			
+			if(ltmp < 0 || ltmp >= numColumns)
+				return false;
+			
+			index[2]=ltmp;
+			needUpdate=true;
+			clearCache();
+			
+			break;
+		}
+		case KEY_POSLOAD_SELECTED_COLUMN3:
+		{
+			std::string tmp;
+			unsigned int ltmp;
+			if(stream_cast(ltmp,value))
+				return false;
+			
+			if(ltmp < 0 || ltmp >= numColumns)
+				return false;
+			
+			index[3]=ltmp;
+			needUpdate=true;
+			clearCache();
+			
+			break;
+		}
+		case KEY_POSLOAD_NUMBER_OF_COLUMNS:
+		{
+			std::string tmp;
+			int ltmp;
+			if(stream_cast(ltmp,value))
+				return false;
+			
+			if(ltmp <=0 || ltmp >= MAX_NUM_FILE_COLS)
+				return false;
+			
+			numColumns=ltmp;
+			for (int i = 0; i < INDEX_LENGTH; i++) {
+				index[i] = (index[i] < numColumns? index[i]: numColumns - 1);
+			}
+			needUpdate=true;
+			clearCache();
+			
 			break;
 		}
 		default:
@@ -647,8 +891,39 @@ bool PosLoadFilter::readState(xmlNodePtr &nodePtr)
 		return false;
 	ionFilename=(char *)xmlString;
 	xmlFree(xmlString);
+	
+	//Retrieve number of columns	
+	if(XMLHelpFwdToElem(nodePtr,"columns"))
+		return false;
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
+	if(!xmlString)
+		return false;
+	string s1((char *)xmlString);
+	if(stream_cast(numColumns,s1))
+		return false;
+	xmlFree(xmlString);
 
+	if(numColumns <=0 || numColumns >= MAX_NUM_FILE_COLS)
+		return false;
+	
+	//Retrieve index	
+	if(XMLHelpFwdToElem(nodePtr,"xyzm"))
+		return false;
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"values");
+	if(!xmlString)
+		return false;
+	std::vector<string> v;
+	splitStrsRef((char *)xmlString,',',v);
+	for (int i = 0; i < INDEX_LENGTH && i < v.size(); i++)
+	{
+		if(stream_cast(index[i],v[i]))
+			return false;
 
+		if(index[i] >=numColumns)
+			return false;
+	}
+	xmlFree(xmlString);
+	
 	//Retreive enabled/disabled
 	//===
 	if(XMLHelpFwdToElem(nodePtr,"enabled"))
@@ -757,7 +1032,7 @@ bool PosLoadFilter::readState(xmlNodePtr &nodePtr)
 		return false;
 
 	//check positive or zero
-	if(ionSize < 0)
+	if(ionSize <=0)
 		return false;
 
 	xmlFree(xmlString);
@@ -782,6 +1057,8 @@ bool PosLoadFilter::writeState(std::ofstream &f,unsigned int format, unsigned in
 
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
 			f << tabs(depth+1) << "<file name=\"" << ionFilename << "\"/>" << endl;
+			f << tabs(depth+1) << "<columns value=\"" << numColumns << "\"/>" << endl;
+			f << tabs(depth+1) << "<xyzm values=\"" << index[0] << "," << index[1] << "," << index[2] << "," << index[3] << "\"/>" << endl;
 			f << tabs(depth+1) << "<enabled value=\"" << enabled<< "\"/>" << endl;
 			f << tabs(depth+1) << "<maxions value=\"" << maxIons << "\"/>" << endl;
 
@@ -826,9 +1103,9 @@ Filter *IonDownsampleFilter::cloneUncached() const
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
-	p->enabled=enabled;
 	p->progress=progress;
 	p->userString=userString;
+	p->fixedNumOut=fixedNumOut;
 	return p;
 }
 
@@ -853,20 +1130,28 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 	//use the cached copy if we have it.
 	if(cacheOK)
 	{
-		for(unsigned int ui=0;ui<dataIn.size();ui++)
+		for(size_t ui=0;ui<dataIn.size();ui++)
 		{
 			if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
 				getOut.push_back(dataIn[ui]);
 		}
-		for(unsigned int ui=0;ui<filterOutputs.size();ui++)
+		for(size_t ui=0;ui<filterOutputs.size();ui++)
 			getOut.push_back(filterOutputs[ui]);
 		return 0;
 	}
 
 	clearCache();
 
-	size_t totalSize = numElements(dataIn);
+
+	size_t numIons=0;
 	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
+	{
+		if(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS)
+				numIons++;
+	}
+
+	size_t totalSize = numElements(dataIn);
+	for(size_t ui=0;ui<dataIn.size() ;ui++)
 	{
 		switch(dataIn[ui]->getStreamType())
 		{
@@ -879,7 +1164,7 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 					if(fixedNumOut)
 					{
 						randomSelect(d->data,((const IonStreamData *)dataIn[ui])->data,
-									rng,maxAfterFilter,progress,callback);
+									rng,maxAfterFilter/numIons,progress,callback);
 					}
 					else
 					{
@@ -889,7 +1174,7 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 
 						//highly unlikely with even modest numbers of ions
 						//that this will not be exceeeded
-						d->data.reserve(fraction/1.2*totalSize);
+						d->data.reserve(fraction/1.1*totalSize);
 
 						ASSERT(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS);
 
@@ -927,6 +1212,7 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 				d->a =((IonStreamData *)dataIn[ui])->a;
 				d->ionSize =((IonStreamData *)dataIn[ui])->ionSize;
 				d->representationType=((IonStreamData *)dataIn[ui])->representationType;
+				d->valueType=((IonStreamData *)dataIn[ui])->valueType;
 
 				//getOut is const, so shouldn't be modified
 				if(cache)
@@ -965,11 +1251,6 @@ void IonDownsampleFilter::getProperties(FilterProperties &propertyList) const
 	vector<pair<string,string> > s;
 
 	string tmpStr;
-	stream_cast(tmpStr,enabled);
-	s.push_back(std::make_pair("Enabled", tmpStr));
-	keys.push_back(KEY_IONDOWNSAMPLE_ENABLED);
-	type.push_back(PROPERTY_TYPE_BOOL);
-
 	stream_cast(tmpStr,fixedNumOut);
 	s.push_back(std::make_pair("By Count", tmpStr));
 	keys.push_back(KEY_IONDOWNSAMPLE_FIXEDOUT);
@@ -1003,30 +1284,6 @@ bool IonDownsampleFilter::setProperty( unsigned int set, unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
-		case KEY_IONDOWNSAMPLE_ENABLED:
-		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
-				return false;
-
-			bool lastVal=enabled;
-			if(stripped=="1")
-				enabled=true;
-			else
-				enabled=false;
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=enabled)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-
-			break;
-
-		}
 		case KEY_IONDOWNSAMPLE_FIXEDOUT: 
 		{
 			string stripped=stripWhite(value);
@@ -1216,6 +1473,976 @@ bool IonDownsampleFilter::readState(xmlNodePtr &nodePtr)
 	return true;
 
 }
+
+
+// == Voxels filter ==
+//TODO
+VoxeliseFilter::VoxeliseFilter() 
+: fixedWidth(false), bc(), normaliseType(VOXEL_NORMALISETYPE_NONE)
+{
+	splatSize=1.0f;
+	a=0.9f;
+	r=g=b=0.5;
+	isoLevel=0.5;
+	bc.setBounds(0, 0, 0, 1, 1, 1);
+	representation=VOXEL_REPRESENT_POINTCLOUD;
+	for (int i = 0; i < INDEX_LENGTH; i++) {
+		nBins[i] = 50;
+	}
+	calculateWidthsFromNumBins(binWidth, nBins);
+	numeratorAll = false;
+	denominatorAll = true;
+
+	rsdIncoming=0;
+}
+
+
+Filter *VoxeliseFilter::cloneUncached() const
+{
+	VoxeliseFilter *p=new VoxeliseFilter();
+	p->splatSize=splatSize;
+	p->a=a;
+	p->r=r;
+	p->g=g;
+	p->b=b;
+	
+	p->isoLevel=isoLevel;
+	p->representation=representation;
+	p->splatSize=splatSize;
+
+	p->numeratorAll=numeratorAll;
+	p->denominatorAll=denominatorAll;
+
+	p->bc=bc;
+
+	for(size_t ui=0;ui<INDEX_LENGTH;ui++)
+	{
+		p->nBins[ui] = nBins[ui];
+		p->binWidth[ui] = binWidth[ui];
+	}
+
+	p->enabledIons[0].resize(enabledIons[0].size());
+	std::copy(enabledIons[0].begin(),enabledIons[0].end(),p->enabledIons[0].begin());
+	
+	p->enabledIons[1].resize(enabledIons[1].size());
+	std::copy(enabledIons[1].begin(),enabledIons[1].end(),p->enabledIons[1].begin());
+
+	if(rsdIncoming)
+	{
+		p->rsdIncoming=new RangeStreamData();
+		*(p->rsdIncoming) = *rsdIncoming;
+	}
+	else
+		p->rsdIncoming=0;
+
+	return p;
+}
+
+//TODO
+size_t VoxeliseFilter::numBytesForCache(size_t nObjects) const
+{
+	return 0;
+}
+
+void VoxeliseFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
+						std::vector<const FilterStreamData *> &dataOut)
+{
+	const RangeStreamData *c=0;
+	//Determine if we have an incoming range
+	for (size_t i = 0; i < dataIn.size(); i++) 
+	{
+		if(dataIn[i]->getStreamType() == STREAM_TYPE_RANGE)
+		{
+			c=(const RangeStreamData *)dataIn[i];
+
+			break;
+		}
+	}
+
+	//we no longer (or never did) have any incoming ranges. Not much to do
+	if(!c)
+	{
+		//delete the old incoming range pointer
+		if(rsdIncoming)
+			delete rsdIncoming;
+		rsdIncoming=0;
+
+		enabledIons[0].clear(); //clear numerator options
+		enabledIons[1].clear(); //clear denominator options
+	}
+	else
+	{
+
+
+		//If we didn't have an incoming rsd, then make one up!
+		if(!rsdIncoming)
+		{
+			rsdIncoming = new RangeStreamData;
+			*rsdIncoming=*c;
+
+			//set the numerator to all disabled
+			enabledIons[0].resize(rsdIncoming->rangeFile->getNumIons(),0);
+			//set the denominator to have all enabled
+			enabledIons[1].resize(rsdIncoming->rangeFile->getNumIons(),1);
+		}
+		else
+		{
+
+			//OK, so we have a range incoming already (from last time)
+			//-- the question is, is it the same
+			//one we had before 
+			//Do a pointer comparison (its a hack, yes, but it should work)
+			if(rsdIncoming->rangeFile != c->rangeFile)
+			{
+				//hmm, it is different. well, trash the old incoming rng
+				delete rsdIncoming;
+
+				rsdIncoming = new RangeStreamData;
+				*rsdIncoming=*c;
+
+				//set the numerator to all disabled
+				enabledIons[0].resize(rsdIncoming->rangeFile->getNumIons(),0);
+				//set the denominator to have all enabled
+				enabledIons[1].resize(rsdIncoming->rangeFile->getNumIons(),1);
+			}
+		}
+
+	}
+}
+
+// TODO: create plotstream
+unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
+										  std::vector<const FilterStreamData *> &getOut, unsigned int &progress, bool (*callback)(void))
+{	
+
+	Point3D minP,maxP;
+
+	bc.setInverseLimits();
+		
+	for (size_t i = 0; i < dataIn.size(); i++) 
+	{
+		//Check for ion stream types. Block others from propagation.
+		if (dataIn[i]->getStreamType() != STREAM_TYPE_IONS) continue;
+
+		const IonStreamData *is = (const IonStreamData *)dataIn[i];
+		//Don't work on empty or single object streams (bounding box needs to be defined)
+		if (is->GetNumBasicObjects() < 2) continue;
+	
+		//Build a bounding box	
+		dataLimits(is->data,minP,maxP);
+
+		BoundCube bcTmp;
+		bcTmp.setBounds(minP,maxP);
+
+		//Bounds could be invalid if, for example, we had coplanar axis aligned points
+		if (!bcTmp.isValid()) continue;
+		bc.expand(bcTmp);
+	}
+	//No bounding box? Tough cookies
+	if (!bc.isValid()) return VOXEL_BOUNDS_INVALID_ERR;
+
+	bc.getBounds(minP,maxP);	
+	if (fixedWidth) 
+		calculateNumBinsFromWidths(binWidth, nBins);
+	else
+		calculateWidthsFromNumBins(binWidth, nBins);
+	
+	//Disallow empty bounding boxes (ie, produce no output)
+	if(minP == maxP)
+		return 0;
+		
+	VoxelStreamData *vs = new VoxelStreamData();
+	vs->cached = false;
+	vs->data.setCallbackMethod(callback);
+	vs->data.init(nBins[0], nBins[1], nBins[2], bc);
+	vs->representationType= representation;
+	vs->splatSize = splatSize;
+	vs->isoLevel=isoLevel;
+	vs->data.fill(0);
+	vs->r=r;
+	vs->g=g;
+	vs->b=b;
+	vs->a=a;
+
+	VoxelStreamData *vsDenom = NULL;
+	if (normaliseType == VOXEL_NORMALISETYPE_COUNT2INVOXEL ||
+		normaliseType == VOXEL_NORMALISETYPE_ALLATOMSINVOXEL) {
+		//Check we actually have incoming data
+		ASSERT(rsdIncoming);
+		vsDenom = new VoxelStreamData();
+		vsDenom->cached = false;
+		vsDenom->data.setCallbackMethod(callback);
+		vsDenom->data.init(nBins[0], nBins[1], nBins[2], bc);
+		vsDenom->representationType= representation;
+		vsDenom->splatSize = splatSize;
+		vsDenom->isoLevel=isoLevel;
+		vsDenom->data.fill(0);
+		vsDenom->a=a;
+	}
+
+	const IonStreamData *is;
+	if(rsdIncoming)
+	{
+
+		for (size_t i = 0; i < dataIn.size(); i++) 
+		{
+			
+			//Check for ion stream types. Don't use anything else in counting
+			if (dataIn[i]->getStreamType() != STREAM_TYPE_IONS) continue;
+			
+			is= (const IonStreamData *)dataIn[i];
+
+			
+			//Count the numerator ions	
+			if(is->data.size())
+			{
+				//Check what Ion type this stream belongs to. Assume all ions
+				//in the stream belong to the same group
+				unsigned int ionID;
+				ionID = rsdIncoming->rangeFile->getIonID(is->data[0].getMassToCharge());
+
+				bool thisIonEnabled;
+				if(ionID!=(unsigned int)-1)
+					thisIonEnabled=enabledIons[0][ionID];
+				else
+					thisIonEnabled=false;
+
+				if(thisIonEnabled)
+					vs->data.countPoints(is->data,true,false);
+			}
+		
+			//If the user requests normalisation, compute the denominator datset
+			if (normaliseType == VOXEL_NORMALISETYPE_COUNT2INVOXEL) {
+				if(is->data.size())
+				{
+					//Check what Ion type this stream belongs to. Assume all ions
+					//in the stream belong to the same group
+					unsigned int ionID;
+					ionID = rsdIncoming->rangeFile->getIonID(is->data[0].getMassToCharge());
+
+					bool thisIonEnabled;
+					if(ionID!=(unsigned int)-1)
+						thisIonEnabled=enabledIons[1][ionID];
+					else
+						thisIonEnabled=false;
+
+					if(thisIonEnabled)
+						vsDenom->data.countPoints(is->data,true,false);
+				}
+			} else if (normaliseType == VOXEL_NORMALISETYPE_ALLATOMSINVOXEL)
+				vsDenom->data.countPoints(is->data,true,false);
+
+			if(!(*callback)())
+			{
+				delete vs;
+				return VOXEL_ABORT_ERR;
+			}
+		}
+	
+		//Perform normalsiation	
+		if (normaliseType == VOXEL_NORMALISETYPE_VOLUME)
+			vs->data.calculateDensity();
+		else if (normaliseType == VOXEL_NORMALISETYPE_COUNT2INVOXEL ||
+				 normaliseType == VOXEL_NORMALISETYPE_ALLATOMSINVOXEL)
+			vs->data /= vsDenom->data;
+	}
+	else
+	{
+		//No range data.  Just count
+		for (size_t i = 0; i < dataIn.size(); i++) 
+		{
+			
+			is= (const IonStreamData *)dataIn[i];
+			vs->data.countPoints(is->data,true,false);
+			
+			if(!(*callback)())
+			{
+				delete vs;
+				return VOXEL_ABORT_ERR;
+			}
+		}
+		ASSERT(normaliseType != VOXEL_NORMALISETYPE_COUNT2INVOXEL
+				&& normaliseType!=VOXEL_NORMALISETYPE_ALLATOMSINVOXEL);
+		if (normaliseType == VOXEL_NORMALISETYPE_VOLUME)
+			vs->data.calculateDensity();
+	}	
+	delete vsDenom;
+	
+	getOut.push_back(vs);
+
+	return 0;
+}
+
+std::string VoxeliseFilter::getNormaliseTypeString(int type) const {
+	switch (type) {
+		case VOXEL_NORMALISETYPE_NONE:
+			return std::string("None (Raw count)");
+			break;
+		case VOXEL_NORMALISETYPE_VOLUME:
+			return std::string("Volume (Density)");
+			break;
+		case VOXEL_NORMALISETYPE_COUNT2INVOXEL:
+			return std::string("Ratio (Num/Denom)");
+			break;
+		case VOXEL_NORMALISETYPE_ALLATOMSINVOXEL:
+			return std::string("All Ions (conc)");
+			break;
+		default:
+			return "";
+			break;
+	}
+}
+
+std::string VoxeliseFilter::getRepresentTypeString(int type) const {
+	switch (type) {
+		case VOXEL_REPRESENT_POINTCLOUD:
+			return std::string("Point Cloud");
+			break;
+		case VOXEL_REPRESENT_ISOSURF:
+			return std::string("Isosurface");
+			break;
+		default:
+			return "";
+			break;
+	}
+}
+
+void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
+{
+	propertyList.data.clear();
+	propertyList.keys.clear();
+	propertyList.types.clear();
+	
+	vector<unsigned int> type,keys;
+	vector<pair<string,string> > s;
+
+	string tmpStr;
+	stream_cast(tmpStr, fixedWidth);
+	s.push_back(std::make_pair("Fixed width", tmpStr));
+	keys.push_back(KEY_VOXEL_FIXEDWIDTH);
+	type.push_back(PROPERTY_TYPE_BOOL);
+	
+	if(fixedWidth)
+	{
+		stream_cast(tmpStr,binWidth[0]);
+		keys.push_back(KEY_VOXEL_WIDTHBINSX);
+		s.push_back(make_pair("Bin width x", tmpStr));
+		type.push_back(PROPERTY_TYPE_REAL);
+
+		stream_cast(tmpStr,binWidth[1]);
+		keys.push_back(KEY_VOXEL_WIDTHBINSY);
+		s.push_back(make_pair("Bin width y", tmpStr));
+		type.push_back(PROPERTY_TYPE_REAL);
+
+		stream_cast(tmpStr,binWidth[2]);
+		keys.push_back(KEY_VOXEL_WIDTHBINSZ);
+		s.push_back(make_pair("Bin width z", tmpStr));
+		type.push_back(PROPERTY_TYPE_REAL);
+	}
+	else
+	{
+		stream_cast(tmpStr,nBins[0]);
+		keys.push_back(KEY_VOXEL_NBINSX);
+		s.push_back(make_pair("Num bins x", tmpStr));
+		type.push_back(PROPERTY_TYPE_INTEGER);
+		
+		stream_cast(tmpStr,nBins[1]);
+		keys.push_back(KEY_VOXEL_NBINSY);
+		s.push_back(make_pair("Num bins y", tmpStr));
+		type.push_back(PROPERTY_TYPE_INTEGER);
+		
+		stream_cast(tmpStr,nBins[2]);
+		keys.push_back(KEY_VOXEL_NBINSZ);
+		s.push_back(make_pair("Num bins z", tmpStr));
+		type.push_back(PROPERTY_TYPE_INTEGER);
+	}
+
+	//Let the user know what the valid values for voxel value types are
+	string tmpChoice;	
+	vector<pair<unsigned int,string> > choices;
+	tmpStr=getNormaliseTypeString(VOXEL_NORMALISETYPE_NONE);
+	choices.push_back(make_pair((unsigned int)VOXEL_NORMALISETYPE_NONE,tmpStr));
+	tmpStr=getNormaliseTypeString(VOXEL_NORMALISETYPE_VOLUME);
+	choices.push_back(make_pair((unsigned int)VOXEL_NORMALISETYPE_VOLUME,tmpStr));
+	if(rsdIncoming)
+	{
+		//Concentration mode
+		tmpStr=getNormaliseTypeString(VOXEL_NORMALISETYPE_ALLATOMSINVOXEL);
+		choices.push_back(make_pair((unsigned int)VOXEL_NORMALISETYPE_ALLATOMSINVOXEL,tmpStr));
+		//Ratio is only valid if we have a way of seperation for the ions i.e. range
+		tmpStr=getNormaliseTypeString(VOXEL_NORMALISETYPE_COUNT2INVOXEL);
+		choices.push_back(make_pair((unsigned int)VOXEL_NORMALISETYPE_COUNT2INVOXEL,tmpStr));
+	}
+	tmpStr= choiceString(choices,normaliseType);
+	s.push_back(make_pair(string("Normalise by"),tmpStr));
+	type.push_back(PROPERTY_TYPE_CHOICE);
+	keys.push_back(KEY_VOXEL_NORMALISE_TYPE);
+	
+	
+	//TODO
+	//1. range file
+	//2. threshold
+	//3. gaussian
+	
+	propertyList.data.push_back(s);
+	propertyList.types.push_back(type);
+	propertyList.keys.push_back(keys);
+
+	s.clear();
+	type.clear();
+	keys.clear();
+
+		
+	// numerator
+	if (rsdIncoming) {
+		s.push_back(make_pair("Numerator", numeratorAll ? "1" : "0"));
+		type.push_back(PROPERTY_TYPE_BOOL);
+		keys.push_back(KEY_VOXEL_ENABLE_NUMERATOR);
+
+		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[0].size());	
+		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[1].size());	
+
+		//Look at the numerator	
+		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
+		{
+			string str;
+			if(enabledIons[0][ui])
+				str="1";
+			else
+				str="0";
+
+			//Append the ion name with a checkbox
+			s.push_back(make_pair(
+				rsdIncoming->rangeFile->getName(ui), str));
+			type.push_back(PROPERTY_TYPE_BOOL);
+			keys.push_back(KEY_VOXEL_ENABLE_NUMERATOR*1000+ui);
+		}
+		propertyList.types.push_back(type);
+		propertyList.data.push_back(s);
+		propertyList.keys.push_back(keys);
+	}
+	
+	s.clear();
+	type.clear();
+	keys.clear();
+	
+	if (normaliseType == VOXEL_NORMALISETYPE_COUNT2INVOXEL && rsdIncoming) {
+		// denominator
+		s.push_back(make_pair("Denominator", denominatorAll ? "1" : "0"));
+		type.push_back(PROPERTY_TYPE_BOOL);
+		keys.push_back(KEY_VOXEL_ENABLE_DENOMINATOR);
+
+		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
+		{			
+			string str;
+			if(enabledIons[1][ui])
+				str="1";
+			else
+				str="0";
+
+			//Append the ion name with a checkbox
+			s.push_back(make_pair(
+				rsdIncoming->rangeFile->getName(ui), str));
+
+			type.push_back(PROPERTY_TYPE_BOOL);
+			keys.push_back(KEY_VOXEL_ENABLE_DENOMINATOR*1000+ui);
+		}
+		propertyList.types.push_back(type);
+		propertyList.data.push_back(s);
+		propertyList.keys.push_back(keys);
+
+		s.clear();
+		type.clear();
+		keys.clear();
+	}
+	
+	//start a new set for the visual representation
+	//----------------------------
+	choices.clear();
+	tmpStr=getRepresentTypeString(VOXEL_REPRESENT_POINTCLOUD);
+	choices.push_back(make_pair((unsigned int)VOXEL_REPRESENT_POINTCLOUD,tmpStr));
+	tmpStr=getRepresentTypeString(VOXEL_REPRESENT_ISOSURF);
+	choices.push_back(make_pair((unsigned int)VOXEL_REPRESENT_ISOSURF,tmpStr));
+	
+	
+	tmpStr= choiceString(choices,representation);
+	s.push_back(make_pair(string("Representation"),tmpStr));
+	type.push_back(PROPERTY_TYPE_CHOICE);
+	keys.push_back(KEY_VOXEL_REPRESENTATION_MODE);
+	switch(representation)
+	{
+		case VOXEL_REPRESENT_POINTCLOUD:
+		{
+			stream_cast(tmpStr,splatSize);
+			s.push_back(make_pair("Spot size",tmpStr));
+			type.push_back(PROPERTY_TYPE_REAL);
+			keys.push_back(KEY_VOXEL_SPOTSIZE);
+
+			stream_cast(tmpStr,1.0-a);
+			s.push_back(make_pair("Transparency",tmpStr));
+			type.push_back(PROPERTY_TYPE_REAL);
+			keys.push_back(KEY_VOXEL_TRANSPARANCY);
+			break;
+		}
+		case VOXEL_REPRESENT_ISOSURF:
+		{
+			stream_cast(tmpStr,isoLevel);
+			s.push_back(make_pair("Isovalue",tmpStr));
+			type.push_back(PROPERTY_TYPE_REAL);
+			keys.push_back(KEY_VOXEL_ISOLEVEL);
+		
+				
+
+			//Convert the ion colour to a hex string	
+			genColString((unsigned char)(r*255),(unsigned char)(g*255),
+					(unsigned char)(b*255),(unsigned char)(a*255),tmpStr);
+			s.push_back(make_pair("Colour",tmpStr));
+			type.push_back(PROPERTY_TYPE_COLOUR);
+			keys.push_back(KEY_VOXEL_COLOUR);
+			
+			break;
+		}
+		default:
+			ASSERT(false);
+			;
+	}
+	
+	//----------------------------
+	
+	propertyList.data.push_back(s);
+	propertyList.types.push_back(type);
+	propertyList.keys.push_back(keys);
+}
+
+bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
+									  const std::string &value, bool &needUpdate)
+{
+	
+	needUpdate=false;
+	switch(key)
+	{
+		case KEY_VOXEL_FIXEDWIDTH: 
+		{
+			bool b;
+			if(stream_cast(b,value))
+				return false;
+			fixedWidth=b;
+			needUpdate=true;			
+			break;
+		}	
+		case KEY_VOXEL_NBINSX:
+		{
+			int i;
+			if(stream_cast(i,value))
+				return false;
+			if(i <= 0)
+				return false;
+			needUpdate=true;
+			nBins[0]=i;
+			calculateWidthsFromNumBins(binWidth, nBins);
+			break;
+		}
+		case KEY_VOXEL_NBINSY:
+		{
+			int i;
+			if(stream_cast(i,value))
+				return false;
+			if(i <= 0)
+				return false;
+			needUpdate=true;
+			nBins[1]=i;
+			calculateWidthsFromNumBins(binWidth, nBins);
+			break;
+		}
+		case KEY_VOXEL_NBINSZ:
+		{
+			int i;
+			if(stream_cast(i,value))
+				return false;
+			if(i <= 0)
+				return false;
+			needUpdate=true;
+			nBins[2]=i;
+			calculateWidthsFromNumBins(binWidth, nBins);
+			break;
+		}
+		case KEY_VOXEL_WIDTHBINSX:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			if(f <= 0.0f)
+				return false;
+			needUpdate=true;
+			binWidth[0]=f;
+			calculateNumBinsFromWidths(binWidth, nBins);
+			break;
+		}
+		case KEY_VOXEL_WIDTHBINSY:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			if(f <= 0.0f)
+				return false;
+			needUpdate=true;
+			binWidth[1]=f;
+			calculateNumBinsFromWidths(binWidth, nBins);
+			break;
+		}
+		case KEY_VOXEL_WIDTHBINSZ:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			if(f <= 0.0f)
+				return false;
+			needUpdate=true;
+			binWidth[2]=f;
+			calculateNumBinsFromWidths(binWidth, nBins);
+			break;
+		}
+		case KEY_VOXEL_NORMALISE_TYPE:
+		{
+			int i;
+			for (i = 0; i < VOXEL_NORMALISETYPE_MAX; i++)
+				if (value == getNormaliseTypeString(i)) break;
+			if (i == VOXEL_NORMALISETYPE_MAX)
+				return false;
+			if(normaliseType!=i)
+				needUpdate=true;
+			normaliseType=i;
+			break;
+		}
+		case KEY_VOXEL_SPOTSIZE:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			if(f <= 0.0f)
+				return false;
+			needUpdate=true;
+			splatSize=f;
+			break;
+		}
+		case KEY_VOXEL_TRANSPARANCY:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			if(f <= 0.0f || f > 1.0)
+				return false;
+			needUpdate=true;
+			//Alpha is opacity, which is 1-transparancy
+			a=1.0f-f;
+			break;
+		}
+		case KEY_VOXEL_ISOLEVEL:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			if(f <= 0.0f)
+				return false;
+			needUpdate=true;
+			isoLevel=f;
+			break;
+		}
+		case KEY_VOXEL_COLOUR:
+		{
+			unsigned char newR,newG,newB,newA;
+
+			parseColString(value,newR,newG,newB,newA);
+
+			if(newB != b || newR != r ||
+				newG !=g || newA != a)
+				needUpdate=true;
+			r=newR/255.0;
+			g=newG/255.0;
+			b=newB/255.0;
+			break;
+		}
+		case KEY_VOXEL_REPRESENTATION_MODE:
+		{
+			int i;
+			for (i = 0; i < VOXEL_REPRESENT_END; i++)
+				if (value == getRepresentTypeString(i)) break;
+			if (i == VOXEL_REPRESENT_END)
+				return false;
+			needUpdate=true;
+			representation=i;
+			break;
+		}
+		case KEY_VOXEL_ENABLE_NUMERATOR:
+		{
+			bool b;
+			if(stream_cast(b,value))
+				return false;
+			//Set them all to enabled or disabled as a group	
+			for (size_t i = 0; i < enabledIons[0].size(); i++) 
+				enabledIons[0][i] = b;
+			numeratorAll = b;
+			needUpdate=true;			
+			break;
+		}
+		case KEY_VOXEL_ENABLE_DENOMINATOR:
+		{
+			bool b;
+			if(stream_cast(b,value))
+				return false;
+	
+			//Set them all to enabled or disabled as a group	
+			for (size_t i = 0; i < enabledIons[1].size(); i++) 
+				enabledIons[1][i] = b;
+			
+			denominatorAll = b;
+			needUpdate=true;			
+			break;
+		}
+		default:
+		{
+			if (key >= KEY_VOXEL_ENABLE_DENOMINATOR*1000) {
+				bool b;
+				if(stream_cast(b,value))
+					return false;
+//				if (b && !rsdIncoming->enabledIons[key - KEY_VOXEL_ENABLE_DENOMINATOR*1000]) {
+//					return false;
+//				}
+				enabledIons[1][key - KEY_VOXEL_ENABLE_DENOMINATOR*1000]=b;
+				if (!b) {
+					denominatorAll = false;
+				}
+				needUpdate=true;			
+			} else if (key >= KEY_VOXEL_ENABLE_NUMERATOR*1000) {
+				bool b;
+				if(stream_cast(b,value))
+					return false;
+//				if (b && !rsdIncoming->enabledIons[key - KEY_VOXEL_ENABLE_NUMERATOR*1000]) {
+//					return false;
+//				}
+				enabledIons[0][key - KEY_VOXEL_ENABLE_NUMERATOR*1000]=b;
+				if (!b) {
+					numeratorAll = false;
+				}
+				needUpdate=true;			
+			}
+			else
+			{
+				ASSERT(false);
+			}
+			break;
+		}
+	}
+	return true;
+}
+
+std::string  VoxeliseFilter::getErrString(unsigned int code) const
+{
+	switch(code)
+	{
+		case VOXEL_ABORT_ERR:
+		{
+			return std::string("Voxelisation aborted");
+		}
+		case VOXEL_BOUNDS_INVALID_ERR:
+		{
+			return std::string("Voxelisation bounds are invalid");
+		}
+	}	
+	
+	return std::string("BUG! Should not see this (VoxeliseFilter)");
+}
+
+bool VoxeliseFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+{
+	using std::endl;
+	switch(format)
+	{
+		case STATE_FORMAT_XML:
+		{	
+			f << tabs(depth) << "<voxelise>" << endl;
+			f << tabs(depth+1) << "<fixedWidth value=\""<<fixedWidth << "\"/>"  << endl;
+			f << tabs(depth+1) << "<nBins values=\""<<nBins[0] << ","<<nBins[1]<<","<<nBins[2] << "\"/>"  << endl;
+			f << tabs(depth+1) << "<binWidth values=\""<<binWidth[0] << ","<<binWidth[1]<<","<<binWidth[2] << "\"/>"  << endl;
+			f << tabs(depth+1) << "<normaliseType value=\""<<normaliseType << "\"/>"  << endl;
+			f << tabs(depth+1) << "<representation value=\""<<representation << "\"/>" << endl;
+			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
+				<< "\" a=\"" << a << "\"/>" <<endl;
+			f << tabs(depth) << "</voxelise>" << endl;
+			break;
+		}
+		default:
+			ASSERT(false);
+			return false;
+	}
+	
+	return true;
+}
+
+bool VoxeliseFilter::readState(xmlNodePtr &nodePtr)
+{
+	using std::string;
+	string tmpStr;
+	xmlChar *xmlString;
+	
+	//Retrieve fixedWidth mode
+	if(XMLHelpFwdToElem(nodePtr,"fixedWidth"))
+		return false;
+	
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
+	if(!xmlString)
+		return false;
+	
+	tmpStr=(char *)xmlString;
+	if(tmpStr == "1") 
+		fixedWidth=true;
+	else if(tmpStr== "0")
+		fixedWidth=false;
+	else
+	{
+		xmlFree(xmlString);
+		return false;
+	}
+	
+	xmlFree(xmlString);	
+	
+	//Retrieve nBins	
+	if(XMLHelpFwdToElem(nodePtr,"nBins"))
+		return false;
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"values");
+	if(!xmlString)
+		return false;
+	std::vector<string> v1;
+	splitStrsRef((char *)xmlString,',',v1);
+	for (size_t i = 0; i < INDEX_LENGTH && i < v1.size(); i++)
+	{
+		if(stream_cast(nBins[i],v1[i]))
+			return false;
+		
+		if(nBins[i] <= 0)
+			return false;
+	}
+	xmlFree(xmlString);
+	
+	//Retrieve nBins	
+	if(XMLHelpFwdToElem(nodePtr,"binWidth"))
+		return false;
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"values");
+	if(!xmlString)
+		return false;
+	std::vector<string> v2;
+	splitStrsRef((char *)xmlString,',',v2);
+	for (size_t i = 0; i < INDEX_LENGTH && i < v2.size(); i++)
+	{
+		if(stream_cast(binWidth[i],v2[i]))
+			return false;
+		
+		if(binWidth[i] <= 0)
+			return false;
+	}
+	xmlFree(xmlString);
+	
+	//Retrieve normaliseType
+	if(XMLHelpFwdToElem(nodePtr,"normaliseType"))
+		return false;
+	
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
+	if(!xmlString)
+		return false;
+	tmpStr=(char *)xmlString;
+	
+	if(stream_cast(normaliseType,tmpStr))
+		return false;
+	
+	xmlFree(xmlString);	
+	
+	//Retrieve representation
+	if(XMLHelpFwdToElem(nodePtr,"representation"))
+		return false;
+	
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
+	if(!xmlString)
+		return false;
+	tmpStr=(char *)xmlString;
+	
+	if(stream_cast(representation,tmpStr))
+		return false;
+	xmlFree(xmlString);	
+
+	if(representation >=VOXEL_REPRESENT_END)
+		return false;
+
+
+	//Retrieve colour
+	//====
+	if(XMLHelpFwdToElem(nodePtr,"colour"))
+		return false;
+	
+	//--red--
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"r");
+	if(!xmlString)
+		return false;
+	tmpStr=(char *)xmlString;
+
+	//convert from string to digit
+	if(stream_cast(r,tmpStr))
+		return false;
+
+	//disallow negative or values gt 1.
+	if(r < 0.0f || r > 1.0f)
+		return false;
+
+	//--green--
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"g");
+	if(!xmlString)
+		return false;
+	tmpStr=(char *)xmlString;
+
+	//convert from string to digit
+	if(stream_cast(g,tmpStr))
+		return false;
+
+	//disallow negative or values gt 1.
+	if(g < 0.0f || g > 1.0f)
+		return false;
+
+	//--blue--
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"b");
+	if(!xmlString)
+		return false;
+	tmpStr=(char *)xmlString;
+
+	//convert from string to digit
+	if(stream_cast(b,tmpStr))
+		return false;
+
+	//disallow negative or values gt 1.
+	if(b < 0.0f || b > 1.0f)
+		return false;
+
+	//--Alpha--
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"a");
+	if(!xmlString)
+		return false;
+	tmpStr=(char *)xmlString;
+
+	//convert from string to digit
+	if(stream_cast(a,tmpStr))
+		return false;
+
+	//disallow negative or values gt 1.
+	if(a < 0.0f || a > 1.0f)
+		return false;
+	//====
+	return true;
+	
+}
+
+//TODO
+void VoxeliseFilter::setPropFromBinding(const SelectionBinding &b)
+{
+}	
+
 //== Range File Filter == 
 
 RangeFileFilter::RangeFileFilter()
@@ -1243,10 +2470,35 @@ Filter *RangeFileFilter::cloneUncached() const
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
-	p->enabled=enabled;
 	p->progress=progress;
 	p->userString=userString;	
 	return p;
+}
+
+void RangeFileFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
+				std::vector<const FilterStreamData *> &dataOut)
+{
+	//Copy any input, except range files to output
+	for(size_t ui=0;ui<dataIn.size();ui++)
+	{
+		if(dataIn[ui]->getStreamType() != STREAM_TYPE_RANGE)
+			dataOut.push_back(dataIn[ui]);
+	}
+
+	//Create a rangestream data to push through the init phase
+	if(rng.getNumIons() && rng.getNumRanges())
+	{
+		RangeStreamData *rngData=new RangeStreamData;
+		rngData->rangeFile=&rng;	
+		rngData->enabledRanges.resize(enabledRanges.size());	
+		std::copy(enabledRanges.begin(),enabledRanges.end(),rngData->enabledRanges.begin());
+		rngData->enabledIons.resize(enabledIons.size());	
+		std::copy(enabledIons.begin(),enabledIons.end(),rngData->enabledIons.begin());
+		rngData->cached=false;
+
+		dataOut.push_back(rngData);
+	}
+	
 }
 
 unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
@@ -1290,9 +2542,9 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 	haveIonSize=false;
 	sameSize=true;
 
+
 	vector<size_t> dSizes;
 	dSizes.resize(d.size(),0);
-
 	//Do a first sweep to obtain range sizes needed
 	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
 	{
@@ -1300,11 +2552,24 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 		{
 			case STREAM_TYPE_IONS: 
 			{
-				for(vector<IonHit>::const_iterator it=((const IonStreamData *)dataIn[ui])->data.begin();
-					       it!=((const IonStreamData *)dataIn[ui])->data.end(); it++)
+
+#ifdef _OPENMP
+				//Create a unique array for each thread, so they don't try
+				//to modify the same data structure
+				unsigned int nT =omp_get_max_threads(); 
+				vector<size_t> *dSizeArr = new vector<size_t>[nT];
+				for(unsigned int uk=0;uk<nT;uk++)
+					dSizeArr[uk].resize(dSizes.size(),0);
+#endif
+				const IonStreamData *src = ((const IonStreamData *)dataIn[ui]);
+				#pragma omp parallel for
+				for(size_t uj=0; uj<src->data.size();uj++)
 				{
+#ifdef _OPENMP
+					unsigned int thisT=omp_get_thread_num();
+#endif
 					unsigned int rangeID;
-					rangeID=rng.getRangeID(it->getMassToCharge());
+					rangeID=rng.getRangeID(src->data[uj].getMassToCharge());
 
 					//If ion is unranged, then it will have a rangeID of -1
 					if(rangeID != (unsigned int)-1 && enabledRanges[rangeID] )
@@ -1312,9 +2577,24 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 						unsigned int ionID=rng.getIonID(rangeID);
 
 						if(enabledIons[ionID])
-							dSizes[ionID]++;
+						{
+							#ifdef _OPENMP
+								dSizeArr[thisT][ionID]++;
+							#else
+								dSizes[ionID]++;
+							#endif
+
+						}
 					}
 				}
+#ifdef _OPENMP
+				//Merge the arrays back together
+				for(unsigned int uk=0;uk<nT;uk++)
+				{
+					for(unsigned int uj=0;uj<dSizes.size();uj++)
+						dSizes[uj] = dSizes[uj]+dSizeArr[uk][uj];
+				}
+#endif
 
 			}
 		}
@@ -1348,10 +2628,6 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 				//the first input ion colour.
 				if(!haveDefIonColour)
 				{
-					//FIXME: This could be handled better by 
-					//assigning an "unranged" colour.
-					//particularly in the case where we have
-					//multiple input streams (think re-ranging)
 					defIonColour.red =  ((IonStreamData *)dataIn[ui])->r;
 					defIonColour.green =  ((IonStreamData *)dataIn[ui])->g;
 					defIonColour.blue =  ((IonStreamData *)dataIn[ui])->b;
@@ -1462,12 +2738,12 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 			d[ui]->cached=1; //IMPORTANT: ->cached must be set PRIOR to push back
 			filterOutputs.push_back(d[ui]);
 		}
-		cacheOK=true;
 	}
 	else
 	{
 		for(unsigned int ui=0;ui<d.size(); ui++)
 			d[ui]->cached=0; //IMPORTANT: ->cached must be set PRIOR to push back
+		cacheOK=false;
 	}
 	
 	for(unsigned int ui=0;ui<d.size(); ui++)
@@ -1476,13 +2752,37 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 	//Put out rangeData
 	RangeStreamData *rngData=new RangeStreamData;
 	rngData->rangeFile=&rng;	
-	rngData->enabledRanges=&enabledRanges;	
-	rngData->enabledIons=&enabledIons;	
+	
+	rngData->enabledRanges.resize(enabledRanges.size());	
+	std::copy(enabledRanges.begin(),enabledRanges.end(),rngData->enabledRanges.begin());
+	rngData->enabledIons.resize(enabledIons.size());	
+	std::copy(enabledIons.begin(),enabledIons.end(),rngData->enabledIons.begin());
+	
 	
 	rngData->cached=cache;
+	
+	if(cache)
+		filterOutputs.push_back(rngData);
+
 	getOut.push_back(rngData);
 		
+	cacheOK=cache;
 	return 0;
+}
+
+void RangeFileFilter::guessFormat(const std::string &s)
+{
+	vector<string> sVec;
+	splitStrsRef(s.c_str(),'.',sVec);
+
+	if(!sVec.size())
+		assumedFileFormat=RANGE_FORMAT_ORNL;
+	else if(lowercase(sVec[sVec.size()-1]) == "rrng")
+		assumedFileFormat=RANGE_FORMAT_RRNG;
+	else if(lowercase(sVec[sVec.size()-1]) == "env")
+		assumedFileFormat=RANGE_FORMAT_ENV;
+	else
+		assumedFileFormat=RANGE_FORMAT_ORNL;
 }
 
 unsigned int RangeFileFilter::updateRng()
@@ -1912,8 +3212,14 @@ bool RangeFileFilter::writeState(std::ofstream &f,unsigned int format, unsigned 
 			f << tabs(depth+1) << "<enabledions>"<< endl;
 			for(unsigned int ui=0;ui<enabledIons.size();ui++)
 			{
+				RGB col;
+				string colourString;
+				col = rng.getColour(ui);
+
+				genColString((unsigned char)(col.red*255),(unsigned char)(col.green*255),
+						(unsigned char)(col.blue*255),255,colourString);
 				f<< tabs(depth+2) << "<ion id=\"" << ui << "\" enabled=\"" 
-					<< (int)enabledIons[ui] << "\"/>" << endl;
+					<< (int)enabledIons[ui] << "\" colour=\"" << colourString << "\"/>" << endl;
 			}
 			f << tabs(depth+1) << "</enabledions>"<< endl;
 
@@ -1962,10 +3268,33 @@ bool RangeFileFilter::readState(xmlNodePtr& nodePtr)
 	rngName=(char *)xmlString;
 	xmlFree(xmlString);
 
-	//Load range file
+	//try using the extention name of the file to guess format
+	guessFormat(rngName);
+
+	//Load range file using guessed format
 	if(rng.open(rngName.c_str(),assumedFileFormat))
-		return false;
+	{
+		//If that failed, go to plan B
+		//Brute force try all readers
+		bool openOK=false;
+
+		for(unsigned int ui=1;ui<RANGE_FORMAT_END_OF_ENUM; ui++)
+		{
+			if(!rng.open(rngName.c_str(),ui))
+			{
+				assumedFileFormat=ui;
+				openOK=true;
+				break;
+			}
+		}
 	
+		if(!openOK)
+			return false;
+	}
+	
+
+
+		
 	//==
 	
 	std::string tmpStr;
@@ -2030,8 +3359,27 @@ bool RangeFileFilter::readState(xmlNodePtr& nodePtr)
 		else
 			return false;
 
-		xmlFree(xmlString);
 		enabledIons[ionID]=enabled;
+		xmlFree(xmlString);
+		
+		
+		xmlString=xmlGetProp(nodePtr,(const xmlChar *)"colour");
+		if(!xmlString)
+			return false;
+
+
+		tmpStr=(char *)xmlString;
+
+		unsigned char r,g,b,a;
+		if(!parseColString(tmpStr,r,g,b,a))
+			return false;
+		
+		RGB col;
+		col.red=(float)r/255.0f;
+		col.green=(float)g/255.0f;
+		col.blue=(float)b/255.0f;
+		rng.setColour(ionID,col);	
+		xmlFree(xmlString);
 	}
 
 	//===
@@ -2092,7 +3440,7 @@ SpectrumPlotFilter::SpectrumPlotFilter()
 	autoExtrema=true;	
 	binWidth=0.5;
 	plotType=0;
-	logarithmic=0;
+	logarithmic=1;
 
 	//Default to blue plot
 	r=g=0;
@@ -2118,7 +3466,6 @@ Filter *SpectrumPlotFilter::cloneUncached() const
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
-	p->enabled=enabled;
 	p->progress=progress;
 	p->userString=userString;
 	return p;
@@ -2295,8 +3642,8 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 					ionId=rangeD->rangeFile->getIonID(uj);
 					//Only append the region if both the range
 					//and the ion are enabled
-					if((*(rangeD->enabledRanges))[uj] && 
-						(*(rangeD->enabledIons))[ionId])
+					if((rangeD->enabledRanges)[uj] && 
+						(rangeD->enabledIons)[ionId])
 					{
 						//save the range as a "region"
 						d->regions.push_back(rangeD->rangeFile->getRange(uj));
@@ -2317,7 +3664,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 		}
 	}
 
-#pragma omp paralell for
+#pragma omp parallel for
 	for(unsigned int ui=0;ui<nBins;ui++)
 	{
 		d->xyData[ui].first = minPlot + ui*binWidth;
@@ -2340,6 +3687,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 
 
 
+				//Sum the data bins as needed
 				for(unsigned int uj=0;uj<ions->data.size(); uj++)
 				{
 					unsigned int bin;
@@ -2395,11 +3743,6 @@ void SpectrumPlotFilter::getProperties(FilterProperties &propertyList) const
 	vector<pair<string,string> > s;
 
 	string str;
-
-	stream_cast(str,enabled);
-	s.push_back(std::make_pair("Enabled", str));
-	keys.push_back(KEY_SPECTRUM_ENABLED);
-	type.push_back(PROPERTY_TYPE_BOOL);
 
 	stream_cast(str,binWidth);
 	keys.push_back(KEY_SPECTRUM_BINWIDTH);
@@ -2478,30 +3821,6 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
-		case KEY_SPECTRUM_ENABLED:
-		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
-				return false;
-
-			bool lastVal=enabled;
-			if(stripped=="1")
-				enabled=true;
-			else
-				enabled=false;
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=enabled)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-
-			break;
-
-		}
 		//Bin width
 		case KEY_SPECTRUM_BINWIDTH:
 		{
@@ -2905,7 +4224,6 @@ Filter *IonClipFilter::cloneUncached() const
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
-	p->enabled=enabled;
 	p->progress=progress;
 	p->userString=userString;
 
@@ -3370,11 +4688,6 @@ void IonClipFilter::getProperties(FilterProperties &propertyList) const
 	string tmpChoice,tmpStr;
 
 
-	stream_cast(tmpStr,enabled);
-	s.push_back(std::make_pair("Enabled", tmpStr));
-	keys.push_back(KEY_IONCLIP_ENABLED);
-	type.push_back(PROPERTY_TYPE_BOOL);
-
 	vector<pair<unsigned int,string> > choices;
 
 	choices.push_back(make_pair((unsigned int)PRIMITIVE_SPHERE ,
@@ -3476,30 +4789,6 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 
 	switch(key)
 	{
-		case KEY_IONCLIP_ENABLED:
-		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
-				return false;
-
-			bool lastVal=enabled;
-			if(stripped=="1")
-				enabled=true;
-			else
-				enabled=false;
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=enabled)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-
-			break;
-
-		}
 		case KEY_IONCLIP_PRIMITIVE_TYPE:
 		{
 			unsigned int newPrimitive;
@@ -3623,10 +4912,11 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 		}
 		default:
 			ASSERT(false);
+			return false;
 	}
 	
 
-	return false;
+	return true;
 }
 
 //!Get the human readable error string associated with a particular error code during refresh(...)
@@ -3908,7 +5198,6 @@ Filter *IonColourFilter::cloneUncached() const
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
-	p->enabled=enabled;
 	p->progress=progress;
 	p->userString=userString;
 	return p;
@@ -3948,34 +5237,8 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 		d[ui]=new IonStreamData;
 		float value;
 		value = (float)ui*(mapBounds[1]-mapBounds[0])/(float)nColours + mapBounds[0];
-		//Select the desired colour map
-		switch(colourMap)
-		{
-			case  0:
-				jetColorMap(rgb, value, mapBounds[0], mapBounds[1]);
-				break;
-			case  1:
-				hotColorMap(rgb, value, mapBounds[0], mapBounds[1]);
-				break;
-			case  2:
-				coldColorMap(rgb, value, mapBounds[0], mapBounds[1]);
-				break;
-			case  3:
-				 grayColorMap(rgb, value, mapBounds[0], mapBounds[1]);
-				break;
-			case  4:
-				cyclicColorMap(rgb, value, mapBounds[0], mapBounds[1]);
-				break;
-			case  5:
-				colorMap(rgb, value, mapBounds[0], mapBounds[1]);
-				break;
-			case  6:
-				blueColorMap(rgb, value, mapBounds[0], mapBounds[1]);
-				break;
-			case  7:
-				 randColorMap(rgb, value, mapBounds[0], mapBounds[1]);
-				break;
-		}
+		//Pick the desired colour map
+		colourMapWrap(colourMap,rgb,value,mapBounds[0],mapBounds[1]);
 	
 		d[ui]->r=rgb[0]/255.0f;
 		d[ui]->g=rgb[1]/255.0f;
@@ -4091,10 +5354,6 @@ void IonColourFilter::getProperties(FilterProperties &propertyList) const
 
 	string str,tmpStr;
 
-	stream_cast(tmpStr,enabled);
-	s.push_back(std::make_pair("Enabled", tmpStr));
-	keys.push_back(KEY_IONCOLOURFILTER_ENABLED);
-	type.push_back(PROPERTY_TYPE_BOOL);
 
 	stream_cast(str,NUM_COLOURMAPS);
 	str =string("ColourMap (0-") + str + ")";
@@ -4134,30 +5393,6 @@ bool IonColourFilter::setProperty( unsigned int set, unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
-		case KEY_IONCLIP_ENABLED:
-		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
-				return false;
-
-			bool lastVal=enabled;
-			if(stripped=="1")
-				enabled=true;
-			else
-				enabled=false;
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=enabled)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-
-			break;
-
-		}
 		case KEY_IONCOLOURFILTER_COLOURMAP:
 		{
 			unsigned int tmpMap;
@@ -4343,7 +5578,8 @@ CompositionProfileFilter::CompositionProfileFilter()
 	fixedBins=0;
 	nBins=1000;
 	normalise=1;
-
+	errMode.mode=PLOT_ERROR_NONE;
+	errMode.movingAverageNum=4;
 	//Default to blue plot
 	r=g=0;
 	b=a=1;
@@ -4379,7 +5615,7 @@ void CompositionProfileFilter::binIon(unsigned int targetBin, const RangeStreamD
 	//the appropriate position in the table
 	unsigned int rangeID = rng->rangeFile->getRangeID(massToCharge);
 
-	if(rangeID != (unsigned int)(-1) && (*(rng->enabledRanges))[rangeID])
+	if(rangeID != (unsigned int)(-1) && rng->enabledRanges[rangeID])
 	{
 		unsigned int ionID=rng->rangeFile->getIonID(rangeID); 
 		unsigned int pos;
@@ -4412,15 +5648,29 @@ Filter *CompositionProfileFilter::cloneUncached() const
 	p->b=b;	
 	p->a=a;	
 	p->plotType=plotType;
-
+	p->errMode=errMode;
 	//We are copying wether to cache or not,
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
-	p->enabled=enabled;
 	p->progress=progress;
 	p->userString=userString;
 	return p;
+}
+
+void CompositionProfileFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
+				std::vector<const FilterStreamData *> &dataOut)
+{
+	//Check for range file parent
+	for(unsigned int ui=0;ui<dataIn.size();ui++)
+	{
+		if(dataIn[ui]->getStreamType() == STREAM_TYPE_RANGE)
+		{
+			haveRangeParent=true;
+			return;
+		}
+	}
+	haveRangeParent=false;
 }
 
 unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
@@ -4586,7 +5836,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 			//TODO: Might be nice to detect if an ions ranges
 			//are all, disabled then if they are, enter this "if"
 			//anyway
-			if((*rngData->enabledIons)[ui])
+			if(rngData->enabledIons[ui])
 			{
 				//Keep the forwards mapping for binning
 				ionIDMapping.insert(make_pair(ui,enabledCount));
@@ -4777,6 +6027,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		plotData[ui]->index=ui;
 		plotData[ui]->parent=this;
 		plotData[ui]->xLabel= "Distance";
+		plotData[ui]->errDat=errMode;
 		if(normalise)
 		{
 			//If we have composition, normalise against 
@@ -4820,7 +6071,6 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		}
 
 		plotData[ui]->xyData.resize(ionFrequencies[ui].size());
-#pragma omp parallel for
 		for(unsigned int uj=0;uj<ionFrequencies[ui].size(); uj++)
 		{
 			float xPos;
@@ -4866,17 +6116,15 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		{
 			plotData[ui]->cached=1;
 			filterOutputs.push_back(plotData[ui]);	
-			cacheOK=true;
 		}
 		else
-		{
 			plotData[ui]->cached=0;
-		}
 
 		plotData[ui]->plotType = plotType;
 		getOut.push_back(plotData[ui]);
 	}
 
+	cacheOK=cache;
 	return 0;
 }
 
@@ -4898,237 +6146,249 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 					const std::string &value, bool &needUpdate) 
 {
 
-	if(key == KEY_COMPPROFILE_ENABLED)
+	switch(set)
 	{
-		string stripped=stripWhite(value);
-
-		if (!(stripped == "1"|| stripped == "0"))
-			return false;
-
-		bool lastVal=enabled;
-		if (stripped=="1")
-			enabled=true;
-		else
-			enabled=false;
-
-		//if the result is different, the
-		//cache should be invalidated
-		if (lastVal!=enabled)
+		case 0://Primitive settings
 		{
-			needUpdate=true;
-			clearCache();
-		}
-	}
-	else
-	{
-		switch(set)
-		{
-			case 0://Primitive settings
+			
+			switch(key)
 			{
-				
-				switch(key)
+				case KEY_COMPPROFILE_BINWIDTH:
 				{
-					case KEY_COMPPROFILE_BINWIDTH:
+					float newBinWidth;
+					if(stream_cast(newBinWidth,value))
+						return false;
+
+					if(newBinWidth < sqrt(std::numeric_limits<float>::epsilon()))
+						return false;
+
+					binWidth=newBinWidth;
+					clearCache();
+					needUpdate=true;
+					break;
+				}
+				case KEY_COMPPROFILE_FIXEDBINS:
+				{
+					unsigned int valueInt;
+					if(stream_cast(valueInt,value))
+						return false;
+
+					if(valueInt ==0 || valueInt == 1)
 					{
-						float newBinWidth;
-						if(stream_cast(newBinWidth,value))
-							return false;
+						if(fixedBins!= valueInt)
+						{
+							needUpdate=true;
+							fixedBins=valueInt;
+						}
+						else
+							needUpdate=false;
+					}
+					else
+						return false;
+					clearCache();
+					needUpdate=true;	
+					break;	
+				}
+				case KEY_COMPPROFILE_NORMAL:
+				{
+					Point3D newPt;
+					if(!newPt.parse(value))
+						return false;
 
-						if(newBinWidth < sqrt(std::numeric_limits<float>::epsilon()))
-							return false;
-
-						binWidth=newBinWidth;
-						clearCache();
+					if(!(vectorParams[1] == newPt ))
+					{
+						vectorParams[1] = newPt;
 						needUpdate=true;
-						break;
-					}
-					case KEY_COMPPROFILE_FIXEDBINS:
-					{
-						unsigned int valueInt;
-						if(stream_cast(valueInt,value))
-							return false;
-
-						if(valueInt ==0 || valueInt == 1)
-						{
-							if(fixedBins!= valueInt)
-							{
-								needUpdate=true;
-								fixedBins=valueInt;
-							}
-							else
-								needUpdate=false;
-						}
-						else
-							return false;
 						clearCache();
-						needUpdate=true;	
-						break;	
 					}
-					case KEY_COMPPROFILE_NORMAL:
+					return true;
+				}
+				case KEY_COMPPROFILE_NUMBINS:
+				{
+					unsigned int newNumBins;
+					if(stream_cast(newNumBins,value))
+						return false;
+
+					nBins=newNumBins;
+
+					clearCache();
+					needUpdate=true;
+					break;
+				}
+				case KEY_COMPPROFILE_ORIGIN:
+				{
+					Point3D newPt;
+					if(!newPt.parse(value))
+						return false;
+
+					if(!(vectorParams[0] == newPt ))
 					{
-						Point3D newPt;
-						if(!newPt.parse(value))
-							return false;
-
-						if(!(vectorParams[1] == newPt ))
-						{
-							vectorParams[1] = newPt;
-							needUpdate=true;
-							clearCache();
-						}
-						return true;
-					}
-					case KEY_COMPPROFILE_NUMBINS:
-					{
-						unsigned int newNumBins;
-						if(stream_cast(newNumBins,value))
-							return false;
-
-						nBins=newNumBins;
-
-						clearCache();
+						vectorParams[0] = newPt;
 						needUpdate=true;
-						break;
-					}
-					case KEY_COMPPROFILE_ORIGIN:
-					{
-						Point3D newPt;
-						if(!newPt.parse(value))
-							return false;
-
-						if(!(vectorParams[0] == newPt ))
-						{
-							vectorParams[0] = newPt;
-							needUpdate=true;
-							clearCache();
-						}
-
-						return true;
-					}
-					case KEY_COMPPROFILE_PRIMITIVETYPE:
-					{
-						unsigned int newPrimitive;
-						if(stream_cast(newPrimitive,value) ||
-								newPrimitive >= COMPPROFILE_PRIMITIVE_END)
-							return false;
-				
-
-						//TODO: Convert the type data as best we can.
-						primitiveType=newPrimitive;
-
-						//In leiu of covnersion, just reset the primitive
-						//values to some nominal defaults.
-						vectorParams.clear();
-						scalarParams.clear();
-						switch(primitiveType)
-						{
-							case IONCLIP_PRIMITIVE_CYLINDER:
-								vectorParams.push_back(Point3D(0,0,0));
-								vectorParams.push_back(Point3D(0,20,0));
-								scalarParams.push_back(10.0f);
-								break;
-
-							default:
-								ASSERT(false);
-						}
-				
-						clearCache();	
-						needUpdate=true;	
-						return true;	
-					}
-					case KEY_COMPPROFILE_RADIUS:
-					{
-						float newRad;
-						if(stream_cast(newRad,value))
-							return false;
-
-						if(scalarParams[0] != newRad )
-						{
-							scalarParams[0] = newRad;
-							needUpdate=true;
-							clearCache();
-						}
-						return true;
-					}
-					case KEY_COMPPROFILE_SHOWPRIMITIVE:
-					{
-						unsigned int valueInt;
-						if(stream_cast(valueInt,value))
-							return false;
-
-						if(valueInt ==0 || valueInt == 1)
-						{
-							if(showPrimitive!= valueInt)
-							{
-								needUpdate=true;
-								showPrimitive=valueInt;
-							}
-							else
-								needUpdate=false;
-						}
-						else
-							return false;		
-						break;	
-					}
-
-					case KEY_COMPPROFILE_NORMALISE:
-					{
-						unsigned int valueInt;
-						if(stream_cast(valueInt,value))
-							return false;
-
-						if(valueInt ==0 || valueInt == 1)
-						{
-							if(normalise!= valueInt)
-							{
-								needUpdate=true;
-								normalise=valueInt;
-							}
-							else
-								needUpdate=false;
-						}
-						else
-							return false;
 						clearCache();
-						needUpdate=true;	
-						break;	
 					}
+
+					return true;
+				}
+				case KEY_COMPPROFILE_PRIMITIVETYPE:
+				{
+					unsigned int newPrimitive;
+					if(stream_cast(newPrimitive,value) ||
+							newPrimitive >= COMPPROFILE_PRIMITIVE_END)
+						return false;
+			
+
+					//TODO: Convert the type data as best we can.
+					primitiveType=newPrimitive;
+
+					//In leiu of covnersion, just reset the primitive
+					//values to some nominal defaults.
+					vectorParams.clear();
+					scalarParams.clear();
+					switch(primitiveType)
+					{
+						case IONCLIP_PRIMITIVE_CYLINDER:
+							vectorParams.push_back(Point3D(0,0,0));
+							vectorParams.push_back(Point3D(0,20,0));
+							scalarParams.push_back(10.0f);
+							break;
+
+						default:
+							ASSERT(false);
+					}
+			
+					clearCache();	
+					needUpdate=true;	
+					return true;	
+				}
+				case KEY_COMPPROFILE_RADIUS:
+				{
+					float newRad;
+					if(stream_cast(newRad,value))
+						return false;
+
+					if(scalarParams[0] != newRad )
+					{
+						scalarParams[0] = newRad;
+						needUpdate=true;
+						clearCache();
+					}
+					return true;
+				}
+				case KEY_COMPPROFILE_SHOWPRIMITIVE:
+				{
+					unsigned int valueInt;
+					if(stream_cast(valueInt,value))
+						return false;
+
+					if(valueInt ==0 || valueInt == 1)
+					{
+						if(showPrimitive!= valueInt)
+						{
+							needUpdate=true;
+							showPrimitive=valueInt;
+						}
+						else
+							needUpdate=false;
+					}
+					else
+						return false;		
+					break;	
+				}
+
+				case KEY_COMPPROFILE_NORMALISE:
+				{
+					unsigned int valueInt;
+					if(stream_cast(valueInt,value))
+						return false;
+
+					if(valueInt ==0 || valueInt == 1)
+					{
+						if(normalise!= valueInt)
+						{
+							needUpdate=true;
+							normalise=valueInt;
+						}
+						else
+							needUpdate=false;
+					}
+					else
+						return false;
+					clearCache();
+					needUpdate=true;	
+					break;	
 				}
 			}
-			case 1: //Plot settings
+		}
+		case 1: //Plot settings
+		{
+			switch(key)
 			{
-				switch(key)
+				case KEY_COMPPROFILE_PLOTTYPE:
 				{
-					case KEY_COMPPROFILE_PLOTTYPE:
-					{
-						unsigned int tmpPlotType;
+					unsigned int tmpPlotType;
 
-						tmpPlotType=plotID(value);
+					tmpPlotType=plotID(value);
 
-						if(tmpPlotType >= PLOT_TYPE_ENDOFENUM)
-							return false;
+					if(tmpPlotType >= PLOT_TYPE_ENDOFENUM)
+						return false;
 
-						plotType = tmpPlotType;
-						needUpdate=true;	
-						break;
-					}
-					case KEY_COMPPROFILE_COLOUR:
-					{
-						unsigned char newR,newG,newB,newA;
-						parseColString(value,newR,newG,newB,newA);
+					plotType = tmpPlotType;
+					needUpdate=true;	
+					break;
+				}
+				case KEY_COMPPROFILE_COLOUR:
+				{
+					unsigned char newR,newG,newB,newA;
+					parseColString(value,newR,newG,newB,newA);
 
-						r=((float)newR)/255.0f;
-						g=((float)newG)/255.0f;
-						b=((float)newB)/255.0f;
-						a=1.0;
+					r=((float)newR)/255.0f;
+					g=((float)newG)/255.0f;
+					b=((float)newB)/255.0f;
+					a=1.0;
 
-						needUpdate=true;
-						break;	
-					}
+					needUpdate=true;
+					break;	
 				}
 			}
-				
+			break;
 		}
+		case 2: //Error estimation settings	
+		{
+			switch(key)
+			{
+				case KEY_COMPPROFILE_ERRMODE:
+				{
+					unsigned int tmpMode;
+					tmpMode=plotErrmodeID(value);
+
+					if(tmpMode >= PLOT_ERROR_ENDOFENUM)
+						return false;
+
+					errMode.mode= tmpMode;
+					needUpdate=true;
+
+					break;
+				}
+				case KEY_COMPPROFILE_AVGWINSIZE:
+				{
+					unsigned int tmpNum;
+					stream_cast(tmpNum,value);
+					if(tmpNum<=1)
+						return 1;
+
+					errMode.movingAverageNum=tmpNum;
+					needUpdate=true;
+					break;
+				}
+				default:
+					ASSERT(false);
+					;
+			}
+			break;
+		}
+		default:
+			ASSERT(false);	
 	}
 
 	if(needUpdate)
@@ -5148,11 +6408,6 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 
 	string str,tmpStr;
 
-	stream_cast(tmpStr,enabled);
-	s.push_back(std::make_pair("Enabled", tmpStr));
-	keys.push_back(KEY_COMPPROFILE_ENABLED);
-	type.push_back(PROPERTY_TYPE_BOOL);
-	
 	//Allow primitive selection if we have more than one primitive
 	if(COMPPROFILE_PRIMITIVE_END > 1)
 	{
@@ -5252,13 +6507,46 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	keys.push_back(KEY_COMPPROFILE_PLOTTYPE);
 	//Convert the colour to a hex string
-	string thisCol;
-	genColString((unsigned char)(r*255.0),(unsigned char)(g*255.0),
-	(unsigned char)(b*255.0),(unsigned char)(a*255.0),thisCol);
+	if(!haveRangeParent)
+	{
+		string thisCol;
+		genColString((unsigned char)(r*255.0),(unsigned char)(g*255.0),
+		(unsigned char)(b*255.0),(unsigned char)(a*255.0),thisCol);
 
-	s.push_back(make_pair(string("Colour"),thisCol)); 
-	type.push_back(PROPERTY_TYPE_COLOUR);
-	keys.push_back(KEY_COMPPROFILE_COLOUR);
+		s.push_back(make_pair(string("Colour"),thisCol)); 
+		type.push_back(PROPERTY_TYPE_COLOUR);
+		keys.push_back(KEY_COMPPROFILE_COLOUR);
+	}
+
+	propertyList.data.push_back(s);
+	propertyList.types.push_back(type);
+	propertyList.keys.push_back(keys);
+	
+	s.clear();
+	type.clear();
+	keys.clear();
+
+	
+	choices.clear();
+	tmpStr=plotErrmodeString(PLOT_ERROR_NONE);
+	choices.push_back(make_pair((unsigned int) PLOT_ERROR_NONE,tmpStr));
+	tmpStr=plotErrmodeString(PLOT_ERROR_MOVING_AVERAGE);
+	choices.push_back(make_pair((unsigned int) PLOT_ERROR_MOVING_AVERAGE,tmpStr));
+
+	tmpStr= choiceString(choices,errMode.mode);
+	s.push_back(make_pair(string("Err. Estimator"),tmpStr));
+	type.push_back(PROPERTY_TYPE_CHOICE);
+	keys.push_back(KEY_COMPPROFILE_ERRMODE);
+
+
+	if(errMode.mode == PLOT_ERROR_MOVING_AVERAGE)
+	{
+		stream_cast(tmpStr,errMode.movingAverageNum);
+		s.push_back(make_pair(string("Avg. Window"), tmpStr));
+		type.push_back(PROPERTY_TYPE_INTEGER);
+		keys.push_back(KEY_COMPPROFILE_AVGWINSIZE);
+
+	}	
 
 	propertyList.data.push_back(s);
 	propertyList.types.push_back(type);
@@ -5707,7 +6995,6 @@ Filter *BoundingBoxFilter::cloneUncached() const
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
-	p->enabled=enabled;
 	p->progress=progress;
 	p->userString=userString;
 	return p;
@@ -5759,9 +7046,54 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 				if(ptCount == 4)
 				{
 					bThis.setBounds(p,4);
-
-					//TODO: Parallelise this using multiple "bThis" objects, which are then merged.
 					//Expand the bounding volume
+#ifdef _OPENMP
+					//Parallel version
+					unsigned int nT =omp_get_max_threads(); 
+
+					BoundCube *newBounds= new BoundCube[nT];
+					for(unsigned int ui=0;ui<nT;ui++)
+						newBounds[ui]=bThis;
+
+					bool spin=false;
+					#pragma omp parallel for shared(spin)
+					for(unsigned int ui=dataPos;ui<d->data.size();ui++)
+					{
+						unsigned int thisT=omp_get_thread_num();
+						//OpenMP does not allow exiting. Use spin instead
+						if(spin)
+							continue;
+
+						if(!curProg--)
+						{
+							#pragma omp critical
+							{
+							n+=NUM_CALLBACK;
+							progress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
+							}
+
+
+							if(thisT == 0)
+							{
+								if(!(*callback)())
+									spin=true;
+							}
+						}
+
+						newBounds[thisT].expand(d->data[ui].getPos());
+					}
+					if(spin)
+					{			
+						delete d;
+						return IONDOWNSAMPLE_ABORT_ERR;
+					}
+
+					for(unsigned int ui=0;ui<nT;ui++)
+						bThis.expand(newBounds[ui]);
+
+					delete[] newBounds;
+#else
+					//Single thread version
 					for(unsigned int ui=dataPos;ui<d->data.size();ui++)
 					{
 						bThis.expand(d->data[ui].getPos());
@@ -5776,6 +7108,7 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 							}
 						}
 					}
+#endif
 					bTotal.expand(bThis);
 				}
 
@@ -5927,11 +7260,6 @@ void BoundingBoxFilter::getProperties(FilterProperties &propertyList) const
 	vector<pair<string,string> > s;
 
 	string tmpStr;
-	stream_cast(tmpStr,enabled);
-	s.push_back(std::make_pair("Enabled", tmpStr));
-	keys.push_back(KEY_BOUNDINGBOX_ENABLED);
-	type.push_back(PROPERTY_TYPE_BOOL);
-	
 	stream_cast(tmpStr,isVisible);
 	s.push_back(std::make_pair("Visible", tmpStr));
 	keys.push_back(KEY_BOUNDINGBOX_VISIBLE);
@@ -6022,31 +7350,6 @@ bool BoundingBoxFilter::setProperty( unsigned int set, unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
-		case KEY_BOUNDINGBOX_ENABLED:
-		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
-				return false;
-
-			bool lastVal=enabled;
-			if(stripped=="1")
-				enabled=true;
-			else
-				enabled=false;
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=enabled)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-
-			break;
-
-		}
-
 		case KEY_BOUNDINGBOX_VISIBLE:
 		{
 			string stripped=stripWhite(value);
@@ -6444,9 +7747,12 @@ bool BoundingBoxFilter::readState(xmlNodePtr &nodePtr)
 TransformFilter::TransformFilter()
 {
 	transformMode=TRANSFORM_TRANSLATE;
+	originMode=TRANSFORM_ORIGINMODE_SELECT;
 	//Set up default value
 	vectorParams.resize(1);
 	vectorParams[0] = Point3D(0,0,0);
+	
+	showPrimitive=true;
 
 	cacheOK=false;
 	cache=false; 
@@ -6463,12 +7769,12 @@ Filter *TransformFilter::cloneUncached() const
 	std::copy(vectorParams.begin(),vectorParams.end(),p->vectorParams.begin());
 	std::copy(scalarParams.begin(),scalarParams.end(),p->scalarParams.begin());
 
-
+	p->showPrimitive=showPrimitive;
+	p->originMode=originMode;
 	//We are copying wether to cache or not,
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
-	p->enabled=enabled;
 	p->progress=progress;
 	p->userString=userString;
 	return p;
@@ -6483,12 +7789,60 @@ size_t TransformFilter::numBytesForCache(size_t nObjects) const
 unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 	std::vector<const FilterStreamData *> &getOut, unsigned int &progress, bool (*callback)(void))
 {
+	//Clear selection devices FIXME: Is this a memory leak???
+	devices.clear();
+	if(showPrimitive)
+	{
+		//If the user is using a transform mode that requires origin selection 
+		if( originMode == TRANSFORM_ORIGINMODE_SELECT && 
+			showOrigin && (transformMode == TRANSFORM_ROTATE ||
+				transformMode == TRANSFORM_SCALE) )
+		{
+			//construct a new primitive, do not cache
+			DrawStreamData *drawData=new DrawStreamData;
+			//Add drawable components
+			DrawSphere *dS = new DrawSphere;
+			dS->setOrigin(vectorParams[0]);
+			dS->setRadius(1);
+			//FIXME: Alpha blending is all screwed up. May require more
+			//advanced drawing in scene. (front-back drawing).
+			//I have set alpha=1 for now.
+			dS->setColour(0.2,0.2,0.8,1.0);
+			dS->setLatSegments(40);
+			dS->setLongSegments(40);
+			dS->wantsLight=true;
+			drawData->drawables.push_back(dS);
+
+			//Set up selection "device" for user interaction
+			//Note the order of s->addBinding is critical,
+			//as bindings are selected by first match.
+			//====
+			//The object is selectable
+			dS->canSelect=true;
+
+			SelectionDevice *s = new SelectionDevice(this);
+			SelectionBinding b;
+
+			b.setBinding(SELECT_BUTTON_LEFT,FLAG_CMD,
+				BINDING_SPHERE_ORIGIN,dS->originPtr(),dS);	
+			b.setInteractionMode(BIND_MODE_POINT3D_TRANSLATE);
+			s->addBinding(b);
+			
+			devices.push_back(s);
+			drawData->cached=false;	
+			getOut.push_back(drawData);
+		}
+		
+	}
 	//use the cached copy if we have it.
 	if(cacheOK)
 	{
 		ASSERT(filterOutputs.size());
 		for(unsigned int ui=0;ui<dataIn.size();ui++)
-			getOut.push_back(dataIn[ui]);
+		{
+			if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
+				getOut.push_back(dataIn[ui]);
+		}
 
 		for(unsigned int ui=0;ui<filterOutputs.size();ui++)
 			getOut.push_back(filterOutputs[ui]);
@@ -6496,8 +7850,67 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		return 0;
 	}
 
+
+	//The user is allowed to choose the mode by which the origin is computed
+	//so set the origin variable depending upon this
+	switch(originMode)
+	{
+		case TRANSFORM_ORIGINMODE_CENTREBOUND:
+		{
+			BoundCube masterB;
+			masterB.setInverseLimits();
+			#pragma omp parallel for
+			for(unsigned int ui=0;ui<dataIn.size() ;ui++)
+			{
+				BoundCube thisB;
+
+				if(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS)
+				{
+					const IonStreamData* ions;
+					ions = (const IonStreamData*)dataIn[ui];
+					thisB = getIonDataLimits(ions->data);
+					#pragma omp critical
+					masterB.expand(thisB);
+				}
+			}
+
+			if(!masterB.isValid())
+				vectorParams[0]=Point3D(0,0,0);
+			else
+				vectorParams[0]=masterB.getCentroid();
+		}
+		case TRANSFORM_ORIGINMODE_MASSCENTRE:
+		{
+			Point3D massCentre(0,0,0);
+			#pragma omp parallel for
+			for(unsigned int ui=0;ui<dataIn.size() ;ui++)
+			{
+				if(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS)
+				{
+					const IonStreamData* ions;
+					ions = (const IonStreamData*)dataIn[ui];
+
+					Point3D thisCentre;
+					thisCentre=Point3D(0,0,0);
+					for(unsigned int uj=0;uj<ions->data.size();uj++)
+						thisCentre+=ions->data[uj].getPos();
+					#pragma omp critical
+					massCentre+=thisCentre*1.0/(float)ions->data.size();
+				}
+			}
+			vectorParams[0]=massCentre;
+
+		}
+		case TRANSFORM_ORIGINMODE_SELECT:
+			break;
+		default:
+			ASSERT(false);
+	}
+
+	//Apply the transformations to the incoming 
+	//ion streams, generating new outgoing ion streams with
+	//the modified positions
 	size_t totalSize=numElements(dataIn);
-	//Compute the bounding box of the incoming streams
 	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
 	{
 		switch(transformMode)
@@ -6508,8 +7921,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 				//around the specified origin.
 				ASSERT(vectorParams.size() == 1);
 				ASSERT(scalarParams.size() == 1);
-				Point3D origin =vectorParams[0];
 				float scaleFactor=scalarParams[0];
+				Point3D origin=vectorParams[0];
 
 				size_t n=0;
 				switch(dataIn[ui]->getStreamType())
@@ -6529,6 +7942,45 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 
 						ASSERT(src->data.size() <= totalSize);
 						unsigned int curProg=NUM_CALLBACK;
+#ifdef _OPENMP
+						//Parallel version
+						bool spin=false;
+						#pragma omp parallel for shared(spin)
+						for(unsigned int ui=0;ui<src->data.size();ui++)
+						{
+							unsigned int thisT=omp_get_thread_num();
+							if(spin)
+								continue;
+
+							if(!curProg--)
+							{
+								#pragma omp critical
+								{
+								n+=NUM_CALLBACK;
+								progress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
+								}
+
+
+								if(thisT == 0)
+								{
+									if(!(*callback)())
+										spin=true;
+								}
+							}
+
+
+							//set the position for the given ion
+							d->data[ui].setPos((src->data[ui].getPos() - origin)*scaleFactor+origin);
+							d->data[ui].setMassToCharge(src->data[ui].getMassToCharge());
+						}
+						if(spin)
+						{			
+							delete d;
+							return TRANSFORM_CALLBACK_FAIL;
+						}
+
+#else
+						//Single threaded version
 						size_t pos=0;
 						//Copy across the ions into the target
 						for(vector<IonHit>::const_iterator it=src->data.begin();
@@ -6552,8 +8004,9 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							pos++;
 						}
 
-						ASSERT(d->data.size() == src->data.size());
 						ASSERT(pos == d->data.size());
+#endif
+						ASSERT(d->data.size() == src->data.size());
 
 						if(cache)
 						{
@@ -6600,6 +8053,45 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 
 						ASSERT(src->data.size() <= totalSize);
 						unsigned int curProg=NUM_CALLBACK;
+#ifdef _OPENMP
+						//Parallel version
+						bool spin=false;
+						#pragma omp parallel for shared(spin)
+						for(unsigned int ui=0;ui<src->data.size();ui++)
+						{
+							unsigned int thisT=omp_get_thread_num();
+							if(spin)
+								continue;
+
+							if(!curProg--)
+							{
+								#pragma omp critical
+								{
+								n+=NUM_CALLBACK;
+								progress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
+								}
+
+
+								if(thisT == 0)
+								{
+									if(!(*callback)())
+										spin=true;
+								}
+							}
+
+
+							//set the position for the given ion
+							d->data[ui].setPos((src->data[ui].getPos() - origin));
+							d->data[ui].setMassToCharge(src->data[ui].getMassToCharge());
+						}
+						if(spin)
+						{			
+							delete d;
+							return TRANSFORM_CALLBACK_FAIL;
+						}
+
+#else
+						//Single threaded version
 						size_t pos=0;
 						//Copy across the ions into the target
 						for(vector<IonHit>::const_iterator it=src->data.begin();
@@ -6622,9 +8114,9 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							}
 							pos++;
 						}
-
-						ASSERT(d->data.size() == src->data.size());
 						ASSERT(pos == d->data.size());
+#endif
+						ASSERT(d->data.size() == src->data.size());
 						if(cache)
 						{
 							d->cached=1;
@@ -6646,6 +8138,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 			}
 			case TRANSFORM_ROTATE:
 			{
+				Point3D origin=vectorParams[0];
 				switch(dataIn[ui]->getStreamType())
 				{
 					case STREAM_TYPE_IONS:
@@ -6653,7 +8146,6 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 						//Set up scaling output ion stream 
 						IonStreamData *d=new IonStreamData;
 
-						cerr << "Allocated :" << d << " in " << __FUNCTION__ << endl;
 						const IonStreamData *src = (const IonStreamData *)dataIn[ui];
 						d->data.resize(src->data.size());
 						d->r = src->r;
@@ -6667,13 +8159,11 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 						//around the specified origin.
 						ASSERT(vectorParams.size() == 2);
 						ASSERT(scalarParams.size() == 1);
-						Point3D origin =vectorParams[0];
 						Point3D axis =vectorParams[1];
 						axis.normalise();
 						float angle=scalarParams[0]*M_PI/180.0f;
 
 						unsigned int curProg=NUM_CALLBACK;
-						size_t pos=0;
 						size_t n=0;
 
 						Point3f rotVec,p;
@@ -6686,6 +8176,56 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 						//Generate the rotating quaternions
 						quat_get_rot_quats(&rotVec,-angle,&q1,&q2);
 						ASSERT(src->data.size() <= totalSize);
+
+
+#ifdef _OPENMP
+						//Parallel version
+						bool spin=false;
+						#pragma omp parallel for shared(spin)
+						for(unsigned int ui=0;ui<src->data.size();ui++)
+						{
+							unsigned int thisT=omp_get_thread_num();
+							if(spin)
+								continue;
+
+							p.fx=src->data[ui].getPos()[0]-origin[0];
+							p.fy=src->data[ui].getPos()[1]-origin[1];
+							p.fz=src->data[ui].getPos()[2]-origin[2];
+							quat_rot_apply_quats(&p,&q1,&q2);
+							//set the position for the given ion
+							d->data[ui].setPos(p.fx,p.fy,p.fz);
+							d->data[ui].setMassToCharge(src->data[ui].getMassToCharge());
+							if(!curProg--)
+							{
+								#pragma omp critical
+								{
+								n+=NUM_CALLBACK;
+								progress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
+								}
+
+
+								if(thisT == 0)
+								{
+									if(!(*callback)())
+										spin=true;
+								}
+							}
+
+							//set the uiition for the given ion
+							d->data[ui].setPos(p.fx,p.fy,p.fz);
+							d->data[ui].setMassToCharge(src->data[ui].getMassToCharge());
+
+							//set the position for the given ion
+						}
+
+						if(spin)
+						{			
+							delete d;
+							return TRANSFORM_CALLBACK_FAIL;
+						}
+#else
+						size_t pos=0;
+
 						//Copy across the ions into the target
 						for(vector<IonHit>::const_iterator it=src->data.begin();
 							       it!=src->data.end(); it++)
@@ -6711,7 +8251,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							}
 							pos++;
 						}
-
+#endif
 						ASSERT(d->data.size() == src->data.size());
 						if(cache)
 						{
@@ -6748,11 +8288,6 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 	vector<pair<string,string> > s;
 
 	string tmpStr;
-	stream_cast(tmpStr,enabled);
-	s.push_back(std::make_pair("Enabled", tmpStr));
-	keys.push_back(KEY_TRANSFORM_ENABLED);
-	type.push_back(PROPERTY_TYPE_BOOL);
-	
 	vector<pair<unsigned int,string> > choices;
 	choices.push_back(make_pair((unsigned int) TRANSFORM_TRANSLATE,"Translate"));
 	choices.push_back(make_pair((unsigned int)TRANSFORM_SCALE,"Scale"));
@@ -6763,6 +8298,24 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 	s.push_back(make_pair(string("Mode"),tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	keys.push_back(KEY_TRANSFORM_MODE);
+	
+	propertyList.data.push_back(s);
+	propertyList.types.push_back(type);
+	propertyList.keys.push_back(keys);
+	s.clear();type.clear();keys.clear();
+	
+	if(transformMode != TRANSFORM_TRANSLATE)
+	{
+		vector<pair<unsigned int,string> > choices;
+		for(unsigned int ui=0;ui<TRANSFORM_ORIGINMODE_END;ui++)
+			choices.push_back(make_pair(ui,getOriginTypeString(ui)));
+		
+		tmpStr= choiceString(choices,originMode);
+
+		s.push_back(make_pair(string("Origin mode"),tmpStr));
+		type.push_back(PROPERTY_TYPE_CHOICE);
+		keys.push_back(KEY_TRANSFORM_ORIGINMODE);
+	}
 
 	switch(transformMode)
 	{
@@ -6781,10 +8334,15 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 		{
 			ASSERT(vectorParams.size() == 1);
 			ASSERT(scalarParams.size() == 1);
-			stream_cast(tmpStr,vectorParams[0]);
-			keys.push_back(KEY_TRANSFORM_ORIGIN);
-			s.push_back(make_pair("Origin", tmpStr));
-			type.push_back(PROPERTY_TYPE_POINT3D);
+			
+
+			if(originMode == TRANSFORM_ORIGINMODE_SELECT)
+			{
+				stream_cast(tmpStr,vectorParams[0]);
+				keys.push_back(KEY_TRANSFORM_ORIGIN);
+				s.push_back(make_pair("Origin", tmpStr));
+				type.push_back(PROPERTY_TYPE_POINT3D);
+			}
 
 			stream_cast(tmpStr,scalarParams[0]);
 			keys.push_back(KEY_TRANSFORM_SCALEFACTOR);
@@ -6796,11 +8354,13 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 		{
 			ASSERT(vectorParams.size() == 2);
 			ASSERT(scalarParams.size() == 1);
-			stream_cast(tmpStr,vectorParams[0]);
-			keys.push_back(KEY_TRANSFORM_ORIGIN);
-			s.push_back(make_pair("Origin", tmpStr));
-			type.push_back(PROPERTY_TYPE_POINT3D);
-
+			if(originMode == TRANSFORM_ORIGINMODE_SELECT)
+			{
+				stream_cast(tmpStr,vectorParams[0]);
+				keys.push_back(KEY_TRANSFORM_ORIGIN);
+				s.push_back(make_pair("Origin", tmpStr));
+				type.push_back(PROPERTY_TYPE_POINT3D);
+			}
 			stream_cast(tmpStr,vectorParams[1]);
 			keys.push_back(KEY_TRANSFORM_ROTATE_AXIS);
 			s.push_back(make_pair("Axis", tmpStr));
@@ -6813,6 +8373,9 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 			break;
 			break;
 		}
+	
+		default:
+			ASSERT(false);
 	}
 
 	propertyList.data.push_back(s);
@@ -6916,6 +8479,24 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 			return true;
 		}
 			break;
+		case KEY_TRANSFORM_ORIGINMODE:
+		{
+			size_t i;
+			for (i = 0; i < TRANSFORM_MODE_ENUM_END; i++)
+				if (value == getOriginTypeString(i)) break;
+		
+			if( i == TRANSFORM_MODE_ENUM_END)
+				return false;
+
+			if(originMode != i)
+			{
+				originMode = i;
+				needUpdate=true;
+				clearCache();
+			}
+			return true;
+		}
+
 		default:
 			ASSERT(false);
 	}	
@@ -6939,8 +8520,10 @@ bool TransformFilter::writeState(std::ofstream &f,unsigned int format, unsigned 
 		{	
 			f << tabs(depth) << "<transform>" << endl;
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
-			f << tabs(depth+1) << "<transformmode value=\"" << transformMode	<< "\"/>"<<endl;
-			
+			f << tabs(depth+1) << "<transformmode value=\"" << transformMode<< "\"/>"<<endl;
+			f << tabs(depth+1) << "<originmode value=\"" << originMode<< "\"/>"<<endl;
+			f << tabs(depth+1) << "<showorigin value=\"" << (int)showOrigin<< "\"/>"<<endl;
+				
 			f << tabs(depth+1) << "<vectorparams>" << endl;
 			for(unsigned int ui=0; ui<vectorParams.size(); ui++)
 			{
@@ -6999,6 +8582,41 @@ bool TransformFilter::readState(xmlNodePtr &nodePtr)
 	xmlFree(xmlString);
 	//====
 	
+	//Retrieve origination type 
+	//====
+	if(XMLHelpFwdToElem(nodePtr,"originmode"))
+		return false;
+
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
+	if(!xmlString)
+		return false;
+	tmpStr=(char *)xmlString;
+
+	//convert from string to digit
+	if(stream_cast(originMode,tmpStr))
+		return false;
+
+	if(originMode>= TRANSFORM_ORIGINMODE_END)
+	       return false;	
+	xmlFree(xmlString);
+	//====
+	
+	//Retrieve origination type 
+	//====
+	if(XMLHelpFwdToElem(nodePtr,"showorigin"))
+		return false;
+
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
+	if(!xmlString)
+		return false;
+	tmpStr=(char *)xmlString;
+
+	//convert from string to digit
+	if(stream_cast(showOrigin,tmpStr))
+		return false;
+	
+	xmlFree(xmlString);
+	//====
 	
 	//Retreive vector parameters
 	//===
@@ -7099,7 +8717,31 @@ bool TransformFilter::readState(xmlNodePtr &nodePtr)
 }
 
 
+void TransformFilter::setPropFromBinding(const SelectionBinding &b)
+{
+	switch(b.getID())
+	{
+		case BINDING_SPHERE_ORIGIN:
+			b.getValue(vectorParams[0]);
+			break;
+		default:
+			ASSERT(false);
+	}
+	clearCache();
+}
 
+std::string TransformFilter::getOriginTypeString(unsigned int i) const
+{
+	switch(i)
+	{
+		case TRANSFORM_ORIGINMODE_SELECT:
+			return std::string("Specify");
+		case TRANSFORM_ORIGINMODE_CENTREBOUND:
+			return std::string("Boundbox Centre");
+		case TRANSFORM_ORIGINMODE_MASSCENTRE:
+			return std::string("Mass Centre");
+	}
+}
 
 
 //=== External program filter === 
@@ -7124,7 +8766,6 @@ Filter *ExternalProgramFilter::cloneUncached() const
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
-	p->enabled=enabled;
 	p->progress=progress;
 	p->userString=userString;
 	return p;
@@ -7374,8 +9015,8 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			d->a=1.0;
 			d->ionSize = 2.0;
 
-			int index[4] = {0, 1, 2, 3};
-			if(GenericLoadFloatFile(4, index, d->data,sTmp.c_str(),dummy,0))
+			int index2[] = {0, 1, 2, 3};
+			if(GenericLoadFloatFile(4, 4, index2, d->data,sTmp.c_str(),dummy,0))
 				return EXTERNALPROG_READPOS_FAIL;
 
 
@@ -7406,7 +9047,6 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			wxString wxTmpStr;
 			wxTmpStr=(*a)[ui];
 			sTmp = stlStr(wxTmpStr);
-			cerr << "Opening plot file " << sTmp << endl;
 
 			vector<vector<float> > dataVec;
 
@@ -7429,11 +9069,9 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			//well we ran out of delimiters. bad luck
 			if(!delimString[uj] || !dataVec.size())
 			{
-				cerr << "Failed reading file " << sTmp << endl;
 				return EXTERNALPROG_READPLOT_FAIL;
 			}
 
-			cerr << "reading file OK" << sTmp << endl;
 
 			//Check that the input has the correct size
 			for(unsigned int uj=0;uj<dataVec.size()-1;uj+=2)
@@ -7482,7 +9120,6 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 								dataVec[uj+1][uk]);
 				}
 				
-				cerr << "Pushing plot data to output " << sTmp << endl;
 				if(alwaysCache)
 				{
 					d->cached=1;
@@ -7518,10 +9155,6 @@ void ExternalProgramFilter::getProperties(FilterProperties &propertyList) const
 	vector<pair<string,string> > s;
 
 	std::string tmpStr;
-	stream_cast(tmpStr,enabled);
-	s.push_back(std::make_pair("Enabled", tmpStr));
-	keys.push_back(KEY_EXTERNALPROGRAM_ENABLED);
-	type.push_back(PROPERTY_TYPE_BOOL);
 	
 	s.push_back(make_pair("Command", commandLine));
 	type.push_back(PROPERTY_TYPE_STRING);
@@ -7734,7 +9367,6 @@ Filter *SpatialAnalysisFilter::cloneUncached() const
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
-	p->enabled=enabled;
 	p->progress=progress;
 	p->userString=userString;
 	return p;
@@ -7807,6 +9439,36 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 				d=((const IonStreamData *)dataIn[ui]);
 
 				unsigned int curProg=NUM_CALLBACK;
+#ifdef _OPENMP
+				//Parallel version
+				bool spin=false;
+				#pragma omp parallel for shared(spin)
+				for(size_t ui=0;ui<d->data.size();ui++)
+				{
+					unsigned int thisT=omp_get_thread_num();
+					if(spin)
+						continue;
+					p[dataSize + ui] = d->data[ui].getPos();
+					
+					//update progress every CALLBACK ions
+					if(!curProg--)
+					{
+						#pragma omp critical
+						{
+						n+=NUM_CALLBACK;
+						progress= (unsigned int)(((float)(n*(maxProgress-minProgress))/((float)totalDataSize)+minProgress)*100.0f);
+						}
+
+
+						if(thisT == 0)
+						{
+							if(!(*callback)())
+								spin=true;
+						}
+					}
+
+				}
+#else
 				for(size_t ui=0;ui<d->data.size();ui++)
 				{
 					p[dataSize + ui] = d->data[ui].getPos();
@@ -7824,6 +9486,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 					
 
 				}
+#endif
 				dataSize+=d->data.size();
 			}
 			break;	
@@ -7877,12 +9540,16 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 
 						//Adjust this number to provide more update thanusual, because we
 						//are not doing an o(1) task between updates; yes, it is  hack
-						unsigned int curProg=NUM_CALLBACK/(10*nnMax);
+						unsigned int curProg=NUM_CALLBACK/(100*nnMax);
 						newD->data.resize(d->data.size());
 						if(stopMode == SPATIAL_DENSITY_NEIGHBOUR)
 						{
+							bool spin=false;
+							#pragma omp parallel for
 							for(size_t ui=0;ui<d->data.size();ui++)
 							{
+								if(spin)
+									continue;
 								Point3D r;
 								vector<const Point3D *> res;
 								float maxSqrRad;
@@ -7904,17 +9571,24 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 								//Update callback as needed
 								if(!curProg--)
 								{
-									n+=NUM_CALLBACK/(10*nnMax);
+									#pragma omp critical 
+									{
+									n+=NUM_CALLBACK/(nnMax);
 									progress= (unsigned int)(((float)(n*(maxProgress-minProgress))/
 											((float)totalDataSize)+minProgress)*100.0f);
 									if(!(*callback)())
-									{
-										delete newD;
-										return SPATIAL_ANALYSIS_ABORT_ERR;
+										spin=true;
+									curProg=NUM_CALLBACK/(nnMax);
 									}
-									curProg=NUM_CALLBACK/(10*nnMax);
 								}
 							}
+
+							if(spin)
+							{
+								delete newD;
+								return SPATIAL_ANALYSIS_ABORT_ERR;
+							}
+
 	
 						}
 						else if(stopMode == SPATIAL_DENSITY_RADIUS)
@@ -8018,10 +9692,6 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	vector<pair<string,string> > s;
 
 	string tmpStr;
-	stream_cast(tmpStr,enabled);
-	s.push_back(std::make_pair("Enabled", tmpStr));
-	keys.push_back(KEY_SPATIALANALYSIS_ENABLED);
-	type.push_back(PROPERTY_TYPE_BOOL);
 	vector<pair<unsigned int,string> > choices;
 	
 	tmpStr="Local Density";

@@ -20,10 +20,13 @@
 #ifndef TEXTURES_H
 #define TEXTURES_H
 
-#define GL_GLEXT_PROTOTYPES 1
-
+#ifdef __APPLE__ 
+#include <OpenGL/gl.h>
+#include <OpenGL/glu.h>
+#else
 #include <GL/gl.h>
 #include <GL/glu.h>
+#endif
 #include <cstdlib>
 #include <vector>
 #include <utility>
@@ -31,6 +34,7 @@
 
 #include "basics.h"
 #include "pngread.h"
+
 
 //Named Textures
 enum

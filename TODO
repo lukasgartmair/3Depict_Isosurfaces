@@ -7,11 +7,12 @@ TODO List - worlds simplest bugtracking system
 		complicated and subject to change :( )
 				
 	* Improve build system
-		- Confirm out-of-the-box support of OS-X?
 		- Obtain builders for other OSs?
 
 --Main app--
 	To Implement:
+		* Better about box
+		* Expose hide origin to user for transform filter 
 		* Front-to back alpha blending ordering support for
 		scene drawing of non-pointcloud objects
 		* DTD (Document type descriptor) for state files, to
@@ -19,34 +20,42 @@ TODO List - worlds simplest bugtracking system
 			- How to ensure version compatibility in future
 			state files?
 		* Pos region loading is currently not exposed to user.
-		* redo stack 
 		* Billboard text
 		* XYZ axis overlay
+		* VTK/xyzm output
+		* XML Export (with rel. paths changed to be rel. to file)
+		* Better error handling in the XML file read
+		* Interactive range file in plot
+		* Colourbar overlay for ion colour
+		* Ion exchange filter
+		* Slab clip filter
+		* Plot needs to be able to scroll/pan
 
 	Outstanding bugs:
-		* Grid copy/ctrl-c doesn't seem to work. The data gets
+		* Optimised normal computation for raw triangles -> isosurface 
+		* Option to warn on file overwrite with save after merge (default off)
+		* Fix various hard-to-generate crash bugs
+		* Improve camera framework -- orthogonal camera
+		* Grid copy/ctrl-c doesn't seem to work under GTK. The data gets
 		  passed to the clipboard, but then wx doesn't appear to
 		  do anything with it...
 			- Could be constrained to wxGTK2.8 or less (
 			 wxWidgets Bug Ticket #11811 ??? )
-		* Some IVAS emitted range files have a string after their
-		  colour specification, which causes range parser to fail
-		* Stashes are not correctly loaded from state files,
-		  resulting in assertion errors in the stash manager.
 		* K3DTree currently requires public access to members of boundcube
+		* Error bar masking for graph (mathgl draws error bars outside plot boundary)
 		
 	Performance:
-		* Ion sampler could reverse its behaviour when sampling rates > 50%.
 		* Pos limit loader could alter its behaviour when
 		 sampling rates some percentage to be determined (load
 		 file, skip buffer).
 	
 	Misc:
-		* Write an isolated testing framework for a given input
-		 statefile to ensure that filters do not leak.
 
 
 -- Refactor/cleanup --
 	* work out which inline FIXMEs and TODOs are still valid, and need attention
 	* Re-arrange source to reduce compile-time interdependence (bad .h file arrangement?)
 	* I have multiple colour classes floating about. might be an idea to unify them.
+	* Camera code is largely unused due to perpsective only
+	 camera. Might be an idea to remove inheritence and instead unify
+	the camera classes

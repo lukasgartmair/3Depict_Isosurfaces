@@ -1,4 +1,4 @@
-AC_INIT([3Depict], [0.0.1], [mycae@yahoo.com])
+AC_INIT([3Depict], [0.0.2], [mycae@yahoo.com])
 AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CXX
 AC_PROG_CC
@@ -154,29 +154,26 @@ dnl ----------
 
 #Check for libpng
 dnl--------------
-
 AC_ARG_WITH(libpng-flags,
   [  --with-libpng-flags=PATH : specify compiler flags for libpng])
 AC_ARG_WITH(libpng-link,
   [  --with-libpng-link=PATH : specify linker flag (library) for libpng])
 
 #set libpng's compiler flags
-libpng_flags="no"
-if test "$with_libpng_flags" != "no" ;
+if test x"$with_libpng_flags" != x"" ;
 then
     PNG_CFLAGS="$with_libpng_flags"
 else
-    PNG_CFLAGS=""
+    PKG_CHECK_MODULES(PNG, libpng >= 1.2)
 fi
 AC_SUBST(PNG_CFLAGS)
 
 #set libpng's link flags
-libpng_link="no"
-if test "$with_libpng_link" != "no" ;
+if test x"$with_libpng_link" != x"" ;
 then
     PNG_LIBS="$with_libpng_link"
 else
-    PNG_LIBS="-lpng"
+    PKG_CHECK_MODULES(PNG, libpng >= 1.2)
 fi
 
 AC_SUBST(PNG_LIBS)
@@ -209,6 +206,7 @@ case "${host_os}" in
 		GL_LIBS="-lopengl32 -lglu32"
 	    ;;
 	darwin*)
+		GL_FLAGS="-framework GL"
 	    ;;
 	 *)
 		AC_CHECK_LIB(GLU, gluSphere, GL_LIBS="$GL_LIBS -lglu", [AC_MSG_ERROR([Could not find GLU library])])

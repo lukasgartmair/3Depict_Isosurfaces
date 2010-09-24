@@ -80,6 +80,7 @@ public:
 	void keyPressed(wxKeyEvent& event);
 	void keyReleased(wxKeyEvent& event);
 	void setPlotVisible(unsigned int plotID, bool visible);
+	void setLegendVisible(bool visible){thePlot->setLegendVisible(visible);}
 protected:
     DECLARE_EVENT_TABLE()
 };

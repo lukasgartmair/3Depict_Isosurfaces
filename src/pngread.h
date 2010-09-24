@@ -23,12 +23,7 @@
 #define PNGREAD_H
 
 
-#if defined(__WIN32) || defined(__WIN64) || defined(__CYGWIN__)
-	#include <libpng/png.h>
-#else
-	#include <png.h>
-
-#endif
+#include <png.h>
 
 #include <stdlib.h>
 

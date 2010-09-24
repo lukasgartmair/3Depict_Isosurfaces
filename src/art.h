@@ -3,7 +3,6 @@
 
 #include <wx/artprov.h>
 
-// include *your* xpm icons here:
 #include "3Depict.xpm"
 
 class MyArtProvider : public wxArtProvider
@@ -19,6 +18,9 @@ class MyArtProvider : public wxArtProvider
 		{
 			if (id == _T("MY_ART_ID_ICON"))
 				return wxBitmap(_Depict);
+
+			ASSERT(false);
+
 		}
 };
 

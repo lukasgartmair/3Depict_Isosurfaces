@@ -1,2 +1,2 @@
-?package(3depict):needs="X11" section="Applications/Science"\
-  title="3depict" command="/usr/bin/3Depict"
+?package(3depict):needs="X11" section="Applications/Science/Data Analysis"\
+  title="3depict" command="/usr/bin/3depict"

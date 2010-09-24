@@ -37,7 +37,7 @@ class K3DTree;
 #ifdef DEBUG
 
 void dh_assert(const char * const filename, const unsigned int lineNumber); 
-//Prevent errors if ASSERT is not defined
+
 #ifndef ASSERT
 	#define ASSERT(f) if(!(f)) {dh_assert(__FILE__,__LINE__);}
 #endif
@@ -47,6 +47,8 @@ void dh_assert(const char * const filename, const unsigned int lineNumber);
 		#define DBG_PRINTME std::cerr << "Function: " <<  __PRETTY_FUNCTION__ <<  endl; cerr << "File: " << __FILE__ << " Line:" << __LINE__ << endl
 	#endif
 
+#else
+	#define ASSERT(f)
 #endif
 
 //!Text file loader errors
@@ -60,20 +62,47 @@ enum
 
 inline std::string locateDataFile(const char *name)
 {
-	//TODO: Implement me. Currently we just return the name
-	//which is equivalent to using current working dir (cwd).
 	//Possible strategies:
 	//Linux:
+	//TODO: Implement me. Currently we just return the name
+	//which is equivalent to using current working dir (cwd).
 	//	- Look in cwd.
 	//	- Look in $PREFIX from config.h
 	//	- Look in .config
 	//Windows
-	//	- Look in cwd
 	//	- Locate a registry key that has the install path, which is preset by
-	//	  an application installer
+	//	  application installer
+	//	- Look in cwd
+
+#if defined(WIN32) || defined(WIN64)
+
+	wxRegKey *pRegKey = new wxRegKey("Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\3Depict.exe");
+
+	if( pRegKey->Exists() )
+	{
+		//Now we are talkin. Regkey exists
+		//OK, lets see if this dir actually exists or if we are being lied to (old dead regkey, for example)
+
+		//TODO: Implement me
+
+
+	}
+#endif	
+
 	//Mac
 	//	- Look in cwd
 	return std::string(name);
+}
+
+template<class T1, class T2>
+bool hasFirstInPairVec(const std::vector<std::pair<T1,T2> > &v, const std::pair<T1,T2> &r)
+{
+	for(size_t ui=0;ui<v.size();ui++)
+	{
+		if(v[ui].first == r.first)
+			return true;
+	}
+	return false;
 }
 
 
@@ -93,6 +122,11 @@ std::string getDefaultFontFile();
 //String format is CHOICEID:string 1, string 2, string 3,..... string_N
 std::string choiceString(std::vector<std::pair<unsigned int, std::string> > comboString, 
 								unsigned int curChoice);
+
+
+//!Generate a string with leading digits up to maxDigit (eg, if maxDigit is 424, and thisDigit is 1
+//leading digit will generate the string 001
+std::string digitString(unsigned int thisDigit, unsigned int maxDigit);
 
 //!Returns Choice from string (see choiceString(...) for string format)
 std::string getActiveChoice(std::string choiceString);
@@ -139,7 +173,7 @@ std::string lowercase(std::string s);
 void stripZeroEntries(std::vector<std::string> &s);
 
 
-void parseColString(const std::string &str,
+bool parseColString(const std::string &str,
 	unsigned char &r, unsigned char &g, unsigned char &b, unsigned char &a);
 
 void genColString(unsigned char r, unsigned char g, 
@@ -221,6 +255,16 @@ class ComparePairFirst
 	bool operator()(const std::pair<  T1, T2 > &p1, const std::pair<T1,T2> &p2)
 	{
 		return p1.first< p2.first;
+	}
+};
+
+class ComparePairFirstReverse
+{
+	public:
+	template<class T1, class T2>
+	bool operator()(const std::pair<  T1, T2 > &p1, const std::pair<T1,T2> &p2)
+	{
+		return p1.first> p2.first;
 	}
 };
 
@@ -365,6 +409,8 @@ class Point3D
                 Point3D operator+(const Point3D &pt) const;
 		//!multiplication
                 Point3D operator*(float scale) const;
+		//!multiplication
+				Point3D operator*(const Point3D &pt) const;
 		//!Division. 
                 Point3D operator/(float scale) const;
 		//!Subtraction

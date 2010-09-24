@@ -19,15 +19,22 @@
 #ifndef _COLORMAP_H_
 #define _COLORMAP_H_
 
+#include <string>
 
-void colorMap(unsigned char *rgb,float value,float min,float max);
-void hotColorMap(unsigned char *rgb,float value,float min,float max);
-void coldColorMap(unsigned char *rgb,float value,float min,float max);
-void jetColorMap(unsigned char *rgb,float value,float min,float max);
-void cyclicColorMap(unsigned char *rgb,float value,float min,float max);
-void randColorMap(unsigned char *rgb,float value,float min,float max);
-void grayColorMap(unsigned char *rgb,float value,float min,float max);
-void blueColorMap(unsigned char *rgb,float value,float min,float max);
+const unsigned int NUM_COLOURMAPS=8;
+
+//!get colour for specific map
+/* 0 jetColorMap  |  5 colorMap 
+ * 1 hotColorMap  |  6 blueColorMap
+ * 2 coldColorMap |  7 randColorMap
+ * 3 grayColorMap |  
+ * 4 cyclicColorMap | 
+ *
+ * returns char in 0->255 range 
+ */
+void colourMapWrap(unsigned int mapID,unsigned char *rgb, float value, float min,float max);
+
+std::string getColourMapName(unsigned int mapID);
 
 #endif
 

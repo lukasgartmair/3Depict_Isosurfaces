@@ -1,6 +1,6 @@
 
 /* K3DTree.cpp : 3D Point KD tree 
- * Copyright (C) 2008  Daniel Haley
+ * Copyright (C) 2008  D Haley
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,12 +19,9 @@
 #ifdef DEBUG
 	#include <cstdlib>
 	#include <iostream>
-	using std::endl;
-	using std::cerr;
 #endif
 
 #include <limits>
-#include <cstring>
 
 //Axis compare
 //==========
@@ -41,10 +38,6 @@ void AxisCompare::setAxis(unsigned int sortAxis)
 
 //K3D node
 //==========
-/*
-K3DNode::K3DNode() //: valid(true)
-{
-}*/
 
 void K3DNode::setLoc(const Point3D &locNew)
 {
@@ -98,8 +91,6 @@ void K3DNode::dump(std::ostream &strm, unsigned int depth) const
 //=============
 K3DTree::K3DTree() : maxDepth(0),root(0)
 {
-	//This is negative to force a -1<0 to return true	
-	deadDistSqr = -1.0f; 
 	treeSize=0;
 }
 
@@ -195,22 +186,15 @@ void K3DTree::verify()
 	//Keep going until we meet the root nde for the third time (one left, one right, one finish)	
 	}while(!(curNode==root &&  visit== 2));
 
-	cerr << "===COMPARE===" << std::endl;
-	cerr << " -<<<Walk Results>>>-" << std::endl;
-	cerr << "Nodes walked  : " << totalVisits << std::endl;
-	cerr << "Measered Depth: " << measuredDepth << std::endl;
+	std::cerr << "===COMPARE===" << std::endl;
+	std::cerr << " -<<<Walk Results>>>-" << std::endl;
+	std::cerr << "Nodes walked  : " << totalVisits << std::endl;
+	std::cerr << "Measered Depth: " << measuredDepth << std::endl;
 
-	cerr << " -<<<Tree Datas>>>-" << std::endl;
-	cerr << "Tree reports # nodes: " << treeSize << std::endl;
-        cerr << "Tree reports Max Depth: " << maxDepth << std::endl;	
+	std::cerr << " -<<<Tree Datas>>>-" << std::endl;
+	std::cerr << "Tree reports # nodes: " << treeSize << std::endl;
+	std::cerr << "Tree reports Max Depth: " << maxDepth << std::endl;	
 }
-
-
-void K3DTree::verifyChildren(K3DNode *curNode)
-{
-	//TODO: IMPLEMENT ME	
-}
-
 
 void K3DTree::kill()
 {
@@ -257,12 +241,15 @@ void K3DTree::buildByRef(vector<Point3D> &pts)
 
 	treeSize=pts.size();	
 	maxDepth=1;
+#pragma omp taskroot
 	root=buildRecurse(pts.begin(), pts.end(),0);
 	
+#pragma omp  taskwait
 }
 
 K3DNode *K3DTree::buildRecurse(vector<Point3D>::iterator pts_start, vector<Point3D>::iterator pts_end, unsigned int depth)
 {
+	const unsigned int OMP_PTS_SIZE=1000;
 
 	K3DNode *node= new K3DNode;
 	unsigned int curAxis=depth%3;
@@ -285,14 +272,31 @@ K3DNode *K3DTree::buildRecurse(vector<Point3D>::iterator pts_start, vector<Point
 	//allocate node (this stores a copy of the point) and set.
 	node->setLoc(*(pts_start + median));
 	
-
 	if(median)
-		node->setLeft(buildRecurse(pts_start,pts_start + median,depth+1));
+	{
+		
+		if(ptsSize > OMP_PTS_SIZE)
+		{
+			#pragma omp task
+			node->setLeft(buildRecurse(pts_start,pts_start + median,depth+1));
+		}
+		else
+			node->setLeft(buildRecurse(pts_start,pts_start + median,depth+1));
+	}
 	else
 		node->setLeft(0);	
 
 	if(median!=ptsSize)
-		node->setRight(buildRecurse(pts_start + median + 1, pts_end,depth+1));
+	{
+		if(ptsSize >OMP_PTS_SIZE)
+		{
+			#pragma omp task
+			node->setRight(buildRecurse(pts_start + median + 1, pts_end,depth+1));
+		}
+		else
+			node->setRight(buildRecurse(pts_start + median + 1, pts_end,depth+1));
+
+	}
 	else
 		node->setRight(0);
 

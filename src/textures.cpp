@@ -54,11 +54,11 @@ bool TexturePool::openTexture(const char *texName,unsigned int &texID, unsigned 
 
 	//Try to load the texture, as we don't have it
 	texture tex;	
-	if(!pngTexture2D(&tex,texName))
+	if(!pngTexture2D(&tex,texPath.c_str()))
 	{
 		uniqID=texUniqIds.genId(openTextures.size());
 		openTextures.push_back(
-			make_pair(std::string(texName),tex));
+			make_pair(texPath,tex));
 
 		texID=tex.name;
 		return true;

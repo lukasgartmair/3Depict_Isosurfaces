@@ -226,12 +226,13 @@ unsigned int IonVectorToPos(const vector<IonHit> &ionVec, const string &filename
 
 
 //!Find the xyz limits of a dataset
-void dataLimits(vector<IonHit> &posIons, Point3D &low, Point3D &upper)
+void dataLimits(const vector<IonHit> &posIons, Point3D &low, Point3D &upper)
 {
 	float maximal = std::numeric_limits<float>::max();
 	low = Point3D(maximal,maximal,maximal);
 	upper = Point3D(-maximal,-maximal,-maximal);
 	Point3D pt; 
+
 	for(unsigned int ui=0; ui<posIons.size(); ui++)
 	{
 		pt= posIons[ui].getPos();
@@ -389,9 +390,8 @@ unsigned int vectorPointDir(const Point3D &pA, const Point3D &pB,
 
 void appendPos(const vector<IonHit> &points, const char *name)
 {
-	std::ofstream posFile(name,std::ios::binary);	
+	std::ofstream posFile(name,std::ios::binary|std::ios::app);	
 
-	posFile.seekp(0,std::ios::end);
 	float data[4];	
 	
 	for(unsigned int ui=0; ui< points.size(); ui++)
@@ -452,7 +452,7 @@ void DumpPoint(const Point3D &pt)
 	cerr << "(" << pt[0] << "," << pt[1] << "," << pt[2] << ")" << std::endl;
 }
 #endif
-IonHit::IonHit() : massToCharge(0.0f)
+IonHit::IonHit() : massToCharge(0.0f), pos(0,0,0)
 {
 	//At this point i deliberately dont initialise the point class
 	//as in DEBUG mode, the point class will catch failure to init
@@ -697,6 +697,27 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			//Read ion short and full names as well as colour info
 			for(unsigned int i=0; i<numIons; i++)
 			{
+				int peekVal;
+				//Spin until we get to a new line. 
+				//Certain programs emit range files that have
+				//some string of unknown purpose
+				//after the colour specification
+				if(fpeek(fpRange)== ' ')
+				{
+					//Gobble chars until we hit the newline
+					do
+					{
+						fgetc(fpRange);
+						peekVal=fpeek(fpRange);
+					}
+					while(peekVal != (int)'\n'&&
+					    	peekVal !=(int)'\r' && peekVal != EOF);
+
+					//eat another char if we are using 
+					//windows newlines
+					if(peekVal = '\r')
+						fgetc(fpRange);
+				}
 				//Read the input for long name (max 256 chars)
 				if(!fscanf(fpRange, " %256s", inBuffer))
 				{
@@ -706,7 +727,8 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				}
 					
 				namePair.second = inBuffer;
-				
+
+
 				//Read short name
 				if(!fscanf(fpRange, " %256s", inBuffer))
 				{
@@ -799,6 +821,8 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 		
 			break;	
 		}
+		//Cameca "ENV" file format.. I have a couple of examples, but nothing more.
+		//There is no specification of this format publicly available
 		case RANGE_FORMAT_ENV:
 		{
 			//Ruoen group "environment file" format
@@ -1143,6 +1167,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 
 							if (stream_cast(numRanges,split[1]))
 							{
+							
 								delete[] inBuffer;
 								fclose(fpRange);
 								return RANGE_ERR_FORMAT;
@@ -1158,18 +1183,26 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 						}
 						else if ( lowercase(split[0].substr(0,5)) == "range")
 						{
+							//Try to decode a range line, as best we can.
+							//These appear to come in a variety of flavours,
+							//which makes this section quite long.
+
 							//OK, so the format here is a bit wierd
 							//we first have to strip the = bit
 							//then we have to step across fields,
 							//I assume the fields are in order (or missing)
-							// Vol: [0-9]* [A-z][A-z]: [0-9]* Color:[0-F][0-F][0-F][0-F][0-F][0-F]
-							// Example:
+							//* denotes 0 or more,  + denotes 1 or more, brackets denote grouping
+							// Vol: [0-9]* ([A-z]+: [0-9]+)* (Name:[0-9]*([A-z]+[0-9]*)+ Color:[0-F][0-F][0-F][0-F][0-F][0-F]
+							// Examples:
 							// Range1=31.8372 32.2963 Vol:0.01521 Zn:1 Color:999999
 							// or
 							// Range1=31.8372 32.2963 Zn:1 Color:999999
 							// or
 							// Range1=95.3100 95.5800 Vol:0.04542 Zn:1 Sb:1 Color:00FFFF
-							//
+							// or
+							// Range1=95.3100 95.5800 Vol:0.04542 Name:1Zn1Sb1 Color:00FFFF
+							// or
+							// Range1=95.3100 95.5800 Vol:0.04542 Zn:1 Sb:1 Name:1Zn1Sb1 Color:00FFFF
 
 							//Starting positions (string index)
 							//of range start and end
@@ -1180,11 +1213,11 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							rngMidIdx = split[1].find_first_of(' ');
 
 							if (rngMidIdx == std::string::npos)
-						{
-							delete[] inBuffer;
-							fclose(fpRange);
-							return RANGE_ERR_FORMAT;
-						}
+							{
+								delete[] inBuffer;
+								fclose(fpRange);
+								return RANGE_ERR_FORMAT;
+							}
 
 							rngEndIdx=split[1].find_first_of(' ',rngMidIdx+1);
 							if (rngEndIdx == std::string::npos)
@@ -1207,9 +1240,10 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							splitStrsRef(strTmp.c_str(),' ',split);
 
 							RGB col;
-							bool haveColour;
+							bool haveColour,haveNameField;
 							haveColour=false;
-							string strIonNameTmp;
+							haveNameField=false;
+							string strIonNameTmp,strNameFieldValue;
 
 							for (unsigned int ui=0; ui<split.size(); ui++)
 							{
@@ -1233,6 +1267,21 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 								if (lowercase(key) == "vol")
 								{
 									//Do nothing
+								}
+								else if (lowercase(key) == "name")
+								{
+									//OK, so we need to handle two wierd cases
+									//1) we have the name section and the ion section
+									//2) we have the name section and no ion section
+
+									//Rant:WTF is the point of the "name" section. They are 
+									//encoding information in a redundant and irksome fashion!
+									//Better to store the charge (if thats what you wnat) in a F-ing charge
+									//section, and the multiplicity is already bloody defined elsewhere!
+									
+									//This won't be known until we complete the parse
+									haveNameField=true;
+									strNameFieldValue=value;
 								}
 								else if (lowercase(key) == "color")
 								{
@@ -1289,65 +1338,133 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 									//If it is  1, then use straight name. Otherwise try to give it a
 									//chemical formula look by mixing in the multiplicty after the key
 									if (uintVal==1)
-										strIonNameTmp=key;
+										strIonNameTmp+=key;
 									else
-										strIonNameTmp=key+value;
+										strIonNameTmp+=key+value;
 								}
 							}
 
-							if (!haveColour || !strIonNameTmp.size())
+							if (!haveColour )
 							{
 								delete[] inBuffer;
 								fclose(fpRange);
 								return RANGE_ERR_FORMAT;
 							}
 
-							//record the ion data
+							//Get the range values
 							float rngStartV,rngEndV;
-							if (stream_cast(rngStartV,rngStart))
+							if(strIonNameTmp.size() || haveNameField)
 							{
-								delete[] inBuffer;
-								fclose(fpRange);
-								return RANGE_ERR_FORMAT;
-							}
-
-							if (stream_cast(rngEndV,rngEnd))
-							{
-								delete[] inBuffer;
-								fclose(fpRange);
-								return RANGE_ERR_FORMAT;
-							}
-
-							//Check to see if we have this ion.
-							//If we dont, we create a new one.
-							//if we do, we check that the colours match
-							//and if not reject the file parsing.
-							unsigned int pos=(unsigned int)(-1);
-							for (unsigned int ui=0; ui<ionNames.size(); ui++)
-							{
-								if (ionNames[ui].first == strIonNameTmp)
+								if (stream_cast(rngStartV,rngStart))
 								{
-									pos=ui;
-									break;
+									delete[] inBuffer;
+									fclose(fpRange);
+									return RANGE_ERR_FORMAT;
+								}
+
+								if (stream_cast(rngEndV,rngEnd))
+								{
+									delete[] inBuffer;
+									fclose(fpRange);
+									return RANGE_ERR_FORMAT;
 								}
 							}
 
-							ranges.push_back(std::make_pair(rngStartV,rngEndV));
-							if (pos == (unsigned int) -1)
+							//So the ion field appears to be optional (that is,
+							//ivas emits RRNGs that do not contain an ion listed in the 
+							//ion field). It is unclear what the purpose of these lines is,
+							//so we shall ignore it, in preference to aborting
+							if(strIonNameTmp.size())
 							{
-								//This is new. Create a new ion,
-								//and use its ionID
-								ionNames.push_back(std::make_pair(strIonNameTmp,
-											     strIonNameTmp));
-								colours.push_back(col);
-								ionIDs.push_back(ionNames.size()-1);
-							}
-							else
-							{
-								//we have the name already
-								ionIDs.push_back(pos);
-							}
+								//Check to see if we have this ion.
+								//If we dont, we create a new one.
+								//if we do, we check that the colours match
+								//and if not reject the file parsing.
+								unsigned int pos=(unsigned int)(-1);
+								for (unsigned int ui=0; ui<ionNames.size(); ui++)
+								{
+									if (ionNames[ui].first == strIonNameTmp)
+									{
+										pos=ui;
+										break;
+									}
+								}
 
+								ranges.push_back(std::make_pair(rngStartV,rngEndV));
+								if (pos == (unsigned int) -1)
+								{
+									//This is new. Create a new ion,
+									//and use its ionID
+									ionNames.push_back(std::make_pair(strIonNameTmp,
+												     strIonNameTmp));
+									colours.push_back(col);
+									ionIDs.push_back(ionNames.size()-1);
+								}
+								else
+								{
+									//we have the name already
+									ionIDs.push_back(pos);
+								}
+							}
+							else if(haveNameField)
+							{
+								//OK, so we don't have the ion section
+								//but we do have the field section
+								//let us decode the name field in order to retrieve 
+								//the ion information which was missing (for whatever reason)
+								if(!strNameFieldValue.size())
+								{
+									delete[] inBuffer;
+									fclose(fpRange);
+									return RANGE_ERR_FORMAT;
+								}
+
+
+								unsigned int chargeStrStop=0;
+								for(unsigned int ui=0;ui<strNameFieldValue.size();ui++)
+								{
+									if(strNameFieldValue[ui] <'0' || strNameFieldValue[ui] > '9')
+									{
+										chargeStrStop =ui;
+										break;
+									}
+
+								}
+
+								//Strip off the charge value, to get the ion name
+								strNameFieldValue =strNameFieldValue.substr(chargeStrStop,strNameFieldValue.size()-chargeStrStop);
+
+								//Check to see if we have this ion.
+								//If we dont, we create a new one.
+								//if we do, we check that the colours match
+								//and if not reject the file parsing.
+								unsigned int pos=(unsigned int)(-1);
+								for (unsigned int ui=0; ui<ionNames.size(); ui++)
+								{
+									if (ionNames[ui].first == strNameFieldValue)
+									{
+										pos=ui;
+										break;
+									}
+								}
+
+								ranges.push_back(std::make_pair(rngStartV,rngEndV));
+								if (pos == (unsigned int) -1)
+								{
+									//This is new. Create a new ion,
+									//and use its ionID
+									ionNames.push_back(std::make_pair(strNameFieldValue,
+												     strNameFieldValue));
+									colours.push_back(col);
+									ionIDs.push_back(ionNames.size()-1);
+								}
+								else
+								{
+									//we have the name already
+									ionIDs.push_back(pos);
+								}
+
+							}
 						}
 						else
 						{
@@ -1356,9 +1473,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							return RANGE_ERR_FORMAT;
 						}
 
-
 					}
-
 					break;
 				}
 				default:
@@ -1502,6 +1617,29 @@ void RangeFile::range(vector<IonHit> &ions)
 			rangedVec.push_back(ions[ui]);
 	}
 
+	//Do the switcheroonie
+	//such that the un-ranged ions are destroyed
+	//and the ranged ions are kept 
+	ions.swap(rangedVec);
+}
+
+void RangeFile::rangeByRangeID(vector<IonHit> &ions, unsigned int rangeID)
+{
+	vector<IonHit> rangedVec;
+	
+	unsigned int numIons=ions.size();
+	rangedVec.reserve(numIons);
+	
+	for(unsigned int ui=0; ui<numIons; ui++)
+	{
+		if( ions[ui].getMassToCharge() >= ranges[rangeID].first  &&
+		   ions[ui].getMassToCharge() <= ranges[rangeID].second )
+		{
+			rangedVec.push_back(ions[ui]);
+			break;
+		}
+	}
+	
 	//Do the switcheroonie
 	//such that the un-ranged ions are destroyed
 	//and the ranged ions are kept 
@@ -1805,4 +1943,32 @@ void RangeFile::setIonID(unsigned int range, unsigned int newIonId)
 {
 	ASSERT(newIonId < ionIDs.size());
 	ionIDs[range] = newIonId;
+}
+
+
+BoundCube getIonDataLimits(const std::vector<IonHit> &points)
+{
+	ASSERT(points.size());
+	BoundCube b;	
+	b.setInverseLimits();	
+	float bounds[3][2];
+	for(unsigned int ui=0; ui<points.size(); ui++)
+	{
+		for(unsigned int uj=0; uj<3; uj++)
+		{
+			Point3D p;
+			p=points[ui].getPos();
+			if(p.getValue(uj) < bounds[uj][0])
+				bounds[uj][0] = p.getValue(uj);
+			
+			if(p.getValue(uj) > bounds[uj][1])
+				bounds[uj][1] = p.getValue(uj);
+		}
+	}
+
+	b.setBounds(bounds[0][0],bounds[1][0],
+			bounds[2][0],bounds[0][1],
+			bounds[1][1],bounds[2][1]);
+
+	return b;
 }

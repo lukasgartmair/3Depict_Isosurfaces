@@ -1,10 +1,10 @@
 /*
- * $Id: K3DTree.h 86 2010-01-23 00:32:22Z daniel $
+ * $Id: K3DTree.h 86 2010-01-23 00:32:22Z d $
  */
 
 //As this program relies on GNU GPL(v3) components, this program is GPLv3
 /* rdf-kd : Calculates radial distribution functions
- * Copyright (C) 2008  Daniel Haley
+ * Copyright (C) 2008  D Haley
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -118,8 +118,6 @@ class K3DTree
 		//!Build tree recursively
 		K3DNode *buildRecurse(vector<Point3D>::iterator pts_start,
 			       	vector<Point3D>::iterator pts_end, unsigned int depth );
-		//TODO: Why is deadDist here?
-		float deadDistSqr;
 		mutable deque<float> bestDistsSqr;
 	public:
 	
@@ -146,7 +144,6 @@ class K3DTree
 
 		//Tree walker that counts the number of nodes
 		void verify();
-		void verifyChildren(K3DNode *curNode);
 
 		//! Clean the tree
 		void kill();

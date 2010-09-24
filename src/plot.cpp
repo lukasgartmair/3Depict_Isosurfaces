@@ -36,6 +36,12 @@
 //enable plot cutting and colouring
 #define MGL_GTE_1_10
 
+//!Plot error bar estimation strings
+const char *errModeStrings[] = { 
+				"None",
+				"Moving avg."
+				};
+
 
 using std::string;
 using std::pair;
@@ -85,10 +91,72 @@ unsigned int plotID(const std::string &plotString)
 	if(plotString == "Stem")
 		return PLOT_TYPE_STEM;
 	ASSERT(false);
-	return PLOT_TYPE_LINES;
+}
+
+unsigned int plotErrmodeID(const std::string &s)
+{
+	for(unsigned int ui=0;ui<PLOT_ERROR_ENDOFENUM; ui++)
+	{
+		if(s ==  errModeStrings[ui])
+			return ui;
+	}
+	ASSERT(false);
+}
+
+string plotErrmodeString(unsigned int plotID)
+{
+	return errModeStrings[plotID];
 }
 
 //===
+
+void genErrBars(const std::vector<float> &x, const std::vector<float> &y, 
+			std::vector<float> &errBars, const PLOT_ERROR &errMode)
+{
+	switch(errMode.mode)
+	{
+		case PLOT_ERROR_NONE:
+			return;	
+		case PLOT_ERROR_MOVING_AVERAGE:
+		{
+			ASSERT(errMode.movingAverageNum);
+			errBars.resize(y.size());
+			for(int ui=0;ui<y.size();ui++)
+			{
+				float mean;
+				mean=0.0f;
+
+				//Compute the local mean
+				for(int uj=0;uj<errMode.movingAverageNum;uj++)
+				{
+					int idx;
+					idx= std::max((int)ui+(int)uj-(int)errMode.movingAverageNum/2,0);
+					idx=std::min(idx,(int)(y.size()-1));
+					ASSERT(idx<y.size());
+					mean+=y[idx];
+				}
+
+				mean/=(float)errMode.movingAverageNum;
+
+				//Compute the local stddev
+				float stddev;
+				stddev=0;
+				for(int uj=0;uj<errMode.movingAverageNum;uj++)
+				{
+					int idx;
+					idx= std::max((int)ui+(int)uj-(int)errMode.movingAverageNum/2,0);
+					idx=std::min(idx,(int)(y.size()-1));
+					stddev+=(y[idx]-mean)*(y[idx]-mean);
+				}
+
+				stddev=sqrt(stddev/(float)errMode.movingAverageNum);
+				errBars[ui]=stddev;
+			}
+			break;
+		}
+	}
+
+}
 
 void Multiplot::clear(bool preserveVisiblity)
 {
@@ -139,7 +207,7 @@ void Multiplot::setParentData(unsigned int plotID, const void *parentObj, unsign
 }
 
 unsigned int Multiplot::addPlot(const vector<float> &vX, const vector<float> &vY,
-					bool isLog)
+				const PLOT_ERROR &errMode,bool isLog)
 {
 	PlotData newPlotData ;
 
@@ -154,6 +222,8 @@ unsigned int Multiplot::addPlot(const vector<float> &vX, const vector<float> &vY
 	std::copy(vX.begin(),vX.end(),newDataRef.xValues.begin());
 	newDataRef.yValues.resize(vY.size());
 	std::copy(vY.begin(),vY.end(),newDataRef.yValues.begin());
+	genErrBars(newDataRef.xValues,newDataRef.yValues,newDataRef.errBars,errMode);
+
 
 	//Compute minima and maxima of plot data, and keep a copy of it
 	float maxThis=-std::numeric_limits<float>::max();
@@ -192,10 +262,10 @@ unsigned int Multiplot::addPlot(const vector<float> &vX, const vector<float> &vY
 }
 
 
-unsigned int Multiplot::addPlot(const vector<std::pair<float,float> > &v,
-					bool isLog)
+unsigned int Multiplot::addPlot(const vector<std::pair<float,float> > &v, 
+						const PLOT_ERROR &errMode, bool isLog)
 {
-	PlotData newPlotData ;
+	PlotData newPlotData;
 
 	plottingData.push_back(newPlotData);
 	PlotData &newDataRef=plottingData.back();
@@ -211,6 +281,7 @@ unsigned int Multiplot::addPlot(const vector<std::pair<float,float> > &v,
 		newDataRef.xValues[ui]=v[ui].first;
 		newDataRef.yValues[ui]=v[ui].second;
 	}
+	genErrBars(newDataRef.xValues,newDataRef.yValues,newDataRef.errBars,errMode);
 
 	//Compute minima and maxima of plot data, and keep a copy of it
 	float maxThis=-std::numeric_limits<float>::max();
@@ -481,7 +552,7 @@ void Multiplot::drawPlot(mglGraph *gr) const
 				gr->FaceZ(rMinX,rMinY,-1,rMaxX-rMinX,rMaxY-rMinY,
 						colourCode);
 						
-				regionNum+1;
+				regionNum++;
 			}
 		}
 	}
@@ -493,15 +564,21 @@ void Multiplot::drawPlot(mglGraph *gr) const
 	unsigned int plotNum=0;
 	for(unsigned int ui=0;ui<plottingData.size(); ui++)
 	{
+		bool showErrs;
 
-		mglData xDat,yDat;
+		mglData xDat,yDat,eDat;
 		if(!plottingData[ui].visible)
 			continue;	
 		
-		float *bufferX,*bufferY;
+		float *bufferX,*bufferY,*bufferErr;
 		bufferX = new float[plottingData[ui].xValues.size()];
 		bufferY = new float[plottingData[ui].yValues.size()];
-		
+
+		showErrs=plottingData[ui].errBars.size();
+		bufferErr = new float[plottingData[ui].errBars.size()];
+
+
+
 		if(logarithmic)
 		{
 			for(unsigned int uj=0;uj<plottingData[ui].xValues.size(); uj++)
@@ -521,11 +598,22 @@ void Multiplot::drawPlot(mglGraph *gr) const
 			{
 				bufferX[uj] = plottingData[ui].xValues[uj];
 				bufferY[uj] = plottingData[ui].yValues[uj];
+
+			}
+			if(showErrs)
+			{
+				for(unsigned int uj=0;uj<plottingData[ui].errBars.size(); uj++)
+					bufferErr[uj] = plottingData[ui].errBars[uj];
 			}
 		}
+	
+		//Mathgl needs to know where to put the error bars.	
+		ASSERT(!showErrs  || plottingData[ui].errBars.size() ==plottingData[ui].xValues.size());
 		
 		xDat.Set(bufferX,plottingData[ui].xValues.size());
 		yDat.Set(bufferY,plottingData[ui].yValues.size());
+	
+		eDat.Set(bufferErr,plottingData[ui].errBars.size());
 
 		//Fake it.
 		colourCode[0]= getNearestMathglColour(plottingData[ui].r,
@@ -542,6 +630,8 @@ void Multiplot::drawPlot(mglGraph *gr) const
 				gr->SetCut(true);
 				
 				gr->Plot(xDat,yDat,colourCode);
+				if(showErrs)
+					gr->Error(xDat,yDat,eDat,colourCode);
 				gr->SetCut(false);
 #else
 				gr->Plot(xDat,yDat);
@@ -579,10 +669,12 @@ void Multiplot::drawPlot(mglGraph *gr) const
 				break;
 		}
 
-		gr->AddLegend(plottingData[ui].title.c_str(),colourCode);
+		if(drawLegend)
+			gr->AddLegend(plottingData[ui].title.c_str(),colourCode);
 
 		delete[]  bufferX;
 		delete[]  bufferY;
+		delete[]  bufferErr;
 
 		plotNum++;
 	}
@@ -673,26 +765,46 @@ bool Multiplot::isPlotVisible(unsigned int plotID) const
 	return plottingData[uniqueIDHandler.getPos(plotID)].visible;
 }
 
-void Multiplot::getRawData(std::vector<std::vector<std::pair< float,float> > > &rawData,
-				std::vector<std::pair<std::wstring,std::wstring> > &labels) const
+void Multiplot::getRawData(std::vector<std::vector<std::vector< float> > > &rawData,
+				std::vector<std::vector<std::wstring> > &labels) const
 {
-	std::vector<pair<float,float> > tmp;
+	std::vector<vector<float> > tmp;
 	labels.clear();
 	for(unsigned int ui=0; ui<plottingData.size();ui++)
 	{
 		if(plottingData[ui].visible)
 		{
+			vector<float> datX;
+			vector<float> datY;
+			vector<float> datE;
 
+			std::vector<std::wstring> strVec;
+			
 			for(unsigned int uj=0;uj<plottingData[ui].xValues.size(); uj++)
 			{
-				tmp.push_back(std::make_pair(plottingData[ui].xValues[uj],
-							plottingData[ui].yValues[uj]));
+				datX.push_back(plottingData[ui].xValues[uj]);
+				datY.push_back(plottingData[ui].yValues[uj]);
+				if(plottingData[ui].errBars.size())
+					datE.push_back(plottingData[ui].errBars[uj]);
 			}
 
-			labels.push_back(make_pair(plottingData[ui].xLabel,
-							plottingData[ui].title));
+			if(datX.size())
+			{
+				tmp.push_back(datX);
+				tmp.push_back(datY);
+				strVec.push_back(plottingData[ui].xLabel);
+				strVec.push_back(plottingData[ui].title);
+			}
+
+			if(datE.size())
+			{
+				tmp.push_back(datE);
+				strVec.push_back(std::wstring(L"Error (std. dev)"));
+			}
+
 
 			rawData.push_back(tmp);
+			labels.push_back(strVec);
 			tmp.clear();
 		}
 	}
@@ -717,7 +829,8 @@ char Multiplot::getNearestMathglColour(float r, float g, float b) const
 	//mathgl's "named" colours
 	const char *mglColourString="wkrgbcymhRGBCYMHWlenuqpLENUQP";
 	const unsigned int numColours= strlen(mglColourString);
-	
+
+	ASSERT(numColours);	
 	mglColor c;
 	char val;
 

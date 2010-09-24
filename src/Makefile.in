@@ -54,7 +54,8 @@ am__3Depict_SOURCES_DIST = quat.c pngread.c glPane.cpp basics.cpp \
 	viscontrol.cpp mathfuncs.cpp wxcomponents.cpp colourmap.cpp \
 	select.cpp common.cpp XMLHelper.cpp ResDialog.cpp \
 	ExportPos.cpp ExportRngDialog.cpp StashDialog.cpp textures.cpp \
-	configFile.cpp K3DTree.cpp winconsole.cpp quick3d.rc
+	configFile.cpp K3DTree.cpp effect.cpp IsoSurface.cpp \
+	winconsole.cpp 3Depict.rc
 am__objects_1 = 3Depict-quat.$(OBJEXT) 3Depict-pngread.$(OBJEXT) \
 	3Depict-glPane.$(OBJEXT) 3Depict-basics.$(OBJEXT) \
 	3Depict-cameras.$(OBJEXT) 3Depict-drawables.$(OBJEXT) \
@@ -68,11 +69,12 @@ am__objects_1 = 3Depict-quat.$(OBJEXT) 3Depict-pngread.$(OBJEXT) \
 	3Depict-ResDialog.$(OBJEXT) 3Depict-ExportPos.$(OBJEXT) \
 	3Depict-ExportRngDialog.$(OBJEXT) \
 	3Depict-StashDialog.$(OBJEXT) 3Depict-textures.$(OBJEXT) \
-	3Depict-configFile.$(OBJEXT) 3Depict-K3DTree.$(OBJEXT)
+	3Depict-configFile.$(OBJEXT) 3Depict-K3DTree.$(OBJEXT) \
+	3Depict-effect.$(OBJEXT) 3Depict-IsoSurface.$(OBJEXT)
 @HAVE_WINDRES_FALSE@am_3Depict_OBJECTS = $(am__objects_1)
 @HAVE_WINDRES_TRUE@am_3Depict_OBJECTS = $(am__objects_1) \
 @HAVE_WINDRES_TRUE@	3Depict-winconsole.$(OBJEXT) \
-@HAVE_WINDRES_TRUE@	quick3d.$(OBJEXT)
+@HAVE_WINDRES_TRUE@	3Depict.$(OBJEXT)
 3Depict_OBJECTS = $(am_3Depict_OBJECTS)
 am__DEPENDENCIES_1 =
 3Depict_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
@@ -148,6 +150,7 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+PKG_CONFIG = @PKG_CONFIG@
 PNG_CFLAGS = @PNG_CFLAGS@
 PNG_LIBS = @PNG_LIBS@
 SET_MAKE = @SET_MAKE@
@@ -218,9 +221,10 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+MSYS_PATH = /c/msys/1.0/local/include/
 3Depict_LDFLAGS = $(LDFLAGS) $(FT_LDFLAGS)
 3Depict_CXXFLAGS = $(CXXFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) $(WX_CPPFLAGS) \
-		 	$(MGL_CFLAGS) $(XML_CFLAGS) $(PNG_CFLAGS) -DDEBUG 
+	$(GL_FLAGS) $(MGL_CFLAGS) $(XML_CFLAGS) $(PNG_CFLAGS) -DDEBUG 
 
 3Depict_CFLAGS = $(CXXFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) \
 	       $(XML_CFLAGS)  $(MGL_CFLAGS) $(PNG_CFLAGS) -DDEBUG 
@@ -232,12 +236,12 @@ SOURCE_FILES = quat.c pngread.c glPane.cpp basics.cpp cameras.cpp drawables.cpp 
 		3Depict.cpp scene.cpp mathglPane.cpp plot.cpp APTClasses.cpp filter.cpp \
 		viscontrol.cpp mathfuncs.cpp wxcomponents.cpp colourmap.cpp select.cpp common.cpp \
 		XMLHelper.cpp ResDialog.cpp ExportPos.cpp ExportRngDialog.cpp StashDialog.cpp textures.cpp \
-	        configFile.cpp K3DTree.cpp	
+		configFile.cpp K3DTree.cpp effect.cpp IsoSurface.cpp 
 
 @HAVE_WINDRES_FALSE@3Depict_SOURCES = $(SOURCE_FILES)
 
 #Do we have or need windows-XP "resource" files for look and feel?
-@HAVE_WINDRES_TRUE@3Depict_SOURCES = $(SOURCE_FILES)  winconsole.cpp quick3d.rc
+@HAVE_WINDRES_TRUE@3Depict_SOURCES = $(SOURCE_FILES)  winconsole.cpp 3Depict.rc
 all: all-am
 
 .SUFFIXES:
@@ -323,6 +327,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-APTClasses.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ExportPos.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ExportRngDialog.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-IsoSurface.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-K3DTree.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ResDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-StashDialog.Po@am__quote@
@@ -333,6 +338,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-configFile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-drawables.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-effect.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-filter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-glPane.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-lights.Po@am__quote@
@@ -754,6 +760,34 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-K3DTree.obj `if test -f 'K3DTree.cpp'; then $(CYGPATH_W) 'K3DTree.cpp'; else $(CYGPATH_W) '$(srcdir)/K3DTree.cpp'; fi`
 
+3Depict-effect.o: effect.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-effect.o -MD -MP -MF $(DEPDIR)/3Depict-effect.Tpo -c -o 3Depict-effect.o `test -f 'effect.cpp' || echo '$(srcdir)/'`effect.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-effect.Tpo $(DEPDIR)/3Depict-effect.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='effect.cpp' object='3Depict-effect.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-effect.o `test -f 'effect.cpp' || echo '$(srcdir)/'`effect.cpp
+
+3Depict-effect.obj: effect.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-effect.obj -MD -MP -MF $(DEPDIR)/3Depict-effect.Tpo -c -o 3Depict-effect.obj `if test -f 'effect.cpp'; then $(CYGPATH_W) 'effect.cpp'; else $(CYGPATH_W) '$(srcdir)/effect.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-effect.Tpo $(DEPDIR)/3Depict-effect.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='effect.cpp' object='3Depict-effect.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-effect.obj `if test -f 'effect.cpp'; then $(CYGPATH_W) 'effect.cpp'; else $(CYGPATH_W) '$(srcdir)/effect.cpp'; fi`
+
+3Depict-IsoSurface.o: IsoSurface.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-IsoSurface.o -MD -MP -MF $(DEPDIR)/3Depict-IsoSurface.Tpo -c -o 3Depict-IsoSurface.o `test -f 'IsoSurface.cpp' || echo '$(srcdir)/'`IsoSurface.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-IsoSurface.Tpo $(DEPDIR)/3Depict-IsoSurface.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='IsoSurface.cpp' object='3Depict-IsoSurface.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-IsoSurface.o `test -f 'IsoSurface.cpp' || echo '$(srcdir)/'`IsoSurface.cpp
+
+3Depict-IsoSurface.obj: IsoSurface.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-IsoSurface.obj -MD -MP -MF $(DEPDIR)/3Depict-IsoSurface.Tpo -c -o 3Depict-IsoSurface.obj `if test -f 'IsoSurface.cpp'; then $(CYGPATH_W) 'IsoSurface.cpp'; else $(CYGPATH_W) '$(srcdir)/IsoSurface.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-IsoSurface.Tpo $(DEPDIR)/3Depict-IsoSurface.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='IsoSurface.cpp' object='3Depict-IsoSurface.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-IsoSurface.obj `if test -f 'IsoSurface.cpp'; then $(CYGPATH_W) 'IsoSurface.cpp'; else $(CYGPATH_W) '$(srcdir)/IsoSurface.cpp'; fi`
+
 3Depict-winconsole.o: winconsole.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-winconsole.o -MD -MP -MF $(DEPDIR)/3Depict-winconsole.Tpo -c -o 3Depict-winconsole.o `test -f 'winconsole.cpp' || echo '$(srcdir)/'`winconsole.cpp
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-winconsole.Tpo $(DEPDIR)/3Depict-winconsole.Po
@@ -966,10 +1000,11 @@ uninstall-am: uninstall-binPROGRAMS
 	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
 	uninstall-am uninstall-binPROGRAMS
 
+
 .rc.o:
-	windres $^ -o $@
+	windres -I$(MSYS_PATH) $^ -o $@
 %.o : %.rc
-	windres $^ -o $@
+	windres -I$(MSYS_PATH) $^ -o $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

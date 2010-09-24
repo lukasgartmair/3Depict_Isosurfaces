@@ -72,6 +72,13 @@ void dh_assert(const char * const filename, const unsigned int lineNumber)
     std::cerr << "Filename: " << filename << std::endl;
     std::cerr << "Line number: " << lineNumber << std::endl;
 
+//	std::cerr << "Do you wish to continue?(y/n)";
+//	char y = 'a';
+//	while (y != 'n' && y != 'y')
+//		std::cin >> y;
+//
+//	if (y != 'y')
+//		exit(1);
 }
 
 void ucharToHexStr(unsigned char c, std::string &s)
@@ -121,6 +128,22 @@ void hexStrToUChar(const std::string &s, unsigned char &c)
 	c = 16*high + low;
 }
 
+
+std::string digitString(unsigned int thisDigit, unsigned int maxDigit)
+{
+	std::string s,thisStr;
+	stream_cast(thisStr,thisDigit);
+
+	stream_cast(s,maxDigit);
+	for(unsigned int ui=0;ui<s.size();ui++)
+		s[ui]='0';
+
+
+	s=s.substr(0,s.size()-thisStr.size());	
+
+	return  s+thisStr;
+}
+
 unsigned int genUniqueID(const vector<unsigned int> &vec)
 {
 	//Look for each element number as a unique value in turn
@@ -164,7 +187,7 @@ std::string choiceString(std::vector<std::pair<unsigned int, std::string> > comb
 //!Returns Choice ID from string (see choiceString(...) for string format)
 std::string getActiveChoice(std::string choiceString)
 {
-	unsigned int colonPos;
+	size_t colonPos;
 	colonPos = choiceString.find(":");
 	ASSERT(colonPos!=string::npos);
 
@@ -219,14 +242,28 @@ std::string wxChoiceParamString(std::string choiceString)
 	return retStr;
 }
 
-void parseColString(const std::string &str,
+bool parseColString(const std::string &str,
 	unsigned char &r, unsigned char &g, unsigned char &b, unsigned char &a)
 {
 	//Input string is in 2 char hex form, 3 or 4 colour, with # leading. RGB order
 	//lowercase string.
-	ASSERT(str.size() == 9 || str.size() == 7);
+	if(str.size() != 9 && str.size() != 7)
+		return false;
 
-	ASSERT(str[0] == '#');
+	if(str[0] != '#')
+		return false;
+
+	string rS,gS,bS,aS;
+	rS=str.substr(1,2);
+	gS=str.substr(3,2);
+	bS=str.substr(5,2);
+
+	if(!isxdigit(rS[0]) || !isxdigit(rS[1]))
+		return false;
+	if(!isxdigit(gS[0]) || !isxdigit(gS[1]))
+		return false;
+	if(!isxdigit(bS[0]) || !isxdigit(bS[1]))
+		return false;
 
 	hexStrToUChar(str.substr(1,2),r);	
 	hexStrToUChar(str.substr(3,2),g);	
@@ -236,8 +273,12 @@ void parseColString(const std::string &str,
 		a = 255;
 	else
 	{
+		aS=str.substr(7,2);
+		if(!isxdigit(aS[0]) || !isxdigit(aS[1]))
+			return false;
 		hexStrToUChar(str.substr(7,2),a);	
 	}
+	return true;
 }
 
 void genColString(unsigned char r, unsigned char g, 
@@ -529,11 +570,22 @@ Point3D Point3D::operator*=(const float scale)
 Point3D Point3D::operator*(float scale) const
 {
 	Point3D tmpPt;
-
+	
 	tmpPt.value[0] = value[0]*scale;
 	tmpPt.value[1] = value[1]*scale;
 	tmpPt.value[2] = value[2]*scale;
+	
+	return tmpPt;
+}
 
+Point3D Point3D::operator*(const Point3D &pt) const
+{
+	Point3D tmpPt;
+	
+	tmpPt.value[0] = value[0]*pt[0];
+	tmpPt.value[1] = value[1]*pt[1];
+	tmpPt.value[2] = value[2]*pt[2];
+	
 	return tmpPt;
 }
 
@@ -721,14 +773,12 @@ void BoundCube::setBounds(const std::vector<Point3D> &points)
 {
 	
 	setInverseLimits();	
-#pragma omp parallel for
 	for(unsigned int ui=0; ui<points.size(); ui++)
 	{
 		for(unsigned int uj=0; uj<3; uj++)
 		{
 			if(points[ui].getValue(uj) < bounds[uj][0])
 			{
-				#pragma omp critical
 				{
 				bounds[uj][0] = points[ui].getValue(uj);
 				valid[uj][0]=true;
@@ -737,7 +787,6 @@ void BoundCube::setBounds(const std::vector<Point3D> &points)
 			
 			if(points[ui].getValue(uj) > bounds[uj][1])
 			{
-				#pragma omp critical
 				{
 				bounds[uj][1] = points[ui].getValue(uj);
 				valid[uj][1]=true;
@@ -746,15 +795,8 @@ void BoundCube::setBounds(const std::vector<Point3D> &points)
 		}
 	}
 
-	valid[0][0] =true;
-	valid[1][0] =true;
-	valid[2][0] =true;
-	
-	valid[0][1] =true;
-	valid[1][1] =true;
-	valid[2][1] =true;
-
 }
+
 
 void BoundCube::setInverseLimits()
 {
@@ -765,6 +807,14 @@ void BoundCube::setInverseLimits()
 	bounds[0][1] = -std::numeric_limits<float>::max();
 	bounds[1][1] = -std::numeric_limits<float>::max();
 	bounds[2][1] = -std::numeric_limits<float>::max();
+
+	valid[0][0] =false;
+	valid[1][0] =false;
+	valid[2][0] =false;
+	
+	valid[0][1] =false;
+	valid[1][1] =false;
+	valid[2][1] =false;
 }
 bool BoundCube::isValid() const
 {
@@ -785,8 +835,8 @@ void BoundCube::expand(const BoundCube &b)
 		return;
 
 	//If self not valid, ensure that it will be after this run
-	if(!isValid())
-		setInverseLimits();
+	//if(!isValid())
+	//	setInverseLimits();
 
 	for(unsigned int ui=0; ui<3; ui++)
 	{
@@ -807,7 +857,7 @@ void BoundCube::expand(const BoundCube &b)
 void BoundCube::expand(const Point3D &p) 
 {
 	//If self not valid, ensure that it will be after this run
-	ASSERT(isValid())
+	//ASSERT(isValid())
 	for(unsigned int ui=0; ui<3; ui++)
 	{
 		//Check lower bound is lower to new pt
@@ -1135,7 +1185,7 @@ int getTotalRAM()
 	// Get RAM snapshot
 	::GlobalMemoryStatus(&MemStat);
 	ret= MemStat.dwTotalPhys / (1024*1024);
-#elif __APPLE__
+#elif __APPLE__ || __FreeBSD__
 
 	uint64_t mem;
 	size_t len = sizeof(mem);
@@ -1165,7 +1215,7 @@ int getAvailRAM()
 	::GlobalMemoryStatus(&MemStat);
 	ret= MemStat.dwAvailPhys / (1024*1024);
 
-#elif __APPLE__
+#elif __APPLE__ || __FreeBSD__
 	uint64_t mem;
 	size_t len = sizeof(mem);
 

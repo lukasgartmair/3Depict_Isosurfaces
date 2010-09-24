@@ -74,7 +74,7 @@ class VisController
 		tree<Filter *> filters;
 	
 		//!Undo filter tree stack 
-		std::deque<tree<Filter *> > undoFilterStack;
+		std::deque<tree<Filter *> > undoFilterStack,redoFilterStack;
 
 		//!Named, stored trees that can be put aside for secondary use
 		std::vector<std::pair<std::string,tree<Filter *> > > stashedFilters;
@@ -105,7 +105,7 @@ class VisController
 
 		//!Internal function for pointer deletion from stack during refreshing filter tree
 		void popPointerStack(std::list<const FilterStreamData *> &pointerTrackList,
-				std::stack<vector<const FilterStreamData * > > &inDataStack, unsigned int depth);
+				std::stack<vector<const FilterStreamData * > > &inDataStack, unsigned int depth) const;
 
 		void clear();
 	
@@ -125,6 +125,12 @@ class VisController
 
 		//!Push the current filter tree onto the undo stack
 		void pushUndoStack(); 
+
+		//!Run the initialisation stage of the filter processing
+		void initFilterTree() const;
+
+		//!Erase the redo stack
+		void clearRedoStack();
 	public:
 		VisController();
 		~VisController();
@@ -153,7 +159,7 @@ class VisController
 		//!Update a wxtGrid with the properties for a given filter
 		void updateFilterPropertyGrid(wxPropertyGrid *g,unsigned long long filterId);
 		//!Add a new filter to the tree
-		bool addFilter(Filter *f, unsigned long long parentId);
+		void addFilter(Filter *f, unsigned long long parentId);
 
 		//!Move a branch of the tree to a new position
 		bool reparentFilter(unsigned long long filterID, unsigned long long newParentID);
@@ -295,7 +301,12 @@ class VisController
 		//!restore top filter tree from undo stack
 		void popUndoStack();
 
-		//!Get the size of the udno stack
+		//!restore top filter tree from redo stack
+		void popRedoStack();
+
+		//!Get the size of the undo stack
 		unsigned int getUndoSize() const { return undoFilterStack.size();};
+		//!Get the size of the redo stack
+		unsigned int getRedoSize() const { return redoFilterStack.size();};
 };
 #endif

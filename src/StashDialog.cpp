@@ -22,12 +22,6 @@
 #include <string>
 #include <stack>
 
-//DEBUG ONLY
-//===
-#include <iostream>
-#include <cstdlib>
-//===
-
 using std::pair;
 using std::string;
 using std::stack;
@@ -156,7 +150,6 @@ void StashDialog::updateList()
 	listStashes->InsertColumn(1,_("Filter Count"),1);
 	for (unsigned int ui=0; ui<stashes.size(); ui++)
 	{
-		std::cerr << "Adding stash " << stashes[ui].first << std::endl;
 		//First item is the stash name
 		itemIdx = listStashes->InsertItem(ui,wxStr(stashes[ui].first));
 

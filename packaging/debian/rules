@@ -31,7 +31,8 @@ endif
 ifneq "$(wildcard /usr/share/misc/config.guess)" ""
 	cp -f /usr/share/misc/config.guess config.guess
 endif
-	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info CFLAGS="$(CFLAGS)" LDFLAGS="-Wl,-z,defs"
+	#Note the PNG_CFLAGS are required to shut pkg-config macro up
+	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info CFLAGS="$(CFLAGS)" LDFLAGS="-Wl,-z,defs" --with-libpng-link="-lpng" --with-libpng-flags="-I/lib"
 
 
 build: build-stamp
@@ -47,6 +48,8 @@ clean: unpatch
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp 
+	-test -r /usr/share/misc/config.sub && cp -f /usr/share/misc/config.sub config.sub
+	-test -r /usr/share/misc/config.guess && cp -f /usr/share/misc/config.guess config.guess
 
 	# Add here commands to clean up after the build process.
 	[ ! -f Makefile ] || $(MAKE) distclean
@@ -63,6 +66,24 @@ install: build
 	# Add here commands to install the package into debian/3depict.
 	$(MAKE) DESTDIR=$(CURDIR)/debian/3depict install
 
+	#Install the textures
+	cp -rp src/textures $(CURDIR)/debian/3depict/usr/share/3depict/
+
+	#rename 3Depict (real program name) to debian-friendly 3depict
+	mv $(CURDIR)/debian/3depict/usr/bin/3Depict $(CURDIR)/debian/3depict/usr/bin/3depict
+
+	mkdir -p $(CURDIR)/debian/3depict/usr/share/doc/3depict/
+	echo "Copyright 2010 D Haley <mycae@yahoo.com>" > $(CURDIR)/debian/3depict/usr/share/doc/3depict/copyright
+	echo "See /usr/share/common-licenses/GPL-1 for copyright info" >> $(CURDIR)/debian/3depict/usr/share/doc/3depict/copyright
+
+	#Install .desktop file (for XFCE)
+	install -Dp -m 644 $(CURDIR)/packaging/3Depict.desktop $(CURDIR)/debian/3depict/usr/share/applications/3depict.desktop
+	#install icon into pixmaps
+	install -Dp -m 644 $(CURDIR)/src/3Depict.xpm $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.xpm
+
+	#delete some dirs that are generated.
+	rmdir $(CURDIR)/debian/3depict/usr/sbin
+
 
 # Build architecture-independent files here.
 binary-indep: install
@@ -72,19 +93,16 @@ binary-indep: install
 binary-arch: install
 	dh_testdir
 	dh_testroot
-	#Dont install changelog until I actually have changes to log
-	#dh_installchangelogs ChangeLog 
+	dh_installchangelogs 
 	dh_install
 	dh_installmenu
-	#TODO: Why is this bitching "can't find fine"? I need an exmaple,
-	#but have no interblags.
-	##dh_installman
+	dh_installman
 	dh_link
 	dh_strip
 	dh_compress
 	dh_fixperms
 	dh_installdeb
-	#dh_shlibdeps
+	dh_shlibdeps
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb

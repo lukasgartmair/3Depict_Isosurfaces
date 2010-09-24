@@ -20,7 +20,6 @@
 
 #include "basics.h"
 
-#define GL_GLEXT_PROTOTYPES 1
 //OpenGL includes
 //MacOS is "special" and puts it elsewhere
 #ifdef __APPLE__ 
@@ -28,6 +27,7 @@
 #else
 	#include <GL/glu.h>
 #endif
+
 
 //!Enumerate light vlaues for setColour
 enum

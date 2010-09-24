@@ -102,6 +102,8 @@ public:
     virtual void OnListSelectedItemKeyDown(wxListEvent &event); // wxGlade: <event_handler>
     void setViscontrol(VisController *vis) { visControl=vis;};
 
+    void cleanup(VisController *v);
+    void initialiseData(VisController *v);
     void enableSelectionControls(bool enabled);
     void getExportVec(std::vector<const FilterStreamData *> &v) const; 
 

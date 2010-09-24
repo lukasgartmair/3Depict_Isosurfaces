@@ -83,7 +83,7 @@ void PrintSummary(std::vector<IonHit> &posIons, RangeFile &rangeFile);
 
 
 //!Returns the limits of a dataset of Ions
-void dataLimits(vector<IonHit> &posIons, Point3D &low, Point3D &upper);
+void dataLimits(const vector<IonHit> &posIons, Point3D &low, Point3D &upper);
 
 
 
@@ -325,7 +325,9 @@ class RangeFile
 		 *  any in the rangefile (case sensitive) 
 		 */	
 		bool rangeByID(std::vector<IonHit> &ionHits,
-				unsigned int range);
+					unsigned int range);
+		void rangeByRangeID(std::vector<IonHit> &ionHits,
+					unsigned int rangeID);
 		//!Get the short name or long name of a speicifed ionID
 		/*! Pass shortname=false to retireve the long name 
 		 * ionID passed in must exist. No checking outside debug mode
@@ -384,13 +386,12 @@ const unsigned int NUM_ELEMENTS=119;
  * */
 //!Load a pos file into a T of IonHits
 template<class T>
-unsigned int GenericLoadFloatFile(int numcols, int index[], T &posIons,const char *posFile, unsigned int &progress, bool (*callback)())
+unsigned int GenericLoadFloatFile(int inputnumcols, int outputnumcols, int index[], T &posIons,const char *posFile, unsigned int &progress, bool (*callback)())
 {
 	//buffersize must be a power of two and at least sizeof(IONHIT)
 	const unsigned int NUMROWS=512;
-	const unsigned int numPosCols = 4;
-	const unsigned int BUFFERSIZE=numcols * sizeof(float) * NUMROWS;
-	const unsigned int BUFFERSIZE2=numPosCols * sizeof(float) * NUMROWS;
+	const unsigned int BUFFERSIZE=inputnumcols * sizeof(float) * NUMROWS;
+	const unsigned int BUFFERSIZE2=outputnumcols * sizeof(float) * NUMROWS;
 	char *buffer=new char[BUFFERSIZE];
 	char *buffer2=new char[BUFFERSIZE2];
 	
@@ -427,7 +428,7 @@ unsigned int GenericLoadFloatFile(int numcols, int index[], T &posIons,const cha
 	size_t curBufferSize=BUFFERSIZE;
 	size_t curBufferSize2=BUFFERSIZE2;
 	
-	if(fileSize % (numcols * sizeof(float)))
+	if(fileSize % (inputnumcols * sizeof(float)))
 	{
 		delete[] buffer;
 		delete[] buffer2;
@@ -454,8 +455,8 @@ unsigned int GenericLoadFloatFile(int numcols, int index[], T &posIons,const cha
 	//Technically this is dependant upon the buffer size.
 	unsigned int curProg = 10000;	
 	size_t ionP=0;
-	int maxCols = numcols * sizeof(float);
-	int maxPosCols = numPosCols * sizeof(float);
+	int maxCols = inputnumcols * sizeof(float);
+	int maxPosCols = outputnumcols * sizeof(float);
 	do
 	{
 		while((size_t)CFile.tellg() <= fileSize-curBufferSize)
@@ -470,7 +471,7 @@ unsigned int GenericLoadFloatFile(int numcols, int index[], T &posIons,const cha
 			
 			for (int j = 0; j < NUMROWS; j++) // iterate through rows
 			{
-				for (int i = 0; i < numPosCols; i++) // iterate through floats
+				for (int i = 0; i < outputnumcols; i++) // iterate through floats
 				{
 					memcpy(&(buffer2[j * maxPosCols + i * sizeof(float)]), 
 						&(buffer[j * maxCols + index[i] * sizeof(float)]), sizeof(float));
@@ -522,7 +523,6 @@ unsigned int GenericLoadFloatFile(int numcols, int index[], T &posIons,const cha
 	}while(curBufferSize2 >= sizeof(IONHIT));
 	
 	ASSERT((unsigned int)CFile.tellg() == fileSize);
-	ASSERT(pointCount*sizeof(IONHIT) == fileSize);
 	delete[] buffer;
 	delete[] buffer2;
 	
@@ -531,14 +531,13 @@ unsigned int GenericLoadFloatFile(int numcols, int index[], T &posIons,const cha
 
 
 template<class T>
-unsigned int LimitLoadPosFile(int numcols, int index[], T &posIons,const char *posFile, size_t limitCount,
+unsigned int LimitLoadPosFile(int inputnumcols, int outputnumcols, int index[], T &posIons,const char *posFile, size_t limitCount,
 	       	unsigned int &progress, bool (*callback)())
 {
 	//buffersize must be a power of two and at least sizeof(IONHIT)
 	const unsigned int NUMROWS=1;
-	const unsigned int numPosCols = 4;
-	const unsigned int BUFFERSIZE=numcols * sizeof(float) * NUMROWS;
-	const unsigned int BUFFERSIZE2=numPosCols * sizeof(float) * NUMROWS;
+	const unsigned int BUFFERSIZE=inputnumcols * sizeof(float) * NUMROWS;
+	const unsigned int BUFFERSIZE2=outputnumcols * sizeof(float) * NUMROWS;
 	char *buffer=new char[BUFFERSIZE];
 	char *buffer2=new char[BUFFERSIZE2];
 	
@@ -570,8 +569,7 @@ unsigned int LimitLoadPosFile(int numcols, int index[], T &posIons,const char *p
 	//calculate the number of points stored in the POS file
 	size_t pointCount=0;
 	size_t maxIons;
-	int maxCols = numcols * sizeof(float);
-	int maxPosCols = numPosCols * sizeof(float);
+	size_t maxCols = inputnumcols * sizeof(float);
 	//regular case
 	
 	if(fileSize % maxCols)
@@ -592,7 +590,7 @@ unsigned int LimitLoadPosFile(int numcols, int index[], T &posIons,const char *p
 		delete[] buffer;
 		delete[] buffer2;
 		//Try opening it using the normal functions
-		return GenericLoadFloatFile(numcols, index, posIons,posFile,progress, callback);
+		return GenericLoadFloatFile(inputnumcols, outputnumcols, index, posIons,posFile,progress, callback);
 	}
 
 	//Use a sampling method to load the pos file
@@ -635,7 +633,7 @@ unsigned int LimitLoadPosFile(int numcols, int index[], T &posIons,const char *p
 
 		CFile.read(buffer,BUFFERSIZE);
 
-		for (int i = 0; i < numPosCols; i++) // iterate through floats
+		for (int i = 0; i < outputnumcols; i++) // iterate through floats
 			memcpy(&(buffer2[i * sizeof(float)]), &(buffer[index[i] * sizeof(float)]), sizeof(float));
 		
 		memcpy((char *)(&hit), buffer2, sizeof(IONHIT));
@@ -733,7 +731,7 @@ unsigned int LimitRestrictLoadPosFile(T &posIons,const char *posFile, size_t lim
 		int index[4] = {
 				0, 1, 2, 3
 				};
-		return GenericLoadFloatFile(4, index, posIons,posFile,progress, callback);
+		return GenericLoadFloatFile(4, 4, index, posIons,posFile,progress, callback);
 	}
 
 	//Use a sampling method to load the pos file
@@ -994,10 +992,12 @@ unsigned int RestrictLoadPosFile(T &posIons,const char *posFile, const BoundCube
 	}while(curBufferSize >= sizeof(IONHIT));
 
 	ASSERT((unsigned int)CFile.tellg() == fileSize);
-	ASSERT(pointCount*sizeof(IONHIT) == fileSize);
 	delete[] buffer;
 
 	return 0;
 }
 
+
+//!Set the bounds from an array of ion hits
+BoundCube getIonDataLimits(const vector<IonHit> &p);//
 #endif

@@ -23,6 +23,7 @@
 #include "colourmap.h"
 #include <limits>
 
+
 void jetColorMap(unsigned char *rgb,float value,float min,float max)
 {
 	float max4=(max-min)/4;
@@ -193,6 +194,54 @@ void grayColorMap(unsigned char *rgb,float value,float min,float max)
   max-=min;
   value-=min;
   rgb[0]=rgb[1]=rgb[2]=(unsigned char)(255*value/max);
+}
+
+void colourMapWrap(unsigned int mapID,unsigned char *rgb, float v, float min, float max)
+{
+	//Select the desired colour map
+	switch(mapID)
+	{
+		case  0:
+			jetColorMap(rgb, v, min, max);
+			break;
+		case  1:
+			hotColorMap(rgb, v, min, max);
+			break;
+		case  2:
+			coldColorMap(rgb, v, min, max);
+			break;
+		case  3:
+			 grayColorMap(rgb, v, min, max);
+			break;
+		case  4:
+			cyclicColorMap(rgb, v, min, max);
+			break;
+		case  5:
+			colorMap(rgb, v, min, max);
+			break;
+		case  6:
+			blueColorMap(rgb, v, min, max);
+			break;
+		case  7:
+			 randColorMap(rgb, v, min, max);
+			break;
+	}
+
+}
+
+std::string getColourMapName(unsigned int mapID)
+{
+
+	const char *mapNames[] = { "Jet",
+				"Hot",
+				"Cold",
+				"Grey",
+				"Cyclic",
+				"General",
+				"Blue",
+				"Pseudo-Random"};
+
+	return mapNames[mapID];
 }
 
 

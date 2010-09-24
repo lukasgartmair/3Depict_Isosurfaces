@@ -33,6 +33,7 @@ class Scene;
 #include "cameras.h" 
 
 #include "textures.h"
+#include "effect.h"
 
 //OpenGL debugging macro
 #if DEBUG
@@ -64,6 +65,9 @@ class Scene
 
 		//!Bindings for interactive object properties
 		std::vector<SelectionDevice *> selectionDevices;
+
+		//!Various OpenGL effects
+		std::vector<const Effect *> effects;
 
 		//!Lights for use when drawing
 		std::vector<Light const *> lights;
@@ -126,6 +130,9 @@ class Scene
 		bool useAlpha;
 		//!Should lighting calculations be performed?
 		bool useLighting;
+
+		//!Background colour
+		float rBack,gBack,bBack;
 
 		void applyGLExtentions();
 
@@ -273,7 +280,7 @@ class Scene
 		void setHoverMode(bool hMode) { hoverMode=hMode;};
 
 		//!Return the last object over whichthe cursor was hovered	
-		unsigned int setLastHover(unsigned int hover) { lastHovered=hover;};
+		void setLastHover(unsigned int hover) { lastHovered=hover;};
 		//!Get the last selected object from call to glSelect()
 		unsigned int getLastSelected() const { return lastSelected;};
 	
@@ -305,6 +312,17 @@ class Scene
 
 		//!Set window size
 		void setWinSize(unsigned int x, unsigned int y) {winX=x;winY=y;}
+
+		//!Get the scene boundinng box
+		BoundCube getBound() const { return boundCube;}
+
+		//!Returns true if this camera name is already in use
+		bool camNameExists(const std::string &s) const;
+
+		//!Set the background colour
+		void setBackgroundColour(float newR,float newG,float newB) { rBack=newR;gBack=newG;bBack=newB;};
+
+		void getBackgroundColour(float &newR,float &newG,float &newB) { newR=rBack;newG=gBack;newB=bBack;};
 };
 
 #endif

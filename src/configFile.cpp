@@ -13,6 +13,7 @@ const unsigned int MAX_RECENT=5;
 #include <cstdlib>
 #include <fstream>
 #include <stack>
+#include <deque>
 
 using std::endl;
 using std::string;
@@ -38,7 +39,7 @@ void ConfigFile::getRecentFiles(std::vector<std::string> &files) const
 
 void ConfigFile::removeRecentFile(const std::string &str)
 {
-	deque<string>::iterator it;
+	std::deque<string>::iterator it;
 	it=std::find(recentFiles.begin(),recentFiles.end(),str);
 
 	if(it!=recentFiles.end())
@@ -131,8 +132,7 @@ bool ConfigFile::read()
 				xmlString=xmlGetProp(nodePtr,(const xmlChar *)"name");
 				if(!xmlString)
 					throw 1;
-				if(stream_cast(thisName,xmlString))
-					throw 1;
+				thisName=(char *)xmlString;
 
 				recentFiles.push_back(thisName);
 			}

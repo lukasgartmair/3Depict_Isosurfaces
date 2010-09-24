@@ -45,7 +45,6 @@ ExportPosDialog::ExportPosDialog(wxWindow* parent, int id, const wxString& title
 
 {
 	haveRefreshed=false;
-	visControl=false;
 	exportVisible=true;
 	// begin wxGlade: ExportPosDialog::ExportPosDialog
 	lblExport = new wxStaticText(this, wxID_ANY, wxT("Export:"));
@@ -79,12 +78,19 @@ ExportPosDialog::ExportPosDialog(wxWindow* parent, int id, const wxString& title
 	listAvailable->InsertColumn(1,_("Count"));
 }
 
-
-ExportPosDialog::~ExportPosDialog()
+void ExportPosDialog::cleanup(VisController *v)
 {
 	//clean up our filter data, as needed
 	if(haveRefreshed)
-		visControl->safeDeleteFilterList(outputData);	
+		visControl->safeDeleteFilterList(outputData);
+
+	haveRefreshed=false;
+}
+
+ExportPosDialog::~ExportPosDialog()
+{
+	//Should have called cleanup before exiting.
+	ASSERT(!haveRefreshed);
 }
 
 BEGIN_EVENT_TABLE(ExportPosDialog, wxDialog)
@@ -104,9 +110,35 @@ BEGIN_EVENT_TABLE(ExportPosDialog, wxDialog)
     // end wxGlade
 END_EVENT_TABLE();
 
+void ExportPosDialog::initialiseData(VisController *v)
+{
+	ASSERT(!haveRefreshed)
+
+	//FIXME: Remove the need for this pointer. If we pull the tree data out from the viscontrol
+	//and tie it to the output data pointers, this shoudl be possible	
+	visControl=v;	
+	//FIXME: we don't show progress information....
+	unsigned int dummy,dummyTwo;
+	const Filter *dummyFilter=0;
+	visControl->refreshFilterTree(dummy,dummyTwo,
+				dummyFilter,outputData);
+
+	//FIXME: This is a hack -- this will cause
+	//viscontrol to rewrite its internal filter->tree mapping
+	//which is not cool. but will work as the tree is read only
+	//in this dialog.
+	visControl->updateWxTreeCtrl(treeData);	
+	
+	//Delete any non-ion data (using mask to prevent STREAM_TYPE_IONS from deletion)
+	//from the generated data from the filter list
+	visControl->safeDeleteFilterList(outputData,STREAM_TYPE_IONS);	
+	
+	haveRefreshed=true;
+}
 
 void ExportPosDialog::OnVisibleRadio(wxCommandEvent &event)
 {
+	ASSERT(haveRefreshed);
 	exportVisible=true;
 	enableSelectionControls(false);
 	listAvailable->DeleteAllItems();
@@ -117,20 +149,6 @@ void ExportPosDialog::OnSelectedRadio(wxCommandEvent &event)
 {
 	exportVisible=false;
 	enableSelectionControls(true);
-	if(!haveRefreshed)
-	{
-		//FIXME: we don't show progress information....
-		unsigned int dummy,dummyTwo;
-		const Filter *dummyFilter=0;
-		visControl->refreshFilterTree(dummy,dummyTwo,
-					dummyFilter,outputData);
-
-		//Delete any non-ion data (using mask to prevent STREAM_TYPE_IONS from deletion)
-		//from the generated data from the filter list
-		visControl->safeDeleteFilterList(outputData,STREAM_TYPE_IONS);	
-		
-		haveRefreshed=true;
-	}
 }
 
 
@@ -404,20 +422,12 @@ void ExportPosDialog::enableSelectionControls(bool enabled)
 	btnAddAll->Enable(enabled);
 	listSelected->Enable(enabled);
 
-	if(visControl)
+	if(enabled)
 	{
-		if(enabled)
-		{
-			//FIXME: This is a hack -- this will cause
-			//viscontrol to rewrite its internal filter->tree mapping
-			//which is not cool. but will work as the tree is read only
-			//in this dialog.
-			visControl->updateWxTreeCtrl(treeData);	
-			treeData->ExpandAll();
-		}
-		else
-			treeData->DeleteAllItems();
+		treeData->ExpandAll();
 	}
+	else
+		treeData->DeleteAllItems();
 }
 
 void ExportPosDialog::do_layout()

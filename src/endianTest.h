@@ -48,13 +48,21 @@ inline int is_littleendian() { return (*(char*)&ENDIAN_TEST) == 1 ;}
 
 inline void floatSwapBytes(float *inFloat)
 {
-	char floatBytes[4];
-	floatBytes[0]=*((char *)inFloat+3);
-	floatBytes[1]=*((char *)inFloat+2);
-	floatBytes[2]=*((char *)inFloat+1);
-	floatBytes[3]=*((char *)inFloat);
 
-	*inFloat=*((float *)floatBytes);
+	//Use a union to avoid strict-aliasing error
+	union FloatSwapUnion{
+	   float f;
+	   char c[4];
+	} ;
+	FloatSwapUnion fa,fb;
+	fa.f = *inFloat;
+
+	fb.c[0] = fa.c[3];
+	fb.c[1] = fa.c[2];
+	fb.c[2] = fa.c[1];
+	fb.c[3] = fa.c[0];
+
+	*inFloat=fb.f;
 }
 
 #endif

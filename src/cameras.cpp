@@ -34,7 +34,6 @@
 #include "cameras.h"
 #include "XMLHelper.h"
 
-#define GL_GLEXT_PROTOTYPES 1
 //MacOS is "special" and puts it elsewhere
 #ifdef __APPLE__
 	#include <OpenGL/glu.h>
@@ -547,8 +546,20 @@ void CameraPerspLookAt::apply(float aspect,const BoundCube &b,bool loadIdentity,
 
 void CameraPerspLookAt::translate(float moveLR, float moveUD)
 {
-	moveLR=moveLR*sqrt(target.sqrDist(origin));
-	moveUD=moveUD*sqrt(target.sqrDist(origin));
+	//Try to move such that the target sweeps our field of view
+	//at a constant rate. Standard normaliser is view length at
+	//a 90* camera
+	//Use tan.. to normalise motion rate 
+	float fovMultiplier;
+	//Prevent numerical error near tan( 90*)
+	if(fovAngle < 175.0f)
+		fovMultiplier = tan(fovAngle/2.0*M_PI/180.0);
+	else
+		fovMultiplier = tan(175.0f/2.0*M_PI/180.0);
+	
+
+	moveLR=moveLR*sqrt(target.sqrDist(origin)*fovMultiplier);
+	moveUD=moveUD*sqrt(target.sqrDist(origin)*fovMultiplier);
 
 	origin+=upDirection*moveUD + (upDirection.crossProd(viewDirection))*moveLR;
 	target+=upDirection*moveUD + (upDirection.crossProd(viewDirection))*moveLR;
@@ -556,6 +567,7 @@ void CameraPerspLookAt::translate(float moveLR, float moveUD)
 
 void CameraPerspLookAt::forwardsDolly(float moveRate)
 {
+	Point3D newOrigin;
 
 	//Prevent camera orientation inversion, which occurs when moving past the target
 	if((viewDirection*moveRate).sqrMag() > target.sqrDist(origin))
@@ -565,14 +577,19 @@ void CameraPerspLookAt::forwardsDolly(float moveRate)
 
 		//Yes, this simplifies analytically. However i think the numerics come into play.
 		float moveInv = 1.0/(fabs(moveRate) + sqrt(std::numeric_limits<float>::epsilon()));
-		origin=origin+viewDirection*moveInv/(1.0+moveInv);
+		newOrigin=origin+viewDirection*moveInv/(1.0+moveInv);
+
 	}
 	else
 	{
 		//scale moverate by orbit distance
 		moveRate = 0.05*moveRate*sqrt(target.sqrDist(origin));
-		origin=origin+viewDirection*moveRate;
+		newOrigin=origin+viewDirection*moveRate;
 	}
+
+	//Only accept origin change if it is sufficiently far from the target
+	if(newOrigin.sqrDist(target)>sqrt(std::numeric_limits<float>::epsilon()))
+		origin=newOrigin;
 }
 
 
@@ -701,6 +718,8 @@ void CameraPerspLookAt::ensureVisible(const BoundCube &boundCube, unsigned int f
 			faceSize[0]=boundCube.getSize(1);
 			faceSize[1]=boundCube.getSize(2);
 			break;
+		default:
+			ASSERT(false);
 	}	
 
 
@@ -852,6 +871,11 @@ bool CameraPerspLookAt::setProperty(unsigned int key, const string &value)
 		{
 			Point3D newDir;
 			if(!newDir.parse(value))
+				return false;
+
+			//View direction and up direction may not be the same
+			if(viewDirection.crossProd(newDir).sqrMag() < 
+				sqrt(std::numeric_limits<float>::epsilon()))
 				return false;
 
 			upDirection=newDir;

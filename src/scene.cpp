@@ -31,6 +31,9 @@ Scene::Scene() : tempCam(0), activeCam(0), cameraSet(false), outWinAspect(1.0f),
 	useAlpha=true;
 	useLighting=true;
 
+	//default to black
+	rBack=gBack=bBack=0.0f;
+
 }
 
 Scene::~Scene()
@@ -80,6 +83,8 @@ void Scene::draw()
 		{
 			//Inform text about current camera, so it can billboard if needed
 			DrawGLText::setCurCamera(tempCam);
+			DrawField3D::setCurCamera(tempCam);
+			Effect::setCurCam(tempCam);
 
 			tempCam->apply(outWinAspect,boundCube);
 			lightNormal= tempCam->getViewDirection();
@@ -90,6 +95,8 @@ void Scene::draw()
 			ASSERT(activeCam < cameras.size());
 			//Inform text about current camera, so it can billboard if needed
 			DrawGLText::setCurCamera(cameras[activeCam]);
+			DrawField3D::setCurCamera(cameras[activeCam]);
+			Effect::setCurCam(cameras[activeCam]);
 
 			//If viewport restriction is on, inform camera to
 			//shrink viewport to specified region
@@ -103,6 +110,7 @@ void Scene::draw()
 				cameras[activeCam]->apply(outWinAspect,boundCube);
 
 			lightNormal= cameras[activeCam]->getViewDirection();
+
 		}
 
 
@@ -110,6 +118,12 @@ void Scene::draw()
 		glNormal3f(lightNormal[0],lightNormal[1],lightNormal[2]);	
 	}
 
+
+	//Let the effects objects know about the scene
+	//Effect::setBoundingCube(boundCube);
+
+	for(unsigned int ui=0;ui<effects.size();ui++)
+		effects[ui]->enable();
 
 
 	//TODO: Alpha blending is, as always, causing problems
@@ -308,6 +322,9 @@ void Scene::draw()
 		objects[ui]->draw();
 	}
 
+	//Disable effects
+	for(unsigned int ui=0;ui<effects.size();ui++)
+		effects[ui]->disable();
 
 	if(cameraSet)
 		glPopMatrix();
@@ -477,9 +494,28 @@ void Scene::computeSceneLimits()
 {
 	boundCube.setInverseLimits();
 
-	if(!objects.size() && !refObjects.size())
+	BoundCube b;
+	for(unsigned int ui=0; ui<objects.size(); ui++)
 	{
-		//He's going to spend the rest of its life
+		objects[ui]->getBoundingBox(b);
+	
+		if(b.isValid())	
+			boundCube.expand(b);
+	}
+
+	for(unsigned int ui=0; ui<refObjects.size(); ui++)
+	{
+		refObjects[ui]->getBoundingBox(b);
+		
+		if(b.isValid())	
+			boundCube.expand(b);
+	}
+
+	std::cerr << "Scene limits:" << boundCube << std::endl;
+
+	if(!boundCube.isValid())
+	{
+		//He's going to spend the rest of his life
 		//in a one by one unit box.
 
 		//If there are no objects, then set the bounds
@@ -487,25 +523,6 @@ void Scene::computeSceneLimits()
 		boundCube.setBounds(-0.5,-0.5,-0.5,
 					0.5,0.5,0.5);
 	}
-	else
-	{
-		
-		BoundCube b;
-		for(unsigned int ui=0; ui<objects.size(); ui++)
-		{
-			objects[ui]->getBoundingBox(b);
-			
-			boundCube.expand(b);
-		}
-
-		for(unsigned int ui=0; ui<refObjects.size(); ui++)
-		{
-			refObjects[ui]->getBoundingBox(b);
-			
-			boundCube.expand(b);
-		}
-	}
-
 	//NOw that we have a scene level bounding box,
 	//we need to set the camera to ensure that
 	//this box is visible
@@ -732,6 +749,8 @@ void Scene::applyDevice(float startX, float startY, float curX, float curY,
 		case CAM_FREE:
 			viewWidth=1.0;
 			break;
+		default:
+			ASSERT(false);
 	}
 
 
@@ -836,8 +855,19 @@ bool Scene::isDefaultCam() const
 
 void Scene::applyGLExtentions()
 {
-	const float glPointParams[3] = { 1.0, 0.5, 0.0 };
 #ifdef GL_VERSION_1_4
-	 glPointParameterfv(GL_DISTANCE_ATTENUATION_EXT, glPointParams);
+//	const float glPointParams[3] = { 1.0, 0.5, 0.0 };
+//	 glPointParameterfv(GL_DISTANCE_ATTENUATION_EXT, glPointParams);
 #endif
+}
+
+bool Scene::camNameExists(const std::string &s) const
+{
+	for(unsigned int ui=0;ui<cameras.size() ;ui++)
+	{
+		if(cameras[ui]->getUserString() == s)
+			return true;
+	}
+
+	return false;
 }

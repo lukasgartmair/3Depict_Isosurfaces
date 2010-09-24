@@ -20,7 +20,6 @@
  
 #include "wxPreprec.h"
 
-#define GL_GLEXT_PROTOTYPES 1
 #include <wx/glcanvas.h>
 
 //Local includes
@@ -59,18 +58,12 @@ private:
 	//or object ID if selection OK. Also sets last hover and scene
 	unsigned int hoverTest(wxPoint &p,  bool &shouldRedraw);
 
-	//!OpenGL clear colour, which controls background colour
-	Colour glBackgroundColour;
-
 	//!Are there updates to the camera Properties due to camera motion?
 	bool haveCameraUpdates;
 
 	//!Are we currently applying a device in the scene?
 	bool applyingDevice;
 public:
-	//!Constructor
-	BasicGLPane(wxWindow* parent, wxWindowID id); 
-
 	//!The scene object, holds all info about 3D drawable components
 	Scene currentScene;
 
@@ -93,15 +86,20 @@ public:
        	
 	//!Set the background colour (openGL clear colour)
 	void setGlClearColour(float r,float g,float b);	
-	//!Set the background colour (openGL clear colour)
-	Colour getGlClearColour() const { return glBackgroundColour;};
+	//!Pull in the colour from the scene 
+	void updateClearColour();
 	//!Render the view using the scene
 	void render(wxPaintEvent& evt);
 	//!Construct a 3D viewport, ready for openGL output. returns false if intialisation failed
 	bool prepare3DViewport(int topleft_x, int topleft_y, int bottomrigth_x, int bottomrigth_y);
    	//!Save an image to file, return false on failure
-	bool saveImage(unsigned int width, unsigned int height,const char *filename);
- 
+	bool saveImage(unsigned int width, unsigned int height,const char *filename, bool showProgress=true);
+	//!Save an image sequence to files by orbiting the camera
+	bool saveImageSequence(unsigned int width, unsigned int height, unsigned int nFrames,
+			wxString &path, wxString &prefix, wxString &extention);
+
+	//!Get the background colour
+	void getGlClearColour(float &r,float &g,float &b) { currentScene.getBackgroundColour(r,g,b);}
 	// events
 	void mouseMoved(wxMouseEvent& event);
 	void mouseDown(wxMouseEvent& event);

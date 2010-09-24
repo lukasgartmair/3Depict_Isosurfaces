@@ -16,7 +16,6 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define GL_GLEXT_PROTOTYPES 1
 #include <wx/sizer.h>
 #include <wx/glcanvas.h>
 #include <wx/progdlg.h>
@@ -63,11 +62,23 @@ END_EVENT_TABLE()
 //Radii per pixel	
 const float CAMERA_MOVE_RATE=0.05;
 
-BasicGLPane::BasicGLPane(wxWindow* parent, wxWindowID id) :
-		wxGLCanvas(parent,id,wxDefaultPosition,wxDefaultSize)
+int attribList[] = {WX_GL_RGBA,
+			WX_GL_DEPTH_SIZE,
+			16,
+			WX_GL_DOUBLEBUFFER,
+			1,
+			0,0};
+
+BasicGLPane::BasicGLPane(wxWindow* parent) :
+wxGLCanvas(parent, wxID_ANY,  wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"),attribList)
 {
 	haveCameraUpdates=false;
 	applyingDevice=false;
+	paneInitialised=false;
+	
+	dragging=false;
+	lastMoveShiftDown=false;
+	selectionMode=false;
 }
 
 unsigned int  BasicGLPane::selectionTest(wxPoint &p,bool &shouldRedraw)
@@ -121,8 +132,8 @@ unsigned int  BasicGLPane::hoverTest(wxPoint &p,bool &shouldRedraw)
 	gluPickMatrix(p.x, oldViewport[3]-p.y,5, 5, oldViewport);
 	glMatrixMode(GL_MODELVIEW);
 
-	int lastHover = currentScene.getLastHover();
-	int hoverObject=currentScene.glSelect(false);
+	unsigned int lastHover = currentScene.getLastHover();
+	unsigned int hoverObject=currentScene.glSelect(false);
 
 	//FIXME: Should be able to make this more efficient	
 	shouldRedraw =  lastHover!=(unsigned int)-1;
@@ -145,7 +156,7 @@ unsigned int  BasicGLPane::hoverTest(wxPoint &p,bool &shouldRedraw)
 // some useful events to use
 void BasicGLPane::mouseMoved(wxMouseEvent& event) 
 {
-	ASSERT(!applyingDevice);
+	if (applyingDevice) return;
 	enum
 	{
 		CAM_MOVE, //Movement of some kind
@@ -500,14 +511,11 @@ void BasicGLPane::setGlClearColour(float r, float g, float b)
 	ASSERT(g >= 0.0f && g <= 1.0f);
 	ASSERT(b >= 0.0f && b <= 1.0f);
 
-	glBackgroundColour.r=r;
-	glBackgroundColour.g=g;
-	glBackgroundColour.b=b;
-	
 	//Let openGL know that we have changed the colour.
-	glClearColor( glBackgroundColour.r, glBackgroundColour.g, 
-				glBackgroundColour.b, glBackgroundColour.a);
+	glClearColor( r, g, b, 0.0f);
 
+	currentScene.setBackgroundColour(r,g,b);
+	
 	Refresh();
 }
 
@@ -558,26 +566,6 @@ void BasicGLPane::charEvent(wxKeyEvent& event)
 
 }
  
-int attribList[] = {WX_GL_RGBA,
-			WX_GL_DEPTH_SIZE,
-			16,
-			WX_GL_DOUBLEBUFFER,
-			1,
-			0,0};
-
-BasicGLPane::BasicGLPane(wxWindow* parent) :
-wxGLCanvas(parent, wxID_ANY,  wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"),attribList)
-{
-	paneInitialised=false;
-	dragging=false;
-	lastMoveShiftDown=false;
-	selectionMode=false;
-	//Default to black
-	glBackgroundColour.r=0.0f;
-	glBackgroundColour.g=0.0f;
-	glBackgroundColour.b=0.0f;
-	glBackgroundColour.a=1.0f;
-}
  
 void BasicGLPane::resized(wxSizeEvent& evt)
 {
@@ -592,10 +580,8 @@ void BasicGLPane::resized(wxSizeEvent& evt)
 bool BasicGLPane::prepare3DViewport(int tlx, int tly, int brx, int bry)
 {
 
-
 	if(!paneInitialised)
 			return false;
-
 
 	//Prevent NaN.
 	if(!(bry-tly))
@@ -603,12 +589,13 @@ bool BasicGLPane::prepare3DViewport(int tlx, int tly, int brx, int bry)
 	GLint dims[2]; 
 	glGetIntegerv(GL_MAX_VIEWPORT_DIMS, dims); 
 
-	//NOTE: Someone complained of dims returning 0,0 on snow leopard
-	//I have not tested this
+	//Ensure that the opengGL function didn't tell us porkies
+	//but double check for the non-debug bulds next line
 	ASSERT(dims[0] && dims[1]);
 
-	//check for exceeding max viewport
-	if(dims[0] <(brx-tlx) || dims[1] < bry-tly)
+	//check for exceeding max viewport and we have some space
+	if(dims[0] <(brx-tlx) || dims[1] < bry-tly || 
+			(!dims[0] || !dims[1] ))
 		return false; 
 
 	glViewport( tlx, tly, brx-tlx, bry-tly);
@@ -626,8 +613,9 @@ bool BasicGLPane::prepare3DViewport(int tlx, int tly, int brx, int bry)
 
 	glMatrixMode( GL_MODELVIEW );
 	glLoadIdentity();
-	glClearColor( glBackgroundColour.r, glBackgroundColour.g, 
-				glBackgroundColour.b, glBackgroundColour.a);
+	float r,g,b;
+	currentScene.getBackgroundColour(r,g,b);
+	glClearColor( r, g, b,1.0f );
 
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
@@ -692,23 +680,34 @@ void BasicGLPane::OnEraseBackground(wxEraseEvent &evt)
 	//Do nothing. This is to help elminate flicker apparently
 }
 
+void BasicGLPane::updateClearColour()
+{
+	float rClear,gClear,bClear;
+	currentScene.getBackgroundColour(rClear,gClear,bClear);
+	setGlClearColour(rClear,gClear,bClear);
+	//Let openGL know that we have changed the colour.
+	glClearColor( rClear, gClear, 
+				bClear,1.0f);
+}
 
 bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
-		const char *filename)
+		const char *filename, bool showProgress)
 {
 	GLint dims[2]; 
 	glGetIntegerv(GL_MAX_VIEWPORT_DIMS, dims); 
 
 	//create new image
 	wxImage *image = new wxImage(width,height);
-	//NOTE: Someone complained of dims returning 0,0 on snow leopard
-	//I have not tested this
+	
 	ASSERT(dims[0] && dims[1]);
 
-	//FIXME: We cannot seem to draw outside the current viewport.
+	if(!dims[0] || !dims[1])
+		return false;
+
+	//We cannot seem to draw outside the current viewport.
+	//in a cross platform manner.
 	//fall back to stitching the image together by hand
 	char *pixels;
-	
 	
 
 	pixels= new char[3*width*height];
@@ -740,8 +739,15 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 		float fractionHeight=(float)panelHeight/(float)height;
 
 		unsigned int thisTileNum=0;
-		wxProgressDialog *wxD = new wxProgressDialog(wxT("Image progress"), wxT("Rendering tiles..."), numTilesX*numTilesY);
-		wxD->Show();
+	
+		wxProgressDialog *wxD=0;	
+		if(showProgress)
+		{
+			wxD = new wxProgressDialog(wxT("Image progress"), 
+						wxT("Rendering tiles..."), numTilesX*numTilesY);
+
+			wxD->Show();
+		}
 
 		std::string tmpStr,tmpStrTwo;
 		stream_cast(tmpStrTwo,numTilesX*numTilesY);
@@ -754,8 +760,9 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 				thisTileNum++;
 				stream_cast(tmpStr,thisTileNum);
 				tmpStr = std::string("Tile ") + tmpStr + std::string(" of ") + tmpStrTwo + "...";
-				//Update progress bar
-				wxD->Update(thisTileNum,wxStr(tmpStr));
+				//Update progress bar, if required
+				if(showProgress)
+					wxD->Update(thisTileNum,wxStr(tmpStr));
 
 
 				tileStart[1]=(fractionHeight*(float)tileY-0.5);
@@ -809,7 +816,8 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 		}
 		//Disable the view restriction
 		currentScene.unrestrictView();
-		wxD->Destroy();
+		if(showProgress)
+			wxD->Destroy();
 
 	}
 	else
@@ -854,7 +862,6 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 		prepare3DViewport(0,0,getWidth(),getHeight());
 	}
 
-	//Image is upside down, flip it (TODO: Rejig the tile stitching such that we don't do this in two steps)
 	delete[] pixels;
 
 	bool isOK=image->SaveFile(wxCStr(filename),wxBITMAP_TYPE_PNG);
@@ -864,3 +871,56 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	return isOK;
 }
 
+
+bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsigned int nFrames,
+		wxString &path,wxString &prefix, wxString &ext)
+{
+	//OK, lets animate!
+	//
+
+
+	ASSERT(!currentScene.haveTempCam());
+	std::string outFile;
+	Camera *c;
+	wxProgressDialog *wxD = new wxProgressDialog(wxT("Animation progress"), 
+					wxT("Rendering sequence..."), nFrames);
+
+	wxD->Show();
+	std::string tmpStr,tmpStrTwo;
+	stream_cast(tmpStrTwo,nFrames);
+	for(unsigned int ui=0;ui<nFrames;ui++)
+	{
+		float angle;
+		std::string digitStr;
+
+		//Create a string like 00001, such that there are always leading zeros
+		digitStr=digitString(ui,nFrames);
+
+		//Manipulate the camera such that it orbits around its current axis
+		//FIXME: Why is this M_PI, not 2*M_PI???
+		angle= (float)ui/(float)nFrames*M_PI;
+
+		//create a new temp camera
+		currentScene.setTempCam();
+		c=currentScene.getTempCam();
+		//Rotate the temporary camera
+		c->move(angle,0);
+
+		//Save the result
+		outFile = string(stlStr(path))+ string("/") + 
+				string(stlStr(prefix))+digitStr+ string(".") + string(stlStr(ext));
+		if(!saveImage(resX,resY,outFile.c_str(),false))
+			return false;
+
+		//Update the progress bar
+		stream_cast(tmpStr,ui+1);
+		tmpStr = std::string("Saving Image ") + tmpStr + std::string(" of ") + tmpStrTwo + "...";
+		wxD->Update(ui,wxStr(tmpStr));
+	}
+
+	//Discard the current temp. cam to return the scene back to normal
+	currentScene.discardTempCam();
+	wxD->Destroy();
+	return true;
+		
+}
