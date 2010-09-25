@@ -8178,52 +8178,6 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 						ASSERT(src->data.size() <= totalSize);
 
 
-#ifdef _OPENMP
-						//Parallel version
-						bool spin=false;
-						#pragma omp parallel for shared(spin)
-						for(unsigned int ui=0;ui<src->data.size();ui++)
-						{
-							unsigned int thisT=omp_get_thread_num();
-							if(spin)
-								continue;
-
-							p.fx=src->data[ui].getPos()[0]-origin[0];
-							p.fy=src->data[ui].getPos()[1]-origin[1];
-							p.fz=src->data[ui].getPos()[2]-origin[2];
-							quat_rot_apply_quats(&p,&q1,&q2);
-							//set the position for the given ion
-							d->data[ui].setPos(p.fx,p.fy,p.fz);
-							d->data[ui].setMassToCharge(src->data[ui].getMassToCharge());
-							if(!curProg--)
-							{
-								#pragma omp critical
-								{
-								n+=NUM_CALLBACK;
-								progress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-								}
-
-
-								if(thisT == 0)
-								{
-									if(!(*callback)())
-										spin=true;
-								}
-							}
-
-							//set the uiition for the given ion
-							d->data[ui].setPos(p.fx,p.fy,p.fz);
-							d->data[ui].setMassToCharge(src->data[ui].getMassToCharge());
-
-							//set the position for the given ion
-						}
-
-						if(spin)
-						{			
-							delete d;
-							return TRANSFORM_CALLBACK_FAIL;
-						}
-#else
 						size_t pos=0;
 
 						//Copy across the ions into the target
@@ -8251,7 +8205,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							}
 							pos++;
 						}
-#endif
+
 						ASSERT(d->data.size() == src->data.size());
 						if(cache)
 						{
