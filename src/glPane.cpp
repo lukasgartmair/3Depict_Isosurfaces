@@ -268,11 +268,18 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 		translateMode=event.ControlDown();
 	#endif
 
-	if(translateMode && !wxGetKeyState(WXK_TAB))
+	bool swingMode;
+	#if defined(WIN32) || defined(WIN64)
+		swingMode=wxGetKeyState(WXK_ALT);
+	#else
+		swingMode=wxGetKeyState(WXK_TAB);
+	#endif
+
+	if(translateMode && !swingMode)
 		camMode=CAM_TRANSLATE;
-	else if(wxGetKeyState(WXK_TAB) && !translateMode)
+	else if(swingMode && !translateMode)
 		camMode=CAM_PIVOT;
-	else if(wxGetKeyState(WXK_TAB) && translateMode)
+	else if(swingMode && translateMode)
 		camMode=CAM_ROLL;
 	else
 		camMode=CAM_MOVE;
@@ -483,11 +490,11 @@ void BasicGLPane::keyPressed(wxKeyEvent& event)
 			unsigned int visibleDir;
 			//Use modifier keys to alter the direction of visiblity
 			if(event.CmdDown())
-				visibleDir= 1;
+				visibleDir= 0;
 			else if (event.ShiftDown())
-				visibleDir=3;
+				visibleDir=2;
 			else
-				visibleDir=4;
+				visibleDir=3;
 			currentScene.ensureVisible(visibleDir);
 #ifdef wxMAC
 			parentStatusBar->SetStatusText(_("Use shift/⌘-space to alter reset axis"));
@@ -616,6 +623,7 @@ bool BasicGLPane::prepare3DViewport(int tlx, int tly, int brx, int bry)
 	float r,g,b;
 	currentScene.getBackgroundColour(r,g,b);
 	glClearColor( r, g, b,1.0f );
+	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
 
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
@@ -883,7 +891,7 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 	std::string outFile;
 	Camera *c;
 	wxProgressDialog *wxD = new wxProgressDialog(wxT("Animation progress"), 
-					wxT("Rendering sequence..."), nFrames);
+					wxT("Rendering sequence..."), nFrames,this,wxPD_CAN_ABORT );
 
 	wxD->Show();
 	std::string tmpStr,tmpStrTwo;
@@ -915,7 +923,10 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 		//Update the progress bar
 		stream_cast(tmpStr,ui+1);
 		tmpStr = std::string("Saving Image ") + tmpStr + std::string(" of ") + tmpStrTwo + "...";
-		wxD->Update(ui,wxStr(tmpStr));
+		if(!wxD->Update(ui,wxStr(tmpStr)))
+			break;
+
+		Refresh();
 	}
 
 	//Discard the current temp. cam to return the scene back to normal

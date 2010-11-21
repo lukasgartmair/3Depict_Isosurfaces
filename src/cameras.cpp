@@ -52,14 +52,12 @@ using std::pair;
 //!Key types for property setting and getting via property grids
 enum
 {
-	KEY_PERSP_ORIGIN,
-	KEY_PERSP_VIEWDIR,
-	KEY_PERSP_UPDIR,
-	KEY_PERSP_FOV,
-	KEY_PERSPLOOKAT_ORIGIN,
-	KEY_PERSPLOOKAT_TARGET,
-	KEY_PERSPLOOKAT_UPDIRECTION,
-	KEY_PERSPLOOKAT_FOV,
+	KEY_LOOKAT_ORIGIN,
+	KEY_LOOKAT_TARGET,
+	KEY_LOOKAT_UPDIRECTION,
+	KEY_LOOKAT_FOV,
+	KEY_LOOKAT_PROJECTIONMODE,
+	KEY_LOOKAT_ORTHOSCALE,
 };
 
 
@@ -154,18 +152,27 @@ void Camera::pivot(float lrRad, float udRad)
 
 //=====
 
-CameraPerspective::CameraPerspective() : fovAngle(90.0f), nearPlane(1)
+
+//=====
+
+CameraLookAt::CameraLookAt() 
 {
-	typeNum=CAM_PERSP;
+	target=Point3D(0.0f,0.0f,0.0f);
+	origin=Point3D(0.0f,0.0f,1.0f);
+	viewDirection=Point3D(0.0f,0.0f,-1.0f);
+	upDirection=Point3D(0.0f,1.0f,0.0f);
+	typeNum=CAM_LOOKAT;
+	projectionMode=PROJECTION_MODE_PERSPECTIVE;
+	fovAngle=90.0f;
+	nearPlane=1.0f;
+
+	orthoScale=1.0f;
 }
 
-CameraPerspective::~CameraPerspective()
+Camera *CameraLookAt::clone() const
 {
-}
+	CameraLookAt *retCam = new CameraLookAt;
 
-Camera *CameraPerspective::clone() const
-{
-	CameraPerspective *retCam = new CameraPerspective;
 	retCam->origin =origin;
 	retCam->viewDirection=viewDirection;
 	retCam->upDirection =upDirection;
@@ -174,16 +181,33 @@ Camera *CameraPerspective::clone() const
 	retCam->fovAngle = fovAngle;
 	retCam->nearPlane=nearPlane;
 
+	retCam->target = target;
+	retCam->projectionMode=projectionMode;
+	retCam->orthoScale=orthoScale;
+
 	return retCam;
 }
 
-void CameraPerspective::apply(float aspectRatio, const BoundCube &bc,bool loadIdentity) const
+CameraLookAt::~CameraLookAt()
 {
-	doPerspCalcs(aspectRatio,bc,loadIdentity);
 }
 
-void CameraPerspective::doPerspCalcs(float aspectRatio, const BoundCube &bc,bool loadIdentity) const
+void CameraLookAt::setTarget(const Point3D &pt)
 {
+	ASSERT(pt.sqrDist(origin)>10.0f*std::numeric_limits<float>::epsilon());
+	target=pt;
+	recomputeViewDirection();
+}
+
+Point3D CameraLookAt::getTarget() const
+{
+	return target;
+}
+
+void CameraLookAt::doPerspCalcs(float aspectRatio, const BoundCube &bc,bool loadIdentity) const
+{
+	ASSERT(projectionMode == PROJECTION_MODE_PERSPECTIVE);
+
 	glMatrixMode (GL_PROJECTION);
 	if(loadIdentity)
 		glLoadIdentity();
@@ -218,297 +242,42 @@ void CameraPerspective::doPerspCalcs(float aspectRatio, const BoundCube &bc,bool
 
 }
 
-void CameraPerspective::doPerspCalcs(float aspectRatio, const BoundCube &bc,bool loadIdentity, float left, float top) const
-{
-	ASSERT(false);
-}
-
-
-//Make a given bounding box visible, as much as possible
-void CameraPerspective::ensureVisible(const BoundCube &boundCube, unsigned int face)
-{
-	//FIXME: Implement me
-	// -- what does it mean to ensure visible for a free camera??
-	
-
-	ASSERT(false);
-
-}
-
-void CameraPerspective::recomputeUpDirection()
-{
-	//Use cross product of view and up to generate an across vector.
-	Point3D across;
-	upDirection.normalise();
-	across = viewDirection.crossProd(upDirection);
-	across.normalise();
-
-	//Regenerate up vector by reversing the cross with a normalised across vector 
-	upDirection = across.crossProd(viewDirection);
-
-	upDirection.normalise();
-}
-
-void CameraPerspective::getProperties(CameraProperties &p) const
-{
-	p.data.clear();
-	p.types.clear();
-	p.keys.clear();
-
-	vector<pair<string,string> > s;
-	vector<unsigned int> type,keys;
-
-	string ptStr;
-	stream_cast(ptStr,origin);
-	s.push_back(std::make_pair("Origin", ptStr));
-	type.push_back(PROPERTY_TYPE_POINT3D);
-	keys.push_back(KEY_PERSP_ORIGIN);
-	
-	stream_cast(ptStr,viewDirection);
-	s.push_back(std::make_pair("View Dir.", ptStr));
-	type.push_back(PROPERTY_TYPE_POINT3D);
-	keys.push_back(KEY_PERSP_VIEWDIR);
-	
-	stream_cast(ptStr,upDirection);
-	s.push_back(std::make_pair("Up Dir.", ptStr));
-	type.push_back(PROPERTY_TYPE_POINT3D);
-	keys.push_back(KEY_PERSP_UPDIR);
-
-
-	string tmp;
-	stream_cast(tmp,fovAngle);
-	s.push_back(std::make_pair("Field of View (deg)", tmp));
-	type.push_back(PROPERTY_TYPE_REAL);
-	keys.push_back(KEY_PERSP_FOV);
-
-	p.data.push_back(s);
-	p.keys.push_back(keys);
-	p.types.push_back(type);
-}
-
-bool CameraPerspective::setProperty(unsigned int key, const string &value)
-{
-	//TODO: IMPLEMENT ME
-	return false;
-}
-
-bool CameraPerspective::writeState(std::ostream &f, unsigned int format,
-	       					unsigned int nTabs) const
-{
-	using std::endl;
-	
-	f << tabs(nTabs) << "<perspective>" << endl;
-	ASSERT(userString.size());
-	f << tabs(nTabs+1) << "<userstring value=\"" << userString << "\"/>" << endl;
-			
-	f << tabs(nTabs+1) << "<origin x=\"" << origin[0] << "\" y=\"" << origin[1] <<
-	       	"\" z=\"" << origin[2] << "\"/>" << endl;
-	f << tabs(nTabs+1) << "<viewdirecton x=\"" << viewDirection[0] << "\" y=\"" << origin[1] <<
-	       	"\" z=\"" << viewDirection[2] << "\"/>" << endl;
-	f << tabs(nTabs+1) << "<updirection x=\"" << origin[0] << "\" y=\"" << origin[1] <<
-	       	"\" z=\"" << upDirection[2] << "\"/>" << endl;
-
-	f<< tabs(nTabs+1) <<  "<fovangle value=\"" << fovAngle << "\"/>" << endl;
-	f<< tabs(nTabs+1) <<  "<nearplane value=\"" << nearPlane << "\"/>" << endl;
-	f << tabs(nTabs) << "</perspective>" << endl;
-
-	return true;
-}
-
-bool CameraPerspective::readState(xmlNodePtr nodePtr)
-{
-	//Retrieve user string
-	if(XMLHelpFwdToElem(nodePtr,"userstring"))
-		return false;
-
-	xmlChar *xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
-	if(!xmlString)
-		return false;
-	userString=(char *)xmlString;
-	xmlFree(xmlString);
-	if(!userString.size())
-		return false;
-
-	std::string tmpStr;	
-	//Retrieve origin
-	//====
-	if(XMLHelpFwdToElem(nodePtr,"origin"))
-		return false;
-	float x,y,z;
-	//--Get X value--
-	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"x");
-	if(!xmlString)
-		return false;
-	tmpStr=(char *)xmlString;
-	xmlFree(xmlString);
-
-	//Check it is streamable
-	if(stream_cast(x,tmpStr))
-		return false;
-
-	//--Get Z value--
-	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"y");
-	if(!xmlString)
-		return false;
-	tmpStr=(char *)xmlString;
-	xmlFree(xmlString);
-
-	//Check it is streamable
-	if(stream_cast(y,tmpStr))
-		return false;
-
-	//--Get Y value--
-	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"z");
-	if(!xmlString)
-		return false;
-	tmpStr=(char *)xmlString;
-	xmlFree(xmlString);
-
-	//Check it is streamable
-	if(stream_cast(z,tmpStr))
-		return false;
-
-	origin=Point3D(x,y,z);
-	//====
-
-	
-	//Retrieve up direction
-	//====
-	if(XMLHelpFwdToElem(nodePtr,"updirection"))
-		return false;
-	//--Get X value--
-	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"x");
-	if(!xmlString)
-		return false;
-	tmpStr=(char *)xmlString;
-	xmlFree(xmlString);
-
-	//Check it is streamable
-	if(stream_cast(x,tmpStr))
-		return false;
-
-	//--Get Z value--
-	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"y");
-	if(!xmlString)
-		return false;
-	tmpStr=(char *)xmlString;
-	xmlFree(xmlString);
-
-	//Check it is streamable
-	if(stream_cast(y,tmpStr))
-		return false;
-
-	//--Get Y value--
-	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"z");
-	if(!xmlString)
-		return false;
-	tmpStr=(char *)xmlString;
-	xmlFree(xmlString);
-
-	//Check it is streamable
-	if(stream_cast(z,tmpStr))
-		return false;
-	upDirection=Point3D(x,y,z);
-	//====
-	
-
-	//Get the FOV angle
-	//====
-	if(XMLHelpFwdToElem(nodePtr,"fovangle"))
-		return false;
-
-	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
-	if(!xmlString)
-		return false;
-	tmpStr=(char *)xmlString;
-
-	if(stream_cast(fovAngle,tmpStr))
-		return false;
-
-	xmlFree(xmlString);
-	
-	//====
-	
-	//Get the near plane
-	//====
-	if(XMLHelpFwdToElem(nodePtr,"nearplane"))
-		return false;
-
-	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
-	if(!xmlString)
-		return false;
-	tmpStr=(char *)xmlString;
-
-	if(stream_cast(nearPlane,tmpStr))
-		return false;
-
-	xmlFree(xmlString);
-	
-	//====
-	
-	return true;
-}	
-//=====
-
-CameraPerspLookAt::CameraPerspLookAt() 
-{
-	target=Point3D(0.0f,0.0f,0.0f);
-	origin=Point3D(0.0f,0.0f,1.0f);
-	viewDirection=Point3D(0.0f,0.0f,-1.0f);
-	upDirection=Point3D(0.0f,1.0f,0.0f);
-	typeNum=CAM_LOOKAT;
-}
-
-Camera *CameraPerspLookAt::clone() const
-{
-	CameraPerspLookAt *retCam = new CameraPerspLookAt;
-
-	retCam->origin =origin;
-	retCam->viewDirection=viewDirection;
-	retCam->upDirection =upDirection;
-	retCam->userString=userString;
-
-	retCam->fovAngle = fovAngle;
-	retCam->nearPlane=nearPlane;
-
-	retCam->target = target;
-
-	return retCam;
-}
-
-CameraPerspLookAt::~CameraPerspLookAt()
-{
-}
-
-void CameraPerspLookAt::setTarget(const Point3D &pt)
-{
-	ASSERT(pt.sqrDist(origin)>10.0f*std::numeric_limits<float>::epsilon());
-	target=pt;
-	recomputeViewDirection();
-}
-
-Point3D CameraPerspLookAt::getTarget() const
-{
-	return target;
-}
-
-
-void CameraPerspLookAt::setOrigin(const Point3D &newOrigin)
+void CameraLookAt::setOrigin(const Point3D &newOrigin)
 {
 	ASSERT(newOrigin.sqrDist(target)>std::numeric_limits<float>::epsilon());
 	origin=newOrigin;
 	recomputeViewDirection();
 }
 
-void CameraPerspLookAt::apply(float aspect, const BoundCube &bc, bool loadIdentity) const
+void CameraLookAt::apply(float aspect, const BoundCube &bc, bool loadIdentity) const
 {
+
 	glMatrixMode (GL_PROJECTION);
 	if(loadIdentity)
 		glLoadIdentity();
-
+	
 	farPlane = 1.5*bc.getMaxDistanceToBox(origin);
-	gluPerspective(fovAngle/2.0,aspect,nearPlane,farPlane);
-	glMatrixMode(GL_MODELVIEW);
+	switch(projectionMode)
+	{
+
+		case PROJECTION_MODE_PERSPECTIVE:
+		{
+
+			gluPerspective(fovAngle/2.0,aspect,nearPlane,farPlane);
+			glMatrixMode(GL_MODELVIEW);
+			break;
+
+		}
+		case PROJECTION_MODE_ORTHOGONAL:
+		{
+			glOrtho(-orthoScale*aspect,orthoScale*aspect,-orthoScale,orthoScale,nearPlane,farPlane);
+			glMatrixMode(GL_MODELVIEW);
+			break;
+		}
+		default:
+			ASSERT(false);
+
+	}
 
 	ASSERT(origin.sqrDist(target)>std::numeric_limits<float>::epsilon());
 	gluLookAt(origin[0],origin[1],origin[2],
@@ -516,7 +285,7 @@ void CameraPerspLookAt::apply(float aspect, const BoundCube &bc, bool loadIdenti
 				upDirection[0],upDirection[1],upDirection[2]);
 }
 
-void CameraPerspLookAt::apply(float aspect,const BoundCube &b,bool loadIdentity,
+void CameraLookAt::apply(float aspect,const BoundCube &b,bool loadIdentity,
 						float leftRestrict,float rightRestrict, 
 						float bottomRestrict,float topRestrict) const
 {
@@ -527,35 +296,65 @@ void CameraPerspLookAt::apply(float aspect,const BoundCube &b,bool loadIdentity,
 	if(loadIdentity)
 		glLoadIdentity();
 
-	float width,height;
-	height = tan(fovAngle/2.0*M_PI/180)*nearPlane;
-	width= height*aspect;
-	
 	farPlane = 1.5*b.getMaxDistanceToBox(origin);
+	switch(projectionMode)
+	{
 
-	//Frustum uses eye coordinates.	
-	glFrustum(leftRestrict*width,rightRestrict*width,bottomRestrict*height,
-					topRestrict*height,nearPlane,farPlane);
+		case PROJECTION_MODE_PERSPECTIVE:
+		{
+			float width,height;
+			height = tan(fovAngle/2.0*M_PI/180)*nearPlane;
+			width= height*aspect;
+			
+
+			//Frustum uses eye coordinates.	
+			glFrustum(leftRestrict*width,rightRestrict*width,bottomRestrict*height,
+							topRestrict*height,nearPlane,farPlane);
+			break;
+		}
+		case PROJECTION_MODE_ORTHOGONAL:
+		{
+			float l,r,b,t;
+
+			//FIXME:I have no idea why it is 2x...AFAIK it should just be ONE.
+			//but this works, and one does not.
+			l = 2*leftRestrict*orthoScale*aspect;
+			r= 2*rightRestrict*orthoScale*aspect;
+			b= 2*bottomRestrict*orthoScale;
+			t = 2*topRestrict*orthoScale;
+
+			glOrtho(l,r,b,t,nearPlane,farPlane);
+			break;
+		}
+		default:
+			ASSERT(false);
+	}
+	
 	glMatrixMode(GL_MODELVIEW);
 
 	ASSERT(origin.sqrDist(target)>std::numeric_limits<float>::epsilon());
 	gluLookAt(origin[0],origin[1],origin[2],
 				target[0],target[1],target[2],
 				upDirection[0],upDirection[1],upDirection[2]);
+	
 }
 
-void CameraPerspLookAt::translate(float moveLR, float moveUD)
+void CameraLookAt::translate(float moveLR, float moveUD)
 {
-	//Try to move such that the target sweeps our field of view
-	//at a constant rate. Standard normaliser is view length at
-	//a 90* camera
-	//Use tan.. to normalise motion rate 
-	float fovMultiplier;
-	//Prevent numerical error near tan( 90*)
-	if(fovAngle < 175.0f)
-		fovMultiplier = tan(fovAngle/2.0*M_PI/180.0);
-	else
-		fovMultiplier = tan(175.0f/2.0*M_PI/180.0);
+	float fovMultiplier=1.0f;
+	if(projectionMode== PROJECTION_MODE_PERSPECTIVE)
+	{
+
+		//Try to move such that the target sweeps our field of view
+		//at a constant rate. Standard normaliser is view length at
+		//a 90* camera
+		//Use tan.. to normalise motion rate 
+		//Prevent numerical error near tan( 90*)
+		if(fovAngle < 175.0f)
+			fovMultiplier = tan(fovAngle/2.0*M_PI/180.0);
+		else
+			fovMultiplier = tan(175.0f/2.0*M_PI/180.0);
+	}
 	
 
 	moveLR=moveLR*sqrt(target.sqrDist(origin)*fovMultiplier);
@@ -565,36 +364,51 @@ void CameraPerspLookAt::translate(float moveLR, float moveUD)
 	target+=upDirection*moveUD + (upDirection.crossProd(viewDirection))*moveLR;
 }
 
-void CameraPerspLookAt::forwardsDolly(float moveRate)
+void CameraLookAt::forwardsDolly(float moveRate)
 {
-	Point3D newOrigin;
 
-	//Prevent camera orientation inversion, which occurs when moving past the target
-	if((viewDirection*moveRate).sqrMag() > target.sqrDist(origin))
+	if(projectionMode == PROJECTION_MODE_PERSPECTIVE)
 	{
-		if((target-origin).sqrMag() < sqrt(std::numeric_limits<float>::epsilon()))
-				return;
+		Point3D newOrigin;
 
-		//Yes, this simplifies analytically. However i think the numerics come into play.
-		float moveInv = 1.0/(fabs(moveRate) + sqrt(std::numeric_limits<float>::epsilon()));
-		newOrigin=origin+viewDirection*moveInv/(1.0+moveInv);
+		//Prevent camera orientation inversion, which occurs when moving past the target
+		if((viewDirection*moveRate).sqrMag() > target.sqrDist(origin))
+		{
+			if((target-origin).sqrMag() < sqrt(std::numeric_limits<float>::epsilon()))
+					return;
 
+			//Yes, this simplifies analytically. However i think the numerics come into play.
+			float moveInv = 1.0/(fabs(moveRate) + sqrt(std::numeric_limits<float>::epsilon()));
+			newOrigin=origin+viewDirection*moveInv/(1.0+moveInv);
+
+		}
+		else
+		{
+			//scale moverate by orbit distance
+			moveRate = 0.05*moveRate*sqrt(target.sqrDist(origin));
+			newOrigin=origin+viewDirection*moveRate;
+		}
+
+		//Only accept origin change if it is sufficiently far from the target
+		if(newOrigin.sqrDist(target)>sqrt(std::numeric_limits<float>::epsilon()))
+			origin=newOrigin;
 	}
 	else
 	{
-		//scale moverate by orbit distance
-		moveRate = 0.05*moveRate*sqrt(target.sqrDist(origin));
-		newOrigin=origin+viewDirection*moveRate;
-	}
+		float deltaSqr;
+		deltaSqr = (target-origin).sqrMag();
+		if(deltaSqr< sqrt(std::numeric_limits<float>::epsilon()))
+			return;
 
-	//Only accept origin change if it is sufficiently far from the target
-	if(newOrigin.sqrDist(target)>sqrt(std::numeric_limits<float>::epsilon()))
-		origin=newOrigin;
+		Point3D virtualOrigin;
+		virtualOrigin = origin+viewDirection*moveRate;
+		orthoScale*=virtualOrigin.sqrDist(target)/deltaSqr;
+	}
 }
 
 
 //Clockwise roll looking from camera view by rollRad radians
-void CameraPerspLookAt::roll(float rollRad)
+void CameraLookAt::roll(float rollRad)
 {
 	Point3f rNew,rotateAxis;
 
@@ -611,7 +425,7 @@ void CameraPerspLookAt::roll(float rollRad)
 	recomputeUpDirection();
 }
 
-void CameraPerspLookAt::pivot(float leftRightRad,float updownRad)
+void CameraLookAt::pivot(float leftRightRad,float updownRad)
 {
 
 	Point3f rNew,rotateAxis;
@@ -649,7 +463,7 @@ void CameraPerspLookAt::pivot(float leftRightRad,float updownRad)
 }
 
 //Make a given bounding box visible, as much as possible
-void CameraPerspLookAt::ensureVisible(const BoundCube &boundCube, unsigned int face)
+void CameraLookAt::ensureVisible(const BoundCube &boundCube, unsigned int face)
 {
 	//Face is defined by the following net
 	//	1
@@ -735,10 +549,21 @@ void CameraPerspLookAt::ensureVisible(const BoundCube &boundCube, unsigned int f
 	target=boxCentroid;
 
 	float outDistance;
-	outDistance=boxToFrontDist+halfMaxFaceDim/tan((fovAngle*M_PI/180)/2.0f);
-	//Minimal camera distance is given trigonometrically. Add aditional 1 to ensure that nearplane does not clip object
-	//then multiply by 1.4 to give a bit of border.
-	origin=boxCentroid+faceOutVector*1.4*(1.0+outDistance);
+	if(projectionMode == PROJECTION_MODE_PERSPECTIVE)
+	{
+		//Minimal camera distance is given trigonometrically. 
+		//Add aditional 1 to ensure that nearplane does not clip object
+		outDistance=1.0+boxToFrontDist+halfMaxFaceDim/tan((fovAngle*M_PI/180)/2.0f);
+	}
+	else
+	{
+		outDistance=boxToFrontDist+halfMaxFaceDim;
+	}
+
+	//Multiply by 1.4 to give a bit of border.
+	origin=boxCentroid+faceOutVector*1.4*outDistance;
+
+	orthoScale = sqrt(target.sqrDist(origin))/2.0;
 
 
 	//Set the default up direction
@@ -751,14 +576,27 @@ void CameraPerspLookAt::ensureVisible(const BoundCube &boundCube, unsigned int f
 	nearPlane = 1;
 }
 
-void CameraPerspLookAt::recomputeViewDirection()
+void CameraLookAt::recomputeViewDirection()
 {
 	viewDirection=origin-target;
 	viewDirection.normalise();
 }
+void CameraLookAt::recomputeUpDirection()
+{
+	//Use cross product of view and up to generate an across vector.
+	Point3D across;
+	upDirection.normalise();
+	across = viewDirection.crossProd(upDirection);
+	across.normalise();
+
+	//Regenerate up vector by reversing the cross with a normalised across vector 
+	upDirection = across.crossProd(viewDirection);
+
+	upDirection.normalise();
+}
 
 
-void CameraPerspLookAt::move(float moveLRAngle, float moveUDAngle)
+void CameraLookAt::move(float moveLRAngle, float moveUDAngle)
 {
 
 	//Think of the camera as moving around the surface of a sphere
@@ -798,7 +636,7 @@ void CameraPerspLookAt::move(float moveLRAngle, float moveUDAngle)
 	recomputeViewDirection();
 }
 
-void CameraPerspLookAt::getProperties(CameraProperties &p) const
+void CameraLookAt::getProperties(CameraProperties &p) const
 {
 	p.data.clear();
 	p.types.clear();
@@ -811,36 +649,60 @@ void CameraPerspLookAt::getProperties(CameraProperties &p) const
 	stream_cast(ptStr,origin);
 	s.push_back(std::make_pair("Origin", ptStr));
 	type.push_back(PROPERTY_TYPE_POINT3D);
-	keys.push_back(KEY_PERSPLOOKAT_ORIGIN);
+	keys.push_back(KEY_LOOKAT_ORIGIN);
 	
 	stream_cast(ptStr,target);
 	s.push_back(std::make_pair("Target", ptStr));
 	type.push_back(PROPERTY_TYPE_POINT3D);
-	keys.push_back(KEY_PERSPLOOKAT_TARGET);
+	keys.push_back(KEY_LOOKAT_TARGET);
 	
 	stream_cast(ptStr,upDirection);
 	s.push_back(std::make_pair("Up Dir.", ptStr));
 	type.push_back(PROPERTY_TYPE_POINT3D);
-	keys.push_back(KEY_PERSPLOOKAT_UPDIRECTION);
+	keys.push_back(KEY_LOOKAT_UPDIRECTION);
 
+	vector<pair<unsigned int,string> > choices;
 	string tmp;
-	stream_cast(tmp,fovAngle);
-	s.push_back(std::make_pair("Field of View (deg)", tmp));
-	type.push_back(PROPERTY_TYPE_REAL);
-	keys.push_back(KEY_PERSPLOOKAT_FOV);
+	
 
+	tmp="Perspective";
+	choices.push_back(make_pair((unsigned int)PROJECTION_MODE_PERSPECTIVE,tmp));
+	tmp="Orthogonal";
+	choices.push_back(make_pair((unsigned int)PROJECTION_MODE_ORTHOGONAL,tmp));
+	tmp= choiceString(choices,projectionMode);
+	
+	s.push_back(std::make_pair("Projection", tmp));
+	type.push_back(PROPERTY_TYPE_CHOICE);
+	keys.push_back(KEY_LOOKAT_PROJECTIONMODE);
+
+	switch(projectionMode)
+	{
+		case PROJECTION_MODE_PERSPECTIVE:
+			stream_cast(tmp,fovAngle);
+			s.push_back(std::make_pair("Field of View (deg)", tmp));
+			type.push_back(PROPERTY_TYPE_REAL);
+			keys.push_back(KEY_LOOKAT_FOV);
+			break;
+		case PROJECTION_MODE_ORTHOGONAL:
+			stream_cast(tmp,orthoScale);
+			s.push_back(std::make_pair("View size", tmp));
+			type.push_back(PROPERTY_TYPE_REAL);
+			keys.push_back(KEY_LOOKAT_ORTHOSCALE);
+			break;
+
+	}
 
 	p.data.push_back(s);
 	p.keys.push_back(keys);
 	p.types.push_back(type);
 }
 
-bool CameraPerspLookAt::setProperty(unsigned int key, const string &value)
+bool CameraLookAt::setProperty(unsigned int key, const string &value)
 {
 
 	switch(key)
 	{
-		case KEY_PERSPLOOKAT_ORIGIN:
+		case KEY_LOOKAT_ORIGIN:
 		{
 			Point3D newPt;
 			if(!newPt.parse(value))
@@ -854,7 +716,7 @@ bool CameraPerspLookAt::setProperty(unsigned int key, const string &value)
 
 			break;
 		}
-		case KEY_PERSPLOOKAT_TARGET:
+		case KEY_LOOKAT_TARGET:
 		{
 			Point3D newPt;
 			if(!newPt.parse(value))
@@ -867,7 +729,7 @@ bool CameraPerspLookAt::setProperty(unsigned int key, const string &value)
 
 			break;
 		}
-		case KEY_PERSPLOOKAT_UPDIRECTION:
+		case KEY_LOOKAT_UPDIRECTION:
 		{
 			Point3D newDir;
 			if(!newDir.parse(value))
@@ -884,7 +746,7 @@ bool CameraPerspLookAt::setProperty(unsigned int key, const string &value)
 			recomputeUpDirection();
 			break;
 		}
-		case KEY_PERSPLOOKAT_FOV:
+		case KEY_LOOKAT_FOV:
 		{
 			float newFOV;
 			if(stream_cast(newFOV,value))
@@ -893,13 +755,50 @@ bool CameraPerspLookAt::setProperty(unsigned int key, const string &value)
 			fovAngle=newFOV;
 			break;
 		}
+		case KEY_LOOKAT_PROJECTIONMODE:
+		{
+			std::string tmp;
+			size_t ltmp;
+			if(value == "Perspective")
+				ltmp=PROJECTION_MODE_PERSPECTIVE;
+			else if( value == "Orthogonal")
+			{
+				if(projectionMode!=PROJECTION_MODE_ORTHOGONAL)
+				{
+					//use the distance to the target as the orthographic 
+					//scaling size (size of parallel frustrum)
+					orthoScale=sqrt(target.sqrDist(origin));
+				}
+
+				ltmp=PROJECTION_MODE_ORTHOGONAL;
+
+			}
+			
+			if(ltmp>=PROJECTION_MODE_ENUM_END)
+				return false;
+			
+			projectionMode=ltmp;
+			
+			break;
+		}
+		case KEY_LOOKAT_ORTHOSCALE:
+		{
+			float newOrthoScale;
+			if(stream_cast(newOrthoScale,value))
+				return false;
+
+			orthoScale=newOrthoScale;
+			break;
+		}
+
+
 		default:
 			ASSERT(false);
 	}
 	return true;
 }
 
-bool CameraPerspLookAt::writeState(std::ostream &f, unsigned int format,
+bool CameraLookAt::writeState(std::ostream &f, unsigned int format,
 	       					unsigned int nTabs) const
 {
 	using std::endl;
@@ -907,6 +806,8 @@ bool CameraPerspLookAt::writeState(std::ostream &f, unsigned int format,
 	f << tabs(nTabs) << "<persplookat>" << endl;
 	ASSERT(userString.size());
 	f << tabs(nTabs+1) << "<userstring value=\"" << userString << "\"/>" << endl;
+	f << tabs(nTabs+1) << "<projectionmode value=\""<< projectionMode << "\"/>" << endl;
+	f << tabs(nTabs+1) << "<orthoscale value=\""<< orthoScale << "\"/>" << endl;
 			
 	f << tabs(nTabs+1) << "<origin x=\"" << origin[0] << "\" y=\"" << origin[1] <<
 	       	"\" z=\"" << origin[2] << "\"/>" << endl;
@@ -922,26 +823,35 @@ bool CameraPerspLookAt::writeState(std::ostream &f, unsigned int format,
 	return true;
 }
 		
-bool CameraPerspLookAt::readState(xmlNodePtr nodePtr)
+bool CameraLookAt::readState(xmlNodePtr nodePtr)
 {
 	//Retrieve user string
-	if(XMLHelpFwdToElem(nodePtr,"userstring"))
+	if(!XMLGetNextElemAttrib(nodePtr,userString,"userstring","value"))
 		return false;
-
-	xmlChar *xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
-	if(!xmlString)
-		return false;
-	userString=(char *)xmlString;
-	xmlFree(xmlString);
 	if(!userString.size())
 		return false;
 
-	std::string tmpStr;	
+	std::string tmpStr;
+
+	//Retrieve projection mode
+	if(!XMLGetNextElemAttrib(nodePtr,projectionMode,"projectionmode","value"))
+		return false;
+	if(projectionMode > PROJECTION_MODE_ENUM_END)
+		return false;
+
+	//Retrieve orthographic scaling
+	if(!XMLGetNextElemAttrib(nodePtr,orthoScale,"orthoscale","value"))
+		return false;
+	if(orthoScale <=0 || isnan(orthoScale))
+		return false;
+
+	
+	float x,y,z;
+	xmlChar *xmlString;
 	//Retrieve origin
 	//====
 	if(XMLHelpFwdToElem(nodePtr,"origin"))
 		return false;
-	float x,y,z;
 	//--Get X value--
 	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"x");
 	if(!xmlString)
@@ -1059,41 +969,29 @@ bool CameraPerspLookAt::readState(xmlNodePtr nodePtr)
 
 	//Get the FOV angle
 	//====
-	if(XMLHelpFwdToElem(nodePtr,"fovangle"))
+	if(!XMLGetNextElemAttrib(nodePtr,fovAngle,"fovangle","value"))
 		return false;
-
-	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
-	if(!xmlString)
+	if(fovAngle<=0)
 		return false;
-	tmpStr=(char *)xmlString;
-
-	if(stream_cast(fovAngle,tmpStr))
-		return false;
-
-	xmlFree(xmlString);
-	
 	//====
 	
 	//Get the near plane
 	//====
-	if(XMLHelpFwdToElem(nodePtr,"nearplane"))
+	if(!XMLGetNextElemAttrib(nodePtr,nearPlane,"nearplane","value"))
 		return false;
-
-	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
-	if(!xmlString)
-		return false;
-	tmpStr=(char *)xmlString;
-
-	if(stream_cast(nearPlane,tmpStr))
-		return false;
-
-	xmlFree(xmlString);
-	
 	//====
 
 	recomputeViewDirection();	
 	return true;
 }	
+
+float CameraLookAt::getViewWidth(float depth) const
+{
+	if(projectionMode == PROJECTION_MODE_PERSPECTIVE)
+		return depth*tan(fovAngle/2.0f*M_PI/180.0);
+	else if(projectionMode == PROJECTION_MODE_ORTHOGONAL)
+		return -orthoScale*2.0f; //FIXME: Why is this negative??!
+}
 
 std::ostream& operator<<(std::ostream &strm, const Camera &c)
 {
@@ -1103,18 +1001,7 @@ std::ostream& operator<<(std::ostream &strm, const Camera &c)
 	return strm;
 }
 
-std::ostream& operator<<(std::ostream &strm, const CameraPerspective &c)
-{
-	strm << "origin: " << c.origin << std::endl;
-	strm << "View Direction: " << c.viewDirection << std::endl;	
-	strm << "Up Direction: "<< c.upDirection << std::endl;
-
-	strm << "FOV (deg) : " << c.fovAngle << std::endl;
-	strm << "Clip plane: " << c.nearPlane << " (near) " << std::endl;
-	return strm;
-}
-
-std::ostream& operator<<(std::ostream &strm, const CameraPerspLookAt &c)
+std::ostream& operator<<(std::ostream &strm, const CameraLookAt &c)
 {
 	strm << "origin: " << c.origin << std::endl;
 	strm << "Target : " << c.target << std::endl;
@@ -1127,5 +1014,6 @@ std::ostream& operator<<(std::ostream &strm, const CameraPerspLookAt &c)
 	strm << "Clip planes: " << c.nearPlane << " (near) " << std::endl;
 	return strm;
 }
+
 
 

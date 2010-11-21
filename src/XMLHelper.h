@@ -46,6 +46,36 @@ unsigned int XMLHelpFwdNotElem(xmlNodePtr &node,const char *nodeName);
 //Grab the text associated with the node
 string XMLHelpGetText(xmlNodePtr &node);
 
+
+//!Jump to the next element of the given name and retreive the value for the specified attrip
+//returns false on failure
+//NOTE: Do not use if your value may validly contain whitespace. stream_cast skips these cases
+template<class T> 
+bool XMLGetNextElemAttrib(xmlNodePtr &nodePtr, T &v, const char *nodeName, const char *attrib)
+{
+	std::string tmpStr;
+	xmlChar *xmlString;
+	//====
+	if(XMLHelpFwdToElem(nodePtr,nodeName))
+		return false;
+
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)attrib);
+	if(!xmlString)
+		return false;
+	tmpStr=(char *)xmlString;
+
+	if(stream_cast(v,tmpStr))
+	{
+		xmlFree(xmlString);
+		return false;
+	}
+
+	xmlFree(xmlString);
+
+	return true;
+}
+
+
 /* Defined in the bowels of the xmlLib2 library
  * Enum xmlElementType {
  *	XML_ELEMENT_NODE = 1

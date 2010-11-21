@@ -30,6 +30,7 @@
 #include <sstream>
 #include <list>
 #include <utility>
+#include <fstream>
 
 #if defined(WIN32) || defined(WIN64)
 #include <wx/wx.h>
@@ -106,7 +107,7 @@ inline std::string locateDataFile(const char *name)
 
 	//Mac
 	//	- Look in cwd
-	return std::string(name);
+	return  std::string(name);
 }
 
 template<class T1, class T2>
@@ -120,11 +121,32 @@ bool hasFirstInPairVec(const std::vector<std::pair<T1,T2> > &v, const std::pair<
 	return false;
 }
 
+//!Convert a path format into a native path from unix format
+std::string convertFileStringToNative(const std::string &s);
+
+//!Convert a path format into a unix path from native format
+std::string convertFileStringToCanonical(const std::string &s);
+
 
 //!A routine for loading numeric data from a text file
 unsigned int loadTextData(const char *cpFilename, 
 		std::vector<std::vector<float> > &dataVec,
 	       	std::vector<std::string> &header,const char delim);
+
+template<class T>
+bool writeTextFile(const char *cpFilename, 
+		const std::vector<std::pair<T, T> > &dataVec, const char delim='\t')
+{
+	std::ofstream f(cpFilename);
+
+	if(!f)
+		return false;
+
+	for(unsigned int ui=0;ui<dataVec.size();ui++)
+		f << dataVec[ui].first << delim << dataVec[ui].second << std::endl;
+	
+	return true;
+}
 
 //!Return the default font file to use. Must precede (first) call to getDefaultFontFile
 void setDefaultFontFile(const std::string &font);
@@ -204,10 +226,6 @@ void splitStrsRef(const char *cpStr, const char delim,std::vector<std::string> &
 
 //!Split string references using any of a given string of delimters
 void splitStrsRef(const char *cpStr, const char *delim,std::vector<std::string> &v );
-
-//TODO: Deprecate and use UniqueIDHandler, which does this and more
-//!generate the first available unique ID number given a vector of IDs
-unsigned int genUniqueID(const std::vector<unsigned int> &vec);
 
 //!A class to manage "tear-off" ID values, to allow for indexing without knowing position. 
 //You simply ask for a new unique ID. and it maintains the position->ID mapping
@@ -299,7 +317,7 @@ public:
     void setBounds(float xMin,float yMin,float zMin,
                    float xMax,float yMax,float zMax) {
         bounds[0][0]=xMin; bounds[1][0]=yMin; bounds[2][0]=zMin;
-        bounds[0][1]=xMax; bounds[1][1]=yMax; bounds[2][1]=yMax;
+        bounds[0][1]=xMax; bounds[1][1]=yMax; bounds[2][1]=zMax;
         valid[0][0]=true; valid[1][0]=true; valid[2][0]=true;
         valid[0][1]=true; valid[1][1]=true; valid[2][1]=true;
     }
@@ -329,6 +347,11 @@ public:
         valid[bound][minMax]=true;
     };
 
+    float getBound(unsigned int bound, unsigned int minMax, float value) const {
+        ASSERT(bound <3 && minMax < 2);
+	ASSERT(valid[bound][minMax]==true);
+        return bounds[bound][minMax];
+    };
     //!Return the centroid 
     Point3D getCentroid() const;
 
@@ -340,6 +363,9 @@ public:
 
     //! Returns true if all bounds are valid
     bool isValid() const;
+
+    //! Returns true if any bound is of null thickness
+    bool isFlat() const;
     //!Obtain bounds from an array of Point3Ds
     void setBounds( const Point3D *ptArray, unsigned int nPoints);
     //!Use two points to set bounds -- does not need to be high,low. this is worked out/
@@ -356,6 +382,9 @@ public:
     //!Returns maximum distnace to box corners (which is an upper bound on max box distance). 
     //Bounding box must be valid.
     float getMaxDistanceToBox(const Point3D &pt) const;
+
+    //Get the largest dimension of the bound cube
+    float getLargestDim() const;
 
     void limits();
     BoundCube operator=(const BoundCube &);
@@ -487,5 +516,44 @@ class Colour
 		std::string asString() const; 
 		bool fromString(const std::string &str);
 };
+
+//return the luminence value
+inline float getLum(float r, float g, float b)
+{
+	using std::max; 
+	using std::min;
+
+
+	return 0.5*(max(max(r,g),b) + min(r,min(g,b)));
+}
+
+
+//This class implements a Linear Feedback Shift Register (in software) 
+//This is a mathematical construct based upon polynomials over closed natural numbers (N mod p).
+//This will generate a weakly random digit string, but with guaranteed no duplicates, using O(1)
+//memory and O(n) calls. The no duplicate guarantee is weak-ish, with no repitition in the
+//shift register for 2^n-1 iterations. n can be set by setMaskPeriod.
+class LinearFeedbackShiftReg
+{
+	size_t lfsr;
+	size_t maskVal;
+	size_t totalMask;
+	public:
+		//Get a value from the shift register, and advance
+		size_t clock();
+		//Set the internal lfsr state. Note 0 is the lock-up state.
+		void setState(size_t newState) { lfsr=newState;};
+		//set the mask to use such that the period is 2^n-1. 3 is minimum 60 is maximum
+		void setMaskPeriod(unsigned int newMask);
+
+		//!Check the validity of the table
+		bool verifyTable();
+};
+
+//!Return only the filename component
+std::string onlyFilename( const std::string& path );
+//!Return only  the directory name component of the full path 
+std::string onlyDir( const std::string& path );
+
 
 #endif

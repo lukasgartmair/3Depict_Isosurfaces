@@ -21,6 +21,7 @@
 #include <wx/image.h>
 
 #include "plot.h"
+#include "filter.h"
 
 #include <mgl/mgl_zb.h>
 
@@ -31,21 +32,55 @@
 // begin wxGlade: ::extracode
 // end wxGlade
 
+//Error codes
+enum
+{
+	MGLPANE_ERR_BADALLOC=1,
+	MGLPANE_ERR_MGLWARN,
+	MGLPANE_FILE_REOPEN_FAIL,
+	MGLPANE_FILE_UNSIZED_FAIL,
+	MGLPANE_ERRMAX,
+};
+
 
 class MathGLPane: public wxPanel {
 private:
+	//Current mouse position
+	wxPoint curMouse;
+	//!Has the mouse left the window?
+	bool leftWindow;
+	//!Last error reported by mathgl
+	std::string lastMglErr;
 	//!Is the user dragging with the mouse?
-	bool dragging;
+	bool dragging, panning, regionDragging;
 	//!Has the window resized since the last draw?
 	bool hasResized;
 	//!Start and currentlocations for the drag
 	wxPoint draggingStart,draggingCurrent;
+	//!Original bounds during panning operations
+	float origPanMinX, origPanMaxX;
 
+	//!region used at mouse down
+	unsigned int startMouseRegion,regionMoveType;
+
+	//!Do we have region updates?
+	bool haveUpdates;
+
+	//!Should we be limiting interaction to 
+	//things that won't modify filters (eg region dragging)
+	bool limitInteract;
+
+	//!Pointer to the plot data holding class
 	Multiplot *thePlot;
+	//!Pointer to the listbox that is used for plot selection
 	wxListBox *plotSelList;
+	//!Pointer to the mathgl renderer
 	mglGraphZB *gr;	
-	//!Caching check vector.
+	//!Caching check vector for plot visibility
 	std::vector<unsigned int> lastVisible;
+
+	//!Update the mouse cursor style, based upon mouse position
+	void updateMouseCursor();
 public:
 
 	MathGLPane(wxWindow* parent, int id);
@@ -56,17 +91,24 @@ public:
 	//!Set the plot listbox for this class to use
 	void setPlotList(wxListBox *box){plotSelList=box;};
 
-	//save an SVG file
-	bool saveSVG(const std::string &filename);
-	//Save a PNG file
-	bool savePNG(const std::string &filename,
-			unsigned int width,unsigned int height);
-	//Save a JPG file
-	bool saveJPG(const std::string &filename,
-			unsigned int width,unsigned int height);
+	std::string getErrString(unsigned int code); 
 
+	//save an SVG file
+	unsigned int saveSVG(const std::string &filename);
+	//Save a PNG file
+	unsigned int savePNG(const std::string &filename,
+			unsigned int width,unsigned int height);
+	//Get the number of visible plots
 	unsigned int getNumVisible() const {return thePlot->getNumVisible();}; 
 
+	//!Get the region under the cursor. Returns region num [0->...) or
+	//numeric_limits<unsigned int>::max() if nothing.
+	unsigned int getRegionUnderCursor(const wxPoint &mousePos,
+				unsigned int &rangeSide) const;
+
+	//!Do we have updates?
+	bool hasUpdates() const { return haveUpdates;}
+	void clearUpdates() { haveUpdates=false;}
 	void resized(wxSizeEvent& evt);
 	void render(wxPaintEvent& evt);
 	//!wx Event that triggers on mouse movement on grah
@@ -81,6 +123,7 @@ public:
 	void keyReleased(wxKeyEvent& event);
 	void setPlotVisible(unsigned int plotID, bool visible);
 	void setLegendVisible(bool visible){thePlot->setLegendVisible(visible);}
+	void limitInteraction(bool doLimit=true){ limitInteract=doLimit;};
 protected:
     DECLARE_EVENT_TABLE()
 };

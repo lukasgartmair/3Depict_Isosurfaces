@@ -1,4 +1,4 @@
- /* Copyright (C) 2008  D Haley
+ /* Copyright (C) 2008  D. Haley
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 #ifndef VOXELS_H
 #define VOXELS_H
 
-#include "assert.h"
 #include "basics.h"
 
 const unsigned int MAX_CALLBACK=500;
@@ -52,9 +51,6 @@ using namespace std;
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
-
-//TODO: Remove me
-using std::pair;
 
 #ifdef _OPENMP
 	#include <omp.h>
@@ -491,7 +487,6 @@ void Voxels<T>::setData(unsigned long long x, unsigned long long y,
 	ASSERT(voxels.size());
 
 	ASSERT( x < binCount[0] && y < binCount[1] && z < binCount[2]);
-	//FIXME:Draw diagram
 	voxels[z*binCount[1]*binCount[0] + y*binCount[0] + x]=val; 
 }
 
@@ -771,6 +766,8 @@ unsigned long long Voxels<T>::loadFile(const char *cpFilename, unsigned long lon
 		curBufferSize = curBufferSize >> 1 ;
 
 	}while(curBufferSize> sizeof(T)); //This does a few extra loops. Not many 
+
+	delete[] buffer;
 
 	//Fill out the progress bar
 	if(!silent)
@@ -1355,7 +1352,7 @@ void Voxels<T>::makeSphericalKernel(unsigned long long sideLen, float bound, con
 						//The method we use is a recursive divide & measure approach
 						//We chop the voxel into eight half size voxels, then check 
 						//to see which lie in the sphere, and which dont.
-						std::stack<pair<Point3D, unsigned int > > positionStack;
+						std::stack<std::pair<Point3D, unsigned int > > positionStack;
 						Point3D thisCentre;
 						unsigned int thisLevel;
 						float thisLen,value,x,y,z;
@@ -1906,7 +1903,9 @@ int Voxels<T>::histogram(std::vector<unsigned long long> &v, unsigned long long 
 	delete[] vals;	
 
 
-	ASSERT(v.size() == histBinCount);	
+	ASSERT(v.size() == histBinCount);
+
+	return 0;	
 }
 
 template<class T>

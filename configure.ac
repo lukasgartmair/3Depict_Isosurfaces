@@ -1,10 +1,13 @@
-AC_INIT([3Depict], [0.0.2], [mycae@yahoo.com])
+AC_INIT([3Depict], [0.0.1], [mycae@yahoo.com])
 AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CXX
 AC_PROG_CC
 AM_CONFIG_HEADER([config.h])
 AC_CONFIG_FILES([Makefile src/Makefile ])
 AM_CONDITIONAL(HAVE_WINDRES, which windres > /dev/null)
+
+#Check sizeof
+AC_CHECK_SIZEOF(size_t)
 
 # Support {host_os} variable
 AC_CANONICAL_HOST
@@ -13,7 +16,7 @@ dnl Test for wx-widgets
 dnl ----------
 AM_OPTIONS_WXCONFIG
 
-AM_PATH_WXCONFIG([2.5.3], [wxWin=1])
+AM_PATH_WXCONFIG(2.5.3, wxWin=1)
 
 if test "$wxWin" != 1; then
 AC_MSG_ERROR([
@@ -150,6 +153,39 @@ dnl ----------
 FTGL_LIBS="-lftgl"
 AC_SUBST(FTGL_LIBS)
 dnl ----------
+
+#Check for qhull
+dnl--------------
+AC_ARG_WITH(libqhull-flags,
+  [  --with-libqhull-flags=PATH : specify compiler flags for libqhull])
+AC_ARG_WITH(libqhull-link,
+  [  --with-libqhull-link=PATH : specify linker flag (library) for libqhull])
+
+if test x"$with_libqhull_flags" != x"" ; then
+    QHULL_CFLAGS="$with_libqhull_flags"
+fi
+AC_SUBST([QHULL_CFLAGS])
+
+#Attempt to compile a test program
+CFLAGS_ORIG="$CFLAGS"
+CFLAGS="$CFLAGS $QHULL_CFLAGS"
+AC_CHECK_HEADER([qhull/qhull_a.h],[AC_DEFINE(HAVE_QHULL,[],[Have got libqhull headers])],
+	[AC_MSG_ERROR([Required libqhull headers not found (looking for qhull/qhull_a.h])])
+
+if test x"$with_libqhull_link" != x"" ;
+then
+	QHULL_LIBS="$with_libqhull_link"
+else
+	QHULL_LIBS="-lqhull"
+fi
+LIBS_ORIG="$LIBS"
+LIBS="$LIBS $QHULL_LIBS"
+AC_CHECK_LIB(qhull, qh_qhull, [AC_DEFINE(HAVE_QHULL,[],[qhull compilation OK])] , AC_MSG_ERROR([You must have libqhull installed and be able to compile a sample program. compiler flags can be set using the with-libqhull-flags and with-libqhull-link parameters ]))
+CFLAGS="$CFLAGS_ORIG"
+LIBS="$LIBS_ORIG"
+AC_SUBST([QHULL_LIBS])	
+dnl--------------
+
 
 
 #Check for libpng

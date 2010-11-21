@@ -19,6 +19,8 @@
 #define FILTER_H
 class Filter;
 class FilterStreamData;
+class ProgressData;
+class RangeFileFilter;
 
 #include <list>
 #include <vector>
@@ -35,13 +37,13 @@ class FilterStreamData;
 #include "plot.h"
 #include "voxels.h"
 
+#include "rdf.h"
+
 //This MUST go after the other headers,
 //as there is some kind of symbol clash...
 #undef ATTRIBUTE_PRINTF
 #include <libxml/xmlreader.h>
 #undef ATTRIBUTE_PRINTF
-
-const unsigned int FILTER_PROGRESS_UNKNOWN=(unsigned int)-1;
 
 //!Filter types 
 enum
@@ -72,6 +74,8 @@ enum
 	IONCLIP_PRIMITIVE_SPHERE,
 	IONCLIP_PRIMITIVE_PLANE,
 	IONCLIP_PRIMITIVE_CYLINDER,
+	IONCLIP_PRIMITIVE_AAB, //Axis aligned box
+
 	IONCLIP_PRIMITIVE_END, //Not actually a primitive, just end of enum
 };
 
@@ -171,6 +175,7 @@ enum
 	EXTERNALPROG_COMMANDLINE_FAIL=1,
 	EXTERNALPROG_SETWORKDIR_FAIL,
 	EXTERNALPROG_WRITEPOS_FAIL,
+	EXTERNALPROG_WRITEPLOT_FAIL,
 	EXTERNALPROG_MAKEDIR_FAIL,
 	EXTERNALPROG_PLOTCOLUMNS_FAIL,
 	EXTERNALPROG_READPLOT_FAIL,
@@ -182,6 +187,7 @@ enum
 enum
 {
 	SPATIAL_ANALYSIS_ABORT_ERR=1,
+	SPATIAL_ANALYSIS_INSUFFICIENT_SIZE_ERR,
 };
 
 enum
@@ -206,7 +212,6 @@ enum
 class FilterStreamData;
 
 //!Return the number of elements in a vector of filter data
-//TODO: Modify to use an optional bitmask to allow for different types of objects
 size_t numElements(const vector<const FilterStreamData *> &v);
 
 //!Abstract base class for data types that can propagate through filter system
@@ -308,8 +313,14 @@ class PlotStreamData : public FilterStreamData
 		vector<std::pair<float,float> > regions;
 		//!Region colours
 		vector<float> regionR,regionB,regionG;
+
+		//!Region indicies
+		vector<unsigned int> regionID;
+
 		//!Parent filter pointer, used for inter-refresh matching.
 		const Filter *parent;
+		//!Region parent filter pointer, used for matching interaction with region to parent property
+		Filter *regionParent;
 		//!Parent filter index
 		unsigned int index;
 		//!Error bar mode
@@ -345,6 +356,8 @@ class RangeStreamData :  public FilterStreamData
 		//Enabled ions from source filter 
 		vector<char> enabledIons;
 
+		//!parent filter that spawned this range file. use with EXTREME caution.
+		RangeFileFilter *parentFilter;
 		
 
 		//!constructor
@@ -357,14 +370,6 @@ class RangeStreamData :  public FilterStreamData
 		//!Unlink the pointer
 		void clear() { rangeFile=0;enabledRanges.clear();enabledIons.clear();};
 
-		void operator=(const RangeStreamData &rsd)
-		{
-			rangeFile = rsd.rangeFile;
-			enabledRanges.resize(rsd.enabledRanges.size());
-			enabledIons.resize(rsd.enabledIons.size());
-			for (size_t i = 0; i < rsd.enabledRanges.size(); i++) enabledRanges[i] = rsd.enabledRanges[i];
-			for (size_t i = 0; i < rsd.enabledIons.size(); i++) enabledRanges[i] = rsd.enabledIons[i];
-		}
 };
 
 //FIXME: Lookup how to use static members. cant remember of top of my head. no interwebs.
@@ -377,13 +382,14 @@ class Filter
 	protected:
 
 		bool cache, cacheOK;
-		unsigned int progress; //Progress
 
 		//!Array of the number of streams propagated on last refresh
 		//THis is initialised to -1, which is considered invalid
 		unsigned int numStreamsLastRefresh[NUM_STREAM_TYPES];
 	
 
+		//!temporary console output. Should be only nonzero size immediately after refresh
+		vector<string> consoleOutput;
 		//!User settable labelling string (human readable ID, etc etc)
 		std::string userString;
 		//Filter output cache
@@ -399,7 +405,7 @@ class Filter
 		//!Apply filter to new data, updating cache as needed. Vector of returned pointers must be deleted manually, first checking ->cached.
 		virtual unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &dataOut,
-				unsigned int &progress, bool (*callback)(void)) =0;
+				ProgressData &progress, bool (*callback)(void)) =0;
 		//!Erase cache
 		virtual void clearCache();
 		//!Get (approx) number of bytes required for cache
@@ -415,6 +421,10 @@ class Filter
 
 		//!Return filter type as std::string
 		virtual std::string typeString()const =0;
+
+		//!Return the XML elements that refer to external entities (i.e. files) which do not move with the XML file
+		//Each element is to be referred to using "/" as entity separator, for the first pair element, and the attribute name for the second.
+		virtual void getStateOverrides(std::vector<string> &overrides) const {}; 
 
 		//!Enable/disable caching for this filter
 		void setCaching(bool enableCache) {cache=enableCache;};
@@ -442,13 +452,18 @@ class Filter
 		//!Dump state to output stream, using specified format
 		/* Current supported formats are STATE_FORMAT_XML
 		 */
-		virtual bool writeState(std::ofstream &f,
-				unsigned int format, unsigned int depth=0) const = 0;
+		virtual bool writeState(std::ofstream &f, unsigned int format,
+			       	unsigned int depth=0) const = 0;
+	
+		//!Modified version of writeState for packaging. By default simply calls writeState.
+		//value overrides override the values returned by getStateOverrides. In order.	
+		virtual bool writePackageState(std::ofstream &f, unsigned int format,
+				const std::vector<std::string> &valueOverrides,unsigned int depth=0) const {return writeState(f,format,depth);};
 		
 		//!Read state from XML  stream, using xml format
 		/* Current supported formats are STATE_FORMAT_XML
 		 */
-		virtual bool readState(xmlNodePtr& n) = 0; 
+		virtual bool readState(xmlNodePtr& n, const std::string &packDir="") = 0; 
 
 
 		//!Get the selection devices for this filter. MUST be called after refresh()
@@ -464,11 +479,17 @@ class Filter
 		//!Set the binding value for a float
 		virtual void setPropFromBinding(const SelectionBinding &b)=0;
 		
+		//!Set a region update
+		virtual void setPropFromRegion(unsigned int method, unsigned int regionID, float newPos){ASSERT(false);};
+		
 		//!Can this filter perform actions that are potentially a security concern?
 		virtual bool canBeHazardous() const {return false;} ;
 
 		//!Get the number of outputs for the specified type during the filter's last refresh
 		unsigned int getNumOutput(unsigned int streamType) const;
+
+		//!Get the filter messages from the console
+		void getConsoleStrings(std::vector<std::string > &v) { v.resize(consoleOutput.size());std::copy(consoleOutput.begin(),consoleOutput.end(),v.begin()); consoleOutput.clear();};
 };
 
 
@@ -520,7 +541,7 @@ class PosLoadFilter:public Filter
 		//!Refresh object data
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &getOut, 
-				unsigned int &progress, bool (*callback)(void));
+				ProgressData &progress, bool (*callback)(void));
 
 		void updatePosData();
 
@@ -538,9 +559,17 @@ class PosLoadFilter:public Filter
 		//!Dump state to output stream, using specified format
 		bool writeState(std::ofstream &f,unsigned int format, 
 						unsigned int depth=0) const;
+		
+		//!write an overridden filename version of the state
+		virtual bool writePackageState(std::ofstream &f, unsigned int format,
+				const std::vector<std::string> &valueOverrides,unsigned int depth=0) const;
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
-		bool readState(xmlNodePtr &node);
+		bool readState(xmlNodePtr &node, const std::string &packDir);
+		
+	
+		//!Pos filter has state overrides	
+		virtual void getStateOverrides(std::vector<string> &overrides) const; 
 		
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
@@ -579,7 +608,7 @@ class IonDownsampleFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &getOut, 
-				unsigned int &progress, bool (*callback)(void));
+				 ProgressData &progress, bool (*callback)(void));
 
 		//!return string naming the human readable type of this class
 		virtual std::string typeString() const { return std::string("Ion Sampler");}
@@ -598,7 +627,7 @@ class IonDownsampleFilter : public Filter
 						unsigned int depth=0) const;
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
-		bool readState(xmlNodePtr &node);
+		bool readState(xmlNodePtr &node, const std::string &packDir);
 		
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
@@ -649,7 +678,7 @@ class RangeFileFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &getOut, 
-					unsigned int &progress, bool (*callback)(void));
+					ProgressData &progress, bool (*callback)(void));
 		//!Force a re-read of the rangefile Return value is range file reading error code
 		unsigned int updateRng();
 		virtual std::string typeString() const { return std::string("Ranging");};
@@ -660,15 +689,26 @@ class RangeFileFilter : public Filter
 		//!Set the properties for the nth filter
 		bool setProperty(unsigned int set,unsigned int key, 
 				const std::string &value, bool &needUpdate);
+		
+		//!Set a region update
+		virtual void setPropFromRegion(unsigned int method, unsigned int regionID, float newPos);
 		//!Get the human readable error string associated with a particular error code during refresh(...)
 		std::string getErrString(unsigned int code) const;
 		
 		//!Dump state to output stream, using specified format
 		bool writeState(std::ofstream &f,unsigned int format,
 						unsigned int depth=0) const;
+		
+		//!Modified version of writeState for packaging. By default simply calls writeState.
+		//value overrides override the values returned by getStateOverrides. In order.	
+		virtual bool writePackageState(std::ofstream &f, unsigned int format,
+				const std::vector<std::string> &valueOverrides,unsigned int depth=0) const;
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
-		bool readState(xmlNodePtr &node);
+		bool readState(xmlNodePtr &node, const std::string &packDir);
+		
+		//!filter has state overrides	
+		virtual void getStateOverrides(std::vector<string> &overrides) const; 
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
 };
@@ -700,7 +740,7 @@ class SpectrumPlotFilter : public Filter
 		//!update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 			std::vector<const FilterStreamData *> &getOut, 
-			unsigned int &progress, bool (*callback)(void));
+			ProgressData &progress, bool (*callback)(void));
 		
 		virtual std::string typeString() const { return std::string("Spectrum");};
 
@@ -718,7 +758,7 @@ class SpectrumPlotFilter : public Filter
 		
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
-		bool readState(xmlNodePtr &node);
+		bool readState(xmlNodePtr &node, const std::string &packDir);
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
 };
@@ -743,9 +783,11 @@ class IonClipFilter :  public Filter
 		vector<Point3D> vectorParams;
 		//!Scalar paramaters for different primitives
 		vector<float> scalarParams;
+		//Lock the primitive axis during for cylinder?
+		bool lockAxisMag; 
 
 	public:
-		IonClipFilter() { primitiveType=IONCLIP_PRIMITIVE_PLANE;vectorParams.push_back(Point3D(0.0,0.0,0.0)); vectorParams.push_back(Point3D(0,1.0,0.0));invertedClip=false;showPrimitive=true;};
+		IonClipFilter() { primitiveType=IONCLIP_PRIMITIVE_PLANE;vectorParams.push_back(Point3D(0.0,0.0,0.0)); vectorParams.push_back(Point3D(0,1.0,0.0));invertedClip=false;showPrimitive=true;lockAxisMag=false;};
 		
 		//!Duplicate filter contents, excluding cache.
 		Filter *cloneUncached() const;
@@ -759,7 +801,7 @@ class IonClipFilter :  public Filter
 		//!update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 			std::vector<const FilterStreamData *> &getOut, 
-			unsigned int &progress, bool (*callback)(void));
+			ProgressData &progress, bool (*callback)(void));
 	
 		//!Return human readable name for filter	
 		virtual std::string typeString() const { return std::string("Clipping");};
@@ -778,7 +820,7 @@ class IonClipFilter :  public Filter
 		
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
-		bool readState(xmlNodePtr &node);
+		bool readState(xmlNodePtr &node, const std::string &packDir);
 		//!Set internal property value using a selection binding 
 		void setPropFromBinding(const SelectionBinding &b);
 };
@@ -801,6 +843,10 @@ class IonColourFilter: public Filter
 		//!Number of unique colours to generate, max 256
 		unsigned int nColours;
 
+		//!Should we display the colour bar?
+		bool showColourBar;
+
+		DrawColourBarOverlay* makeColourBar() const;
 	public:
 		IonColourFilter();
 		//!Duplicate filter contents, excluding cache.
@@ -812,7 +858,7 @@ class IonColourFilter: public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &getOut, 
-				unsigned int &progress, bool (*callback)(void));
+				ProgressData &progress, bool (*callback)(void));
 
 		//!return string naming the human readable type of this class
 		virtual std::string typeString() const { return std::string("Spectral Colour");}
@@ -832,7 +878,7 @@ class IonColourFilter: public Filter
 		
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
-		bool readState(xmlNodePtr &node);
+		bool readState(xmlNodePtr &node, const std::string &packDir);
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
 };
@@ -849,6 +895,8 @@ class CompositionProfileFilter : public Filter
 		unsigned int primitiveType;
 		//!Whether to show the primitive or not
 		bool showPrimitive;
+		//Lock the primitive axis during for cylinder?
+		bool lockAxisMag; 
 		//!Vector paramaters for different primitives
 		vector<Point3D> vectorParams;
 		//!Scalar paramaters for different primitives
@@ -897,7 +945,7 @@ class CompositionProfileFilter : public Filter
 		//!update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 						std::vector<const FilterStreamData *> &getOut, 
-						unsigned int &progress, bool (*callback)(void));
+						ProgressData &progress, bool (*callback)(void));
 		
 		virtual std::string typeString() const { return std::string("Comp. Prof.");};
 
@@ -915,7 +963,7 @@ class CompositionProfileFilter : public Filter
 						unsigned int depth=0) const;
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
-		bool readState(xmlNodePtr &node);
+		bool readState(xmlNodePtr &node, const std::string &packDir);
 		//!Set internal property value using a selection binding  
 		void setPropFromBinding(const SelectionBinding &b) ;
 };
@@ -969,7 +1017,7 @@ public:
 	//!update filter
 	unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 						 std::vector<const FilterStreamData *> &getOut, 
-						 unsigned int &progress, bool (*callback)(void));
+						 ProgressData &progress, bool (*callback)(void));
 	
 	virtual std::string typeString() const { return std::string("Voxelisation");};
 
@@ -992,7 +1040,7 @@ public:
 					unsigned int depth=0) const;
 	//!Read the state of the filter from XML file. If this
 	//fails, filter will be in an undefined state.
-	bool readState(xmlNodePtr &node);
+	bool readState(xmlNodePtr &node, const std::string &packDir);
 	//!Set internal property value using a selection binding  
 	void setPropFromBinding(const SelectionBinding &b) ;
 	
@@ -1051,7 +1099,7 @@ class BoundingBoxFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &getOut, 
-					unsigned int &progress, bool (*callback)(void));
+					ProgressData &progress, bool (*callback)(void));
 		//!Force a re-read of the rangefile Return value is range file reading error code
 		unsigned int updateRng();
 		virtual std::string typeString() const { return std::string("Bound box");};
@@ -1070,7 +1118,7 @@ class BoundingBoxFilter : public Filter
 						unsigned int depth=0) const;
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
-		bool readState(xmlNodePtr &node);
+		bool readState(xmlNodePtr &node, const std::string &packDir);
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
 };
@@ -1096,6 +1144,9 @@ class TransformFilter : public Filter
 		bool showPrimitive;
 			
 		std::string getOriginTypeString(unsigned int i) const;
+
+		//!Make the marker sphere
+		DrawStreamData* makeMarkerSphere(SelectionDevice* &s) const;
 	public:
 		TransformFilter(); 
 		//!Duplicate filter contents, excluding cache.
@@ -1108,7 +1159,7 @@ class TransformFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &getOut, 
-					unsigned int &progress, bool (*callback)(void));
+					ProgressData &progress, bool (*callback)(void));
 		//!Force a re-read of the rangefile Return value is range file reading error code
 		unsigned int updateRng();
 		virtual std::string typeString() const { return std::string("Spat. Transform");};
@@ -1127,7 +1178,7 @@ class TransformFilter : public Filter
 						unsigned int depth=0) const;
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
-		bool readState(xmlNodePtr &node);
+		bool readState(xmlNodePtr &node, const std::string &packDir);
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b);
 
@@ -1145,6 +1196,8 @@ class ExternalProgramFilter : public Filter
 
 		//!Always cache output from program
 		bool alwaysCache;
+		//!Erase generated input files for ext. program after running?
+		bool cleanInput;
 
 	public:
 		//!As this launches external programs, this could be misused.
@@ -1162,7 +1215,7 @@ class ExternalProgramFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &getOut, 
-					unsigned int &progress, bool (*callback)(void));
+					ProgressData &progress, bool (*callback)(void));
 		
 		virtual std::string typeString() const { return std::string("Ext. Program");};
 
@@ -1180,7 +1233,7 @@ class ExternalProgramFilter : public Filter
 						unsigned int depth=0) const;
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
-		bool readState(xmlNodePtr &node);
+		bool readState(xmlNodePtr &node, const std::string &packDir);
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
 };
@@ -1189,11 +1242,11 @@ class ExternalProgramFilter : public Filter
 class SpatialAnalysisFilter : public Filter
 {
 	private:
+		//!Colour to use for output plots
+		float r,g,b,a;
+
 		//!Which algorithm to use
 		unsigned int algorithm;
-
-		//Density analysis vars
-		//--------
 
 		//!Stopping criterion
 		unsigned int stopMode;
@@ -1203,12 +1256,36 @@ class SpatialAnalysisFilter : public Filter
 
 		//!Distance maximum
 		float distMax;
+
+		//!Do we have range data to use (is nonzero)
+		bool haveRangeParent;
+		//!The names of the incoming ions
+		std::vector<std::string > ionNames;
+		//!Are the sources/targets enabled for a  particular incoming range?
+		std::vector<bool> ionSourceEnabled,ionTargetEnabled;
+
+		//RDF specific params
+		//--------
+		//RDF bin count
+		unsigned int numBins;
+
+		//!Optional convex hull reduction
+		bool excludeSurface;
+
+		//!Surface reduction distance (convex hull)
+		float reductionDistance;
+
+
 		//--------
 
 	public:
 		SpatialAnalysisFilter(); 
 		//!Duplicate filter contents, excluding cache.
 		Filter *cloneUncached() const;
+
+		//!Initialise filter prior to tree propagation
+		void initFilter(const std::vector<const FilterStreamData *> &dataIn,
+				std::vector<const FilterStreamData *> &dataOut);
 
 		//!Returns -1, as range file cache size is dependant upon input.
 		virtual size_t numBytesForCache(size_t nObjects) const;
@@ -1217,7 +1294,7 @@ class SpatialAnalysisFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &getOut, 
-					unsigned int &progress, bool (*callback)(void));
+					ProgressData &progress, bool (*callback)(void));
 		//!Get the type string  for this fitler
 		virtual std::string typeString() const { return std::string("Spat. Analysis");};
 
@@ -1235,9 +1312,33 @@ class SpatialAnalysisFilter : public Filter
 						unsigned int depth=0) const;
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
-		bool readState(xmlNodePtr &node);
+		bool readState(xmlNodePtr &node, const std::string &packDir);
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
+};
+
+
+//!Class that tracks the progress of scene updates
+class ProgressData
+{
+	public:
+		//!Progress of filter (out of 100) for current filter
+		unsigned int filterProgress;
+		//!Number of filters that we have proccessed (n out of m filters)
+		unsigned int totalProgress;
+		//!Current step
+		unsigned int step;
+		//!Maximum steps
+		unsigned int maxStep;
+		
+		//!Pointer to the current filter that is being updated. Only valid during an update callback
+		const Filter *curFilter;
+
+		//!Name of current operation, if specified
+		std::string stepName;
+
+		void reset() { filterProgress=totalProgress=step=maxStep=0;curFilter=0; stepName.clear();};
+		void clock() { filterProgress=step=maxStep=0;curFilter=0;totalProgress++; stepName.clear();};
 };
 
 #endif

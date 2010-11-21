@@ -182,14 +182,15 @@ void Multiplot::clear(bool preserveVisiblity)
 
 	plottingData.clear();
 	regions.clear();
-	uniqueIDHandler.clear();
+	plotIDHandler.clear();
+	regionIDHandler.clear();
 	plotChanged=true;
 }
 
 void Multiplot::setStrings(unsigned int plotID, const std::string &x, 
 				const std::string &y, const std::string &t)
 {
-	unsigned int plotPos=uniqueIDHandler.getPos(plotID);
+	unsigned int plotPos=plotIDHandler.getPos(plotID);
 	plottingData[plotPos].xLabel = strToWStr(x);
 	plottingData[plotPos].yLabel = strToWStr(y);
 	
@@ -199,7 +200,7 @@ void Multiplot::setStrings(unsigned int plotID, const std::string &x,
 
 void Multiplot::setParentData(unsigned int plotID, const void *parentObj, unsigned int idx)
 {
-	unsigned int plotPos=uniqueIDHandler.getPos(plotID);
+	unsigned int plotPos=plotIDHandler.getPos(plotID);
 	plottingData[plotPos].parentObject= parentObj;
 	plottingData[plotPos].parentPlotIndex=idx;
 	
@@ -256,7 +257,7 @@ unsigned int Multiplot::addPlot(const vector<float> &vX, const vector<float> &vY
 	newDataRef.r=(0);newDataRef.g=(0);newDataRef.b=(1);
 
 	//assign a unique identifier to this plot, by which it can be referenced
-	unsigned int uniqueID = uniqueIDHandler.genId(plottingData.size()-1);
+	unsigned int uniqueID = plotIDHandler.genId(plottingData.size()-1);
 	plotChanged=true;
 	return uniqueID;
 }
@@ -297,10 +298,23 @@ unsigned int Multiplot::addPlot(const vector<std::pair<float,float> > &v,
 	
 	maxThis=-std::numeric_limits<float>::max();
 	minThis=std::numeric_limits<float>::max();
-	for(unsigned int ui=0;ui<v.size();ui++)
+	if(newDataRef.errBars.size())
 	{
-		minThis=std::min(minThis,v[ui].second);
-		maxThis=std::max(maxThis,v[ui].second);
+		ASSERT(newDataRef.errBars.size() == v.size());
+		for(unsigned int ui=0;ui<v.size();ui++)
+		{
+			minThis=std::min(minThis,v[ui].second-newDataRef.errBars[ui]);
+			maxThis=std::max(maxThis,v[ui].second+newDataRef.errBars[ui]);
+		}
+	}
+	else
+	{
+		for(unsigned int ui=0;ui<v.size();ui++)
+		{
+			minThis=std::min(minThis,v[ui].second);
+			maxThis=std::max(maxThis,v[ui].second);
+		}
+
 	}
 	newDataRef.minY=minThis;
 	newDataRef.maxY=1.10f*maxThis; //The 1.10 is because mathgl chops off data
@@ -315,7 +329,7 @@ unsigned int Multiplot::addPlot(const vector<std::pair<float,float> > &v,
 	newDataRef.r=(0);newDataRef.g=(0);newDataRef.b=(1);
 
 	//assign a unique identifier to this plot, by which it can be referenced
-	unsigned int uniqueID = uniqueIDHandler.genId(plottingData.size()-1);
+	unsigned int uniqueID = plotIDHandler.genId(plottingData.size()-1);
 	plotChanged=true;
 	return uniqueID;
 }
@@ -326,13 +340,13 @@ void Multiplot::setType(unsigned int plotUniqueID,unsigned int mode)
 {
 
 	ASSERT(mode<PLOT_TYPE_ENDOFENUM);
-	plottingData[uniqueIDHandler.getPos(plotUniqueID)].plotType=mode;
+	plottingData[plotIDHandler.getPos(plotUniqueID)].plotType=mode;
 	plotChanged=true;
 }
 
 void Multiplot::setColours(unsigned int plotUniqueID, float rN,float gN,float bN) 
 {
-	unsigned int plotPos=uniqueIDHandler.getPos(plotUniqueID);
+	unsigned int plotPos=plotIDHandler.getPos(plotUniqueID);
 	plottingData[plotPos].r=rN;
 	plottingData[plotPos].g=gN;
 	plottingData[plotPos].b=bN;
@@ -343,6 +357,8 @@ void Multiplot::setColours(unsigned int plotUniqueID, float rN,float gN,float bN
 void Multiplot::setBounds(float xMin, float xMax,
 			float yMin,float yMax)
 {
+	ASSERT(xMin < xMax);
+	ASSERT(yMin< yMax);
 	xUserMin=xMin;
 	yUserMin=std::max(0.0f,yMin);
 	xUserMax=xMax;
@@ -359,8 +375,8 @@ void Multiplot::getBounds(float &xMin, float &xMax,
 	{
 		xMin=xUserMin;
 		yMin=yUserMin;
-		xMin=xUserMax;
-		yMin=yUserMax;
+		xMax=xUserMax;
+		yMax=yUserMax;
 	}
 	else
 	{
@@ -372,14 +388,27 @@ void Multiplot::getBounds(float &xMin, float &xMax,
 
 		for(unsigned int ui=0;ui<plottingData.size();ui++)
 		{
-			xMin=std::min(plottingData[ui].minX,xMin);
-			xMax=std::max(plottingData[ui].maxX,xMax);
+			if(plottingData[ui].visible)
+			{
+				xMin=std::min(plottingData[ui].minX,xMin);
+				xMax=std::max(plottingData[ui].maxX,xMax);
 
-			yMin=std::min(plottingData[ui].minY,yMin);
-			yMax=std::max(plottingData[ui].maxY,yMax);
+				yMin=std::min(plottingData[ui].minY,yMin);
+				yMax=std::max(plottingData[ui].maxY,yMax);
+			}
+		}
+
+		//If we are in log mode, then we need to set the
+		//log of that bound before emitting it.
+		if(isLogarithmic())
+		{
+			yMin=log10(std::max(yMin,1.0f));
+			yMax=log10(yMax);
 		}
 
 	}
+
+	ASSERT(xMin < xMax && yMin < yMax);
 }
 
 void Multiplot::bestEffortRestoreVisibility()
@@ -406,6 +435,19 @@ void Multiplot::bestEffortRestoreVisibility()
 
 	lastVisiblePlots.clear();
 	plotChanged=true;
+}
+
+//Is the plot being displayed in lgo mode?
+bool Multiplot::isLogarithmic() const
+{
+	for(unsigned int ui=0;ui<plottingData.size(); ui++)
+	{
+		if(plottingData[ui].visible)
+		{
+			if(plottingData[ui].logarithmic) 
+				return true;
+		}
+	}
 }
 
 void Multiplot::drawPlot(mglGraph *gr) const
@@ -536,7 +578,7 @@ void Multiplot::drawPlot(mglGraph *gr) const
 		for(unsigned int uj=0;uj<regions.size();uj++)
 		{
 			//Do not plot regions that do not belong to current plot
-			if(regions[uj].ownerPlot!= uniqueIDHandler.getId(ui))
+			if(regions[uj].ownerPlot!= plotIDHandler.getId(ui))
 				continue;
 			//Compute region bounds, such that it will not exceed the axis
 			float rMinX, rMaxX, rMinY,rMaxY;
@@ -686,7 +728,7 @@ void Multiplot::drawPlot(mglGraph *gr) const
 	string sY;
 	sY.assign(yLabel.begin(), yLabel.end()); //unicode conversion
 	if(logarithmic && !notLog)
-		sY = string("\\log(") + sY + ")";
+		sY = string("\\log_{10}(") + sY + ")";
 	else if (logarithmic && notLog)
 	{
 		sY = string("Mixed log/non-log:") + sY ;
@@ -721,14 +763,14 @@ void Multiplot::hideAll()
 
 void Multiplot::setVisible(unsigned int uniqueID, bool setVis)
 {
-	unsigned int plotPos = uniqueIDHandler.getPos(uniqueID);
+	unsigned int plotPos = plotIDHandler.getPos(uniqueID);
 
 	plottingData[plotPos].visible=setVis;
 	plotChanged=true;
 }
 
-void Multiplot::addRegion(unsigned int parentPlot,float start, float end, 
-			float rNew, float gNew, float bNew)
+void Multiplot::addRegion(unsigned int parentPlot,unsigned int regionID,float start, float end, 
+			float rNew, float gNew, float bNew, Filter *parentFilter)
 {
 	ASSERT(start <end);
 	ASSERT( rNew>=0.0 && rNew <= 1.0);
@@ -738,6 +780,9 @@ void Multiplot::addRegion(unsigned int parentPlot,float start, float end,
 	PlotRegion region;
 	region.ownerPlot=parentPlot;
 	region.bounds=std::make_pair(start,end);
+	region.parentFilter = parentFilter;
+	region.id = regionID;
+	region.uniqueID = regionIDHandler.genId(regions.size());
 
 	region.r=rNew;
 	region.g=gNew;
@@ -762,7 +807,7 @@ unsigned int Multiplot::getNumVisible() const
 
 bool Multiplot::isPlotVisible(unsigned int plotID) const
 {
-	return plottingData[uniqueIDHandler.getPos(plotID)].visible;
+	return plottingData[plotIDHandler.getPos(plotID)].visible;
 }
 
 void Multiplot::getRawData(std::vector<std::vector<std::vector< float> > > &rawData,
@@ -807,6 +852,18 @@ void Multiplot::getRawData(std::vector<std::vector<std::vector< float> > > &rawD
 			labels.push_back(strVec);
 			tmp.clear();
 		}
+	}
+}
+
+void Multiplot::getRegions(std::vector<PlotRegion> &copyRegions) const
+{
+	
+	copyRegions.reserve(regions.size());
+
+	for(unsigned int ui=0;ui<regions.size();ui++)
+	{
+		if(isPlotVisible(regions[ui].ownerPlot))
+			copyRegions.push_back(regions[ui]); 
 	}
 }
 
@@ -862,4 +919,121 @@ char Multiplot::getNearestMathglColour(float r, float g, float b) const
 
 
 	return val;
+}
+
+
+float Multiplot::moveRegionTest(unsigned int regionID, 
+			unsigned int method, float newPos)  const
+{
+	unsigned int region=(unsigned int)-1;
+	for(unsigned int ui=0;ui<regions.size();ui++)
+	{
+		if(regionID== regions[ui].uniqueID)
+			region=ui;
+	}
+
+	ASSERT(region<regions.size());
+	ASSERT(isPlotVisible(regions[region].ownerPlot));
+
+	//Check that moving this range will not cause any overlaps with 
+	//other regions
+	float mean;
+	mean=(regions[region].bounds.first + regions[region].bounds.second)/2.0f;
+
+	//Who is the owner of the current plot -- we only want to interact with our colleagues
+	unsigned int curOwnerPlot= regions[region].ownerPlot;
+	float xMin,xMax,yMin,yMax;
+	getBounds(xMin,xMax,yMin,yMax);
+
+	switch(method)
+	{
+		//Left extend
+		case REGION_LEFT_EXTEND:
+			//Check that the upper bound does not intersect any RHS of 
+			//region bounds
+			for(unsigned int ui=0; ui<regions.size(); ui++)
+			{
+				if(regions[ui].ownerPlot == curOwnerPlot &&
+					(regions[ui].bounds.second < mean && ui !=region) )
+						newPos=std::max(newPos,regions[ui].bounds.second);
+			}
+			//Dont allow past self right
+			newPos=std::min(newPos,regions[region].bounds.second);
+			//Dont extend outside plot
+			newPos=std::max(newPos,xMin);
+			break;
+		//shift
+		case REGION_MOVE:
+			//Check that the upper bound does not intersect any RHS or LHS of 
+			//region bounds
+			if(newPos > mean) 
+				
+			{
+				//Disallow hitting other bounds
+				for(unsigned int ui=0; ui<regions.size(); ui++)
+				{
+					if(regions[ui].ownerPlot == curOwnerPlot &&
+						(regions[ui].bounds.first > mean && ui != region) )
+						newPos=std::min(newPos,regions[ui].bounds.first);
+				}
+				newPos=std::max(newPos,xMin);
+			}
+			else
+			{
+				//Disallow hitting other bounds
+				for(unsigned int ui=0; ui<regions.size(); ui++)
+				{
+					if(regions[ui].ownerPlot == curOwnerPlot &&
+						(regions[ui].bounds.second < mean && ui != region))
+						newPos=std::max(newPos,regions[ui].bounds.second);
+				}
+				//Dont extend outside plot
+				newPos=std::min(newPos,xMax);
+			}
+			break;
+		//Right extend
+		case REGION_RIGHT_EXTEND:
+			//Disallow hitting other bounds
+
+			for(unsigned int ui=0; ui<regions.size(); ui++)
+			{
+				if(regions[ui].ownerPlot == curOwnerPlot &&
+					(regions[ui].bounds.second > mean && ui != region))
+					newPos=std::min(newPos,regions[ui].bounds.first);
+			}
+			//Dont allow past self left
+			newPos=std::max(newPos,regions[region].bounds.first);
+			//Dont extend outside plot
+			newPos=std::min(newPos,xMax);
+			break;
+		default:
+			ASSERT(false);
+	}
+
+
+
+	return newPos;
+}
+
+
+void Multiplot::moveRegion(unsigned int regionID, unsigned int method, float newPos)
+{
+
+	//Well, we should have called this externally to determine location
+	//let us confirm that this is the case 
+	moveRegionTest(regionID,method,newPos);
+
+	unsigned int region=(unsigned int)-1;
+	for(unsigned int ui=0;ui<regions.size();ui++)
+	{
+		if(regionID== regions[ui].uniqueID)
+			region=ui;
+	}
+
+	ASSERT(region<regions.size());
+	ASSERT(regions[region].parentFilter);
+	regions[region].parentFilter->setPropFromRegion(method,regions[region].id,newPos);	
+
+
+
 }

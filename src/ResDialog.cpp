@@ -26,6 +26,7 @@
 BEGIN_EVENT_TABLE(ResDialog, wxDialog)
     EVT_BUTTON(wxID_OK,ResDialog::OnBtnOK)
     EVT_BUTTON(wxID_CANCEL,ResDialog::OnBtnCancel)
+    EVT_KEY_DOWN(ResDialog::OnKeypress)
 END_EVENT_TABLE();
 ResDialog::ResDialog(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
     wxDialog(parent, id, title, pos, size, wxDEFAULT_DIALOG_STYLE)
@@ -37,6 +38,8 @@ ResDialog::ResDialog(wxWindow* parent, int id, const wxString& title, const wxPo
     textHeight = new wxTextCtrl(this, wxID_ANY,_("768"), wxDefaultPosition,wxDefaultSize,0,wxTextValidator(wxFILTER_NUMERIC));
     btnOK = new wxButton(this, wxID_OK, wxEmptyString);
     btnCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
+
+    btnOK->SetFocus();
 
     resWidth=0;
     resHeight=0;
@@ -60,6 +63,11 @@ void ResDialog::setRes(unsigned int w, unsigned int h)
 
 
 void ResDialog::OnBtnOK(wxCommandEvent &evt)
+{
+	finishDialog();
+}
+
+void ResDialog::finishDialog()
 {
 	unsigned int tmpW,tmpH;
 	std::string s;
@@ -86,6 +94,15 @@ void ResDialog::OnBtnCancel(wxCommandEvent &evt)
 {
 	EndModal(wxID_CANCEL);
 }
+
+
+void ResDialog::OnKeypress(wxKeyEvent &evt)
+{
+	if( evt.GetKeyCode() == WXK_RETURN)
+		finishDialog();
+	evt.Skip();
+}
+
 
 void ResDialog::set_properties()
 {

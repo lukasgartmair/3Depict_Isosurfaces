@@ -160,233 +160,24 @@ const char *posErrStrings[] = { "",
 				"Pos load aborted by interrupt."
 };
 
-void PrintSummary(vector<IonHit> &posIons, RangeFile &rangeFile)
-{
-	//Print ion count informaiton
-	cerr << "Input summary" << std::endl;
-	cerr << "Ion Data: " << std::endl;
-	cerr << "\tPos Ion Count: " << posIons.size() << std::endl;
-	
-	//Print dataset bulk data
-	
-	Point3D lower,upper;
-	dataLimits(posIons,lower,upper);
-	cerr << "Bounding cube : " << std::endl; 
-	cerr << "Lower " << lower << std::endl;
-	cerr << "Upper " << upper << std::endl; 
-	
-
-	//Print range information
-	cerr << "Range Data:" << std::endl;
-	cerr << "\tUnique Ion count:" << rangeFile.getNumIons() << std::endl;
-	cerr << "\tRange Count:" << rangeFile.getNumRanges() << std::endl;
-	
-}
-
-bool createQualityPos(const vector<Point3D> &p, const vector<pair<unsigned int, unsigned int> > &q, const string &str)
-{
-	//Create a "quality" file which is defined as follows
-	//quality = good/bad
-	
-	vector<IonHit> posIons;
-	vector<unsigned int> reallyGood;
-
-	posIons.resize(p.size());	
-	for(unsigned int ui=0; ui<p.size(); ui++)
-	{
-		posIons[ui].setPos(p[ui]);
-		float rat;
-		rat = ((float)q[ui].first)/(float)(q[ui].first  + q[ui].second);
-		posIons[ui].setMassToCharge(rat);
-	
-	}
-
-
-
-	//Dump 'em into a  posfile
-	return !IonVectorToPos(posIons,str);
-}
-
 //!Create an pos file from a vector of IonHits
 unsigned int IonVectorToPos(const vector<IonHit> &ionVec, const string &filename)
 {
 	std::ofstream CFile(filename.c_str(),std::ios::binary);
 	float floatBuffer[4];
 
-	if(!CFile)
+	if (!CFile)
 		return 1;
-	
-	for(unsigned int ui=0; ui<ionVec.size(); ui++)
+
+	for (unsigned int ui=0; ui<ionVec.size(); ui++)
 	{
 		ionVec[ui].makePosData(floatBuffer);
 		CFile.write((char *)floatBuffer,4*sizeof(float));
 	}
 	return 0;
 }
+//
 
-
-//!Find the xyz limits of a dataset
-void dataLimits(const vector<IonHit> &posIons, Point3D &low, Point3D &upper)
-{
-	float maximal = std::numeric_limits<float>::max();
-	low = Point3D(maximal,maximal,maximal);
-	upper = Point3D(-maximal,-maximal,-maximal);
-	Point3D pt; 
-
-	for(unsigned int ui=0; ui<posIons.size(); ui++)
-	{
-		pt= posIons[ui].getPos();
-		
-		//A million pipeline flushes later..
-		//Lower limits
-		if(pt[0]  < low[0])
-			low.setValue(0,pt[0]);
-		if(pt[1]  < low[1])
-			low.setValue(1,pt[1]);
-		if(pt[2]  < low[2])
-			low.setValue(2,pt[2]);
-		
-		//Upper limits
-		if(pt[0]  > upper[0])
-			upper.setValue(0,pt[0]);
-		if(pt[1]  > upper[1])
-			upper.setValue(1,pt[1]);
-		if(pt[2]  > upper[2])
-			upper.setValue(2,pt[2]);
-	}
-
-}
-
-//!Find the distance between a point, and a triangular facet -- may be positive or negative
-float distanceToFacet(const Point3D &fA, const Point3D &fB, 
-			const Point3D &fC, const Point3D &p, const Point3D &normal)
-{
-
-	//This will check the magnitude of the incoming normal
-	ASSERT( fabs(sqrt(normal.sqrMag()) - 1.0f) < 2.0* std::numeric_limits<float>::epsilon());
-	unsigned int pointDir[3];
-	pointDir[0] = vectorPointDir(fA,fB,p,p);
-	pointDir[1] = vectorPointDir(fA,fC,p,p);
-	pointDir[2] = vectorPointDir(fB,fC,p,p);
-
-	//They can never be "APART" if the
-	//vectors point to the same pt
-	ASSERT(pointDir[0] != POINTDIR_APART);
-	ASSERT(pointDir[1] != POINTDIR_APART);
-	ASSERT(pointDir[2] != POINTDIR_APART);
-
-	//Check to see if any of them are "in common"
-	if(pointDir[0]  > 0 ||  pointDir[1] >0 || pointDir[2] > 0)
-	{
-		//if so, we have to check each edge for its closest point
-		//then pick the best
-		float bestDist[3];
-		bestDist[0] = distanceToSegment(fA,fB,p);
-		bestDist[1] = distanceToSegment(fA,fC,p);
-		bestDist[2] = distanceToSegment(fB,fC,p);
-	
-
-		return min3(bestDist[0],bestDist[1],bestDist[2]);
-	}
-
-	float temp;
-
-	temp = fabs((p-fA).dotProd(normal));
-
-	//check that the other points were not better than this!
-	ASSERT(sqrt(fA.sqrDist(p)) >= temp - std::numeric_limits<float>::epsilon());
-	ASSERT(sqrt(fB.sqrDist(p)) >= temp - std::numeric_limits<float>::epsilon());
-	ASSERT(sqrt(fC.sqrDist(p)) >= temp - std::numeric_limits<float>::epsilon());
-
-	//Point lies above/below facet, use plane formula
-	return temp; 
-}
-
-//Distance between a line segment and a point in 3D space
-void DumpIonInfo(const std::vector<IonHit> &vec, std::ostream &strm)
-{
-	strm << "Ion Count: " << vec.size() << std::endl;
-
-	if(!vec.size())
-		return;
-
-	Point3D minPt,maxPt;
-	minPt = maxPt = vec[0].getPos();
-
-	Point3D tmpPt;
-	//Loop through the list to find the min/max combo
-	for(unsigned int ui=0; ui<vec.size(); ui++)
-	{
-		tmpPt = vec[ui].getPos();
-		if(minPt[0] > tmpPt[0])
-			minPt[0]=tmpPt[0];
-		
-		if(minPt[1] > tmpPt[1])
-			minPt[1]=tmpPt[1];
-		
-		if(minPt[2] > tmpPt[2])
-			minPt[2]=tmpPt[2];
-
-		if(maxPt[0] < tmpPt[0])
-			maxPt[0]=tmpPt[0];
-		if(maxPt[1] < tmpPt[1])
-			maxPt[1]=tmpPt[1];
-		if(maxPt[2] < tmpPt[2])
-			maxPt[2]=tmpPt[2];
-	}
-
-	strm << "Pos File limits" << std::endl;	
-	strm << "Min: " << minPt << "\tMax: " << maxPt << std::endl;
-
-}
-
-float distanceToSegment(const Point3D &fA, const Point3D &fB, const Point3D &p)
-{
-
-	//If the vectors ar pointing "together" then use  point-line formula
-	if(vectorPointDir(fA,fB,p,p) == POINTDIR_TOGETHER)
-	{
-		Point3D closestPt;
-		Point3D vAB= fB-fA;
-
-		//Use formula d^2 = |(B-A)(cross)(A-P)|^2/|B-A|^2
-		return sqrt( (vAB.crossProd(fA-p)).sqrMag()/(vAB.sqrMag()));
-	}
-
-	return sqrt( min2(fB.sqrDist(p), fA.sqrDist(p)) );
-}
-
-//!Check which way vectors attached to two 3D points "point", 
-/*! Two vectors may point "together", /__\ "apart" \__/  or 
- *  "In common" /__/ or \__\
- */
-unsigned int vectorPointDir(const Point3D &pA, const Point3D &pB, 
-				const Point3D &vC, const Point3D &vD)
-{
-	//Check which way vectors attached to two 3D points "point", 
-	// - "together", "apart" or "in common"
-	
-	//calculate AB.CA, BA.DB
-	float dot1  = (pB-pA).dotProd(vC - pA);
-	float dot2= (pA - pB).dotProd(vD - pB);
-
-	//We shall somehwat arbitrarily call perpendicular cases "together"
-	if(dot1 ==0.0f || dot2 == 0.0f)
-		return POINTDIR_TOGETHER;
-
-	//If they have opposite signs, then they are "in common"
-	if(( dot1  < 0.0f  && dot2 > 0.0f) || (dot1 > 0.0f && dot2 < 0.0f) )
-		return POINTDIR_IN_COMMON;
-
-	if( dot1 < 0.0f && dot2 <0.0f )
-		return POINTDIR_APART; 
-
-	if(dot1 > 0.0f && dot2 > 0.0f )
-		return POINTDIR_TOGETHER;
-
-	ASSERT(false)
-	return 0; 
-}
 
 void appendPos(const vector<IonHit> &points, const char *name)
 {
@@ -401,57 +192,313 @@ void appendPos(const vector<IonHit> &points, const char *name)
 	}
 }
 
-#ifdef DEBUG
-	
-void makePos(const vector<Point3D> &points, float mass, const char *name)
+unsigned int LimitLoadPosFile(int inputnumcols, int outputnumcols, int index[], vector<IonHit> &posIons,const char *posFile, size_t limitCount,
+	       	unsigned int &progress, bool (*callback)())
 {
-	std::ofstream posFile(name,std::ios::binary);	
 
-	float data[4];	
+	//Function is only defined for 4 columns here.
+	ASSERT(outputnumcols == 4);
+	//buffersize must be a power of two and at least sizeof(IONHIT)
+	const unsigned int NUMROWS=1;
+	const unsigned int BUFFERSIZE=inputnumcols * sizeof(float) * NUMROWS;
+	const unsigned int BUFFERSIZE2=outputnumcols * sizeof(float) * NUMROWS;
+	char *buffer=new char[BUFFERSIZE];
+	char *buffer2=new char[BUFFERSIZE2];
 
-	for(unsigned int ui=0; ui< points.size(); ui++)
-	{
-		data[0] = (points[ui])[0];
-		data[1] = (points[ui])[1];
-		data[2] = (points[ui])[2];
+	//TODO: make user parameter. Should we use a weak or strong random sequence generator
+	const bool strongSampling=false;
 	
-		data[3] = mass;
+	if(!buffer)
+		return POS_ALLOC_FAIL;
 
-#ifdef __LITTLE_ENDIAN__
-		floatSwapBytes(data);
-		floatSwapBytes(data + 1);
-		floatSwapBytes(data + 2);
-		floatSwapBytes(data+ 3);
+	if(!buffer2)
+	{
+		delete[] buffer;
+		return POS_ALLOC_FAIL;
+	}
 
-#endif
-		posFile.write((char *)data,4*sizeof(float));
+	//open pos file
+	std::ifstream CFile(posFile,std::ios::binary);
+
+	if(!CFile)
+	{
+		delete[] buffer;
+		delete[] buffer2;
+		return POS_OPEN_FAIL;
 	}
 	
-}
+	CFile.seekg(0,std::ios::end);
+	size_t fileSize=CFile.tellg();
 
-void makePos(const vector<IonHit> &points, const char *name)
-{
-	std::ofstream posFile(name,std::ios::binary);	
-
-	float data[4];	
-	
-	for(unsigned int ui=0; ui< points.size(); ui++)
+	if(!fileSize)
 	{
-		points[ui].makePosData(data);
-		posFile.write((char *)data, 4*sizeof(float));
+		delete[] buffer;
+		delete[] buffer2;
+		return POS_EMPTY_FAIL;
 	}
+	
+	CFile.seekg(0,std::ios::beg);
+	
+	//calculate the number of points stored in the POS file
+	size_t pointCount=0;
+	size_t maxIons;
+	size_t maxCols = inputnumcols * sizeof(float);
+	//regular case
+	
+	if(fileSize % maxCols)
+	{
+		delete[] buffer;
+		delete[] buffer2;
+		return POS_SIZE_MODULUS_ERR;	
+	}
+
+	maxIons =fileSize/maxCols;
+	limitCount=std::min(limitCount,maxIons);
+
+	//If we are going to load the whole file, don't use a sampling method to do it.
+	if(limitCount == maxIons)
+	{
+		//Close the file
+		CFile.close();
+		delete[] buffer;
+		delete[] buffer2;
+		//Try opening it using the normal functions
+		return GenericLoadFloatFile(inputnumcols, outputnumcols, index, posIons,posFile,progress, callback);
+	}
+
+	//Use a sampling method to load the pos file
+	std::vector<size_t> ionsToLoad;
+	try
+	{
+		posIons.resize(limitCount);
+
+		RandNumGen rng;
+		rng.initTimer();
+		unsigned int dummy;
+		randomDigitSelection(ionsToLoad,maxIons,rng,
+				limitCount,dummy,callback,strongSampling);
+	}
+	catch(std::bad_alloc)
+	{
+		delete[] buffer;
+		delete[] buffer2;
+		return POS_ALLOC_FAIL;
+	}
+
+
+	//sort again	
+	GreaterWithCallback<size_t> g(callback,PROGRESS_REDUCE);
+	std::sort(ionsToLoad.begin(),ionsToLoad.end(),g);
+
+	unsigned int curProg = PROGRESS_REDUCE;	
+
+	//TODO: probably not very nice to the disk drive. would be better to
+	//scan ahead for contigous data regions, and load that where possible.
+	//Or switch between different algorithms based upon ionsToLoad.size()/	
+	IONHIT hit;
+	std::ios::pos_type  nextIonPos;
+	for(size_t ui=0;ui<ionsToLoad.size(); ui++)
+	{
+		nextIonPos =  ionsToLoad[ui]*maxCols;
+		
+		if(CFile.tellg() !=nextIonPos )
+			CFile.seekg(nextIonPos);
+
+		CFile.read(buffer,BUFFERSIZE);
+
+		for (int i = 0; i < outputnumcols; i++) // iterate through floats
+			memcpy(&(buffer2[i * sizeof(float)]), &(buffer[index[i] * sizeof(float)]), sizeof(float));
+		
+		memcpy((char *)(&hit), buffer2, sizeof(IONHIT));
+		
+		if(!CFile.good())
+			return POS_READ_FAIL;
+		posIons[ui].setHit(&hit);
+		//Data bytes stored in pos files are big
+		//endian. flip as required
+		#ifdef __LITTLE_ENDIAN__
+			posIons[ui].switchEndian();	
+		#endif
+		
+		if(posIons[ui].hasNaN())
+		{
+			delete[] buffer;
+			delete[] buffer2;
+			return POS_NAN_LOAD_ERROR;	
+		}
+			
+		pointCount++;
+		if(!curProg--)
+		{
+
+			progress= (unsigned int)((float)(CFile.tellg())/((float)fileSize)*100.0f);
+			curProg=PROGRESS_REDUCE;
+			if(!(*callback)())
+			{
+				delete[] buffer;
+				posIons.clear();
+				return POS_ABORT_FAIL;
+				
+			}
+		}
+				
+	}
+
+	delete[] buffer;
+	delete[] buffer2;
+	return 0;
 }
 
-#endif
-
-
-#ifdef DEBUG
-#include <iostream>
-void DumpPoint(const Point3D &pt)
+unsigned int GenericLoadFloatFile(int inputnumcols, int outputnumcols, int index[], vector<IonHit> &posIons,const char *posFile, unsigned int &progress, bool (*callback)())
 {
-	cerr << "(" << pt[0] << "," << pt[1] << "," << pt[2] << ")" << std::endl;
+	//buffersize must be a power of two and at least sizeof(IONHIT)
+	const unsigned int NUMROWS=512;
+	const unsigned int BUFFERSIZE=inputnumcols * sizeof(float) * NUMROWS;
+	const unsigned int BUFFERSIZE2=outputnumcols * sizeof(float) * NUMROWS;
+
+	char *buffer=new char[BUFFERSIZE];
+	
+	if(!buffer)
+		return POS_ALLOC_FAIL;
+	
+	char *buffer2=new char[BUFFERSIZE2];
+	if(!buffer2)
+	{
+		delete[] buffer;
+		return POS_ALLOC_FAIL;
+	}
+	//open pos file
+	std::ifstream CFile(posFile,std::ios::binary);
+	
+	if(!CFile)
+	{
+		delete[] buffer;
+		delete[] buffer2;
+		return POS_OPEN_FAIL;
+	}
+	
+	CFile.seekg(0,std::ios::end);
+	size_t fileSize=CFile.tellg();
+	
+	if(!fileSize)
+	{
+		delete[] buffer;
+		delete[] buffer2;
+		return POS_EMPTY_FAIL;
+	}
+	
+	CFile.seekg(0,std::ios::beg);
+	
+	//calculate the number of points stored in the POS file
+	IonHit hit;
+	IONHIT *hitStruct;
+	size_t pointCount=0;
+	//regular case
+	size_t curBufferSize=BUFFERSIZE;
+	size_t curBufferSize2=BUFFERSIZE2;
+	
+	if(fileSize % (inputnumcols * sizeof(float)))
+	{
+		delete[] buffer;
+		delete[] buffer2;
+		return POS_SIZE_MODULUS_ERR;	
+	}
+	
+	try
+	{
+		posIons.resize(fileSize/(inputnumcols*sizeof(float)));
+	}
+	catch(std::bad_alloc)
+	{
+		delete[] buffer;
+		delete[] buffer2;
+		return POS_ALLOC_FAIL;
+	}
+	
+	
+	while(fileSize < curBufferSize) {
+		curBufferSize = curBufferSize >> 1;
+		curBufferSize2 = curBufferSize2 >> 1;
+	}		
+	
+	//Technically this is dependant upon the buffer size.
+	unsigned int curProg = 10000;	
+	size_t ionP=0;
+	int maxCols = inputnumcols * sizeof(float);
+	int maxPosCols = outputnumcols * sizeof(float);
+	do
+	{
+		//Taking curBufferSize chunks at a time, read the input file
+		while((size_t)CFile.tellg() <= fileSize-curBufferSize)
+		{
+			CFile.read(buffer,curBufferSize);
+			if(!CFile.good())
+			{
+				delete[] buffer;
+				delete[] buffer2;
+				return POS_READ_FAIL;
+			}
+			
+			for (int j = 0; j < NUMROWS; j++) // iterate through rows
+			{
+				for (int i = 0; i < outputnumcols; i++) // iterate through floats
+				{
+					memcpy(&(buffer2[j * maxPosCols + i * sizeof(float)]), 
+						&(buffer[j * maxCols + index[i] * sizeof(float)]), sizeof(float));
+				}
+			}
+			
+			hitStruct = (IONHIT *)buffer2; 
+			unsigned int ui;
+			for(ui=0; ui<curBufferSize2; ui+=(sizeof(IONHIT)))
+			{
+				hit.setHit(hitStruct);
+				//Data bytes stored in pos files are big
+				//endian. flip as required
+				#ifdef __LITTLE_ENDIAN__
+					hit.switchEndian();	
+				#endif
+				
+				if(hit.hasNaN())
+				{
+					delete[] buffer;
+					delete[] buffer2;
+					return POS_NAN_LOAD_ERROR;	
+				}
+				posIons[ionP] = hit;
+				ionP++;
+				
+				pointCount++;
+				hitStruct++;
+			}	
+			
+			if(!curProg--)
+			{
+				progress= (unsigned int)((float)(CFile.tellg())/((float)fileSize)*100.0f);
+				curProg=PROGRESS_REDUCE;
+				if(!(*callback)())
+				{
+					delete[] buffer;
+					delete[] buffer2;
+					posIons.clear();
+					return POS_ABORT_FAIL;
+				
+				}
+			}
+				
+		}
+
+		curBufferSize = curBufferSize >> 1 ;
+		curBufferSize2 = curBufferSize2 >> 1 ;
+	}while(curBufferSize2 >= sizeof(IONHIT));
+	
+	ASSERT((unsigned int)CFile.tellg() == fileSize);
+	delete[] buffer;
+	delete[] buffer2;
+	
+	return 0;
 }
-#endif
+
 IonHit::IonHit() : massToCharge(0.0f), pos(0,0,0)
 {
 	//At this point i deliberately dont initialise the point class
@@ -697,13 +744,13 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			//Read ion short and full names as well as colour info
 			for(unsigned int i=0; i<numIons; i++)
 			{
-				int peekVal;
 				//Spin until we get to a new line. 
 				//Certain programs emit range files that have
 				//some string of unknown purpose
 				//after the colour specification
 				if(fpeek(fpRange)== ' ')
 				{
+					int peekVal;
 					//Gobble chars until we hit the newline
 					do
 					{
@@ -715,7 +762,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 
 					//eat another char if we are using 
 					//windows newlines
-					if(peekVal = '\r')
+					if(peekVal== '\r')
 						fgetc(fpRange);
 				}
 				//Read the input for long name (max 256 chars)
@@ -757,7 +804,8 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 
 			//Load in each range file line
 			tempInt=0;
-			pair<float,float> massPair;	
+			pair<float,float> massPair;
+			unsigned int badRanges=0;	
 			for(unsigned int i=0; i<numRanges; i++)
 			{
 				//read dummy char
@@ -810,14 +858,29 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 
 				if(!assignedFlag)
 				{
-					errState=RANGE_ERR_NOASSIGN;
-					fclose(fpRange);
-					return errState;
+					//OK, so that range was useless
+					//the range file had a null line. 
+
+					//In a nice world no sane program would ever make
+					//a range file like this.
+					ranges.pop_back();
+					badRanges++;
 				}
 
 			}
 				
 
+			//Prevent rangefiles that have no valid ranges
+			//from being loaded
+			if(badRanges >= numRanges)
+			{
+				errState=RANGE_ERR_DATA;
+				fclose(fpRange);
+				return errState;
+
+			}
+
+			numRanges-=badRanges;
 		
 			break;	
 		}
@@ -1939,6 +2002,43 @@ bool RangeFile::moveRange(unsigned int rangeId, bool limit, float newMass)
 	return true;
 }
 
+bool RangeFile::moveBothRanges(unsigned int rangeId, float newLow, float newHigh)
+{
+
+	//Check that moving this range will not cause any overlaps with 
+	//other ranges
+	for(unsigned int ui=0; ui<ranges.size(); ui++)
+	{
+		if( ui == rangeId)
+			continue;
+
+		//moving high range
+		//check for overlap on first
+		if((ranges[rangeId].first < ranges[ui].first &&
+				newHigh > ranges[ui].first))
+		       return false;
+		
+		if((ranges[rangeId].first < ranges[ui].second &&
+				newHigh > ranges[ui].second))
+		       return false;
+		//moving low range
+		//check for overlap on first
+		if((ranges[rangeId].second > ranges[ui].first &&
+				newLow < ranges[ui].first))
+		       return false;
+		
+		if((ranges[rangeId].second > ranges[ui].second &&
+				newLow < ranges[ui].second))
+		       return false;
+	}
+
+	ranges[rangeId].second = newHigh;
+	ranges[rangeId].first= newLow;
+
+	return true;
+}
+
+
 void RangeFile::setIonID(unsigned int range, unsigned int newIonId)
 {
 	ASSERT(newIonId < ionIDs.size());
@@ -1946,14 +2046,25 @@ void RangeFile::setIonID(unsigned int range, unsigned int newIonId)
 }
 
 
+
+
 BoundCube getIonDataLimits(const std::vector<IonHit> &points)
 {
 	ASSERT(points.size());
+
 	BoundCube b;	
 	b.setInverseLimits();	
+#ifndef OPENMP
 	float bounds[3][2];
+	for(unsigned int ui=0;ui<3;ui++)
+	{
+		bounds[ui][0]=std::numeric_limits<float>::max();
+		bounds[ui][1]=-std::numeric_limits<float>::max();
+	}
+	
 	for(unsigned int ui=0; ui<points.size(); ui++)
 	{
+
 		for(unsigned int uj=0; uj<3; uj++)
 		{
 			Point3D p;
@@ -1969,6 +2080,32 @@ BoundCube getIonDataLimits(const std::vector<IonHit> &points)
 	b.setBounds(bounds[0][0],bounds[1][0],
 			bounds[2][0],bounds[0][1],
 			bounds[1][1],bounds[2][1]);
+#else
+	// parallel version
+	vector<BoundCube> cubes;
+
+	unsigned int nT=omp_get_max_threads();
+	cubes.resize(nT);
+	for(unsigned int ui=0;ui<cubes.size();ui++)
+		cube[ui].setInverseLimits();
+
+	unsigned int tCount=1;
+	#pragma omp parallel for reduction(tCount|+)
+	for(unsigned int ui=0;ui<points.size();ui++)
+	{
+		Point3D p;
+		p=points[ui].getPos();
+		for(unsigned int uj=0;uj<3;uj++)
+		{
+			b.setBounds(uj,0,std::min(b.getBound(uj,0),p[uj]));
+			b.setBounds(uj,1,std::min(b.getBound(uj,0),p[uj]));
+		}
+	}
+
+	for(unsigned int ui=0;ui<std::min(tCount,nT);ui++)
+		b.expand(cubes[ui]);
+
+#endif
 
 	return b;
 }

@@ -16,7 +16,6 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #ifndef PLOT_H
 #define PLOT_H
 
@@ -59,6 +58,12 @@ enum{
 	EDGE_MODE_HOLD,
 };
 
+enum{
+	REGION_LEFT_EXTEND=1,
+	REGION_MOVE,
+	REGION_RIGHT_EXTEND
+};
+
 //!Structure to handle error bar drawing in plot
 struct PLOT_ERROR
 {
@@ -70,6 +75,7 @@ struct PLOT_ERROR
 	unsigned int edgeMode;
 };
 
+#include "filter.h"
 
 
 //!Return a human readable string for a given plot type
@@ -118,13 +124,21 @@ class PlotRegion
 	public:
 		std::pair<float,float> bounds;
 		float r,g,b;
+		//The ID value for this region, used when interacting with parent filter
+		unsigned int id;
+		//!Unique ID for region across entire multiplot
+		unsigned int uniqueID;
+		//ID value for owner plot in multiplot to recognise this region
 		unsigned int ownerPlot;
+		//The parent filter, so region can tell who the parent is
+		Filter *parentFilter;
 };
 
 class Multiplot
 {
 	private:
-		UniqueIDHandler uniqueIDHandler;
+		UniqueIDHandler plotIDHandler;
+		UniqueIDHandler regionIDHandler;
 		//!Has the plot changed since we last rendered it?
 		bool plotChanged;
 	protected:
@@ -153,6 +167,9 @@ class Multiplot
 	public:
 		//!Constructor
 		Multiplot(){applyUserBounds=false;plotChanged=true;drawLegend=true;};
+
+		//Is the plot logarithmic when displayed?
+		bool isLogarithmic() const;
 
 		//!Has the contents of the plot changed since the last call to resetChange?
 		bool hasChanged() const { return plotChanged;};
@@ -203,8 +220,9 @@ class Multiplot
 		void resetBounds();
 
 		//!Append a region to the plot
-		void addRegion(unsigned int parentPlot, float start, float end,
-				float r,float g, float b);
+		void addRegion(unsigned int parentPlot, unsigned int regionId,
+			       		float start, float end,	float r,float g, 
+						float b, Filter *parentFilter);
 
 		//!Get the number of visible plots
 		unsigned int getNumVisible() const;
@@ -227,6 +245,19 @@ class Multiplot
 
 		//!Set whether to enable the legend or not
 		void setLegendVisible(bool vis) { drawLegend=vis;plotChanged=true;};
+
+		//!Get the currently visible regions
+		void getRegions(std::vector<PlotRegion> &copyRegions) const;
+
+		//!Get a particular region
+		PlotRegion getRegion(unsigned int region) const { return regions[region];};
+
+		//!Try to move a region from its current position to a new position
+		//return the test coord. valid methods are 0 (left extend), 1 (slide), 2 (right extend)
+		float moveRegionTest(unsigned int region, unsigned int method, float newPos) const;
+
+		//!Move a region to a new location. MUST call moveRegionTest first.
+		void moveRegion(unsigned int region, unsigned int method, float newPos);
 };
 
 #endif

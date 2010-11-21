@@ -1,50 +1,73 @@
 TODO List - worlds simplest bugtracking system 
 
 --Packaging--
-	* Improve windows build
-		- Detection of MSYS path? (how?)
-		- better instructions for installing msys? (this is
-		complicated and subject to change :( )
-				
-	* Improve build system
-		- Obtain builders for other OSs?
 
 --Main app--
+	Fix Needs testing
+		* Added filename conversion under windows systems, such
+		 that it should be able to read unix generated packages
 	To Implement:
-		* Better about box
-		* Expose hide origin to user for transform filter 
+		== Next version ==
+		* Add option to enable strong random
+		* Remove DTD validation (I don't have a DTD)
+
+		== Eventually == 
+		* Binomial?
+		* Optimised normal computation for raw triangles -> isosurface 
+		* Overlay device handling -- drag and drop overlay entities
+		* Polynomial error estimator in graph
+		* Text data load functions
+		* Shear-warp volume render mode for voxels
+		* Ion exchange filter
 		* Front-to back alpha blending ordering support for
 		scene drawing of non-pointcloud objects
 		* DTD (Document type descriptor) for state files, to
 		  specify a consisted statefile structure
 			- How to ensure version compatibility in future
 			state files?
-		* Pos region loading is currently not exposed to user.
 		* Billboard text
-		* XYZ axis overlay
 		* VTK/xyzm output
-		* XML Export (with rel. paths changed to be rel. to file)
-		* Better error handling in the XML file read
-		* Interactive range file in plot
-		* Colourbar overlay for ion colour
-		* Ion exchange filter
-		* Slab clip filter
-		* Plot needs to be able to scroll/pan
+		* BB cache for ion data?
+		* Non-ascii char testing?
+		* Option to warn on file overwrite with save after merge (default off)
+		* Filter defaults settings
+		* Improve camera framework -- orthogonal camera
+		* Unit testing system
+		* Language Translation support
+		* Theora video
+		* Improved resolution dialog
+
+
 
 	Outstanding bugs:
-		* Optimised normal computation for raw triangles -> isosurface 
-		* Option to warn on file overwrite with save after merge (default off)
-		* Fix various hard-to-generate crash bugs
-		* Improve camera framework -- orthogonal camera
+		== Next release==
+		* Colour bar drawing broken when tiling an output image
+		
+		== Eventually==	
+		* Error bar masking for graph (mathgl draws error bars outside plot boundary)
+		* Windows appears to have weird front-back drawing behaviour for point clouds.
+		* Pos load add could always add to bottom of filter list,
+		 rather than default value
 		* Grid copy/ctrl-c doesn't seem to work under GTK. The data gets
 		  passed to the clipboard, but then wx doesn't appear to
 		  do anything with it...
 			- Could be constrained to wxGTK2.8 or less (
 			 wxWidgets Bug Ticket #11811 ??? )
-		* K3DTree currently requires public access to members of boundcube
-		* Error bar masking for graph (mathgl draws error bars outside plot boundary)
-		
+
+
+		== Needs reproducing ==
+		* Composition profile property change keeps resetting the selection to all enabled when using rangefile.
+		  I was unable to trigger this locally
+			- This happened under windows with posFile -> range file ->composition profile
+										 -> Ion sampler
+		* Invalid range file being opened cause Package export to crash
+
+	Auditing:
+		== Next release ==
+		* Check each filter is actually reporting the required cache memory
+
 	Performance:
+		* Clipping sphere/cylinder does BB test? (only useful if we have bb cache)
 		* Pos limit loader could alter its behaviour when
 		 sampling rates some percentage to be determined (load
 		 file, skip buffer).
@@ -53,9 +76,13 @@ TODO List - worlds simplest bugtracking system
 
 
 -- Refactor/cleanup --
+	* Interaction code needs to be cleaned up. Currently it is a massive hack.
+		- Viscontrol should store a copy of the original tree,
+		  then periodicially compare it to the current tree. if it
+		  is different, then it should invalidate the caches for
+		  the different bits, and then force a refresh. This would allow for removal 
+		  of the callback mechanism that is currently in use
 	* work out which inline FIXMEs and TODOs are still valid, and need attention
 	* Re-arrange source to reduce compile-time interdependence (bad .h file arrangement?)
 	* I have multiple colour classes floating about. might be an idea to unify them.
-	* Camera code is largely unused due to perpsective only
-	 camera. Might be an idea to remove inheritence and instead unify
-	the camera classes
+	* K3DTree currently requires public access to members of boundcube

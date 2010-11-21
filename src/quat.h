@@ -47,14 +47,12 @@ typedef struct
 	float fz;
 } Point3f;
 
-//conjugates the argument
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+//conjugates the argument
 void quat_conj(Quaternion *quat);
-//calculates the square length of the quaternion
-float quat_sqrlen(Quaternion *quat);
 //multiplies two quaternions result=q1*q2
 void quat_mult(Quaternion *result, Quaternion *q1, Quaternion *q2);
 
@@ -68,22 +66,11 @@ void quat_pointmult(Point3f *result, Quaternion *q1, Quaternion *q2);
 //Note result is stored in  point passsed as argument
 void quat_rot(Point3f *point, Point3f *rotVec, float angle);
 
-//Retrieve the two quaternions for repeated rotations. pass to the quat_rot_apply_quats
-void quat_get_rot_quats(Point3f *rotVec, float angle, 
-		Quaternion *rotQuat, Quaternion *conjQuat);
+//Retrieve the quaternion for repeated rotations. pass to the quat_rot_apply_quats
+void quat_get_rot_quat(Point3f *rotVec, float angle,  Quaternion *rotQuat);
 
 //Use previously generated quats from quat_get_rot_quats to rotate a point
-void quat_rot_apply_quats(Point3f *point, Quaternion *rotQuat, Quaternion *conjQuat);
-
-//this performs an optimised rotation of a point around 3 angles
-//pitch, then yaw and then roll. Pitch is defined to be rotation around x
-//yaw around z and roll around y. x is right, y is forwards, z is up
-//The results are derived by special case quaternion rotation around basis vectors
-void quat_rot_pitchyawroll(Point3f *point, float pitchAngle,float yawAngle, float rollAngle);
-
-//As for the above but in reverse order. This allows you to undo the above transform by simply
-//passing through the negative roll yaw and pitch angles
-void quat_rot_rollyawpitch(Point3f *point, float rollAngle,float yawAngle,float pitchAngle);
+void quat_rot_apply_quat(Point3f *point, Quaternion *rotQuat);
 
 #ifdef __cplusplus
 }

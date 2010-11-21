@@ -37,10 +37,14 @@ const char *TEST_OVERLAY_PNG[] = {
 
 bool TexturePool::openTexture(const char *texName,unsigned int &texID, unsigned int &uniqID)
 {
-	//See if we already have this texture
+	std::string texPath;
+
+	texPath = locateDataFile(texName);
+	
+	//See if we already have this texture (use abs. name)
 	for(unsigned int ui=0;ui<openTextures.size();ui++)
 	{
-		if(openTextures[ui].first == texName)
+		if(openTextures[ui].first == texPath)
 		{
 			texID = openTextures[ui].second.name;
 			uniqID = texUniqIds.getId(ui);
@@ -48,9 +52,6 @@ bool TexturePool::openTexture(const char *texName,unsigned int &texID, unsigned 
 		}
 	}
 
-	std::string texPath;
-
-	texPath = locateDataFile(texName);
 
 	//Try to load the texture, as we don't have it
 	texture tex;	

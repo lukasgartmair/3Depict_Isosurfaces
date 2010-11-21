@@ -1,10 +1,5 @@
-/*
- * $Id: K3DTree.h 86 2010-01-23 00:32:22Z d $
- */
-
-//As this program relies on GNU GPL(v3) components, this program is GPLv3
 /* rdf-kd : Calculates radial distribution functions
- * Copyright (C) 2008  D Haley
+ * Copyright (C) 2008  D. Haley
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,24 +21,18 @@
 #include <algorithm>
 #include <stack>
 #include <vector>
-#include <deque>
 #include <cmath>
-#include <iostream>
 
 //TODO: eliminate the using directives from this header
 using std::vector;
 using std::copy;
 using std::sort;
-using std::deque;
 #include "basics.h"
 
 
 class K3DNode;
 class AxisCompare;
 class K3DTree;
-
-struct CubeStruct;
-
 
 
 //!Functor allowing for sorting of points in 3D
@@ -118,7 +107,12 @@ class K3DTree
 		//!Build tree recursively
 		K3DNode *buildRecurse(vector<Point3D>::iterator pts_start,
 			       	vector<Point3D>::iterator pts_end, unsigned int depth );
-		mutable deque<float> bestDistsSqr;
+		
+		bool (*callback)(void);
+
+		unsigned int *progress; //Progress counter
+		unsigned int totalSize; //Total input size
+		size_t curNodeCount; //Counter for build operations
 	public:
 	
 		//KD Tree constructor
@@ -127,6 +121,12 @@ class K3DTree
 		//!Cleans up tree, deallocates nodes
 		~K3DTree();
 		
+		//Set the callback routine for progress reporting
+		void setCallbackMethod(bool (*cb)(void)) {callback = cb;}
+		
+		void setProgressPointer(unsigned int *p) { progress=p;};
+	
+
 		/*! Builds a balanced KD tree from a list of points
 		 * This call is being passed by copy in order to prevent
 		 * re-ordering of the points. It may be worth having two calls
@@ -143,7 +143,7 @@ class K3DTree
 	
 
 		//Tree walker that counts the number of nodes
-		void verify();
+		//void verify();
 
 		//! Clean the tree
 		void kill();

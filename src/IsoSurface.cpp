@@ -391,7 +391,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 		iEdgeFlags=iFlagIndex=0;
 		Point3D position;
 		//Lower left corner of cell for dual grid
-		position=v.getPoint(iX,iY,iZ);
+		position=v.getPoint(iX,iY,iZ) + gridSpacing*0.5;
 
 		//This must match a2fVertexOffset
 		vertexVal[0] = v.getData(iX,iY,iZ);

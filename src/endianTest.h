@@ -48,7 +48,6 @@ inline int is_littleendian() { return (*(char*)&ENDIAN_TEST) == 1 ;}
 
 inline void floatSwapBytes(float *inFloat)
 {
-
 	//Use a union to avoid strict-aliasing error
 	union FloatSwapUnion{
 	   float f;

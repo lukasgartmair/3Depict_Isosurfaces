@@ -83,18 +83,6 @@ DrawPoint::~DrawPoint()
 {
 }
 
-DrawableObj* DrawPoint::clone() const
-{
-	DrawPoint *d = new DrawPoint;
-
-	d->origin=origin;
-	d->r=r;
-	d->g=g;
-	d->b=b;
-	d->a=a;
-
-	return d;
-}
 
 
 
@@ -131,22 +119,6 @@ DrawVector::~DrawVector()
 {
 }
 
-DrawableObj* DrawVector::clone() const
-{
-	DrawVector *d = new DrawVector;
-
-	d->origin=origin;
-	d->vector=vector;
-	d->r=r;
-	d->g=g;
-	d->b=b;
-	d->a=a;
-
-	d->arrowSize=arrowSize;
-	d->scaleArrow=scaleArrow;
-
-	return d;
-}
 
 void DrawVector::getBoundingBox(BoundCube &b) const 
 {
@@ -181,6 +153,23 @@ void DrawVector::draw() const
 	glEnd();
 }
 
+void DrawVector::recomputeParams(const std::vector<Point3D> &vecs, 
+			const std::vector<float> &scalars, unsigned int mode)
+{
+	switch(mode)
+	{
+		case DRAW_VECTOR_BIND_ORIENTATION:
+			ASSERT(vecs.size() ==1 && scalars.size() ==0);
+			vector=vecs[0];
+			break;
+		case DRAW_VECTOR_BIND_ORIGIN:
+			ASSERT(scalars.size() == 1 && vecs.size()==0);
+			origin=vecs[0];
+			break;
+		default:
+			ASSERT(false);
+	}
+}
 DrawTriangle::DrawTriangle() : r(1.0f), g(1.0f),b(1.0f),a(1.0f)
 {
 }
@@ -216,25 +205,6 @@ void DrawTriangle::draw() const
 	glEnd();
 }
 
-DrawableObj * DrawTriangle::clone() const
-{
-	DrawTriangle *d = new DrawTriangle;
-
-	d->r=r;
-	d->g=g;
-	d->b=b;
-	d->a=a;
-
-	d->vertices[0]=vertices[0];	
-	d->vertices[1]=vertices[1];	
-	d->vertices[2]=vertices[2];	
-	
-	d->active=active;
-	d->canSelect=canSelect;
-	d->wantsLight=wantsLight;
-
-	return d;
-}
 
 DrawSphere::DrawSphere() : radius(1.0f), latSegments(8),longSegments(8)
 {
@@ -247,17 +217,6 @@ DrawSphere::~DrawSphere()
 }
 
 
-DrawableObj* DrawSphere::clone() const
-{
-	DrawSphere *d=new DrawSphere;
-
-	d->origin=origin;
-	d->radius=radius;
-	d->latSegments=latSegments;
-	d->longSegments=longSegments;
-
-	return d;
-}
 
 void DrawSphere::getBoundingBox(BoundCube &b) const
 {
@@ -305,6 +264,24 @@ void DrawSphere::draw() const
 	glPopMatrix();
 }
 
+
+void DrawSphere::recomputeParams(const vector<Point3D> &vecs, 
+			const vector<float> &scalars, unsigned int mode)
+{
+	switch(mode)
+	{
+		case DRAW_SPHERE_BIND_ORIGIN:
+			ASSERT(vecs.size() ==1 && scalars.size() ==0);
+			origin=vecs[0];
+			break;
+		case DRAW_SPHERE_BIND_RADIUS:
+			ASSERT(scalars.size() == 1 && vecs.size()==0);
+			radius=scalars[0];
+			break;
+		default:
+			ASSERT(false);
+	}
+}
 //===========
 
 DrawCylinder::DrawCylinder() : radius(1.0f), 
@@ -325,32 +302,10 @@ DrawCylinder::~DrawCylinder()
 	gluDeleteQuadric(qCap[1]);
 }
 
-DrawableObj* DrawCylinder::clone() const
-{
-	DrawCylinder *d=new DrawCylinder;
-
-	d->origin=origin;
-	d->direction=direction;
-	
-	d->slices=slices;
-	d->stacks=stacks;
-
-	d->radius=radius;
-	d->radius=radius;
-
-	d->radiiLocked=true;
-
-	return d;
-}
 
 void DrawCylinder::setOrigin(const Point3D& pt)
 {
 	origin=pt;
-}
-
-Point3D *DrawCylinder::originPtr()
-{
-	return &origin;
 }
 
 
@@ -359,10 +314,6 @@ void DrawCylinder::setDirection(const Point3D &p)
 	direction=p;
 }
 
-Point3D *DrawCylinder::directionPtr()
-{
-	return &direction;
-}
 
 void DrawCylinder::draw() const
 {
@@ -424,12 +375,29 @@ void DrawCylinder::setRadius(float rad)
 	radius=rad;
 }
 
-float *DrawCylinder::radiusPtr()
+void DrawCylinder::recomputeParams(const vector<Point3D> &vecs, 
+			const vector<float> &scalars, unsigned int mode)
 {
-	ASSERT(radiiLocked);
-	
-	return &radius;
+	switch(mode)
+	{
+		case DRAW_CYLINDER_BIND_ORIGIN:
+			ASSERT(vecs.size() ==1 && scalars.size() ==0);
+			origin=vecs[0];
+			break;
+
+		case DRAW_CYLINDER_BIND_DIRECTION:
+			ASSERT(vecs.size() ==1 && scalars.size() ==0);
+			direction=vecs[0];
+			break;
+		case DRAW_CYLINDER_BIND_RADIUS:
+			ASSERT(scalars.size() == 1 && vecs.size()==0);
+			radius=scalars[0];
+			break;
+		default:
+			ASSERT(false);
+	}
 }
+
 
 void DrawCylinder::setLength(float len)
 {
@@ -494,18 +462,23 @@ DrawManyPoints::DrawManyPoints() : r(1.0f),g(1.0f),b(1.0f),a(1.0f), size(1.0f)
 DrawManyPoints::~DrawManyPoints() 
 {
 	wantsLight=false;
+	haveCachedBounds=false;
 }
 
-DrawableObj* DrawManyPoints::clone() const
+void DrawManyPoints::getBoundingBox(BoundCube &b) const
 {
-	DrawManyPoints *d=new DrawManyPoints;
 
-	d->pts.resize(pts.size());
-	std::copy(pts.begin(),pts.end(),d->pts.begin());
+	//Update the cache as needed
+	if(!haveCachedBounds)
+	{
+		haveCachedBounds=true;
+		cachedBounds.setBounds(pts);
+	}
 
-	d->wantsLight=false;
-	return d;
+	b=cachedBounds;
+	return;
 }
+
 
 void DrawManyPoints::clear()
 {
@@ -524,6 +497,7 @@ void DrawManyPoints::addPoints(const vector<IonHit> &vp)
 	pts.reserve(pts.size()+vp.size());
 	for(size_t ui=0; ui<vp.size(); ui++)
 		pts.push_back(vp[ui].getPos());
+	haveCachedBounds=false;
 }
 
 void DrawManyPoints::shuffle()
@@ -535,6 +509,7 @@ void DrawManyPoints::shuffle()
 void DrawManyPoints::addPoint(const Point3D &p)
 {
 	pts.push_back(p);
+	haveCachedBounds=false;
 }
 
 void DrawManyPoints::setColour(float rnew, float gnew, float bnew, float anew)
@@ -581,15 +556,6 @@ DrawDispList::~DrawDispList()
 	}
 
 }
-
-DrawableObj* DrawDispList::clone() const
-{
-	//TODO: IMPLEMENT ME
-	ASSERT(false);
-	return 0;
-}
-
-
 
 bool DrawDispList::startList(bool execute)
 {
@@ -694,27 +660,6 @@ DrawGLText::DrawGLText(std::string fontFile, unsigned int mode) : curFontMode(mo
 	font->CharMap(ft_encoding_unicode);
 
 	alignMode = DRAWTEXT_ALIGN_LEFT;
-}
-
-DrawableObj* DrawGLText::clone() const
-{
-	DrawGLText *dt = new DrawGLText(fontString, curFontMode);
-
-	dt->origin = origin;
-	dt->r = r;
-	dt->g = g;
-	dt->b = b;
-	dt->a = a;
-	dt->alignMode=alignMode;
-
-	dt->up=up;
-	dt->textDir=textDir;
-	dt->readDir=readDir;
-	dt->isOK=isOK;
-	dt->ensureReadFromNorm=ensureReadFromNorm;
-	dt->strText=strText;
-
-	return 0;
 }
 
 void DrawGLText::draw() const
@@ -900,7 +845,8 @@ void DrawGLText::getBoundingBox(BoundCube &b) const
 	if(isOK)
 	{
 		font->BBox(strText.c_str(),minX,minY,minZ,maxX,maxY,maxZ);
-		b.setBounds(minX,minY,minZ,maxX,maxY,maxZ);
+		b.setBounds(minX+origin[0],minY+origin[1],minZ+origin[2],
+				maxX+origin[0],maxY+origin[1],maxZ+origin[2]);
 	}
 	else
 		b.setInverseLimits();	
@@ -946,6 +892,9 @@ void DrawRectPrism::draw() const
 	switch(drawMode)
 	{
 		case DRAW_WIREFRAME:
+		{
+			//TODO: Could speedup with LINE_STRIP/LOOP. This is 
+			//not a bottleneck atm though.
 			glLineWidth(lineWidth);	
 			glBegin(GL_LINES);
 				glColor4f(r,g,b,a);
@@ -989,29 +938,61 @@ void DrawRectPrism::draw() const
 				glVertex3f(pMin[0],pMax[1],pMin[2]);
 			glEnd();
 			break;
+		}
+		case DRAW_FLAT:
+		{
+			glBegin(GL_QUADS);
+				glColor4f(r,g,b,a);
+			
+				glNormal3f(0,0,-1);
+				//Along the bottom
+				glVertex3f(pMin[0],pMin[1],pMin[2]);
+				glVertex3f(pMin[0],pMax[1],pMin[2]);
+				glVertex3f(pMax[0],pMax[1],pMin[2]);
+				glVertex3f(pMax[0],pMin[1],pMin[2]);
+				//Up the side
+				glNormal3f(1,0,0);
+				glVertex3f(pMax[0],pMax[1],pMax[2]);
+				glVertex3f(pMax[0],pMin[1],pMax[2]);
+				glVertex3f(pMax[0],pMin[1],pMin[2]);
+				glVertex3f(pMax[0],pMax[1],pMin[2]);
+				//Over the top
+				glNormal3f(0,0,1);
+				glVertex3f(pMax[0],pMin[1],pMax[2]);
+				glVertex3f(pMax[0],pMax[1],pMax[2]);
+				glVertex3f(pMin[0],pMax[1],pMax[2]);
+				glVertex3f(pMin[0],pMin[1],pMax[2]);
+
+				//and back down
+				glNormal3f(-1,0,0);
+				glVertex3f(pMin[0],pMax[1],pMin[2]);
+				glVertex3f(pMin[0],pMin[1],pMin[2]);
+				glVertex3f(pMin[0],pMin[1],pMax[2]);
+				glVertex3f(pMin[0],pMax[1],pMax[2]);
+
+				//Now the other two sides
+				glNormal3f(0,-1,0);
+				glVertex3f(pMax[0],pMin[1],pMax[2]);
+				glVertex3f(pMin[0],pMin[1],pMax[2]);
+				glVertex3f(pMin[0],pMin[1],pMin[2]);
+				glVertex3f(pMax[0],pMin[1],pMin[2]);
+				
+				glNormal3f(0,1,0);
+				glVertex3f(pMax[0],pMax[1],pMax[2]);
+				glVertex3f(pMax[0],pMax[1],pMin[2]);
+				glVertex3f(pMin[0],pMax[1],pMin[2]);
+				glVertex3f(pMin[0],pMax[1],pMax[2]);
+
+			glEnd();
+
+			break;
+
+		}
 		default:
 			ASSERT(false);
 	}		
 
 
-}
-
-DrawableObj* DrawRectPrism::clone() const
-{
-	DrawRectPrism *d=new DrawRectPrism;
-
-	d->pMin=pMin;
-	d->pMax=pMax;
-	d->drawMode=drawMode;
-	d->lineWidth=lineWidth;
-
-	d->r=r;
-	d->g=g;
-	d->b=b;
-	d->a=a;
-
-	d->wantsLight=false;
-	return d;
 }
 
 void DrawRectPrism::setAxisAligned( const Point3D &p1, const Point3D &p2)
@@ -1043,6 +1024,43 @@ void DrawRectPrism::setLineWidth(float newLineWidth)
 	lineWidth=newLineWidth;
 }
 
+void DrawRectPrism::recomputeParams(const vector<Point3D> &vecs, 
+			const vector<float> &scalars, unsigned int mode)
+{
+	switch(mode)
+	{
+		case DRAW_RECT_BIND_TRANSLATE:
+		{
+			ASSERT(vecs.size() ==1);
+			Point3D delta;
+			delta = (pMax - pMin)*0.5;
+			//Object has been translated
+			pMin = vecs[0]-delta;
+			pMax = vecs[0]+delta;
+			break;
+		}
+		case DRAW_RECT_BIND_CORNER_MOVE:
+		{
+			ASSERT(vecs.size() ==1);
+			//Delta has changed, but origin shoudl stay the same
+			Point3D mean, corner;
+			mean  = (pMin + pMax)*0.5;
+
+			//Prevent negative offset values, otherwise we can
+			//get inside out boxes
+			corner=vecs[0];
+			for(unsigned int ui=0;ui<3;ui++)
+				corner[ui]= fabs(corner[ui]);
+
+			pMin = mean-corner;
+			pMax = mean+corner;
+			break;
+		}
+		default:
+			ASSERT(false);
+	}
+}
+
 DrawTexturedQuadOverlay::DrawTexturedQuadOverlay()
 {
 	texPool=0;
@@ -1065,7 +1083,7 @@ void DrawTexturedQuadOverlay::draw() const
 		return;
 
 	ASSERT(glIsTexture(textureId));
-
+	
 	glMatrixMode(GL_PROJECTION);	
 	glPushMatrix();
 	glLoadIdentity();
@@ -1102,11 +1120,6 @@ void DrawTexturedQuadOverlay::draw() const
 	glMatrixMode(GL_MODELVIEW);
 }
 
-DrawableObj* DrawTexturedQuadOverlay::clone() const
-{
-	ASSERT(false);
-	return 0;
-}
 
 bool DrawTexturedQuadOverlay::setTexture(const char *textureFile)
 {
@@ -1122,6 +1135,123 @@ void DrawTexturedQuadOverlay::getBoundingBox(BoundCube &b) const
 	b.setInvalid();
 }
 
+
+DrawColourBarOverlay::DrawColourBarOverlay() 
+{
+	a=1.0;
+	string f;
+	f=getDefaultFontFile();
+	font = new FTGLPolygonFont(f.c_str());
+};
+
+
+void DrawColourBarOverlay::draw() const
+{
+	//Draw quads
+	float elemHeight;
+	//80% of bar width is for the actual colour bar itself.
+	float barWidth=0.8*width;
+	elemHeight=height/(float)rgb.size();
+	glBegin(GL_QUADS);
+	for(unsigned int ui=0;ui<rgb.size();ui++)
+	{
+		//Set the quad colour for bar element
+		glColor4f(rgb[rgb.size()-(ui+1)].v[0],
+				rgb[rgb.size()-(ui+1)].v[1],
+				rgb[rgb.size()-(ui+1)].v[2],1.0);
+
+		//draw this quad (bar element)
+		glVertex3f(tlX,tlY+(float)ui*elemHeight,0);
+		glVertex3f(tlX,tlY+(float)(ui+1)*elemHeight,0);
+		glVertex3f(tlX+barWidth,tlY+(float)(ui+1)*elemHeight,0);
+		glVertex3f(tlX+barWidth,tlY+(float)(ui)*elemHeight,0);
+	}
+
+	glEnd();
+
+	glError();
+	//Draw ticks on colour bar
+	glBegin(GL_LINES);
+		glColor4f(1.0,1.0,1.0f,1.0f);
+		//Top tick
+		glVertex3f(tlX,tlY,0);
+		glVertex3f(tlX+width,tlY,0);
+		//Bottom tick
+		glVertex3f(tlX,tlY+height,0);
+		glVertex3f(tlX+width,tlY+height,0);
+	glEnd();
+	glError();
+
+
+
+
+	if(!font || font->Error())
+	{
+#ifdef DEBUG
+		std::cerr << "Ah bugger. No font!" << std::endl;
+#endif
+		return;
+	}
+
+
+
+	//FTGL units are a pain; The devs could not decide
+	//whether to implement them in opengl coords or real coords
+	//so they did neither, and implemented them in "points".
+	//here we assume that we can transform 1 ftgl unit
+	//to 1 opengl unit by inversion 
+	const float FTGL_DEFAULT_UNIT_SCALE=1.0/72.0;
+
+	glColor3f(1.0f,1.0f,1.0f);	
+	font->FaceSize(3);
+	glDisable(GL_CULL_FACE);
+	glPushMatrix();
+	glTranslatef(tlX+width,tlY,0);
+	string s;
+	stream_cast(s,max);
+	//Note negative sign to flip from y-down screen (opengl) to text dir
+	//(y up)
+	glScaled(FTGL_DEFAULT_UNIT_SCALE,
+			-FTGL_DEFAULT_UNIT_SCALE,FTGL_DEFAULT_UNIT_SCALE);
+	font->Render(s.c_str());
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(tlX+width,tlY+height,0);
+	stream_cast(s,min);
+	//Note negative sign to flip from y-down screen (opengl) to text dir
+	//(y up)
+	glScaled(FTGL_DEFAULT_UNIT_SCALE,
+			-FTGL_DEFAULT_UNIT_SCALE,FTGL_DEFAULT_UNIT_SCALE);
+	font->Render(s.c_str());
+	glPopMatrix();
+	glEnable(GL_CULL_FACE);
+
+
+
+}
+
+void DrawColourBarOverlay::setColourVec(const vector<float> &r,
+					const vector<float> &g,
+					const vector<float> &b)
+{
+	ASSERT(r.size() == g.size());
+	ASSERT(g.size() == b.size());
+	rgb.resize(r.size());
+	for(unsigned int ui=0;ui<r.size();ui++)
+	{
+		rgb[ui].v[0]=r[ui];
+		rgb[ui].v[1]=g[ui];
+		rgb[ui].v[2]=b[ui];
+	}
+
+
+}
+
+void DrawColourBarOverlay::getBoundingBox(BoundCube &b) const
+{
+	b.setInvalid();
+}
 
 
 DrawField3D::DrawField3D() : alphaVal(0.2f), pointSize(1.0f), drawBoundBox(true),volumeGrid(false), volumeRenderMode(0), field(0) 
@@ -1143,33 +1273,6 @@ void DrawField3D::getBoundingBox(BoundCube &b) const
 	b.setBounds(field->getMinBounds(),field->getMaxBounds());
 }
 
-DrawableObj *DrawField3D::clone() const
-{
-	DrawField3D *d = new DrawField3D;
-
-	d->alphaVal=alphaVal;
-	d->pointSize=pointSize;
-	d->drawBoundBox=drawBoundBox;
-	d->boxColour=boxColour;
-	d->volumeGrid=volumeGrid;
-	d->colourMapBound[0] = d->colourMapBound[0];
-	d->colourMapBound[1] = d->colourMapBound[1];
-
-	d->colourMapID = colourMapID;
-
-	d->volumeRenderMode=volumeRenderMode;
-	if(field)
-	{
-		Voxels<float> *v  = new Voxels<float>;
-		field->clone(*v);
-		d->field=v;
-	}
-	else
-		d->field=0;
-
-	return d;
-
-}
 
 void DrawField3D::setField(const Voxels<float> *newField)
 {
@@ -1382,26 +1485,6 @@ void DrawIsoSurface::swapVoxels(Voxels<float> *f)
 	mesh.clear();
 }
 
-DrawableObj* DrawIsoSurface::clone() const
-{	
-	DrawIsoSurface *d= new DrawIsoSurface;
-
-	d->cacheOK=cacheOK;
-	d->drawMode=drawMode;
-	d->threshold=threshold;
-	voxels->clone(*(d->voxels));
-	d->r=r;
-	d->g=g;
-	d->b=b;
-	d->a=a;
-
-
-	d->active=active;
-	d->canSelect=canSelect;
-	d->wantsLight=wantsLight;
-
-	return d;
-}
 
 void DrawIsoSurface::updateMesh() const
 {
@@ -1458,9 +1541,6 @@ void DrawIsoSurface::draw() const
 
 //HPMC on GPU Isosurface code is GPL
 // See class definition for licence 
-
-//TODO: REmove me
-using std::endl;
 
 
 DrawIsoSurfaceWithShader::DrawIsoSurfaceWithShader()
@@ -1732,7 +1812,154 @@ void DrawIsoSurfaceWithShader::compileShader( GLuint shader, const std::string& 
 		shadersOK=false;
 	}
 }
-
-
-
 #endif
+
+
+DrawAxis::DrawAxis()
+{
+}
+
+DrawAxis::~DrawAxis()
+{
+}
+
+void DrawAxis::setStyle(unsigned int s)
+{
+	style=s;
+}
+
+void DrawAxis::setSize(float s)
+{
+	size=s;
+}
+
+void DrawAxis::setPosition(const Point3D &p)
+{
+	position=p;
+}
+
+void DrawAxis::draw() const
+
+{
+	float halfSize=size/2.0f;
+	glPushAttrib(GL_LIGHTING_BIT);
+	glDisable(GL_LIGHTING);
+	glBegin(GL_LINES);
+	//Draw lines
+	glColor3f(1.0f,0.0f,0.0f);
+	glVertex3f(position[0]-halfSize,
+	           position[1],position[2]);
+	glVertex3f(position[0]+halfSize,
+	           position[1],position[2]);
+
+	glColor3f(0.0f,1.0f,0.0f);
+	glVertex3f(position[0],
+	           position[1]-halfSize,position[2]);
+	glVertex3f(position[0],
+	           position[1]+halfSize,position[2]);
+
+	glColor3f(0.0f,0.0f,1.0f);
+	glVertex3f(position[0],
+	           position[1],position[2]-halfSize);
+	glVertex3f(position[0],
+	           position[1],position[2]+halfSize);
+	glEnd();
+	glPopAttrib();
+
+
+
+	float numSections=20.0f;
+	float twoPi = 2.0f *M_PI;
+	float radius = 0.1*halfSize;
+	//Draw axis cones
+
+	//+x
+	glPushMatrix();
+	glTranslatef(position[0]+halfSize,position[1],position[2]);
+
+	glColor3f(1.0f,0.0f,0.0f);
+	glBegin(GL_TRIANGLE_FAN);
+	glVertex3f(radius,0,0);
+	glNormal3f(1,0,0);
+	for (unsigned int i = 0; i<=numSections; i++)
+	{
+		glVertex3f(0,radius * cos(i *  twoPi / numSections),
+		           radius* sin(i * twoPi / numSections));
+		glNormal3f(0,cos(i*twoPi/numSections),sin(i*twoPi/numSections));
+	}
+	glEnd();
+	glBegin(GL_TRIANGLE_FAN);
+	glVertex3f(0,0,0);
+	glNormal3f(-1,0,0);
+	for (unsigned int i = 0; i<=numSections; i++)
+	{
+		glVertex3f(0,-radius * cos(i *  twoPi / numSections),
+		           radius* sin(i * twoPi / numSections));
+		glNormal3f(-1,0,0);
+	}
+	glEnd();
+	glPopMatrix();
+
+	//+y
+	glColor3f(0.0f,1.0f,0.0f);
+	glPushMatrix();
+	glTranslatef(position[0],position[1]+halfSize,position[2]);
+	glBegin(GL_TRIANGLE_FAN);
+	glVertex3f(0,radius,0);
+	glNormal3f(0,1,0);
+	for (unsigned int i = 0; i<=numSections; i++)
+	{
+		glVertex3f(radius * sin(i *  twoPi / numSections),0,
+		           radius* cos(i * twoPi / numSections));
+		glNormal3f(sin(i*twoPi/numSections),0,cos(i*twoPi/numSections));
+	}
+	glEnd();
+
+	glBegin(GL_TRIANGLE_FAN);
+	glVertex3f(0,0,0);
+	glNormal3f(0,-1,0);
+	for (unsigned int i = 0; i<=numSections; i++)
+	{
+		glVertex3f(radius * cos(i *  twoPi / numSections),0,
+		           radius* sin(i * twoPi / numSections));
+		glNormal3f(0,-1,0);
+	}
+	glEnd();
+
+	glPopMatrix();
+
+
+
+	//+z
+	glColor3f(0.0f,0.0f,1.0f);
+	glPushMatrix();
+	glTranslatef(position[0],position[1],position[2]+halfSize);
+	glBegin(GL_TRIANGLE_FAN);
+	glVertex3f(0,0,radius);
+	glNormal3f(0,0,1);
+	for (unsigned int i = 0; i<=numSections; i++)
+	{
+		glVertex3f(radius * cos(i *  twoPi / numSections),
+		           radius* sin(i * twoPi / numSections),0);
+		glNormal3f(cos(i*twoPi/numSections),sin(i*twoPi/numSections),0);
+	}
+	glEnd();
+
+	glBegin(GL_TRIANGLE_FAN);
+	glVertex3f(0,0,0);
+	glNormal3f(0,0,-1);
+	for (unsigned int i = 0; i<=numSections; i++)
+	{
+		glVertex3f(-radius * cos(i *  twoPi / numSections),
+		           radius* sin(i * twoPi / numSections),0);
+		glNormal3f(0,0,-1);
+	}
+	glEnd();
+	glPopMatrix();
+}
+
+void DrawAxis::getBoundingBox(BoundCube &b) const
+{
+	b.setInvalid();
+}
+

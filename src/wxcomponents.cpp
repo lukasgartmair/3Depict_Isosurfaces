@@ -41,39 +41,6 @@ END_EVENT_TABLE()
 
 void PropGridHandler::OnMouseMovement(wxMouseEvent& evt)
 {
-/* FIXME: This is currently broken :( It is supposed to use the fact that the
- * combo box blocks mouse movement to determine that the gridCellChoiceEditor should defocus
- * when the user moves away from the box. However, I do not know how to post an event back
- * to threeDepict.cppp EVT_GRID_CMD_CELL_CHANGE(..), this doesn't automagically happen.
- * Easiest solution would be if upstream fixed it.
-	using std::cerr;
-	using std::endl;
-
-	cerr << "Mouse." << endl;
-	if (m_Grid->isComboEditing() && !eventGrace--)
-	{
-		cerr << "Is combo editing!" << endl;
-		wxGridCellEditor *ed;
-		ed = m_Grid->GetCellEditor(m_Grid->GetGridCursorRow(),m_Grid->GetGridCursorCol());
-		if(ed->IsCreated())
-		{
-			wxGridCellChoiceEditor *edChoice=((wxGridCellChoiceEditor *)ed);
-			cerr << "Ending edit" << endl;
-			//Modify the  
-			m_Grid->GetTable()->SetValue(m_Grid->GetGridCursorRow(),
-						m_Grid->GetGridCursorCol(),edChoice->GetValue());
-
-			//Force a focus move, which forces the editor to edit (but won't generate 
-			//an event :/ )
-//			m_Grid->SetGridCursor(0,1);
-			ed->evtHandler->SetInSetFocus(false);
-
-		}
-		eventGrace=5;
-
-	}
-
- */
 	evt.Skip();
 }
 

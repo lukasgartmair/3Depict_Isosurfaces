@@ -142,7 +142,7 @@ enum
 
 //Randomly select subset. Subset will be (somewhat) sorted on output
 template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<T> &source, 
-							RandNumGen &rng, size_t num,unsigned int &progress,bool (*callback)())
+							RandNumGen &rng, size_t num,unsigned int &progress,bool (*callback)(), bool strongRandom=false)
 {
 	//If there are not enough points, just copy it across in whole
 	if(source.size() <= num)
@@ -157,105 +157,157 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 
 	result.resize(num);
 
-
-	size_t numTicksNeeded;
-	//If the number of items is larger than half the source size,
-	//switch to tracking vacancies, rather than data
-	if(num < source.size()/2)
-		numTicksNeeded=num;
-	else
-		numTicksNeeded=source.size()-num;
-
-	//Randomly selected items 
-	//---------
-	std::vector<size_t> ticks;
-	ticks.resize(numTicksNeeded);
-
-	//Create an array of numTicksNeededbers and fill 
-	for(size_t ui=0; ui<numTicksNeeded; ui++)
-		ticks[ui]=(size_t)(rng.genUniformDev()*(source.size()-1));
-
-	//Remove duplicates. Intersperse some callbacks to be nice
-	GreaterWithCallback<size_t> gFunctor(callback,50000);
-	std::sort(ticks.begin(),ticks.end(),gFunctor);
-	EqualWithCallback<size_t> eqFunctor(callback,50000);
-	std::unique(ticks.begin(),ticks.end(),eqFunctor);	
-
-	std::vector<size_t> moreTicks;
-	//Top up with unique entries
-	while(ticks.size() +moreTicks.size() < numTicksNeeded)
+	if(strongRandom)
 	{
-		size_t index;
 
-		//This is actually not too bad. the collision probability is at most 50%
-		//due the switching behaviour above, for any large number of items 
-		//So this is at worst case nlog(n) (I think)
-		index =rng.genUniformDev()*(source.size()-1);
-		if(!binary_search(ticks.begin(),ticks.end(),index) &&
-			std::find(moreTicks.begin(),moreTicks.end(),index) ==moreTicks.end())
-			moreTicks.push_back(index);
+		size_t numTicksNeeded;
+		//If the number of items is larger than half the source size,
+		//switch to tracking vacancies, rather than data
+		if(num < source.size()/2)
+			numTicksNeeded=num;
+		else
+			numTicksNeeded=source.size()-num;
 
-	}
+		//Randomly selected items 
+		//---------
+		std::vector<size_t> ticks;
+		ticks.resize(numTicksNeeded);
 
-	ticks.reserve(numTicksNeeded);
-	for(size_t ui=0;ui<moreTicks.size();ui++)
-		ticks.push_back(moreTicks[ui]);
+		//Create an array of numTicksNeededbers and fill 
+		for(size_t ui=0; ui<numTicksNeeded; ui++)
+			ticks[ui]=(size_t)(rng.genUniformDev()*(source.size()-1));
 
-	moreTicks.clear();
-
-	ASSERT(ticks.size() == numTicksNeeded);
-	//---------
-	
-	size_t pos=0;
-	//Transfer the output
-	unsigned int curProg=70000;
-
-	if(num < source.size()/2)
-	{
-		for(std::vector<size_t>::iterator it=ticks.begin();it!=ticks.end();it++)
-		{
-
-			result[pos]=source[*it];
-			pos++;
-			if(!curProg--)
-			{
-				progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
-				(*callback)();
-				curProg=70000;
-			}
-		}
-	}
-	else
-	{
-		//Sort the ticks properly (mostly sorted anyway..)
+		//Remove duplicates. Intersperse some callbacks to be nice
+		GreaterWithCallback<size_t> gFunctor(callback,50000);
 		std::sort(ticks.begin(),ticks.end(),gFunctor);
-		
-		unsigned int curTick=0;
-		for(size_t ui=0;ui<num; ui++)
+		EqualWithCallback<size_t> eqFunctor(callback,50000);
+		std::vector<size_t>::iterator newLast;
+		newLast=std::unique(ticks.begin(),ticks.end());	
+		ticks.erase(newLast,ticks.end());
+
+		std::vector<size_t> moreTicks;
+		//Top up with unique entries
+		while(ticks.size() +moreTicks.size() < numTicksNeeded)
 		{
-			//Don't copy if this is marked
-			if(ui == ticks[curTick])
-				curTick++;
-			else
-				result[ui-curTick]=source[ui];
-			
-			if(!curProg--)
+			size_t index;
+
+			//This is actually not too bad. the collision probability is at most 50%
+			//due the switching behaviour above, for any large number of items 
+			//So this is at worst case nlog(n) (I think)
+			index =rng.genUniformDev()*(source.size()-1);
+			if(!binary_search(ticks.begin(),ticks.end(),index) &&
+				std::find(moreTicks.begin(),moreTicks.end(),index) ==moreTicks.end())
+				moreTicks.push_back(index);
+
+		}
+
+		ticks.reserve(numTicksNeeded);
+		for(size_t ui=0;ui<moreTicks.size();ui++)
+			ticks.push_back(moreTicks[ui]);
+
+		moreTicks.clear();
+
+		ASSERT(ticks.size() == numTicksNeeded);
+		//---------
+		
+		size_t pos=0;
+		//Transfer the output
+		unsigned int curProg=70000;
+
+		if(num < source.size()/2)
+		{
+			for(std::vector<size_t>::iterator it=ticks.begin();it!=ticks.end();it++)
 			{
-				progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
-				(*callback)();
-				curProg=70000;
+
+				result[pos]=source[*it];
+				pos++;
+				if(!curProg--)
+				{
+					progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
+					(*callback)();
+					curProg=70000;
+				}
 			}
 		}
+		else
+		{
+			//Sort the ticks properly (mostly sorted anyway..)
+			std::sort(ticks.begin(),ticks.end(),gFunctor);
+
+			unsigned int curTick=0;
+			for(size_t ui=0;ui<source.size(); ui++)
+			{
+				//Don't copy if this is marked
+				if(ui == ticks[curTick])
+					curTick++;
+				else
+				{
+					ASSERT(result.size() > (ui-curTick));
+					result[ui-curTick]=source[ui];
+				}
+				
+				if(!curProg--)
+				{
+					progress= (unsigned int)((float)(curProg)/((float)source.size())*100.0f);
+					(*callback)();
+					curProg=70000;
+				}
+			}
+		}
+
+		ticks.clear();
+	}	
+	else
+	{
+		//Use a weak randomisation
+		LinearFeedbackShiftReg l;
+
+		//work out the mask level we need to use
+		size_t i=1;
+		unsigned int j=0;
+		while(i < (source.size()<<1))
+		{
+			i=i<<1;
+			j++;
+		}
+
+		//linear shift table starts at 3.
+		if(j<3) {
+			j=3;
+			i = 1 << j;
+		}
+
+		size_t start;
+		//start at a random position  in the linear state
+		start =(size_t)(rng.genUniformDev()*i);
+		l.setMaskPeriod(j);
+		l.setState(start);
+
+		size_t ui=0;	
+		//generate unique weak random numbers.
+		while(ui<num)
+		{
+			size_t res;
+			res= l.clock();
+			
+			//use the source if it lies within range.
+			//drop it silently if it is out of range
+			if(res< source.size())
+			{
+				result[ui] =source[res];
+				ui++;
+			}
+		}
+
 	}
 
-	ticks.clear();
-	
 	return num;
 }
 
 //Randomly select subset. Subset will be (somewhat) sorted on output
 template<class T> size_t randomDigitSelection(std::vector<T> &result, const size_t max,
-			RandNumGen &rng, size_t num,unsigned int &progress,bool (*callback)())
+			RandNumGen &rng, size_t num,unsigned int &progress,bool (*callback)(),
+			bool strongRandom=false)
 {
 	//If there are not enough points, just copy it across in whole
 	if(max < num)
@@ -270,99 +322,142 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 
 	result.resize(num);
 
-
-	size_t numTicksNeeded;
-	//If the number of items is larger than half the source size,
-	//switch to tracking vacancies, rather than data
-	if(num < max/2)
-		numTicksNeeded=num;
-	else
-		numTicksNeeded=max-num;
-
-	//Randomly selected items 
-	//---------
-	std::vector<size_t> ticks;
-	ticks.resize(numTicksNeeded);
-
-	//Create an array of numTicksNeededbers and fill 
-	for(size_t ui=0; ui<numTicksNeeded; ui++)
-		ticks[ui]=(size_t)(rng.genUniformDev()*(max-1));
-
-	//Remove duplicates. Intersperse some callbacks to be nice
-	GreaterWithCallback<size_t> gFunctor(callback,50000);
-	std::sort(ticks.begin(),ticks.end(),gFunctor);
-	EqualWithCallback<size_t> eqFunctor(callback,50000);
-	std::unique(ticks.begin(),ticks.end(),eqFunctor);	
-
-	std::vector<size_t> moreTicks;
-	//Top up with unique entries
-	while(ticks.size() +moreTicks.size() < numTicksNeeded)
+	if(strongRandom)
 	{
-		size_t index;
 
-		//This is actually not too bad. the collision probability is at most 50%
-		//due the switching behaviour above, for any large number of items 
-		//So this is at worst case nlog(n) (I think)
-		index =rng.genUniformDev()*(max-1);
-		if(!binary_search(ticks.begin(),ticks.end(),index) &&
-			std::find(moreTicks.begin(),moreTicks.end(),index) ==moreTicks.end())
-			moreTicks.push_back(index);
+		size_t numTicksNeeded;
+		//If the number of items is larger than half the source size,
+		//switch to tracking vacancies, rather than data
+		if(num < max/2)
+			numTicksNeeded=num;
+		else
+			numTicksNeeded=max-num;
 
-	}
+		//Randomly selected items 
+		//---------
+		std::vector<size_t> ticks;
+		ticks.resize(numTicksNeeded);
 
-	ticks.reserve(numTicksNeeded);
-	for(size_t ui=0;ui<moreTicks.size();ui++)
-		ticks.push_back(moreTicks[ui]);
+		std::cerr << "Generating some unique numbers:" << std::endl;
+		//Create an array of numTicksNeededbers and fill 
+		for(size_t ui=0; ui<numTicksNeeded; ui++)
+			ticks[ui]=(size_t)(rng.genUniformDev()*(max-1));
 
-	moreTicks.clear();
-
-	ASSERT(ticks.size() == numTicksNeeded);
-	//---------
-	
-	size_t pos=0;
-	//Transfer the output
-	unsigned int curProg=70000;
-
-	if(num < max/2)
-	{
-		for(std::vector<size_t>::iterator it=ticks.begin();it!=ticks.end();it++)
-		{
-
-			result[pos]=*it;
-			pos++;
-			if(!curProg--)
-			{
-				progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
-				(*callback)();
-				curProg=70000;
-			}
-		}
-	}
-	else
-	{
-		//Sort the ticks properly (mostly sorted anyway..)
+		//Remove duplicates. Intersperse some callbacks to be nice
+		GreaterWithCallback<size_t> gFunctor(callback,50000);
 		std::sort(ticks.begin(),ticks.end(),gFunctor);
+		EqualWithCallback<size_t> eqFunctor(callback,50000);
 		
-		unsigned int curTick=0;
-		for(size_t ui=0;ui<num; ui++)
+		std::vector<size_t>::iterator itLast;
+		itLast=std::unique(ticks.begin(),ticks.end(),eqFunctor);	
+		ticks.erase(itLast,ticks.end());
+		std::vector<size_t> moreTicks;
+		//Top up with unique entries
+		std::cerr << "Topping up" << std::endl;
+		while(ticks.size() +moreTicks.size() < numTicksNeeded)
 		{
-			//Don't copy if this is marked
-			if(ui == ticks[curTick])
-				curTick++;
-			else
-				result[ui-curTick]=ui;
-			
-			if(!curProg--)
+			size_t index;
+
+			//This is actually not too bad. the collision probability is at most 50%
+			//due the switching behaviour above, for any large number of items 
+			//So this is at worst case nlog(n) (I think)
+			index =rng.genUniformDev()*(max-1);
+			if(!binary_search(ticks.begin(),ticks.end(),index) &&
+				std::find(moreTicks.begin(),moreTicks.end(),index) ==moreTicks.end())
+				moreTicks.push_back(index);
+
+		}
+		std::cerr << "Finished topup" << std::endl;
+
+		ticks.reserve(numTicksNeeded);
+		for(size_t ui=0;ui<moreTicks.size();ui++)
+			ticks.push_back(moreTicks[ui]);
+
+		moreTicks.clear();
+
+		ASSERT(ticks.size() == numTicksNeeded);
+		//---------
+		
+		size_t pos=0;
+		//Transfer the output
+		unsigned int curProg=70000;
+
+		if(num < max/2)
+		{
+			for(std::vector<size_t>::iterator it=ticks.begin();it!=ticks.end();it++)
 			{
-				progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
-				(*callback)();
-				curProg=70000;
+
+				result[pos]=*it;
+				pos++;
+				if(!curProg--)
+				{
+					progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
+					(*callback)();
+					curProg=70000;
+				}
+			}
+		}
+		else
+		{
+			//Sort the ticks properly (mostly sorted anyway..)
+			std::sort(ticks.begin(),ticks.end(),gFunctor);
+			
+			unsigned int curTick=0;
+			for(size_t ui=0;ui<numTicksNeeded; ui++)
+			{
+				//Don't copy if this is marked
+				if(ui == ticks[curTick])
+					curTick++;
+				else
+					result[ui-curTick]=ui;
+				
+				if(!curProg--)
+				{
+					progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
+					(*callback)();
+					curProg=70000;
+				}
+			}
+		}
+
+		ticks.clear();
+	}
+	else	
+	{
+		//Use a weak randomisation
+		LinearFeedbackShiftReg l;
+
+		//work out the mask level we need to use
+		size_t i=1;
+		unsigned int j=0;
+		while(i < (max<<1))
+		{
+			i=i<<1;
+			j++;
+		}
+		
+		size_t start;
+		//start at a random position  in the linear state
+		start =(size_t)(rng.genUniformDev()*i);
+		l.setMaskPeriod(j);
+		l.setState(start);
+
+		size_t ui=0;	
+		//generate unique weak random numbers.
+		while(ui<num)
+		{
+			size_t res;
+			res= l.clock();
+			
+			//use the source if it lies within range.
+			//drop it silently if it is out of range
+			if(res<max) 
+			{
+				result[ui] =res;
+				ui++;
 			}
 		}
 	}
-
-	ticks.clear();
-	
 	return num;
 }
 

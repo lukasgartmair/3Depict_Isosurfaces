@@ -24,6 +24,7 @@
 #include <wx/spinctrl.h>
 #include <wx/listctrl.h>
 #include <wx/docview.h>
+#include <wx/dnd.h>
 // end wxGlade
 
 //Local stuff
@@ -37,6 +38,7 @@
 #ifndef QUICK3D_H
 #define QUICK3D_H
 
+class FileDropTarget;
 
 class MainWindowFrame: public wxFrame {
 public:
@@ -46,11 +48,18 @@ public:
     MainWindowFrame(wxWindow* parent, int id, const wxString& title, const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE);
     virtual ~MainWindowFrame();
 
+    void OnDropFiles(const wxArrayString &files);
+
+    bool isCurrentlyUpdatingScene() const { return currentlyUpdatingScene;};
+
 private:
     // begin wxGlade: MainWindowFrame::methods
     void set_properties();
     void do_layout();
     // end wxGlade
+   
+   	//!Give  a  
+    	void statusMessage(const char *message, unsigned int messageType=MESSAGE_ERROR); 
 
 	void updateProgressStatus();
 	void doSceneUpdate();
@@ -73,17 +82,14 @@ private:
 	//!Have we aborted an update
 	bool haveAborted;
 
-	//!Progress of filter (out of 100) for current filter
-	unsigned int filterProgress;
-	//!Number of filters that we have proccessed (n out of m filters)
-	unsigned int totalProgress;
-	//!Pointer to the current filter that is being updated. Only valid during an update callback
-	const Filter *curProgFilter;
 	//!source item when dragging a filter in the tree control
 	wxTreeItemId *filterTreeDragSource;
 
 	//!The current file if we are using an XML file
 	wxString currentFile;
+
+	//!Drag and drop functionality
+	FileDropTarget *dropTarget;
 protected:
     wxTimer *statusTimer;
     wxTimer *progressTimer;
@@ -94,6 +100,7 @@ protected:
     wxMenuItem *checkMenuSpectraList;
     wxMenuItem *checkViewFullscreen;
     wxMenuItem *checkViewLegend;
+    wxMenuItem *checkViewWorldAxis;
 
     wxMenuItem *editUndoMenuItem,*editRedoMenuItem;
     wxMenuItem *fileSave;
@@ -170,6 +177,7 @@ public:
     virtual void OnViewControlPane(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnViewRawDataPane(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnHelpHelp(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnHelpContact(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnHelpAbout(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnComboStashText(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnComboStashEnter(wxCommandEvent &event); // wxGlade: <event_handler>
@@ -220,6 +228,7 @@ public:
     virtual void OnSpectraUnsplit(wxSplitterEvent &event);
     virtual void OnViewSpectraList(wxCommandEvent &event); 
     virtual void OnViewPlotLegend(wxCommandEvent &event); 
+    virtual void OnViewWorldAxis(wxCommandEvent &event); 
     virtual void OnViewBackground(wxCommandEvent &event);
     virtual void OnClose(wxCloseEvent &evt);
     virtual void OnComboCameraSetFocus(wxFocusEvent &evt);
@@ -231,6 +240,7 @@ public:
     virtual void OnFileExportIons(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnFileExportRange(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnFileExportVideo(wxCommandEvent &event);
+    virtual void OnFileExportPackage(wxCommandEvent &event);
     virtual void OnRecentFile(wxCommandEvent &event); // wxGlade: <event_handler>
 
     virtual void OnTreeEndLabelEdit(wxTreeEvent &evt);
@@ -241,5 +251,23 @@ public:
     virtual void updateLastRefreshBox();
 }; // wxGlade: end class
 
+
+class FileDropTarget : public wxFileDropTarget
+{
+private:
+	MainWindowFrame *frame;
+public:
+	FileDropTarget(MainWindowFrame *f) {
+		frame = f;
+	}
+
+	virtual bool OnDropFiles(wxCoord x, wxCoord y, const wxArrayString& files)
+	{
+		frame->OnDropFiles(files);
+
+		return true;
+	};
+
+};
 
 #endif // QUICK3D_H

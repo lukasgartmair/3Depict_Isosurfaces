@@ -29,8 +29,14 @@
 enum CAM_ENUM
 {
 	CAM_FREE=1,
-	CAM_PERSP,
 	CAM_LOOKAT,
+};
+
+enum 
+{
+	PROJECTION_MODE_PERSPECTIVE,
+	PROJECTION_MODE_ORTHOGONAL,
+	PROJECTION_MODE_ENUM_END //not a valid mode.
 };
 
 class CameraProperties 
@@ -56,6 +62,13 @@ class Camera
 		Point3D viewDirection;
 		//!Up direction for camera (required to work out "roll")
 		Point3D upDirection;
+
+		//!Projection mode (otho, perspective...)_
+		unsigned int projectionMode;
+
+		//!The current orthographic scaling
+		float orthoScale;
+
 		//!Type number
 		unsigned int typeNum;
 		//!user string, e.g. camera name
@@ -66,8 +79,6 @@ class Camera
 		//!Destructor
 		virtual ~Camera();
 		//!Duplication routine. Must delete returned pointer manually. 
-		/*!Base implementation OK for non-pointer containing objects. Otherwise define (1) copy constructor or (2) overload
-		 */
 		virtual Camera *clone() const=0;
 
 		//!Streaming output operator, presents human readable text
@@ -80,6 +91,9 @@ class Camera
 		//!Return the up direction for the camera
 		Point3D getUpDirection() const;
 
+		//!return the projection mode
+		unsigned int getProjectionMode() const{ return projectionMode;};
+		
 		//!Set the camera's position
 		virtual void setOrigin(const Point3D &);
 		//!set the direction that the camera looks towards
@@ -92,7 +106,7 @@ class Camera
 		//!Get the user string
 		std::string getUserString() const { return userString;};
 
-		//!Do a forwards "dolly",where the camera moves along its viewing axis
+		//!Do a forwards "dolly",where the camera moves along its viewing axis. In ortho mode, instead of moving along axis, a scaling is performed
 		virtual void forwardsDolly(float dollyAmount);
 
 		//!Move the camera origin
@@ -134,37 +148,15 @@ class Camera
 
 };
 
-//!Orthognal transformation camera
-class CameraOrthogonal : public Camera
-{
-	public:
-		CameraOrthogonal() {typeNum=CAM_FREE;};
-		~CameraOrthogonal() {};
-		//!clone function
-		Camera *clone() const;	
-		//!Applies the camera settings to openGL, ensuring cube is not clipped by far plane 
-		virtual void apply(float outputRatio,const BoundCube &b,bool loadIdentity=true) const {}; 
-		//!Applies the camera settings to openGL, restricting the viewport (range (-1, 1))
-		virtual void apply(float outputRatio,const BoundCube &b,bool loadIdentity,
-						float leftRestrict,float rightRestrict, 
-						float bottomRestrict, float topRestrict) const {ASSERT(false);};
-
-		//!Return the user-settable properties of the camera
-		void getProperties(CameraProperties &p) const;
-		
-		//!Write the state of the camera
-		virtual bool writeState(std::ostream &f, unsigned int format, unsigned int tabs=0) const;
-		//!Read the state of the camera
-		virtual bool readState(xmlNodePtr nodePtr);
-};
-
-//!A class for a perspective "point and view" camera
-/*!Class employes a standard viewing frustrum method
- * using glFrustrum
- */
-class CameraPerspective : public Camera
+//!A perspective camera that looks at a specific location
+class CameraLookAt : public Camera
 {
 	protected:
+		//!Location for camera to look at
+		Point3D target;
+		
+		void recomputeViewDirection();
+		
 		//!Perspective FOV
 		float fovAngle;
 
@@ -176,94 +168,26 @@ class CameraPerspective : public Camera
 		//!Do the perspective calculations
 		void doPerspCalcs(float aspect,const BoundCube &bc,bool loadIdentity) const;
 	
-		//Version with top left control. left and top are in world coordinates.
-		void doPerspCalcs(float aspect,const BoundCube &bc,
-				bool loadIdentity,float left, float top) const;
-		
 	public:
 		//!Constructor
-		CameraPerspective();
-		//!Destructor
-		virtual ~CameraPerspective();
-		//!clone function
-		Camera *clone() const;	
+		CameraLookAt();
 
 		//!Streaming output operator, presents human readable text
-                friend std::ostream &operator<<(std::ostream &stream, const CameraPerspective &);
-		//!Applies the camera transforms to world
-		void apply(float outAspect, const BoundCube &boundCube,bool loadIdentity=true) const;
-		
-		//!Set the camera's near clipping plane
-		void setNearPlane(float f) {nearPlane = f;}
-
-		//!Set the camera's FOV angle. 
-		inline void setFOV(float newFov) { ASSERT(newFov >0.0 && newFov<180.0); fovAngle =newFov;}
-
-		//!get the camera's near clipping plane
-		inline float getNearPlane() const {return nearPlane;}
-		
-		//!get the camera's near clipping plane
-		inline float getFarPlane() const {return farPlane;}
-
-		//!Get the camera's FOV angle (full angle across)
-		inline float getFOV() const {return fovAngle;}
-		
-		//!Ensure that the box is visible
-		/*! Face is set by cube net
-					1
-		 	 	    2   3   4
-				  	5
-				  	6
-		3 is the face directed to the +ve x axis,
-		with the "up"" vector on the 3 aligned to z,
-		so "1" is perpendicular to the Z axis and is "visible"
-		 */
-		virtual void ensureVisible(const BoundCube &b, unsigned int face=3);
-
-		//!Return the user-settable properties of the camera
-		void getProperties(CameraProperties &p) const;
-		
-		//!Set the camera property from a key & string pair
-		bool setProperty(unsigned int key, const std::string &value);
-		
-		//!Ensure that up direction is perpendicular to view direction
-		void recomputeUpDirection();
-		
-		//!Write the state of the camera
-		bool writeState(std::ostream &f, unsigned int format, unsigned int tabs=0) const;
-		//!Read the state of the camera
-		bool readState(xmlNodePtr nodePtr) ;
-	
-		//!Apply, restricting viewport to subresgion	
-		virtual void apply(float outputRatio,const BoundCube &b,bool loadIdentity,
-						float leftRestrict,float rightRestrict, 
-						float bottomRestrict, float topRestrict) const {ASSERT(false);};
-};
-
-//!A perspective camera that looks at a specific location
-class CameraPerspLookAt : public CameraPerspective
-{
-	protected:
-		//!Location for camera to look at
-		Point3D target;
-		
-		void recomputeViewDirection();
-	public:
-		//!Constructor
-		CameraPerspLookAt();
-
-		//!Streaming output operator, presents human readable text
-                friend std::ostream &operator<<(std::ostream &stream, const CameraPerspLookAt &);
+                friend std::ostream &operator<<(std::ostream &stream, const CameraLookAt &);
 		//!clone function
 		Camera *clone() const;	
 		//!Destructor
-		virtual ~CameraPerspLookAt();
+		virtual ~CameraLookAt();
 		//!Set the look at target
 		void setOrigin(const Point3D &);
 		//!Set the look at target
 		void setTarget(const Point3D &);
 		//!Get the look at target
 		Point3D getTarget() const;
+		
+		//!Get the camera's FOV angle (full angle across)
+		float getFOV() const {return fovAngle;}
+
 		//!Applies the view transform 
 		void apply(float outAspect, const BoundCube &boundCube,bool loadIdentity=true) const;
 		
@@ -279,10 +203,14 @@ class CameraPerspLookAt : public CameraPerspective
 
 		void translate(float lrTrans, float udTrans);
 
+
+
 		//Clockwise roll looking from camera view by rollRad radians
 		void roll(float rollRad);
 		
-		//TODO: Move to parent class? Maybe not?
+		//!Ensure that up direction is perpendicular to view direction
+		void recomputeUpDirection();
+		
 		//!Ensure that the box is visible
 		/*! Face is set by cube net
 					1
@@ -310,21 +238,8 @@ class CameraPerspLookAt : public CameraPerspective
 		virtual void apply(float outputRatio,const BoundCube &b,bool loadIdentity,
 						float leftRestrict,float rightRestrict, 
 						float topRestrict, float bottomRestrict) const;
+
+		float getViewWidth(float depth) const;
 };
 
-/*Follows a list of points
- *
- * Class contains some elementary constructions
-class CameraTrack
-{
-	private:
-		Camera *cam;
-		vector<Point3D> cameraTrackPts;
-		//Optional track of target points
-		vector<Point3D> targetTrackPts;
-
-	public:
-	
-};
-*/
 #endif

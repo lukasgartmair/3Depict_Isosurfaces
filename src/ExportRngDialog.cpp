@@ -37,7 +37,8 @@ ExportRngDialog::ExportRngDialog(wxWindow* parent, int id, const wxString& title
     label_3 = new wxStaticText(this, wxID_ANY, wxT("Details"));
     gridDetails = new wxGrid(this, wxID_ANY);
     btnOK = new wxButton(this, wxID_SAVE, wxEmptyString);
-   btnCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
+    btnCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
+    btnOK->SetFocus();
 
     set_properties();
     do_layout();

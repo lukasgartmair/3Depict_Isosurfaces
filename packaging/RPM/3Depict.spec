@@ -1,5 +1,5 @@
 Name:		3Depict
-Version:	0.0.2
+Version:	0.0.3
 Release:	1%{?dist}
 Summary:	Valued 3D point cloud visualization and analysis
 Group:		Applications/Engineering
@@ -24,10 +24,13 @@ BuildRequires:	libxml2-devel
 BuildRequires:	ftgl-devel 
 #libpng for textures
 BuildRequires: libpng-devel
-#Desktop file utils for installing desktop file
-BuildRequires: desktop-file-utils
 #WX widgets
 BuildRequires: wxGTK-devel
+#Required for surface removal algorithms 
+BuildRequires: libqhull-devel
+
+#Desktop file utils for installing desktop file
+BuildRequires: desktop-file-utils
 
 %description
 This program is designed to help users visualize and analyze 3D point clouds
@@ -78,6 +81,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Nov 21 2008 D Haley <mycae(a!t)yahoo.com> - 0.0.3-1
+- Update to 0.0.3
+
 * Tue Sep 21 2010 D Haley <mycae(a!t)yahoo.com> - 0.0.2-1
 - Update to 0.0.2
 - Address comments in package review 

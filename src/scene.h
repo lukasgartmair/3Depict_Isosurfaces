@@ -33,7 +33,6 @@ class Scene;
 #include "cameras.h" 
 
 #include "textures.h"
-#include "effect.h"
 
 //OpenGL debugging macro
 #if DEBUG
@@ -49,6 +48,16 @@ class Scene;
 #define glError()
 #endif
 
+#ifdef DEBUG
+	#define glStackDepths() { \
+		int gldepthdebug[3];glGetIntegerv (GL_MODELVIEW_STACK_DEPTH, gldepthdebug);\
+	       	glGetIntegerv (GL_PROJECTION_STACK_DEPTH, gldepthdebug+1);\
+	       	glGetIntegerv (GL_TEXTURE_STACK_DEPTH, gldepthdebug+2);\
+		std::cerr << "OpenGL Stack Depths: ModelV:" << gldepthdebug[0] << " Pr: "\
+		 << gldepthdebug[1] << " Tex:" << gldepthdebug[2] << std::endl;}
+#else
+	#define glStackDepths()
+#endif
 
 //!The scene class brings together elements such as objects, lights, and cameras
 //to enable scene rendering
@@ -65,9 +74,6 @@ class Scene
 
 		//!Bindings for interactive object properties
 		std::vector<SelectionDevice *> selectionDevices;
-
-		//!Various OpenGL effects
-		std::vector<const Effect *> effects;
 
 		//!Lights for use when drawing
 		std::vector<Light const *> lights;
@@ -103,11 +109,6 @@ class Scene
 		//!Cube that holds the scene bounds
 		BoundCube boundCube;
 
-		//!Computes the bounding box for the scene. 
-		//this is locked to a minimum of 0.1 unit box around the origin.
-		//this avoids nasty camera situations, where lookat cameras are sitting
-		//on their targets, and don't know where to look.
-		void computeSceneLimits();
 
 		//!Tells the scene if we are in selection mode or not
 		bool selectionMode;
@@ -131,11 +132,14 @@ class Scene
 		//!Should lighting calculations be performed?
 		bool useLighting;
 
+		//!Should the world axis be drawn?
+		bool showAxis;
+
 		//!Background colour
 		float rBack,gBack,bBack;
 
-		void applyGLExtentions();
-
+		///!Draw the hover overlays
+		void drawHoverOverlay();
 	public:
 		//!Constructor
 		Scene();
@@ -267,7 +271,6 @@ class Scene
 
 		//!Apply the device given the following start and end 
 		//viewport coordinates.
-		//Returns true if viscontrol needs to be externally refreshed
 		void applyDevice(float startX, float startY,
 					float curX, float curY,unsigned int keyFlags, 
 					unsigned int mouseflags,bool permanent=true);
@@ -310,6 +313,11 @@ class Scene
 		//!Set whether to enable lighting
 		void setLighting(bool newLight) { useLighting=newLight;};
 
+		//!Set whether to enable the XYZ world axes
+		void setWorldAxisVisible(bool newAxis) { showAxis=newAxis;};
+		//!Get whether the XYZ world axes are enabled
+		bool getWorldAxisVisible() { return showAxis;};
+
 		//!Set window size
 		void setWinSize(unsigned int x, unsigned int y) {winX=x;winY=y;}
 
@@ -323,6 +331,12 @@ class Scene
 		void setBackgroundColour(float newR,float newG,float newB) { rBack=newR;gBack=newG;bBack=newB;};
 
 		void getBackgroundColour(float &newR,float &newG,float &newB) { newR=rBack;newG=gBack;newB=bBack;};
+		
+		//!Computes the bounding box for the scene. 
+		//this is locked to a minimum of 0.1 unit box around the origin.
+		//this avoids nasty camera situations, where lookat cameras are sitting
+		//on their targets, and don't know where to look.
+		void computeSceneLimits();
 };
 
 #endif

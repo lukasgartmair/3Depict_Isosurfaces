@@ -48,7 +48,7 @@
 //TODO: Work out if there is any way of obtaining the maximum 
 //number of items that can be drawn in an opengl context
 //For now Max it out at 10 million (~120MB of vertex data)
-const size_t MAX_NUM_DRAWABLE_POINTS=10000000;
+const size_t MAX_NUM_DRAWABLE_POINTS=10;
 
 
 //OK, the new FTGL is fucked up. It actually uses defines from
@@ -82,7 +82,32 @@ enum
 	DRAW_WIREFRAME,
 	DRAW_FLAT,
 	DRAW_SMOOTH,
+	DRAW_END_ENUM, //Not a mode, just a marker to catch end-of-enum
 };
+
+//!Axis styles
+enum
+{
+	AXIS_IN_SPACE,	
+};
+
+
+//!Binding enums. Needed to bind drawable selection
+//to internal modification actions inside the drawable
+enum
+{
+	DRAW_SPHERE_BIND_ORIGIN,
+	DRAW_SPHERE_BIND_RADIUS,
+	DRAW_VECTOR_BIND_ORIENTATION,
+	DRAW_VECTOR_BIND_ORIGIN,
+	DRAW_CYLINDER_BIND_ORIGIN,
+	DRAW_CYLINDER_BIND_DIRECTION,
+	DRAW_CYLINDER_BIND_RADIUS,
+	DRAW_RECT_BIND_TRANSLATE,
+	DRAW_RECT_BIND_CORNER_MOVE,
+	DRAW_BIND_ENUM_END,
+};
+
 
 #include "basics.h"
 
@@ -100,11 +125,12 @@ class DrawableObj
 		//!Wants lighting calculations active during render?
 		bool wantsLight;
 
+		//!Is this an overlay? By default, no
+		virtual bool isOverlay() const { return false;}
+
 		//!Constructor
 		DrawableObj();
 		
-		//!Clone object
-//		virtual DrawableObj* clone() const = 0;
 
 		//!Set the active state of the object
 		void setActive(bool active);
@@ -117,6 +143,9 @@ class DrawableObj
 		virtual void getBoundingBox(BoundCube &b) const = 0;
 		//!Drawable destructor
 		virtual ~DrawableObj();
+
+		//!If we offer any kind of external pointer interface; use this to do a recomputation as needed. This is needed for selection binding behaviour
+		virtual void recomputeParams(const vector<Point3D> &vecs, const vector<float> &scalars, unsigned int mode) {};
 };
 
 //A single point drawing class 
@@ -135,9 +164,6 @@ class DrawPoint : public DrawableObj
 		//!Destructor
 		virtual ~DrawPoint();
 	
-		//!Clone object	
-		DrawableObj* clone() const;
-		
 		//!Sets the color of the point to be drawn
 		void setColour(float r, float g, float b, float alpha);
 		//!Draws the points
@@ -158,13 +184,14 @@ class DrawManyPoints : public DrawableObj
 		float r,g,b,a;
 		//!Size of the point
 		float size;
+
+		mutable bool haveCachedBounds;
+		mutable BoundCube cachedBounds;
 	public:
 		//!Constructor
 		DrawManyPoints();
 		//!Destructor
 		virtual ~DrawManyPoints();
-		//!Clone object	
-		DrawableObj* clone() const;
 		//!Swap out the internal vector with an extenal one
 		void swap(std::vector<Point3D> &);
 		//!Remove all points
@@ -185,7 +212,7 @@ class DrawManyPoints : public DrawableObj
 		//!Shuffle the points to remove anisotropic drawing effects. Thus must be done prior to draw call.
 		void shuffle();
 		//!Get the bounding box that encapuslates this object
-		void getBoundingBox(BoundCube &b) const { b.setBounds(pts);}
+		void getBoundingBox(BoundCube &b) const; 
 		
 		//!return number of points
 		size_t getNumPts() { return pts.size();};
@@ -213,8 +240,6 @@ class DrawVector: public DrawableObj
 		//!Destructor
 		virtual ~DrawVector();
 	
-		//!Clone object	
-		DrawableObj* clone() const;
 		
 		//!Sets the color of the point to be drawn
 		void setColour(float r, float g, float b, float alpha);
@@ -224,15 +249,14 @@ class DrawVector: public DrawableObj
 		void setOrigin(const Point3D &);
 		//!Sets the location of the poitns
 		void setVector(const Point3D &);
+		//!Gets the cylinder axis direction
+		Point3D getVector(){ return vector;};
 
 		void getBoundingBox(BoundCube &b) const; 
+		//!Recompute the internal parameters using the input vector information
+		void recomputeParams(const std::vector<Point3D> &vecs, 
+					const std::vector<float> &scalars, unsigned int mode);
 
-		//!Return a pointer to the origin. this breaks data encapsulation
-		//so use with care!
-		Point3D *originPtr(){return &origin;};
-		//!Return a pointer to the origin. this breaks data encapsulation
-		//so use with care!
-		Point3D *directionPtr(){return &vector;};
 };
 
 //! A single colour triangle
@@ -249,8 +273,6 @@ class DrawTriangle : public DrawableObj
 		DrawTriangle();
 		//!Destructor
 		virtual ~DrawTriangle();
-		//!Clone object	
-		DrawableObj* clone() const;
 
 		//!Set one of three vertices (0-2) locations
 		void setVertex(unsigned int, const Point3D &);
@@ -286,8 +308,6 @@ class DrawQuad : public DrawableObj
 		DrawQuad();
 		//!Destructor
 		virtual ~DrawQuad();
-		//!Clone object	
-		DrawableObj* clone() const;
 		//!sets the vertices to defautl colours (r g b and white ) for each vertex respectively
 		void colourVerticies();
 		//!Set vertex's location
@@ -324,17 +344,19 @@ class DrawSphere : public DrawableObj
 		DrawSphere();
 		//! Destructor
 		virtual ~DrawSphere();
-		//!Clone object	
-		DrawableObj* clone() const;
 
 		//!Sets the location of the sphere's origin
 		void setOrigin(const Point3D &p);
+		//!Gets the location of the sphere's origin
+		Point3D getOrigin() const { return origin;};
 		//!Set the number of lateral segments
 		void setLatSegments(unsigned int);
 		//!Set the number of longitudinal segments
 		void setLongSegments(unsigned int);
 		//!Set the radius
 		void setRadius(float);
+		//!get the radius
+		float getRadius() const { return radius;};
 		//!Set the colour (rgba) of the object
 		void setColour(float r,float g,float b,float a);
 		//!Draw the sphere
@@ -342,13 +364,8 @@ class DrawSphere : public DrawableObj
 		//!Get the bounding box that encapuslates this object
 		void getBoundingBox(BoundCube &b) const ;
 
-		//!Return a pointer to the radius. this breaks data encapsulation
-		//so use with care!
-		float *radiusPtr(){return &radius;};
-
-		//!Return a pointer to the origin. this breaks data encapsulation
-		//so use with care!
-		Point3D *originPtr(){return &origin;};
+		//!Recompute the internal parameters using the input vector information
+		void recomputeParams(const vector<Point3D> &vecs, const vector<float> &scalars, unsigned int mode);
 
 };
 
@@ -379,8 +396,6 @@ class DrawCylinder : public DrawableObj
 		DrawCylinder();
 		//!Destructor
 		virtual ~DrawCylinder();
-		//!Clone object	
-		DrawableObj* clone() const;
 
 		//!Set the location of the base of the cylinder
 		void setOrigin(const Point3D &pt);
@@ -389,8 +404,14 @@ class DrawCylinder : public DrawableObj
 		//!Number of cuts  along axis - ie segments
 		void setStacks(unsigned int i);
 
+		//!Gets the location of the origin
+		Point3D getOrigin(){ return origin;};
+		//!Gets the cylinder axis direction
+		Point3D getDirection(){ return direction;};
 		//!Set end radius
 		void setRadius(float val);
+		//!get the radius
+		float getRadius() const { return radius;};
 		//!Set the orientation of cylinder
 		void setDirection(const Point3D &pt);
 		//!Set the length of cylinder
@@ -403,14 +424,8 @@ class DrawCylinder : public DrawableObj
 		//!Get the bounding box that encapuslates this object
 		void getBoundingBox(BoundCube &b) const ;
 
-		//!Get radius pointer (radii must be locked)
-		float *radiusPtr();
-	
-		//!Get the origin poitner	
-		Point3D *originPtr();
-	
-		//!Get the direction pointer	
-		Point3D *directionPtr();
+		//!Recompute the internal parameters using the input vector information
+		void recomputeParams(const vector<Point3D> &vecs, const vector<float> &scalars, unsigned int mode);
 
 		//!Lock (or unlock) the radius to the start radius (i.e. synch the two)
 		void lockRadii(bool doLock=true) {radiiLocked=doLock;};
@@ -442,8 +457,6 @@ class DrawDispList : public DrawableObj
 		DrawDispList();
 		//!Destructor
 		virtual ~DrawDispList();
-		//!Clone object	
-		DrawableObj* clone() const;
 
 		//!Execute the display list
 		void draw() const;		
@@ -526,20 +539,18 @@ class DrawGLText : public DrawableObj
 	public:
 		//!Constructor (font file & text mode)
 		/* Valid font types are FTGL_x where x is
-		 * 	\* BITMAP
-		 * 	\* PIXMAP
-		 * 	\* OUTLINE
-		 * 	\* POLYGON
-		 * 	\* EXTRUDE
-		 * 	\* TEXTURE
+		 * 	BITMAP
+		 * 	PIXMAP
+		 * 	OUTLINE
+		 * 	POLYGON
+		 * 	EXTRUDE
+		 * 	 TEXTURE
 		 */
 		DrawGLText(std::string fontFile,
 					unsigned int ftglTextMode);
 
 		//!Destructor
 		virtual ~DrawGLText();
-		//!Clone object	
-		DrawableObj* clone() const;
 		
 		//!Set the camera used to draw scene
 		static void setCurCamera(const Camera *);
@@ -626,9 +637,9 @@ class DrawRectPrism  : public DrawableObj
 
 		//!Draw object
 		void draw() const;
-		//!Clone object
-		DrawableObj *clone() const; 
 
+		//!Set the draw mode
+		void setDrawMode(unsigned int n) { drawMode=n;};
 		//!Set colour of box
 		void setColour(float rnew, float gnew, float bnew, float anew);
 		//!Set thickness of box
@@ -639,8 +650,52 @@ class DrawRectPrism  : public DrawableObj
 		void setAxisAligned(const BoundCube &b);
 
 		void getBoundingBox(BoundCube &b) const;
+		
+		//!Recompute the internal parameters using the input vector information
+		void recomputeParams(const vector<Point3D> &vecs, const vector<float> &scalars, unsigned int mode);
 };
 
+struct RGBFloat
+{
+	float v[3];
+};
+
+class DrawColourBarOverlay : public DrawableObj
+{
+	private:
+		FTFont *font;
+
+		//!Colours for each element
+		vector<RGBFloat> rgb;
+		//alpha (transparancy) value
+		float a;
+		//!Minimum and maximum values for the colour bar (for ticks)
+		float min,max;
+		//!Height and width of bar (total)
+		float height,width;
+		//!top left of bar
+		float tlX,tlY;
+
+	public:
+	
+		DrawColourBarOverlay();
+		~DrawColourBarOverlay(){delete font;};
+		void getBoundingBox(BoundCube &b) const ;
+
+		//!This is an overlay
+		bool isOverlay() const {return true;};
+		void setColourVec(const vector<float> &r,
+					const vector<float> &g,
+					const vector<float> &b);
+		//!Draw object
+		void draw() const;
+
+		void setAlpha(float alpha) { a=alpha;};
+		void setSize(float widthN, float heightN) {height=heightN, width=widthN;} 
+		void setPosition(float newTLX,float newTLY) { tlX=newTLX; tlY=newTLY;}
+		void setMinMax(float minNew,float maxNew) { min=minNew;max=maxNew;};
+		
+};
 
 //!A class to hande textures to draw
 class DrawTexturedQuadOverlay : public DrawableObj
@@ -657,6 +712,8 @@ class DrawTexturedQuadOverlay : public DrawableObj
 		DrawTexturedQuadOverlay();
 		~DrawTexturedQuadOverlay();
 
+		//!This is an overlay
+		bool isOverlay() const {return true;};
 	
 		void setWindowSize(unsigned int x, unsigned int y){winX=x;winY=y;};	
 
@@ -673,8 +730,6 @@ class DrawTexturedQuadOverlay : public DrawableObj
 
 		//!Draw object
 		void draw() const;
-		//!Clone object
-		DrawableObj *clone() const; 
 
 		void getBoundingBox(BoundCube &b) const ;
 };
@@ -684,6 +739,7 @@ struct RGBThis
 {
 	unsigned char v[3];
 };
+
 //!This class allows for the visualisation of 3D scalar fields
 class DrawField3D : public DrawableObj
 {
@@ -728,8 +784,6 @@ class DrawField3D : public DrawableObj
 		//!Destructor
 		virtual ~DrawField3D();
 
-		//!Clone
-		DrawableObj *clone() const;
 
 		//!Get the bounding box for this object
 		void getBoundingBox(BoundCube &b) const;
@@ -793,9 +847,6 @@ public:
 
 	DrawIsoSurface();
 	~DrawIsoSurface();
-
-	//!Clone object
-	DrawableObj* clone() const;
 
 	//!Transfer ownership of data pointer to class
 	void swapVoxels(Voxels<float> *v);
@@ -912,4 +963,26 @@ public:
 };
 #endif
 
+class DrawAxis : public DrawableObj
+{
+	private:
+		//!Drawing style
+		unsigned int style;
+		Point3D position;
+		//!size
+		float size;
+	public:
+		DrawAxis();
+		~DrawAxis();
+
+		//!Draw object
+		void draw() const;
+
+
+		void setStyle(unsigned int style);
+		void setSize(float newSize);
+		void setPosition(const Point3D &p);
+
+		void getBoundingBox(BoundCube &b) const;
+};
 #endif

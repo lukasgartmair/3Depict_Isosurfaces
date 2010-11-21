@@ -31,7 +31,6 @@ void Mesh::convertRawTriangles(std::vector<TriangleWithVertexNorm> &rawTris, flo
 
 	//Make a flat list of points
 	ps.resize(rawTris.size()*3);
-	unsigned int ui=0;
 
 	for(unsigned int ui=0;ui<rawTris.size();ui++)
 	{

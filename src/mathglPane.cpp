@@ -22,13 +22,17 @@
 #include "mathglPane.h"
 #include "wxcomponents.h"
  
- #include <mgl/mgl_eps.h>
+#include <mgl/mgl_eps.h>
 
 #include <fstream>
+#include <vector>
 
 //Uncomment me if using MGL >=1_10 to 
 //enable nice drawing of rectangular bars
 #define MGL_GTE_1_10
+
+//Panning speed modifier
+const float MGL_PAN_SPEED=0.8f;
 
 using std::ifstream;
 using std::ios;
@@ -52,10 +56,12 @@ MathGLPane::MathGLPane(wxWindow* parent, int id) :
 wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 {
 	hasResized=true;
-	dragging=false;
+	limitInteract=haveUpdates=false;
+	regionDragging=panning=dragging=false;
+	leftWindow=true;
 	thePlot=0;	
 	gr=0;
-	SetBackgroundStyle(wxBG_STYLE_CUSTOM);// Only if using wxAutoBufferedPaintDC
+	SetBackgroundStyle(wxBG_STYLE_CUSTOM);
 }
 
 void MathGLPane::setPlot(Multiplot *newPlot)
@@ -67,6 +73,7 @@ void MathGLPane::setPlot(Multiplot *newPlot)
 
 	Refresh();
 }
+
 
 MathGLPane::~MathGLPane()
 {
@@ -80,7 +87,6 @@ void MathGLPane::render(wxPaintEvent &event)
 {
 	wxAutoBufferedPaintDC   *dc=new wxAutoBufferedPaintDC(this); //This does not work  under windows? (I had double paint events before in my event table -- this might work now)
 
-	
 	if(!thePlot || !plotSelList)
 	{
 		delete dc;
@@ -99,6 +105,7 @@ void MathGLPane::render(wxPaintEvent &event)
 		delete dc;
 		return;
 	}
+
 
 	//Set the enabled and disabled plots
 	wxArrayInt a;
@@ -144,14 +151,47 @@ void MathGLPane::render(wxPaintEvent &event)
 	}
 
 
+
+
 	//If the plot has changed, we need to update it
 	//likewise if we don't have a plot, we need one.
-	if(!gr || hasChanged || hasResized)
+	if(!gr || hasChanged || hasResized || panning)
 	{
+
+		//clear the plot drawing entity
 		if(gr)
 			delete gr;
 
 		gr = new mglGraphZB(w,h);
+
+		//change the plot by panning it before we draw.
+		//if we need to 
+		if(panning)
+		{
+
+			//Panning and dragging are two different operations.
+			ASSERT(!dragging); 
+			float xMin,xMax,yMin,yMax;
+			thePlot->getBounds(xMin,xMax,yMin,yMax);
+		
+			mglPoint pEnd,pStart;
+			pEnd = gr->CalcXYZ(draggingCurrent.x,draggingCurrent.y);
+			pStart = gr->CalcXYZ(draggingStart.x,draggingStart.y);
+			
+			float offX = pEnd.x-pStart.x;
+
+			//I cannot for the life of me work out why
+			//this extra transformation is needed.
+			//but without this the code produces a scale-dependant pan speed.
+			offX*=xMax-xMin;
+
+			//Modify for speed
+			offX*=MGL_PAN_SPEED;
+
+			thePlot->setBounds(origPanMinX+offX/2,+origPanMaxX + offX/2.0,
+						yMin,yMax);
+		}
+
 		//Draw the plot
 		thePlot->drawPlot(gr);	
 		hasResized=false;
@@ -175,8 +215,15 @@ void MathGLPane::render(wxPaintEvent &event)
 
 	//If we are engaged in a draggin operation
 	//draw the nice little bits we need
+	//Compute the MGL coords
+	int axisX,axisY;
+	axisX=axisY=0;
+	gr->CalcScr(gr->Org,&axisX,&axisY);
+	axisY=h-axisY;
 	if(dragging)
 	{
+		//Panning and dragging are two different operations.
+		ASSERT(!panning); 
 		
 		//Draw a rectangle between the start and end positions
 		wxCoord tlX,tlY,wRect,hRect;
@@ -207,17 +254,7 @@ void MathGLPane::render(wxPaintEvent &event)
 
 		const int END_MARKER_SIZE=5;
 
-		bool useNiceAxis=0;
 
-		//Compute the MGL coords
-		int axisX,axisY;
-		axisX=axisY=0;
-#ifdef MGL_GTE_1_10
-		gr->CalcScr(gr->Org,&axisX,&axisY);
-		axisY=h-axisY;
-		//Use a nicer looking axis drawing
-		useNiceAxis=1;
-#endif
 		//If the cursor is wholly beloe
 		//the axis, draw a line rather than abox
 
@@ -256,25 +293,166 @@ void MathGLPane::render(wxPaintEvent &event)
 			dc->DrawRectangle(tlX,tlY,wRect,hRect);
 					
 	}    
-	
+	else if(regionDragging)
+	{
+		//Well, we are dragging the region out some.
+		//let us draw a line from the original X position to
+		//the current mouse position/nearest region position
 
+		mglPoint mglCurMouse= gr->CalcXYZ(curMouse.x,curMouse.y);
+
+		//See where extending the region is allowed up to.
+		float regionTest=thePlot->moveRegionTest(startMouseRegion,
+						regionMoveType, mglCurMouse.x);
+		
+		int deltaDrag;
+		mglPoint testPoint;
+		testPoint.x=regionTest;
+		testPoint.y=0;
+		int testX,testY;
+		gr->CalcScr(testPoint,&testX,&testY);
+		deltaDrag = testX-draggingStart.x;
+
+		//Draw some text above the cursor to indicate the current position
+		std::string str;
+		stream_cast(str,regionTest);
+		wxString wxs;
+		wxs=wxStr(str);
+		wxCoord textW,textH;
+		dc->GetTextExtent(wxs,&textW,&textH);
+
+
+		wxPen *arrowPen;
+		arrowPen=  new wxPen(*wxBLACK,2,wxSOLID);
+
+		dc->SetPen(*arrowPen);
+		const int ARROW_SIZE=8;
+		
+		//draw horiz line
+		dc->DrawLine(testX,h/2,
+			     draggingStart.x,h/2);
+		if(deltaDrag > 0)
+		{
+
+			dc->DrawText(wxs,testX-textW,h/2-textH*2);
+			//Draw arrow head to face right
+			dc->DrawLine(testX,h/2,
+				     testX-ARROW_SIZE, h/2-ARROW_SIZE);
+			dc->DrawLine(testX, h/2,
+				     testX-ARROW_SIZE,h/2+ARROW_SIZE);
+
+		}
+		else
+		{
+			dc->DrawText(wxs,testX,h/2-textH*2);
+			//Draw arrow head to face left
+			dc->DrawLine(testX,h/2,
+				     testX+ARROW_SIZE, h/2-ARROW_SIZE);
+			dc->DrawLine(testX, h/2,
+				     testX+ARROW_SIZE,h/2+ARROW_SIZE);
+		}
+
+	
+		//Draw "ghost" limits markers for move
+		if(regionMoveType == REGION_MOVE)
+		{
+			PlotRegion reg=thePlot->getRegion(startMouseRegion);
+		
+			mglPoint mglDragStart = gr->CalcXYZ(draggingStart.x,draggingStart.y);
+
+			float newLower,newUpper;
+
+			newLower = reg.bounds.first + (mglCurMouse.x-mglDragStart.x);
+			newUpper = reg.bounds.second + (mglCurMouse.x-mglDragStart.x);
+
+			int newLowerX,newUpperX,dummy;
+			gr->CalcScr(mglPoint(newLower,0.0f),&newLowerX,&dummy);
+			gr->CalcScr(mglPoint(newUpper,0.0f),&newUpperX,&dummy);
+
+			dc->DrawLine(newLowerX,h/2+2*ARROW_SIZE,newLowerX,h/2-2*ARROW_SIZE);
+			dc->DrawLine(newUpperX,h/2+2*ARROW_SIZE,newUpperX,h/2-2*ARROW_SIZE);
+
+
+		}	
+
+		delete arrowPen;
+				
+
+	}
+	else if(!leftWindow)
+	{
+		if(curMouse.y < axisY && curMouse.x > axisX ) //y axis inverted
+		{
+			unsigned int region,regionSide;
+			if((region=getRegionUnderCursor(curMouse,regionSide)) != 
+					std::numeric_limits<unsigned int>::max())
+			{
+				PlotRegion r;
+				r=thePlot->getRegion(region);
+				
+				wxPen *arrowPen;
+				if(limitInteract)
+					arrowPen= new wxPen(*wxLIGHT_GREY,2,wxSOLID);
+				else
+					arrowPen= new wxPen(*wxBLACK,2,wxSOLID);
+				dc->SetPen(*arrowPen);
+
+				const int ARROW_SIZE=8;
+					
+				switch(regionSide)
+				{
+					//Left hand side of region
+					case REGION_LEFT_EXTEND:
+						dc->DrawLine(curMouse.x-ARROW_SIZE,h/2-ARROW_SIZE,
+							     curMouse.x-2*ARROW_SIZE, h/2);
+						dc->DrawLine(curMouse.x-2*ARROW_SIZE, h/2,
+							     curMouse.x-ARROW_SIZE,h/2+ARROW_SIZE);
+						break;
+						//right hand side of region
+					case REGION_RIGHT_EXTEND:
+						dc->DrawLine(curMouse.x+ARROW_SIZE,h/2-ARROW_SIZE,
+							     curMouse.x+2*ARROW_SIZE, h/2);
+						dc->DrawLine(curMouse.x+2*ARROW_SIZE, h/2,
+							     curMouse.x+ARROW_SIZE,h/2+ARROW_SIZE);
+						break;
+
+						//centre of region
+					case REGION_MOVE:
+						dc->DrawLine(curMouse.x-ARROW_SIZE,h/2-ARROW_SIZE,
+							     curMouse.x-2*ARROW_SIZE, h/2);
+						dc->DrawLine(curMouse.x-2*ARROW_SIZE, h/2,
+							     curMouse.x-ARROW_SIZE,h/2+ARROW_SIZE);
+						dc->DrawLine(curMouse.x+ARROW_SIZE,h/2-ARROW_SIZE,
+							     curMouse.x+2*ARROW_SIZE, h/2);
+						dc->DrawLine(curMouse.x+2*ARROW_SIZE, h/2,
+							     curMouse.x+ARROW_SIZE,h/2+ARROW_SIZE);
+						break;
+
+				}
+
+				delete arrowPen;
+			}
+
+		}
+	}
 	delete dc;
 }
 
 void MathGLPane::resized(wxSizeEvent& evt)
 {
 	hasResized=true;
-    Refresh();
+	Refresh();
 }
 
 void MathGLPane::mouseMoved(wxMouseEvent& event)
 {
-
-	int w,h;
-	GetClientSize(&w,&h);
-	
-	if(!w || !h || !thePlot)
+	leftWindow=false;
+	if(!thePlot)
 		return;
+
+	if(limitInteract)
+		regionDragging=false;
+
 
 	if(dragging)
 	{
@@ -282,40 +460,63 @@ void MathGLPane::mouseMoved(wxMouseEvent& event)
 			dragging=false;
 		else
 			draggingCurrent=event.GetPosition();
+
+
+	}
+	else if(panning)
+	{
+		if(!event.m_leftDown || !event.m_shiftDown)
+			panning=false;
+		else
+			draggingCurrent=event.GetPosition();
 	}
 
 	if(!gr)
 		return;
-	
 
-	wxPoint curMouse=event.GetPosition();	
+	curMouse=event.GetPosition();	
+	updateMouseCursor();
+
+	Refresh();
+
+}
+
+void MathGLPane::updateMouseCursor()
+{
+	int w,h;
+	w=0;h=0;
+
+	GetClientSize(&w,&h);
+	
+	if(!w || !h || !thePlot)
+		return;
+	
 	//Update mouse cursor
 	//---------------
 	//Draw a rectangle between the start and end positions
-	bool useNiceAxis=0;
 
 	//Compute the MGL coords
 	int axisX,axisY;
 	axisX=axisY=0;
-#ifdef MGL_GTE_1_10
 	gr->CalcScr(gr->Org,&axisX,&axisY);
 	axisY=h-axisY;
-	//Use a nicer looking axis drawing
-	useNiceAxis=1;
-#endif
 	//If the cursor is wholly beloe
 	//the axis, draw a line rather than abox
 
-	if(useNiceAxis)
+	//Set cursor to normal by default
+	SetCursor(wxNullCursor);
+
+	if(wxGetKeyState(WXK_SHIFT))
 	{
+		SetCursor(wxCURSOR_SIZEWE);
+	}
+	else
+	{
+		//Look at mouse position relative to the axis position
+		//to determine the cursor style.
 		if(curMouse.x < axisX)
 		{
-			if(curMouse.y > axisY)
-			{
-				//Set cursor to normal
-				SetCursor(wxNullCursor);
-			}	
-			else
+			if(curMouse.y < axisY)
 			{	
 				//left of X-Axis event, draw up-down arrow
 				SetCursor(wxCURSOR_SIZENS);
@@ -327,9 +528,6 @@ void MathGLPane::mouseMoved(wxMouseEvent& event)
 			SetCursor(wxCURSOR_MAGNIFIER);
 	}
 	//---------------
-
-	Refresh();
-
 }
 
 void MathGLPane::mouseDoubleLeftClick(wxMouseEvent& event)
@@ -337,7 +535,7 @@ void MathGLPane::mouseDoubleLeftClick(wxMouseEvent& event)
 	if(!thePlot)
 		return;
 
-	dragging=false;
+	panning=dragging=false;
 	//reset plot bounds
 	thePlot->disableUserBounds();	
 
@@ -345,15 +543,98 @@ void MathGLPane::mouseDoubleLeftClick(wxMouseEvent& event)
 }
 
 
+unsigned int MathGLPane::getRegionUnderCursor(const wxPoint  &mousePos,
+						unsigned int &rangeSide) const
+{
+	ASSERT(gr);
+
+	//pronounced "christmouse" (no, not really)
+	float xMouse;
+
+
+	mglPoint pMouse= gr->CalcXYZ(mousePos.x,mousePos.y);
+	xMouse=pMouse.x;
+
+	std::vector<PlotRegion> regions;
+	thePlot->getRegions(regions);
+
+	for(size_t ui=0;ui<regions.size();ui++)
+	{
+		if(regions[ui].bounds.first < xMouse &&
+				regions[ui].bounds.second > xMouse)
+		{
+			//we are in this region
+
+			//OK, so we are in the region, but wichich "third"
+			//are we in? (This MUST match REGION_* enum)
+			rangeSide= (unsigned int)(3.0f*((xMouse-regions[ui].bounds.first)/
+				(regions[ui].bounds.second- regions[ui].bounds.first))) + 1;
+
+			return regions[ui].uniqueID;
+		}
+	}
+
+
+	//No range...
+	return 	std::numeric_limits<unsigned int>::max();
+}
+
+
 void MathGLPane::mouseDown(wxMouseEvent& event)
 {
 	if(gr)
 	{
-		dragging=true;
+		int w,h;
+		w=0;h=0;
+
+		GetClientSize(&w,&h);
+		
+		if(!w || !h)
+			return;
+
+		int axisX,axisY;
+		axisX=axisY=0;
+		gr->CalcScr(gr->Org,&axisX,&axisY);
+		axisY=h-axisY;
+
+		bool alternateDown;
+
+		alternateDown=event.ShiftDown();
 		draggingStart = event.GetPosition();
+
+		//Set the interaction mode
+		if(event.LeftDown() && !alternateDown )
+		{
+			//check to see if we have hit a region
+			unsigned int region,regionSide;
+			if(!limitInteract && (region=getRegionUnderCursor(curMouse,regionSide)) != 
+					std::numeric_limits<unsigned int>::max() && 
+					axisY > draggingStart.y)
+			{
+				PlotRegion r;
+				startMouseRegion=region;
+
+				regionMoveType=regionSide;
+				regionDragging=true;
+			}
+			else
+				dragging=true;
+		}
+		else if(event.LeftDown() && alternateDown)
+		{
+			panning=true;
+
+			float xMin,xMax,yMin,yMax;
+			thePlot->getBounds(xMin,xMax,yMin,yMax);
+			origPanMinX=xMin;
+			origPanMaxX=xMax;
+
+		}
+		
 		SetFocus(); //Why am I calling setFocus?? can't remeber.. 
 	}
 
+	event.Skip();
 }
 
 void MathGLPane::mouseWheelMoved(wxMouseEvent& event)
@@ -365,89 +646,111 @@ void MathGLPane::mouseReleased(wxMouseEvent& event)
 
 	if(!thePlot || !gr)
 		return;
-	wxPoint draggingEnd = event.GetPosition();
 
-
-	unsigned int startX, endX,startY,endY;
-
-
-	int w,h;
-	GetSize(&w,&h);
-	//Define the rectangle
-	if(draggingEnd.x > draggingStart.x)
+	if(dragging)
 	{
-		startX=draggingStart.x;
-		endX=draggingEnd.x;
-	}
-	else
-	{
-		startX=draggingEnd.x;
-		endX=draggingStart.x;
-	}
-
-	if(h-draggingEnd.y > h-draggingStart.y)
-	{
-		startY=draggingStart.y;
-		endY=draggingEnd.y;
-	}
-	else
-	{
-		startY=draggingEnd.y;
-		endY=draggingStart.y;
-	}
-
-	if(startX == endX || startY == endY )
-		return ;
+		wxPoint draggingEnd = event.GetPosition();
 
 
-	//Compute the MGL coords
-	mglPoint pStart,pEnd;
-	pStart = gr->CalcXYZ(startX,startY);
-	pEnd = gr->CalcXYZ(endX,endY);
+		unsigned int startX, endX,startY,endY;
 
 
-	mglPoint cA=gr->Org;
 
-	float currentAxisX,currentAxisY;
-	currentAxisX=cA.x;
-	currentAxisY=cA.y;
-	
-	if(pStart.x < currentAxisX  && pEnd.x < currentAxisX )
-	{
-		if(pStart.y < currentAxisY && pEnd.y < currentAxisY )
+		int w,h;
+		GetSize(&w,&h);
+		//Define the rectangle
+		if(draggingEnd.x > draggingStart.x)
 		{
-			//corner event
-			return ; // Do nothing
-		}	
-		else
-		{	
-			//left of X-Axis event
-			//Reset the axes such that the
-			//zoom is only along one dimension (y)
-			pStart.x = gr->Min.x;
-		        pEnd.x = gr->Max.x;	
+			startX=draggingStart.x;
+			endX=draggingEnd.x;
 		}
+		else
+		{
+			startX=draggingEnd.x;
+			endX=draggingStart.x;
+		}
+
+		if(h-draggingEnd.y > h-draggingStart.y)
+		{
+			startY=draggingStart.y;
+			endY=draggingEnd.y;
+		}
+		else
+		{
+			startY=draggingEnd.y;
+			endY=draggingStart.y;
+		}
+
+		if(startX == endX || startY == endY )
+			return ;
+
+
+		//Compute the MGL coords
+		mglPoint pStart,pEnd;
+		pStart = gr->CalcXYZ(startX,startY);
+		pEnd = gr->CalcXYZ(endX,endY);
+
+
+		mglPoint cA=gr->Org;
+
+		float currentAxisX,currentAxisY;
+		currentAxisX=cA.x;
+		currentAxisY=cA.y;
+		
+		if(pStart.x < currentAxisX  && pEnd.x < currentAxisX )
+		{
+			if(pStart.y < currentAxisY && pEnd.y < currentAxisY )
+			{
+				//corner event
+				return ; // Do nothing
+			}	
+			else
+			{	
+				//left of X-Axis event
+				//Reset the axes such that the
+				//zoom is only along one dimension (y)
+				pStart.x = gr->Min.x;
+				pEnd.x = gr->Max.x;	
+			}
+		}
+		else if(pStart.y < currentAxisY  && pEnd.y < currentAxisY )
+		{
+			//below Y axis event
+			//Reset the axes such that the
+			//zoom is only along one dimension (x)
+			pStart.y = gr->Min.y;
+			pEnd.y = gr->Max.y;	
+
+		}
+		
+		
+		//now that we have the rectangle defined, 
+		//Allow for the plot to be zoomed
+		thePlot->setBounds(std::min(pStart.x,pEnd.x),std::max(pStart.x,pEnd.x),
+					std::min(pStart.y,pEnd.y),std::max(pStart.y,pEnd.y));
+
+		
+		dragging=false;
+		//Repaint
+		Refresh();
 	}
-	else if(pStart.y < currentAxisY  && pEnd.y < currentAxisY )
+	else if(regionDragging)
 	{
-		//below Y axis event
-		//Reset the axes such that the
-		//zoom is only along one dimension (x)
-		pStart.y = gr->Min.y;
-		pEnd.y = gr->Max.y;	
 
+		if(!limitInteract)
+		{
+			//we need to tell viscontrol that we have done a region
+			//update
+			mglPoint mglCurMouse= gr->CalcXYZ(curMouse.x,curMouse.y);
+			
+			thePlot->moveRegion(startMouseRegion,regionMoveType,mglCurMouse.x);	
+			haveUpdates=true;	
+
+
+			regionDragging=false;
+		}
+		Refresh();
 	}
-	
-	
-	//now that we have the rectangle defined, 
-	//Allow for the plot to be zoomed
-	thePlot->setBounds(std::min(pStart.x,pEnd.x),std::max(pStart.x,pEnd.x),
-				std::min(pStart.y,pEnd.y),std::max(pStart.y,pEnd.y));
-
-	
-	dragging=false;
-	//Repaint
-	Refresh();
 }
 
 void MathGLPane::rightClick(wxMouseEvent& event) 
@@ -456,18 +759,25 @@ void MathGLPane::rightClick(wxMouseEvent& event)
 
 void MathGLPane::mouseLeftWindow(wxMouseEvent& event) 
 {
+	leftWindow=true;
+	Refresh();
+
 }
 
 void MathGLPane::keyPressed(wxKeyEvent& event) 
 {
+	if(gr)
+		updateMouseCursor();
 }
+
 
 void MathGLPane::keyReleased(wxKeyEvent& event) 
 {
+	if(gr)
+		updateMouseCursor();
 }
 
-
-bool MathGLPane::savePNG(const std::string &filename, 
+unsigned int MathGLPane::savePNG(const std::string &filename, 
 		unsigned int width, unsigned int height)
 {
 
@@ -475,11 +785,32 @@ bool MathGLPane::savePNG(const std::string &filename,
 		delete gr;
 
 	ASSERT(filename.size());
-	gr = new mglGraphZB(width,height);
+	try
+	{
+		gr = new mglGraphZB(width,height);
+	}
+	catch(std::bad_alloc)
+	{
+		gr=0;
+		return MGLPANE_ERR_BADALLOC;
+	}
+	char *mglWarnMsgBuf=new char[1024];
+	gr->SetWarn(0);
+	gr->Message=mglWarnMsgBuf;
 	thePlot->drawPlot(gr);	
 
 	gr->WritePNG(filename.c_str());
+	if(gr->WarnCode)
+	{
+		lastMglErr=mglWarnMsgBuf;
+		delete[] mglWarnMsgBuf;
+		delete gr;
+		gr=0;
+		return MGLPANE_ERR_MGLWARN;
+	}
 
+	delete[] mglWarnMsgBuf;
+	delete gr;
 	gr=0;
 	//Hack. mathgl does not return an error value from its writer
 	//function :(. Check to see that the file is openable, and nonzero sized
@@ -487,32 +818,40 @@ bool MathGLPane::savePNG(const std::string &filename,
 	ifstream f(filename.c_str(),ios::binary);
 
 	if(!f)
-		return false;
+		return MGLPANE_FILE_REOPEN_FAIL;
 
 	f.seekg(0,ios::end);
 
 
 	if(!f.tellg())
-		return false;
+		return MGLPANE_FILE_UNSIZED_FAIL;
 
-	return true;
+	return 0;
 }
 
-bool MathGLPane::saveSVG(const std::string &filename)
+unsigned int MathGLPane::saveSVG(const std::string &filename)
 {
 	ASSERT(filename.size());
 
 
 	mglGraphPS *grS;
-	//Width and height are not *really* important, 
-	//but it can be used to set the bounding size
+
+	//Width and height are not *really* important per se, 
+	//since this is scale-less data.
 	grS = new mglGraphPS(1024,768);
 
 
 	thePlot->drawPlot(grS);
 	
+	
+	grS->SetWarn(0);
 	grS->WriteSVG(filename.c_str());
 
+	if(grS->WarnCode)
+	{
+		delete grS;
+		return MGLPANE_ERR_MGLWARN;
+	}
 	delete grS;
 
 	//Hack. mathgl does not return an error value from its writer
@@ -521,50 +860,37 @@ bool MathGLPane::saveSVG(const std::string &filename)
 	ifstream f(filename.c_str(),ios::binary);
 
 	if(!f)
-		return false;
+		return MGLPANE_FILE_REOPEN_FAIL;
 
 	f.seekg(0,ios::end);
 
 
 	if(!f.tellg())
-		return false;
-	return true;
+		return MGLPANE_FILE_UNSIZED_FAIL;
 
+	return 0;
 }
 
-
-bool MathGLPane::saveJPG(const std::string &filename,
-		unsigned int width, unsigned int height)
-{
-
-	if(gr)
-		delete gr;
-
-	ASSERT(filename.size());
-	gr = new mglGraphZB(width,height);
-	thePlot->drawPlot(gr);	
-
-	gr->WriteJPEG(filename.c_str());
-
-	gr=0;
-	//Hack. mathgl does not return an error value from its writer
-	//function :(. Check to see that the file is openable, and nonzero sized
-	
-	ifstream f(filename.c_str(),ios::binary);
-
-	if(!f)
-		return false;
-
-	f.seekg(0,ios::end);
-
-
-	if(!f.tellg())
-		return false;
-
-	return true;
-}
 
 void MathGLPane::setPlotVisible(unsigned int plotId, bool visible)
 {
 	thePlot->setVisible(plotId,visible);	
+}
+
+
+std::string MathGLPane::getErrString(unsigned int errCode)
+{
+	switch(errCode)
+	{
+		case MGLPANE_ERR_BADALLOC:
+			return std::string("Unable to allocate requested memory.\n Try a lower resolution, or save as vector (SVG).");
+		case MGLPANE_ERR_MGLWARN:
+			return std::string("Plotting functions returned an error:\n")+ lastMglErr;
+		case MGLPANE_FILE_REOPEN_FAIL:
+			return std::string("File readback check failed");
+		case MGLPANE_FILE_UNSIZED_FAIL:
+			return std::string("Filesize during readback appears to be zero.");
+		default:
+			ASSERT(false);
+	}
 }

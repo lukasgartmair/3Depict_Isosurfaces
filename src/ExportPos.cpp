@@ -62,6 +62,8 @@ ExportPosDialog::ExportPosDialog(wxWindow* parent, int id, const wxString& title
 	btnSave = new wxButton(this, wxID_SAVE, wxEmptyString);
 	btnCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
 
+	btnSave->SetFocus();
+
 	set_properties();
 	do_layout();
 	// end wxGlade
@@ -118,10 +120,8 @@ void ExportPosDialog::initialiseData(VisController *v)
 	//and tie it to the output data pointers, this shoudl be possible	
 	visControl=v;	
 	//FIXME: we don't show progress information....
-	unsigned int dummy,dummyTwo;
-	const Filter *dummyFilter=0;
-	visControl->refreshFilterTree(dummy,dummyTwo,
-				dummyFilter,outputData);
+	visControl->refreshFilterTree(outputData);
+	visControl->resetProgress();
 
 	//FIXME: This is a hack -- this will cause
 	//viscontrol to rewrite its internal filter->tree mapping
@@ -132,6 +132,8 @@ void ExportPosDialog::initialiseData(VisController *v)
 	//Delete any non-ion data (using mask to prevent STREAM_TYPE_IONS from deletion)
 	//from the generated data from the filter list
 	visControl->safeDeleteFilterList(outputData,STREAM_TYPE_IONS);	
+
+	visControl->setRefreshed();
 	
 	haveRefreshed=true;
 }
@@ -147,6 +149,7 @@ void ExportPosDialog::OnVisibleRadio(wxCommandEvent &event)
 
 void ExportPosDialog::OnSelectedRadio(wxCommandEvent &event)
 {
+	ASSERT(haveRefreshed);
 	exportVisible=false;
 	enableSelectionControls(true);
 }
@@ -168,7 +171,7 @@ void ExportPosDialog::OnTreeFiltersSelChanged(wxTreeEvent &event)
 
 	typedef std::pair<Filter *,vector<const FilterStreamData * > > filterOutputData;
 	//Spin through the output list, looking for this filter's contribution
-	for(list<filterOutputData>::iterator it=outputData.begin();it!=outputData.end();it++)
+	for(list<filterOutputData>::iterator it=outputData.begin();it!=outputData.end();++it)
 	{
 		//Is this the filter we are looking for?
 		if(it->first == targetFilter)
@@ -223,7 +226,7 @@ void ExportPosDialog::OnListSelectedItemActivate(wxListEvent &event)
 
 	unsigned int thisIdx=0;
 	for(list<const FilterStreamData *>::iterator it=selectedFilterData.begin();
-			it!=selectedFilterData.end(); it++)
+			it!=selectedFilterData.end(); ++it)
 	{
 		if(thisIdx == item)
 		{
@@ -277,7 +280,7 @@ void ExportPosDialog::OnBtnAddAll(wxCommandEvent &event)
 	selectedFilterData.clear();
 	typedef std::pair<Filter *,vector<const FilterStreamData * > > filterOutputData;
 
-	for(list<filterOutputData>::iterator it=outputData.begin();it!=outputData.end();it++)
+	for(list<filterOutputData>::iterator it=outputData.begin();it!=outputData.end();++it)
 	{
 		for(unsigned int uj=0;uj<it->second.size();uj++)
 			selectedFilterData.push_back(it->second[uj]);
@@ -317,7 +320,7 @@ void ExportPosDialog::updateSelectedList()
 	unsigned int idx=0;
 	std::string label;
 	for(list<const FilterStreamData *>::iterator it=selectedFilterData.begin();
-				it!=selectedFilterData.end(); it++)
+				it!=selectedFilterData.end(); ++it)
 	{
 		const IonStreamData *ionData;
 		ionData=(const IonStreamData *)(*it);
@@ -380,7 +383,7 @@ void ExportPosDialog::getExportVec(std::vector<const FilterStreamData * > &v) co
 		v.reserve(outputData.size());
 
 		for(list<filterOutputData>::const_iterator it=outputData.begin();
-							it!=outputData.end();it++)
+							it!=outputData.end();++it)
 		{
 			for(unsigned int ui=0;ui<it->second.size();ui++)
 				v.push_back(it->second[ui]);
@@ -393,7 +396,7 @@ void ExportPosDialog::getExportVec(std::vector<const FilterStreamData * > &v) co
 		//exported
 		v.reserve(selectedFilterData.size());
 		for(list<const FilterStreamData *>::const_iterator it=selectedFilterData.begin();
-				it!=selectedFilterData.end(); it++)
+				it!=selectedFilterData.end(); ++it)
 		{
 			v.push_back(*it);
 		}

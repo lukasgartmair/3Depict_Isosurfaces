@@ -22,19 +22,17 @@
 SelectionBinding::SelectionBinding()
 {
 	obj=0;
-	drawableFloat=0;
 	owner=0;
-	drawablePoint3D=0;
 	valModified=false;
+	bindingId=drawActionId=0;
 }
 
-void SelectionBinding::setBinding(unsigned int button, unsigned int modifierFlags,
-					unsigned int bindID,float *fDrawable, const DrawableObj * d)
+void SelectionBinding::setBinding(unsigned int button, unsigned int modifierFlags,unsigned int actionId,
+					unsigned int bindID, float initValue, DrawableObj * d)
 {
-	//Bind the drawable (visible) object's fp pointer
-	drawableFloat=fDrawable;
 	//Cache the current value
-	cachedValFloat = *fDrawable;
+	cachedValFloat = initValue;
+	drawActionId=actionId;
 	//Grab the object identifier itself
 	obj=d;
 	
@@ -48,19 +46,19 @@ void SelectionBinding::setBinding(unsigned int button, unsigned int modifierFlag
 	dataType=BIND_TYPE_FLOAT;
 }
 
-void SelectionBinding::setBinding(unsigned int button, unsigned int modifierFlags,
-					unsigned int bindID, Point3D *fDrawable, const DrawableObj *d)
+void SelectionBinding::setBinding(unsigned int button, unsigned int modifierFlags, unsigned int actionId,
+					unsigned int bindID, const  Point3D &initValue, DrawableObj *d)
 {
 	
-	drawablePoint3D=fDrawable;
 	bindingId=bindID;
+	drawActionId=actionId;
 	obj=d;
 
 
 	bindKeys=modifierFlags;
 	bindButtons=button;
 
-	cachedValPoint3D = *fDrawable;
+	cachedValPoint3D = initValue;
 
 	dataType=BIND_TYPE_POINT3D;
 }
@@ -80,6 +78,8 @@ void SelectionBinding::setFloatLimits(float newMin,float newMax)
 
 void SelectionBinding::applyTransform(const Point3D &worldVec, bool permanent)
 {
+	vector<float> scalars;
+	vector<Point3D> vecs;
 	float fTmp;
 	switch(bindMode)
 	{
@@ -90,7 +90,7 @@ void SelectionBinding::applyTransform(const Point3D &worldVec, bool permanent)
 			fTmp = std::max(fMin,fTmp);
 			fTmp = std::min(fMax,fTmp);
 
-			*drawableFloat = fTmp;
+			scalars.push_back(fTmp);
 			break;
 		}
 		case BIND_MODE_FLOAT_TRANSLATE:
@@ -100,13 +100,14 @@ void SelectionBinding::applyTransform(const Point3D &worldVec, bool permanent)
 			fTmp = std::max(fMin,fTmp);
 			fTmp = std::min(fMax,fTmp);
 			
-			*drawableFloat = fTmp;
+			scalars.push_back(fTmp);
 			cachedValFloat=fTmp;
 			break;
 		}
 		case BIND_MODE_POINT3D_TRANSLATE:
+		case BIND_MODE_POINT3D_SCALE:
 		{
-			*drawablePoint3D= cachedValPoint3D+worldVec;
+			vecs.push_back(cachedValPoint3D+worldVec);
 
 			//Only apply if this is a permanent change,
 			//otherwise we will get an integrating effect
@@ -118,8 +119,20 @@ void SelectionBinding::applyTransform(const Point3D &worldVec, bool permanent)
 		{
 			if(worldVec.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()))
 			{
-				*drawablePoint3D = worldVec;
+				vecs.push_back(worldVec);
 				cachedValPoint3D = worldVec;
+			}
+
+			break;
+		}
+		case BIND_MODE_POINT3D_ROTATE_LOCK:
+		{
+			if(worldVec.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()))
+			{
+				//FIXME: Broke concept
+//				vecs.push_back(worldVec*sqrt(drawablePoint3D->sqrMag()/worldVec.sqrMag()));
+//				if(permanent)
+//					cachedValPoint3D= worldVec*sqrt(drawablePoint3D->sqrMag()/worldVec.sqrMag());
 			}
 
 			break;
@@ -127,6 +140,10 @@ void SelectionBinding::applyTransform(const Point3D &worldVec, bool permanent)
 		default:
 			ASSERT(false);
 	}
+
+	//Force a recomputation of the internal parameters 
+	//for the drawable object. Whatever they are.
+	obj->recomputeParams(vecs,scalars,drawActionId);
 
 	valModified=true;
 }
@@ -145,7 +162,9 @@ void SelectionBinding::computeWorldVectorCoeffs(unsigned int buttonFlags,
 			yCoeffs=Point3D(0,1,0);
 			break;
 		case BIND_MODE_POINT3D_TRANSLATE:
+		case BIND_MODE_POINT3D_SCALE:
 		case BIND_MODE_POINT3D_ROTATE:
+		case BIND_MODE_POINT3D_ROTATE_LOCK:
 		{
 			if(modifierFlags == FLAG_CMD && bindKeys!=FLAG_CMD)
 			{
@@ -204,19 +223,11 @@ bool SelectionBinding::matchesDrawable(const DrawableObj *d) const
 
 SelectionDevice::SelectionDevice(const Filter *p)
 {
-#ifdef DEBUG
-	//REMOVE ME SOON - this is improbable, but not theoretically impossible
-	ASSERT(bindingVec.size() < 1000);
-#endif
 	target=p;
 }
 
 void SelectionDevice::addBinding(SelectionBinding b)
 {
-#ifdef DEBUG
-	//REMOVE ME SOON - this is improbable, but not theoretically impossible
-	ASSERT(bindingVec.size() < 1000);
-#endif
 	bindingVec.push_back(b);
 }
 

@@ -13,7 +13,7 @@ if [ $1 = '--update-config=yes' ]; then
 		--with-libpng-flags="-I$PNG_DIR/include" \
 		--with-libpng-link="-L$PNG_DIR/lib -lpng14" \
 		--with-apple-opengl-framework \
-		LDFLAGS="-headerpad_max_install_names"
+		LDFLAGS="-lqhull -headerpad_max_install_names"
 
 	if [ $? -ne 0 ]; then
 		echo "Configure unsuccessful - exiting"
@@ -24,7 +24,7 @@ if [ $1 = '--update-config=yes' ]; then
 	make clean
 fi
 
-make
+make -j2
 
 if [ $? -ne 0 ]; then
 	echo "Make unsuccessful - exiting"

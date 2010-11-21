@@ -34,6 +34,8 @@ using std::endl;
 
 //oh no! global. window to safeYield/ needs to be set
 wxWindow *yieldWindow=0;
+
+wxStopWatch* delayTime=0;
 //Another global!
 bool *abortVisCtlOp=0;
 
@@ -41,12 +43,12 @@ const float DEFAULT_MAX_CACHE_PERCENT=50;
 
 bool wxYieldCallback()
 {
+	ASSERT(delayTime);
 	//Rate limit the updates
-	//FIXME: deprecated. use wxStopwatch instead
-	if(wxGetElapsedTime(false) > 75)
+	if(delayTime->Time() > 75)
 	{
 		wxSafeYield(yieldWindow);
-		wxStartTimer();
+		delayTime->Start();
 	}
 
 	ASSERT(abortVisCtlOp);
@@ -66,13 +68,19 @@ VisController::VisController()
 	abortVisCtlOp=&doProgressAbort;
 	amRefreshing=false;
 	pendingUpdates=false;
+	curProg.reset();
+
+	//Assign global variable its init value
+	ASSERT(!delayTime); //Should not have been inited yet.
+
+	delayTime = new wxStopWatch();
 }
 
 VisController::~VisController()
 {
 	//clean up
 	for(tree<Filter * >::iterator it=filters.begin(); 
-						it!=filters.end(); it++)
+						it!=filters.end(); ++it)
 	{
 		delete *it;
 	}
@@ -83,7 +91,7 @@ VisController::~VisController()
 	{
 		tree<Filter *> t;
 		t=stashedFilters[ui].second;
-		for(tree<Filter * >::iterator it=t.begin(); it!=t.end(); it++)
+		for(tree<Filter * >::iterator it=t.begin(); it!=t.end(); ++it)
 			delete *it;
 	}
 
@@ -92,7 +100,7 @@ VisController::~VisController()
 	{
 		//clean up
 		for(tree<Filter * >::iterator it=undoFilterStack.back().begin(); 
-							it!=undoFilterStack.back().end(); it++)
+							it!=undoFilterStack.back().end(); ++it)
 		{
 			delete *it;
 		}
@@ -105,7 +113,7 @@ VisController::~VisController()
 	{
 		//clean up
 		for(tree<Filter * >::iterator it=redoFilterStack.back().begin(); 
-							it!=redoFilterStack.back().end(); it++)
+							it!=redoFilterStack.back().end(); ++it)
 		{
 			delete *it;
 		}
@@ -113,6 +121,10 @@ VisController::~VisController()
 		redoFilterStack.pop_back();	
 	}
 
+	ASSERT(delayTime);
+	//delete global variable that visControl is responsible for
+	delete delayTime;
+	delayTime=0;
 }
 	
 void VisController::setScene(Scene *theScene)
@@ -122,7 +134,7 @@ void VisController::setScene(Scene *theScene)
 	//"invisible" to the UI
 	if(!targetScene->getNumCams())
 	{
-		Camera *c=new CameraPerspLookAt();
+		Camera *c=new CameraLookAt();
 		unsigned int id;
 		id=targetScene->addCam(c);
 		targetScene->setActiveCam(id);
@@ -137,8 +149,7 @@ void VisController::setYieldWindow(wxWindow *newYield)
 	yieldWindow=newYield;
 }
 
-unsigned int VisController::LoadIonSet(const std::string &filename, unsigned int &totalProgress,
-				unsigned int &filterProgress, const Filter* &curFilter)
+unsigned int VisController::LoadIonSet(const std::string &filename)
 {
 
 	//Test to see if we can open the file
@@ -278,7 +289,7 @@ Filter* VisController::getFilterByIdNonConst(unsigned long long filterId) const
 
 	//Look up tree mapping 
 	for(std::list<std::pair<unsigned long long, Filter *> >::const_iterator it=filterTreeMapping.begin();
-			it!=filterTreeMapping.end(); it++)
+			it!=filterTreeMapping.end(); ++it)
 	{
 		if(it->first == filterId)
 		{
@@ -313,7 +324,7 @@ bool VisController::setFilterProperties(unsigned long long filterId, unsigned in
 			if(targetFilter == *filtIt)
 			{
 				//Kill all cache below filtIt
-				for(tree<Filter *>::pre_order_iterator it(filtIt);it!= filters.end(); it++)
+				for(tree<Filter *>::pre_order_iterator it(filtIt);it!= filters.end(); ++it)
 				{
 					//Do not traverse siblings
 					if(filters.depth(filtIt) >= filters.depth(it) && it!=filtIt )
@@ -359,7 +370,7 @@ void VisController::removeTreeFilter(unsigned long long tId )
 		if(removeFilt == *filtIt)
 		{
 
-			for(tree<Filter *>::pre_order_iterator it(filtIt);it!= filters.end(); it++)
+			for(tree<Filter *>::pre_order_iterator it(filtIt);it!= filters.end(); ++it)
 			{
 				//Do not traverse siblings
 				if(filters.depth(filtIt) >= filters.depth(it) && it!=filtIt )
@@ -555,7 +566,7 @@ void VisController::initFilterTree() const
 	//mop up the output
 	list<const FilterStreamData *> deletedPtrs;
 	for(list<vector<const FilterStreamData * > >::iterator 
-					it=outData.begin();it!=outData.end(); it++)
+					it=outData.begin();it!=outData.end(); ++it)
 
 	{
 
@@ -571,14 +582,13 @@ void VisController::initFilterTree() const
 	}
 }
 
-unsigned int VisController::refreshFilterTree(unsigned int &overallProgress, 
-		unsigned int &filterProgress, const Filter* &curFilter,
-		list<std::pair<Filter *,vector<const FilterStreamData * > > > &outData)
+unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<const FilterStreamData * > > > &outData)
 	
 {
 	amRefreshing=true;
 	doProgressAbort=false;
-	wxStartTimer();
+	delayTime->Start();
+	textConsole->Clear();
 	
 	unsigned int errCode=0;
 
@@ -594,8 +604,6 @@ unsigned int VisController::refreshFilterTree(unsigned int &overallProgress,
 
 	list<const FilterStreamData *> pointerTrackList;
 
-	overallProgress=filterProgress=0;
-	
 	//Push some dummy data onto the stack to prime first-pass (call to refresh(..) requires stack
 	//size to be non-zero)
 	inDataStack.push(curData);
@@ -607,7 +615,7 @@ unsigned int VisController::refreshFilterTree(unsigned int &overallProgress,
 		if(pendingUpdates)
 		{
 			getFilterUpdates();
-			overallProgress=filterProgress=0;
+			curProg.reset();
 		}
 
 		//Depth-first search from root node, refreshing filters as we proceed.
@@ -624,9 +632,8 @@ unsigned int VisController::refreshFilterTree(unsigned int &overallProgress,
 
 			//Step 1: Set up the progress system
 			//---
-			curFilter=*filtIt;	
-			overallProgress++;
-			filterProgress=0;
+			curProg.clock();
+			curProg.curFilter=*filtIt;	
 			//---
 			
 			//Step 2: Check if we should cache this filter or not.
@@ -664,16 +671,16 @@ unsigned int VisController::refreshFilterTree(unsigned int &overallProgress,
 			//	This is the guts of the system.
 			//---
 			//
-			filterProgress=0;
 			(*wxYieldCallback)();
 
 			//Take the stack top, filter it and generate "curData"
 			errCode=(*filtIt)->refresh(inDataStack.top(),
-						curData,filterProgress,wxYieldCallback);
+						curData,curProg,wxYieldCallback);
+
 
 			//Ensure that (1) yield is called, regardless of what filter does
 			//(2) yield is called after 100% update	
-			filterProgress=100;	
+			curProg.filterProgress=100;	
 			(*wxYieldCallback)();
 
 
@@ -682,6 +689,11 @@ unsigned int VisController::refreshFilterTree(unsigned int &overallProgress,
 			(*filtIt)->getSelectionDevices(curDevices);
 			targetScene->addSelectionDevices(curDevices);
 			curDevices.clear();
+
+			//Retrieve any console messages from the filter
+			vector<string> consoleMessages;
+			(*filtIt)->getConsoleStrings(consoleMessages);
+			updateConsole(consoleMessages,(*filtIt));
 
 			//check for any error in filter update (including user abort)
 			if(errCode)
@@ -782,6 +794,8 @@ unsigned int VisController::refreshFilterTree(unsigned int &overallProgress,
 	ASSERT(pointerTrackList.size() == 0);
 	ASSERT(inDataStack.size() ==0);
 
+	//Progress data should reflect number of filters
+	ASSERT(curProg.totalProgress == numFilters());
 
 	//====Output scrubbing ===
 
@@ -793,7 +807,7 @@ unsigned int VisController::refreshFilterTree(unsigned int &overallProgress,
 	list<const FilterStreamData *> flatList;
 	
 	for(list<std::pair<Filter *,vector<const FilterStreamData * > > >::iterator 
-					it=outData.begin();it!=outData.end(); it++)
+					it=outData.begin();it!=outData.end(); ++it)
 	{
 		vector<const FilterStreamData *>::iterator itJ;
 
@@ -804,7 +818,7 @@ unsigned int VisController::refreshFilterTree(unsigned int &overallProgress,
 			if(find(flatList.begin(),flatList.end(),*itJ) == flatList.end())
 			{
 				flatList.push_back(*itJ);
-				itJ++;
+				++itJ;
 			}
 			else
 				itJ=it->second.erase(itJ);
@@ -815,6 +829,10 @@ unsigned int VisController::refreshFilterTree(unsigned int &overallProgress,
 	flatList.clear();
 
 	//======
+
+	//Stop timer
+	delayTime->Pause();
+
 
 	return 0;
 }
@@ -833,7 +851,7 @@ void VisController::getFilterUpdates()
 		bool haveBind;
 		haveBind=false;
 #endif
-		for(tree<Filter *>::iterator it=filters.begin(); it!=filters.end();it++)
+		for(tree<Filter *>::iterator it=filters.begin(); it!=filters.end();++it)
 		{
 			if(*it  == bindings[ui].first)
 			{
@@ -859,8 +877,7 @@ void VisController::getFilterUpdates()
 	pendingUpdates=false;
 }
 
-unsigned int VisController::updateScene(unsigned int &overallProgress, 
-		unsigned int &filterProgress, const Filter* &curFilter)
+unsigned int VisController::updateScene()
 {
 	typedef std::pair<Filter *,vector<const FilterStreamData * > > filterOutputData;
 	list<filterOutputData > refreshData;
@@ -874,8 +891,7 @@ unsigned int VisController::updateScene(unsigned int &overallProgress,
 	//we will delete the pointers ourselves, rather than
 	//using safedelete so we ca free memory as we go.
 	unsigned int errCode=0;
-	errCode=refreshFilterTree(overallProgress,filterProgress,
-					curFilter, refreshData);
+	errCode=refreshFilterTree(refreshData);
 	if(errCode)
 		return errCode;
 
@@ -883,7 +899,7 @@ unsigned int VisController::updateScene(unsigned int &overallProgress,
 	//convenience in this routine
 	list<vector<const FilterStreamData *> > outData;
 
-	for(list<filterOutputData>::iterator it=refreshData.begin(); it!=refreshData.end(); it++)
+	for(list<filterOutputData>::iterator it=refreshData.begin(); it!=refreshData.end(); ++it)
 		outData.push_back(it->second);
 
 	// -- Build target scene --- 
@@ -904,7 +920,7 @@ unsigned int VisController::updateScene(unsigned int &overallProgress,
 	//Loop through the outputs from the filters to construct the input
 	//to the scene & plot windows
 	for(list<vector<const FilterStreamData *> > ::iterator it=outData.begin(); 
-							it!=outData.end(); it++)
+							it!=outData.end(); ++it)
 	{
 		for(unsigned int ui=0;ui<it->size(); ui++)
 		{
@@ -974,11 +990,12 @@ unsigned int VisController::updateScene(unsigned int &overallProgress,
 						//using the region data stored
 						//in the plot stream
 						targetPlots->addRegion(plotID,
+							plotData->regionID[ui],
 							plotData->regions[ui].first,
 							plotData->regions[ui].second,
 							plotData->regionR[ui],
 							plotData->regionG[ui],
-							plotData->regionB[ui]);
+							plotData->regionB[ui],plotData->regionParent);
 					}
 
 					//Append the plot to the list in the user interface
@@ -1184,7 +1201,7 @@ unsigned int VisController::updateScene(unsigned int &overallProgress,
 
 	//clean up uncached data
 	for(list<vector<const FilterStreamData *> > ::iterator it=outData.begin(); 
-							it!=outData.end(); it++)
+							it!=outData.end(); ++it)
 	{
 		//iterator points to a vector of pointers, which are the filter stream 
 		//data. We need to delete any uncached items before we quit
@@ -1195,6 +1212,7 @@ unsigned int VisController::updateScene(unsigned int &overallProgress,
 		}
 	}
 
+	targetScene->computeSceneLimits();
 	amRefreshing=false;
 	return 0;
 }
@@ -1216,7 +1234,7 @@ void VisController::safeDeleteFilterList(
 			//In any case, a zero mask makes this whole thing not do anything, and everything gets deleted.
 			if(typeMask && ( ((bool)((*itJ)->getStreamType() & typeMask)) ^ !maskPrevents)) 
 			{
-				itJ++; //increment.
+				++itJ; //increment.
 				continue;
 			}
 		
@@ -1278,7 +1296,7 @@ void VisController::safeDeleteFilterList(
 		if(!(it->second.size()))
 			it=outData.erase(it);
 		else
-			it++;
+			++it;
 
 	}
 }
@@ -1350,7 +1368,7 @@ bool VisController::reparentFilter(unsigned long long toMove,
 	bool found[2] = {false,false};
 	tree<Filter *>::iterator moveFilterIt,parentFilterIt;
 	for(tree<Filter * >::iterator it=filters.begin(); 
-						it!=filters.end(); it++)
+						it!=filters.end(); ++it)
 	{
 		if(!found[0])
 		{
@@ -1376,7 +1394,7 @@ bool VisController::reparentFilter(unsigned long long toMove,
 	ASSERT(found[0] && found[1] );
 
 	//ensure that this is actually a parent-child relationship, and not the other way around!
-	for(tree<Filter *>::pre_order_iterator it(moveFilterIt);it!= filters.end(); it++)
+	for(tree<Filter *>::pre_order_iterator it(moveFilterIt);it!= filters.end(); ++it)
 	{
 		//Do not traverse siblings
 		if(filters.depth(moveFilterIt) >= filters.depth(it) && it!=moveFilterIt )
@@ -1390,7 +1408,7 @@ bool VisController::reparentFilter(unsigned long long toMove,
 	//newly nominated parent (DoCs "adoption" you might say.)
 	if(parentFilterIt != moveFilterIt)
 	{
-		for(tree<Filter *>::pre_order_iterator it(moveFilterIt);it!= filters.end(); it++)
+		for(tree<Filter *>::pre_order_iterator it(moveFilterIt);it!= filters.end(); ++it)
 		{
 			//Do not traverse siblings
 			if(filters.depth(moveFilterIt) >= filters.depth(it) && it!=moveFilterIt )
@@ -1436,7 +1454,7 @@ bool VisController::copyFilter(unsigned long long toCopy,
 		bool found[2] = {false,false};
 		tree<Filter *>::iterator moveFilterIt,parentFilterIt;
 		for(tree<Filter * >::iterator it=filters.begin(); 
-							it!=filters.end(); it++)
+							it!=filters.end(); ++it)
 		{
 			if(!found[0])
 			{
@@ -1462,7 +1480,7 @@ bool VisController::copyFilter(unsigned long long toCopy,
 		ASSERT(found[0] && found[1] );
 
 		//ensure that this is actually a parent-child relationship
-		for(tree<Filter *>::pre_order_iterator it(moveFilterIt);it!= filters.end(); it++)
+		for(tree<Filter *>::pre_order_iterator it(moveFilterIt);it!= filters.end(); ++it)
 		{
 			//Do not traverse siblings
 			if(filters.depth(moveFilterIt) >= filters.depth(it) && it!=moveFilterIt )
@@ -1483,7 +1501,7 @@ bool VisController::copyFilter(unsigned long long toCopy,
 			tmpTree.replace(node,moveFilterIt); //Note this doesn't kill the original
 			
 			//Replace each of the filters in the temporary_tree with a clone of the original
-			for(tree<Filter*>::iterator it=tmpTree.begin();it!=tmpTree.end(); it++)
+			for(tree<Filter*>::iterator it=tmpTree.begin();it!=tmpTree.end(); ++it)
 				*it= (*it)->cloneUncached();
 
 			//In the original tree, create a new null node
@@ -1504,7 +1522,7 @@ bool VisController::copyFilter(unsigned long long toCopy,
 		bool found = false;
 		tree<Filter *>::iterator moveFilterIt;
 		for(tree<Filter * >::iterator it=filters.begin(); 
-							it!=filters.end(); it++)
+							it!=filters.end(); ++it)
 		{
 			if(*it == toCopyFilt)
 			{
@@ -1523,7 +1541,7 @@ bool VisController::copyFilter(unsigned long long toCopy,
 		tmpTree.replace(node,moveFilterIt); //Note this doesn't kill the original
 		
 		//Replace each of the filters in the temporary_tree with a clone of the original
-		for(tree<Filter*>::iterator it=tmpTree.begin();it!=tmpTree.end(); it++)
+		for(tree<Filter*>::iterator it=tmpTree.begin();it!=tmpTree.end(); ++it)
 			*it= (*it)->cloneUncached();
 
 		//In the original tree, create a new null node
@@ -1561,7 +1579,7 @@ void VisController::invalidateCache(const Filter *filtPtr)
 	{
 		//Invalidate everything
 		for(tree<Filter * >::iterator it=filters.begin(); 
-						it!=filters.end(); it++)
+						it!=filters.end(); ++it)
 			(*it)->clearCache();
 	}
 	else
@@ -1569,7 +1587,7 @@ void VisController::invalidateCache(const Filter *filtPtr)
 		//Find the filter in the tree
 		tree<Filter *>::iterator filterIt;	
 		for(tree<Filter * >::iterator it=filters.begin(); 
-							it!=filters.end(); it++)
+							it!=filters.end(); ++it)
 		{
 			if(*it == filtPtr)
 			{
@@ -1578,7 +1596,7 @@ void VisController::invalidateCache(const Filter *filtPtr)
 			}
 		}
 
-		for(tree<Filter *>::pre_order_iterator it(filterIt);it!= filters.end(); it++)
+		for(tree<Filter *>::pre_order_iterator it(filterIt);it!= filters.end(); ++it)
 		{
 			//Do not traverse siblings
 			if(filters.depth(filterIt) >= filters.depth(it) && it!=filterIt )
@@ -1603,7 +1621,8 @@ void VisController::ensureSceneVisible(unsigned int direction)
 	targetScene->ensureVisible(direction);
 }
 
-bool VisController::saveState(const char *cpFilename) const
+bool VisController::saveState(const char *cpFilename, std::map<string,string> &fileMapping,
+		bool writePackage) const
 {
 	//Open file for output
 	std::ofstream f(cpFilename);
@@ -1615,11 +1634,23 @@ bool VisController::saveState(const char *cpFilename) const
 	f<< "<threeDepictstate>" << endl;
 	f<<tabs(1)<< "<writer version=\"" << PROGRAM_VERSION << "\"/>" << endl;
 	//write general settings
+	//---------------
 	float backR,backG,backB;
 
 	targetScene->getBackgroundColour(backR,backG,backB);
 	f << tabs(1) << "<backcolour r=\"" << backR << "\" g=\"" << backG  << "\" b=\"" << backB << "\"/>" <<  endl;
+	
+	f << tabs(1) << "<showaxis value=\"";
+       	if(targetScene->getWorldAxisVisible())
+	       f<< "1";
+       	else
+		f << "0";
+	f<< "\"/>"  << endl;
+	//---------------
+
+
 	//Write filter tree
+	//---------------
 	f << tabs(1) << "<filtertree>" << endl;
 	//Depth-first search, enumerate all filters in depth-first fashion
 	unsigned int depthLast=0;
@@ -1648,8 +1679,46 @@ bool VisController::saveState(const char *cpFilename) const
 			}
 		}
 
-		if(!(*filtIt)->writeState(f,STATE_FORMAT_XML,depth+2))
-			return false;
+		//If we are writing a package, override the filter storage values
+		if(writePackage)
+		{
+			vector<string> valueOverrides;
+			(*filtIt)->getStateOverrides(valueOverrides);
+
+			//The overrides, at the moment, only are files. 
+			//So lets find them & move them
+			for(unsigned int ui=0;ui<valueOverrides.size();ui++)
+			{
+				string newFilename;
+				newFilename=string("./") + onlyFilename(valueOverrides[ui]);
+
+				map<string,string>::iterator it;
+				it =fileMapping.find(valueOverrides[ui]);
+				
+				if(it == fileMapping.end()) 
+				{
+					//map does not exist, so make it!
+					fileMapping[newFilename]=valueOverrides[ui];
+				}
+				else if (it->second !=valueOverrides[ui])
+				{
+					//Keep adding a prefix until we find a valid new filename
+					while(fileMapping.find(newFilename) != fileMapping.end())
+						newFilename="remap"+newFilename;
+					//map does not exist, so make it!
+					fileMapping[newFilename]=valueOverrides[ui];
+				}
+				valueOverrides[ui] = newFilename;
+			}			
+		
+			if(!(*filtIt)->writePackageState(f,STATE_FORMAT_XML,valueOverrides,depth+2))
+				return false;
+		}
+		else
+		{
+			if(!(*filtIt)->writeState(f,STATE_FORMAT_XML,depth+2))
+				return false;
+		}
 		depthLast=depth;
 	}
 
@@ -1659,6 +1728,7 @@ bool VisController::saveState(const char *cpFilename) const
 		f << tabs(child+2) << "</children>" << endl;
 	}
 	f << tabs(1) << "</filtertree>" << endl;
+	//---------------
 
 	vector<Camera *> camVec;
 
@@ -1720,8 +1790,47 @@ bool VisController::saveState(const char *cpFilename) const
 					}
 				}
 
-				if(!(*filtIt)->writeState(f,STATE_FORMAT_XML,depth+2))
-					return false;
+				//If we are writing a package, override the filter storage values
+				if(writePackage)
+				{
+					vector<string> valueOverrides;
+					(*filtIt)->getStateOverrides(valueOverrides);
+
+					//The overrides, at the moment, only are files. 
+					//So lets find them & move them
+					for(unsigned int ui=0;ui<valueOverrides.size();ui++)
+					{
+						string newFilename;
+						newFilename=string("./") + onlyFilename(valueOverrides[ui]);
+
+						map<string,string>::iterator it;
+						it =fileMapping.find(valueOverrides[ui]);
+						
+						if(it == fileMapping.end()) 
+						{
+							//map does not exist, so make it!
+							fileMapping[newFilename]=valueOverrides[ui];
+						}
+						else if (it->second !=valueOverrides[ui])
+						{
+							//Keep adding a prefix until we find a valid new filename
+							while(fileMapping.find(newFilename) != fileMapping.end())
+								newFilename="remap"+newFilename;
+							//map does not exist, so make it!
+							fileMapping[newFilename]=valueOverrides[ui];
+						}
+						valueOverrides[ui] = newFilename;
+					}			
+						
+					if(!(*filtIt)->writePackageState(f,STATE_FORMAT_XML,valueOverrides,depth+2))
+						return false;
+				}
+				else
+				{
+					if(!(*filtIt)->writeState(f,STATE_FORMAT_XML,depth+2))
+						return false;
+				}
+				
 				depthLast=depth;
 			}
 			
@@ -1746,6 +1855,7 @@ bool VisController::saveState(const char *cpFilename) const
 	f<< "</threeDepictstate>" << endl;
 
 
+
 	return true;
 }
 
@@ -1759,6 +1869,7 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 	xmlParserCtxtPtr context;
 
 	context =xmlNewParserCtxt();
+
 
 	if(!context)
 	{
@@ -1780,13 +1891,14 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 	}
 	else
 	{
-		//Check for context validity
-		if(!context->valid)
-		{
-			errStream << "Document parse failure -- missing or invalid Document type Descriptor? (a file called "<< DTD_NAME << std::endl;
-			errStream << "Attempting to read without DTD validation. This may not work properly" << 
-					" - in the future, please find a valid" << DTD_NAME<< "file, and place it in the current directory..." << std::endl;
-		}
+		//FIXME: Comment out until I write a DTD...
+ 		//Check for context validity
+//		if(!context->valid)
+//		{
+//			errStream << "Document parse failure -- missing or invalid Document type Descriptor? (a file called "<< DTD_NAME << ")" << std::endl;
+//			errStream << "Attempting to read without DTD validation. This may not work properly" << 
+//					" - in the future, please find a valid " << DTD_NAME<< " file, and place it in the current directory..." << std::endl;
+//		}
 	}
 	//release the context
 	xmlFreeParserCtxt(context);
@@ -1797,6 +1909,7 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 	vector<Camera *> newCameraVec;
 	vector<pair<string,tree<Filter * > > > newStashes;
 
+	std::string stateDir=onlyDir(cpFilename);
 	unsigned int activeCam;
 	try
 	{
@@ -1806,11 +1919,17 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 
 		//Umm where is our root node guys?
 		if(!nodePtr)
+		{
+			errStream << "Unable to retrieve root node in input state file... Is this really a non-empty XML file?" <<  endl;
 			throw 1;
+		}
 		
 		//This *should* be an threeDepict state file
 		if(xmlStrcmp(nodePtr->name, (const xmlChar *)"threeDepictstate"))
+		{
+			errStream << "Base state node missing. Is this really a state XML file??" << endl;
 			throw 1;
+		}
 		//push root tag	
 		nodeStack.push(nodePtr);
 		
@@ -1833,47 +1952,87 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 			xmlFree(xmlString);
 		}
 		else
+		{
+			errStream<< "Unable to find the \"writer\" node" << endl;
 			throw 1;
+		}
 	
 
 		//Get the background colour
 		//====
 		float rTmp,gTmp,bTmp;
 		if(XMLHelpFwdToElem(nodePtr,"backcolour"))
+		{
+			errStream<< "Unable to find the \"backcolour\" node." << endl;
 			throw 1;
+		}
 
 		xmlString=xmlGetProp(nodePtr,(const xmlChar *)"r");
 		if(!xmlString)
+		{
+			errStream<< "\"backcolour\" node missing \"r\" value." << endl;
 			throw 1;
+		}
 		if(stream_cast(rTmp,(char *)xmlString))
+		{
+			errStream<< "Unable to interpret \"backColour\" node's \"r\" value." << endl;
 			throw 1;
+		}
 
 		xmlString=xmlGetProp(nodePtr,(const xmlChar *)"g");
 		if(!xmlString)
+		{
+			errStream<< "\"backcolour\" node missing \"g\" value." << endl;
 			throw 1;
+		}
 
 		if(stream_cast(gTmp,(char *)xmlString))
+		{
+			errStream<< "Unable to interpret \"backColour\" node's \"g\" value." << endl;
 			throw 1;
+		}
 
 		xmlString=xmlGetProp(nodePtr,(const xmlChar *)"b");
 		if(!xmlString)
+		{
+			errStream<< "\"backcolour\" node missing \"b\" value." << endl;
 			throw 1;
+		}
+
 		if(stream_cast(bTmp,(char *)xmlString))
+		{
+			errStream<< "Unable to interpret \"backColour\" node's \"b\" value." << endl;
 			throw 1;
+		}
 
 		if(rTmp > 1.0 || gTmp>1.0 || bTmp > 1.0 || 
 			rTmp < 0.0 || gTmp < 0.0 || bTmp < 0.0)
+		{
+			errStream<< "\"backcolour\"s rgb values must be in range [0,1]" << endl;
 			throw 1;
+		}
 		targetScene->setBackgroundColour(rTmp,gTmp,bTmp);
 		xmlFree(xmlString);
 		//====
+		
+		//Get the axis visibilty
+		unsigned int axisIsVis;
+		if(!XMLGetNextElemAttrib(nodePtr,axisIsVis,"showaxis","value"))
+		{
+			errStream << "Unable to find or interpret \"showaxis\" node" << endl;
+			throw 1;
+		}
+		targetScene->setWorldAxisVisible(axisIsVis==1);
 
 		//find filtertree data
 		if(XMLHelpFwdToElem(nodePtr,"filtertree"))
+		{
+			errStream << "Unable to locate \"filtertree\" node." << endl;
 			throw 1;
+		}
 
 		//Load the filter tree
-		if(loadFilterTree(nodePtr,newFilterTree))
+		if(loadFilterTree(nodePtr,newFilterTree,errStream,stateDir))
 			throw 1;
 
 		//Read camera states, if present
@@ -1883,14 +2042,24 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 			//Move to camera active tag 
 			nodePtr=nodePtr->xmlChildrenNode;
 			if(XMLHelpFwdToElem(nodePtr,"active"))
+			{
+				errStream << "Cameras section missing \"active\" node." << endl;
 				throw 1;
+			}
 
 			//read ID of active cam
 			xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
 			if(!xmlString)
+			{
+				errStream<< "Unable to find property \"value\"  for \"cameras->active\" node." << endl;
 				throw 1;
+			}
+
 			if(stream_cast(activeCam,xmlString))
+			{
+				errStream<< "Unable to interpret property \"value\"  for \"cameras->active\" node." << endl;
 				throw 1;
+			}
 
 		
 			//Spin through the list of each camera	
@@ -1904,12 +2073,15 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 				//work out the camera type
 				if(tmpStr == "persplookat")
 				{
-					thisCam = new CameraPerspLookAt;
+					thisCam = new CameraLookAt;
 					if(!thisCam->readState(nodePtr->xmlChildrenNode))
 						return false;
 				}
 				else
+				{
+					errStream << "Unable to interpret the camera type" << endl;
 					throw 1;
+				}
 
 				ASSERT(thisCam);
 				newCameraVec.push_back(thisCam);	
@@ -1941,14 +2113,23 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 				//read name of stash
 				xmlString=xmlGetProp(nodePtr,(const xmlChar *)"name");
 				if(!xmlString)
+				{
+					errStream << "Unable to locate stash name for stash " << newStashTree.size()+1 << endl;
 					throw 1;
+				}
 				stashName=(char *)xmlString;
 
 				if(!stashName.size())
+				{
+					errStream << "Empty stash name for stash " << newStashTree.size()+1 << endl;
 					throw 1;
+				}
 
-				if(loadFilterTree(nodePtr,newStashTree))
+				if(loadFilterTree(nodePtr,newStashTree,errStream,stateDir))
+				{
+					errStream << "For stash " << newStashTree.size()+1 << endl;
 					throw 1;
+				}
 			
 				newStashes.push_back(make_pair(stashName,newStashTree));
 			}
@@ -2071,7 +2252,7 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 	//"invisible" to the UI
 	if(!targetScene->getNumCams())
 	{
-		Camera *c=new CameraPerspLookAt();
+		Camera *c=new CameraLookAt();
 		unsigned int id;
 		id=targetScene->addCam(c);
 		targetScene->setActiveCam(id);
@@ -2106,7 +2287,7 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 }
 
 
-unsigned int VisController::loadFilterTree(const xmlNodePtr &treeParent, tree<Filter *> &newTree) const
+unsigned int VisController::loadFilterTree(const xmlNodePtr &treeParent, tree<Filter *> &newTree, std::ostream &errStream,const std::string &stateFileDir) const
 
 {
 	newTree.clear();
@@ -2177,7 +2358,7 @@ unsigned int VisController::loadFilterTree(const xmlNodePtr &treeParent, tree<Fi
 			//It is!, lets make a new one and load the state
 			newFilt= new PosLoadFilter;
 			cleanupList.push_back(newFilt);
-			if (!newFilt->readState(nodePtr->xmlChildrenNode))
+			if (!newFilt->readState(nodePtr->xmlChildrenNode,stateFileDir))
 				goto loadFilterTreeCleanup;
 		}
 		else if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"iondownsample")) //Is this a "iondownsample" filter?
@@ -2195,7 +2376,7 @@ unsigned int VisController::loadFilterTree(const xmlNodePtr &treeParent, tree<Fi
 			newFilt= new RangeFileFilter;
 			cleanupList.push_back(newFilt);
 
-			if (!newFilt->readState(nodePtr->xmlChildrenNode))
+			if (!newFilt->readState(nodePtr->xmlChildrenNode,stateFileDir))
 				goto loadFilterTreeCleanup;
 		}
 		else if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"spectrumplot")) //Is this a "spectrumplot" filter?
@@ -2280,6 +2461,7 @@ unsigned int VisController::loadFilterTree(const xmlNodePtr &treeParent, tree<Fi
 		}
 		else
 		{
+			errStream << "WARNING: Skipping node " << (const char *)nodePtr->name << " as it was not recognised" << endl;
 			nodeUnderstood=false;
 		}
 
@@ -2305,11 +2487,6 @@ unsigned int VisController::loadFilterTree(const xmlNodePtr &treeParent, tree<Fi
 			}
 
 		}
-		else
-		{
-			//TODO: Set warning; we encountered nodes that we cannot process.
-			//and will hence skip
-		}
 	}
 
 
@@ -2319,8 +2496,11 @@ unsigned int VisController::loadFilterTree(const xmlNodePtr &treeParent, tree<Fi
 //is purely local in scope.
 loadFilterTreeCleanup:
 
+	if(nodePtr)
+		errStream << "Error processing node: " << (const char *)nodePtr->name << endl;
+
 	for(list<Filter*>::iterator it=cleanupList.begin();
-			it!=cleanupList.end(); it++)
+			it!=cleanupList.end(); ++it)
 		delete *it;
 
 	return 1;
@@ -2338,7 +2518,7 @@ void VisController::makeFiltersSafe()
 void VisController::stripHazardousFilters(tree<Filter *> &thisTree)
 {
 	for(tree<Filter * >::pre_order_iterator it=thisTree.begin();
-					it!=thisTree.end(); it++)
+					it!=thisTree.end(); ++it)
 	{
 		if ((*it)->canBeHazardous())
 		{
@@ -2358,7 +2538,7 @@ void VisController::stripHazardousFilters(tree<Filter *> &thisTree)
 bool VisController::hasHazardous(const tree<Filter *> &thisTree) const
 {
 	for(tree<Filter * >::pre_order_iterator it=filters.begin();
-					it!=filters.end(); it++)
+					it!=filters.end(); ++it)
 	{
 		if ((*it)->canBeHazardous())
 			return true;
@@ -2389,7 +2569,7 @@ void VisController::clear()
 
 	//clean filter tree
 	for(tree<Filter * >::iterator it=filters.begin(); 
-						it!=filters.end(); it++)
+						it!=filters.end(); ++it)
 		delete *it;
 
 	filters.clear();
@@ -2449,7 +2629,7 @@ unsigned int VisController::exportIonStreams(const std::vector<const FilterStrea
 void VisController::getFilterTypes(std::vector<const Filter *> &filtersOut, unsigned int type)
 {
 	for(tree<Filter * >::iterator it=filters.begin(); 
-						it!=filters.end(); it++)
+						it!=filters.end(); ++it)
 	{
 		if((*it)->getType() == type)
 			filtersOut.push_back(*it);
@@ -2458,11 +2638,11 @@ void VisController::getFilterTypes(std::vector<const Filter *> &filtersOut, unsi
 
 void VisController::purgeFilterCache()
 {
-	for(tree<Filter *>::iterator it=filters.begin();it!=filters.end();it++)
+	for(tree<Filter *>::iterator it=filters.begin();it!=filters.end();++it)
 		(*it)->clearCache();
 }
 
-void VisController::addStashedToFilters(Filter *parent, unsigned int stashId)
+void VisController::addStashedToFilters(const Filter *parent, unsigned int stashId)
 {
 	//Save current filter state to undo stack
 	pushUndoStack();
@@ -2482,7 +2662,7 @@ void VisController::addStashedToFilters(Filter *parent, unsigned int stashId)
 	//Duplicate the contents of this filter
 	
 	//Replace each of the filters in the temporary_tree with a clone of the original
-	for(tree<Filter*>::iterator copyIt=stashTree.begin();copyIt!=stashTree.end(); copyIt++)
+	for(tree<Filter*>::iterator copyIt=stashTree.begin();copyIt!=stashTree.end(); ++copyIt)
 		*copyIt= (*copyIt)->cloneUncached();
 
 	//insert the tree as a sibling of the node 
@@ -2511,7 +2691,7 @@ unsigned int VisController::stashFilters(unsigned int filterId, const char *stas
 	Filter *target = (Filter*)getFilterById(filterId);
 
 	tree<Filter *>::iterator targetIt;
-	for(tree<Filter *>::iterator it=filters.begin(); it!= filters.end(); it++)
+	for(tree<Filter *>::iterator it=filters.begin(); it!= filters.end(); ++it)
 	{
 		if(*it == target)
 		{
@@ -2527,7 +2707,7 @@ unsigned int VisController::stashFilters(unsigned int filterId, const char *stas
 	subTree.replace(node,targetIt); //Note this doesn't kill the original
 
 	//Replace each of the filters in the temporary_tree with a clone of the original
-	for(tree<Filter*>::iterator it=subTree.begin();it!=subTree.end(); it++)
+	for(tree<Filter*>::iterator it=subTree.begin();it!=subTree.end(); ++it)
 		*it= (*it)->cloneUncached();
 	
 	stashedFilters.push_back(std::make_pair(string(stashName),subTree));
@@ -2622,14 +2802,14 @@ void VisController::pushUndoStack()
 	newTree = filters;
 	
 	//Replace each of the filters in the temporary_tree with a clone of the original
-	for(tree<Filter*>::iterator it=newTree.begin();it!=newTree.end(); it++)
+	for(tree<Filter*>::iterator it=newTree.begin();it!=newTree.end(); ++it)
 		*it= (*it)->cloneUncached();
 
 	if(undoFilterStack.size() > MAX_UNDO_SIZE)
 	{
 		//clean up
 		for(tree<Filter * >::iterator it=undoFilterStack.front().begin(); 
-							it!=undoFilterStack.front().end(); it++)
+							it!=undoFilterStack.front().end(); ++it)
 			delete *it;
 
 		undoFilterStack.pop_front();
@@ -2651,7 +2831,7 @@ void VisController::popUndoStack()
 	{
 		//clean up
 		for(tree<Filter * >::iterator it=redoFilterStack.front().begin(); 
-							it!=redoFilterStack.front().end(); it++)
+							it!=redoFilterStack.front().end(); ++it)
 			delete *it;
 
 		redoFilterStack.pop_front();
@@ -2659,7 +2839,7 @@ void VisController::popUndoStack()
 
 
 	//Clear the current filter caches
-	for(tree<Filter*>::iterator it=filters.begin();it!=filters.end(); it++)
+	for(tree<Filter*>::iterator it=filters.begin();it!=filters.end(); ++it)
 		(*it)->clearCache();
 	
 	//Swap the current filter cache out with the undo stack result
@@ -2681,7 +2861,7 @@ void VisController::popRedoStack()
 	newTree = filters;
 	
 	//Replace each of the filters in the temporary_tree with a clone of the original
-	for(tree<Filter*>::iterator it=newTree.begin();it!=newTree.end(); it++)
+	for(tree<Filter*>::iterator it=newTree.begin();it!=newTree.end(); ++it)
 		*it= (*it)->cloneUncached();
 
 	ASSERT(undoFilterStack.size() <=MAX_UNDO_SIZE);
@@ -2689,12 +2869,12 @@ void VisController::popRedoStack()
 
 	undoFilterStack.push_back(newTree);
 
-	for(tree<Filter*>::iterator it=filters.begin();it!=filters.end(); it++)
+	for(tree<Filter*>::iterator it=filters.begin();it!=filters.end(); ++it)
 		delete *it;
 
 #ifdef DEBUG
 	for(tree<Filter*>::iterator it=redoFilterStack.back().begin();
-			it!=redoFilterStack.back().end(); it++)
+			it!=redoFilterStack.back().end(); ++it)
 	{
 		ASSERT(!(*it)->haveCache());
 	}
@@ -2716,11 +2896,45 @@ void VisController::clearRedoStack()
 	{
 		//clean up
 		for(tree<Filter * >::iterator it=redoFilterStack.back().begin(); 
-							it!=redoFilterStack.back().end(); it++)
+							it!=redoFilterStack.back().end(); ++it)
 		{
 			delete *it;
 		}
 
 		redoFilterStack.pop_back();	
 	}
+}
+
+void VisController::updateConsole(const std::vector<std::string> &v, const Filter *f) const
+{
+	for(unsigned int ui=0; ui<v.size();ui++)
+	{
+		std::string s;
+		s = f->getUserString() + string(" : ") + v[ui];
+		textConsole->AppendText(wxStr(s));
+		textConsole->AppendText(_("\n"));
+
+	}
+}
+
+void VisController::invalidateRangeCaches()
+{
+
+	vector<const Filter * > rangeFilters;
+
+	for(tree<Filter * >::iterator it=filters.begin(); 
+					it!=filters.end(); ++it)
+	{
+		if((*it)->getType() == FILTER_TYPE_RANGEFILE)
+			rangeFilters.push_back(*it);
+	}
+
+
+	for(size_t ui=0;ui<rangeFilters.size();ui++)
+		invalidateCache(rangeFilters[ui]);
+}
+
+bool VisController::getAxisVisible()
+{
+	return targetScene->getWorldAxisVisible();\
 }

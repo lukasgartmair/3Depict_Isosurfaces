@@ -25,7 +25,6 @@ class SelectionBinding;
 
 #include "filter.h"
 #include "drawables.h"
-#include "viscontrol.h"
 
 #include <vector>
 
@@ -48,10 +47,12 @@ enum
 //!Allowable binding modes
 enum
 {
-	BIND_MODE_FLOAT_SCALE,
-	BIND_MODE_FLOAT_TRANSLATE,
-	BIND_MODE_POINT3D_TRANSLATE,
-	BIND_MODE_POINT3D_ROTATE,
+	BIND_MODE_FLOAT_SCALE, //Object scaling only (fp value)
+	BIND_MODE_FLOAT_TRANSLATE, //Floating point translation
+	BIND_MODE_POINT3D_TRANSLATE, //3D point translation in 2D plane perpendicular to camera
+	BIND_MODE_POINT3D_SCALE, //3D point translation in 2D plane perpendicular to camera; but indicate to user that this performs some kind of scaling operation
+	BIND_MODE_POINT3D_ROTATE, //3D rotation in 2D plane perpendicular to camera
+	BIND_MODE_POINT3D_ROTATE_LOCK, // 3D rotation in 2D plane perpendicular to camera, but with locked magnitude
 };
 
 //!Bindable data types (data types that SelectionBinding can work with)
@@ -68,18 +69,22 @@ enum
 class SelectionBinding
 {
 	private:
-		//Pointer to drawable that generates selection events
-		const DrawableObj *obj;
-		float *drawableFloat;
-		Point3D *drawablePoint3D;
+		//Pointer to drawable that generates selection events. 
+		//calls recomputeParams function
+		DrawableObj *obj;
+		
 		//Pointer to filter who owns this binding
 		const Filter *owner;
 	
 		//ID number for parent to know which of its bindings this is
 		unsigned int bindingId;
 
+		//ID number to bind the action for the drawable object
+		unsigned int drawActionId;
+
 		//Binding type
 		unsigned int dataType;
+
 
 		//Binding button (ORed together)
 		unsigned int bindButtons;
@@ -107,11 +112,13 @@ class SelectionBinding
 
 		//!Set the binding for a float DO NOT CACHE THE DRAWABLEOBJ-> THAT IS BAD
 		void setBinding(unsigned int buttonFlags, unsigned int modifierFlags,
-				 unsigned int bindingID, float *fDrawable, const DrawableObj *d);
+				unsigned int drawActionId, unsigned int bindingID, 
+							float initVal, DrawableObj *d);
 
 		//!Set the binding for a Point3D. DO NOT CACHE THE DRAWABLEOBJ-> THAT IS BAD
 		void setBinding(unsigned int buttonFlags, unsigned int modifierFlags,
-				unsigned int bindingID, Point3D *fDrawable, const DrawableObj *d);
+				unsigned int drawActionId,unsigned int bindingID,
+			       			const Point3D &initVal, DrawableObj *d);
 
 		//!Set the interaction method. (example translate, scale, rotate etc)
 		void setInteractionMode(unsigned int bindMode);

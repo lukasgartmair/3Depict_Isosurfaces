@@ -17,6 +17,7 @@
 */
 
 #include "basics.h"
+#include "../config.h"
 
 #include <iostream>
 #include <limits>
@@ -43,6 +44,27 @@ using std::endl;
 //default font to use.
 std::string defaultFontFile;
 
+std::string onlyFilename( const std::string& path) 
+{
+#if defined(_WIN32) || defined(_WIN64)
+	//windows uses "\" as path sep, just to be different
+	return path.substr( path.find_last_of( '\\' ) +1 );
+#else
+	//The entire world, including the interwebs, uses  "/" as the path sep.
+	return path.substr( path.find_last_of( '/' ) +1 );
+#endif
+}
+
+std::string onlyDir( const std::string& path) 
+{
+#if defined(_WIN32) || defined(_WIN64)
+	//windows uses "\" as path sep, just to be different
+	return path.substr(0, path.find_last_of( '\\' ) +1 );
+#else
+	//The entire world, including the interwebs, uses  "/" as the path sep.
+	return path.substr(0, path.find_last_of( '/' ) +1 );
+#endif
+}
 void setDefaultFontFile(const std::string &font)
 {
 	defaultFontFile=font;
@@ -72,13 +94,13 @@ void dh_assert(const char * const filename, const unsigned int lineNumber)
     std::cerr << "Filename: " << filename << std::endl;
     std::cerr << "Line number: " << lineNumber << std::endl;
 
-//	std::cerr << "Do you wish to continue?(y/n)";
-//	char y = 'a';
-//	while (y != 'n' && y != 'y')
-//		std::cin >> y;
-//
-//	if (y != 'y')
-//		exit(1);
+	std::cerr << "Do you wish to continue?(y/n)";
+	char y = 'a';
+	while (y != 'n' && y != 'y')
+		std::cin >> y;
+
+	if (y != 'y')
+		exit(1);
 }
 
 void ucharToHexStr(unsigned char c, std::string &s)
@@ -128,6 +150,43 @@ void hexStrToUChar(const std::string &s, unsigned char &c)
 	c = 16*high + low;
 }
 
+std::string convertFileStringToCanonical(const std::string &s)
+{
+	//We call unix the "canonical" format. 
+	//otherwise we substitute "\"s for "/"s
+#if (__WIN32) || (__WIN64)
+	string r;
+	for(unsigned int ui=0;ui<s.size();ui++)
+	{
+		if(s[ui] == "\\")
+			r+="/";
+		else
+			r+=s[ui];
+	}
+	return r;
+#else
+	return s;
+#endif
+}
+
+std::string convertFileStringToNative(const std::string &s)
+{
+	//We call unix the "canonical" format. 
+	//otherwise we substitute "/"s for "\"s
+#if (__WIN32) || (__WIN64)
+	string r;
+	for(unsigned int ui=0;ui<s.size();ui++)
+	{
+		if(s[ui] == "/")
+			r+="\\";
+		else
+			r+=s[ui];
+	}
+	return r;
+#else
+	return s;
+#endif
+}
 
 std::string digitString(unsigned int thisDigit, unsigned int maxDigit)
 {
@@ -142,21 +201,6 @@ std::string digitString(unsigned int thisDigit, unsigned int maxDigit)
 	s=s.substr(0,s.size()-thisStr.size());	
 
 	return  s+thisStr;
-}
-
-unsigned int genUniqueID(const vector<unsigned int> &vec)
-{
-	//Look for each element number as a unique value in turn
-	for(unsigned int ui=0;ui<vec.size(); ui++)
-	{
-		if(std::find(vec.begin(),vec.end(),ui) == vec.end())
-			return ui;
-	}
-
-	//Note: This is guaranteed to be unique
-	//via the pigeonhole principle (as we found every element, and the sizes
-	//match, then the vector can only contain the elements we searched for)
-	return vec.size();
 }
 
 std::string choiceString(std::vector<std::pair<unsigned int, std::string> > comboString, 
@@ -185,6 +229,7 @@ std::string choiceString(std::vector<std::pair<unsigned int, std::string> > comb
 }
 
 //!Returns Choice ID from string (see choiceString(...) for string format)
+//FIXME: Does not work if the choicestring starts from a number other than zero...
 std::string getActiveChoice(std::string choiceString)
 {
 	size_t colonPos;
@@ -823,7 +868,20 @@ bool BoundCube::isValid() const
 		if(!valid[ui][0] || !valid[ui][1])
 			return false;
 	}
+
 	return true;
+}
+
+bool BoundCube::isFlat() const
+{
+	//Test the limits being inverted or equated
+	for(unsigned int ui=0;ui<3; ui++)
+	{
+		if(fabs(bounds[ui][0] - bounds[ui][1]) < std::numeric_limits<float>::epsilon())
+			return true;
+	}	
+
+	return false;
 }
 
 void BoundCube::expand(const BoundCube &b) 
@@ -922,6 +980,14 @@ void BoundCube::getBounds(Point3D &low, Point3D &high) const
 	}
 }
 
+float BoundCube::getLargestDim() const
+{
+	float f;
+	f=getSize(0);
+	f=std::max(getSize(1),f);	
+	return std::max(getSize(2),f);	
+}
+
 float BoundCube::getSize(unsigned int dim) const
 {
 	ASSERT(dim < 3);
@@ -939,11 +1005,11 @@ bool BoundCube::containsPt(const Point3D &p) const
 	for(unsigned int ui=0; ui<3; ui++) 
 	{
 		ASSERT(valid[ui][0] && valid[ui][1]);
-		if( p[ui] > bounds[ui][0] && p[ui] < bounds[ui][1])
-			return true;
+		if( p[ui] < bounds[ui][0] || p[ui] > bounds[ui][1])
+			return false;
 	}
 
-	return false;
+	return true;
 }
 
 //checks intersection with sphere [centre,centre+radius)
@@ -1081,7 +1147,7 @@ unsigned int UniqueIDHandler::getPos(unsigned int id) const
 {
 
 	for(list<std::pair<unsigned int, unsigned int> >::const_iterator it=idList.begin();
-			it!=idList.end(); it++)
+			it!=idList.end(); ++it)
 	{
 		if(id == it->second)
 			return it->first;
@@ -1093,7 +1159,7 @@ unsigned int UniqueIDHandler::getPos(unsigned int id) const
 void UniqueIDHandler::killByPos(unsigned int pos)
 {
 	for(list<std::pair<unsigned int, unsigned int> >::iterator it=idList.begin();
-			it!=idList.end(); it++)
+			it!=idList.end(); ++it)
 	{
 		if(pos  == it->first)
 		{
@@ -1104,7 +1170,7 @@ void UniqueIDHandler::killByPos(unsigned int pos)
 
 	//Decreement the items, which were further along, in order to maintin the mapping	
 	for(list<std::pair<unsigned int, unsigned int> >::iterator it=idList.begin();
-			it!=idList.end(); it++)
+			it!=idList.end(); ++it)
 	{
 		if( it->first > pos)
 			it->first--;
@@ -1114,7 +1180,7 @@ void UniqueIDHandler::killByPos(unsigned int pos)
 unsigned int UniqueIDHandler::getId(unsigned int pos) const
 {
 	for(list<std::pair<unsigned int, unsigned int> >::const_iterator it=idList.begin();
-			it!=idList.end(); it++)
+			it!=idList.end(); ++it)
 	{
 		if(pos == it->first)
 			return it->second;
@@ -1135,7 +1201,7 @@ unsigned int UniqueIDHandler::genId(unsigned int pos)
 		bool idTaken;
 		idTaken=false;
 		for(list<std::pair<unsigned int, unsigned int> >::iterator it=idList.begin();
-				it!=idList.end(); it++)
+				it!=idList.end(); ++it)
 		{
 			if(ui == it->second)
 			{
@@ -1159,7 +1225,7 @@ void UniqueIDHandler::getIds(std::vector<unsigned int> &idVec) const
 {
 	//most wordy way of saying "spin through list" ever.
 	for(list<std::pair<unsigned int, unsigned int> >::const_iterator it=idList.begin();
-			it!=idList.end(); it++)
+			it!=idList.end(); ++it)
 		idVec.push_back(it->second);
 }
 
@@ -1268,7 +1334,7 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 	if(!CFile)
 		return ERR_FILE_OPEN_FAIL;
 
-	//DroR the headers, if any
+	//Drop the headers, if any
 	string str;
 	vector<string> strVec;	
 	bool atHeader=true;
@@ -1304,9 +1370,20 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 				float f;
 				//Assume we are not reading the header
 				atHeader=false;
+
+				vector<float> values;
 				//Confirm by checking all values
 				for(unsigned int ui=0; ui<num_fields; ui++)
 				{
+	
+					//stream_cast will fail in the case "1 2" if there
+					//is a tab delimiter specified. Check for only 02,3	
+					if(strVec[ui].find_first_not_of("0123456789.Ee+-") 
+										!= string::npos)
+					{
+						atHeader=true;
+						break;
+					}
 					//If any cast fails
 					//we are in the header
 					if(stream_cast(f,strVec[ui]))
@@ -1315,7 +1392,11 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 						break;
 					}
 
+					values.push_back(f);
 				}
+
+				if(!atHeader)
+					break;
 			}
 		}
 
@@ -1366,3 +1447,137 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 
 	return 0;
 }
+
+//For the table to work, we need the sizeof(size_T) at preprocess time
+#ifndef SIZEOF_SIZE_T
+#error sizeof(size_t) macro is undefined... At time of writing, this is usually 4 (32 bit) or 8. You can work it out from a simple C++ program which prints out sizeof(size_t). This cant be done automatically due to preprocessor behaviour.
+#endif
+
+//Maximum period linear shift register values (computed by
+//other program for galois polynomial)
+//Unless otherwise noted, all these entries have been verfied using the
+//verifyTable routine. 
+//
+//If you don't trust me, (who doesn't trust some random person on the internet?) 
+//you can re-run the verfication routine. 
+//
+//Note that verfication time *doubles* with every entry, so full 64-bit verification
+//is computationally intensive. I achieved 40 bits in half a day. 48 bits took over a week.
+size_t maximumLinearTable[] = {
+	  0x03,
+	  0x06,
+	  0x0C,
+	  0x14,
+	  0x30,
+	  0x60,
+	  0xb8,
+	0x0110,
+	0x0240,
+	0x0500,
+	0x0e08,
+	0x1c80,
+	0x3802,
+	0x6000,
+	0xb400,
+	0x12000,
+	0x20400,
+	0x72000,
+	0x90000,
+	0x140000,
+	0x300000,
+	0x420000,
+	0xD80000,
+	0x1200000,
+	0x3880000,
+	0x7200000,
+	0x9000000,
+	0x14000000,
+	0x32800000,
+	0x48000000,
+
+#if (SIZEOF_SIZE_T > 4)
+	0xA3000000,
+	0x100080000,
+	0x262000000,
+	0x500000000,
+	0x801000000,
+	0x1940000000,
+	0x3180000000,
+	0x4400000000,
+	0x9C00000000,
+	0x12000000000,
+	0x29400000000,
+	0x63000000000,
+	0xA6000000000,
+	0x1B0000000000,
+	0x20E000000000,
+	0x420000000000,
+	0x894000000000,
+	//Maximal linear table entries below line are unverified 
+	//Verifying the full table might take a few months of computing time
+	//But who needs to count beyond 2^49-1 (~10^14) anyway??
+	0x1008000000000,
+
+	//Really, there are more entries beyond this, but I consider it pretty much not worth the effort.
+#endif
+};
+
+
+void LinearFeedbackShiftReg::setMaskPeriod(unsigned int newMask)
+{
+	//Don't fall off the table
+	ASSERT((newMask-3) < sizeof(maximumLinearTable)/sizeof(size_t));
+
+	maskVal=maximumLinearTable[newMask-3];
+
+	//Set the mask to be all ones
+	totalMask=0;
+	for(size_t ui=0;ui<newMask;ui++)
+		totalMask|= (size_t)(1)<<ui;
+
+
+}
+
+bool LinearFeedbackShiftReg::verifyTable()
+{
+	//check each one is actually the full 2^n-1 period
+	size_t n;
+
+	size_t tableLen =  sizeof(maximumLinearTable)/sizeof(size_t);
+
+	//For the 32 bit table, this works pretty quickly.
+	//for the 64  bit table, this takes a month or so
+	for(size_t n=3;n<tableLen+3;n++)
+	{
+		size_t period;
+		setState(1);
+		setMaskPeriod(n);
+		period=0;
+		do
+		{
+			clock();
+			period++;
+		}
+		while(lfsr!=1);
+
+
+		//we should have counted every bit position in the polynomial (except 0)
+		//otherwise, this is not the maximal linear sequence
+		if(period != ((size_t)(1)<<(n-(size_t)1)) -(size_t)(1))
+			return false;
+	}
+	return true;
+}
+
+size_t LinearFeedbackShiftReg::clock()
+{
+	typedef size_t ull;
+
+	lfsr = (lfsr >> 1) ^ -(lfsr & (ull)(1u)) & maskVal; 
+	lfsr&=totalMask;
+	if( lfsr == 0u)
+		lfsr=1u;
+
+	return lfsr;
+}
+

@@ -24,6 +24,9 @@
 /* PNG compilation OK */
 #undef HAVE_PNG
 
+/* qhull compilation OK */
+#undef HAVE_QHULL
+
 /* Define to 1 if you have the `sqrt' function. */
 #undef HAVE_SQRT
 
@@ -71,6 +74,9 @@
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
+
+/* The size of `size_t', as computed by sizeof. */
+#undef SIZEOF_SIZE_T
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS

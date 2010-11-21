@@ -1,3 +1,70 @@
+* The Future : 0.0.3
+
+	Features:
+	- Added range interaction on-plot
+	- Show marker for transform in mass-centre && boundbox mode. Allow
+	user to show or hide marker.
+	- Add drag and drop support for files
+	- Add on-screen colourbar  for ion colour
+	- Add axis drawing
+	- Added better error messages to XML file read
+	- Added RDF filter
+	- Add mode to lock cylinder magnitude during rotation
+	- Plot panning (hold shift key)
+	- Filters can report stepwise progress
+	- Improvements to manual.
+
+	User Visible Bugs:
+	- Better error messages for PNG/SVG plot save
+	- Fix bug in binding which caused object to move more than it should
+	 during 3D drag
+	- Set dialog default item focus
+	- Fix escape key not working in dialogs
+	- Switch ms-windows camera roll to use alt, rather than tab, because
+	ctrl+tab advances through controls, regardless of focus
+	- Remove buggy parallel code in rotation filter
+	- Fix transform filter behaviour to +origin after rotate
+	- Fix bugs in transform filter
+		- origin behaviour
+		- copying/stashing filter
+	- Fix bug whereby region colours in mass spectrum had green and blue
+	channels swapped (typo)
+	- Fix for crash when exporting images at high resolutions,
+	due to uncaught std::bad_alloc in conjunction with a missing return
+	after popping up dialog box
+	- Fix bug with loading multiple files at command line
+	- Fix bug in voxels where axis aligned data caused crash
+	- Fixed animation tiling 
+	- Ensure visibility reset actually resets to looking down +ve axis
+	- Change plot axis to show log_10 rather than just log() during log
+	mode
+	- Fixed interaction overlay drawing transparancy
+
+	Technical Bugs/Features:
+	- Really fast "random" sampling.
+	- Fix memory leak where textures were continually reloaded at every
+	use due to bad name handling
+	- Fix incorrect usage of std::unique that was leading to assertion
+	failure
+	- Make conjugation in quaternions implicit for even faster quat
+	rotations.
+	- Fix bug in GenericLoadFloatFile, where the output vector was too
+	small for cols<4, resulting in mem overflow
+	- Fix bug in transform filter where data limits were requirested for
+	ion data sizes < 2
+	- Fixes for spatial analysis filter
+		- Catch and report errors to console, rather than crash.
+	- Fixes to plot bound get function with multiple plots
+		- Only returns visible plots now
+	- Fix aspect ratio not set during scene overlay draw
+	- Added export analysis package
+	- Added abort to rendering sequence
+	- Fix assertion error during refresh due to bad total filter count
+	after ion export
+	- Fix bug in BoundCube::setBounds where incorrect assignment for z
+	was made
+	- Valgrind out two crash bugs due to uninited mem
+
 
 
 * September 24 : 0.0.2

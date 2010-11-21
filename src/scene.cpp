@@ -30,6 +30,7 @@ Scene::Scene() : tempCam(0), activeCam(0), cameraSet(false), outWinAspect(1.0f),
 	viewRestrict=false;
 	useAlpha=true;
 	useLighting=true;
+	showAxis=true;
 
 	//default to black
 	rBack=gBack=bBack=0.0f;
@@ -64,7 +65,6 @@ void Scene::draw()
 	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
 
 
-	applyGLExtentions();
 
 
 	bool lightsOn=false;
@@ -79,62 +79,54 @@ void Scene::draw()
 
 		glPushMatrix();
 		Point3D lightNormal;
+		Camera *camToUse;
 		if(tempCam)
-		{
-			//Inform text about current camera, so it can billboard if needed
-			DrawGLText::setCurCamera(tempCam);
-			DrawField3D::setCurCamera(tempCam);
-			Effect::setCurCam(tempCam);
-
-			tempCam->apply(outWinAspect,boundCube);
-			lightNormal= tempCam->getViewDirection();
-
-		}
+			camToUse=tempCam;
 		else
 		{
 			ASSERT(activeCam < cameras.size());
-			//Inform text about current camera, so it can billboard if needed
-			DrawGLText::setCurCamera(cameras[activeCam]);
-			DrawField3D::setCurCamera(cameras[activeCam]);
-			Effect::setCurCam(cameras[activeCam]);
-
-			//If viewport restriction is on, inform camera to
-			//shrink viewport to specified region
-			if(viewRestrict)
-			{
-				cameras[activeCam]->apply(outWinAspect,boundCube,true,
-						viewRestrictStart[0],viewRestrictEnd[0],
-						viewRestrictStart[1],viewRestrictEnd[1]);
-			}
-			else
-				cameras[activeCam]->apply(outWinAspect,boundCube);
-
-			lightNormal= cameras[activeCam]->getViewDirection();
-
+			camToUse=cameras[activeCam];
 		}
+		
+		//Inform text about current camera, so it can billboard if needed
+		DrawGLText::setCurCamera(camToUse);
+		DrawField3D::setCurCamera(camToUse);
 
-
+		//If viewport restriction is on, inform camera to
+		//shrink viewport to specified region
+		if(viewRestrict)
+		{
+			camToUse->apply(outWinAspect,boundCube,true,
+					viewRestrictStart[0],viewRestrictEnd[0],
+					viewRestrictStart[1],viewRestrictEnd[1]);
+		}
+		else
+			camToUse->apply(outWinAspect,boundCube);
 
 		glNormal3f(lightNormal[0],lightNormal[1],lightNormal[2]);	
 	}
 
+	if(showAxis)
+	{
+		if(useLighting)
+			glEnable(GL_LIGHTING);
+		DrawAxis a;
+		a.setStyle(AXIS_IN_SPACE);
+		a.setSize(boundCube.getLargestDim());
+		a.setPosition(boundCube.getCentroid());
 
-	//Let the effects objects know about the scene
-	//Effect::setBoundingCube(boundCube);
-
-	for(unsigned int ui=0;ui<effects.size();ui++)
-		effects[ui]->enable();
-
-
-	//TODO: Alpha blending is, as always, causing problems
-	// we need to do a quick and dirty and draw in opaque objects
-	// then depth sort the alpha'd objects as best we can, then give up.
-	// depth buffering may need to be toggled during alpha'd object draw.
-	// For now, avoid alpha blended surface represented objects.
+		a.draw();
+		if(useLighting)
+			glDisable(GL_LIGHTING);
+	}
 
 	//Draw the referenced objecst
 	for(unsigned int ui=0; ui<refObjects.size(); ui++)
 	{
+		//overlays need to be drawn later
+		if(refObjects[ui]->isOverlay())
+			continue;
+
 		if(useLighting)
 		{
 			if(!refObjects[ui]->wantsLight && lightsOn)
@@ -155,6 +147,9 @@ void Scene::draw()
 	//Set up the objects
 	for(unsigned int ui=0; ui<objects.size(); ui++)
 	{
+		//overlays need to be drawn later
+		if(objects[ui]->isOverlay())
+			continue;
 		if(useLighting)
 		{	
 			if(!objects[ui]->wantsLight && lightsOn )
@@ -184,151 +179,205 @@ void Scene::draw()
 			p.draw();
 
 		}
-		else if( ui == lastHovered)
-		{	
-			//Search for a binding
-			bool haveBinding;
-			haveBinding=false;
-			
-			vector<const SelectionBinding *> binder;
-			for(unsigned int uj=0;uj<selectionDevices.size();uj++)
-			{
-				if(selectionDevices[uj]->getAvailBindings(objects[lastHovered],binder))
-				{
-					haveBinding=true;
-					break;
-				}
-			}
-			
-
-			if(haveBinding)
-			{	
-				glPushAttrib(GL_LIGHTING);
-				glDisable(GL_LIGHTING);
-
-				//Now draw some hints for the binding itself as a 2D overlay
-				//
-				//Draw the action type (translation, rotation etc)
-				//and the button it is bound to
-				DrawTexturedQuadOverlay binderIcons,mouseIcons,keyIcons;
-
-
-				const float ICON_SIZE= 0.05;
-				binderIcons.setTexturePool(&texPool);
-				binderIcons.setWindowSize(winX,winY);	
-				binderIcons.setSize(ICON_SIZE*winY);
-				
-				mouseIcons.setTexturePool(&texPool);
-				mouseIcons.setWindowSize(winX,winY);	
-				mouseIcons.setSize(ICON_SIZE*winY);
-			
-				keyIcons.setTexturePool(&texPool);
-				keyIcons.setWindowSize(winX,winY);	
-				keyIcons.setSize(ICON_SIZE*winY);
-
-				unsigned int iconNum=0;
-				for(unsigned int ui=0;ui<binder.size();ui++)
-				{
-					bool foundIconTex,foundMouseTex;
-					foundIconTex=false;
-					foundMouseTex=false;
-					switch(binder[ui]->getInteractionMode())
-					{
-						case BIND_MODE_FLOAT_SCALE:
-						case BIND_MODE_FLOAT_TRANSLATE:
-							foundIconTex=binderIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_ENLARGE]);
-							break;
-						case BIND_MODE_POINT3D_TRANSLATE:
-							foundIconTex=binderIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_TRANSLATE]);
-							break;
-						case BIND_MODE_POINT3D_ROTATE:
-							foundIconTex=binderIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_ROTATE]);
-						default:
-							break;
-					}
-
-					//Draw the mouse action
-					switch(binder[ui]->getMouseButtons())
-					{
-						case SELECT_BUTTON_LEFT:
-							foundMouseTex=mouseIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_LEFT_CLICK]);
-							break;
-						case SELECT_BUTTON_MIDDLE:
-							foundMouseTex=mouseIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_MIDDLE_CLICK]);
-							break;
-						case SELECT_BUTTON_RIGHT:
-							foundMouseTex=mouseIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_RIGHT_CLICK]);
-							break;
-						default:
-							//The flags are or'd together, so we can get other combinations
-							break;
-					}
-
-					bool foundKeyTex;
-					foundKeyTex=false;
-					//Draw the keyboard action, if any
-					switch(binder[ui]->getKeyFlags())
-					{
-						case FLAG_CMD:
-#ifdef __APPLE__
-							foundKeyTex=keyIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_COMMAND]);
-#else
-							foundKeyTex=keyIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_CTRL]);
-#endif
-							break;
-						case FLAG_SHIFT:
-							foundKeyTex=keyIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_SHIFT]);
-							break;
-						default:
-							//The flags are or'd together, so we can get other combinations
-							break;
-					}
-
-
-					if(foundIconTex && foundMouseTex )
-					{
-						const float SPACING=0.75*ICON_SIZE;
-						if(foundKeyTex)
-						{
-							//Make room for keyTex
-							binderIcons.setPos((0.93+SPACING)*winX,ICON_SIZE*winY*(1+(float)iconNum));
-							keyIcons.setPos(0.93*winX,ICON_SIZE*winY*(1+(float)iconNum));
-							mouseIcons.setPos((0.93-SPACING)*winX,ICON_SIZE*winY*(1+(float)iconNum));
-						}
-						else
-						{
-							binderIcons.setPos(0.95*winX,ICON_SIZE*winY*(1+(float)iconNum));
-							mouseIcons.setPos(0.90*winX,ICON_SIZE*winY*(1+(float)iconNum));
-						}
-
-						binderIcons.draw();
-						mouseIcons.draw();
-
-						if(foundKeyTex)
-							keyIcons.draw();
-
-						iconNum++;
-					}
-					
-				}
-
-				glPopAttrib();
-
-			}
-		}
-
-	
+		else if( ui == lastHovered) //Is this the object we hovered over last test?
+			drawHoverOverlay();
 
 		objects[ui]->draw();
 	}
 
-	//Disable effects
-	for(unsigned int ui=0;ui<effects.size();ui++)
-		effects[ui]->disable();
-
 	if(cameraSet)
 		glPopMatrix();
 
+	//Now draw 2D overlays
+
+	//Custom projection matrix
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	//Set the opengl camera state back into modelview mode
+	if(viewRestrict)
+	{
+
+		//FIXME: How does the aspect ratio fit in here?
+		gluOrtho2D(viewRestrictStart[0],
+				viewRestrictEnd[0],
+				viewRestrictStart[0],
+				viewRestrictStart[1]);
+	}
+	else
+		gluOrtho2D(0, outWinAspect, 1.0, 0);
+
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+
+	glDisable(GL_DEPTH_TEST);
+
+	for(unsigned int ui=0;ui<refObjects.size();ui++)
+	{
+		if(refObjects[ui]->isOverlay())
+			refObjects[ui]->draw();
+	}
+	
+	for(unsigned int ui=0;ui<objects.size();ui++)
+	{
+		if(objects[ui]->isOverlay())
+			objects[ui]->draw();
+	}
+	
+
+	glEnable(GL_DEPTH_TEST);
+	glPopMatrix();
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+
+	glMatrixMode(GL_MODELVIEW);
+}
+
+void Scene::drawHoverOverlay()
+{
+
+	glEnable(GL_ALPHA_TEST);
+	glDisable(GL_DEPTH_TEST);
+	//Search for a binding
+	bool haveBinding;
+	haveBinding=false;
+
+	//Prevent transparent areas from interactiing
+	//with the depth buffer
+	glAlphaFunc(GL_GREATER,0.01f);
+	
+	vector<const SelectionBinding *> binder;
+	for(unsigned int uj=0;uj<selectionDevices.size();uj++)
+	{
+		if(selectionDevices[uj]->getAvailBindings(objects[lastHovered],binder))
+		{
+			haveBinding=true;
+			break;
+		}
+	}
+
+
+	if(haveBinding)
+	{	
+		glPushAttrib(GL_LIGHTING);
+		glDisable(GL_LIGHTING);
+
+		//Now draw some hints for the binding itself as a 2D overlay
+		//
+		//Draw the action type (translation, rotation etc)
+		//and the button it is bound to
+		DrawTexturedQuadOverlay binderIcons,mouseIcons,keyIcons;
+
+
+		const float ICON_SIZE= 0.05;
+		binderIcons.setTexturePool(&texPool);
+		binderIcons.setWindowSize(winX,winY);	
+		binderIcons.setSize(ICON_SIZE*winY);
+		
+		mouseIcons.setTexturePool(&texPool);
+		mouseIcons.setWindowSize(winX,winY);	
+		mouseIcons.setSize(ICON_SIZE*winY);
+	
+		keyIcons.setTexturePool(&texPool);
+		keyIcons.setWindowSize(winX,winY);	
+		keyIcons.setSize(ICON_SIZE*winY);
+
+		unsigned int iconNum=0;
+		for(unsigned int ui=0;ui<binder.size();ui++)
+		{
+			bool foundIconTex,foundMouseTex;
+			foundIconTex=false;
+			foundMouseTex=false;
+			switch(binder[ui]->getInteractionMode())
+			{
+				case BIND_MODE_FLOAT_SCALE:
+				case BIND_MODE_FLOAT_TRANSLATE:
+				case BIND_MODE_POINT3D_SCALE:
+					foundIconTex=binderIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_ENLARGE]);
+					break;
+				case BIND_MODE_POINT3D_TRANSLATE:
+					foundIconTex=binderIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_TRANSLATE]);
+					break;
+				case BIND_MODE_POINT3D_ROTATE:
+				case BIND_MODE_POINT3D_ROTATE_LOCK:
+					foundIconTex=binderIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_ROTATE]);
+				default:
+					break;
+			}
+
+			//Draw the mouse action
+			switch(binder[ui]->getMouseButtons())
+			{
+				case SELECT_BUTTON_LEFT:
+					foundMouseTex=mouseIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_LEFT_CLICK]);
+					break;
+				case SELECT_BUTTON_MIDDLE:
+					foundMouseTex=mouseIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_MIDDLE_CLICK]);
+					break;
+				case SELECT_BUTTON_RIGHT:
+					foundMouseTex=mouseIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_RIGHT_CLICK]);
+					break;
+				default:
+					//The flags are or'd together, so we can get other combinations
+					break;
+			}
+
+			bool foundKeyTex;
+			foundKeyTex=false;
+			//Draw the keyboard action, if any
+			switch(binder[ui]->getKeyFlags())
+			{
+				case FLAG_CMD:
+#ifdef __APPLE__
+					foundKeyTex=keyIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_COMMAND]);
+#else
+					foundKeyTex=keyIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_CTRL]);
+#endif
+					break;
+				case FLAG_SHIFT:
+					foundKeyTex=keyIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_SHIFT]);
+					break;
+				default:
+					//The flags are or'd together, so we can get other combinations
+					break;
+			}
+
+
+			if(foundIconTex && foundMouseTex )
+			{
+				const float SPACING=0.75*ICON_SIZE;
+				if(foundKeyTex)
+				{
+					//Make room for keyTex
+					binderIcons.setPos((0.93+SPACING)*winX,ICON_SIZE*winY*(1+(float)iconNum));
+					keyIcons.setPos(0.93*winX,ICON_SIZE*winY*(1+(float)iconNum));
+					mouseIcons.setPos((0.93-SPACING)*winX,ICON_SIZE*winY*(1+(float)iconNum));
+				}
+				else
+				{
+					binderIcons.setPos(0.95*winX,ICON_SIZE*winY*(1+(float)iconNum));
+					mouseIcons.setPos(0.90*winX,ICON_SIZE*winY*(1+(float)iconNum));
+				}
+
+				binderIcons.draw();
+				mouseIcons.draw();
+
+				if(foundKeyTex)
+					keyIcons.draw();
+
+				iconNum++;
+			}
+			
+		}
+
+		glPopAttrib();
+
+	}
+
+	glDisable(GL_ALPHA_TEST);
+	glEnable(GL_DEPTH_TEST);
 }
 
 void Scene::commitTempCam()
@@ -511,7 +560,6 @@ void Scene::computeSceneLimits()
 			boundCube.expand(b);
 	}
 
-	std::cerr << "Scene limits:" << boundCube << std::endl;
 
 	if(!boundCube.isValid())
 	{
@@ -667,11 +715,8 @@ void Scene::finaliseCam()
 {
 	switch(cameras[activeCam]->type())
 	{
-		case CAM_PERSP:
-			((CameraPerspective *)cameras[activeCam])->recomputeUpDirection();
-			break;
 		case CAM_LOOKAT:
-			((CameraPerspLookAt *)cameras[activeCam])->recomputeUpDirection();
+			((CameraLookAt *)cameras[activeCam])->recomputeUpDirection();
 			break;
 	}
 }
@@ -740,14 +785,8 @@ void Scene::applyDevice(float startX, float startY, float curX, float curY,
 	float viewWidth;
 	switch(cam->type())
 	{
-		case CAM_PERSP:
-			viewWidth=depth*tan(((CameraPerspective*)cam)->getFOV()/2.0f*M_PI/180.0);
-			break;
 		case CAM_LOOKAT:
-			viewWidth=depth*tan(((CameraPerspLookAt*)cam)->getFOV()/2.0f*M_PI/180.0);
-			break;
-		case CAM_FREE:
-			viewWidth=1.0;
+			viewWidth=((CameraLookAt*)cam)->getViewWidth(depth);
 			break;
 		default:
 			ASSERT(false);
@@ -757,54 +796,40 @@ void Scene::applyDevice(float startX, float startY, float curX, float curY,
 	//We have the object number, but we don't know which binding
 	//corresponds to this object. Search all bindings. It may be that more than one 
 	//binding is enabled for this object
-	unsigned int bindingStart=0;
-	bool bindingApplied=false;
 	SelectionBinding *binder;
-	while(bindingStart< selectionDevices.size())
+
+	vector<SelectionBinding*> activeBindings;
+	for(unsigned int ui=0;ui<selectionDevices.size();ui++)
 	{
+		if(selectionDevices[ui]->getBinding(
+			objects[lastSelected],mouseFlags,keyFlags,binder))
+			activeBindings.push_back(binder);
+	}
 
-		//Search for a binding
-		bool haveBinding;
-		haveBinding=false;
-
-		for(unsigned int ui=bindingStart;ui<selectionDevices.size();ui++)
-		{
-			if(selectionDevices[ui]->getBinding(
-				objects[lastSelected],mouseFlags,keyFlags,binder))
-			{
-				haveBinding=true;
-				break;
-			}
-		}
-
-		//If we didn't find one, abort
-		if(!haveBinding)
-			break;
-
+	for(unsigned int ui=0;ui<activeBindings.size();ui++)
+	{
 		//Convert the mouse-XY coords into a world coordinate, depending upon mouse/
 		//key cobinations
 		Point3D worldVec;
 		Point3D vectorCoeffs[2];
-		binder->computeWorldVectorCoeffs(mouseFlags,keyFlags,
+		activeBindings[ui]->computeWorldVectorCoeffs(mouseFlags,keyFlags,
 					vectorCoeffs[0],vectorCoeffs[1]);	
 
 		//Apply vector coeffs, dependant upon binding
-		worldVec = acrossDir*vectorCoeffs[0][0]*(curX-startX)
-				+ upDir*vectorCoeffs[0][1]*(curX-startX)
-				+ forwardsDir*vectorCoeffs[0][2]*(curX-startX)
+		worldVec = acrossDir*vectorCoeffs[0][0]*(curX-startX)*outWinAspect
+				+ upDir*vectorCoeffs[0][1]*(curX-startX)*outWinAspect
+				+ forwardsDir*vectorCoeffs[0][2]*(curX-startX)*outWinAspect
 				+ acrossDir*vectorCoeffs[1][0]*(curY-startY)
 				+ upDir*vectorCoeffs[1][1]*(curY-startY)
 				+ forwardsDir*vectorCoeffs[1][2]*(curY-startY);
 		worldVec*=viewWidth;
 		
-		binder->applyTransform(worldVec,permanent);
-		bindingApplied=true;
-		bindingStart++;
-
+		activeBindings[ui]->applyTransform(worldVec,permanent);
 	}
 
+	computeSceneLimits();
 	//Inform viscontrol about updates, if we have applied any
-	if(bindingApplied && permanent)
+	if(activeBindings.size() && permanent)
 	{
 		visControl->setUpdates();
 		//If the viscontrol is in the midddle of an update,
@@ -851,14 +876,6 @@ void Scene::restrictView(float xS, float yS, float xFin, float yFin)
 bool Scene::isDefaultCam() const
 {
 	return  activeCam==0;
-}
-
-void Scene::applyGLExtentions()
-{
-#ifdef GL_VERSION_1_4
-//	const float glPointParams[3] = { 1.0, 0.5, 0.0 };
-//	 glPointParameterfv(GL_DISTANCE_ATTENUATION_EXT, glPointParams);
-#endif
 }
 
 bool Scene::camNameExists(const std::string &s) const

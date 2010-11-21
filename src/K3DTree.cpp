@@ -1,6 +1,5 @@
-
 /* K3DTree.cpp : 3D Point KD tree 
- * Copyright (C) 2008  D Haley
+ * Copyright (C) 2008  D. Haley
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,10 +15,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "K3DTree.h"
-#ifdef DEBUG
-	#include <cstdlib>
-	#include <iostream>
-#endif
 
 #include <limits>
 
@@ -92,6 +87,8 @@ void K3DNode::dump(std::ostream &strm, unsigned int depth) const
 K3DTree::K3DTree() : maxDepth(0),root(0)
 {
 	treeSize=0;
+	progress=0;
+	callback=0;
 }
 
 
@@ -101,7 +98,7 @@ K3DTree::~K3DTree()
 }
 
 
-void K3DTree::verify()
+/*void K3DTree::verify()
 {
 	std::stack<K3DNode *> nodeStack;
 	std::stack<int> visitStack;
@@ -194,7 +191,7 @@ void K3DTree::verify()
 	std::cerr << " -<<<Tree Datas>>>-" << std::endl;
 	std::cerr << "Tree reports # nodes: " << treeSize << std::endl;
 	std::cerr << "Tree reports Max Depth: " << maxDepth << std::endl;	
-}
+}*/
 
 void K3DTree::kill()
 {
@@ -241,6 +238,8 @@ void K3DTree::buildByRef(vector<Point3D> &pts)
 
 	treeSize=pts.size();	
 	maxDepth=1;
+	*progress=0;
+	curNodeCount=0;
 #pragma omp taskroot
 	root=buildRecurse(pts.begin(), pts.end(),0);
 	
@@ -277,8 +276,13 @@ K3DNode *K3DTree::buildRecurse(vector<Point3D>::iterator pts_start, vector<Point
 		
 		if(ptsSize > OMP_PTS_SIZE)
 		{
-			#pragma omp task
-			node->setLeft(buildRecurse(pts_start,pts_start + median,depth+1));
+			//Only do process if callback is OK
+		        if((*callback)())
+			{
+				#pragma omp task
+				node->setLeft(buildRecurse(pts_start,pts_start + median,depth+1));
+				*progress = (unsigned int)((float)curNodeCount/(float)totalSize*100.0f);
+			}
 		}
 		else
 			node->setLeft(buildRecurse(pts_start,pts_start + median,depth+1));
@@ -290,8 +294,13 @@ K3DNode *K3DTree::buildRecurse(vector<Point3D>::iterator pts_start, vector<Point
 	{
 		if(ptsSize >OMP_PTS_SIZE)
 		{
-			#pragma omp task
-			node->setRight(buildRecurse(pts_start + median + 1, pts_end,depth+1));
+			//Only do process if callback is OK
+		        if((*callback)())
+			{
+				#pragma omp task
+				node->setRight(buildRecurse(pts_start + median + 1, pts_end,depth+1));
+				*progress = (unsigned int)((float)curNodeCount/(float)totalSize*100.0f);
+			}
 		}
 		else
 			node->setRight(buildRecurse(pts_start + median + 1, pts_end,depth+1));
@@ -300,6 +309,8 @@ K3DNode *K3DTree::buildRecurse(vector<Point3D>::iterator pts_start, vector<Point
 	else
 		node->setRight(0);
 
+#pragma atomic
+	curNodeCount++;
 	return node;	
 
 }

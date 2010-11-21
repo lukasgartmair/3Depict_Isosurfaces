@@ -46,6 +46,8 @@ public:
 	unsigned int getHeight() const {return resHeight;};
 	//!Set the resolution and update text boxes
 	void setRes(unsigned int w, unsigned int h);
+	//!Finish up the dialog
+	void finishDialog();
 
 private:
     // begin wxGlade: ResDialog::methods
@@ -64,6 +66,7 @@ protected:
     wxButton* btnCancel;
     // end wxGlade
     virtual void OnBtnOK(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnKeypress(wxKeyEvent &event); // wxGlade: <event_handler>
     virtual void OnBtnCancel(wxCommandEvent &event); // wxGlade: <event_handler>
 
 protected:

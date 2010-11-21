@@ -195,7 +195,7 @@ void StashDialog::updateGrid()
 	Filter *targetFilter=0;
 	unsigned int pos=0;
 	//Spin through the tree iterators until we hit the target index
-	for(tree<Filter *>::iterator it=t.begin();it!=t.end(); it++)
+	for(tree<Filter *>::iterator it=t.begin();it!=t.end(); ++it)
 	{
 		if(pos == filterIdx)
 		{
