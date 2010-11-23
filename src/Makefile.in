@@ -48,29 +48,29 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am__3Depict_SOURCES_DIST = quat.c pngread.c glPane.cpp basics.cpp \
-	cameras.cpp drawables.cpp lights.cpp 3Depict.cpp scene.cpp \
-	mathglPane.cpp plot.cpp APTClasses.cpp filter.cpp \
+am__3Depict_SOURCES_DIST = quat.c pngread.c rdf.cpp glPane.cpp \
+	basics.cpp cameras.cpp drawables.cpp lights.cpp 3Depict.cpp \
+	scene.cpp mathglPane.cpp plot.cpp APTClasses.cpp filter.cpp \
 	viscontrol.cpp mathfuncs.cpp wxcomponents.cpp colourmap.cpp \
 	select.cpp common.cpp XMLHelper.cpp ResDialog.cpp \
 	ExportPos.cpp ExportRngDialog.cpp StashDialog.cpp textures.cpp \
-	configFile.cpp K3DTree.cpp effect.cpp IsoSurface.cpp \
-	winconsole.cpp 3Depict.rc
+	configFile.cpp K3DTree.cpp IsoSurface.cpp winconsole.cpp \
+	3Depict.rc
 am__objects_1 = 3Depict-quat.$(OBJEXT) 3Depict-pngread.$(OBJEXT) \
-	3Depict-glPane.$(OBJEXT) 3Depict-basics.$(OBJEXT) \
-	3Depict-cameras.$(OBJEXT) 3Depict-drawables.$(OBJEXT) \
-	3Depict-lights.$(OBJEXT) 3Depict-3Depict.$(OBJEXT) \
-	3Depict-scene.$(OBJEXT) 3Depict-mathglPane.$(OBJEXT) \
-	3Depict-plot.$(OBJEXT) 3Depict-APTClasses.$(OBJEXT) \
-	3Depict-filter.$(OBJEXT) 3Depict-viscontrol.$(OBJEXT) \
-	3Depict-mathfuncs.$(OBJEXT) 3Depict-wxcomponents.$(OBJEXT) \
-	3Depict-colourmap.$(OBJEXT) 3Depict-select.$(OBJEXT) \
-	3Depict-common.$(OBJEXT) 3Depict-XMLHelper.$(OBJEXT) \
-	3Depict-ResDialog.$(OBJEXT) 3Depict-ExportPos.$(OBJEXT) \
-	3Depict-ExportRngDialog.$(OBJEXT) \
+	3Depict-rdf.$(OBJEXT) 3Depict-glPane.$(OBJEXT) \
+	3Depict-basics.$(OBJEXT) 3Depict-cameras.$(OBJEXT) \
+	3Depict-drawables.$(OBJEXT) 3Depict-lights.$(OBJEXT) \
+	3Depict-3Depict.$(OBJEXT) 3Depict-scene.$(OBJEXT) \
+	3Depict-mathglPane.$(OBJEXT) 3Depict-plot.$(OBJEXT) \
+	3Depict-APTClasses.$(OBJEXT) 3Depict-filter.$(OBJEXT) \
+	3Depict-viscontrol.$(OBJEXT) 3Depict-mathfuncs.$(OBJEXT) \
+	3Depict-wxcomponents.$(OBJEXT) 3Depict-colourmap.$(OBJEXT) \
+	3Depict-select.$(OBJEXT) 3Depict-common.$(OBJEXT) \
+	3Depict-XMLHelper.$(OBJEXT) 3Depict-ResDialog.$(OBJEXT) \
+	3Depict-ExportPos.$(OBJEXT) 3Depict-ExportRngDialog.$(OBJEXT) \
 	3Depict-StashDialog.$(OBJEXT) 3Depict-textures.$(OBJEXT) \
 	3Depict-configFile.$(OBJEXT) 3Depict-K3DTree.$(OBJEXT) \
-	3Depict-effect.$(OBJEXT) 3Depict-IsoSurface.$(OBJEXT)
+	3Depict-IsoSurface.$(OBJEXT)
 @HAVE_WINDRES_FALSE@am_3Depict_OBJECTS = $(am__objects_1)
 @HAVE_WINDRES_TRUE@am_3Depict_OBJECTS = $(am__objects_1) \
 @HAVE_WINDRES_TRUE@	3Depict-winconsole.$(OBJEXT) \
@@ -81,7 +81,7 @@ am__DEPENDENCIES_1 =
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 3Depict_LINK = $(CXXLD) $(3Depict_CXXFLAGS) $(CXXFLAGS) \
 	$(3Depict_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
@@ -153,6 +153,8 @@ PATH_SEPARATOR = @PATH_SEPARATOR@
 PKG_CONFIG = @PKG_CONFIG@
 PNG_CFLAGS = @PNG_CFLAGS@
 PNG_LIBS = @PNG_LIBS@
+QHULL_CFLAGS = @QHULL_CFLAGS@
+QHULL_LIBS = @QHULL_LIBS@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
@@ -227,16 +229,16 @@ MSYS_PATH = /c/msys/1.0/local/include/
 	$(GL_FLAGS) $(MGL_CFLAGS) $(XML_CFLAGS) $(PNG_CFLAGS) -DDEBUG 
 
 3Depict_CFLAGS = $(CXXFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) \
-	       $(XML_CFLAGS)  $(MGL_CFLAGS) $(PNG_CFLAGS) -DDEBUG 
+	       $(XML_CFLAGS)  $(MGL_CFLAGS) $(PNG_CFLAGS) $(QHULL_CFLAGS) -DDEBUG 
 
 3Depict_LDADD = $(LIBS) $(FT_LIBS) $(FT_LIBS) $(GL_LIBS) \
-		$(FTGL_LIBS) $(MGL_LIBS) $(WX_LIBS) $(XML_LIBS) $(PNG_LIBS)
+		$(FTGL_LIBS) $(MGL_LIBS) $(WX_LIBS) $(XML_LIBS) $(PNG_LIBS) $(QHULL_LIBS)
 
-SOURCE_FILES = quat.c pngread.c glPane.cpp basics.cpp cameras.cpp drawables.cpp lights.cpp \
+SOURCE_FILES = quat.c pngread.c rdf.cpp glPane.cpp basics.cpp cameras.cpp drawables.cpp lights.cpp \
 		3Depict.cpp scene.cpp mathglPane.cpp plot.cpp APTClasses.cpp filter.cpp \
 		viscontrol.cpp mathfuncs.cpp wxcomponents.cpp colourmap.cpp select.cpp common.cpp \
 		XMLHelper.cpp ResDialog.cpp ExportPos.cpp ExportRngDialog.cpp StashDialog.cpp textures.cpp \
-		configFile.cpp K3DTree.cpp effect.cpp IsoSurface.cpp 
+		configFile.cpp K3DTree.cpp IsoSurface.cpp 
 
 @HAVE_WINDRES_FALSE@3Depict_SOURCES = $(SOURCE_FILES)
 
@@ -338,7 +340,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-common.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-configFile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-drawables.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-effect.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-filter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-glPane.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-lights.Po@am__quote@
@@ -347,6 +348,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-plot.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-pngread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-quat.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-rdf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-scene.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-select.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-textures.Po@am__quote@
@@ -409,6 +411,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+
+3Depict-rdf.o: rdf.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-rdf.o -MD -MP -MF $(DEPDIR)/3Depict-rdf.Tpo -c -o 3Depict-rdf.o `test -f 'rdf.cpp' || echo '$(srcdir)/'`rdf.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-rdf.Tpo $(DEPDIR)/3Depict-rdf.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='rdf.cpp' object='3Depict-rdf.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-rdf.o `test -f 'rdf.cpp' || echo '$(srcdir)/'`rdf.cpp
+
+3Depict-rdf.obj: rdf.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-rdf.obj -MD -MP -MF $(DEPDIR)/3Depict-rdf.Tpo -c -o 3Depict-rdf.obj `if test -f 'rdf.cpp'; then $(CYGPATH_W) 'rdf.cpp'; else $(CYGPATH_W) '$(srcdir)/rdf.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-rdf.Tpo $(DEPDIR)/3Depict-rdf.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='rdf.cpp' object='3Depict-rdf.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-rdf.obj `if test -f 'rdf.cpp'; then $(CYGPATH_W) 'rdf.cpp'; else $(CYGPATH_W) '$(srcdir)/rdf.cpp'; fi`
 
 3Depict-glPane.o: glPane.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-glPane.o -MD -MP -MF $(DEPDIR)/3Depict-glPane.Tpo -c -o 3Depict-glPane.o `test -f 'glPane.cpp' || echo '$(srcdir)/'`glPane.cpp
@@ -759,20 +775,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='K3DTree.cpp' object='3Depict-K3DTree.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-K3DTree.obj `if test -f 'K3DTree.cpp'; then $(CYGPATH_W) 'K3DTree.cpp'; else $(CYGPATH_W) '$(srcdir)/K3DTree.cpp'; fi`
-
-3Depict-effect.o: effect.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-effect.o -MD -MP -MF $(DEPDIR)/3Depict-effect.Tpo -c -o 3Depict-effect.o `test -f 'effect.cpp' || echo '$(srcdir)/'`effect.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-effect.Tpo $(DEPDIR)/3Depict-effect.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='effect.cpp' object='3Depict-effect.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-effect.o `test -f 'effect.cpp' || echo '$(srcdir)/'`effect.cpp
-
-3Depict-effect.obj: effect.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-effect.obj -MD -MP -MF $(DEPDIR)/3Depict-effect.Tpo -c -o 3Depict-effect.obj `if test -f 'effect.cpp'; then $(CYGPATH_W) 'effect.cpp'; else $(CYGPATH_W) '$(srcdir)/effect.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-effect.Tpo $(DEPDIR)/3Depict-effect.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='effect.cpp' object='3Depict-effect.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-effect.obj `if test -f 'effect.cpp'; then $(CYGPATH_W) 'effect.cpp'; else $(CYGPATH_W) '$(srcdir)/effect.cpp'; fi`
 
 3Depict-IsoSurface.o: IsoSurface.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-IsoSurface.o -MD -MP -MF $(DEPDIR)/3Depict-IsoSurface.Tpo -c -o 3Depict-IsoSurface.o `test -f 'IsoSurface.cpp' || echo '$(srcdir)/'`IsoSurface.cpp
