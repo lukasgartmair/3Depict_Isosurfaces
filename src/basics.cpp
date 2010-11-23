@@ -158,7 +158,7 @@ std::string convertFileStringToCanonical(const std::string &s)
 	string r;
 	for(unsigned int ui=0;ui<s.size();ui++)
 	{
-		if(s[ui] == "\\")
+		if(s[ui] == '\\')
 			r+="/";
 		else
 			r+=s[ui];
@@ -177,7 +177,7 @@ std::string convertFileStringToNative(const std::string &s)
 	string r;
 	for(unsigned int ui=0;ui<s.size();ui++)
 	{
-		if(s[ui] == "/")
+		if(s[ui] == '/')
 			r+="\\";
 		else
 			r+=s[ui];

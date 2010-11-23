@@ -1133,7 +1133,12 @@ unsigned int VisController::updateScene()
 		//to set the selection
 		targetPlots->bestEffortRestoreVisibility();
 
-		plotSelList->SetSelection(wxNOT_FOUND); //Clear selection
+#if defined(_WIN32) || defined(_WIN64)
+		//Bug under windows. SetSelection(wxNOT_FOUND) does not work for multiseletion list boxes
+		plotList->SetSelection(-1, false);
+#else
+ 		plotSelList->SetSelection(wxNOT_FOUND); //Clear selection
+#endif
 		for(unsigned int ui=0; ui<plotSelList->GetCount();ui++)
 		{
 			wxListUint *l;
