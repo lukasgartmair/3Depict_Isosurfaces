@@ -341,5 +341,8 @@ class VisController
 
 		//!Return the scene's world axis visibility
 		bool getAxisVisible();
+
+		//!Set whether filter should use strong or weak randomisation
+		void setStrongRandom(bool strongRand);
 };
 #endif

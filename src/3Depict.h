@@ -140,6 +140,7 @@ protected:
     wxCheckBox* checkAlphaBlend;
     wxCheckBox* checkLighting;
     wxCheckBox* checkCaching;
+    wxCheckBox* checkWeakRandom;
     wxStaticText* label_8;
     wxSpinCtrl* spinCachePercent;
     wxScrolledWindow* notePerformance;
@@ -207,6 +208,7 @@ public:
     virtual void OnCheckAlpha(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnCheckLighting(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnCheckCacheEnable(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnCheckWeakRandom(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnCacheRamUsageSpin(wxSpinEvent &event); // wxGlade: <event_handler>
     virtual void OnSpectraListbox(wxCommandEvent &event); // wxGlade: <event_handler>
 

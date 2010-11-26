@@ -16,6 +16,8 @@ Patch0:	%{name}-%{version}-texture-path.patch
 
 #Mathgl for plotting
 BuildRequires:	mathgl-devel 
+#Mathgl for plotting
+BuildRequires:	qhull-devel 
 #Mesa for GLU
 BuildRequires:	libGL-devel 
 #Libxml2 for file parsing
@@ -27,7 +29,7 @@ BuildRequires: libpng-devel
 #WX widgets
 BuildRequires: wxGTK-devel
 #Required for surface removal algorithms 
-BuildRequires: libqhull-devel
+BuildRequires: qhull-devel
 
 #Desktop file utils for installing desktop file
 BuildRequires: desktop-file-utils
@@ -43,7 +45,9 @@ useful for general scalar valued point data purposes.
 %patch0
 
 %build
-%configure 
+export CFLAGS="-fopenmp -DGLIBCXX_PARALLEL"
+export CXXFLAGS="-fopenmp -DGLIBCXX_PARALLEL"
+%configure  
 make %{?_smp_mflags}
 
 
@@ -81,7 +85,7 @@ rm -rf %{buildroot}
 
 
 %changelog
-* Nov 21 2008 D Haley <mycae(a!t)yahoo.com> - 0.0.3-1
++* Fri Nov 26 2010 D Haley <mycae(a!t)yahoo.com> - 0.0.3-1
 - Update to 0.0.3
 
 * Tue Sep 21 2010 D Haley <mycae(a!t)yahoo.com> - 0.0.2-1

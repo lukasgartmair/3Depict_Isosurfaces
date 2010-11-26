@@ -296,6 +296,6 @@ unsigned int GenericLoadFloatFile(int inputnumcols, int outputnumcols,
 
 unsigned int LimitLoadPosFile(int inputnumcols, int outputnumcols, int index[], 
 			vector<IonHit> &posIons,const char *posFile, size_t limitCount,
-					       	unsigned int &progress, bool (*callback)());
+					       	unsigned int &progress, bool (*callback)(),bool strongRandom);
 
 #endif

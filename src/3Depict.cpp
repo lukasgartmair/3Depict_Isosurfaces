@@ -193,6 +193,7 @@ enum {
     ID_CHECK_ALPHA,
     ID_CHECK_LIGHTING,
     ID_CHECK_CACHING,
+    ID_CHECK_WEAKRANDOM,
     ID_SPIN_CACHEPERCENT,
     	
     //Misc
@@ -363,9 +364,11 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     gridCameraProperties = new wxPropertyGrid(noteCamera, ID_GRID_CAMERA_PROPERTY);
     checkAlphaBlend = new wxCheckBox(notePerformance,ID_CHECK_ALPHA , _("Smooth && translucent objects"));
     checkAlphaBlend->SetValue(true);
-    checkLighting = new wxCheckBox(notePerformance, ID_CHECK_LIGHTING, _("Enable lighting"));
+    checkLighting = new wxCheckBox(notePerformance, ID_CHECK_LIGHTING, _("3D lighting"));
     checkLighting->SetValue(true);
-    checkCaching = new wxCheckBox(notePerformance, ID_CHECK_CACHING, _("Enable filter caching"));
+    checkWeakRandom = new wxCheckBox(notePerformance, ID_CHECK_WEAKRANDOM, _("Fast and weak randomisation."));
+    checkWeakRandom->SetValue(true);
+    checkCaching = new wxCheckBox(notePerformance, ID_CHECK_CACHING, _("Filter caching"));
     checkCaching->SetValue(true);
     label_8 = new wxStaticText(notePerformance, wxID_ANY, _("Max. Ram usage (%)"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
     spinCachePercent = new wxSpinCtrl(notePerformance, ID_SPIN_CACHEPERCENT, wxT("50"), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 100);
@@ -525,6 +528,7 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_CHECKBOX(ID_CHECK_ALPHA, MainWindowFrame::OnCheckAlpha)
     EVT_CHECKBOX(ID_CHECK_LIGHTING, MainWindowFrame::OnCheckLighting)
     EVT_CHECKBOX(ID_CHECK_CACHING, MainWindowFrame::OnCheckCacheEnable)
+    EVT_CHECKBOX(ID_CHECK_WEAKRANDOM, MainWindowFrame::OnCheckWeakRandom)
     EVT_SPINCTRL(ID_SPIN_CACHEPERCENT, MainWindowFrame::OnCacheRamUsageSpin)
     EVT_COMBOBOX(ID_COMBO_CAMERA, MainWindowFrame::OnComboCamera)
     EVT_COMBOBOX(ID_COMBO_FILTER, MainWindowFrame::OnComboFilter)
@@ -3059,6 +3063,12 @@ void MainWindowFrame::OnCheckCacheEnable(wxCommandEvent &event)
 	}
 }
 
+void MainWindowFrame::OnCheckWeakRandom(wxCommandEvent &event)
+{
+	visControl.setStrongRandom(!event.IsChecked());
+
+	doSceneUpdate();
+}
 
 void MainWindowFrame::OnCacheRamUsageSpin(wxSpinEvent &event)
 {
@@ -3218,7 +3228,8 @@ void MainWindowFrame::set_properties()
     checkAutoUpdate->SetValue(true);
 
     checkAlphaBlend->SetToolTip(_("Enable/Disable \"Alpha blending\" (transparency) in rendering system. This is used to smooth objects (avoids artefacts known as \"jaggies\") and to make transparent surfaces. Disabling will provide faster rendering but look more blocky")); 
-    checkLighting->SetToolTip(_("Enable/Disable lighting calculations in rendering support, for objects that perform these calculations. Lighting provides important depth cues for objects comprised of 3D surfaces. Disabling may allow faster rendering in complex scenes"));
+    checkLighting->SetToolTip(_("Enable/Disable lighting calculations in rendering, for objects that request this. Lighting provides important depth cues for objects comprised of 3D surfaces. Disabling may allow faster rendering in complex scenes"));
+    checkWeakRandom->SetToolTip(_("Enable/Disable weak randomisation (Galois linear feedback shift register). Strong randomisation uses a much slower random selection method, but provides better protection against inadvertant correlations, and is recommended for final analyses"));
     checkCaching->SetToolTip(_("Enable/Disable caching of intermediate results during filter updates. This will use less system RAM, though changes to any filter property will cause the entire filter tree to be recomputed, greatly slowing computations"));
 
     gridFilterProperties->CreateGrid(0, 2);
@@ -3324,6 +3335,7 @@ void MainWindowFrame::do_layout()
     noteCamera->SetSizer(camPaneSizer);
     sizer_19->Add(checkAlphaBlend, 0, wxTOP|wxBOTTOM|wxADJUST_MINSIZE, 5);
     sizer_19->Add(checkLighting, 0, wxTOP|wxBOTTOM|wxADJUST_MINSIZE, 5);
+    sizer_19->Add(checkWeakRandom, 0, wxTOP|wxBOTTOM|wxADJUST_MINSIZE, 5);
     sizer_19->Add(checkCaching, 0, wxTOP|wxBOTTOM|wxADJUST_MINSIZE, 5);
     sizer_17->Add(10, 20, 0, wxADJUST_MINSIZE, 0);
     sizer_17->Add(label_8, 0, wxRIGHT|wxADJUST_MINSIZE, 5);

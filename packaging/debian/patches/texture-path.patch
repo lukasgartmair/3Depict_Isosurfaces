@@ -1,8 +1,9 @@
-Index: 3depict-0.0.2/src/basics.h
+Index: 3depict-0.0.3/src/basics.h
 ===================================================================
---- 3depict-0.0.2.orig/src/basics.h	2010-09-22 20:26:26.000000000 +0100
-+++ 3depict-0.0.2/src/basics.h	2010-09-22 20:26:31.000000000 +0100
-@@ -75,7 +75,7 @@
+--- 3depict-0.0.3.orig/src/basics.h	2010-09-22 20:26:26.000000000 +0100
++++ 3depict-0.0.3/src/basics.h	2010-09-22 20:26:31.000000000 +0100
+@@ -107,7 +107,7 @@
+
  	//	  an application installer
  	//Mac
  	//	- Look in cwd

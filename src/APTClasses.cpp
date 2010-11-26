@@ -193,7 +193,7 @@ void appendPos(const vector<IonHit> &points, const char *name)
 }
 
 unsigned int LimitLoadPosFile(int inputnumcols, int outputnumcols, int index[], vector<IonHit> &posIons,const char *posFile, size_t limitCount,
-	       	unsigned int &progress, bool (*callback)())
+	       	unsigned int &progress, bool (*callback)(),bool strongSampling)
 {
 
 	//Function is only defined for 4 columns here.
@@ -205,8 +205,6 @@ unsigned int LimitLoadPosFile(int inputnumcols, int outputnumcols, int index[], 
 	char *buffer=new char[BUFFERSIZE];
 	char *buffer2=new char[BUFFERSIZE2];
 
-	//TODO: make user parameter. Should we use a weak or strong random sequence generator
-	const bool strongSampling=false;
 	
 	if(!buffer)
 		return POS_ALLOC_FAIL;

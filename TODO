@@ -4,12 +4,9 @@ TODO List - worlds simplest bugtracking system
 
 --Main app--
 	Fix Needs testing
-		* Added filename conversion under windows systems, such
-		 that it should be able to read unix generated packages
+	
 	To Implement:
 		== Next version ==
-		* Add option to enable strong random
-		* Remove DTD validation (I don't have a DTD)
 
 		== Eventually == 
 		* Binomial?
@@ -28,22 +25,20 @@ TODO List - worlds simplest bugtracking system
 		* Billboard text
 		* VTK/xyzm output
 		* BB cache for ion data?
-		* Non-ascii char testing?
 		* Option to warn on file overwrite with save after merge (default off)
 		* Filter defaults settings
-		* Improve camera framework -- orthogonal camera
 		* Unit testing system
-		* Language Translation support
+		* Non-english language support (do we even have enough users?)
 		* Theora video
 		* Improved resolution dialog
 
 
-
 	Outstanding bugs:
 		== Next release==
-		* Colour bar drawing broken when tiling an output image
 		
 		== Eventually==	
+		* Colour bar drawing broken when tiling an output image
+		* Multiple files with the same name in a package
 		* Error bar masking for graph (mathgl draws error bars outside plot boundary)
 		* Windows appears to have weird front-back drawing behaviour for point clouds.
 		* Pos load add could always add to bottom of filter list,
@@ -56,14 +51,13 @@ TODO List - worlds simplest bugtracking system
 
 
 		== Needs reproducing ==
-		* Composition profile property change keeps resetting the selection to all enabled when using rangefile.
-		  I was unable to trigger this locally
-			- This happened under windows with posFile -> range file ->composition profile
-										 -> Ion sampler
 		* Invalid range file being opened cause Package export to crash
 
 	Auditing:
 		== Next release ==
+		
+		== Eventually==	
+		* Colour bar drawing broken when tiling an output image
 		* Check each filter is actually reporting the required cache memory
 
 	Performance:

@@ -51,6 +51,7 @@ const unsigned int MAX_NUM_FILE_COLS=5000;
 
 const unsigned int SPECTRUM_MAX_BINS=100000;
 
+bool Filter::strongRandom= false;
 
 const char *STREAM_NAMES[] = { "Ion",
 				"Plot",
@@ -692,7 +693,7 @@ unsigned int PosLoadFilter::refresh(const std::vector<const FilterStreamData *> 
 	{
 		//Load the pos file, limiting how much you pull from it
 		if((uiErr = LimitLoadPosFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
-							maxIons,progress.filterProgress,callback)))
+							maxIons,progress.filterProgress,callback,strongRandom)))
 		{
 			consoleOutput.push_back(string("Error loading file: ") + ionFilename);
 			delete ionData;
@@ -1289,7 +1290,7 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 						frac = (float)(((const IonStreamData*)dataIn[ui])->data.size())/(float)numIons;
 
 						randomSelect(d->data,((const IonStreamData *)dataIn[ui])->data,
-									rng,maxAfterFilter*frac,progress.filterProgress,callback);
+									rng,maxAfterFilter*frac,progress.filterProgress,callback,strongRandom);
 
 
 					}

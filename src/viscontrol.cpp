@@ -2941,5 +2941,15 @@ void VisController::invalidateRangeCaches()
 
 bool VisController::getAxisVisible()
 {
-	return targetScene->getWorldAxisVisible();\
+	return targetScene->getWorldAxisVisible();
+}
+
+
+void VisController::setStrongRandom(bool strongRand)
+{
+	Filter::setStrongRandom(strongRand);
+
+	//Invalidate every filter cache.
+	invalidateCache(0);
+
 }
