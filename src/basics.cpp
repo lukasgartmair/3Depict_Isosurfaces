@@ -1542,7 +1542,6 @@ void LinearFeedbackShiftReg::setMaskPeriod(unsigned int newMask)
 bool LinearFeedbackShiftReg::verifyTable()
 {
 	//check each one is actually the full 2^n-1 period
-	size_t n;
 
 	size_t tableLen =  sizeof(maximumLinearTable)/sizeof(size_t);
 

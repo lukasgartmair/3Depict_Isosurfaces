@@ -677,7 +677,13 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 			errCode=(*filtIt)->refresh(inDataStack.top(),
 						curData,curProg,wxYieldCallback);
 
-
+#ifdef DEBUG
+			//Filter outputs should never be null pointers.
+			for(unsigned int ui=0;ui<inDataStack.top().size();ui++)
+			{
+				ASSERT(inDataStack.top()[ui]);
+			}
+#endif
 			//Ensure that (1) yield is called, regardless of what filter does
 			//(2) yield is called after 100% update	
 			curProg.filterProgress=100;	

@@ -8083,6 +8083,8 @@ DrawStreamData* TransformFilter::makeMarkerSphere(SelectionDevice* &s) const
 
 	}
 	drawData->cached=false;	
+
+	return drawData;
 }
 
 unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
@@ -8948,7 +8950,7 @@ bool TransformFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 				return false;
 			break;
 		case TRANSFORM_ROTATE:
-			if(vectorParams.size() != 1 || scalarParams.size() !=1)
+			if(vectorParams.size() != 2 || scalarParams.size() !=1)
 				return false;
 			break;
 		default:
@@ -10171,7 +10173,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		if(std::count(ionTargetEnabled.begin(),ionTargetEnabled.end(),true)!=ionTargetEnabled.size())
 			needSplitting=true;
 
-		if(haveRangeParent & needSplitting)
+		if(haveRangeParent && needSplitting)
 		{
 			ASSERT(ionNames.size());
 			//Build monolithic point sets

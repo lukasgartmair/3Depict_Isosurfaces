@@ -448,6 +448,8 @@ bool Multiplot::isLogarithmic() const
 				return true;
 		}
 	}
+
+	return false;
 }
 
 void Multiplot::drawPlot(mglGraph *gr) const

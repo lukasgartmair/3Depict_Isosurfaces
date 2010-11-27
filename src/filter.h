@@ -492,7 +492,7 @@ class Filter
 		//!Get the filter messages from the console
 		void getConsoleStrings(std::vector<std::string > &v) { v.resize(consoleOutput.size());std::copy(consoleOutput.begin(),consoleOutput.end(),v.begin()); consoleOutput.clear();};
 
-		static bool setStrongRandom(bool strongRand) {strongRandom=strongRand;}; 
+		static void setStrongRandom(bool strongRand) {strongRandom=strongRand;}; 
 };
 
 
