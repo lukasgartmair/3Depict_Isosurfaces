@@ -725,8 +725,9 @@ void Multiplot::drawPlot(mglGraph *gr) const
 	
 	string sX;
 	sX.assign(xLabel.begin(),xLabel.end()); //unicode conversion
+#ifdef MGL_GTE_1_10
 	gr->Label('x',sX.c_str());
-
+#endif
 	string sY;
 	sY.assign(yLabel.begin(), yLabel.end()); //unicode conversion
 	if(logarithmic && !notLog)
@@ -735,9 +736,9 @@ void Multiplot::drawPlot(mglGraph *gr) const
 	{
 		sY = string("Mixed log/non-log:") + sY ;
 	}
-
+#ifdef MGL_GTE_1_10
 	gr->Label('y',sY.c_str(),0);
-	
+#endif	
 	string sT;
 	sT.assign(plotTitle.begin(), plotTitle.end()); //unicode conversion
 	gr->Title(sT.c_str());

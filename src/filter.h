@@ -45,7 +45,10 @@ class RangeFileFilter;
 #include <libxml/xmlreader.h>
 #undef ATTRIBUTE_PRINTF
 
-//!Filter types 
+
+#include "wxcomponents.h"
+
+//!Filter types  -- must match array FILTER_NAMES
 enum
 {
 	FILTER_TYPE_POSLOAD,
@@ -60,13 +63,10 @@ enum
 	FILTER_TYPE_EXTERNALPROC,
 	FILTER_TYPE_SPATIAL_ANALYSIS,
 	FILTER_TYPE_VOXELS,
+	FILTER_TYPE_ENUM_END // not a filter. just end of enum
 };
 
-//!Filter state output formats
-enum
-{
-	STATE_FORMAT_XML=1
-};
+extern const char *FILTER_NAMES[];
 
 //!Possible primitive types for ion clipping
 enum
@@ -213,6 +213,17 @@ class FilterStreamData;
 
 //!Return the number of elements in a vector of filter data
 size_t numElements(const vector<const FilterStreamData *> &v);
+
+//!Create a "true default" filter from its true name string
+Filter *makeFilter(const string  &s) ;
+//!Create a true default filter from its enum value FILTER_TYPE_*
+Filter *makeFilter(unsigned int ui) ;
+
+//!Create a true default filter from its type string
+Filter *makeFilterFromDefUserString(const string &s) ;
+
+
+void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f);
 
 //!Abstract base class for data types that can propagate through filter system
 class FilterStreamData
@@ -400,6 +411,9 @@ class Filter
 	public:	
 		Filter() ;
 		virtual ~Filter();
+
+		//Pure virtual functions
+		//====
 		//!Duplicate filter contents, excluding cache.
 		virtual Filter *cloneUncached() const = 0;
 
@@ -412,35 +426,14 @@ class Filter
 		//!Get (approx) number of bytes required for cache
 		virtual size_t numBytesForCache(size_t nObjects) const =0;
 
-		//!Initialise the filter's internal state using limited filter stream data propagation
-		//NOTE: CONTENTS MAY NOT BE CACHED.
-		virtual void initFilter(const std::vector<const FilterStreamData *> &dataIn,
-				std::vector<const FilterStreamData *> &dataOut);
-
 		//!return type ID
 		virtual unsigned int getType() const=0;
 
 		//!Return filter type as std::string
 		virtual std::string typeString()const =0;
-
-		//!Return the XML elements that refer to external entities (i.e. files) which do not move with the XML file
-		//Each element is to be referred to using "/" as entity separator, for the first pair element, and the attribute name for the second.
-		virtual void getStateOverrides(std::vector<string> &overrides) const {}; 
-
-		//!Enable/disable caching for this filter
-		void setCaching(bool enableCache) {cache=enableCache;};
-
-		//!Have cached output data?
-		bool haveCache() const;
 		
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
 		virtual void getProperties(FilterProperties &propertyList) const =0;
-
-		//!Return a user-specified string, or just the typestring if user set string not active
-		virtual std::string getUserString() const ;
-		//!Set a user-specified string
-		virtual void setUserString(const std::string &str) { userString=str;}; 
-		
 
 		//!Set the properties for the nth filter, 
 		//!needUpdate tells us if filter output changes due to property set
@@ -456,15 +449,45 @@ class Filter
 		virtual bool writeState(std::ofstream &f, unsigned int format,
 			       	unsigned int depth=0) const = 0;
 	
+		//!Read state from XML  stream, using xml format
+		/* Current supported formats are STATE_FORMAT_XML
+		 */
+		virtual bool readState(xmlNodePtr& n, const std::string &packDir="") = 0; 
+	
+		//!Return the unique name for a given filter	
+		string trueName() const { return FILTER_NAMES[getType()];};
+		//====
+
+
+
+		//!Initialise the filter's internal state using limited filter stream data propagation
+		//NOTE: CONTENTS MAY NOT BE CACHED.
+		virtual void initFilter(const std::vector<const FilterStreamData *> &dataIn,
+				std::vector<const FilterStreamData *> &dataOut);
+
+
+		//!Return the XML elements that refer to external entities (i.e. files) which do not move with the XML file
+		//Each element is to be referred to using "/" as entity separator, for the first pair element, and the attribute name for the second.
+		virtual void getStateOverrides(std::vector<string> &overrides) const {}; 
+
+		//!Enable/disable caching for this filter
+		void setCaching(bool enableCache) {cache=enableCache;};
+
+		//!Have cached output data?
+		bool haveCache() const;
+		
+
+		//!Return a user-specified string, or just the typestring if user set string not active
+		virtual std::string getUserString() const ;
+		//!Set a user-specified string
+		virtual void setUserString(const std::string &str) { userString=str;}; 
+		
+
 		//!Modified version of writeState for packaging. By default simply calls writeState.
 		//value overrides override the values returned by getStateOverrides. In order.	
 		virtual bool writePackageState(std::ofstream &f, unsigned int format,
 				const std::vector<std::string> &valueOverrides,unsigned int depth=0) const {return writeState(f,format,depth);};
 		
-		//!Read state from XML  stream, using xml format
-		/* Current supported formats are STATE_FORMAT_XML
-		 */
-		virtual bool readState(xmlNodePtr& n, const std::string &packDir="") = 0; 
 
 
 		//!Get the selection devices for this filter. MUST be called after refresh()
@@ -515,8 +538,8 @@ class PosLoadFilter:public Filter
 		int numColumns, fileType;
 
 		//!index of columns into pos file
-		static const int INDEX_LENGTH = 4;
-		int index[INDEX_LENGTH];//x,y,z,value
+		static const unsigned int INDEX_LENGTH = 4;
+		unsigned int index[INDEX_LENGTH];//x,y,z,value
 
 		//!Is pos load enabled?
 		bool enabled;
@@ -593,13 +616,26 @@ class IonDownsampleFilter : public Filter
 		bool fixedNumOut;
 		//Fraction to output
 		float fraction;
+	
 
+		//!Should we use a per-species split or not?
+		bool perSpecies;	
+		//This is filter's enabled ranges. 0 if we don't have a range
+		RangeStreamData *rsdIncoming;
+
+		//!Fractions to output for species specific
+		std::vector<float> ionFractions;
+		std::vector<size_t> ionLimits;
 	public:
 		IonDownsampleFilter();
 		//!Duplicate filter contents, excluding cache.
 		Filter *cloneUncached() const;
 		//!Returns FILTER_TYPE_IONDOWNSAMPLE
 		unsigned int getType() const { return FILTER_TYPE_IONDOWNSAMPLE;};
+		//!Initialise filter prior to tree propagation
+		virtual void initFilter(const std::vector<const FilterStreamData *> &dataIn,
+				std::vector<const FilterStreamData *> &dataOut);
+		
 		//!Set mode, fixed num out/approximate out (fraction)
 		void setControlledOut(bool controlled) {fixedNumOut=controlled;};
 
@@ -797,7 +833,7 @@ class IonClipFilter :  public Filter
 		
 		//!Returns FILTER_TYPE_IONCLIP
 		unsigned int getType() const { return FILTER_TYPE_IONCLIP;};
-
+		
 		//!Get approx number of bytes for caching output
 		size_t numBytesForCache(size_t nObjects) const;
 
@@ -941,9 +977,10 @@ class CompositionProfileFilter : public Filter
 
 		//!Get approx number of bytes for caching output
 		size_t numBytesForCache(size_t nObjects) const;
+		
 
 		//!Initialise filter, check for upstream range
-		void initFilter(const std::vector<const FilterStreamData *> &dataIn,
+		virtual void initFilter(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &dataOut);
 		//!update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
@@ -978,7 +1015,7 @@ private:
 	const static size_t INDEX_LENGTH = 3;
 
 	//Enabled ions for numerator/denom
-	vector<char> enabledIons[2];
+	std::vector<char> enabledIons[2];
 
 	//!Stepping mode - fixed width or fixed number of bins
 	bool fixedWidth;
@@ -1009,13 +1046,15 @@ public:
 	VoxeliseFilter();
 	//!Duplicate filter contents, excluding cache.
 	Filter *cloneUncached() const;
+
+
 	
 	//!Get approx number of bytes for caching output
 	size_t numBytesForCache(size_t nObjects) const;
 
 	unsigned int getType() const { return FILTER_TYPE_VOXELS;};
 	
-	void initFilter(const std::vector<const FilterStreamData *> &dataIn,
+	virtual void initFilter(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &dataOut);
 	//!update filter
 	unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
@@ -1157,6 +1196,8 @@ class TransformFilter : public Filter
 
 		//!Returns -1, as range file cache size is dependant upon input.
 		virtual size_t numBytesForCache(size_t nObjects) const;
+
+		
 		//!Returns FILTER_TYPE_TRANSFORM
 		unsigned int getType() const { return FILTER_TYPE_TRANSFORM;};
 		//update filter
@@ -1204,7 +1245,7 @@ class ExternalProgramFilter : public Filter
 
 	public:
 		//!As this launches external programs, this could be misused.
-		bool canBeHazardous() const {return commandLine.size();}
+		bool canBeHazardous() const {return true;}
 
 		ExternalProgramFilter();
 		virtual ~ExternalProgramFilter(){};
@@ -1287,7 +1328,7 @@ class SpatialAnalysisFilter : public Filter
 		Filter *cloneUncached() const;
 
 		//!Initialise filter prior to tree propagation
-		void initFilter(const std::vector<const FilterStreamData *> &dataIn,
+		virtual void initFilter(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &dataOut);
 
 		//!Returns -1, as range file cache size is dependant upon input.

@@ -289,12 +289,12 @@ const unsigned int NUM_ELEMENTS=119;
  * x,y,z,mass/charge. 
  * */
 //!Load a pos file into a T of IonHits
-unsigned int GenericLoadFloatFile(int inputnumcols, int outputnumcols, 
-		int index[], vector<IonHit> &posIons,const char *posFile, 
+unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int outputnumcols, 
+		unsigned int index[], vector<IonHit> &posIons,const char *posFile, 
 				unsigned int &progress, bool (*callback)());
 
 
-unsigned int LimitLoadPosFile(int inputnumcols, int outputnumcols, int index[], 
+unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumcols, unsigned int index[], 
 			vector<IonHit> &posIons,const char *posFile, size_t limitCount,
 					       	unsigned int &progress, bool (*callback)(),bool strongRandom);
 

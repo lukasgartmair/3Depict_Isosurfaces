@@ -111,7 +111,6 @@ class K3DTree
 		bool (*callback)(void);
 
 		unsigned int *progress; //Progress counter
-		unsigned int totalSize; //Total input size
 		size_t curNodeCount; //Counter for build operations
 	public:
 	

@@ -281,7 +281,7 @@ K3DNode *K3DTree::buildRecurse(vector<Point3D>::iterator pts_start, vector<Point
 			{
 				#pragma omp task
 				node->setLeft(buildRecurse(pts_start,pts_start + median,depth+1));
-				*progress = (unsigned int)((float)curNodeCount/(float)totalSize*100.0f);
+				*progress = (unsigned int)((float)curNodeCount/(float)treeSize*100.0f);
 			}
 		}
 		else
@@ -299,7 +299,7 @@ K3DNode *K3DTree::buildRecurse(vector<Point3D>::iterator pts_start, vector<Point
 			{
 				#pragma omp task
 				node->setRight(buildRecurse(pts_start + median + 1, pts_end,depth+1));
-				*progress = (unsigned int)((float)curNodeCount/(float)totalSize*100.0f);
+				*progress = (unsigned int)((float)curNodeCount/(float)treeSize*100.0f);
 			}
 		}
 		else
@@ -309,7 +309,7 @@ K3DNode *K3DTree::buildRecurse(vector<Point3D>::iterator pts_start, vector<Point
 	else
 		node->setRight(0);
 
-#pragma atomic
+#pragma omp atomic
 	curNodeCount++;
 	return node;	
 

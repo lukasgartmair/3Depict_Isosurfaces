@@ -839,11 +839,11 @@ void DrawGLText::setColour(float rnew, float gnew, float bnew, float anew)
 
 void DrawGLText::getBoundingBox(BoundCube &b) const
 {
-	float minX,minY,minZ;
-	float maxX,maxY,maxZ;
 
 	if(isOK)
 	{
+		float minX,minY,minZ;
+		float maxX,maxY,maxZ;
 		font->BBox(strText.c_str(),minX,minY,minZ,maxX,maxY,maxZ);
 		b.setBounds(minX+origin[0],minY+origin[1],minZ+origin[2],
 				maxX+origin[0],maxY+origin[1],maxZ+origin[2]);
@@ -1169,7 +1169,6 @@ void DrawColourBarOverlay::draw() const
 
 	glEnd();
 
-	glError();
 	//Draw ticks on colour bar
 	glBegin(GL_LINES);
 		glColor4f(1.0,1.0,1.0f,1.0f);
@@ -1180,7 +1179,6 @@ void DrawColourBarOverlay::draw() const
 		glVertex3f(tlX,tlY+height,0);
 		glVertex3f(tlX+width,tlY+height,0);
 	glEnd();
-	glError();
 
 
 

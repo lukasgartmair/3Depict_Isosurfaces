@@ -43,18 +43,20 @@ class K3DTree;
 #ifdef DEBUG
 
 void dh_assert(const char * const filename, const unsigned int lineNumber); 
+void dh_warn(const char * const filename, const unsigned int lineNumber,
+							const char *message);
 
-#ifndef ASSERT
+	#ifndef ASSERT
 	#define ASSERT(f) if(!(f)) {dh_assert(__FILE__,__LINE__);}
-#endif
+	#endif
 
-	//I believe pretty_function is defined only by GCC
-	#ifdef __PRETTY_FUNCTION__
-		#define DBG_PRINTME std::cerr << "Function: " <<  __PRETTY_FUNCTION__ <<  endl; cerr << "File: " << __FILE__ << " Line:" << __LINE__ << endl
+	#ifndef WARN
+	#define WARN(f,g) if(!(f)) { dh_warn(__FILE__,__LINE__,g);}
 	#endif
 
 #else
 	#define ASSERT(f)
+	#define WARN(f,g) 
 #endif
 
 //!Text file loader errors
@@ -347,7 +349,7 @@ public:
         valid[bound][minMax]=true;
     };
 
-    float getBound(unsigned int bound, unsigned int minMax, float value) const {
+    float getBound(unsigned int bound, unsigned int minMax) const {
         ASSERT(bound <3 && minMax < 2);
 	ASSERT(valid[bound][minMax]==true);
         return bounds[bound][minMax];
@@ -498,8 +500,11 @@ class Point3D
 				 */
                 bool insideBox(const Point3D &lowPoint, const Point3D &highPoint) const;
 
-				//!Makes each value negative of old value
-				void negate();
+		//!Makes each value negative of old value
+		void negate();
+
+		//Perform a 3x3 matrix transformation. 
+		void transform3x3(const float *matrix);
 #ifdef __LITTLE_ENDIAN__
                 //!Flip the endian state for data stored in this point
                 void switchEndian();

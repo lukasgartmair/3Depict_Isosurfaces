@@ -165,6 +165,7 @@ CameraLookAt::CameraLookAt()
 	projectionMode=PROJECTION_MODE_PERSPECTIVE;
 	fovAngle=90.0f;
 	nearPlane=1.0f;
+	frustumDistortion=0.0f;
 
 	orthoScale=1.0f;
 }
@@ -176,14 +177,17 @@ Camera *CameraLookAt::clone() const
 	retCam->origin =origin;
 	retCam->viewDirection=viewDirection;
 	retCam->upDirection =upDirection;
-	retCam->userString=userString;
-
-	retCam->fovAngle = fovAngle;
-	retCam->nearPlane=nearPlane;
-
-	retCam->target = target;
 	retCam->projectionMode=projectionMode;
 	retCam->orthoScale=orthoScale;
+	retCam->typeNum=typeNum;
+	retCam->userString=userString;
+
+
+	retCam->target = target;
+	retCam->fovAngle = fovAngle;
+	retCam->nearPlane=nearPlane;
+	retCam->farPlane=farPlane;
+
 
 	return retCam;
 }
@@ -308,8 +312,16 @@ void CameraLookAt::apply(float aspect,const BoundCube &b,bool loadIdentity,
 			
 
 			//Frustum uses eye coordinates.	
-			glFrustum(leftRestrict*width,rightRestrict*width,bottomRestrict*height,
-							topRestrict*height,nearPlane,farPlane);
+			if(fabs(frustumDistortion) < std::numeric_limits<float>::epsilon())
+				glFrustum(leftRestrict*width,rightRestrict*width,bottomRestrict*height,
+								topRestrict*height,nearPlane,farPlane);
+			else
+			{
+				float workingDist=farPlane;//sqrt((target-origin).sqrMag());
+				glFrustum(leftRestrict*width+frustumDistortion*nearPlane/workingDist,
+						rightRestrict*width+frustumDistortion*nearPlane/workingDist,
+						bottomRestrict*height,	topRestrict*height,nearPlane,farPlane);
+			}
 			break;
 		}
 		case PROJECTION_MODE_ORTHOGONAL:
@@ -991,6 +1003,8 @@ float CameraLookAt::getViewWidth(float depth) const
 		return depth*tan(fovAngle/2.0f*M_PI/180.0);
 	else if(projectionMode == PROJECTION_MODE_ORTHOGONAL)
 		return -orthoScale*2.0f; //FIXME: Why is this negative??!
+
+	ASSERT(false);
 }
 
 std::ostream& operator<<(std::ostream &strm, const Camera &c)

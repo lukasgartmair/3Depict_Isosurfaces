@@ -30,6 +30,7 @@ Scene::Scene() : tempCam(0), activeCam(0), cameraSet(false), outWinAspect(1.0f),
 	viewRestrict=false;
 	useAlpha=true;
 	useLighting=true;
+	useEffects=false;
 	showAxis=true;
 
 	//default to black
@@ -42,7 +43,7 @@ Scene::~Scene()
 	clearAll();
 }
 
-void Scene::draw() 
+unsigned int Scene::initDraw()
 {
 	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
 
@@ -67,7 +68,6 @@ void Scene::draw()
 
 
 
-	bool lightsOn=false;
 	glDisable(GL_LIGHTING);
 	//==
 	
@@ -77,118 +77,209 @@ void Scene::draw()
 		if(!boundCube.isValid())
 			computeSceneLimits();
 
-		glPushMatrix();
-		Point3D lightNormal;
-		Camera *camToUse;
-		if(tempCam)
-			camToUse=tempCam;
-		else
-		{
-			ASSERT(activeCam < cameras.size());
-			camToUse=cameras[activeCam];
-		}
-		
-		//Inform text about current camera, so it can billboard if needed
-		DrawGLText::setCurCamera(camToUse);
-		DrawField3D::setCurCamera(camToUse);
-
-		//If viewport restriction is on, inform camera to
-		//shrink viewport to specified region
-		if(viewRestrict)
-		{
-			camToUse->apply(outWinAspect,boundCube,true,
-					viewRestrictStart[0],viewRestrictEnd[0],
-					viewRestrictStart[1],viewRestrictEnd[1]);
-		}
-		else
-			camToUse->apply(outWinAspect,boundCube);
-
-		glNormal3f(lightNormal[0],lightNormal[1],lightNormal[2]);	
 	}
 
-	if(showAxis)
+
+
+	//Let the effects objects know about the scene
+	Effect::setBoundingCube(boundCube);
+
+	unsigned int passes=1;
+
+	if(useEffects)
 	{
-		if(useLighting)
-			glEnable(GL_LIGHTING);
-		DrawAxis a;
-		a.setStyle(AXIS_IN_SPACE);
-		a.setSize(boundCube.getLargestDim());
-		a.setPosition(boundCube.getCentroid());
-
-		a.draw();
-		if(useLighting)
-			glDisable(GL_LIGHTING);
+		for(unsigned int ui=0;ui<effects.size();ui++)
+			passes=std::max(passes,effects[ui]->numPassesNeeded());
 	}
 
-	//Draw the referenced objecst
-	for(unsigned int ui=0; ui<refObjects.size(); ui++)
+	return passes;
+}
+
+void Scene::updateCam(const Camera *camToUse) const
+{
+	Point3D lightNormal;
+	
+
+	glLoadIdentity();
+	//If viewport restriction is on, inform camera to
+	//shrink viewport to specified region
+	if(viewRestrict)
 	{
-		//overlays need to be drawn later
-		if(refObjects[ui]->isOverlay())
-			continue;
-
-		if(useLighting)
-		{
-			if(!refObjects[ui]->wantsLight && lightsOn)
-			{
-				lightsOn=false;
-				glDisable(GL_LIGHTING);
-			}
-			else if (refObjects[ui]->wantsLight && !lightsOn)
-			{
-				glEnable(GL_LIGHTING);
-				lightsOn=true;
-			}
-		}
-
-		refObjects[ui]->draw();	
+		camToUse->apply(outWinAspect,boundCube,true,
+				viewRestrictStart[0],viewRestrictEnd[0],
+				viewRestrictStart[1],viewRestrictEnd[1]);
 	}
+	else
+		camToUse->apply(outWinAspect,boundCube);
 
-	//Set up the objects
-	for(unsigned int ui=0; ui<objects.size(); ui++)
+	lightNormal=camToUse->getViewDirection();
+	glNormal3f(lightNormal[0],lightNormal[1],lightNormal[2]);	
+
+}
+
+void Scene::draw() 
+{
+
+	glPushMatrix();
+
+
+	Camera *camToUse;
+	if(tempCam)
+		camToUse=tempCam;
+	else
 	{
-		//overlays need to be drawn later
-		if(objects[ui]->isOverlay())
-			continue;
-		if(useLighting)
-		{	
-			if(!objects[ui]->wantsLight && lightsOn )
-			{
-				//Object prefers doing its thing in the dark
-				glDisable(GL_LIGHTING);
-				lightsOn=false;
-			}
-			else if (objects[ui]->wantsLight && !lightsOn)
-			{
-				glEnable(GL_LIGHTING);
-				lightsOn=true;
-			}
-		}
-
-		//If we are in selection mode, draw the bounding box
-		//if the object is selected.
-		if(ui == lastSelected && selectionMode)
-		{
-			//May be required for selection box drawing
-			BoundCube bObject;
-			DrawRectPrism p;
-			//Get the bounding box for the object & draw it
-			objects[ui]->getBoundingBox(bObject);
-			p.setAxisAligned(bObject);
-			p.setColour(0,0.2,1,0.5); //blue-greenish
-			p.draw();
-
-		}
-		else if( ui == lastHovered) //Is this the object we hovered over last test?
-			drawHoverOverlay();
-
-		objects[ui]->draw();
+		ASSERT(activeCam < cameras.size());
+		camToUse=cameras[activeCam];
 	}
+	//Inform text about current camera, so it can billboard if needed
+	DrawGLText::setCurCamera(camToUse);
+	DrawField3D::setCurCamera(camToUse);
+	
+	Effect::setCurCam(camToUse);
+
+
+	bool lightsOn=false;
+	unsigned int numberTotalPasses;
+	numberTotalPasses=initDraw();
+
+	unsigned int passNumber=0;
 
 	if(cameraSet)
-		glPopMatrix();
+		updateCam(camToUse);
 
+
+
+	bool needCamUpdate=false;
+	while(passNumber < numberTotalPasses)
+	{
+
+		if(useEffects)
+		{
+			for(unsigned int ui=0;ui<effects.size();ui++)
+			{
+				effects[ui]->enable(passNumber);
+				needCamUpdate|=effects[ui]->needCamUpdate();
+			}
+
+			if(cameraSet && needCamUpdate)
+			{
+				glLoadIdentity();	
+				updateCam(camToUse);
+			}
+		}
+
+
+		if(showAxis)
+		{
+			if(useLighting)
+				glEnable(GL_LIGHTING);
+			DrawAxis a;
+			a.setStyle(AXIS_IN_SPACE);
+			a.setSize(boundCube.getLargestDim());
+			a.setPosition(boundCube.getCentroid());
+
+			a.draw();
+			if(useLighting)
+				glDisable(GL_LIGHTING);
+		}
+		//Draw the referenced objects
+		for(unsigned int ui=0; ui<refObjects.size(); ui++)
+		{
+			//overlays need to be drawn later
+			if(refObjects[ui]->isOverlay())
+				continue;
+
+			if(useLighting)
+			{
+				if(!refObjects[ui]->wantsLight && lightsOn)
+				{
+					lightsOn=false;
+					glDisable(GL_LIGHTING);
+				}
+				else if (refObjects[ui]->wantsLight && !lightsOn)
+				{
+					glEnable(GL_LIGHTING);
+					lightsOn=true;
+				}
+			}
+
+			refObjects[ui]->draw();	
+		}
+
+		//Set up the objects
+		for(unsigned int ui=0; ui<objects.size(); ui++)
+		{
+			//overlays need to be drawn later
+			if(objects[ui]->isOverlay())
+				continue;
+			if(useLighting)
+			{	
+				if(!objects[ui]->wantsLight && lightsOn )
+				{
+					//Object prefers doing its thing in the dark
+					glDisable(GL_LIGHTING);
+					lightsOn=false;
+				}
+				else if (objects[ui]->wantsLight && !lightsOn)
+				{
+					glEnable(GL_LIGHTING);
+					lightsOn=true;
+				}
+			}
+
+			//If we are in selection mode, draw the bounding box
+			//if the object is selected.
+			if(ui == lastSelected && selectionMode)
+			{
+				//May be required for selection box drawing
+				BoundCube bObject;
+				DrawRectPrism p;
+				//Get the bounding box for the object & draw it
+				objects[ui]->getBoundingBox(bObject);
+				p.setAxisAligned(bObject);
+				p.setColour(0,0.2,1,0.5); //blue-greenish
+				if(lightsOn)
+					glDisable(GL_LIGHTING);
+				p.draw();
+				if(lightsOn)
+					glEnable(GL_LIGHTING);
+
+			}
+			else if( ui == lastHovered) //Is this the object we hovered over last test?
+				drawHoverOverlay();
+
+			objects[ui]->draw();
+		}
+		
+
+		glFlush();
+		passNumber++;
+	}
+	
+	
+	//Disable effects
+	if(useEffects)
+	{
+		//Disable them in reverse order to simulate a stack-type
+		//behaviour.
+		for(unsigned int ui=effects.size();ui!=0;)
+		{
+			ui--;
+			effects[ui]->disable();
+		}
+		//glPopMatrix();
+	}
+
+
+	glPopMatrix();
+		
 	//Now draw 2D overlays
+	drawOverlays();
+
+}
+
+void Scene::drawOverlays() const
+{
 
 	//Custom projection matrix
 	glMatrixMode(GL_PROJECTION);
@@ -206,6 +297,7 @@ void Scene::draw()
 	}
 	else
 		gluOrtho2D(0, outWinAspect, 1.0, 0);
+
 
 
 	glMatrixMode(GL_MODELVIEW);
@@ -344,7 +436,6 @@ void Scene::drawHoverOverlay()
 					break;
 			}
 
-
 			if(foundIconTex && foundMouseTex )
 			{
 				const float SPACING=0.75*ICON_SIZE;
@@ -375,6 +466,7 @@ void Scene::drawHoverOverlay()
 		glPopAttrib();
 
 	}
+
 
 	glDisable(GL_ALPHA_TEST);
 	glEnable(GL_DEPTH_TEST);
@@ -850,6 +942,14 @@ unsigned int Scene::duplicateCameras(vector<Camera *> &cams) const
 	return activeCam;
 }	
 
+void Scene::getEffects(vector<const Effect *> &eff) const
+{
+	eff.resize(effects.size());
+
+	for(unsigned int ui=0;ui<effects.size();ui++)	
+		eff[ui]=effects[ui];
+}	
+
 unsigned int Scene::getActiveCamId() const
 {
 	return camIDs.getId(activeCam);
@@ -887,4 +987,34 @@ bool Scene::camNameExists(const std::string &s) const
 	}
 
 	return false;
+}
+
+
+
+unsigned int Scene::addEffect(Effect *e)
+{
+	ASSERT(e);
+	ASSERT(effects.size() == effectIDs.size());
+	effects.push_back(e);
+	
+
+	return effectIDs.genId(effects.size()-1);
+}
+
+
+void Scene::removeEffect(unsigned int uniqueID)
+{
+	unsigned int position = effectIDs.getPos(uniqueID);
+	delete effects[position];
+	effects.erase(effects.begin()+position);
+	effectIDs.killByPos(position);
+}
+
+void Scene::clearEffects()
+{
+	for(size_t ui=0;ui<effects.size();ui++)
+		delete effects[ui];
+
+	effects.clear();
+	effectIDs.clear();
 }

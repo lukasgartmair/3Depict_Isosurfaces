@@ -59,6 +59,20 @@ const char *STREAM_NAMES[] = { "Ion",
 				"Range",
 				"Voxel"};
 
+const char *FILTER_NAMES[] = { "posload",
+				"iondownsample",
+				"rangefile",
+				"spectrumplot",
+				"ionclip",
+				"ioncolour",
+				"compositionprofile",
+				"boundingbox",
+				"transform",
+				"externalprog",
+				"spatialanalysis",
+				"voxelise"
+				};
+
 //Key types for filter properties.
 enum
 {
@@ -99,6 +113,9 @@ enum
 	KEY_IONDOWNSAMPLE_FRACTION,
 	KEY_IONDOWNSAMPLE_FIXEDOUT,
 	KEY_IONDOWNSAMPLE_COUNT,
+	KEY_IONDOWNSAMPLE_PERSPECIES,
+	KEY_IONDOWNSAMPLE_ENABLE,
+	KEY_IONDOWNSAMPLE_DYNAMIC, //Dynamic area for this filter class. May validly use any index after this value
 
 	KEY_RANGE_ACTIVE,
 	KEY_RANGE_IONID,
@@ -210,7 +227,7 @@ enum
 
 
 enum {
-	SPATIAL_ANALYSIS_DENSITY,
+	SPATIAL_ANALYSIS_DENSITY, //Local density analysis
 	SPATIAL_ANALYSIS_RDF, //Radial Distribution Function
 	SPATIAL_ANALYSIS_ENUM_END,
 };
@@ -221,6 +238,162 @@ enum{
 	SPATIAL_DENSITY_ENUM_END
 };
 
+
+//Filter "factory" type function. If this gets too big, 
+//we could use a pre-populated hashtable in 
+//a static class to speed things up.
+//returns null pointer if string is invalid
+Filter *makeFilter(const std::string &s)
+{
+	Filter *f;
+	unsigned int type=(unsigned int)-1;
+	for(unsigned int ui=0;ui<FILTER_TYPE_ENUM_END; ui++)
+	{
+		if( s == FILTER_NAMES[ui])
+			type=ui;
+	}
+
+	switch(type)
+	{
+		case FILTER_TYPE_POSLOAD:
+			f=new PosLoadFilter;
+			break;
+		case FILTER_TYPE_IONDOWNSAMPLE:
+			f=new IonDownsampleFilter;
+			break;
+		case FILTER_TYPE_RANGEFILE:
+			f=new RangeFileFilter;
+			break;
+		case FILTER_TYPE_SPECTRUMPLOT:
+			f=new SpectrumPlotFilter;
+			break;
+		case FILTER_TYPE_IONCLIP:
+			f=new IonClipFilter;
+			break;
+		case FILTER_TYPE_IONCOLOURFILTER:
+			f=new IonColourFilter;
+			break;
+		case FILTER_TYPE_COMPOSITION:
+			f=new CompositionProfileFilter;
+			break;
+		case FILTER_TYPE_BOUNDBOX:
+			f = new BoundingBoxFilter;
+			break;
+		case FILTER_TYPE_TRANSFORM:
+			f= new TransformFilter;
+			break;
+		case FILTER_TYPE_EXTERNALPROC:
+			f= new ExternalProgramFilter;
+			break;
+		case FILTER_TYPE_SPATIAL_ANALYSIS:
+			f = new SpatialAnalysisFilter;
+			break;
+		case FILTER_TYPE_VOXELS:
+			f = new VoxeliseFilter;
+			break;
+		default:
+			f=0;
+
+	}
+
+	WARN(f,"Should have only got here with invalid input. Might be worth double checking"); 
+#ifdef DEBUG
+	//Should have set filter
+	//type string should match
+	if(f)
+		ASSERT(f->trueName() ==  s);
+#endif
+	return  f;
+}
+
+Filter *makeFilter(unsigned int ui)
+{
+	Filter *f;
+
+	switch(ui)
+	{
+		case FILTER_TYPE_POSLOAD:
+			f=new PosLoadFilter;
+			break;
+		case FILTER_TYPE_IONDOWNSAMPLE:
+			f=new IonDownsampleFilter;
+			break;
+		case FILTER_TYPE_RANGEFILE:
+			f=new RangeFileFilter;
+			break;
+		case FILTER_TYPE_SPECTRUMPLOT:
+			f=new SpectrumPlotFilter;
+			break;
+		case FILTER_TYPE_IONCLIP:
+			f=new IonClipFilter;
+			break;
+		case FILTER_TYPE_IONCOLOURFILTER:
+			f=new IonColourFilter;
+			break;
+		case FILTER_TYPE_COMPOSITION:
+			f=new CompositionProfileFilter;
+			break;
+		case FILTER_TYPE_BOUNDBOX:
+			f = new BoundingBoxFilter;
+			break;
+		case FILTER_TYPE_TRANSFORM:
+			f= new TransformFilter;
+			break;
+		case FILTER_TYPE_EXTERNALPROC:
+			f= new ExternalProgramFilter;
+			break;
+		case FILTER_TYPE_SPATIAL_ANALYSIS:
+			f = new SpatialAnalysisFilter;
+			break;
+		case FILTER_TYPE_VOXELS:
+			f = new VoxeliseFilter;
+			break;
+		default:
+			ASSERT(false);
+	}
+
+	return  f;
+}
+
+Filter *makeFilterFromDefUserString(const std::string &s)
+{
+	//This is a bit of a hack. Build each object, then retrieve its string.
+	//Could probably use static functions and type casts to improve this
+	for(unsigned int ui=0;ui<FILTER_TYPE_ENUM_END; ui++)
+	{
+		Filter *t;
+		t = makeFilter(ui);
+		if( s == t->typeString())
+			return t;
+
+		delete t;
+	}
+
+	ASSERT(false);
+}
+
+void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f)
+{
+
+	FilterProperties p;
+	f->getProperties(p);
+
+
+	g->clearKeys();
+	g->setNumSets(p.data.size());
+	//Create the keys for the property grid to do its thing
+	for(unsigned int ui=0;ui<p.data.size();ui++)
+	{
+		for(unsigned int uj=0;uj<p.data[ui].size();uj++)
+		{
+			g->addKey(p.data[ui][uj].first, ui,p.keys[ui][uj],
+					p.types[ui][uj],p.data[ui][uj].second);
+		}
+	}
+
+	//Let the property grid layout what it needs to
+	g->propertyLayout();
+}
 
 bool parseXMLColour(xmlNodePtr &nodePtr, float &r,float&g,float&b,float&a)
 {
@@ -1150,7 +1323,7 @@ bool PosLoadFilter::writeState(std::ofstream &f,unsigned int format, unsigned in
 	{
 		case STATE_FORMAT_XML:
 		{	
-			f << tabs(depth) << "<posload>" << endl;
+			f << tabs(depth) << "<" << trueName() << ">" << endl;
 
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
 			f << tabs(depth+1) << "<file name=\"" << convertFileStringToCanonical(ionFilename) << "\"/>" << endl;
@@ -1162,7 +1335,7 @@ bool PosLoadFilter::writeState(std::ofstream &f,unsigned int format, unsigned in
 			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
 				<< "\" a=\"" << a << "\"/>" <<endl;
 			f << tabs(depth+1) << "<ionsize value=\"" << ionSize << "\"/>" << endl;
-			f << tabs(depth) << "</posload>" << endl;
+			f << tabs(depth) << "</" << trueName() << ">" << endl;
 			break;
 		}
 		default:
@@ -1208,10 +1381,90 @@ IonDownsampleFilter::IonDownsampleFilter()
 	fixedNumOut=true;
 	fraction=0.1f;
 	maxAfterFilter=5000;
+	rsdIncoming=0;
+	perSpecies=false;
 
 	cacheOK=false;
 	cache=true; //By default, we should cache, but decision is made higher up
 
+}
+
+void IonDownsampleFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
+				std::vector<const FilterStreamData *> &dataOut)
+{
+	const RangeStreamData *c=0;
+	//Determine if we have an incoming range
+	for (size_t i = 0; i < dataIn.size(); i++) 
+	{
+		if(dataIn[i]->getStreamType() == STREAM_TYPE_RANGE)
+		{
+			c=(const RangeStreamData *)dataIn[i];
+
+			break;
+		}
+	}
+
+	//we no longer (or never did) have any incoming ranges. Not much to do
+	if(!c)
+	{
+		//delete the old incoming range pointer
+		if(rsdIncoming)
+			delete rsdIncoming;
+		rsdIncoming=0;
+
+		//Well, don't use per-species info anymore
+		perSpecies=false;
+	}
+	else
+	{
+
+
+		//If we didn't have an incoming rsd, then make one up!
+		if(!rsdIncoming)
+		{
+			rsdIncoming = new RangeStreamData;
+			*rsdIncoming=*c;
+
+			if(ionFractions.size() != c->rangeFile->getNumIons())
+			{
+				//set up some defaults; seeded from normal
+				ionFractions.resize(c->rangeFile->getNumIons(),fraction);
+				ionLimits.resize(c->rangeFile->getNumIons(),maxAfterFilter);
+			}
+		}
+		else
+		{
+
+			//OK, so we have a range incoming already (from last time)
+			//-- the question is, is it the same one we had before ?
+			//
+			//Do a pointer comparison (its a hack, yes, but it should work)
+			if(rsdIncoming->rangeFile != c->rangeFile)
+			{
+				//hmm, it is different. well, trash the old incoming rng
+				delete rsdIncoming;
+
+				rsdIncoming = new RangeStreamData;
+				*rsdIncoming=*c;
+
+				ionFractions.resize(c->rangeFile->getNumIons(),fraction);
+				ionLimits.resize(c->rangeFile->getNumIons(),maxAfterFilter);
+			}
+			else if(ionFractions.size() !=c->rangeFile->getNumIons())
+			{
+				//well its the same range, but somehow the number of ions 
+				//have changed. Could be range was reloaded.
+				ionFractions.resize(rsdIncoming->rangeFile->getNumIons(),fraction);
+				ionLimits.resize(rsdIncoming->rangeFile->getNumIons(),maxAfterFilter);
+			}
+
+		
+		}
+
+	}
+
+
+	ASSERT(ionLimits.size() == ionFractions.size());
 }
 
 Filter *IonDownsampleFilter::cloneUncached() const
@@ -1220,6 +1473,15 @@ Filter *IonDownsampleFilter::cloneUncached() const
 	p->rng = rng;
 	p->maxAfterFilter=maxAfterFilter;
 	p->fraction=fraction;
+	p->perSpecies=perSpecies;
+	p->rsdIncoming=rsdIncoming;
+
+	p->ionFractions.resize(ionFractions.size());
+	std::copy(ionFractions.begin(),ionFractions.end(),p->ionFractions.begin());
+	p->ionLimits.resize(ionLimits.size());
+	std::copy(ionLimits.begin(),ionLimits.end(),p->ionLimits.begin());
+
+
 	//We are copying wether to cache or not,
 	//not the cache itself
 	p->cache=cache;
@@ -1262,108 +1524,257 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 
 
 
-	size_t numIons=0;
-	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
-	{
-		if(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS)
-				numIons+=((const IonStreamData*)dataIn[ui])->data.size();
-	}
 	
-	
+
 	size_t totalSize = numElements(dataIn);
-	for(size_t ui=0;ui<dataIn.size() ;ui++)
+	if(!perSpecies)	
 	{
-		switch(dataIn[ui]->getStreamType())
+		size_t numIons=0;
+		for(unsigned int ui=0;ui<dataIn.size() ;ui++)
 		{
-			case STREAM_TYPE_IONS: 
+			if(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS)
+					numIons+=((const IonStreamData*)dataIn[ui])->data.size();
+		}
+		for(size_t ui=0;ui<dataIn.size() ;ui++)
+		{
+			switch(dataIn[ui]->getStreamType())
 			{
-				if(!numIons)
-					continue;
-
-				IonStreamData *d;
-				d=new IonStreamData;
-				try
+				case STREAM_TYPE_IONS: 
 				{
-					if(fixedNumOut)
+					if(!numIons)
+						continue;
+
+					IonStreamData *d;
+					d=new IonStreamData;
+					try
 					{
-						float frac;
-						frac = (float)(((const IonStreamData*)dataIn[ui])->data.size())/(float)numIons;
-
-						randomSelect(d->data,((const IonStreamData *)dataIn[ui])->data,
-									rng,maxAfterFilter*frac,progress.filterProgress,callback,strongRandom);
-
-
-					}
-					else
-					{
-
-						unsigned int curProg=NUM_CALLBACK;
-						size_t n=0;
-
-						//highly unlikely with even modest numbers of ions
-						//that this will not be exceeeded
-						d->data.reserve(fraction/1.1*totalSize);
-
-						ASSERT(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS);
-
-						for(vector<IonHit>::const_iterator it=((const IonStreamData *)dataIn[ui])->data.begin();
-							       it!=((const IonStreamData *)dataIn[ui])->data.end(); ++it)
+						if(fixedNumOut)
 						{
-							if(rng.genUniformDev() <  fraction)
-								d->data.push_back(*it);
-						
-							//update progress every CALLBACK ions
-							if(!curProg--)
+							float frac;
+							frac = (float)(((const IonStreamData*)dataIn[ui])->data.size())/(float)numIons;
+
+							randomSelect(d->data,((const IonStreamData *)dataIn[ui])->data,
+										rng,maxAfterFilter*frac,progress.filterProgress,callback,strongRandom);
+
+
+						}
+						else
+						{
+
+							unsigned int curProg=NUM_CALLBACK;
+							size_t n=0;
+							//Reserve 90% of storage needed.
+							//highly likely with even modest numbers of ions
+							//that this will be exceeeded
+							d->data.reserve(fraction*0.9*totalSize);
+
+							ASSERT(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS);
+
+							for(vector<IonHit>::const_iterator it=((const IonStreamData *)dataIn[ui])->data.begin();
+								       it!=((const IonStreamData *)dataIn[ui])->data.end(); ++it)
 							{
-								n+=NUM_CALLBACK;
-								progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-								if(!(*callback)())
+								if(rng.genUniformDev() <  fraction)
+									d->data.push_back(*it);
+							
+								//update progress every CALLBACK ions
+								if(!curProg--)
 								{
-									delete d;
-									return IONDOWNSAMPLE_ABORT_ERR;
+									n+=NUM_CALLBACK;
+									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
+									if(!(*callback)())
+									{
+										delete d;
+										return IONDOWNSAMPLE_ABORT_ERR;
+									}
 								}
 							}
 						}
 					}
+					catch(std::bad_alloc)
+					{
+						delete d;
+						return IONDOWNSAMPLE_BAD_ALLOC;
+					}
+
+
+					//Copy over other attributes
+					d->r = ((IonStreamData *)dataIn[ui])->r;
+					d->g = ((IonStreamData *)dataIn[ui])->g;
+					d->b =((IonStreamData *)dataIn[ui])->b;
+					d->a =((IonStreamData *)dataIn[ui])->a;
+					d->ionSize =((IonStreamData *)dataIn[ui])->ionSize;
+					d->representationType=((IonStreamData *)dataIn[ui])->representationType;
+					d->valueType=((IonStreamData *)dataIn[ui])->valueType;
+
+					//getOut is const, so shouldn't be modified
+					if(cache)
+					{
+						d->cached=true;
+						filterOutputs.push_back(d);
+						cacheOK=true;
+					}
+					else
+						d->cached=false;
+			
+
+					getOut.push_back(d);
+					break;
 				}
-				catch(std::bad_alloc)
-				{
-					delete d;
-					return IONDOWNSAMPLE_BAD_ALLOC;
-				}
-
-
-				//Copy over other attributes
-				d->r = ((IonStreamData *)dataIn[ui])->r;
-				d->g = ((IonStreamData *)dataIn[ui])->g;
-				d->b =((IonStreamData *)dataIn[ui])->b;
-				d->a =((IonStreamData *)dataIn[ui])->a;
-				d->ionSize =((IonStreamData *)dataIn[ui])->ionSize;
-				d->representationType=((IonStreamData *)dataIn[ui])->representationType;
-				d->valueType=((IonStreamData *)dataIn[ui])->valueType;
-
-				//getOut is const, so shouldn't be modified
-				if(cache)
-				{
-					d->cached=true;
-					filterOutputs.push_back(d);
-					cacheOK=true;
-				}
-				else
-					d->cached=false;
-		
-
-				getOut.push_back(d);
-				break;
+			
+				default:
+					getOut.push_back(dataIn[ui]);
+					break;
 			}
-		
-			default:
-				getOut.push_back(dataIn[ui]);
-				break;
+
+		}
+	}
+	else
+	{
+		ASSERT(rsdIncoming);
+		const IonStreamData *input;
+
+		//Construct two vectors. One with the ion IDs for each input
+		//ion stream. the other with the total number of ions in the input
+		//for each ion type 
+		vector<size_t> numIons,ionIDVec;
+		numIons.resize(rsdIncoming->rangeFile->getNumIons(),0);
+
+		for(unsigned int uj=0;uj<dataIn.size() ;uj++)
+		{
+			if(dataIn[uj]->getStreamType() == STREAM_TYPE_IONS)
+			{
+				input=(const IonStreamData*)dataIn[uj];
+				if(input->data.size())
+				{
+					unsigned int ionID;
+					ionID=rsdIncoming->rangeFile->getIonID(
+						input->data[0].getMassToCharge()); 
+
+					if(ionID != (unsigned int)-1)
+						numIons[ionID]+=input->data.size();
+					
+					ionIDVec.push_back(ionID);
+				}
+			}
 		}
 
-	}
-	
+		size_t n=0;
+		unsigned int idPos=0;
+		for(size_t ui=0;ui<dataIn.size() ;ui++)
+		{
+			switch(dataIn[ui]->getStreamType())
+			{
+				case STREAM_TYPE_IONS: 
+				{
+					input=(const IonStreamData*)dataIn[ui];
+			
+					//Don't process ionstreams that are empty	
+					if(!input->data.size())
+						continue;
+
+					IonStreamData *d;
+					d=new IonStreamData;
+					try
+					{
+						if(fixedNumOut)
+						{
+							//if we are building the fixed number for output,
+							//then compute the relative fraction for this ion set
+							float frac;
+							frac = (float)(input->data.size())/(float)(numIons[ionIDVec[idPos]]);
+
+							//The total number of ions is the specified value for this ionID, multiplied by
+							//this stream's fraction of the total incoming data
+							randomSelect(d->data,input->data, rng,frac*ionLimits[ionIDVec[idPos]],
+									progress.filterProgress,callback,strongRandom);
+						}
+						else
+						{
+							//Use the direct fractions as entered in by user. 
+
+							unsigned int curProg=NUM_CALLBACK;
+
+							float thisFraction = ionFractions[ionIDVec[idPos]];
+							
+							//Reserve 90% of storage needed.
+							//highly likely (poisson) with even modest numbers of ions
+							//that this will be exceeeded, and thus we won't over-allocate
+							d->data.reserve(thisFraction*0.9*numIons[ionIDVec[idPos]]);
+
+							if(thisFraction)
+							{
+								for(vector<IonHit>::const_iterator it=input->data.begin();
+									       it!=input->data.end(); ++it)
+								{
+									if(rng.genUniformDev() <  thisFraction)
+										d->data.push_back(*it);
+								
+									//update progress every CALLBACK ions
+									if(!curProg--)
+									{
+										n+=NUM_CALLBACK;
+										progress.filterProgress= 
+											(unsigned int)((float)(n)/((float)totalSize)*100.0f);
+										if(!(*callback)())
+										{
+											delete d;
+											return IONDOWNSAMPLE_ABORT_ERR;
+										}
+									}
+								}
+						
+							}
+						}
+					}
+					catch(std::bad_alloc)
+					{
+						delete d;
+						return IONDOWNSAMPLE_BAD_ALLOC;
+					}
+
+
+					if(d->data.size())
+					{
+						//Copy over other attributes
+						d->r = input->r;
+						d->g = input->g;
+						d->b =input->b;
+						d->a =input->a;
+						d->ionSize =input->ionSize;
+						d->representationType=input->representationType;
+						d->valueType=input->valueType;
+
+
+						//getOut is const, so shouldn't be modified
+						if(cache)
+						{
+							d->cached=true;
+							filterOutputs.push_back(d);
+							cacheOK=true;
+						}
+						else
+							d->cached=false;
+			
+
+						getOut.push_back(d);
+					}
+					else
+						delete d;
+					//next ion
+					idPos++;
+					
+					break;
+				}
+			
+				default:
+					getOut.push_back(dataIn[ui]);
+					break;
+			}
+
+		}
+
+
+	}	
 
 	return 0;
 }
@@ -1384,21 +1795,68 @@ void IonDownsampleFilter::getProperties(FilterProperties &propertyList) const
 	keys.push_back(KEY_IONDOWNSAMPLE_FIXEDOUT);
 	type.push_back(PROPERTY_TYPE_BOOL);
 
-	if(fixedNumOut)
+	if(rsdIncoming)
 	{
-		stream_cast(tmpStr,maxAfterFilter);
-		keys.push_back(KEY_IONDOWNSAMPLE_COUNT);
-		s.push_back(make_pair("Output Count", tmpStr));
-		type.push_back(PROPERTY_TYPE_INTEGER);
+		stream_cast(tmpStr,perSpecies);
+		s.push_back(std::make_pair("Per Species", tmpStr));
+		keys.push_back(KEY_IONDOWNSAMPLE_PERSPECIES);
+		type.push_back(PROPERTY_TYPE_BOOL);
+	}	
+
+
+	propertyList.data.push_back(s);
+	propertyList.types.push_back(type);
+	propertyList.keys.push_back(keys);
+
+	//Start a new section
+	s.clear();
+	type.clear();
+	keys.clear();
+
+	if(rsdIncoming && perSpecies)
+	{
+		unsigned int typeVal;
+		if(fixedNumOut)
+			typeVal=PROPERTY_TYPE_INTEGER;
+		else
+			typeVal=PROPERTY_TYPE_REAL;
+
+		//create a  single line for each
+		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
+		{
+			if(rsdIncoming->enabledIons[ui])
+			{
+				if(fixedNumOut)
+					stream_cast(tmpStr,ionLimits[ui]);
+				else
+					stream_cast(tmpStr,ionFractions[ui]);
+
+				s.push_back(make_pair(
+					rsdIncoming->rangeFile->getName(ui), tmpStr));
+				type.push_back(typeVal);
+				keys.push_back(KEY_IONDOWNSAMPLE_DYNAMIC+ui);
+			}
+		}
 	}
 	else
 	{
-		stream_cast(tmpStr,fraction);
-		s.push_back(make_pair("Out Fraction", tmpStr));
-		keys.push_back(KEY_IONDOWNSAMPLE_FRACTION);
-		type.push_back(PROPERTY_TYPE_REAL);
-	}
+		if(fixedNumOut)
+		{
+			stream_cast(tmpStr,maxAfterFilter);
+			keys.push_back(KEY_IONDOWNSAMPLE_COUNT);
+			s.push_back(make_pair("Output Count", tmpStr));
+			type.push_back(PROPERTY_TYPE_INTEGER);
+		}
+		else
+		{
+			stream_cast(tmpStr,fraction);
+			s.push_back(make_pair("Out Fraction", tmpStr));
+			keys.push_back(KEY_IONDOWNSAMPLE_FRACTION);
+			type.push_back(PROPERTY_TYPE_REAL);
 
+
+		}
+	}
 	propertyList.data.push_back(s);
 	propertyList.types.push_back(type);
 	propertyList.keys.push_back(keys);
@@ -1407,8 +1865,6 @@ void IonDownsampleFilter::getProperties(FilterProperties &propertyList) const
 bool IonDownsampleFilter::setProperty( unsigned int set, unsigned int key,
 					const std::string &value, bool &needUpdate)
 {
-	ASSERT(!set);
-
 	needUpdate=false;
 	switch(key)
 	{
@@ -1475,8 +1931,59 @@ bool IonDownsampleFilter::setProperty( unsigned int set, unsigned int key,
 			
 			break;
 		}	
+		case KEY_IONDOWNSAMPLE_PERSPECIES: 
+		{
+			string stripped=stripWhite(value);
+
+			if(!(stripped == "1"|| stripped == "0"))
+				return false;
+
+			bool lastVal=perSpecies;
+			if(stripped=="1")
+				perSpecies=true;
+			else
+				perSpecies=false;
+
+			//if the result is different, the
+			//cache should be invalidated
+			if(lastVal!=perSpecies)
+			{
+				needUpdate=true;
+				clearCache();
+			}
+
+			break;
+		}	
 		default:
-			ASSERT(false);
+		{
+			ASSERT(rsdIncoming);
+			ASSERT(key >=KEY_IONDOWNSAMPLE_DYNAMIC);
+			ASSERT(key < KEY_IONDOWNSAMPLE_DYNAMIC+ionLimits.size());
+			ASSERT(ionLimits.size() == ionFractions.size());
+
+			unsigned int offset;
+			offset=key-KEY_IONDOWNSAMPLE_DYNAMIC;
+
+			if(fixedNumOut)
+			{
+				size_t v;
+				if(stream_cast(v,value))
+					return false;
+				ionLimits[offset]=v;
+			}
+			else
+			{
+				float v;
+				if(stream_cast(v,value))
+					return false;
+				ionFractions[offset]=v;
+			}
+			
+			needUpdate=true;
+			clearCache();
+			break;
+		}
+
 	}	
 	return true;
 }
@@ -1502,13 +2009,22 @@ bool IonDownsampleFilter::writeState(std::ofstream &f,unsigned int format, unsig
 	{
 		case STATE_FORMAT_XML:
 		{	
-			f << tabs(depth) << "<iondownsample>" << endl;
+			f << tabs(depth) <<  "<" << trueName() << ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<fixednumout value=\""<<fixedNumOut<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<fraction value=\""<<fraction<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<maxafterfilter value=\"" << maxAfterFilter << "\"/>" << endl;
-			f << tabs(depth) << "</iondownsample>" << endl;
+			f << tabs(depth+1) << "<perspecies value=\""<<perSpecies<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<fractions>" << endl;
+			for(unsigned int ui=0;ui<ionFractions.size(); ui++) 
+				f << tabs(depth+2) << "<scalar value=\"" << ionFractions[ui] << "\"/>" << endl; 
+			f << tabs(depth+1) << "</fractions>" << endl;
+			f << tabs(depth+1) << "<limits>" << endl;
+			for(unsigned int ui=0;ui<ionLimits.size(); ui++)
+				f << tabs(depth+2) << "<scalar value=\"" << ionLimits[ui] << "\"/>" << endl; 
+			f << tabs(depth+1) << "</limits>" << endl;
+			f << tabs(depth) << "</" <<trueName()<< ">" << endl;
 			break;
 		}
 		default:
@@ -1557,10 +2073,45 @@ bool IonDownsampleFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	//===
 	
 	
-	//Retrieve count "maxafterfilter"
-	if(!XMLGetNextElemAttrib(nodePtr,maxAfterFilter,"maxafterfilter","value"))
+	//Retrieve "perspecies" attrib
+	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"perspecies","value"))
 		return false;
 	
+	if(tmpStr == "1") 
+		perSpecies=true;
+	else if(tmpStr== "0")
+		perSpecies=false;
+	else
+		return false;
+
+	xmlNodePtr lastNode;
+	lastNode=nodePtr;
+	//Retrieve the ion per-species fractions
+	if(XMLHelpFwdToElem(nodePtr,"fractions"))
+		return false;
+
+	nodePtr=nodePtr->xmlChildrenNode;
+
+	//Populate the ion fraction vector
+	float fracThis; 
+	while(XMLGetNextElemAttrib(nodePtr,fracThis,"scalar","value"))
+		ionFractions.push_back(fracThis);
+
+	
+	nodePtr=lastNode;
+
+	//Retrieve the ion per-species fractions
+	if(XMLHelpFwdToElem(nodePtr,"limits"))
+		return false;
+
+	nodePtr=nodePtr->xmlChildrenNode;
+	size_t limitThis;	
+	while(XMLGetNextElemAttrib(nodePtr,limitThis,"scalar","value"))
+		ionLimits.push_back(limitThis);
+
+	if(ionLimits.size()!=ionFractions.size())
+		return false;
+
 	return true;
 }
 
@@ -2347,7 +2898,7 @@ bool VoxeliseFilter::writeState(std::ofstream &f,unsigned int format, unsigned i
 	{
 		case STATE_FORMAT_XML:
 		{	
-			f << tabs(depth) << "<voxelise>" << endl;
+			f << tabs(depth) << "<" << trueName() << ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\"" << userString << "\"/>" << endl;
 			f << tabs(depth+1) << "<fixedwidth value=\""<<fixedWidth << "\"/>"  << endl;
 			f << tabs(depth+1) << "<nbins values=\""<<nBins[0] << ","<<nBins[1]<<","<<nBins[2] << "\"/>"  << endl;
@@ -2356,7 +2907,7 @@ bool VoxeliseFilter::writeState(std::ofstream &f,unsigned int format, unsigned i
 			f << tabs(depth+1) << "<representation value=\""<<representation << "\"/>" << endl;
 			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
 				<< "\" a=\"" << a << "\"/>" <<endl;
-			f << tabs(depth) << "</voxelise>" << endl;
+			f << tabs(depth) << "</" << trueName() <<">" << endl;
 			break;
 		}
 		default:
@@ -3222,7 +3773,7 @@ bool RangeFileFilter::writeState(std::ofstream &f,unsigned int format, unsigned 
 	{
 		case STATE_FORMAT_XML:
 		{	
-			f << tabs(depth) << "<rangefile>" << endl;
+			f << tabs(depth) << "<" << trueName() << ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<file name=\""<< convertFileStringToCanonical(rngName) << "\"/>"  << endl;
@@ -3250,7 +3801,7 @@ bool RangeFileFilter::writeState(std::ofstream &f,unsigned int format, unsigned 
 			}
 			f << tabs(depth+1) << "</enabledranges>"<< endl;
 			
-			f << tabs(depth) << "</rangefile>" << endl;
+			f << tabs(depth) << "</" << trueName() << ">" << endl;
 			break;
 		}
 		default:
@@ -3302,8 +3853,8 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	//Load range file using guessed format
 	if(rng.open(rngName.c_str(),assumedFileFormat))
 	{
-		//If that failed, go to plan B
-		//Brute force try all readers
+		//If that failed, go to plan B-- Brute force.
+		//try all readers
 		bool openOK=false;
 
 		for(unsigned int ui=1;ui<RANGE_FORMAT_END_OF_ENUM; ui++)
@@ -4070,7 +4621,7 @@ bool SpectrumPlotFilter::writeState(std::ofstream &f,unsigned int format, unsign
 	{
 		case STATE_FORMAT_XML:
 		{	
-			f << tabs(depth) << "<spectrumplot>" << endl;
+			f << tabs(depth) << "<"  << trueName() << ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<extrema min=\"" << minPlot << "\" max=\"" <<
@@ -4084,7 +4635,7 @@ bool SpectrumPlotFilter::writeState(std::ofstream &f,unsigned int format, unsign
 
 			f << tabs(depth+1) << "<plottype value=\"" << plotType<< "\"/>" << endl;
 			
-			f << tabs(depth) << "</spectrumplot>" << endl;
+			f << tabs(depth) << "</" << trueName() <<  ">" << endl;
 			break;
 		}
 		default:
@@ -4181,10 +4732,9 @@ bool SpectrumPlotFilter::readState(xmlNodePtr &nodePtr, const std::string &state
 		return false;
 	//====
 	
-	std::string tmpString;
 	//Retrieve logarithmic mode
 	//====
-	if(!XMLGetNextElemAttrib(nodePtr,tmpString,"logarithmic","value"))
+	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"logarithmic","value"))
 		return false;
 	if(tmpStr == "0")
 		logarithmic=false;
@@ -4240,6 +4790,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 			std::vector<const FilterStreamData *> &getOut, ProgressData &progress, 
 								bool (*callback)(void))
 {
+	ASSERT(vectorParams.size() || scalarParams.size());	
 	//Clear selection devices
 	devices.clear();
 
@@ -4755,6 +5306,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 //!Get the properties of the filter, in key-value form. First vector is for each output.
 void IonClipFilter::getProperties(FilterProperties &propertyList) const
 {
+	ASSERT(vectorParams.size() || scalarParams.size());	
 	propertyList.data.clear();
 	propertyList.keys.clear();
 	propertyList.types.clear();
@@ -4939,15 +5491,19 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 					scalarParams.clear();
 					break;
 				case IONCLIP_PRIMITIVE_CYLINDER:
-					if(vectorParams.size() >2)
+					if(vectorParams.size()>2)
 					{
-						vectorParams.clear();
-						vectorParams.push_back(Point3D(0,0,0));
-						vectorParams.push_back(Point3D(0,1,0));
+						vectorParams.resize(2);
 					}
 					else if(vectorParams.size() ==1)
 					{
 						vectorParams.push_back(Point3D(0,1,0));
+					}
+					else if(!vectorParams.size())
+					{
+						vectorParams.push_back(Point3D(0,0,0));
+						vectorParams.push_back(Point3D(0,1,0));
+
 					}
 
 					if(scalarParams.size()!=1);
@@ -5110,7 +5666,8 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 			ASSERT(false);
 			return false;
 	}
-	
+
+	ASSERT(vectorParams.size() || scalarParams.size());	
 
 	return true;
 }
@@ -5135,7 +5692,7 @@ bool IonClipFilter::writeState(std::ofstream &f,unsigned int format, unsigned in
 	{
 		case STATE_FORMAT_XML:
 		{	
-			f << tabs(depth) << "<ionclip>" << endl;
+			f << tabs(depth) << "<"<< trueName() <<  ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<primitivetype value=\"" << primitiveType<< "\"/>" << endl;
@@ -5152,7 +5709,7 @@ bool IonClipFilter::writeState(std::ofstream &f,unsigned int format, unsigned in
 
 			f << tabs(depth+1) << "<scalarparams>" << endl;
 			for(unsigned int ui=0; ui<scalarParams.size(); ui++)
-				f << tabs(depth+2) << "<scalar value=\"" << scalarParams[0] << "\"/>" << endl; 
+				f << tabs(depth+2) << "<scalar value=\"" << scalarParams[ui] << "\"/>" << endl; 
 			
 			f << tabs(depth+1) << "</scalarparams>" << endl;
 			f << tabs(depth) << "</ionclip>" << endl;
@@ -5324,6 +5881,8 @@ bool IonClipFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 			ASSERT(false);
 			return false;
 	}
+
+	ASSERT(vectorParams.size() || scalarParams.size());	
 	return true;
 }
 
@@ -5580,10 +6139,14 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 	{
 		for(unsigned int ui=0;ui<nColours;ui++)
 		{
-			d[ui]->cached=true;
-			filterOutputs.push_back(d[ui]);
+			if(d[ui]->data.size())
+				d[ui]->cached=1;
+			else
+				d[ui]->cached=0;
+			if(d[ui]->data.size())
+				filterOutputs.push_back(d[ui]);
 		}
-		cacheOK=true;
+		cacheOK=filterOutputs.size();
 	}
 	else
 	{
@@ -5597,7 +6160,12 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 
 	//push the colours onto the output. cached or not (their status is set above).
 	for(unsigned int ui=0;ui<nColours;ui++)
-		getOut.push_back(d[ui]);
+	{
+		if(d[ui]->data.size())
+			getOut.push_back(d[ui]);
+		else
+			delete d[ui];
+	}
 	
 	return 0;
 }
@@ -5754,7 +6322,7 @@ bool IonColourFilter::writeState(std::ofstream &f,unsigned int format, unsigned 
 	{
 		case STATE_FORMAT_XML:
 		{	
-			f << tabs(depth) << "<ioncolour>" << endl;
+			f << tabs(depth) << "<" << trueName() << ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<colourmap value=\"" << colourMap << "\"/>" << endl;
@@ -5769,7 +6337,7 @@ bool IonColourFilter::writeState(std::ofstream &f,unsigned int format, unsigned 
 				str="0";
 			f << tabs(depth+1) << "<showcolourbar value=\"" << str << "\"/>" << endl;
 			
-			f << tabs(depth) << "</ioncolour>" << endl;
+			f << tabs(depth) << "</" << trueName() << ">" << endl;
 			break;
 		}
 		default:
@@ -6913,7 +7481,7 @@ bool CompositionProfileFilter::writeState(std::ofstream &f,unsigned int format, 
 	{
 		case STATE_FORMAT_XML:
 		{	
-			f << tabs(depth) << "<compositionprofile>" << endl;
+			f << tabs(depth) << "<" << trueName() << ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<primitivetype value=\"" << primitiveType<< "\"/>" << endl;
@@ -6941,7 +7509,7 @@ bool CompositionProfileFilter::writeState(std::ofstream &f,unsigned int format, 
 				<< "\" a=\"" << a << "\"/>" <<endl;
 
 			f << tabs(depth+1) << "<plottype value=\"" << plotType << "\"/>" << endl;
-			f << tabs(depth) << "</compositionprofile>" << endl;
+			f << tabs(depth) << "</" << trueName()  << " >" << endl;
 			break;
 		}
 		default:
@@ -7794,7 +8362,7 @@ bool BoundingBoxFilter::writeState(std::ofstream &f,unsigned int format, unsigne
 	{
 		case STATE_FORMAT_XML:
 		{	
-			f << tabs(depth) << "<boundingbox>" << endl;
+			f << tabs(depth) << "<" << trueName() << ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
 			f << tabs(depth+1) << "<visible value=\"" << isVisible << "\"/>" << endl;
 			f << tabs(depth+1) << "<fixedticks value=\"" << fixedNumTicks << "\"/>" << endl;
@@ -7806,7 +8374,7 @@ bool BoundingBoxFilter::writeState(std::ofstream &f,unsigned int format, unsigne
 			f << tabs(depth+1) << "<fontsize value=\"" << fontSize << "\"/>"<<endl;
 			f << tabs(depth+1) << "<colour r=\"" <<  rLine<< "\" g=\"" << gLine << "\" b=\"" <<bLine  
 								<< "\" a=\"" << aLine << "\"/>" <<endl;
-			f << tabs(depth) << "</boundingbox>" << endl;
+			f << tabs(depth) << "</" <<trueName()<< ">" << endl;
 			break;
 		}
 		default:
@@ -8789,7 +9357,7 @@ bool TransformFilter::writeState(std::ofstream &f,unsigned int format, unsigned 
 	{
 		case STATE_FORMAT_XML:
 		{	
-			f << tabs(depth) << "<transform>" << endl;
+			f << tabs(depth) << "<" << trueName() << ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
 			f << tabs(depth+1) << "<transformmode value=\"" << transformMode<< "\"/>"<<endl;
 			f << tabs(depth+1) << "<originmode value=\"" << originMode<< "\"/>"<<endl;
@@ -8814,7 +9382,7 @@ bool TransformFilter::writeState(std::ofstream &f,unsigned int format, unsigned 
 				f << tabs(depth+2) << "<scalar value=\"" << scalarParams[0] << "\"/>" << endl; 
 			
 			f << tabs(depth+1) << "</scalarparams>" << endl;
-			f << tabs(depth) << "</transform>" << endl;
+			f << tabs(depth) << "</" << trueName() << ">" << endl;
 			break;
 		}
 		default:
@@ -9320,7 +9888,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			d->a=1.0;
 			d->ionSize = 2.0;
 
-			int index2[] = {
+			unsigned int index2[] = {
 					0, 1, 2, 3
 					};
 			if(GenericLoadFloatFile(4, 4, index2, d->data,sTmp.c_str(),dummy,0))
@@ -9618,14 +10186,14 @@ bool ExternalProgramFilter::writeState(std::ofstream &f,unsigned int format, uns
 	{
 		case STATE_FORMAT_XML:
 		{
-			f << tabs(depth) << "<externalprog>" << endl;
+			f << tabs(depth) << "<" << trueName() << ">" << endl;
 
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
 			f << tabs(depth+1) << "<commandline name=\"" << commandLine << "\"/>" << endl;
 			f << tabs(depth+1) << "<workingdir name=\"" << workingDir << "\"/>" << endl;
 			f << tabs(depth+1) << "<alwayscache value=\"" << alwaysCache << "\"/>" << endl;
 			f << tabs(depth+1) << "<cleaninput value=\"" << cleanInput << "\"/>" << endl;
-			f << tabs(depth) << "</externalprog>" << endl;
+			f << tabs(depth) << "</" << trueName() << ">" << endl;
 			break;
 
 		}
@@ -10970,7 +11538,7 @@ bool SpatialAnalysisFilter::writeState(std::ofstream &f,unsigned int format, uns
 	{
 		case STATE_FORMAT_XML:
 		{	
-			f << tabs(depth) << "<spatialanalysis>" << endl;
+			f << tabs(depth) << "<" << trueName() << ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
 			f << tabs(depth+1) << "<algorithm value=\""<<algorithm<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<stopmode value=\""<<stopMode<< "\"/>"  << endl;
@@ -10981,7 +11549,7 @@ bool SpatialAnalysisFilter::writeState(std::ofstream &f,unsigned int format, uns
 			f << tabs(depth+1) << "<reductiondistance value=\""<<reductionDistance<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
 				<< "\" a=\"" << a << "\"/>" <<endl;
-			f << tabs(depth) << "</spatialanalysis>" << endl;
+			f << tabs(depth) << "</" << trueName() << ">" << endl;
 			break;
 		}
 		default:

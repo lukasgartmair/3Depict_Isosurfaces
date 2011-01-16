@@ -170,7 +170,7 @@ class VisController
 		//!Write out the filters into a wxtreecontrol.
 		void updateWxTreeCtrl(wxTreeCtrl *t,const Filter *visibleFilter=0);
 		//!Update a wxtGrid with the properties for a given filter
-		void updateFilterPropertyGrid(wxPropertyGrid *g,unsigned long long filterId);
+		void updateFilterPropGrid(wxPropertyGrid *g,unsigned long long filterId);
 		//!Add a new filter to the tree
 		void addFilter(Filter *f, unsigned long long parentId);
 
@@ -344,5 +344,8 @@ class VisController
 
 		//!Set whether filter should use strong or weak randomisation
 		void setStrongRandom(bool strongRand);
+
+		//!Set whether to use effects or not
+		void setEffects(bool enable); 
 };
 #endif

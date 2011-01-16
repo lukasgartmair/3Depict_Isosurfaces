@@ -103,7 +103,7 @@ BEGIN_EVENT_TABLE(ExportPosDialog, wxDialog)
     EVT_RADIOBUTTON(ID_RADIO_VISIBLE, ExportPosDialog::OnVisibleRadio)
     EVT_RADIOBUTTON(ID_RADIO_SELECTION, ExportPosDialog::OnSelectedRadio)
     EVT_TREE_SEL_CHANGED(ID_TREE_FILTERS, ExportPosDialog::OnTreeFiltersSelChanged)
-    EVT_LIST_ITEM_ACTIVATED(ID_LIST_AVAILABLE, ExportPosDialog::OnListAvialableItemActivate)
+    EVT_LIST_ITEM_ACTIVATED(ID_LIST_AVAILABLE, ExportPosDialog::OnListAvailableItemActivate)
     EVT_LIST_ITEM_ACTIVATED(ID_LIST_SELECTED, ExportPosDialog::OnListSelectedItemActivate)
     EVT_LIST_KEY_DOWN(ID_LIST_SELECTED, ExportPosDialog::OnListSelectedItemKeyDown)
     EVT_BUTTON(wxID_SAVE, ExportPosDialog::OnSave)
@@ -142,8 +142,8 @@ void ExportPosDialog::OnVisibleRadio(wxCommandEvent &event)
 {
 	ASSERT(haveRefreshed);
 	exportVisible=true;
-	enableSelectionControls(false);
 	listAvailable->DeleteAllItems();
+	enableSelectionControls(false);
 }
 
 
@@ -159,6 +159,12 @@ void ExportPosDialog::OnTreeFiltersSelChanged(wxTreeEvent &event)
 {
 	wxTreeItemId id;
 	id=treeData->GetSelection();
+
+	if(!id.IsOk() || id== treeData->GetRootItem())
+	{
+		event.Skip();
+		return;
+	}
 	//Tree data contains unique identifier for vis control to do matching
 	wxTreeItemData *tData=treeData->GetItemData(id);
 
@@ -207,7 +213,7 @@ void ExportPosDialog::OnTreeFiltersSelChanged(wxTreeEvent &event)
 }
 
 
-void ExportPosDialog::OnListAvialableItemActivate(wxListEvent &event)
+void ExportPosDialog::OnListAvailableItemActivate(wxListEvent &event)
 {
 	unsigned int item=event.GetIndex();
 
@@ -343,6 +349,15 @@ void ExportPosDialog::updateSelectedList()
 
 		idx++;	
 	}
+
+
+
+	if(listSelected->GetItemCount())
+	{
+		btnSave->Enable();
+	}
+	else
+		btnSave->Disable();
 }
 
 void ExportPosDialog::OnBtnAddNode(wxCommandEvent &event)
@@ -425,12 +440,22 @@ void ExportPosDialog::enableSelectionControls(bool enabled)
 	btnAddAll->Enable(enabled);
 	listSelected->Enable(enabled);
 
+	//If the selection control is enabled,
+	//bring the tree back to life
+	//otherwise, grey it out.
 	if(enabled)
 	{
 		treeData->ExpandAll();
+		treeData->SetForegroundColour(wxNullColour);
+		btnSave->Enable(listSelected->GetItemCount());
 	}
 	else
-		treeData->DeleteAllItems();
+	{
+		treeData->CollapseAll();
+		treeData->SetForegroundColour(*wxLIGHT_GREY);
+		treeData->Unselect();
+		btnSave->Enable();
+	}
 }
 
 void ExportPosDialog::do_layout()

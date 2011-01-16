@@ -165,6 +165,9 @@ class CameraLookAt : public Camera
 		//!Far plane is computed on-the-fly. cannot be set directly. Oh no! mutable. gross!
 		mutable float farPlane;
 
+		//!Distort to the viewing frustum. (eg for stero) ( a frustum is a rectangular pyramid with the top cut off)
+		float frustumDistortion;
+
 		//!Do the perspective calculations
 		void doPerspCalcs(float aspect,const BoundCube &bc,bool loadIdentity) const;
 	
@@ -240,6 +243,9 @@ class CameraLookAt : public Camera
 						float topRestrict, float bottomRestrict) const;
 
 		float getViewWidth(float depth) const;
+
+		void setFrustumDistort(float offset){frustumDistortion=offset;};
+
 };
 
 #endif

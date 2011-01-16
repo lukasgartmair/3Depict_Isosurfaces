@@ -4,9 +4,11 @@ TODO List - worlds simplest bugtracking system
 
 --Main app--
 	Fix Needs testing
-	
+		* Added filename conversion under windows systems, such
+		 that it should be able to read unix generated packages
 	To Implement:
 		== Next version ==
+		* Billboard text
 
 		== Eventually == 
 		* Binomial?
@@ -17,28 +19,30 @@ TODO List - worlds simplest bugtracking system
 		* Shear-warp volume render mode for voxels
 		* Ion exchange filter
 		* Front-to back alpha blending ordering support for
-		scene drawing of non-pointcloud objects
+		 scene drawing of non-pointcloud objects
 		* DTD (Document type descriptor) for state files, to
 		  specify a consisted statefile structure
 			- How to ensure version compatibility in future
 			state files?
-		* Billboard text
 		* VTK/xyzm output
 		* BB cache for ion data?
 		* Option to warn on file overwrite with save after merge (default off)
-		* Filter defaults settings
 		* Unit testing system
-		* Non-english language support (do we even have enough users?)
+		* Language Translation support
 		* Theora video
 		* Improved resolution dialog
 
-
 	Outstanding bugs:
 		== Next release==
+		* Loading a full pos file directly onto the video card cannot be aborted.
+		* Colour bar drawing broken when tiling an output image
+		* Spatial analysis filter does not update its output graph strings.
+		* Under windows, and sometimes under linux, double
+		 clicking the plot in camera mode, then unticking "enable
+		 post-process" will result in the scene not clearing the
+		 new clip values, and thus always reporting new values. Something like that anyway
 		
 		== Eventually==	
-		* Colour bar drawing broken when tiling an output image
-		* Multiple files with the same name in a package
 		* Error bar masking for graph (mathgl draws error bars outside plot boundary)
 		* Windows appears to have weird front-back drawing behaviour for point clouds.
 		* Pos load add could always add to bottom of filter list,
@@ -51,16 +55,19 @@ TODO List - worlds simplest bugtracking system
 
 
 		== Needs reproducing ==
+		* Composition profile property change keeps resetting the selection to all enabled when using rangefile.
+		  I was unable to trigger this locally
+			- This happened under windows with posFile -> range file ->composition profile
+										 -> Ion sampler
 		* Invalid range file being opened cause Package export to crash
 
 	Auditing:
 		== Next release ==
-		
-		== Eventually==	
-		* Colour bar drawing broken when tiling an output image
 		* Check each filter is actually reporting the required cache memory
 
 	Performance:
+		* Scene is being continuosly refreshed during post effects, causing CPU usage
+		  to max out.
 		* Clipping sphere/cylinder does BB test? (only useful if we have bb cache)
 		* Pos limit loader could alter its behaviour when
 		 sampling rates some percentage to be determined (load
@@ -70,7 +77,7 @@ TODO List - worlds simplest bugtracking system
 
 
 -- Refactor/cleanup --
-	* Interaction code needs to be cleaned up. Currently it is a massive hack.
+	* Interaction code needs to be cleaned up. Currently it is a substatiative hack.
 		- Viscontrol should store a copy of the original tree,
 		  then periodicially compare it to the current tree. if it
 		  is different, then it should invalidate the caches for
@@ -78,5 +85,7 @@ TODO List - worlds simplest bugtracking system
 		  of the callback mechanism that is currently in use
 	* work out which inline FIXMEs and TODOs are still valid, and need attention
 	* Re-arrange source to reduce compile-time interdependence (bad .h file arrangement?)
+		- Move filter base class to own source file, as program should be minimally aware of
+		  actual filters
 	* I have multiple colour classes floating about. might be an idea to unify them.
 	* K3DTree currently requires public access to members of boundcube

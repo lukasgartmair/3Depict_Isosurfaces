@@ -8,7 +8,7 @@
 <div id="header">
 <h1>3Depict - Valued point cloud visualisation and analysis</h1>
 <ul id="nav">
-	<li><a href="home.html">Home</a></li>
+	<li><a href="index.html">Home</a></li>
 	<li><a href="download.html">Download</a></li>
 	<li><a href="questions.html">Questions</a></li>
 	<li><a href="documentation.html">Documentation</a></li>
@@ -19,12 +19,15 @@
 
 <div id="left">
 <div class="box">
-<h2> Latest version: 0.0.1</h2>
+<h2> Latest version: 0.0.3</h2>
 <p> <a href="https://sourceforge.net/projects/threedepict/files/">Download</a> the source code for the latest version of 3Depict for your platform</p>
 <h3>Stuck on how to compile?</h3>
 Try asking for help on the <a href="https://sourceforge.net/apps/phpbb/threedepict/">forums</a>
 <p></p>
 </div>
+<center>
+<a href="http://sourceforge.net"><img src="http://sflogo.sourceforge.net/sflogo.php?group_id=341003&amp;type=2" alt="SourceForge.net Logo" border="0" height="37"/></a>
+</center>
 </div>
 <div id="content">
 <div id="right">
@@ -79,7 +82,13 @@ In the following instructions, <span style="text-decoration: underline; font-fam
 
 If there are any problems or flaws with the instructions, please <a href="contact.html">contact the author</a><br><br>
 
-<h2>Setting up</h2><a href="https://sourceforge.net/projects/threedepict/files/">Download</a> the source code, and install the following packages (this requires administrative rights to your machine).:<br>
+<h2>Setting up</h2>Either <a href="https://sourceforge.net/projects/threedepict/files/">Download</a> the source code, or grab the <a href="http://mercurial.selenic.com">mercurial</a> respository using this clone command, or by opening the URL in your graphical mercurial client (the URL is the bit at the right)
+<br>
+<br>
+<span style="font-family: monospace;">$ hg clone http://threedepict.hg.sourceforge.net:8000/hgroot/threedepict/threedepict</span>
+<br>
+<br>
+You should then install the following packages (this requires administrative rights to your machine).:<br>
 <br>
 <h3>Debian/Ubuntu:</h3>
 
@@ -188,7 +197,7 @@ below instructions.<br>
 <br>
 
 Install the development headers for your platform.&nbsp; Windows needs
-MinGW/MSYS (unless you know better), some instructions are <a href="http://wiki.wxwindows.org/HowTo:_Install_MSYS_and_MinGW_for_use_with_Eclipse_CDT#MSYS_installation">here</a>, but you are largely <a href="https://www.google.com/">on your own</a>. Cygwin is <span style="font-style: italic;">not</span> recommended, as openGL may not work in the final program (without X11).&nbsp; Feel free to <a href="contact.html">ask for help</a>.<br>
+MinGW/MSYS (unless you know better), some instructions are <a href="http://wiki.wxwindows.org/HowTo:_Install_MSYS_and_MinGW_for_use_with_Eclipse_CDT#MSYS_installation">here</a>, and my notes are below.  Otherwise, you are largely <a href="https://www.google.com/">on your own</a>. Cygwin is <span style="font-style: italic;">not</span> recommended, as OpenGL may not work in the final program (without X11).&nbsp; Feel free to <a href="contact.html">ask for help</a>.<br>
 
 
 

@@ -43,8 +43,6 @@ unsigned int XMLHelpNextType(xmlNodePtr &node,int);
 unsigned int XMLHelpFwdToElem(xmlNodePtr &node,  const char *nodeName);
 //scroll forwards until we reach an element that is NOT of a given type. return nonzero on error.
 unsigned int XMLHelpFwdNotElem(xmlNodePtr &node,const char *nodeName);
-//Grab the text associated with the node
-string XMLHelpGetText(xmlNodePtr &node);
 
 
 //!Jump to the next element of the given name and retreive the value for the specified attrip

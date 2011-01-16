@@ -97,7 +97,7 @@ public:
     virtual void OnBtnAddNode(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnSave(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnCancel(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnListAvialableItemActivate(wxListEvent &event); // wxGlade: <event_handler>
+    virtual void OnListAvailableItemActivate(wxListEvent &event); // wxGlade: <event_handler>
     virtual void OnListSelectedItemActivate(wxListEvent &event); // wxGlade: <event_handler>
     virtual void OnListSelectedItemKeyDown(wxListEvent &event); // wxGlade: <event_handler>
     void setViscontrol(VisController *vis) { visControl=vis;};

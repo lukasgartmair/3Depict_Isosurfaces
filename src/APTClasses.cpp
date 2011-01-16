@@ -192,7 +192,7 @@ void appendPos(const vector<IonHit> &points, const char *name)
 	}
 }
 
-unsigned int LimitLoadPosFile(int inputnumcols, int outputnumcols, int index[], vector<IonHit> &posIons,const char *posFile, size_t limitCount,
+unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumcols, unsigned int index[], vector<IonHit> &posIons,const char *posFile, size_t limitCount,
 	       	unsigned int &progress, bool (*callback)(),bool strongSampling)
 {
 
@@ -203,12 +203,12 @@ unsigned int LimitLoadPosFile(int inputnumcols, int outputnumcols, int index[], 
 	const unsigned int BUFFERSIZE=inputnumcols * sizeof(float) * NUMROWS;
 	const unsigned int BUFFERSIZE2=outputnumcols * sizeof(float) * NUMROWS;
 	char *buffer=new char[BUFFERSIZE];
-	char *buffer2=new char[BUFFERSIZE2];
 
 	
 	if(!buffer)
 		return POS_ALLOC_FAIL;
 
+	char *buffer2=new char[BUFFERSIZE2];
 	if(!buffer2)
 	{
 		delete[] buffer;
@@ -347,7 +347,9 @@ unsigned int LimitLoadPosFile(int inputnumcols, int outputnumcols, int index[], 
 	return 0;
 }
 
-unsigned int GenericLoadFloatFile(int inputnumcols, int outputnumcols, int index[], vector<IonHit> &posIons,const char *posFile, unsigned int &progress, bool (*callback)())
+unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int outputnumcols, 
+		unsigned int index[], vector<IonHit> &posIons,const char *posFile, 
+			unsigned int &progress, bool (*callback)())
 {
 	//buffersize must be a power of two and at least sizeof(IONHIT)
 	const unsigned int NUMROWS=512;
@@ -437,9 +439,9 @@ unsigned int GenericLoadFloatFile(int inputnumcols, int outputnumcols, int index
 				return POS_READ_FAIL;
 			}
 			
-			for (int j = 0; j < NUMROWS; j++) // iterate through rows
+			for (unsigned int j = 0; j < NUMROWS; j++) // iterate through rows
 			{
-				for (int i = 0; i < outputnumcols; i++) // iterate through floats
+				for (unsigned int i = 0; i < outputnumcols; i++) // iterate through floats
 				{
 					memcpy(&(buffer2[j * maxPosCols + i * sizeof(float)]), 
 						&(buffer[j * maxCols + index[i] * sizeof(float)]), sizeof(float));

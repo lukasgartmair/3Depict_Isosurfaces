@@ -38,12 +38,20 @@
 
 #define stlStr(a) (const char *)a.mb_str()
 
+std::string boolStrEnc(bool b);
+
 
 extern const char *DTD_NAME;
 extern const char *PROGRAM_NAME;
 extern const char *PROGRAM_VERSION;
 extern const char *FONT_FILE;
 
+
+//!State file output formats
+enum
+{
+	STATE_FORMAT_XML=1
+};
 
 //OK, this is a bit tricky. We override the operators to call
 //a callback, so the UI updates keep happening, even inside the STL function

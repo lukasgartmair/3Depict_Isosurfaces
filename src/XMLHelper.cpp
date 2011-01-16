@@ -50,12 +50,5 @@ unsigned int XMLHelpFwdNotElem(xmlNodePtr &node,const char *nodeName)
 	return !node;
 }
 
-string XMLHelpGetText(xmlNodePtr node)
-{
-	string result;
-	XMLHelpNextType(node,XML_TEXT_NODE);
-	result =(char *) node->content;
-	return result;
-}
 
 

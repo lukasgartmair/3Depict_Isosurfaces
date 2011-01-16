@@ -588,7 +588,7 @@ bool BasicGLPane::prepare3DViewport(int tlx, int tly, int brx, int bry)
 {
 
 	if(!paneInitialised)
-			return false;
+		return false;
 
 	//Prevent NaN.
 	if(!(bry-tly))
@@ -671,16 +671,18 @@ void BasicGLPane::render( wxPaintEvent& evt )
 	//Prevent calls to openGL if pane not visible
 	if (!IsShown()) 
 		return;
+		
 	wxGLCanvas::SetCurrent();
-	wxPaintDC(this); // only to be used in paint events. use wxClientDC to paint outside the paint event
+	if(!paneInitialised)
+	{
+		paneInitialised=true;
+		prepare3DViewport(0,0,getWidth(),getHeight()); 
+	}
 
-	//Clear the buffers and draw the openGL scene
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	wxPaintDC(this); 
 	currentScene.draw();
 	glFlush();
 	SwapBuffers();
-
-	paneInitialised=true;
 }
 
 void BasicGLPane::OnEraseBackground(wxEraseEvent &evt)
@@ -741,7 +743,6 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 		//system bufer (eg hwnd under windows.))
 		//and then use this to reconstruct the image in a piece wise manner
 		float tileStart[2];
-		tileStart[0]=tileStart[1];
 
 		float fractionWidth=(float)panelWidth/(float)width;
 		float fractionHeight=(float)panelHeight/(float)height;

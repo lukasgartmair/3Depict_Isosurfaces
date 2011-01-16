@@ -179,7 +179,7 @@ else
 	QHULL_LIBS="-lqhull"
 fi
 LIBS_ORIG="$LIBS"
-LIBS="$LIBS $QHULL_LIBS"
+LIBS="$LIBS $QHULL_LIBS $LDFLAGS"
 AC_CHECK_LIB(qhull, qh_qhull, [AC_DEFINE(HAVE_QHULL,[],[qhull compilation OK])] , AC_MSG_ERROR([You must have libqhull installed and be able to compile a sample program. compiler flags can be set using the with-libqhull-flags and with-libqhull-link parameters ]))
 CFLAGS="$CFLAGS_ORIG"
 LIBS="$LIBS_ORIG"
@@ -221,7 +221,7 @@ AC_CHECK_HEADER([png.h],[AC_DEFINE(HAVE_PNG,[],[Have got libpng headers])],
 	[AC_MSG_ERROR([Required libpng headers not found (looking for png.h])])
 
 LIBS_ORIG="$LIBS"
-LIBS="$LIBS $PNG_LIBS"
+LIBS="$LIBS $PNG_LIBS $LDFLAGS"
 AC_CHECK_LIB(png, png_sig_cmp, [AC_DEFINE(HAVE_PNG,[],[PNG compilation OK])] , AC_MSG_ERROR([You must have libpng installed and be able to compile sample program]), -lz -lm)
 CFLAGS="$CFLAGS_ORIG"
 LIBS="$LIBS_ORIG"
@@ -237,21 +237,22 @@ AC_MSG_CHECKING([for GLU library])
 #Try linking against gluSphere windows usese -lglu32; mac?? ; linux -lGLU
 case "${host_os}" in 
 	mingw*|windows*|winnt)
-		AC_CHECK_LIB(GLU, gluSphere, GL_LIBS="$GLU_LIBS -lglu", 
-			     [AC_MSG_ERROR([Could not find GLU library])])
-		GL_LIBS="-lopengl32 -lglu32"
+		#FTGL_CHECK_GL # Not working for some reason?
+		GL_LIBS="-lglu32 -lopengl32 "
+		AC_SUBST(GL_LIBS)
 	    ;;
 	darwin*)
-		GL_FLAGS="-framework GL"
+		#This is handled by the --with-apple-opengl-framework 
+		#option already. Nothing to do here
 	    ;;
 	 *)
 		AC_CHECK_LIB(GLU, gluSphere, GL_LIBS="$GL_LIBS -lglu", [AC_MSG_ERROR([Could not find GLU library])])
 		GL_LIBS="-lGL -lGLU"
+		AC_SUBST(GL_LIBS)
 
 	   ;;
 esac
 
-AC_SUBST(GL_LIBS)
 
 #------------
 
@@ -262,6 +263,24 @@ AC_CHECK_HEADER([mgl/mgl_c.h],[AC_DEFINE(HAVE_MGL_H,[],[Have got mathgl headers]
 
 AC_SUBST(MGL_LIBS,[-lmgl])
 
+dnl -------
+
+#Check for gsl
+dnl -------
+
+AC_ARG_WITH(gsl-flags,
+  [  --with-gsl-flags=PATH : specify compiler flags for gsl])
+AC_ARG_WITH(gsl-link,
+  [  --with-gsl-link=PATH : specify linker flag (library) for gsl])
+
+if test x"$with_gsl_flags" != x"" ; then
+    GSL_CFLAGS="$with_gsl_flags"
+fi
+if test x"$with_gsl_libs" != x"" ; then
+    GSL_LIBS="$with_gsl_libs"
+else
+	AX_PATH_GSL( GSL_VERSION, [],[AC_MSG_WARN(["Could not find GNU Scientific Library.. You should install this, as it is needed by mathgl. Otherwise, you can override it with --with-gsl-link and --with-gsl-flags. For example you might use the gsl-config program to spit out the needed libs."])])
+fi
 
 dnl -----------
 

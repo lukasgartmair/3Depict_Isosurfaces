@@ -250,31 +250,12 @@ void VisController::updateWxTreeCtrl(wxTreeCtrl *t, const Filter *visibleFilt)
 
 }
 
-void VisController::updateFilterPropertyGrid(wxPropertyGrid *g,unsigned long long filterId)
+void VisController::updateFilterPropGrid(wxPropertyGrid *g,unsigned long long filterId)
 {
 
 	Filter *targetFilter;
 	targetFilter=getFilterByIdNonConst(filterId);
-
-	FilterProperties p;
-	targetFilter->getProperties(p);
-
-
-	g->clearKeys();
-	g->setNumSets(p.data.size());
-	//Create the keys for the property grid to do its thing
-	for(unsigned int ui=0;ui<p.data.size();ui++)
-	{
-		for(unsigned int uj=0;uj<p.data[ui].size();uj++)
-		{
-			g->addKey(p.data[ui][uj].first, ui,p.keys[ui][uj],
-					p.types[ui][uj],p.data[ui][uj].second);
-		}
-	}
-
-	//Let the property grid layout what it needs to
-	g->propertyLayout();
-	
+	updateFilterPropertyGrid(g,targetFilter);
 }
 
 const Filter* VisController::getFilterById(unsigned long long filterId) const
@@ -588,7 +569,6 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 	amRefreshing=true;
 	doProgressAbort=false;
 	delayTime->Start();
-	textConsole->Clear();
 	
 	unsigned int errCode=0;
 
@@ -1141,7 +1121,7 @@ unsigned int VisController::updateScene()
 
 #if defined(_WIN32) || defined(_WIN64)
 		//Bug under windows. SetSelection(wxNOT_FOUND) does not work for multiseletion list boxes
-		plotSelList->SetSelection(-1, false);
+		plotList->SetSelection(-1, false);
 #else
  		plotSelList->SetSelection(wxNOT_FOUND); //Clear selection
 #endif
@@ -1860,6 +1840,19 @@ bool VisController::saveState(const char *cpFilename, std::map<string,string> &f
 		f << tabs(1) << "</stashedfilters>" << endl;
 	}
 
+	//Save any effects
+	vector<const Effect *> effectVec;
+	targetScene->getEffects(effectVec);
+
+	if(effectVec.size())
+	{
+		f <<tabs(1) <<  "<effects>" << endl;
+		for(unsigned int ui=0;ui<effectVec.size();ui++)
+			effectVec[ui]->writeState(f,STATE_FORMAT_XML,1);
+		f <<tabs(1) <<  "</effects>" << endl;
+
+	}
+
 
 
 	//Close XMl tag.	
@@ -1889,28 +1882,11 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 	}
 
 	//Open the XML file
-	//TODO: Nowhere do i check which DTD I have validated against.
-	doc = xmlCtxtReadFile(context, cpFilename, NULL, XML_PARSE_DTDVALID);
+	doc = xmlCtxtReadFile(context, cpFilename, NULL,0);
 
 	if(!doc)
-	{
-		//Open the XML file again, but without DTD validation
-		doc = xmlCtxtReadFile(context, cpFilename, NULL, 0);
-
-		if(!doc)
-			return false;
-	}
-	else
-	{
-		//FIXME: Comment out until I write a DTD...
- 		//Check for context validity
-//		if(!context->valid)
-//		{
-//			errStream << "Document parse failure -- missing or invalid Document type Descriptor? (a file called "<< DTD_NAME << ")" << std::endl;
-//			errStream << "Attempting to read without DTD validation. This may not work properly" << 
-//					" - in the future, please find a valid " << DTD_NAME<< " file, and place it in the current directory..." << std::endl;
-//		}
-	}
+		return false;
+	
 	//release the context
 	xmlFreeParserCtxt(context);
 	
@@ -1918,6 +1894,7 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 	//ahh parsing - verbose and boring
 	tree<Filter *> newFilterTree;
 	vector<Camera *> newCameraVec;
+	vector<Effect *> newEffectVec;
 	vector<pair<string,tree<Filter * > > > newStashes;
 
 	std::string stateDir=onlyDir(cpFilename);
@@ -2150,7 +2127,56 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 		}
 		nodePtr=nodeStack.top();
 		nodeStack.pop();
-		
+	
+		//Read effects, if present
+		nodeStack.push(nodePtr);
+
+		//Read effects if present
+		if(!XMLHelpFwdToElem(nodePtr,"effects"))
+		{
+			std::string tmpStr;
+			nodePtr=nodePtr->xmlChildrenNode;
+			while(!XMLHelpNextType(nodePtr,XML_ELEMENT_NODE))
+			{
+				tmpStr =(const char *)nodePtr->name;
+
+				if(tmpStr == "anaglyph")
+				{
+					AnaglyphEffect *e=new AnaglyphEffect;
+
+					
+
+					if(!e->readState(nodePtr->xmlChildrenNode))
+					{
+						errStream << "Unable to parse anaglyph effect" << endl;
+						throw 1;
+						
+					}
+
+				
+					newEffectVec.push_back(e);	
+
+				}
+				else if (tmpStr == "boxcrop")
+				{
+					BoxCropEffect *e=new BoxCropEffect;
+
+					if(!e->readState(nodePtr->xmlChildrenNode))
+					{
+						errStream << "Unable to parse anaglyph effect" << endl;
+						throw 1;
+						
+					}
+					newEffectVec.push_back(e);	
+
+				}
+			}
+		}
+		nodePtr=nodeStack.top();
+		nodeStack.pop();
+
+
+
 		nodeStack.push(nodePtr);
 	}
 	catch (int)
@@ -2291,6 +2317,14 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 		}
 	}
 
+	if(newEffectVec.size())
+	{
+		targetScene->clearEffects();
+		for(unsigned int ui=0;ui<newEffectVec.size();ui++)
+		{
+			targetScene->addEffect(newEffectVec[ui]);
+		}
+	}
 
 	initFilterTree();
 	//Perform sanitisation on results
@@ -2958,4 +2992,10 @@ void VisController::setStrongRandom(bool strongRand)
 	//Invalidate every filter cache.
 	invalidateCache(0);
 
+}
+
+
+void VisController::setEffects(bool enable)
+{
+	targetScene->setEffects(enable);
 }

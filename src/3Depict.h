@@ -30,6 +30,8 @@
 //Local stuff
 #include "glPane.h"
 #include "mathglPane.h"
+#include "wxCropPanel.h" // cropping tools
+
 #include "APTClasses.h"
 #include "common.h"
 #include "viscontrol.h"
@@ -52,6 +54,8 @@ public:
 
     bool isCurrentlyUpdatingScene() const { return currentlyUpdatingScene;};
 
+    void linkCropWidgets();
+
 private:
     // begin wxGlade: MainWindowFrame::methods
     void set_properties();
@@ -61,10 +65,20 @@ private:
    	//!Give  a  
     	void statusMessage(const char *message, unsigned int messageType=MESSAGE_ERROR); 
 
+	//!Update the progress information in the status bar
 	void updateProgressStatus();
+	//!Perform an update to the 3D Scene
 	void doSceneUpdate();
+
+	//!Update the post-processing effects in the 3D scene. 
+	void updatePostEffects(); 
 	//!Load a file into the panel given the full path to the file
 	bool loadFile(const wxString &dataFile,bool merge=false);
+
+
+	//!Update the effects UI from some effects vector
+	void updateFxUI(const vector<const Effect *> &fx);
+
 	//!Scene - user interaction interface "visualisation control"
 	VisController visControl;
 
@@ -72,7 +86,7 @@ private:
 	ConfigFile configFile;
 
 	//!Blocking bool to prevent functions from responding to programatically generated wx events
-	bool programmaticEvent;
+	bool programmaticEvent,timerEvent;
 	//!A flag stating if the first update needs a refresh after GL window OK
 	bool requireFirstUpdate;
 	//!Have we set the combo cam/stash text in this session?
@@ -90,6 +104,9 @@ private:
 
 	//!Drag and drop functionality
 	FileDropTarget *dropTarget;
+	
+	//!Current fullscreen status
+	unsigned int fullscreenState;
 protected:
     wxTimer *statusTimer;
     wxTimer *progressTimer;
@@ -107,9 +124,8 @@ protected:
     wxMenu *recentFilesMenu;
     wxFileHistory *recentHistory;
 
+
     // begin wxGlade: MainWindowFrame::attributes
-    wxStaticBox* sizer_4_staticbox;
-    wxStaticBox* sizer_5_staticbox;
     wxMenuBar* MainFrame_Menu;
     wxStaticText* lblSettings;
     wxComboBox* comboStash;
@@ -118,11 +134,9 @@ protected:
     wxComboBox* comboFilters;
     wxTreeCtrl* treeFilters;
     wxStaticText* lastRefreshLabel;
-    wxStaticText* label_3;
     wxListCtrl* listLastRefresh;
     wxCheckBox* checkAutoUpdate;
     wxButton* refreshButton;
-    wxPanel* panel_1;
     wxButton* btnFilterTreeExpand;
     wxButton* btnFilterTreeCollapse;
     wxPanel* filterTreePane;
@@ -131,25 +145,49 @@ protected:
     wxPanel* filterPropertyPane;
     wxSplitterWindow* filterSplitter;
     wxPanel* noteData;
-    wxStaticText* label_2;
+    wxStaticText* labelCameraName;
     wxComboBox* comboCamera;
     wxButton* buttonRemoveCam;
-    wxStaticLine* static_line_1;
+    wxStaticLine* cameraNamePropertySepStaticLine;
     wxPropertyGrid* gridCameraProperties;
     wxScrolledWindow* noteCamera;
+    wxCheckBox* checkPostProcessing;
+    wxCheckBox* checkFxCrop;
+    wxComboBox* comboFxCropAxisOne;
+    CropPanel* panelFxCropOne;
+    wxComboBox* comboFxCropAxisTwo;
+    CropPanel* panelFxCropTwo;
+    wxCheckBox* checkFxCropCameraFrame;
+    wxStaticText* labelFxCropDx;
+    wxTextCtrl* textFxCropDx;
+    wxStaticText* labelFxCropDy;
+    wxTextCtrl* textFxCropDy;
+    wxStaticText* labelFxCropDz;
+    wxTextCtrl* textFxCropDz;
+    wxPanel* noteFxPanelCrop;
+    wxCheckBox* checkFxEnableStereo;
+    wxCheckBox* checkFxStereoLensFlip;
+    wxStaticText* lblFxStereoMode;
+    wxComboBox* comboFxStereoMode;
+    wxStaticBitmap* bitmapFxStereoGlasses;
+    wxStaticText* labelFxStereoBaseline;
+    wxSlider* sliderFxStereoBaseline;
+    wxPanel* noteFxPanelStereo;
+    wxNotebook* noteEffects;
+    wxPanel* notePost;
     wxCheckBox* checkAlphaBlend;
     wxCheckBox* checkLighting;
-    wxCheckBox* checkCaching;
     wxCheckBox* checkWeakRandom;
-    wxStaticText* label_8;
+    wxCheckBox* checkCaching;
+    wxStaticText* labelMaxRamUsage;
     wxSpinCtrl* spinCachePercent;
-    wxScrolledWindow* notePerformance;
+    wxPanel* noteTools;
     wxNotebook* notebookControl;
     wxPanel* panelLeft;
     wxPanel* panelView;
     BasicGLPane* panelTop;
     MathGLPane* panelSpectra;
-    wxStaticText* label_5;
+    wxStaticText* plotListLabel;
     wxListBox* plotList;
     wxPanel* window_2_pane_2;
     wxSplitterWindow* splitterSpectra;
@@ -200,10 +238,20 @@ public:
 
     virtual void OnEditUndo(wxCommandEvent &event);    
     virtual void OnEditRedo(wxCommandEvent &event);    
+    virtual void OnEditPreferences(wxCommandEvent &event);    
    
 
 
     virtual void OnButtonRemoveCam(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnCheckPostProcess(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnFxCropCheck(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnFxCropCamFrameCheck(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnFxCropAxisOne(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnFxCropAxisTwo(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnFxStereoEnable(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnFxStereoCombo(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnFxStereoBaseline(wxScrollEvent &event); // wxGlade: <event_handler>
+    virtual void OnFxStereoLensFlip(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnButtonStashDialog(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnCheckAlpha(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnCheckLighting(wxCommandEvent &event); // wxGlade: <event_handler>

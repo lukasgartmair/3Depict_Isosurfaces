@@ -27,6 +27,13 @@ void trapfpe () {
 #endif
 #endif
 
+#ifdef __APPLE__
+//FIXME: workaround for UI layout under apple platform 
+// wxMac appears to have problems with nested panels.
+#define APPLE_EFFECTS_WORKAROUND  1
+#endif
+
+
 enum
 {
 	MESSAGE_ERROR=1,
@@ -50,6 +57,8 @@ winconsole winC;
 #include "3Depict.h"
 #include <utility>
 #include "common.h"
+
+//wxWidgets stuff
 #include "wxcomponents.h"
 #include <wx/colordlg.h>
 #include <wx/aboutdlg.h> 
@@ -63,10 +72,11 @@ winconsole winC;
 #include <wx/progdlg.h>
 
 //Custom program dialog windows
-#include "StashDialog.h"
-#include "ResDialog.h"
-#include "ExportRngDialog.h"
-#include "ExportPos.h"
+#include "StashDialog.h" //Stash editor
+#include "ResDialog.h" // resolution selection dialog
+#include "ExportRngDialog.h" // Range export dialog
+#include "ExportPos.h" // Ion export dialog
+#include "prefDialog.h" // Prefernces dialog
 
 //Program Icon
 #include "art.h"
@@ -80,12 +90,14 @@ using std::max;
 //milliseconds before clearing status bar (by invoking a status timer event)
 const unsigned int STATUS_TIMER_DELAY=10000; 
 //Milliseconds between querying viscontrol for needing update
-const unsigned int UPDATE_TIMER_DELAY=200; 
+const unsigned int UPDATE_TIMER_DELAY=50; 
 //Seconds between autosaves
 const unsigned int AUTOSAVE_DELAY=300; 
 
 const unsigned int DEFAULT_IONS_VIEW=100;
 
+//The conversion factor from the baseline shift slider to camera units
+const float BASELINE_SHIFT_FACTOR=0.0002f;
 
 
 const char *cameraIntroString= "New camera name...";
@@ -115,6 +127,38 @@ enum
 	COMBO_FILTER_VOXELS,
 };
 
+
+//--- These settings must be modified concomittantly.
+const unsigned int FILTER_DROP_COUNT=11;
+
+const wxString comboFilters_choices[FILTER_DROP_COUNT] = {
+        _("Bounding Box"),
+        _("Clipping"),
+        _("Compos. Profiles"),
+        _("Downsampling"),
+	_("Extern. Prog."),
+        _("Ion Colour"),
+        _("Ion Transform"),
+	_("Mass Spectrum"),
+        _("Range File"),
+	_("Spat. Analysis"),
+	_("Voxelisation"),
+};
+
+const unsigned int comboFiltersTypeMapping[FILTER_DROP_COUNT] = {
+	FILTER_TYPE_BOUNDBOX,
+	FILTER_TYPE_IONCLIP,
+	FILTER_TYPE_COMPOSITION,
+	FILTER_TYPE_IONDOWNSAMPLE,
+	FILTER_TYPE_EXTERNALPROC,
+	FILTER_TYPE_IONCOLOURFILTER,
+	FILTER_TYPE_TRANSFORM,
+	FILTER_TYPE_SPECTRUMPLOT,
+	FILTER_TYPE_SPATIAL_ANALYSIS,
+	FILTER_TYPE_VOXELS
+ };
+//----
+
 //Constant identifiers for binding events in wxwidgets "event table"
 enum {
     
@@ -134,6 +178,7 @@ enum {
     //Edit menu
     ID_EDIT_UNDO,
     ID_EDIT_REDO,
+    ID_EDIT_PREFERENCES,
 
     //Help menu
     ID_HELP_ABOUT,
@@ -189,6 +234,22 @@ enum {
     ID_BTN_EXPAND,
     ID_BTN_COLLAPSE,
 
+    //Effects panel
+    ID_EFFECT_ENABLE,
+    ID_EFFECT_CROP_ENABLE,
+    ID_EFFECT_CROP_AXISONE_COMBO,
+    ID_EFFECT_CROP_PANELONE,
+    ID_EFFECT_CROP_PANELTWO,
+    ID_EFFECT_CROP_AXISTWO_COMBO,
+    ID_EFFECT_CROP_CHECK_COORDS,
+    ID_EFFECT_CROP_TEXT_DX,
+    ID_EFFECT_CROP_TEXT_DY,
+    ID_EFFECT_CROP_TEXT_DZ,
+    ID_EFFECT_STEREO_ENABLE,
+    ID_EFFECT_STEREO_COMBO,
+    ID_EFFECT_STEREO_BASELINE_SLIDER,
+    ID_EFFECT_STEREO_LENSFLIP,
+
     //Options panel
     ID_CHECK_ALPHA,
     ID_CHECK_LIGHTING,
@@ -210,6 +271,7 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 {
 
 	programmaticEvent=false;
+	fullscreenState=0;
 	//Set up the program icon handler
 	wxArtProvider::Push(new MyArtProvider);
 	SetIcon(wxArtProvider::GetIcon(_("MY_ART_ID_ICON")));
@@ -252,12 +314,16 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     panelTop = new BasicGLPane(splitTopBottom);
     panelLeft = new wxPanel(splitLeftRight, wxID_ANY);
     notebookControl = new wxNotebook(panelLeft, ID_NOTEBOOK_CONTROL, wxDefaultPosition, wxDefaultSize, wxNB_RIGHT);
-    notePerformance = new wxScrolledWindow(notebookControl, ID_NOTE_PERFORMANCE, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL);
+    noteTools = new wxPanel(notebookControl, ID_NOTE_PERFORMANCE, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL);
+    notePost = new wxPanel(notebookControl, wxID_ANY);
+    noteEffects = new wxNotebook(notePost, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxNB_LEFT);
+    noteFxPanelStereo = new wxPanel(noteEffects, wxID_ANY);
+    noteFxPanelCrop = new wxPanel(noteEffects, wxID_ANY);
     noteCamera = new wxScrolledWindow(notebookControl, ID_NOTE_CAMERA, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL);
     noteData = new wxPanel(notebookControl, ID_NOTE_DATA, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL);
     filterSplitter = new wxSplitterWindow(noteData,ID_SPLIT_FILTERPROP , wxDefaultPosition, wxDefaultSize, wxSP_3D|wxSP_BORDER);
     filterPropertyPane = new wxPanel(filterSplitter, wxID_ANY);
-    //sizer_5_staticbox = new wxStaticBox(panelTop, -1, _(""));
+    //topPanelSizer_staticbox = new wxStaticBox(panelTop, -1, _(""));
     filterTreePane = new wxPanel(filterSplitter, wxID_ANY);
     MainFrame_Menu = new wxMenuBar();
     wxMenu* File = new wxMenu();
@@ -282,7 +348,7 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     File->AppendSubMenu(FileExport,_("&Export"));
     File->AppendSeparator();
 #ifdef __APPLE__
-    File->Append(ID_FILE_EXIT, _("E&xit\tCtrl+Q"), _("Exit Program"), wxITEM_NORMAL);
+    File->Append(ID_FILE_EXIT, _("&Quit\tCtrl+Q"), _("Exit Program"), wxITEM_NORMAL);
 #else
     File->Append(ID_FILE_EXIT, _("E&xit"), _("Exit Program"), wxITEM_NORMAL);
 #endif
@@ -291,13 +357,28 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     wxglade_tmp_menu_1->Append(ID_VIEW_BACKGROUND, 
 		    _("&Background Colour...\tCtrl+B"),_("Change background colour"));
     wxglade_tmp_menu_1->AppendSeparator(); //Separator
+#ifndef __APPLE__
     checkMenuControlPane= wxglade_tmp_menu_1->Append(ID_VIEW_CONTROL_PANE, 
 		    _("&Control Pane\tF3"), _("Toggle left control pane"), wxITEM_CHECK);
+#else
+    checkMenuControlPane= wxglade_tmp_menu_1->Append(ID_VIEW_CONTROL_PANE, 
+		    _("&Control Pane\tAlt+C"), _("Toggle left control pane"), wxITEM_CHECK);
+
+#endif
     checkMenuControlPane->Check();
+#ifndef __APPLE__
     checkMenuRawDataPane= wxglade_tmp_menu_1->Append(ID_VIEW_RAW_DATA_PANE, 
 		    _("&Raw Data Pane\tF4"), _("Toggle raw data  pane (bottom)"), wxITEM_CHECK);
+#else
+    checkMenuRawDataPane= wxglade_tmp_menu_1->Append(ID_VIEW_RAW_DATA_PANE, 
+		    _("&Raw Data Pane\tAlt+R"), _("Toggle raw data  pane (bottom)"), wxITEM_CHECK);
+#endif
     checkMenuRawDataPane->Check();
+#ifndef __APPLE__
     checkMenuSpectraList=wxglade_tmp_menu_1->Append(ID_VIEW_SPECTRA, _("&Plot List\tF5"),_("Toggle plot list"), wxITEM_CHECK);
+#else
+    checkMenuSpectraList=wxglade_tmp_menu_1->Append(ID_VIEW_SPECTRA, _("&Plot List\tAlt+P"),_("Toggle plot list"), wxITEM_CHECK);
+#endif
     checkMenuSpectraList->Check();
 
     wxglade_tmp_menu_1->AppendSeparator(); //Separator
@@ -309,13 +390,21 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     checkViewWorldAxis->Check();
     
     wxglade_tmp_menu_1->AppendSeparator(); //Separator
-    checkViewFullscreen=wxglade_tmp_menu_1->Append(ID_VIEW_FULLSCREEN, _("&Fullscreen\tF11"),_("Toggle fullscreen"),wxITEM_CHECK);
+#ifndef __APPLE__
+    wxglade_tmp_menu_1->Append(ID_VIEW_FULLSCREEN, _("&Fullscreen mode\tF11"),_("Next fullscreen mode"));
+#else
+    wxglade_tmp_menu_1->Append(ID_VIEW_FULLSCREEN, _("&Fullscreen mode\tCtrl+Shift+F"),_("Next fullscreen mode"));
+#endif
+
 
     wxMenu *Edit = new wxMenu();
     editUndoMenuItem = Edit->Append(ID_EDIT_UNDO,_("&Undo\tCtrl+Z"));
     editUndoMenuItem->Enable(false);
     editRedoMenuItem = Edit->Append(ID_EDIT_REDO,_("&Redo\tCtrl+Y"));
     editRedoMenuItem->Enable(false);
+    Edit->AppendSeparator();
+    Edit->Append(ID_EDIT_PREFERENCES,_("&Preferences"));
+
     MainFrame_Menu->Append(Edit, _("&Edit"));
 
 
@@ -332,21 +421,11 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     comboStash = new wxComboBox(noteData, ID_COMBO_STASH, wxT(""), wxDefaultPosition, wxDefaultSize, 0, comboStash_choices, wxCB_DROPDOWN|wxCB_SORT|wxTE_PROCESS_ENTER );
     btnStashManage = new wxButton(noteData, ID_BTN_STASH_MANAGE, _("..."),wxDefaultPosition,wxSize(28,28));
     filteringLabel = new wxStaticText(noteData, wxID_ANY, _("Data Filtering"));
-    const unsigned int FILTER_DROP_COUNT=11;
-    const wxString comboFilters_choices[FILTER_DROP_COUNT] = {
-        _("Bounding Box"),
-        _("Clipping"),
-        _("Compos. Profiles"),
-        _("Downsampling"),
-	_("Extern. Prog."),
-        _("Ion Colour"),
-        _("Ion Transform"),
-	_("Mass Spectrum"),
-        _("Range File"),
-	_("Spat. Analysis"),
-	_("Voxelisation"),
-    };
     comboFilters = new wxComboBox(filterTreePane, ID_COMBO_FILTER, wxT(""), wxDefaultPosition, wxDefaultSize, FILTER_DROP_COUNT, comboFilters_choices, wxCB_DROPDOWN|wxCB_READONLY|wxCB_SORT);
+
+
+
+
     treeFilters = new wxTreeCtrl(filterTreePane, ID_TREE_FILTERS, wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_HIDE_ROOT|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER|wxTR_EDIT_LABELS);
     lastRefreshLabel = new wxStaticText(filterTreePane, wxID_ANY, _("Last Outputs"));
     listLastRefresh = new wxListCtrl(filterTreePane, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxSUNKEN_BORDER);
@@ -356,48 +435,129 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     btnFilterTreeCollapse = new wxButton(filterTreePane, ID_BTN_COLLAPSE, _("▲"),wxDefaultPosition,wxSize(30,30));
     propGridLabel = new wxStaticText(filterPropertyPane, wxID_ANY, _("Filter settings"));
     gridFilterProperties = new wxPropertyGrid(filterPropertyPane, ID_GRID_FILTER_PROPERTY);
-    label_2 = new wxStaticText(noteCamera, wxID_ANY, _("Camera Name"));
+    labelCameraName = new wxStaticText(noteCamera, wxID_ANY, _("Camera Name"));
     const wxString *comboCamera_choices = NULL;
     comboCamera = new wxComboBox(noteCamera, ID_COMBO_CAMERA, wxT(""), wxDefaultPosition, wxDefaultSize, 0, comboCamera_choices, wxCB_DROPDOWN|wxTE_PROCESS_ENTER );
     buttonRemoveCam = new wxButton(noteCamera, wxID_REMOVE, wxEmptyString);
-    static_line_1 = new wxStaticLine(noteCamera, wxID_ANY);
+    cameraNamePropertySepStaticLine = new wxStaticLine(noteCamera, wxID_ANY);
     gridCameraProperties = new wxPropertyGrid(noteCamera, ID_GRID_CAMERA_PROPERTY);
-    checkAlphaBlend = new wxCheckBox(notePerformance,ID_CHECK_ALPHA , _("Smooth && translucent objects"));
+#ifndef APPLE_EFFECTS_WORKAROUND
+    checkPostProcessing = new wxCheckBox(notePost, ID_EFFECT_ENABLE, _("3D Post-processing"));
+#endif
+    checkFxCrop = new wxCheckBox(noteFxPanelCrop, ID_EFFECT_CROP_ENABLE, _("Enable Cropping"));
+    const wxString comboFxCropAxisOne_choices[] = {
+        _("x-y"),
+        _("x-z"),
+        _("y-x"),
+        _("y-z"),
+        _("z-x"),
+        _("z-y")
+    };
+    comboFxCropAxisOne = new wxComboBox(noteFxPanelCrop, ID_EFFECT_CROP_AXISONE_COMBO, wxT(""), wxDefaultPosition, wxDefaultSize, 6, comboFxCropAxisOne_choices, wxCB_DROPDOWN|wxCB_SIMPLE|wxCB_DROPDOWN|wxCB_READONLY);
+    panelFxCropOne = new CropPanel(noteFxPanelCrop, ID_EFFECT_CROP_AXISONE_COMBO,
+		   		 wxDefaultPosition,wxDefaultSize,wxEXPAND|wxSHAPED);
+    const wxString comboFxCropAxisTwo_choices[] = {
+        _("x-y"),
+        _("x-z"),
+        _("y-x"),
+        _("y-z"),
+        _("z-x"),
+        _("z-y")
+    };
+    comboFxCropAxisTwo = new wxComboBox(noteFxPanelCrop, ID_EFFECT_CROP_AXISTWO_COMBO, wxT(""), wxDefaultPosition, wxDefaultSize, 6, comboFxCropAxisTwo_choices, wxCB_DROPDOWN|wxCB_SIMPLE|wxCB_DROPDOWN|wxCB_READONLY);
+    panelFxCropTwo = new CropPanel(noteFxPanelCrop, ID_EFFECT_CROP_AXISTWO_COMBO,wxDefaultPosition,wxDefaultSize,wxEXPAND|wxSHAPED);
+    checkFxCropCameraFrame = new wxCheckBox(noteFxPanelCrop,ID_EFFECT_CROP_CHECK_COORDS,_("Use camera coordinates"));
+    labelFxCropDx = new wxStaticText(noteFxPanelCrop, wxID_ANY, _("dX"));
+    textFxCropDx = new wxTextCtrl(noteFxPanelCrop, ID_EFFECT_CROP_TEXT_DX, wxEmptyString);
+    labelFxCropDy = new wxStaticText(noteFxPanelCrop, wxID_ANY, _("dY"));
+    textFxCropDy = new wxTextCtrl(noteFxPanelCrop, ID_EFFECT_CROP_TEXT_DY, wxEmptyString);
+    labelFxCropDz = new wxStaticText(noteFxPanelCrop, wxID_ANY, _("dZ"));
+    textFxCropDz = new wxTextCtrl(noteFxPanelCrop, ID_EFFECT_CROP_TEXT_DZ, wxEmptyString);
+    checkFxEnableStereo = new wxCheckBox(noteFxPanelStereo, ID_EFFECT_STEREO_ENABLE, _("Enable Anaglyphic Stereo"));
+    checkFxStereoLensFlip= new wxCheckBox(noteFxPanelStereo, ID_EFFECT_STEREO_LENSFLIP, _("Flip Channels"));
+    lblFxStereoMode = new wxStaticText(noteFxPanelStereo, wxID_ANY, _("Anaglyph Mode"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
+    const wxString comboFxStereoMode_choices[] = {
+        _("Red-Blue"),
+        _("Red-Green"),
+        _("Red-Cyan"),
+        _("Green-Magenta"),
+    };
+    comboFxStereoMode = new wxComboBox(noteFxPanelStereo, ID_EFFECT_STEREO_COMBO, wxT(""), wxDefaultPosition, wxDefaultSize, 4, comboFxStereoMode_choices, wxCB_DROPDOWN|wxCB_SIMPLE|wxCB_READONLY);
+    bitmapFxStereoGlasses = new wxStaticBitmap(noteFxPanelStereo, wxID_ANY, wxNullBitmap);
+    labelFxStereoBaseline = new wxStaticText(noteFxPanelStereo, wxID_ANY, _("Baseline Separation"));
+    sliderFxStereoBaseline = new wxSlider(noteFxPanelStereo,ID_EFFECT_STEREO_BASELINE_SLIDER, 20, 0, 100);
+    checkAlphaBlend = new wxCheckBox(noteTools,ID_CHECK_ALPHA , _("Smooth && translucent objects"));
     checkAlphaBlend->SetValue(true);
-    checkLighting = new wxCheckBox(notePerformance, ID_CHECK_LIGHTING, _("3D lighting"));
+    checkLighting = new wxCheckBox(noteTools, ID_CHECK_LIGHTING, _("3D lighting"));
     checkLighting->SetValue(true);
-    checkWeakRandom = new wxCheckBox(notePerformance, ID_CHECK_WEAKRANDOM, _("Fast and weak randomisation."));
+    checkWeakRandom = new wxCheckBox(noteTools, ID_CHECK_WEAKRANDOM, _("Fast and weak randomisation."));
     checkWeakRandom->SetValue(true);
-    checkCaching = new wxCheckBox(notePerformance, ID_CHECK_CACHING, _("Filter caching"));
+    checkCaching = new wxCheckBox(noteTools, ID_CHECK_CACHING, _("Filter caching"));
     checkCaching->SetValue(true);
-    label_8 = new wxStaticText(notePerformance, wxID_ANY, _("Max. Ram usage (%)"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
-    spinCachePercent = new wxSpinCtrl(notePerformance, ID_SPIN_CACHEPERCENT, wxT("50"), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 100);
+    labelMaxRamUsage = new wxStaticText(noteTools, wxID_ANY, _("Max. Ram usage (%)"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
+    spinCachePercent = new wxSpinCtrl(noteTools, ID_SPIN_CACHEPERCENT, wxT("50"), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 100);
     panelView = new wxPanel(panelTop, ID_PANEL_VIEW);
     panelSpectra = new MathGLPane(splitterSpectra, wxID_ANY);
-    label_5 = new wxStaticText(window_2_pane_2, wxID_ANY, _("Plot List"));
+    plotListLabel = new wxStaticText(window_2_pane_2, wxID_ANY, _("Plot List"));
     const wxString *list_box_1_choices = NULL;
     plotList = new wxListBox(window_2_pane_2, ID_LIST_PLOTS, wxDefaultPosition, wxDefaultSize, 0, list_box_1_choices, wxLB_MULTIPLE|wxLB_NEEDED_SB|wxLB_SORT);
     gridRawData = new CopyGrid(noteRaw, ID_GRID_RAW_DATA);
     btnRawDataSave = new wxButton(noteRaw, wxID_SAVE, wxEmptyString);
     btnRawDataClip = new wxButton(noteRaw, wxID_COPY, wxEmptyString);
-    textConsoleOut = new wxTextCtrl(noteDataView_pane_3, wxID_ANY, wxEmptyString,wxDefaultPosition,
+    textConsoleOut = new wxTextCtrl(noteDataView_pane_3, 
+		    wxID_ANY, wxEmptyString,wxDefaultPosition,
 		    wxDefaultSize,wxTE_MULTILINE|wxTE_READONLY);
 
 
-    //Tuned splitter parameters.
+    //Disable post-processing
+#ifndef APPLE_EFFECTS_WORKAROUND
+    checkPostProcessing->SetValue(false); 
+    noteFxPanelCrop->Enable(false);
+    noteFxPanelStereo->Enable(false);
+#else
+    //Disable Fx panel stereo controls explicitly
+    comboFxStereoMode->Enable(false);
+    sliderFxStereoBaseline->Enable(false);
+    checkFxStereoLensFlip->Enable(false);
+
+    //Disable Crop controls explicitly
+    checkFxCropCameraFrame->Enable(false);
+    comboFxCropAxisOne->Enable(false);
+    panelFxCropOne->Enable(false);
+    comboFxCropAxisTwo->Enable(false);
+    panelFxCropTwo->Enable(false);
+    textFxCropDx->Enable(false);
+    textFxCropDy->Enable(false);
+    textFxCropDz->Enable(false);
+    labelFxCropDx->Enable(false);
+    labelFxCropDy->Enable(false);
+    labelFxCropDz->Enable(false);
+
+#endif
+
+    //Link the crop panels in the post section appropriately
+    panelFxCropOne->link(panelFxCropTwo,CROP_LINK_BOTH); 
+    panelFxCropTwo->link(panelFxCropOne,CROP_LINK_BOTH); 
+
+
+
+    //Manually tuned splitter parameters.
     filterSplitter->SetMinimumPaneSize(80);
     filterSplitter->SetSashGravity(0.8);
     splitLeftRight->SetSashGravity(0.15);
     splitTopBottom->SetSashGravity(0.85);
     splitterSpectra->SetSashGravity(0.82);
 
+    //Last Refresh box
     listLastRefresh->InsertColumn(0,_("Type"));
     listLastRefresh->InsertColumn(1,_("Num"));
-
     MainFrame_statusbar = CreateStatusBar(3, 0);
- 
+
+    //Inform top panel about timer and timeouts
     panelTop->setParentStatus(MainFrame_statusbar,statusTimer,STATUS_TIMER_DELAY);
+
     panelTop->clearCameraUpdates();
+
     set_properties();
     do_layout();
     // end wxGlade
@@ -413,6 +573,32 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 
 		for(unsigned int ui=0;ui<strVec.size();ui++)
 			recentHistory->AddFileToHistory(wxStr(strVec[ui]));
+
+
+		if(!configFile.getPanelEnabled(CONFIG_STARTUPPANEL_CONTROL))
+		{
+			splitLeftRight->Unsplit(panelLeft);
+			checkMenuControlPane->Check(false);
+		}
+		if(!configFile.getPanelEnabled(CONFIG_STARTUPPANEL_RAWDATA))
+		{
+			splitTopBottom->Unsplit();
+			checkMenuRawDataPane->Check(false);
+		}
+		if(!configFile.getPanelEnabled(CONFIG_STARTUPPANEL_PLOTLIST))
+		{
+			splitterSpectra->Unsplit();
+			checkMenuSpectraList->Check(false);
+		}
+
+
+	}
+	else
+	{
+		textConsoleOut->AppendText(_("Warning: Your configuration file appears to be invalid:\n"));
+		wxString wxS = _("\tConfig Load: ");
+		wxS+= wxStr( configFile.getErrMessage());
+		textConsoleOut->AppendText(wxS);
 	}
 	
 	//Attempt to load the auto-save file, if it exists
@@ -493,6 +679,7 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
 
     EVT_MENU(ID_EDIT_UNDO, MainWindowFrame::OnEditUndo)
     EVT_MENU(ID_EDIT_REDO, MainWindowFrame::OnEditRedo)
+    EVT_MENU(ID_EDIT_PREFERENCES, MainWindowFrame::OnEditPreferences)
     
     EVT_MENU(ID_VIEW_BACKGROUND, MainWindowFrame::OnViewBackground)
     EVT_MENU(ID_VIEW_CONTROL_PANE, MainWindowFrame::OnViewControlPane)
@@ -538,6 +725,17 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_LISTBOX(ID_LIST_PLOTS, MainWindowFrame::OnSpectraListbox)
     EVT_CLOSE(MainWindowFrame::OnClose)
     EVT_TREE_END_LABEL_EDIT(ID_TREE_FILTERS,MainWindowFrame::OnTreeEndLabelEdit)
+   
+    //Post-processing stuff	
+    EVT_CHECKBOX(ID_EFFECT_ENABLE, MainWindowFrame::OnCheckPostProcess)
+    EVT_CHECKBOX(ID_EFFECT_CROP_ENABLE, MainWindowFrame::OnFxCropCheck)
+    EVT_CHECKBOX(ID_EFFECT_CROP_CHECK_COORDS, MainWindowFrame::OnFxCropCamFrameCheck)
+    EVT_COMBOBOX(ID_EFFECT_CROP_AXISONE_COMBO, MainWindowFrame::OnFxCropAxisOne)
+    EVT_COMBOBOX(ID_EFFECT_CROP_AXISTWO_COMBO, MainWindowFrame::OnFxCropAxisTwo)
+    EVT_CHECKBOX(ID_EFFECT_STEREO_ENABLE, MainWindowFrame::OnFxStereoEnable)
+    EVT_CHECKBOX(ID_EFFECT_STEREO_LENSFLIP, MainWindowFrame::OnFxStereoLensFlip)
+    EVT_COMBOBOX(ID_EFFECT_STEREO_COMBO, MainWindowFrame::OnFxStereoCombo)
+    EVT_COMMAND_SCROLL(ID_EFFECT_STEREO_BASELINE_SLIDER, MainWindowFrame::OnFxStereoBaseline)
    
     // end wxGlade
 END_EVENT_TABLE();
@@ -737,7 +935,17 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 		else
 			gridCameraProperties->clear();
 
-	
+		//Check to see if we have any effects that we need to enable
+		vector<const Effect*> effs;
+		panelTop->currentScene.getEffects(effs);
+		if(effs.size())
+		{
+			//OK, we have some effects; we will need to update the UI
+			cerr << "Looks like we have to do some updating" << endl;
+			updateFxUI(effs);
+		}
+
+
 
 		currentFile =fileStr;
 		fileSave->Enable(true);
@@ -846,6 +1054,10 @@ void MainWindowFrame::OnFileSave(wxCommandEvent &event)
 	{
 		fileSave->Enable(true);
 
+		//Update the recent files, and the menu.
+		configFile.addRecentFile(dataFile);
+		recentHistory->AddFileToHistory(wxStr(dataFile));
+		
 		dataFile=std::string("Saved state: ") + dataFile;
 		statusMessage(dataFile.c_str(),MESSAGE_INFO);
 
@@ -1364,6 +1576,10 @@ void MainWindowFrame::OnFileSaveAs(wxCommandEvent &event)
 		currentFile = wxF->GetPath();
 		fileSave->Enable(true);
 
+		//Update the recent files, and the menu.
+		configFile.addRecentFile(dataFile);
+		recentHistory->AddFileToHistory(wxStr(dataFile));
+	
 		dataFile=std::string("Saved state: ") + dataFile;
 		statusMessage(dataFile.c_str(),MESSAGE_INFO);
 	}
@@ -1390,7 +1606,7 @@ void MainWindowFrame::OnEditUndo(wxCommandEvent &event)
 		//Get the parent filter pointer	
 		wxTreeItemData *parentData=treeFilters->GetItemData(id);
 		//Update property grid	
-		visControl.updateFilterPropertyGrid(gridFilterProperties,
+		visControl.updateFilterPropGrid(gridFilterProperties,
 						((wxTreeUint *)parentData)->value);
 
 	}
@@ -1419,7 +1635,7 @@ void MainWindowFrame::OnEditRedo(wxCommandEvent &event)
 		//Get the parent filter pointer	
 		wxTreeItemData *parentData=treeFilters->GetItemData(id);
 		//Update property grid	
-		visControl.updateFilterPropertyGrid(gridFilterProperties,
+		visControl.updateFilterPropGrid(gridFilterProperties,
 						((wxTreeUint *)parentData)->value);
 
 	}
@@ -1432,6 +1648,61 @@ void MainWindowFrame::OnEditRedo(wxCommandEvent &event)
 
 
 	doSceneUpdate();
+}
+
+void MainWindowFrame::OnEditPreferences(wxCommandEvent &event)
+{
+	//Create  a new preference dialog
+	PrefDialog *p = new PrefDialog(this);
+
+	vector<Filter *> filterDefaults;
+
+	//obtain direct copies of the cloned Filter pointers
+	configFile.getFilterDefaults(filterDefaults);
+
+	p->setFilterDefaults(filterDefaults);
+
+	unsigned int panelMode;
+
+	//Set Panel startup flags
+	bool rawStartup,controlStartup,plotStartup;
+	controlStartup=configFile.getPanelEnabled(CONFIG_STARTUPPANEL_CONTROL);
+	rawStartup=configFile.getPanelEnabled(CONFIG_STARTUPPANEL_RAWDATA);
+	plotStartup=configFile.getPanelEnabled(CONFIG_STARTUPPANEL_PLOTLIST);
+
+	panelMode=configFile.getStartupPanelMode();
+
+	p->setPanelDefaults(panelMode,controlStartup,rawStartup,plotStartup);
+
+	//Initialise panel
+	p->initialise();
+	//show panel
+	if(p->ShowModal() !=wxID_OK)
+	{
+		p->cleanup();
+		p->Destroy();
+		return;
+	}
+
+	filterDefaults.clear();
+
+	//obtain cloned copies of the pointers
+	p->getFilterDefaults(filterDefaults);
+
+	//Note that this transfers control of pointer to the config file 
+	configFile.setFilterDefaults(filterDefaults);
+
+	//Retrieve pane settings, and pass to config manager
+	p->getPanelDefaults(panelMode,controlStartup,rawStartup,plotStartup);
+	
+	configFile.setPanelEnabled(CONFIG_STARTUPPANEL_CONTROL,controlStartup,true);
+	configFile.setPanelEnabled(CONFIG_STARTUPPANEL_RAWDATA,rawStartup,true);
+	configFile.setPanelEnabled(CONFIG_STARTUPPANEL_PLOTLIST,plotStartup,true);
+
+	configFile.setStartupPanelMode(panelMode);
+
+	p->cleanup();
+	p->Destroy();
 }
 
 void MainWindowFrame::OnViewBackground(wxCommandEvent &event)
@@ -1468,13 +1739,17 @@ void MainWindowFrame::OnViewControlPane(wxCommandEvent &event)
 			GetClientSize(&x,&y);
 			splitLeftRight->SplitVertically(panelLeft,
 						panelRight,(int)(SPLIT_FACTOR*x));
+			configFile.setPanelEnabled(CONFIG_STARTUPPANEL_CONTROL,true);
 	
 		}
 	}
 	else
 	{
 		if(splitLeftRight->IsSplit())
+		{
 			splitLeftRight->Unsplit(panelLeft);
+			configFile.setPanelEnabled(CONFIG_STARTUPPANEL_CONTROL,false);
+		}
 	}
 }
 
@@ -1492,12 +1767,16 @@ void MainWindowFrame::OnViewRawDataPane(wxCommandEvent &event)
 			splitTopBottom->SplitHorizontally(panelTop,
 						noteDataView,(int)(SPLIT_FACTOR*x));
 	
+			configFile.setPanelEnabled(CONFIG_STARTUPPANEL_RAWDATA,true);
 		}
 	}
 	else
 	{
 		if(splitTopBottom->IsSplit())
+		{
 			splitTopBottom->Unsplit();
+			configFile.setPanelEnabled(CONFIG_STARTUPPANEL_RAWDATA,false);
+		}
 	}
 }
 
@@ -1514,12 +1793,16 @@ void MainWindowFrame::OnViewSpectraList(wxCommandEvent &event)
 			splitterSpectra->SplitVertically(panelSpectra,
 						window_2_pane_2,(int)(SPLIT_FACTOR*x));
 	
+			configFile.setPanelEnabled(CONFIG_STARTUPPANEL_PLOTLIST,true);
 		}
 	}
 	else
 	{
 		if(splitterSpectra->IsSplit())
+		{
 			splitterSpectra->Unsplit();
+			configFile.setPanelEnabled(CONFIG_STARTUPPANEL_PLOTLIST,false);
+		}
 	}
 }
 
@@ -1555,10 +1838,9 @@ void MainWindowFrame::OnButtonStashDialog(wxCommandEvent &event)
 {
 	std::vector<std::pair<std::string,unsigned int > > stashList;
 	visControl.getStashList(stashList);
-#ifdef DEbUG
 
 	ASSERT(comboStash->GetCount() == stashList.size())
-#endif
+
 	if(!stashList.size())
 	{
 		statusMessage("No filter stashes to edit.",MESSAGE_ERROR);
@@ -1830,7 +2112,7 @@ void MainWindowFrame::OnTreeSelectionChange(wxTreeEvent &event)
 	//Tree data contains unique identifier for vis control to do matching
 	wxTreeItemData *tData=treeFilters->GetItemData(id);
 
-	visControl.updateFilterPropertyGrid(gridFilterProperties,
+	visControl.updateFilterPropGrid(gridFilterProperties,
 					((wxTreeUint *)tData)->value);
 
 
@@ -2007,7 +2289,7 @@ void MainWindowFrame::OnTreeKeyDown(wxTreeEvent &event)
 				//Note, you *must* update the tree after the grid if you
 				//wish to deferefence the treeItem, otherwise the treeitem
 				//referred to by the pointer is destroyed, and invalid
-				visControl.updateFilterPropertyGrid(gridFilterProperties,
+				visControl.updateFilterPropGrid(gridFilterProperties,
 								((wxTreeUint *)parentData)->value);
 				visControl.updateWxTreeCtrl(treeFilters,parentFilter);
 			}
@@ -2077,12 +2359,12 @@ void MainWindowFrame::OnGridFilterPropertyChange(wxGridEvent &event)
 
 		if(needUpdate && checkAutoUpdate->GetValue())
 			doSceneUpdate();
-		visControl.updateFilterPropertyGrid(gridFilterProperties,filterId);
+		visControl.updateFilterPropGrid(gridFilterProperties,filterId);
 	}
-	programmaticEvent=false;
 	editUndoMenuItem->Enable(visControl.getUndoSize());
 	editRedoMenuItem->Enable(visControl.getRedoSize());
 	Layout();
+	programmaticEvent=false;
 }
 
 void MainWindowFrame::OnGridCameraPropertyChange(wxGridEvent &event)
@@ -2269,24 +2551,11 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 		return;
 	}
 
+	//Perform the appropriate action for the particular filter,
+	//or use the default action for every other filter
 	bool haveErr=false;
 	switch(event.GetSelection())
 	{
-		case COMBO_FILTER_DOWNSAMPLE:
-		{
-			IonDownsampleFilter *f = new IonDownsampleFilter;
-			f->setControlledOut(true);
-			f->setFilterCount(DEFAULT_IONS_VIEW);
-			//Tree data contains unique identifier for vis control to do matching
-			wxTreeItemData *tData=treeFilters->GetItemData(id);
-
-			ASSERT(tData);
-			visControl.addFilter(f,((wxTreeUint *)tData)->value);
-
-			//Rebuild tree control
-			visControl.updateWxTreeCtrl(treeFilters,f);
-			break;
-		}
 		case COMBO_FILTER_RANGEFILE:
 		{
 			///Prompt user for file
@@ -2302,6 +2571,11 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 
 			//Load rangefile &  construct filter
 			RangeFileFilter *f = new RangeFileFilter;
+			
+			Filter *t;
+			t=configFile.getDefaultFilter(f->getType());
+			delete f;
+			f=(RangeFileFilter*)t;
 
 			//Split the filename into chunks. path, volume, name and extention
 			//the format of this is OS dependant, but wxWidgets can deal with this.
@@ -2368,126 +2642,26 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 			visControl.updateWxTreeCtrl(treeFilters,f);
 			break;
 		}
-		case COMBO_FILTER_SPECTRUM:
-		{
-			SpectrumPlotFilter *f = new SpectrumPlotFilter;
-			//Tree data contains unique identifier for vis control to do matching
-			wxTreeItemData *tData=treeFilters->GetItemData(id);
-
-			ASSERT(tData);
-			visControl.addFilter(f,((wxTreeUint *)tData)->value);
-
-			//Rebuild tree control
-			visControl.updateWxTreeCtrl(treeFilters,f);
-			break;
-		}
-		case COMBO_FILTER_CLIPPING:
-		{
-			IonClipFilter *f = new IonClipFilter;
-			//Tree data contains unique identifier for vis control to do matching
-			wxTreeItemData *tData=treeFilters->GetItemData(id);
-
-			ASSERT(tData);
-			visControl.addFilter(f,((wxTreeUint *)tData)->value);
-
-			//Rebuild tree control
-			visControl.updateWxTreeCtrl(treeFilters,f);
-			break;
-		}
-		case COMBO_FILTER_COLOUR:
-		{
-			IonColourFilter *f = new IonColourFilter;
-			//Tree data contains unique identifier for vis control to do matching
-			wxTreeItemData *tData=treeFilters->GetItemData(id);
-
-			ASSERT(tData);
-			visControl.addFilter(f,((wxTreeUint *)tData)->value);
-
-			//Rebuild tree control
-			visControl.updateWxTreeCtrl(treeFilters,f);
-			break;
-		}		
-		case COMBO_FILTER_COMPOSITION_PROFILE:
-		{
-			CompositionProfileFilter *f = new CompositionProfileFilter;
-			//Tree data contains unique identifier for vis control to do matching
-			wxTreeItemData *tData=treeFilters->GetItemData(id);
-			
-			ASSERT(tData);
-			visControl.addFilter(f,((wxTreeUint *)tData)->value);
-			
-			//Rebuild tree control
-			visControl.updateWxTreeCtrl(treeFilters,f);
-			break;
-		}
-		case COMBO_FILTER_VOXELS:
-		{
-			VoxeliseFilter *f = new VoxeliseFilter;
-			//Tree data contains unique identifier for vis control to do matching
-			wxTreeItemData *tData=treeFilters->GetItemData(id);
-			
-			ASSERT(tData);
-			visControl.addFilter(f,((wxTreeUint *)tData)->value);
-			
-			//Rebuild tree control
-			visControl.updateWxTreeCtrl(treeFilters,f);
-			break;
-		}
-		case COMBO_FILTER_BOUNDINGBOX:
-		{
-			BoundingBoxFilter *f = new BoundingBoxFilter;
-			//Tree data contains unique identifier for vis control to do matching
-			wxTreeItemData *tData=treeFilters->GetItemData(id);
-
-			ASSERT(tData);
-			visControl.addFilter(f,((wxTreeUint *)tData)->value);
-
-			//Rebuild tree control
-			visControl.updateWxTreeCtrl(treeFilters,f);
-			break;
-		}
-		case COMBO_FILTER_TRANSFORM:
-		{
-			TransformFilter *f = new TransformFilter;
-			//Tree data contains unique identifier for vis control to do matching
-			wxTreeItemData *tData=treeFilters->GetItemData(id);
-
-			ASSERT(tData);
-			visControl.addFilter(f,((wxTreeUint *)tData)->value);
-
-			//Rebuild tree control
-			visControl.updateWxTreeCtrl(treeFilters,f);
-			break;
-		}
-		case COMBO_FILTER_EXTERNALPROG:
-		{
-			ExternalProgramFilter *f = new ExternalProgramFilter;
-			//Tree data contains unique identifier for vis control to do matching
-			wxTreeItemData *tData=treeFilters->GetItemData(id);
-
-			ASSERT(tData);
-			visControl.addFilter(f,((wxTreeUint *)tData)->value);
-
-			//Rebuild tree control
-			visControl.updateWxTreeCtrl(treeFilters,f);
-			break;
-		}
-		case COMBO_FILTER_SPATIAL_ANALYSIS:
-		{
-			SpatialAnalysisFilter *f = new SpatialAnalysisFilter;
-			//Tree data contains unique identifier for vis control to do matching
-			wxTreeItemData *tData=treeFilters->GetItemData(id);
-
-			ASSERT(tData);
-			visControl.addFilter(f,((wxTreeUint *)tData)->value);
-
-			//Rebuild tree control
-			visControl.updateWxTreeCtrl(treeFilters,f);
-			break;
-		}
 		default:
-			ASSERT(false);
-			haveErr=true;
+		{
+			Filter *t;
+			unsigned int filterType;
+			filterType=comboFiltersTypeMapping[event.GetSelection()];
+		
+			ASSERT(filterType < FILTER_TYPE_ENUM_END);
+			//Generate the appropriate filter
+			t=configFile.getDefaultFilter(filterType);
+			//Tree data contains unique identifier for vis control to do matching
+			wxTreeItemData *tData=treeFilters->GetItemData(id);
+			
+			ASSERT(tData);
+			//Add the filter to viscontrol
+			visControl.addFilter(t,((wxTreeUint *)tData)->value);
+
+			//Rebuild tree control
+			visControl.updateWxTreeCtrl(treeFilters,t);
+		}
+	
 	}
 
 	if(haveErr)
@@ -2512,9 +2686,13 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 void MainWindowFrame::doSceneUpdate()
 {
 	//Update scene
+	
+	//Susespend the update timer, and star thte progress timer
+	updateTimer->Stop();
 	progressTimer->Start(150);		
 	currentlyUpdatingScene=true;
 	haveAborted=false;
+	
 	statusMessage("",MESSAGE_NONE);
 
 	//Disable tree filters,refresh button and undo
@@ -2525,17 +2703,22 @@ void MainWindowFrame::doSceneUpdate()
 	editRedoMenuItem->Enable(false);
 	gridFilterProperties->Enable(false);
 	comboStash->Enable(false);
+
 	panelSpectra->limitInteraction();
 	panelSpectra->Refresh();
-	
+
+
+	if(!requireFirstUpdate)
+		textConsoleOut->Clear();	
 
 	//Set focus on the main frame itself, so that we can catch escape key presses
 	SetFocus();
 
-	//Attempt a scene update
 	unsigned int errCode=visControl.updateScene();
 
 	progressTimer->Stop();
+	updateTimer->Start(UPDATE_TIMER_DELAY);
+
 	//If there was an error, then
 	//display it	
 	if(errCode)
@@ -2553,11 +2736,9 @@ void MainWindowFrame::doSceneUpdate()
 		statusMessage(errString.c_str(),MESSAGE_ERROR);	
 	}
 
+	//Call the progress one more time, in order to ensure that user sees "100%"
 	if(!errCode)
-	{
-		//Call the progress one more time, in order to ensure that user sees "100%"
 		updateProgressStatus();
-	}
 	
 	currentlyUpdatingScene=false;
 	visControl.resetProgress();
@@ -2572,7 +2753,6 @@ void MainWindowFrame::doSceneUpdate()
 	editUndoMenuItem->Enable(visControl.getUndoSize());
 	editRedoMenuItem->Enable(visControl.getRedoSize());
 	
-	statusTimer->Start(STATUS_TIMER_DELAY,wxTIMER_ONE_SHOT);
 	panelTop->Refresh(false);
 	panelSpectra->Refresh(false);	
 
@@ -2623,6 +2803,7 @@ void MainWindowFrame::OnAutosaveTimer(wxTimerEvent &event)
 
 void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 {
+	timerEvent=true;
 
 	//FIXME: HACK AROUND: force tree filter to relayout under wxGTK and Mac
 	#ifndef __WXMSW__
@@ -2637,7 +2818,9 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 		//structure
 		visControl.updateWxTreeCtrl(treeFilters);
 		refreshButton->Enable(visControl.numFilters());
+		
 		doSceneUpdate();
+
 		//If we are using the default camera,
 		//move it to make sure that it is visible
 		if(visControl.numCams() == 1)
@@ -2645,6 +2828,14 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 
 		panelTop->Refresh();
 		requireFirstUpdate=false;
+	}
+
+
+	//see if we need to update the post effects due to user interaction
+	//with the crop panels
+	if(panelFxCropOne->hasUpdate() || panelFxCropTwo->hasUpdate())
+	{
+		updatePostEffects();
 	}
 
 	//Check viscontrol to see if it needs an update, such as
@@ -2666,7 +2857,6 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 
 		doSceneUpdate();
 	}
-
 
 	//Check the openGL pane to see if the camera property grid needs refreshing
 	if(panelTop->hasCameraUpdates())
@@ -2700,14 +2890,18 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 		{
 			//Tree data contains unique identifier for vis control to do matching
 			wxTreeItemData *tData=treeFilters->GetItemData(id);
-			visControl.updateFilterPropertyGrid(gridFilterProperties,
+			visControl.updateFilterPropGrid(gridFilterProperties,
 							((wxTreeUint *)tData)->value);
 			editUndoMenuItem->Enable(visControl.getUndoSize());
 			editRedoMenuItem->Enable(visControl.getRedoSize());
 		}
 
 	}
-	
+
+
+
+
+	timerEvent=false;	
 }
 
 void MainWindowFrame::statusMessage(const char *message, unsigned int type)
@@ -2799,6 +2993,225 @@ void MainWindowFrame::updateProgressStatus()
 	MainFrame_statusbar->SetBackgroundColour(wxNullColour);
 }
 
+void MainWindowFrame::updatePostEffects()
+{
+	panelTop->currentScene.clearEffects();
+
+	//Do we need post-processing?
+#ifndef APPLE_EFFECTS_WORKAROUND
+	if(!checkPostProcessing->IsChecked())
+		return;
+#endif
+	if( checkFxCrop->IsChecked())
+	{
+
+		wxString ws;
+		string s;
+		ws=comboFxCropAxisOne->GetValue();
+		s =stlStr(ws);
+
+		//String encodes permutation (eg "x-y").
+		unsigned int axisPerm[4];
+		axisPerm[0] =(unsigned int)(s[0] -'x')*2;
+		axisPerm[1] = (unsigned int)(s[0] -'x')*2+1;
+		axisPerm[2] =(unsigned int)(s[2] -'x')*2;
+		axisPerm[3] = (unsigned int)(s[2] -'x')*2+1;
+		
+		//Get the crop data, and generate an effect
+		BoxCropEffect *b = new BoxCropEffect;
+
+		//Assume, that unless otherwise specified
+		//the default crop value is zer
+		float array[6];
+		float tmpArray[4];
+		for(unsigned int ui=0;ui<6;ui++)
+			array[ui]=0;
+		
+		//Permute the indicies for the crop fractions, then assign
+		panelFxCropOne->getCropValues(tmpArray);
+		for(unsigned int ui=0;ui<4;ui++)
+			array[axisPerm[ui]] = tmpArray[ui];
+		
+		
+		ws=comboFxCropAxisTwo->GetValue();
+		s =stlStr(ws);
+		
+		axisPerm[0] =(unsigned int)(s[0] -'x')*2;
+		axisPerm[1] = (unsigned int)(s[0] -'x')*2+1;
+		axisPerm[2] =(unsigned int)(s[2] -'x')*2;
+		axisPerm[3] = (unsigned int)(s[2] -'x')*2+1;
+		panelFxCropTwo->getCropValues(tmpArray);
+		
+		for(unsigned int ui=0;ui<4;ui++)
+			array[axisPerm[ui]] = tmpArray[ui];
+
+		b->setFractions(array);
+
+		//Should we be using the camera frame?
+		b->useCamCoords(checkFxCropCameraFrame->IsChecked());
+
+		//Send the effect to the scene
+		if(b->willDoSomething())
+		{
+			panelTop->currentScene.addEffect(b);
+			panelTop->currentScene.setEffects(true);
+
+
+			//Update the dx,dy and dz boxes
+			BoundCube bcTmp;
+			bcTmp=panelTop->currentScene.getBound();
+
+			b->testCroppedBounds(bcTmp);	
+
+			if(checkFxCropCameraFrame->IsChecked())
+			{
+				float delta;
+				delta=bcTmp.getBound(0,1)-bcTmp.getBound(0,0);
+				stream_cast(s,delta);
+				textFxCropDx->SetValue(wxStr(s));
+				
+				delta=bcTmp.getBound(1,1)-bcTmp.getBound(1,0);
+				stream_cast(s,delta);
+				textFxCropDy->SetValue(wxStr(s));
+				
+				delta=bcTmp.getBound(2,1)-bcTmp.getBound(2,0);
+				stream_cast(s,delta);
+				textFxCropDz->SetValue(wxStr(s));
+			}
+			else
+			{
+				textFxCropDx->SetValue(_(""));
+				textFxCropDy->SetValue(_(""));
+				textFxCropDz->SetValue(_(""));
+			}
+			
+			//well, we dealt with this update.
+			panelFxCropOne->clearUpdate();
+			panelFxCropTwo->clearUpdate();
+		}
+		else
+		{
+			textFxCropDx->SetValue(_(""));
+			textFxCropDy->SetValue(_(""));
+			textFxCropDz->SetValue(_(""));
+			delete b;
+
+			//we should let this return true, 
+			//so that an update takes hold
+		}
+
+	}
+	
+
+	if(checkFxEnableStereo->IsChecked())
+	{
+		AnaglyphEffect *anaglyph = new AnaglyphEffect;
+
+		unsigned int sel;
+		sel=comboFxStereoMode->GetSelection();
+		anaglyph->setMode(sel);
+		int v=sliderFxStereoBaseline->GetValue();
+
+		float shift=((float)v)*BASELINE_SHIFT_FACTOR;
+
+		anaglyph->setBaseShift(shift);
+		anaglyph->setFlip(checkFxStereoLensFlip->IsChecked());
+		panelTop->currentScene.addEffect(anaglyph);
+	}
+
+	panelTop->Refresh();
+}
+
+void MainWindowFrame::updateFxUI(const vector<const Effect*> &effs)
+{
+	//Here we pull information out from the effects and then
+	//update the  ui controls accordingly
+
+	Freeze();
+
+	for(unsigned int ui=0;ui<effs.size();ui++)
+	{
+		switch(effs[ui]->getType())
+		{
+			case EFFECT_BOX_CROP:
+			{
+				const BoxCropEffect *e=(const BoxCropEffect*)effs[ui];
+
+				//Enable the checkbox
+				checkFxCrop->SetValue(true);
+				//set the combos back to x-y y-z
+				comboFxCropAxisOne->SetSelection(0);
+				comboFxCropAxisTwo->SetSelection(1);
+			
+				//Temporarily de-link the panels
+				panelFxCropOne->link(0,CROP_LINK_NONE);
+				panelFxCropTwo->link(0,CROP_LINK_NONE);
+
+				//Set the crop values 
+				//FIXME: I don't think the ordering here is right
+				for(unsigned int ui=0;ui<6;ui++)
+				{
+					if(ui<4)
+						panelFxCropOne->setCropValue(ui,
+							e->getCropValue(ui));
+					else if(ui > 2)
+						panelFxCropTwo->setCropValue(ui-2,
+							e->getCropValue(ui));
+				}
+
+				//Ensure that the values that went in were valid
+				panelFxCropOne->makeCropValuesValid();
+				panelFxCropTwo->makeCropValuesValid();
+
+
+				//Restore the panel linkage
+				panelFxCropOne->link(panelFxCropTwo,CROP_LINK_BOTH); 
+				panelFxCropTwo->link(panelFxCropOne,CROP_LINK_BOTH); 
+
+
+				break;
+			}
+			case EFFECT_ANAGLYPH:
+			{
+				const AnaglyphEffect *e=(const AnaglyphEffect*)effs[ui];
+				//Set the slider from the base-shift value
+				float shift;
+				shift=e->getBaseShift();
+				sliderFxStereoBaseline->SetValue(
+					(unsigned int)(shift/BASELINE_SHIFT_FACTOR));
+
+
+				//Set the stereo drop down colour
+				unsigned int mode;
+				mode = e->getMode();
+				ASSERT(mode < comboFxStereoMode->GetCount());
+
+				comboFxStereoMode->SetSelection(mode);
+				//Enable the stereo mode
+				checkFxEnableStereo->SetValue(true);
+				break;
+			}
+			default:
+				ASSERT(false);
+		}
+	
+	}
+
+	//Re-enable the effects UI as needed
+	if(effs.size())
+	{
+#ifdef APPLE_EFFECTS_WORKAROUND
+		checkPostProcessing->SetValue(true);
+		noteFxPanelCrop->Enable();
+		noteFxPanelStereo->Enable();
+#endif
+		visControl.setEffects(true);
+	}
+	
+
+	Thaw();
+}
+
 void MainWindowFrame::OnProgressAbort(wxCommandEvent &event)
 {
 	if(!haveAborted)
@@ -2808,10 +3221,44 @@ void MainWindowFrame::OnProgressAbort(wxCommandEvent &event)
 
 void MainWindowFrame::OnViewFullscreen(wxCommandEvent &event)
 {
+	if(programmaticEvent)
+		return;
+
+	programmaticEvent=true;
+
 	//Toggle fullscreen, leave the menubar  & statsbar visible
-	checkViewFullscreen->Check(!IsFullScreen());	
-	ShowFullScreen(!IsFullScreen(), wxFULLSCREEN_NOTOOLBAR| 
-			 wxFULLSCREEN_NOBORDER| wxFULLSCREEN_NOCAPTION );}
+
+	unsigned int flags;
+	switch(fullscreenState)
+	{
+		case 0:
+		{
+			flags= wxFULLSCREEN_NOTOOLBAR | wxFULLSCREEN_NOTOOLBAR | wxFULLSCREEN_NOTOOLBAR;
+			ShowFullScreen(true,flags);
+			break;
+		}
+		case 1:
+		{
+			//workaround for wxGTK (at least)
+			//First freeze the window, then toggle fullscreen off, then back on
+			Freeze();
+			ShowFullScreen(false);
+			ShowFullScreen(true);
+			Thaw();
+			break;
+		}
+		case 2:
+			ShowFullScreen(false);
+			break;
+		default:
+			ASSERT(false);
+
+	}
+	fullscreenState++;
+	fullscreenState%=3;
+
+	programmaticEvent=false;
+}
 
 void MainWindowFrame::OnButtonRefresh(wxCommandEvent &event)
 {
@@ -2833,7 +3280,8 @@ void MainWindowFrame::OnButtonRefresh(wxCommandEvent &event)
 
 void MainWindowFrame::OnRawDataUnsplit(wxSplitterEvent &event)
 {
-    checkMenuRawDataPane->Check(false);
+	checkMenuRawDataPane->Check(false);
+	configFile.setPanelEnabled(CONFIG_STARTUPPANEL_RAWDATA,false);
 }
 
 void MainWindowFrame::OnFilterPropDoubleClick(wxSplitterEvent &event)
@@ -2844,13 +3292,17 @@ void MainWindowFrame::OnFilterPropDoubleClick(wxSplitterEvent &event)
 
 void MainWindowFrame::OnControlUnsplit(wxSplitterEvent &event)
 {
-	splitLeftRight->Unsplit(panelLeft);
+	//Make sure that the LHS panel is removed, rather than the default (right)
+	splitLeftRight->Unsplit(panelLeft);  
+
 	checkMenuControlPane->Check(false);
+	configFile.setPanelEnabled(CONFIG_STARTUPPANEL_CONTROL,false);
 }
 
 void MainWindowFrame::OnSpectraUnsplit(wxSplitterEvent &event)
 {
-    checkMenuSpectraList->Check(false);
+	checkMenuSpectraList->Check(false);
+	configFile.setPanelEnabled(CONFIG_STARTUPPANEL_PLOTLIST,false);
 }
 
 //This function modifies the properties before showing the cell content editor.T
@@ -2858,6 +3310,12 @@ void MainWindowFrame::OnSpectraUnsplit(wxSplitterEvent &event)
 //using the default editor and modified using ::OnGridFilterPropertyChange
 void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 {
+
+	if(programmaticEvent || timerEvent)
+	{
+		event.Skip();
+		return;
+	}
 	//Find where the event occured (cell & property)
 	const GRID_PROPERTY *item=0;
 
@@ -2935,7 +3393,7 @@ void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 
 	if(needUpdate)
 	{
-		visControl.updateFilterPropertyGrid(gridFilterProperties,
+		visControl.updateFilterPropGrid(gridFilterProperties,
 						((wxTreeUint *)tData)->value);
 
 		editUndoMenuItem->Enable(visControl.getUndoSize());
@@ -2947,6 +3405,11 @@ void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 
 void MainWindowFrame::OnCameraGridCellEditorShow(wxGridEvent &event)
 {
+	if(programmaticEvent||timerEvent)
+	{
+		event.Skip();
+		return;
+	}
 	//Find where the event occured (cell & property)
 	const GRID_PROPERTY *item=0;
 
@@ -3197,6 +3660,151 @@ void MainWindowFrame::OnClose(wxCloseEvent &event)
 }
 
 
+
+void MainWindowFrame::OnCheckPostProcess(wxCommandEvent &event)
+{
+#ifdef APPLE_EFFECTS_WORKAROUND
+	//FIXME: I have disabled this under apple
+	ASSERT(false);
+#endif
+	//Disable the entire UI panel
+	noteFxPanelCrop->Enable(event.IsChecked());
+	noteFxPanelStereo->Enable(event.IsChecked());
+	visControl.setEffects(event.IsChecked());
+	updatePostEffects();
+	
+	panelTop->Refresh();
+}
+
+
+void MainWindowFrame::OnFxCropCheck(wxCommandEvent &event)
+{
+	//Disable/enable the other UI controls on the crop effects page
+	//Include the text labels to give them that "greyed-out" look
+	checkFxCropCameraFrame->Enable(event.IsChecked());
+	comboFxCropAxisOne->Enable(event.IsChecked());
+	panelFxCropOne->Enable(event.IsChecked());
+	comboFxCropAxisTwo->Enable(event.IsChecked());
+	panelFxCropTwo->Enable(event.IsChecked());
+	textFxCropDx->Enable(event.IsChecked());
+	textFxCropDy->Enable(event.IsChecked());
+	textFxCropDz->Enable(event.IsChecked());
+	labelFxCropDx->Enable(event.IsChecked());
+	labelFxCropDy->Enable(event.IsChecked());
+	labelFxCropDz->Enable(event.IsChecked());
+
+	updatePostEffects();
+}
+
+
+void MainWindowFrame::OnFxCropCamFrameCheck(wxCommandEvent &event)
+{
+	updatePostEffects();
+}
+
+
+
+void MainWindowFrame::OnFxCropAxisOne(wxCommandEvent &event)
+{
+	linkCropWidgets();
+	updatePostEffects();
+}
+
+void MainWindowFrame::OnFxCropAxisTwo(wxCommandEvent &event)
+{
+	linkCropWidgets();
+	updatePostEffects();
+}
+
+void MainWindowFrame::linkCropWidgets()
+{
+	//Adjust the link mode as needed
+	//Lets cheat a little and parse the combo box contents
+	
+	unsigned int linkMode;
+
+	string first[2],second[2];
+
+	wxString s;
+	string tmp;
+	
+	s=comboFxCropAxisOne->GetValue();
+	tmp=stlStr(s);
+	first[0]=tmp[0];
+	second[0]=tmp[2];
+
+	s=comboFxCropAxisTwo->GetValue();
+	tmp=stlStr(s);
+	first[1]=tmp[0];
+	second[1]=tmp[2];
+
+
+	linkMode=0;
+	//First and second axis match?
+	if(first[0] == first[1] && second[0] == second[1])
+	{
+		linkMode=CROP_LINK_BOTH;
+	}
+	else if(first[0] == second[1] && second[0] == first[1])
+		linkMode=CROP_LINK_BOTH_FLIP;
+	else if(first[0] == first[1])
+		linkMode=CROP_LINK_LR;
+	else if(second[0] == second[1])
+		linkMode=CROP_LINK_TB;
+	else if(second[0] == first[1])
+	{
+		panelFxCropOne->link(panelFxCropTwo,CROP_LINK_TB_FLIP);
+		panelFxCropTwo->link(panelFxCropOne,CROP_LINK_LR_FLIP);
+	}
+	else if(second[1]== first[0])
+	{
+		panelFxCropOne->link(panelFxCropTwo,CROP_LINK_LR_FLIP);
+		panelFxCropTwo->link(panelFxCropOne,CROP_LINK_TB_FLIP);
+	}
+	else
+	{
+		//Pigeonhole principle says we can't get here.
+		ASSERT(false);
+	}
+		
+
+	if(linkMode)
+	{
+		panelFxCropOne->link(panelFxCropTwo,linkMode);
+		panelFxCropTwo->link(panelFxCropOne,linkMode);
+	}
+
+}
+
+
+
+
+void MainWindowFrame::OnFxStereoEnable(wxCommandEvent &event)
+{
+	comboFxStereoMode->Enable(event.IsChecked());
+	sliderFxStereoBaseline->Enable(event.IsChecked());
+	checkFxStereoLensFlip->Enable(event.IsChecked());
+
+	updatePostEffects();
+}
+
+void MainWindowFrame::OnFxStereoLensFlip(wxCommandEvent &event)
+{
+	updatePostEffects();
+}
+
+
+void MainWindowFrame::OnFxStereoCombo(wxCommandEvent &event)
+{
+	updatePostEffects();
+}
+
+
+void MainWindowFrame::OnFxStereoBaseline(wxScrollEvent &event)
+{
+	updatePostEffects();
+}
+
 // wxGlade: add MainWindowFrame event handlers
 
 void MainWindowFrame::SetCommandLineFiles(wxArrayString &files)
@@ -3212,7 +3820,6 @@ void MainWindowFrame::SetCommandLineFiles(wxArrayString &files)
 	{
 		//OK, we got here, so it must be loaded.
 		//so we need to update.
-		//
 		requireFirstUpdate=true;
 	}
 }
@@ -3243,7 +3850,16 @@ void MainWindowFrame::set_properties()
     gridCameraProperties->SetColLabelValue(1, _("Value"));
     gridCameraProperties->SetToolTip(_("Camera data information"));
     noteCamera->SetScrollRate(10, 10);
-    notePerformance->SetScrollRate(10, 10);
+#ifndef APPLE_EFFECTS_WORKAROUND
+    checkPostProcessing->SetToolTip(_("Enable/disable visual effects on final 3D output"));
+#endif
+    checkFxCrop->SetToolTip(_("Enable cropping post-process effect"));
+    comboFxCropAxisOne->SetSelection(0);
+    comboFxCropAxisTwo->SetSelection(0);
+    checkFxEnableStereo->SetToolTip(_("Colour based 3D effect enable/disable - requires appropriate colour filter 3D glasses."));
+    comboFxStereoMode->SetToolTip(_("Glasses colour mode"));
+    comboFxStereoMode->SetSelection(0);
+    sliderFxStereoBaseline->SetToolTip(_("Level of separation between left and right images, which sets 3D depth to visual distortion tradeoff"));
     gridRawData->CreateGrid(10, 2);
     gridRawData->EnableEditing(false);
     gridRawData->EnableDragRowSize(false);
@@ -3285,15 +3901,24 @@ void MainWindowFrame::do_layout()
 {
     // begin wxGlade: MainWindowFrame::do_layout
     wxBoxSizer* topSizer = new wxBoxSizer(wxHORIZONTAL);
-    wxBoxSizer* sizer_3 = new wxBoxSizer(wxVERTICAL);
-    wxBoxSizer* sizer_10 = new wxBoxSizer(wxHORIZONTAL);
-    wxBoxSizer* sizer_7 = new wxBoxSizer(wxVERTICAL);
-    wxBoxSizer* sizer_8 = new wxBoxSizer(wxHORIZONTAL);
-    wxBoxSizer* sizer_19= new wxBoxSizer(wxVERTICAL);
-    wxBoxSizer* sizer_17= new wxBoxSizer(wxHORIZONTAL);
-    wxBoxSizer* sizer_19_copy = new wxBoxSizer(wxVERTICAL);
-    wxBoxSizer* sizer_5 = new wxBoxSizer(wxHORIZONTAL);
     wxBoxSizer* sizerLeft = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer* sizerTools = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer* sizerToolsRamUsage = new wxBoxSizer(wxHORIZONTAL);
+    wxBoxSizer* postProcessSizer = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer* sizerFxStereo = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer* sizerSetereoBaseline = new wxBoxSizer(wxHORIZONTAL);
+    wxBoxSizer* sizerStereoCombo = new wxBoxSizer(wxHORIZONTAL);
+    wxBoxSizer* cropFxSizer = new wxBoxSizer(wxVERTICAL);
+    wxFlexGridSizer* sizerFxCropGridLow = new wxFlexGridSizer(3, 2, 2, 2);
+    wxBoxSizer* cropFxBodyCentreSizer = new wxBoxSizer(wxHORIZONTAL);
+    wxBoxSizer* rightPanelSizer = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer* textConsoleSizer = new wxBoxSizer(wxHORIZONTAL);
+    wxBoxSizer* rawDataGridSizer = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer* rawDataSizer = new wxBoxSizer(wxHORIZONTAL);
+    wxBoxSizer* plotListSizery = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer* topPanelSizer = new wxBoxSizer(wxHORIZONTAL);
+    wxBoxSizer* sizerFxCropRHS = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer* sizerFxCropLHS = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer* camPaneSizer = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer* camTopRowSizer = new wxBoxSizer(wxHORIZONTAL);
     wxBoxSizer* filterPaneSizer = new wxBoxSizer(wxVERTICAL);
@@ -3326,47 +3951,87 @@ void MainWindowFrame::do_layout()
     filterSplitter->SplitHorizontally(filterTreePane, filterPropertyPane);
     filterPaneSizer->Add(filterSplitter, 1, wxEXPAND, 0);
     noteData->SetSizer(filterPaneSizer);
-    camPaneSizer->Add(label_2, 0, 0, 0);
+    camPaneSizer->Add(labelCameraName, 0, 0, 0);
     camTopRowSizer->Add(comboCamera, 3, 0, 0);
     camTopRowSizer->Add(buttonRemoveCam, 0, wxLEFT|wxRIGHT, 2);
     camPaneSizer->Add(camTopRowSizer, 0, wxTOP|wxBOTTOM|wxEXPAND, 4);
-    camPaneSizer->Add(static_line_1, 0, wxEXPAND, 0);
+    camPaneSizer->Add(cameraNamePropertySepStaticLine, 0, wxEXPAND, 0);
     camPaneSizer->Add(gridCameraProperties, 1, wxEXPAND, 0);
     noteCamera->SetSizer(camPaneSizer);
-    sizer_19->Add(checkAlphaBlend, 0, wxTOP|wxBOTTOM|wxADJUST_MINSIZE, 5);
-    sizer_19->Add(checkLighting, 0, wxTOP|wxBOTTOM|wxADJUST_MINSIZE, 5);
-    sizer_19->Add(checkWeakRandom, 0, wxTOP|wxBOTTOM|wxADJUST_MINSIZE, 5);
-    sizer_19->Add(checkCaching, 0, wxTOP|wxBOTTOM|wxADJUST_MINSIZE, 5);
-    sizer_17->Add(10, 20, 0, wxADJUST_MINSIZE, 0);
-    sizer_17->Add(label_8, 0, wxRIGHT|wxADJUST_MINSIZE, 5);
-    sizer_17->Add(spinCachePercent, 0, wxADJUST_MINSIZE, 0);
-    sizer_19->Add(sizer_17, 1, wxTOP|wxEXPAND, 5);
-    notePerformance->SetSizer(sizer_19);
+#ifndef APPLE_EFFECTS_WORKAROUND
+    postProcessSizer->Add(checkPostProcessing, 0, wxALL, 5);
+#endif
+    cropFxSizer->Add(checkFxCrop, 0, wxALL, 6);
+    cropFxSizer->Add(checkFxCropCameraFrame, 0, wxLEFT, 15);
+    sizerFxCropLHS->Add(comboFxCropAxisOne, 0, wxRIGHT|wxBOTTOM|wxEXPAND|wxALIGN_CENTER_HORIZONTAL, 5);
+    sizerFxCropLHS->Add(panelFxCropOne, 1, wxRIGHT|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxSHAPED, 5);
+    cropFxBodyCentreSizer->Add(sizerFxCropLHS, 1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 0);
+    sizerFxCropRHS->Add(comboFxCropAxisTwo, 0, wxLEFT|wxBOTTOM|wxEXPAND, 5);
+    sizerFxCropRHS->Add(panelFxCropTwo, 1, wxLEFT|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL|wxSHAPED, 5);
+    cropFxBodyCentreSizer->Add(sizerFxCropRHS, 1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 0);
+    cropFxSizer->Add(cropFxBodyCentreSizer, 1, wxLEFT|wxRIGHT|wxTOP|wxEXPAND, 5);
+    sizerFxCropGridLow->Add(labelFxCropDx, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 0);
+    sizerFxCropGridLow->Add(textFxCropDx, 0, 0, 0);
+    sizerFxCropGridLow->Add(labelFxCropDy, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 0);
+    sizerFxCropGridLow->Add(textFxCropDy, 0, 0, 0);
+    sizerFxCropGridLow->Add(labelFxCropDz, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 0);
+    sizerFxCropGridLow->Add(textFxCropDz, 0, 0, 0);
+    sizerFxCropGridLow->AddGrowableRow(0);
+    sizerFxCropGridLow->AddGrowableRow(1);
+    sizerFxCropGridLow->AddGrowableRow(2);
+    sizerFxCropGridLow->AddGrowableCol(0);
+    sizerFxCropGridLow->AddGrowableCol(1);
+    cropFxSizer->Add(sizerFxCropGridLow, 0, wxBOTTOM|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+    noteFxPanelCrop->SetSizer(cropFxSizer);
+    sizerFxStereo->Add(checkFxEnableStereo, 0, wxLEFT|wxTOP, 6);
+    sizerFxStereo->Add(20, 20, 0, 0, 0);
+    sizerStereoCombo->Add(lblFxStereoMode, 0, wxLEFT|wxRIGHT|wxALIGN_CENTER_VERTICAL, 5);
+    sizerStereoCombo->Add(comboFxStereoMode, 0, wxLEFT, 5);
+    sizerStereoCombo->Add(bitmapFxStereoGlasses, 0, 0, 0);
+    sizerFxStereo->Add(sizerStereoCombo, 0, wxBOTTOM|wxEXPAND, 15);
+    sizerSetereoBaseline->Add(labelFxStereoBaseline, 0, wxLEFT|wxTOP, 5);
+    sizerSetereoBaseline->Add(sliderFxStereoBaseline, 1, wxLEFT|wxRIGHT|wxTOP|wxEXPAND, 5);
+    sizerFxStereo->Add(sizerSetereoBaseline, 0, wxEXPAND, 0);
+    sizerFxStereo->Add(checkFxStereoLensFlip, 0, wxLEFT, 5);
+    noteFxPanelStereo->SetSizer(sizerFxStereo);
+    noteEffects->AddPage(noteFxPanelCrop, _("Crop"));
+    noteEffects->AddPage(noteFxPanelStereo, _("Stereo"));
+    postProcessSizer->Add(noteEffects, 1, wxEXPAND, 0);
+    notePost->SetSizer(postProcessSizer);
+    sizerTools->Add(checkAlphaBlend, 0, wxLEFT|wxTOP|wxBOTTOM, 5);
+    sizerTools->Add(checkLighting, 0, wxLEFT|wxTOP|wxBOTTOM, 6);
+    sizerTools->Add(checkWeakRandom, 0, wxLEFT|wxTOP|wxBOTTOM, 5);
+    sizerTools->Add(checkCaching, 0, wxLEFT|wxTOP|wxBOTTOM, 5);
+    sizerToolsRamUsage->Add(labelMaxRamUsage, 0, wxRIGHT|wxALIGN_RIGHT, 5);
+    sizerToolsRamUsage->Add(spinCachePercent, 0, 0, 5);
+    sizerTools->Add(sizerToolsRamUsage, 1, wxTOP|wxEXPAND, 5);
+    noteTools->SetSizer(sizerTools);
     notebookControl->AddPage(noteData, _("Data"));
-    notebookControl->AddPage(noteCamera, _("Cam."));
-    notebookControl->AddPage(notePerformance, _("Tools"));
+    notebookControl->AddPage(noteCamera, _("Cam"));
+    notebookControl->AddPage(notePost, _("Post"));
+    notebookControl->AddPage(noteTools, _("Tools"));
     sizerLeft->Add(notebookControl, 1, wxLEFT|wxBOTTOM|wxEXPAND, 2);
     panelLeft->SetSizer(sizerLeft);
-    sizer_5->Add(panelView, 1, wxEXPAND, 0);
-    panelTop->SetSizer(sizer_5);
-    sizer_19_copy->Add(label_5, 0, 0, 0);
-    sizer_19_copy->Add(plotList, 1, wxEXPAND, 0);
-    window_2_pane_2->SetSizer(sizer_19_copy);
+    topPanelSizer->Add(panelView, 1, wxEXPAND, 0);
+    panelTop->SetSizer(topPanelSizer);
+    plotListSizery->Add(plotListLabel, 0, 0, 0);
+    plotListSizery->Add(plotList, 1, wxEXPAND, 0);
+    window_2_pane_2->SetSizer(plotListSizery);
     splitterSpectra->SplitVertically(panelSpectra, window_2_pane_2);
-    sizer_7->Add(gridRawData, 3, wxEXPAND, 0);
-    sizer_8->Add(20, 20, 1, 0, 0);
-    sizer_8->Add(btnRawDataSave, 0, wxLEFT, 2);
-    sizer_8->Add(btnRawDataClip, 0, wxLEFT, 2);
-    sizer_7->Add(sizer_8, 0, wxTOP|wxEXPAND, 5);
-    noteRaw->SetSizer(sizer_7);
-    sizer_10->Add(textConsoleOut, 1, wxEXPAND, 0);
-    noteDataView_pane_3->SetSizer(sizer_10);
+    rawDataGridSizer->Add(gridRawData, 3, wxEXPAND, 0);
+    rawDataSizer->Add(20, 20, 1, 0, 0);
+    rawDataSizer->Add(btnRawDataSave, 0, wxLEFT, 2);
+    rawDataSizer->Add(btnRawDataClip, 0, wxLEFT, 2);
+    rawDataGridSizer->Add(rawDataSizer, 0, wxTOP|wxEXPAND, 5);
+    noteRaw->SetSizer(rawDataGridSizer);
+    textConsoleSizer->Add(textConsoleOut, 1, wxEXPAND, 0);
+    noteDataView_pane_3->SetSizer(textConsoleSizer);
     noteDataView->AddPage(splitterSpectra, _("Spec."));
     noteDataView->AddPage(noteRaw, _("Raw"));
     noteDataView->AddPage(noteDataView_pane_3, _("Cons."));
     splitTopBottom->SplitHorizontally(panelTop, noteDataView);
-    sizer_3->Add(splitTopBottom, 1, wxEXPAND, 0);
-    panelRight->SetSizer(sizer_3);
+    rightPanelSizer->Add(splitTopBottom, 1, wxEXPAND, 0);
+    panelRight->SetSizer(rightPanelSizer);
     splitLeftRight->SplitVertically(panelLeft, panelRight);
     topSizer->Add(splitLeftRight, 1, wxEXPAND, 0);
     SetSizer(topSizer);

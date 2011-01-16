@@ -33,6 +33,7 @@ class Scene;
 #include "cameras.h" 
 
 #include "textures.h"
+#include "effect.h"
 
 //OpenGL debugging macro
 #if DEBUG
@@ -75,6 +76,9 @@ class Scene
 		//!Bindings for interactive object properties
 		std::vector<SelectionDevice *> selectionDevices;
 
+		//!Various OpenGL effects
+		std::vector<const Effect *> effects;
+
 		//!Lights for use when drawing
 		std::vector<Light const *> lights;
 		//!Vector of camera stats
@@ -105,6 +109,8 @@ class Scene
 		//!Camera id storage and handling
 		UniqueIDHandler camIDs;
 
+		//!Effect ID handler
+		UniqueIDHandler effectIDs;
 
 		//!Cube that holds the scene bounds
 		BoundCube boundCube;
@@ -131,6 +137,8 @@ class Scene
 		bool useAlpha;
 		//!Should lighting calculations be performed?
 		bool useLighting;
+		//!Should we be using effects?
+		bool useEffects;
 
 		//!Should the world axis be drawn?
 		bool showAxis;
@@ -138,8 +146,18 @@ class Scene
 		//!Background colour
 		float rBack,gBack,bBack;
 
+
 		///!Draw the hover overlays
 		void drawHoverOverlay();
+
+		//!Draw the normal overlays
+		void drawOverlays() const;
+
+		//!initialise the drawing window
+		unsigned int initDraw();
+
+		void updateCam(const Camera *camToUse) const;
+		
 	public:
 		//!Constructor
 		Scene();
@@ -291,7 +309,9 @@ class Scene
 		unsigned int getLastHover() const { return lastHovered;};
 		//!Duplicates the internal camera vector. return value is active camera
 		//in returned vector
-		unsigned int duplicateCameras(vector<Camera *> &cams) const; 
+		unsigned int duplicateCameras(std::vector<Camera *> &cams) const; 
+		//!Get a copy of the effects pointers
+		void getEffects(std::vector<const Effect *> &effects) const; 
 
 		//!Return the unique ID of the active camera
 		unsigned int getActiveCamId() const;
@@ -337,6 +357,17 @@ class Scene
 		//this avoids nasty camera situations, where lookat cameras are sitting
 		//on their targets, and don't know where to look.
 		void computeSceneLimits();
+		
+		//!Set whether to use effects or not
+		void setEffects(bool enable) {useEffects=enable;} 
+
+		//!Add an effect
+		unsigned int addEffect(Effect *e);
+		//!Remove a given effect
+		void removeEffect(unsigned int uniqueEffectID);
+
+		//!Clear effects vector
+		void clearEffects();
 };
 
 #endif

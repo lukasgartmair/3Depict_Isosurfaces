@@ -129,10 +129,10 @@ void SelectionBinding::applyTransform(const Point3D &worldVec, bool permanent)
 		{
 			if(worldVec.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()))
 			{
-				//FIXME: Broke concept
-//				vecs.push_back(worldVec*sqrt(drawablePoint3D->sqrMag()/worldVec.sqrMag()));
-//				if(permanent)
-//					cachedValPoint3D= worldVec*sqrt(drawablePoint3D->sqrMag()/worldVec.sqrMag());
+				//Renormalise the vector back to the same scale as the cached value
+				vecs.push_back(worldVec*sqrt(cachedValPoint3D.sqrMag()/worldVec.sqrMag()));
+				if(permanent)
+					cachedValPoint3D=vecs.back();
 			}
 
 			break;

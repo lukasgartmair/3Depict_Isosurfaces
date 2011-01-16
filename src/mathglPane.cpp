@@ -525,26 +525,7 @@ void MathGLPane::updateMouseCursor()
 		else if(curMouse.y > axisY )
 			SetCursor(wxCURSOR_SIZEWE);
 		else
-		{
-		#if defined(_WIN32) || defined(_WIN64)
-			unsigned int dummy,res;
-			res=getRegionUnderCursor(curMouse,dummy);
-			
-			//Under windows,  the magnfier looks like a magnifying glass.
-			//this looks silly, so switch if over a region and not dragging
-			if(res == std::numeric_limits<unsigned int>::max()  || dragging)
-				SetCursor(wxCURSOR_MAGNIFIER);
-			else if(res==0)
-				SetCursor(wxCURSOR_POINT_LEFT);
-			else if(res==1)
-				SetCursor(wxCURSOR_SIZEWE);
-			else if(res==2)
-				SetCursor(wxCURSOR_POINT_RIGHT);
-			
-		#else
 			SetCursor(wxCURSOR_MAGNIFIER);
-		#endif
-		}
 	}
 	//---------------
 }

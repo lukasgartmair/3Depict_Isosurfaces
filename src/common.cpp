@@ -26,3 +26,11 @@ const char *PROGRAM_NAME = "3Depict";
 const char *PROGRAM_VERSION = "0.0.3";
 //Path to font for Default FTGL  font
 const char *FONT_FILE= "FreeSans.ttf";
+
+std::string boolStrEnc(bool b)
+{
+	if(b)
+		return "1";
+	else
+		return "0";
+}

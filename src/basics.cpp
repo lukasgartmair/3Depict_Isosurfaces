@@ -90,18 +90,24 @@ void nullifyMarker(char *buffer, char marker)
 
 void dh_assert(const char * const filename, const unsigned int lineNumber) 
 {
-    std::cerr << "Assertion Error!" << std::endl;
+    std::cerr << "ASSERTION ERROR!" << std::endl;
     std::cerr << "Filename: " << filename << std::endl;
     std::cerr << "Line number: " << lineNumber << std::endl;
 
-/*	std::cerr << "Do you wish to continue?(y/n)";
+	std::cerr << "Do you wish to continue?(y/n)";
 	char y = 'a';
 	while (y != 'n' && y != 'y')
 		std::cin >> y;
 
 	if (y != 'y')
 		exit(1);
-*/
+}
+
+void dh_warn(const char * const filename, const unsigned int lineNumber,const char *message) 
+{
+	std::cerr << "Warning to programmer." << std::endl;
+	std::cerr << "Filename: " << filename << std::endl;
+	std::cerr << "Line number: " << lineNumber << std::endl;
 }
 
 void ucharToHexStr(unsigned char c, std::string &s)
@@ -749,20 +755,36 @@ bool Point3D::parse(const std::string &str)
 	string tmpStr;
 	tmpStr=stripWhite(str);
 
-	unsigned int nCommas=0;
-	unsigned int commaPos[2];
+
+	//Two strings must be in sync
+	std::string allowableStartChars, allowableEndChars;
+	allowableStartChars="([{<'";
+	allowableEndChars=")]}>'";
+
+	unsigned int nSeparators=0;
+	unsigned int separatorPos[2];
 	unsigned int nStart,nEnd;
-	if( tmpStr[0] == '(' && tmpStr[tmpStr.size()-1] == ')')
+
+	size_t startPos,endPos;
+	startPos=allowableStartChars.find(tmpStr[0]);
+	endPos=allowableEndChars.find(tmpStr[tmpStr.size()-1]);
+
+
+	std::string allowableSeparators=",; \t|_";
+
+	if(startPos ==endPos && startPos !=std::string::npos) 
 	{
-		//(#,#,#) format
+		//Could be:
+		//(#,#,#) format; where ( and ) are any of the allowable start/ends
 		if(str.size()< 7)
 			return false;
 		nStart=1;
 		nEnd=tmpStr.size()-1;
 		usingBrackets=true;
 	}
-	else
+	else if(startPos== std::string::npos && endPos == std::string::npos)
 	{
+		//Possible allowable format:
 		//(-)#,(-)#,(-)# format : brackets( ) denote optional
 		if(!(isdigit(tmpStr[0]) || tmpStr[0] == '-') || 
 			!isdigit(tmpStr[tmpStr.size()-1]))
@@ -772,24 +794,39 @@ bool Point3D::parse(const std::string &str)
 		nEnd=tmpStr.size();
 		usingBrackets=false;
 	}
+
+
+	size_t curSep=std::numeric_limits<size_t>::max();
 	for(unsigned int ui=nStart; ui<nEnd; ui++)
 	{
-		if(tmpStr[ui] == ',')
+		size_t separatorTypeIdx;
+		//Look through our list of allowable separators
+		separatorTypeIdx=allowableSeparators.find(tmpStr[ui]);
+		if(separatorTypeIdx != std::string::npos) 
 		{
-			commaPos[nCommas]=ui;
-			nCommas++;
-			if(nCommas > 2)
+			if(curSep != std::numeric_limits<size_t>::max()) 
+			{
+				//Check we have been using the same separator each time
+				if(curSep != separatorTypeIdx)
+					return false;
+			}
+			else
+				curSep=separatorTypeIdx;
+
+			separatorPos[nSeparators]=ui;
+			nSeparators++;
+			if(nSeparators > 2)
 				return false;
 		}
 	}
-	if(nCommas!=2)
+	if(nSeparators!=2)
 		return false;
 
 	unsigned int length;
 	if(usingBrackets)
-		length= commaPos[0]-1;
+		length= separatorPos[0]-1;
 	else
-		length= commaPos[0];
+		length= separatorPos[0];
 	string tmpStrTwo;
 	tmpStrTwo =tmpStr.substr(nStart,length);
 	
@@ -798,11 +835,11 @@ bool Point3D::parse(const std::string &str)
 		return false;
 
 
-	tmpStrTwo =tmpStr.substr(commaPos[0]+1,commaPos[1]-(commaPos[0]+1));
+	tmpStrTwo =tmpStr.substr(separatorPos[0]+1,separatorPos[1]-(separatorPos[0]+1));
 	if(stream_cast(p[1],tmpStrTwo))
 		return false;
 	
-	tmpStrTwo =tmpStr.substr(commaPos[1]+1,nEnd-(commaPos[1]));
+	tmpStrTwo =tmpStr.substr(separatorPos[1]+1,nEnd-(separatorPos[1]));
 	if(stream_cast(p[2],tmpStrTwo))
 		return false;
 
@@ -811,6 +848,15 @@ bool Point3D::parse(const std::string &str)
 	value[2]=p[2];
 
 	return true;
+}
+
+void Point3D::transform3x3(const float *matrix)
+{
+	for(unsigned int ui=0;ui<3;ui++)
+	{
+		value[ui] = value[ui]*matrix[ui*3] + 
+			value[ui]*matrix[ui*3+1] + value[ui]*matrix[ui*3+2];
+	}
 }
 
 //========
