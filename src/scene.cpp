@@ -245,8 +245,6 @@ void Scene::draw()
 					glEnable(GL_LIGHTING);
 
 			}
-			else if( ui == lastHovered) //Is this the object we hovered over last test?
-				drawHoverOverlay();
 
 			objects[ui]->draw();
 		}
@@ -274,6 +272,8 @@ void Scene::draw()
 	glPopMatrix();
 		
 	//Now draw 2D overlays
+	if(lastHovered != (unsigned int)(-1))
+		drawHoverOverlay();
 	drawOverlays();
 
 }

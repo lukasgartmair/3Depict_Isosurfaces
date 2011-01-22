@@ -141,6 +141,8 @@ class Multiplot
 		UniqueIDHandler regionIDHandler;
 		//!Has the plot changed since we last rendered it?
 		bool plotChanged;
+
+		void scanBounds(float &xMin,float &xMax,float &yMin,float &yMax) const;
 	protected:
 		//!Elements of the plot
 		std::vector<PlotData> plottingData;
@@ -232,6 +234,9 @@ class Multiplot
 
 		//!Disable user bounds
 		void disableUserBounds(){plotChanged=true;applyUserBounds=false;};
+
+		//!Disable user axis bounds along one axis only
+		void disableUserAxisBounds(bool xAxis);
 
 		//!Do our best to restore the visibility of the plot to what it was 
 		//before the last clear based upon the plot data owner information.

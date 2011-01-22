@@ -56,6 +56,7 @@ public:
 
     void linkCropWidgets();
 
+
 private:
     // begin wxGlade: MainWindowFrame::methods
     void set_properties();
@@ -115,7 +116,7 @@ protected:
     wxMenuItem *checkMenuControlPane;
     wxMenuItem *checkMenuRawDataPane;
     wxMenuItem *checkMenuSpectraList;
-    wxMenuItem *checkViewFullscreen;
+    wxMenuItem *menuViewFullscreen;
     wxMenuItem *checkViewLegend;
     wxMenuItem *checkViewWorldAxis;
 
@@ -196,7 +197,7 @@ protected:
     wxButton* btnRawDataClip;
     wxPanel* noteRaw;
     wxTextCtrl* textConsoleOut;
-    wxPanel* noteDataView_pane_3;
+    wxPanel* noteDataViewConsole;
     wxNotebook* noteDataView;
     wxPanel* panelBottom;
     wxSplitterWindow* splitTopBottom;
@@ -283,6 +284,7 @@ public:
     virtual void OnClose(wxCloseEvent &evt);
     virtual void OnComboCameraSetFocus(wxFocusEvent &evt);
     virtual void OnComboStashSetFocus(wxFocusEvent &evt);
+    virtual void OnNoteDataView(wxNotebookEvent &evt);
     virtual void OnGridCameraPropertyChange(wxGridEvent &event); // wxGlade: <event_handler>
 
     virtual void OnFileExportPlot(wxCommandEvent &event); // wxGlade: <event_handler>

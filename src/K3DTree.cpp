@@ -240,15 +240,11 @@ void K3DTree::buildByRef(vector<Point3D> &pts)
 	maxDepth=1;
 	*progress=0;
 	curNodeCount=0;
-#pragma omp taskroot
 	root=buildRecurse(pts.begin(), pts.end(),0);
-	
-#pragma omp  taskwait
 }
 
 K3DNode *K3DTree::buildRecurse(vector<Point3D>::iterator pts_start, vector<Point3D>::iterator pts_end, unsigned int depth)
 {
-	const unsigned int OMP_PTS_SIZE=1000;
 
 	K3DNode *node= new K3DNode;
 	unsigned int curAxis=depth%3;
@@ -267,49 +263,40 @@ K3DNode *K3DTree::buildRecurse(vector<Point3D>::iterator pts_start, vector<Point
 
 	//Find the median value in the current axis
 	sort(pts_start,pts_end,axisCmp);
-	
+
 	//allocate node (this stores a copy of the point) and set.
 	node->setLoc(*(pts_start + median));
 	
 	if(median)
 	{
 		
-		if(ptsSize > OMP_PTS_SIZE)
+		//Only do process if callback is OK
+		if((*callback)())
 		{
-			//Only do process if callback is OK
-		        if((*callback)())
-			{
-				#pragma omp task
-				node->setLeft(buildRecurse(pts_start,pts_start + median,depth+1));
-				*progress = (unsigned int)((float)curNodeCount/(float)treeSize*100.0f);
-			}
-		}
-		else
 			node->setLeft(buildRecurse(pts_start,pts_start + median,depth+1));
+			*progress= (unsigned int)((float)curNodeCount/(float)treeSize*100.0f);
+		}
+		else 
+			node->setLeft(0);
 	}
 	else
 		node->setLeft(0);	
 
 	if(median!=ptsSize)
 	{
-		if(ptsSize >OMP_PTS_SIZE)
+		//Only do process if callback is OK
+		if((*callback)())
 		{
-			//Only do process if callback is OK
-		        if((*callback)())
-			{
-				#pragma omp task
-				node->setRight(buildRecurse(pts_start + median + 1, pts_end,depth+1));
-				*progress = (unsigned int)((float)curNodeCount/(float)treeSize*100.0f);
-			}
+			node->setRight(buildRecurse(pts_start + median + 1, pts_end,depth+1));
+			*progress= (unsigned int)((float)curNodeCount/(float)treeSize*100.0f);
 		}
 		else
-			node->setRight(buildRecurse(pts_start + median + 1, pts_end,depth+1));
+			node->setRight(0);
 
 	}
 	else
 		node->setRight(0);
 
-#pragma omp atomic
 	curNodeCount++;
 	return node;	
 

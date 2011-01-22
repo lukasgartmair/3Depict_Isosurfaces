@@ -29,12 +29,14 @@ enum
 	RDF_ERR_NEGATIVE_SCALE_FACT,
 	RDF_ERR_INSUFFICIENT_INPUT_POINTS,
 	RDF_FILE_OPEN_FAIL,
+	RDF_ABORT_FAIL,
 };
 
 //!Generate the NN histogram specified up to a given NN
 unsigned int generateNNHist( const vector<Point3D> &pointList, 
 			const K3DTree &tree,unsigned int nnMax, unsigned int numBins,
-		       	unsigned int *histogram, float *binWidth );
+		       	vector<vector<size_t> > &histogram, float *binWidth,
+		       	unsigned int *progressPtr,bool (*callback)(void));
 
 //!Generate an NN histogram using distance max cutoffs. Input histogram must be zeroed,
 //if a voxelsname is given, a 3D RDF will be recorded. in this case voxelBins must be nonzero

@@ -368,6 +368,32 @@ void Multiplot::setBounds(float xMin, float xMax,
 	plotChanged=true;
 }
 
+
+void Multiplot::disableUserAxisBounds(bool xBound)
+{
+	float xMin,xMax,yMin,yMax;
+	scanBounds(xMin,xMax,yMin,yMax);
+
+	if(xBound)
+	{
+		xUserMin=xMin;
+		xUserMax=xMax;
+	}
+	else
+	{
+		yUserMin=std::max(0.0f,yMin);
+		yUserMax=yMax;
+	}
+
+
+	if(fabs(xUserMin -xMin)<=std::numeric_limits<float>::epsilon() &&
+		fabs(yUserMin -yMin)<=std::numeric_limits<float>::epsilon())
+	{
+		applyUserBounds=false;
+	}
+
+	plotChanged=true;
+}
 void Multiplot::getBounds(float &xMin, float &xMax,
 			float &yMin,float &yMax) const
 {
@@ -380,35 +406,39 @@ void Multiplot::getBounds(float &xMin, float &xMax,
 	}
 	else
 	{
-		//OK, we are going to have to scan for max/min
-		xMin=std::numeric_limits<float>::max();
-		xMax=-std::numeric_limits<float>::max();
-		yMin=std::numeric_limits<float>::max();
-		yMax=-std::numeric_limits<float>::max();
-
-		for(unsigned int ui=0;ui<plottingData.size();ui++)
-		{
-			if(plottingData[ui].visible)
-			{
-				xMin=std::min(plottingData[ui].minX,xMin);
-				xMax=std::max(plottingData[ui].maxX,xMax);
-
-				yMin=std::min(plottingData[ui].minY,yMin);
-				yMax=std::max(plottingData[ui].maxY,yMax);
-			}
-		}
-
-		//If we are in log mode, then we need to set the
-		//log of that bound before emitting it.
-		if(isLogarithmic())
-		{
-			yMin=log10(std::max(yMin,1.0f));
-			yMax=log10(yMax);
-		}
-
+		scanBounds(xMin,xMax,yMin,yMax);
 	}
 
 	ASSERT(xMin < xMax && yMin < yMax);
+}
+
+void Multiplot::scanBounds(float &xMin,float &xMax,float &yMin,float &yMax) const
+{
+	//OK, we are going to have to scan for max/min
+	xMin=std::numeric_limits<float>::max();
+	xMax=-std::numeric_limits<float>::max();
+	yMin=std::numeric_limits<float>::max();
+	yMax=-std::numeric_limits<float>::max();
+
+	for(unsigned int ui=0;ui<plottingData.size();ui++)
+	{
+		if(plottingData[ui].visible)
+		{
+			xMin=std::min(plottingData[ui].minX,xMin);
+			xMax=std::max(plottingData[ui].maxX,xMax);
+
+			yMin=std::min(plottingData[ui].minY,yMin);
+			yMax=std::max(plottingData[ui].maxY,yMax);
+		}
+	}
+
+	//If we are in log mode, then we need to set the
+	//log of that bound before emitting it.
+	if(isLogarithmic())
+	{
+		yMin=log10(std::max(yMin,1.0f));
+		yMax=log10(yMax);
+	}
 }
 
 void Multiplot::bestEffortRestoreVisibility()
@@ -725,9 +755,8 @@ void Multiplot::drawPlot(mglGraph *gr) const
 	
 	string sX;
 	sX.assign(xLabel.begin(),xLabel.end()); //unicode conversion
-#ifdef MGL_GTE_1_10
 	gr->Label('x',sX.c_str());
-#endif
+
 	string sY;
 	sY.assign(yLabel.begin(), yLabel.end()); //unicode conversion
 	if(logarithmic && !notLog)
@@ -736,9 +765,9 @@ void Multiplot::drawPlot(mglGraph *gr) const
 	{
 		sY = string("Mixed log/non-log:") + sY ;
 	}
-#ifdef MGL_GTE_1_10
+
 	gr->Label('y',sY.c_str(),0);
-#endif	
+	
 	string sT;
 	sT.assign(plotTitle.begin(), plotTitle.end()); //unicode conversion
 	gr->Title(sT.c_str());

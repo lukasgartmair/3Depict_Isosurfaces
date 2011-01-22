@@ -75,6 +75,8 @@ class CropPanel : public wxPanel
 		
 		void updateLinked();
 	
+		void draw() ;
+
 		DECLARE_EVENT_TABLE();
 	public:
 		CropPanel(wxWindow * parent, wxWindowID id = wxID_ANY,
@@ -103,6 +105,7 @@ class CropPanel : public wxPanel
 		void mouseLeftWindow(wxMouseEvent& event);
 		void mouseDoubleLeftClick(wxMouseEvent& event);
 		void onPaint(wxPaintEvent& evt);
+		void onResize(wxSizeEvent& evt);
 		~CropPanel() {};
 };
 #endif

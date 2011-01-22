@@ -96,6 +96,9 @@ const unsigned int AUTOSAVE_DELAY=300;
 
 const unsigned int DEFAULT_IONS_VIEW=100;
 
+//!Number of pages in the panel at the bottom
+const unsigned int NOTE_CONSOLE_PAGE_OFFSET= 2;
+
 //The conversion factor from the baseline shift slider to camera units
 const float BASELINE_SHIFT_FACTOR=0.0002f;
 
@@ -154,6 +157,7 @@ const unsigned int comboFiltersTypeMapping[FILTER_DROP_COUNT] = {
 	FILTER_TYPE_IONCOLOURFILTER,
 	FILTER_TYPE_TRANSFORM,
 	FILTER_TYPE_SPECTRUMPLOT,
+	FILTER_TYPE_RANGEFILE,
 	FILTER_TYPE_SPATIAL_ANALYSIS,
 	FILTER_TYPE_VOXELS
  };
@@ -307,7 +311,7 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     panelRight = new wxPanel(splitLeftRight, wxID_ANY);
     splitTopBottom = new wxSplitterWindow(panelRight, ID_SPLIT_TOP_BOTTOM, wxDefaultPosition, wxDefaultSize, wxSP_3D|wxSP_BORDER);
     noteDataView = new wxNotebook(splitTopBottom, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxNB_LEFT);
-    noteDataView_pane_3 = new wxPanel(noteDataView, wxID_ANY);
+    noteDataViewConsole = new wxPanel(noteDataView, wxID_ANY);
     noteRaw = new wxPanel(noteDataView, ID_NOTE_RAW);
     splitterSpectra = new wxSplitterWindow(noteDataView, ID_SPLIT_SPECTRA, wxDefaultPosition, wxDefaultSize, wxSP_3D|wxSP_BORDER);
     window_2_pane_2 = new wxPanel(splitterSpectra, wxID_ANY);
@@ -391,9 +395,9 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     
     wxglade_tmp_menu_1->AppendSeparator(); //Separator
 #ifndef __APPLE__
-    wxglade_tmp_menu_1->Append(ID_VIEW_FULLSCREEN, _("&Fullscreen mode\tF11"),_("Next fullscreen mode"));
+    menuViewFullscreen=wxglade_tmp_menu_1->Append(ID_VIEW_FULLSCREEN, _("&Fullscreen mode\tF11"),_("Next fullscreen mode: with toolbars"));
 #else
-    wxglade_tmp_menu_1->Append(ID_VIEW_FULLSCREEN, _("&Fullscreen mode\tCtrl+Shift+F"),_("Next fullscreen mode"));
+    menuViewFullscreen=wxglade_tmp_menu_1->Append(ID_VIEW_FULLSCREEN, _("&Fullscreen mode\tCtrl+Shift+F"),_("Next fullscreen mode: with toolbars"));
 #endif
 
 
@@ -504,7 +508,7 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     gridRawData = new CopyGrid(noteRaw, ID_GRID_RAW_DATA);
     btnRawDataSave = new wxButton(noteRaw, wxID_SAVE, wxEmptyString);
     btnRawDataClip = new wxButton(noteRaw, wxID_COPY, wxEmptyString);
-    textConsoleOut = new wxTextCtrl(noteDataView_pane_3, 
+    textConsoleOut = new wxTextCtrl(noteDataViewConsole, 
 		    wxID_ANY, wxEmptyString,wxDefaultPosition,
 		    wxDefaultSize,wxTE_MULTILINE|wxTE_READONLY);
 
@@ -867,7 +871,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 			&path,&name,&ext, &hasExt);
 
 	//Test the extention to determine what we will do
-	//FIXME: This is really lazy, and I should use something like libmagic.
+	//TODO: This is really lazy, and I should use something like libmagic.
 	std::string extStr;
 	extStr=stlStr(ext);
 	if( extStr == std::string("xml"))
@@ -941,7 +945,6 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 		if(effs.size())
 		{
 			//OK, we have some effects; we will need to update the UI
-			cerr << "Looks like we have to do some updating" << endl;
 			updateFxUI(effs);
 		}
 
@@ -2304,6 +2307,7 @@ void MainWindowFrame::OnTreeKeyDown(wxTreeEvent &event)
 
 			break;
 		}
+
 		default:
 			event.Skip();
 	}
@@ -2694,6 +2698,7 @@ void MainWindowFrame::doSceneUpdate()
 	haveAborted=false;
 	
 	statusMessage("",MESSAGE_NONE);
+	noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,_("Cons."));
 
 	//Disable tree filters,refresh button and undo
 	treeFilters->Enable(false);
@@ -2757,6 +2762,15 @@ void MainWindowFrame::doSceneUpdate()
 	panelSpectra->Refresh(false);	
 
 	updateLastRefreshBox();
+
+
+	//Add (or hide) a litle "Star" to inform the user there is some info available
+	if(textConsoleOut->IsEmpty() || noteDataView->GetSelection()==NOTE_CONSOLE_PAGE_OFFSET)
+		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,_("Cons."));
+	else
+		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,_("§Cons."));
+
+
 }
 
 void MainWindowFrame::OnStatusBarTimer(wxTimerEvent &event)
@@ -2805,7 +2819,7 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 {
 	timerEvent=true;
 
-	//FIXME: HACK AROUND: force tree filter to relayout under wxGTK and Mac
+	//TODO: HACK AROUND: force tree filter to relayout under wxGTK and Mac
 	#ifndef __WXMSW__
 	//Note: Calling this under windows causes the dropdown box that hovers over the top of this to
 	//be closed, rendering the dropdown useless. That took ages to work out.
@@ -2836,6 +2850,8 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 	if(panelFxCropOne->hasUpdate() || panelFxCropTwo->hasUpdate())
 	{
 		updatePostEffects();
+		panelFxCropOne->clearUpdate();
+		panelFxCropOne->clearUpdate();
 	}
 
 	//Check viscontrol to see if it needs an update, such as
@@ -3063,7 +3079,7 @@ void MainWindowFrame::updatePostEffects()
 
 			b->testCroppedBounds(bcTmp);	
 
-			if(checkFxCropCameraFrame->IsChecked())
+			if(!checkFxCropCameraFrame->IsChecked())
 			{
 				float delta;
 				delta=bcTmp.getBound(0,1)-bcTmp.getBound(0,0);
@@ -3148,7 +3164,6 @@ void MainWindowFrame::updateFxUI(const vector<const Effect*> &effs)
 				panelFxCropTwo->link(0,CROP_LINK_NONE);
 
 				//Set the crop values 
-				//FIXME: I don't think the ordering here is right
 				for(unsigned int ui=0;ui<6;ui++)
 				{
 					if(ui<4)
@@ -3200,7 +3215,7 @@ void MainWindowFrame::updateFxUI(const vector<const Effect*> &effs)
 	//Re-enable the effects UI as needed
 	if(effs.size())
 	{
-#ifdef APPLE_EFFECTS_WORKAROUND
+#ifndef APPLE_EFFECTS_WORKAROUND
 		checkPostProcessing->SetValue(true);
 		noteFxPanelCrop->Enable();
 		noteFxPanelStereo->Enable();
@@ -3229,34 +3244,53 @@ void MainWindowFrame::OnViewFullscreen(wxCommandEvent &event)
 	//Toggle fullscreen, leave the menubar  & statsbar visible
 
 	unsigned int flags;
+#ifndef __APPLE__
 	switch(fullscreenState)
 	{
 		case 0:
-		{
-			flags= wxFULLSCREEN_NOTOOLBAR | wxFULLSCREEN_NOTOOLBAR | wxFULLSCREEN_NOTOOLBAR;
+			flags= wxFULLSCREEN_NOTOOLBAR;
 			ShowFullScreen(true,flags);
+			menuViewFullscreen->SetHelp(_("Next Fullscren mode: none"));	
 			break;
-		}
 		case 1:
-		{
-			//workaround for wxGTK (at least)
-			//First freeze the window, then toggle fullscreen off, then back on
-			Freeze();
+			menuViewFullscreen->SetHelp(_("Next Fullscren mode: complete"));	
 			ShowFullScreen(false);
-			ShowFullScreen(true);
-			Thaw();
 			break;
-		}
 		case 2:
+			menuViewFullscreen->SetHelp(_("Next Fullscren mode: none"));	
+			ShowFullScreen(true);
+			break;
+		case 3:
+			menuViewFullscreen->SetHelp(_("Next Fullscren mode: with toolbars"));	
 			ShowFullScreen(false);
 			break;
+
 		default:
 			ASSERT(false);
 
 	}
 	fullscreenState++;
+	fullscreenState%=4;
+#else
+	//This does not work under non-apple platforms. :(
+	switch(fullscreenState)
+	{
+		case 0:
+			flags= wxFULLSCREEN_NOTOOLBAR;
+			ShowFullScreen(true,flags);
+			break;
+		case 1:
+			ShowFullScreen(false);
+			break;
+		case 2:
+			ShowFullScreen(true);
+			break;
+		default:
+			ASSERT(false);
+	}
+	fullscreenState++;
 	fullscreenState%=3;
-
+#endif
 	programmaticEvent=false;
 }
 
@@ -3824,6 +3858,16 @@ void MainWindowFrame::SetCommandLineFiles(wxArrayString &files)
 	}
 }
 
+void MainWindowFrame::OnNoteDataView(wxNotebookEvent &evt)
+{
+	//Get rid of the console page
+	if(evt.GetSelection() == NOTE_CONSOLE_PAGE_OFFSET)
+		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,_("Cons."));
+
+	//Keep processing
+	evt.Skip();
+}
+
 void MainWindowFrame::set_properties()
 {
     // begin wxGlade: MainWindowFrame::set_properties
@@ -3891,6 +3935,9 @@ void MainWindowFrame::set_properties()
     comboStash->Connect(wxID_ANY,
                  wxEVT_SET_FOCUS,
 		   wxFocusEventHandler(MainWindowFrame::OnComboStashSetFocus), NULL, this);
+    noteDataView->Connect(wxID_ANY, wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED,
+		    wxNotebookEventHandler(MainWindowFrame::OnNoteDataView),NULL,this);
+
     gridCameraProperties->clear();
     int widths[] = {-4,-2,-1};
     MainFrame_statusbar->SetStatusWidths(3,widths);
@@ -4025,10 +4072,10 @@ void MainWindowFrame::do_layout()
     rawDataGridSizer->Add(rawDataSizer, 0, wxTOP|wxEXPAND, 5);
     noteRaw->SetSizer(rawDataGridSizer);
     textConsoleSizer->Add(textConsoleOut, 1, wxEXPAND, 0);
-    noteDataView_pane_3->SetSizer(textConsoleSizer);
+    noteDataViewConsole->SetSizer(textConsoleSizer);
     noteDataView->AddPage(splitterSpectra, _("Spec."));
     noteDataView->AddPage(noteRaw, _("Raw"));
-    noteDataView->AddPage(noteDataView_pane_3, _("Cons."));
+    noteDataView->AddPage(noteDataViewConsole, _("Cons."));
     splitTopBottom->SplitHorizontally(panelTop, noteDataView);
     rightPanelSizer->Add(splitTopBottom, 1, wxEXPAND, 0);
     panelRight->SetSizer(rightPanelSizer);
@@ -4040,6 +4087,9 @@ void MainWindowFrame::do_layout()
     // end wxGlade
     //
     // GTK fix hack thing. reparent window
+
+	
+
 	panelTop->Reparent(splitTopBottom);
 
 	//Set the combo text

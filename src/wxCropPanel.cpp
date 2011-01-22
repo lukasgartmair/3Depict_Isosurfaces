@@ -49,6 +49,7 @@ BEGIN_EVENT_TABLE(CropPanel, wxPanel)
 	EVT_LEAVE_WINDOW(CropPanel::mouseLeftWindow)
 	EVT_LEFT_DCLICK(CropPanel::mouseDoubleLeftClick) 
 	EVT_ERASE_BACKGROUND(CropPanel::OnEraseBackground)
+	EVT_SIZE(CropPanel::onResize)
 END_EVENT_TABLE()
 
 
@@ -85,14 +86,15 @@ void CropPanel::mouseMove(wxMouseEvent &event)
 	//Do our calculations in reduced coordinates (0->1);
 	float xMouse,yMouse,x,y;
 	wxPoint mousePos =event.GetPosition();
-	xMouse=(float)mousePos.x/(float)w;
-	yMouse=(float)mousePos.y/(float)h;
+	//Add a 1px border around control
+	xMouse=(float)(mousePos.x+1)/(float)(w-2);
+	yMouse=(float)(mousePos.y+1)/(float)(h-2);
 	
 	if(!dragging)
 	{
 
 
-		float meanPx = 1.0/(1.0/w + 1.0/h);
+		float meanPx = 1.0/(1.0/(w-2) + 1.0/(h-2));
 		unsigned int minIndex;
 		float minDist,tmpDist;
 
@@ -135,12 +137,12 @@ void CropPanel::mouseMove(wxMouseEvent &event)
 		}
 
 		minDist=sqrt(minDist);
-		bool haveMin;
+		bool haveCorner;
 
 		const float MIN_CUTOFF_DISTANCE= 3;
 
 		//Do we have a corner minimum?
-		haveMin= ((int)(minDist*meanPx) < MIN_CUTOFF_DISTANCE);
+		haveCorner= ((int)(minDist*meanPx) < MIN_CUTOFF_DISTANCE);
 
 		bool haveCentre;
 		float meanX = (float)(crop[0] + (1.0-crop[2]))*0.5;
@@ -150,7 +152,7 @@ void CropPanel::mouseMove(wxMouseEvent &event)
 		centreDist=sqrt((xMouse-meanX)*(xMouse-meanX)
 				+ (yMouse-meanY)*(yMouse-meanY));
 		//Check the centre, which is allowed to trump the corners
-		if(haveMin)
+		if(haveCorner)
 			haveCentre=(centreDist< minDist);
 		else
 			haveCentre=(meanPx*centreDist) < MIN_CUTOFF_DISTANCE;
@@ -184,19 +186,20 @@ void CropPanel::mouseMove(wxMouseEvent &event)
 		}
 
 
-		if(haveSide && !haveMin)
+		//!Prioritise selection mode
+		if(haveCentre)
 		{
-			selMode=SELECT_MODE_SIDE;
-			selIndex=sideIndex;
+			selMode=SELECT_MODE_CENTRE;
 		}
-		else if(haveMin)
+		else if(haveCorner)
 		{
 			selMode=SELECT_MODE_CORNER;
 			selIndex=minIndex;
 		}
-		else if(haveCentre)
+		else if(haveSide)
 		{
-			selMode=SELECT_MODE_CENTRE;
+			selMode=SELECT_MODE_SIDE;
+			selIndex=sideIndex;
 		}
 		else
 		{
@@ -344,8 +347,8 @@ void CropPanel::mouseDown(wxMouseEvent &event)
 
 	//Do our calculations in reduced coordinates (0->1);
 	wxPoint mousePos =event.GetPosition();
-	mouseAtDragStart[0]=(float)mousePos.x/(float)w;
-	mouseAtDragStart[1]=(float)mousePos.y/(float)h;
+	mouseAtDragStart[0]=(float)(mousePos.x+1)/(float)(w-2);
+	mouseAtDragStart[1]=(float)(mousePos.y+1)/(float)(h-2);
 	
 	ASSERT(validCoords());
 	if(selMode != SELECT_MODE_NONE)
@@ -391,7 +394,11 @@ bool CropPanel::validCoords() const
 
 void CropPanel::onPaint(wxPaintEvent &event)
 {
+	draw();
+}
 
+void CropPanel::draw()
+{
 	ASSERT(validCoords());
 
 	wxAutoBufferedPaintDC   *dc=new wxAutoBufferedPaintDC(this);
@@ -605,4 +612,9 @@ void CropPanel::setCropValue(unsigned int index, float v)
 {
 	ASSERT(index<=CROP_BOTTOM);
 	crop[index]=v;
+}
+
+void CropPanel::onResize(wxSizeEvent &evt)
+{
+	draw();
 }

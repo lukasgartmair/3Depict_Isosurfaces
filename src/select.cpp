@@ -141,11 +141,14 @@ void SelectionBinding::applyTransform(const Point3D &worldVec, bool permanent)
 			ASSERT(false);
 	}
 
-	//Force a recomputation of the internal parameters 
-	//for the drawable object. Whatever they are.
-	obj->recomputeParams(vecs,scalars,drawActionId);
+	if(vecs.size() || scalars.size())
+	{
+		//Force a recomputation of the internal parameters 
+		//for the drawable object. Whatever they are.
+		obj->recomputeParams(vecs,scalars,drawActionId);
 
-	valModified=true;
+		valModified=true;
+	}
 }
 
 void SelectionBinding::computeWorldVectorCoeffs(unsigned int buttonFlags, 

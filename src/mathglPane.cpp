@@ -85,7 +85,7 @@ MathGLPane::~MathGLPane()
 
 void MathGLPane::render(wxPaintEvent &event)
 {
-	wxAutoBufferedPaintDC   *dc=new wxAutoBufferedPaintDC(this); //This does not work  under windows? (I had double paint events before in my event table -- this might work now)
+	wxAutoBufferedPaintDC   *dc=new wxAutoBufferedPaintDC(this);
 
 	if(!thePlot || !plotSelList)
 	{
@@ -120,18 +120,9 @@ void MathGLPane::render(wxPaintEvent &event)
 		GetClientSize(&clientW,&clientH);
 		
 		
-		wxString str=_("No plots currently selected.");
+		wxString str=_("No plots selected.");
 		dc->GetMultiLineTextExtent(str,&w,&h);
 		dc->DrawText(str,(clientW-w)/2, (clientH-h)/2);
-
-		str = _("Use filter tree to generate new plots");
-		dc->GetMultiLineTextExtent(str,&w,&h);
-		dc->DrawText(str,(clientW-w)/2, (clientH-h)/2+h);
-		
-		str= _("then select from plot list.");
-		dc->GetMultiLineTextExtent(str,&w,&h);
-		dc->DrawText(str,(clientW-w)/2, (clientH-h)/2+2*h);
-
 
 		delete dc;
 
@@ -536,8 +527,44 @@ void MathGLPane::mouseDoubleLeftClick(wxMouseEvent& event)
 		return;
 
 	panning=dragging=false;
-	//reset plot bounds
-	thePlot->disableUserBounds();	
+
+	int w,h;
+	w=0;h=0;
+	GetClientSize(&w,&h);
+	
+	if(!w || !h )
+		return;
+	
+	//Compute the coords for the axis position
+	int axisX,axisY;
+	axisX=axisY=0;
+	gr->CalcScr(gr->Org,&axisX,&axisY);
+	axisY=h-axisY;
+	//Look at mouse position relative to the axis position
+	if(curMouse.x < axisX)
+	{
+		if(curMouse.y < axisY)
+		{	
+			//left of X-Axis -- plot Y zoom
+			thePlot->disableUserAxisBounds(false);	
+		}
+		else
+		{
+			//bottom corner
+			thePlot->disableUserBounds();	
+		}
+	}
+	else if(curMouse.y > axisY )
+	{
+		//Below Y axis; plot X Zoom
+
+		thePlot->disableUserAxisBounds(true);	
+	}
+	else
+	{
+		//reset plot bounds
+		thePlot->disableUserBounds();	
+	}
 
 	Refresh();
 }

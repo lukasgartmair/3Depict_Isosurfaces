@@ -541,7 +541,7 @@ unsigned int getIonstreamIonID(const IonStreamData *d, const RangeFile *r)
 	for(size_t ui=1;ui<d->data.size();ui++)
 	{
 		if(spin)
-			continue
+			continue;
 		if(r->getIonID(d->data[ui].getMassToCharge()) !=tentativeRange)
 			spin=true;
 	}
@@ -2390,13 +2390,17 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 		for (size_t i = 0; i < dataIn.size(); i++) 
 		{
 			
-			is= (const IonStreamData *)dataIn[i];
-			vs->data.countPoints(is->data,true,false);
-			
-			if(!(*callback)())
+			if(dataIn[i]->getStreamType() == STREAM_TYPE_IONS)
 			{
-				delete vs;
-				return VOXEL_ABORT_ERR;
+				is= (const IonStreamData *)dataIn[i];
+				vs->data.countPoints(is->data,true,false);
+				
+				if(!(*callback)())
+				{
+					delete vs;
+					return VOXEL_ABORT_ERR;
+				}
+
 			}
 		}
 		ASSERT(normaliseType != VOXEL_NORMALISETYPE_COUNT2INVOXEL
@@ -2405,7 +2409,18 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			vs->data.calculateDensity();
 	}	
 	delete vsDenom;
+
 	
+	
+	float min,max;
+	vs->data.minMax(min,max);
+
+
+	string sMin,sMax;
+	stream_cast(sMin,min);
+	stream_cast(sMax,max);
+	consoleOutput.push_back(std::string("Voxel Limits (min,max): (") + sMin + string(",")
+		       	+  sMax + ")");
 	getOut.push_back(vs);
 
 	return 0;
@@ -8731,6 +8746,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 			#pragma omp parallel for
 			for(unsigned int ui=0;ui<dataIn.size() ;ui++)
 			{
+				Point3D massContrib;
 				if(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS)
 				{
 					const IonStreamData* ions;
@@ -8742,8 +8758,9 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 						thisCentre=Point3D(0,0,0);
 						for(unsigned int uj=0;uj<ions->data.size();uj++)
 							thisCentre+=ions->data[uj].getPosRef();
+						massContrib=thisCentre*1.0/(float)ions->data.size();
 						#pragma omp critical
-						massCentre+=thisCentre*1.0/(float)ions->data.size();
+						massCentre+=massContrib;
 						numCentres++;
 					}
 				}
@@ -10472,7 +10489,8 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 
 		progress.step=2;
 		progress.stepName="Build";
-		(*callback)();
+		if(!(*callback)())
+			return SPATIAL_ANALYSIS_ABORT_ERR;
 
 		BoundCube treeDomain;
 		treeDomain.setBounds(p);
@@ -10497,7 +10515,8 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		n=0;
 		progress.step=3;
 		progress.stepName="Analyse";
-		(*callback)();
+		if(!(*callback)())
+			return SPATIAL_ANALYSIS_ABORT_ERR;
 
 		//List of points for which there was a failure
 		//first entry is the point Id, second is the 
@@ -10520,7 +10539,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 					if(stopMode == SPATIAL_DENSITY_NEIGHBOUR)
 					{
 						bool spin=false;
-						#pragma omp parallel for
+						#pragma omp parallel for shared(spin)
 						for(size_t uj=0;uj<d->data.size();uj++)
 						{
 							if(spin)
@@ -10926,15 +10945,36 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 			//User is after an NN histogram analysis
 
 			//Histogram is output as a per-NN histogram of frequency.
-			unsigned int *histogram = new unsigned int[numBins*nnMax];
+			vector<vector<size_t> > histogram;
 			
 			//Bin widths for the NN histograms (each NN hist
 			//is scaled separately). The +1 is due to the tail bin
 			//being the totals
 			float *binWidth = new float[nnMax];
 
-			if(generateNNHist(p,kdTree,nnMax,numBins,histogram,binWidth))
-				return SPATIAL_ANALYSIS_INSUFFICIENT_SIZE_ERR;
+
+			unsigned int errCode;
+			//Run the analysis
+			errCode=generateNNHist(p,kdTree,nnMax,
+					numBins,histogram,binWidth,
+					&(progress.filterProgress),callback);
+			switch(errCode)
+			{
+				case 0:
+					break;
+				case RDF_ERR_INSUFFICIENT_INPUT_POINTS:
+				{
+					delete[] binWidth;
+					return SPATIAL_ANALYSIS_INSUFFICIENT_SIZE_ERR;
+				}
+				case RDF_ABORT_FAIL:
+				{
+					delete[] binWidth;
+					return SPATIAL_ANALYSIS_ABORT_ERR;
+				}
+				default:
+					ASSERT(false);
+			}
 
 			//Alright then, we have the histogram in x-{y1,y2,y3...y_n} form
 			//lets make some plots shall we?
@@ -10960,9 +11000,10 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 				for(unsigned int uj=0;uj<numBins;uj++)
 				{
 					float dist;
+					ASSERT(ui < histogram.size() && uj<histogram[ui].size());
 					dist = (float)uj*binWidth[ui];
 					plotData[ui]->xyData[uj] = std::make_pair(dist,
-							histogram[uj*nnMax+ui]);
+							histogram[ui][uj]);
 				}
 
 				if(cache)

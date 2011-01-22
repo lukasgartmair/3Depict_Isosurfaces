@@ -1,4 +1,4 @@
-AC_INIT([3Depict], [0.0.1], [mycae@yahoo.com])
+AC_INIT([3Depict], [0.0.4], [mycae@yahoo.com])
 AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CXX
 AC_PROG_CC
@@ -293,6 +293,26 @@ dnl -----------
 #	[AC_MSG_WARN([=================================Unable to find GPU isosurface shader library HPMC -- will use much slower CPU method=================])])
 
 #-----------
+
+#Should we compile with openMP?
+AC_ARG_ENABLE(openmp-parallel,
+  [  --enable-openmp-parallel:  Enable OpenMP multi-CPU usage; requires GCC > 4.2 for paralell STL support ])
+#Should we enable or disable debug checking?
+AC_ARG_ENABLE(no-debug-checks,
+  [  --enable-no-debug-checks: Disable any debug checking, provides faster operation, but less information needed to debug internal problems, or to provide problem reports to developers ])
+
+
+if test x"$enable_openmp_parallel" != x"" ; 
+then
+	OPENMP_FLAGS="-fopenmp -D_GLIBCXX_PARALLEL"
+	AC_SUBST(OPENMP_FLAGS)
+fi
+
+if test x"$enable_no_debug_checks" == x"" ; 
+then
+	DEBUG_FLAGS="-DDEBUG"
+	AC_SUBST(DEBUG_FLAGS)
+fi
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL

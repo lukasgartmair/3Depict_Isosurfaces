@@ -359,6 +359,9 @@ template<class T> class Voxels
 
 		//!Find maximum in dataset
 		T max() const;	
+		
+		//!Find both min and max in dataset in the same loop
+		void minMax(T &min, T &max) const;	
 
 		//!Given some coordinates and radii, generate a voxel dataset of solid spheres superimposed
 		/*! The radius specified is in the bounding units
@@ -1605,6 +1608,50 @@ T Voxels<T>::max() const
 #endif
 	return maxVal;
 }
+
+template<class T>
+void Voxels<T>::minMax(T &minVal,T &maxVal) const
+{
+	ASSERT(voxels.size());
+	unsigned long long numPts = binCount[0]*binCount[1]*binCount[2];
+	maxVal=voxels[0];
+	minVal=voxels[0];
+#ifdef _OPENMP
+	//Unfortunately openMP doesn't lend itself well here
+	//But we can code around it.
+	unsigned long long maxThr = omp_get_max_threads();	
+	T minArr[maxThr],maxArr[maxThr];
+	//Init all maxs
+	for(unsigned long long ui=0; ui<maxThr; ui++)
+	{
+		maxArr[ui] = voxels[0];
+		minArr[ui]=voxels[0];
+	}
+
+	//parallel max search	
+	#pragma omp parallel for shared(maxArr)
+	for(MP_INT_TYPE ui=0;ui<(MP_INT_TYPE)numPts; ui++)
+	{
+		maxArr[omp_get_thread_num()] = std::max(maxArr[omp_get_thread_num()],voxels[ui]);	
+		minArr[omp_get_thread_num()] = std::min(minArr[omp_get_thread_num()],voxels[ui]);	
+	}
+
+	//find max of maxs
+	for(unsigned long long ui=0;ui<maxThr; ui++)
+	{
+		maxVal=std::max(maxArr[ui],maxVal);
+		minVal=std::min(minArr[ui],minVal);
+	}
+#else
+
+	for(unsigned long long ui=0;ui<numPts; ui++)
+	{
+		maxVal=std::max(maxVal,voxels[ui]);
+		minVal=std::min(minVal,voxels[ui]);
+	}
+#endif
+}
+
 
 template<class T>
 void Voxels<T>::fillSpheresByPosition( const std::vector<Point3D> &spherePos, float rad, const T &value, bool doErase)

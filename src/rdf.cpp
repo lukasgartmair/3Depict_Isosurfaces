@@ -1,4 +1,4 @@
- /* Copyright (C) 2010  D. Haley
+ /* Copyright (C) 2010  D Haley
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -204,16 +204,17 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 	//partitioning the input points, and then
 	//computing multiple hulls.
 	//Take the resultant hull points, then hull again. This would be
-	//much more space efficient.
+	//much more space efficient, and more easily parallellised
 	//Alternately, compute a for a randoms K set of points, and reject
 	//points that lie in the hull from further computation
 
 
 	//First we must construct the hull
 	double *buffer = new double[points.size()*3];
-	Point3D tempPt;
-	for(unsigned int ui=points.size(); ui--;)
+#pragma omp parallel for 
+	for(unsigned int ui=0; ui<points.size();ui++)
 	{
+		Point3D tempPt;
 		tempPt = points[ui];
 		buffer[ui*dim] = tempPt[0];
 		buffer[ui*dim + 1] = tempPt[1];
@@ -457,7 +458,8 @@ reduced_loop_next:
 //!Generate an NN histogram using NN-max cutoffs 
 unsigned int generateNNHist( const vector<Point3D> &pointList, 
 			const K3DTree &tree,unsigned int nnMax, unsigned int numBins,
-		       	unsigned int *histogram, float *binWidth )
+		       	vector<vector<size_t> > &histogram, float *binWidth , unsigned int *progressPtr,
+			bool (*callback)(void))
 {
 	if(pointList.size() <=nnMax)
 		return RDF_ERR_INSUFFICIENT_INPUT_POINTS;
@@ -470,132 +472,124 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 	BoundCube cube;
 	cube.setBounds(pointList);
 
-	vector<pair<unsigned int,float> > nnDists;
-	vector<const Point3D *> nnPoints;	
-	
-	//Dont allocate too much ram!
-	if((float)pointList.size() *(float)nnMax <= (float)MAX_NN_DISTS)
-		nnDists.reserve(pointList.size()*nnMax);
-	else
-		nnDists.reserve(MAX_NN_DISTS);
-
 	//Allocate and assign the initial max distances
 	float maxSqrDist[nnMax];
 	for(unsigned int ui=0; ui<nnMax; ui++)
 		maxSqrDist[ui] = std::numeric_limits<float>::min();
 	
-	unsigned int maxStoredPt=0;
 
+	const unsigned int CALLBACK_REDUCE=5000;
+
+	size_t numAnalysed=0;
+#ifdef _OPENMP
+	bool spin=false;
+	int callbackReduce[omp_get_num_threads()];
+	for(unsigned int ui=0;ui<omp_get_num_threads();ui++)
+		callbackReduce[ui]=CALLBACK_REDUCE;
+#else
+	int callbackReduce=CALLBACK_REDUCE;
+#endif
 	//do NN search
+#pragma omp parallel for shared(spin)
 	for(unsigned int ui=0; ui<pointList.size(); ui++)
 	{
+#ifdef _OPENMP
+		if(spin)
+			continue;
+#endif
+		vector<const Point3D *> nnPoints;	
 		tree.findKNearest(pointList[ui],cube,
 					nnMax,nnPoints,deadDistSqr);
 
 
 		
-		if(nnDists.size() > MAX_NN_DISTS)
+		for(unsigned int uj=0; uj<nnPoints.size(); uj++)
 		{
-			//oh no! ram problems, better stop storing the result
-			//just update the max distance as needed
-			for(unsigned int uj=0; uj<nnPoints.size(); uj++)
-			{
-				float temp;
-				temp = nnPoints[uj]->sqrDist(pointList[ui]);	
-				if(temp > maxSqrDist[uj])
-					maxSqrDist[uj] = temp;
-			}
+			float temp;
+			temp = nnPoints[uj]->sqrDist(pointList[ui]);	
+			if(temp > maxSqrDist[uj])
+				maxSqrDist[uj] = temp;
+		}
 			
-		}
-		else
+
+		//Callbacks to perform UI updates as needed
+#ifdef _OPENMP 
+		if(!(callbackReduce[omp_get_thread_num()]--))
 		{
-			//we've got heaps of ram left, just keep storing		
-			for(unsigned int uj=0; uj<nnPoints.size(); uj++)
-			{
-				nnDists.push_back(make_pair(uj,
-						nnPoints[uj]->sqrDist(pointList[ui])));	
-			}
-	
-			maxStoredPt=ui;
+		#pragma omp critical
+		{
+			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
+			if(!(*callback)())
+				spin=true;
+			numAnalysed+=CALLBACK_REDUCE;
+		}			
+			callbackReduce[omp_get_thread_num()]=CALLBACK_REDUCE;
+		}	
+#else
+		if(!(callbackReduce--))
+		{
+			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
+			if(!(*callback)())
+				return RDF_ABORT_FAIL;
+			callbackReduce=CALLBACK_REDUCE;
 		}
-               
+#endif
 
 	}
-	//Scan for the max sizes, then use number of bins to
-	//generate histogram
-	float maxDist[nnMax];
-	for(unsigned int ui=nnMax; ui--; )
-		maxDist[ui]= std::numeric_limits<float>::min();
+#ifdef _OPENMP
+	if(spin)
+		return RDF_ABORT_FAIL;
+#endif
 
-
-	//find the maximum distances so we can properly histogram
-	for(unsigned int ui=0; ui<nnDists.size(); ui++)
-	{
-		if(maxDist[nnDists[ui].first] < nnDists[ui].second )
-			maxDist[nnDists[ui].first]=nnDists[ui].second;
-	}
 
 	float maxOfMaxDists=std::numeric_limits<float>::min();
+	float maxDist[nnMax];
 	for(unsigned int ui=0; ui<nnMax; ui++)
 	{
-		if(maxOfMaxDists < maxDist[ui])
-			maxOfMaxDists = maxDist[ui];
-	}	
-	
-	//check to see if the non-stored points had a larger distance
-	for(unsigned int ui=0; ui<nnMax; ui++)
-	{
-		if(maxSqrDist[ui] > maxDist[ui])
-		{
-			if(maxOfMaxDists < maxSqrDist[ui])
-				maxOfMaxDists=maxSqrDist[ui];
-			maxDist[ui] = maxSqrDist[ui];
-		}	
+		if(maxOfMaxDists < maxSqrDist[ui])
+			maxOfMaxDists = maxSqrDist[ui];
+
 		//convert maxima from sqrDistance 
 		//to normal =distance	
-		maxDist[ui] =sqrt(maxDist[ui]);
+		maxDist[ui] =sqrt(maxSqrDist[ui]);
 	}	
 
 	maxOfMaxDists=sqrt(maxOfMaxDists);
 	maxDist[nnMax] = maxOfMaxDists;	
 
-	//Cacluate the bin widths, allowing an extra 5% for the tail bin
+	//Cacluate the bin widths required to accommodate this
+	//distribution, allowing an extra 2% for the tail bin
 	for(unsigned int ui=0; ui<nnMax; ui++)
-		binWidth[ui]= 1.05f*maxDist[ui]/(float)numBins;
-	
-	//convert stored points  from sqr dist to normal distance
-	for(unsigned int ui=0; ui<nnDists.size(); ui++)
-		nnDists[ui].second = sqrt(nnDists[ui].second);
-
+		binWidth[ui]= 1.02f*maxDist[ui]/(float)numBins;
 	
 	//Generate histogram for what we have already
 	//zero out memory
-	for(unsigned int ui=numBins*nnMax; ui--;)
-		*(histogram + ui) = 0;
+	histogram.resize(nnMax);
+	for(unsigned int ui=0;ui<nnMax;ui++)
+		histogram[ui].resize(numBins,0);
 
-	//Tally the histogram -- so far
-	unsigned int row;
-	for(unsigned int ui=nnDists.size(); ui--;)
-	{	
-		//nndists[].first is the NN number. second is the distance
-		//so this is the 
-		row = (unsigned int)(nnDists[ui].second/binWidth[nnDists[ui].first]);
-		//Prevent an exact division from creating an entry on the incorrect row
-		if(row == numBins)
-			row--;
-		
-		histogram[row*nnMax + nnDists[ui].first]++;
-	}
-	
 	//we know the bin that things will fall into now, so we can scan 
 	//remaining points and place into the histogram on the fly now
 	
-	//Free up some ram
-	nnDists.clear();
-	for(unsigned int ui=maxStoredPt+1; ui<pointList.size(); ui++)
+#ifdef _OPENMP
+	spin=false;
+	numAnalysed=0;
+	for(unsigned int ui=0;ui<omp_get_num_threads();ui++)
+		callbackReduce[ui]=CALLBACK_REDUCE;
+#else
+	callbackReduce=CALLBACK_REDUCE;
+#endif
+#pragma omp parallel for
+	for(unsigned int ui=0; ui<pointList.size(); ui++)
 	{
+		vector<const Point3D *> nnPoints;
 		unsigned int offsetTemp;
 		float temp;
+#ifdef _OPENMP
+		if(spin)
+			continue;
+#endif
+
 		tree.findKNearest(pointList[ui],cube,
 					nnMax, nnPoints);
 
@@ -608,9 +602,36 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 			//as (temp is <= binwidth, not < binWidth)
 			if(offsetTemp == numBins)
 				offsetTemp--;
-			
-			 histogram [ offsetTemp + uj*numBins]++;
+			ASSERT(offsetTemp < nnMax*numBins);
+
+			(histogram[uj])[offsetTemp]++;
+#pragma atomic
+			//(*bin)++;
 		}
+	
+
+		//Callbacks to perform UI updates as needed
+#ifdef _OPENMP 
+		if(!(callbackReduce[omp_get_thread_num()]--))
+		{
+		#pragma omp critical
+		{
+			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
+			if(!(*callback)())
+				spin=true;
+			numAnalysed+=CALLBACK_REDUCE;
+		}			
+			callbackReduce[omp_get_thread_num()]=CALLBACK_REDUCE;
+		}	
+#else
+		if(!(callbackReduce--))
+		{
+			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
+			if(!(*callback)())
+				return RDF_ABORT_FAIL;
+			callbackReduce=CALLBACK_REDUCE;
+		}
+#endif
 	}
 
 
@@ -657,7 +678,7 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 	warnBiasCount=0;
 	
 	//Main r-max searching routine
-#pragma omp parallel for  
+#pragma omp parallel for   
 	for(unsigned int ui=0; ui<pointList.size(); ui++)
 	{
 		pair<unsigned int,unsigned int> thisPair;	

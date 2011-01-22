@@ -399,7 +399,7 @@ bool ConfigFile::getPanelEnabled(unsigned int panelID) const
 			else
 				return true;
 		default:
-			ASSERT(false)
+			ASSERT(false);
 	}
 }
 

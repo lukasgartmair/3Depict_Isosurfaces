@@ -45,9 +45,7 @@ useful for general scalar valued point data purposes.
 %patch0
 
 %build
-export CFLAGS="-fopenmp -DGLIBCXX_PARALLEL"
-export CXXFLAGS="-fopenmp -DGLIBCXX_PARALLEL"
-%configure  
+%configure  --enable-openmp-parallel --enable-no-debug-checks
 make %{?_smp_mflags}
 
 
