@@ -558,6 +558,8 @@ bool AnaglyphEffect::writeState(std::ofstream &f, unsigned int format,unsigned i
 			return false;
 
 	}
+
+	return true;
 }
 
 
