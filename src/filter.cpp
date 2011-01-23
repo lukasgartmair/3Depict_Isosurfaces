@@ -535,7 +535,7 @@ unsigned int getIonstreamIonID(const IonStreamData *d, const RangeFile *r)
 	//TODO: Currently, we have no choice but to brute force it.
 	//In the future, it might be worth storing some data inside the IonStreamData itself
 	//and to use that first, rather than try to brute force the result
-#ifdef OPENMP
+#ifdef _OPENMP
 	bool spin=false;
 	#pragma omp parallel for shared(spin)
 	for(size_t ui=1;ui<d->data.size();ui++)
@@ -568,7 +568,7 @@ unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<Ion
 {
 	unsigned int curProg=NUM_CALLBACK;
 	unsigned int n =offset;
-#ifdef OPENMP
+#ifdef _OPENMP
 	//Parallel version
 	bool spin=false;
 	#pragma omp parallel for shared(spin)
@@ -900,12 +900,12 @@ unsigned int PosLoadFilter::refresh(const std::vector<const FilterStreamData *> 
 	consoleOutput.push_back( string("Loaded ") + s + " Ions" );
 	if(cache)
 	{
-		ionData->cached=true;
+		ionData->cached=1;
 		filterOutputs.push_back(ionData);
 		cacheOK=true;
 	}
 	else
-		ionData->cached=false;
+		ionData->cached=0;
 
 	for(unsigned int ui=0;ui<dataIn.size();ui++)
 		getOut.push_back(dataIn[ui]);
@@ -1263,7 +1263,7 @@ bool PosLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 		return false;
 	std::vector<string> v;
 	splitStrsRef((char *)xmlString,',',v);
-	for (int i = 0; i < INDEX_LENGTH && i < v.size(); i++)
+	for (unsigned int i = 0; i < INDEX_LENGTH && i < v.size(); i++)
 	{
 		if(stream_cast(index[i],v[i]))
 			return false;
@@ -1609,12 +1609,12 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 					//getOut is const, so shouldn't be modified
 					if(cache)
 					{
-						d->cached=true;
+						d->cached=1;
 						filterOutputs.push_back(d);
 						cacheOK=true;
 					}
 					else
-						d->cached=false;
+						d->cached=0;
 			
 
 					getOut.push_back(d);
@@ -1748,12 +1748,12 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 						//getOut is const, so shouldn't be modified
 						if(cache)
 						{
-							d->cached=true;
+							d->cached=1;
 							filterOutputs.push_back(d);
 							cacheOK=true;
 						}
 						else
-							d->cached=false;
+							d->cached=0;
 			
 
 						getOut.push_back(d);
@@ -2126,7 +2126,7 @@ VoxeliseFilter::VoxeliseFilter()
 	isoLevel=0.5;
 	bc.setBounds(0, 0, 0, 1, 1, 1);
 	representation=VOXEL_REPRESENT_POINTCLOUD;
-	for (int i = 0; i < INDEX_LENGTH; i++) {
+	for (unsigned int i = 0; i < INDEX_LENGTH; i++) {
 		nBins[i] = 50;
 	}
 	calculateWidthsFromNumBins(binWidth, nBins);
@@ -2290,7 +2290,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 		return 0;
 		
 	VoxelStreamData *vs = new VoxelStreamData();
-	vs->cached = false;
+	vs->cached = 0;
 	vs->data.setCallbackMethod(callback);
 	vs->data.init(nBins[0], nBins[1], nBins[2], bc);
 	vs->representationType= representation;
@@ -2308,7 +2308,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 		//Check we actually have incoming data
 		ASSERT(rsdIncoming);
 		vsDenom = new VoxelStreamData();
-		vsDenom->cached = false;
+		vsDenom->cached = 0;
 		vsDenom->data.setCallbackMethod(callback);
 		vsDenom->data.init(nBins[0], nBins[1], nBins[2], bc);
 		vsDenom->representationType= representation;
@@ -3077,7 +3077,7 @@ void RangeFileFilter::initFilter(const std::vector<const FilterStreamData *> &da
 		std::copy(enabledRanges.begin(),enabledRanges.end(),rngData->enabledRanges.begin());
 		rngData->enabledIons.resize(enabledIons.size());	
 		std::copy(enabledIons.begin(),enabledIons.end(),rngData->enabledIons.begin());
-		rngData->cached=false;
+		rngData->cached=0;
 
 		dataOut.push_back(rngData);
 	}
@@ -3248,7 +3248,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 						ASSERT(ionID < enabledRanges.size());
 						d[ionID]->data.push_back(*it);
 					}
-					else if(!dropUnranged && rangeID == -1)
+					else if(!dropUnranged && rangeID == (unsigned int)-1)
 						d[d.size()-1]->data.push_back(*it);
 
 					//update progress every 5000 ions
@@ -5033,7 +5033,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 
 		}
 	
-		drawData->cached=false;	
+		drawData->cached=0;	
 		getOut.push_back(drawData);
 	}
 
@@ -6041,7 +6041,7 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 		{
 			DrawStreamData *d = new DrawStreamData;
 			d->drawables.push_back(makeColourBar());
-			d->cached=false;
+			d->cached=0;
 			getOut.push_back(d);
 		}
 		return 0;
@@ -6138,7 +6138,7 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 	{
 		DrawStreamData *d = new DrawStreamData;
 		d->drawables.push_back(makeColourBar());
-		d->cached=false;
+		d->cached=0;
 		getOut.push_back(d);
 	}
 
@@ -6168,7 +6168,7 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 		for(unsigned int ui=0;ui<nColours;ui++)
 		{
 			//NOTE: MUST set cached BEFORE push_back!
-			d[ui]->cached=false;
+			d[ui]->cached=0;
 		}
 		cacheOK=false;
 	}
@@ -6657,7 +6657,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 			default:
 				ASSERT(false);
 		}
-		drawData->cached=false;	
+		drawData->cached=0;	
 		getOut.push_back(drawData);
 	}
 
@@ -8137,7 +8137,7 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 		dT->setUp(Point3D(0,0,1));	
 		dT->setTextDir(Point3D(-1,-1,0));
 		d->drawables.push_back(dT);
-		d->cached=false;
+		d->cached=0;
 		
 		getOut.push_back(d);
 	}
@@ -8665,7 +8665,7 @@ DrawStreamData* TransformFilter::makeMarkerSphere(SelectionDevice* &s) const
 		s->addBinding(b);
 
 	}
-	drawData->cached=false;	
+	drawData->cached=0;	
 
 	return drawData;
 }
@@ -10595,15 +10595,22 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 					}
 					else if(stopMode == SPATIAL_DENSITY_RADIUS)
 					{
+#ifdef _OPENMP
+						bool spin=false;
+#endif
 						float maxSqrRad = distMax*distMax;
 						float vol = 4.0/3.0*M_PI*maxSqrRad*distMax; //Sphere volume=4/3 Pi R^3
+						#pragma omp parallel for shared(spin) private(treeDomain)
 						for(size_t uj=0;uj<d->data.size();uj++)
 						{
 							Point3D r;
 							const Point3D *res;
 							float deadDistSqr;
 							unsigned int numInRad;
-							
+#ifdef _OPENMP
+							if(spin)
+								continue;
+#endif	
 							r=d->data[uj].getPosRef();
 							numInRad=0;
 							deadDistSqr=0;
@@ -10616,6 +10623,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 								//Check to see if we found something
 								if(!res)
 								{
+#pragma omp critical
 									badPts.push_back(make_pair(uj, ui));
 									break;
 								}
@@ -10631,13 +10639,18 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 									progress.filterProgress= (unsigned int)((float)n/(float)totalDataSize*100.0f);
 									if(!(*callback)())
 									{
+#ifdef _OPENMP
+										spin=true;
+										continue;
+#else
 										delete newD;
 										return SPATIAL_ANALYSIS_ABORT_ERR;
+#endif
 									}
 									curProg=NUM_CALLBACK/(10*nnMax);
 								}
 							}while(true);
-
+							
 							n++;
 							//Set the mass as the volume of sphere * the number of NN
 							newD->data[uj].setMassToCharge(numInRad/vol);
@@ -10646,6 +10659,13 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 							
 						}
 
+#ifdef _OPENMP
+						if(spin)
+						{
+							delete newD;
+							return SPATIAL_ANALYSIS_ABORT_ERR;
+						}
+#endif
 					}
 					else
 					{
@@ -10685,12 +10705,12 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 					//Cache result as needed
 					if(cache)
 					{
-						newD->cached=true;
+						newD->cached=1;
 						filterOutputs.push_back(newD);
 						cacheOK=true;
 					}
 					else
-						newD->cached=false;
+						newD->cached=0;
 					getOut.push_back(newD);
 				}
 				break;	
@@ -11008,10 +11028,14 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 
 				if(cache)
 				{
-					plotData[ui]->cached=true;
+					plotData[ui]->cached=1;
 					filterOutputs.push_back(plotData[ui]);
 					cacheOK=true;
 				}	
+				else
+				{
+					plotData[ui]->cached=0;
+				}
 				
 				getOut.push_back(plotData[ui]);
 			}
@@ -11030,9 +11054,14 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 				histogram[ui] =0;
 		
 			//User is after an RDF analysis. Run it.
-			generateDistHist(p,kdTree,histogram,distMax,numBins,
-					warnBiasCount);
+			unsigned int errcode;
+			errcode=generateDistHist(p,kdTree,histogram,distMax,numBins,
+					warnBiasCount,&(progress.filterProgress),callback);
 
+			if(errcode)
+			{
+				return SPATIAL_ANALYSIS_ABORT_ERR;
+			}
 
 			if(warnBiasCount)
 			{
@@ -11068,10 +11097,12 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 
 			if(cache)
 			{
-				plotData->cached=true;
+				plotData->cached=1;
 				filterOutputs.push_back(plotData);
 				cacheOK=true;
-			}	
+			}
+			else
+				plotData->cached=0;	
 			
 			getOut.push_back(plotData);
 		

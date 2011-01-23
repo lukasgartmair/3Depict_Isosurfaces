@@ -595,7 +595,7 @@ SHELL=${CONFIG_SHELL-/bin/sh}
 
 # Identity of this package.
 PACKAGE_NAME='3Depict'
-PACKAGE_TARNAME='3depict'
+PACKAGE_TARNAME='3Depict'
 PACKAGE_VERSION='0.0.4'
 PACKAGE_STRING='3Depict 0.0.4'
 PACKAGE_BUGREPORT='mycae@yahoo.com'
@@ -1403,7 +1403,7 @@ Fine tuning of the installation directories:
   --infodir=DIR           info documentation [DATAROOTDIR/info]
   --localedir=DIR         locale-dependent data [DATAROOTDIR/locale]
   --mandir=DIR            man documentation [DATAROOTDIR/man]
-  --docdir=DIR            documentation root [DATAROOTDIR/doc/3depict]
+  --docdir=DIR            documentation root [DATAROOTDIR/doc/3Depict]
   --htmldir=DIR           html documentation [DOCDIR]
   --dvidir=DIR            dvi documentation [DOCDIR]
   --pdfdir=DIR            pdf documentation [DOCDIR]
@@ -2401,7 +2401,7 @@ fi
 
 
 # Define the identity of the package.
- PACKAGE='3depict'
+ PACKAGE='3Depict'
  VERSION='0.0.4'
 
 

@@ -535,7 +535,7 @@ class PosLoadFilter:public Filter
 		float ionSize;
 	
 		//!Number of columns & type of file
-		int numColumns, fileType;
+		unsigned int numColumns, fileType;
 
 		//!index of columns into pos file
 		static const unsigned int INDEX_LENGTH = 4;

@@ -1,4 +1,42 @@
-* The Future : 0.0.3
+* January 23, 2011  : 0.0.4
+
+
+	Features:
+	- Preferences dialog 
+		- User defined defaults for each filter 
+		- Window startup behaviour
+	- Postprocessing effects
+		- Interactive/fast depth buffer based cropping
+		- Analgyphic (oldschool coloured glasses) stereo
+	- Fullscreen now has "partial" and "really" fullscreen modes
+	- Ion downsampling filter now aware of ranges
+
+
+	User Visible Bugfixes/Changes:
+	- Improved parsing of points, so more styles of 3D point entry is 
+	allowed, eg when cutting/pasting from scilab
+	- Plot now zooms in X or Y only by double clicking below axis
+	- Some sections that were supposed to be paralellised, but were not
+	due to typos, now actually are.
+	- Fix bugs in state file writing for ion clipping (non saved var)
+	- Fix parallelism in KD tree building
+	- RDF was not paralellised, and could not be aborted
+	- Voxels no longer crash due to non-ion input
+	- Fix assertion errors when working with cylinder clipping tools
+	- Fix overlays hints being drawn "below" other points in the scene (disable
+	depth buffer, and draw last)
+
+	
+	Technical Bugfixes/Features:
+	- Improve compilation structure to simplify builds under all
+	platforms, particularly when using paralell or similar
+	- Various crash fixes due to re-entry bugs
+	- Fix a few unititalised variables (eg spat. analysis ->cache on plot)
+	- Implement "effects" framework to allow insertion of arbitrary openGL
+	calls using derived effects classes.
+	- Some internal refactoring to reduce code duplication (Filter
+	generation)
+* November 29, 2010 : 0.0.3
 
 	Features:
 	- Added range interaction on-plot
@@ -14,7 +52,7 @@
 	- Filters can report stepwise progress
 	- Improvements to manual.
 
-	User Visible Bugs:
+	User Visible Bugfixes:
 	- Better error messages for PNG/SVG plot save
 	- Fix bug in binding which caused object to move more than it should
 	 during 3D drag
@@ -67,7 +105,7 @@
 
 
 
-* September 24 : 0.0.2
+* September 24, 2010: 0.0.2
 
 	- Files with arbitrary number of data channels can now be loaded,
 	but only one channel at a time can be analysed.
@@ -88,5 +126,5 @@
 	- Many bugfixes -- program should be significantly more stable, but
 	requires testing (please help us with this if you can )
 
-* August 11 : Released 0.0.1
+* August 11, 2010 : Released 0.0.1
 	- Initial release

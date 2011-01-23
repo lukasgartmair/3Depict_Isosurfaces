@@ -43,7 +43,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &tree,
 			unsigned int *histogram, float distMax,
 			unsigned int numBins, unsigned int &warnBiasCount,
-			std::string voxelsName=std::string(""),unsigned int voxelBins=0);
+			unsigned int *progressPtr,bool (*callback)(void));
 
 //!Returns a subset of points guaranteed to lie at least reductionDim inside hull of input points
 /*! Calculates the hull of the input ions and then scales the hull such that the 

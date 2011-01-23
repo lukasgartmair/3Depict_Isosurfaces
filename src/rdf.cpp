@@ -23,6 +23,9 @@ extern "C"
 	#include <qhull/qhull_a.h>
 }
 
+const unsigned int CALLBACK_REDUCE=5000;
+
+
 //!Inline func for calculating a(dot)b
 inline float dotProduct(float a1, float a2, float a3, 
 			float b1, float b2, float b3)
@@ -478,7 +481,6 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 		maxSqrDist[ui] = std::numeric_limits<float>::min();
 	
 
-	const unsigned int CALLBACK_REDUCE=5000;
 
 	size_t numAnalysed=0;
 #ifdef _OPENMP
@@ -490,7 +492,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 	int callbackReduce=CALLBACK_REDUCE;
 #endif
 	//do NN search
-#pragma omp parallel for shared(spin)
+#pragma omp parallel for shared(spin,callbackReduce)
 	for(unsigned int ui=0; ui<pointList.size(); ui++)
 	{
 #ifdef _OPENMP
@@ -605,8 +607,6 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 			ASSERT(offsetTemp < nnMax*numBins);
 
 			(histogram[uj])[offsetTemp]++;
-#pragma atomic
-			//(*bin)++;
 		}
 	
 
@@ -643,7 +643,8 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &tree,
 			unsigned int *histogram, float distMax,
 			unsigned int numBins, unsigned int &warnBiasCount,
-			std::string voxelsName, unsigned int voxelBins)
+			unsigned int *progressPtr,bool (*callback)(void))
+		
 {
 
 
@@ -659,28 +660,26 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 	float maxSqrDist = distMax*distMax;
 
 	vector<const Point3D *> pts;
-
-	bool haveVox=false;
-	Voxels<unsigned int> voxelRDF; 
-	//Initialise the 3D rdf as required
-	if(voxelsName.size())
-	{
-		ASSERT(voxelBins)
-		ofstream f(voxelsName.c_str());
-		if(!f)
-			return RDF_FILE_OPEN_FAIL;
-		f.close();	
-		voxelRDF.resize(2*voxelBins+1,2*voxelBins+1,2*voxelBins+1,
-				Point3D(-distMax,-distMax,-distMax),Point3D(distMax,distMax,distMax));
-		haveVox=true;
-	}
-
 	warnBiasCount=0;
 	
 	//Main r-max searching routine
-#pragma omp parallel for   
+#ifdef _OPENMP
+	bool spin=false;
+	size_t numAnalysed=0;
+	int callbackReduce[omp_get_num_threads()];
+	for(unsigned int ui=0;ui<omp_get_num_threads();ui++)
+		callbackReduce[ui]=CALLBACK_REDUCE;
+#else
+	int callbackReduce=CALLBACK_REDUCE;
+#endif
+#pragma omp parallel for shared(spin,callbackReduce,histogram)
 	for(unsigned int ui=0; ui<pointList.size(); ui++)
 	{
+#ifdef _OPENMP
+		if(spin)
+			continue;
+#endif
+
 		pair<unsigned int,unsigned int> thisPair;	
 		float sqrDist,deadDistSqr;
 		Point3D sourcePoint;
@@ -689,7 +688,8 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 		//that we need
 		
 		thisPair = std::make_pair(0,0);
-		
+	
+		//Loop from this ion, up to its max	
 		//disable exact matching, by requiring d^2 > epsilon
 		deadDistSqr=std::numeric_limits<float>::epsilon();
 		sqrDist=0;
@@ -711,25 +711,14 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 				//- this is bad - prevent this please.	
 				if(sqrDist < maxSqrDist)
 				{
-					if(haveVox)
-					{
-						unsigned long long xV,yV,zV;
-						//Create the lower-left bounded point
-						//for the voxel data, then increment that position
-						Point3D p;
-						p=*nearPt-sourcePoint;
-						voxelRDF.getIndex(xV,yV,zV,p);
-
-#pragma omp critical
-						voxelRDF.increment(xV,yV,zV);
-					}
-
 					//Add the point to the histogram
-					unsigned int binNum;
-					binNum = ((unsigned int) ((sqrt(sqrDist/maxSqrDist)*(float)numBins)));
+					unsigned int *bin;
+					unsigned int offset;
+					offset=((size_t) ((sqrt(sqrDist/maxSqrDist)*(float)numBins)));
+					bin= histogram+offset;
 
-#pragma omp critical	
-					histogram[binNum]++;
+#pragma omp atomic
+					(*bin)++;
 				}
 
 				//increase the dead distance to the last distance
@@ -741,14 +730,38 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 				warnBiasCount++;
 				break;
 			}
+
+
+#ifdef _OPENMP 
+			if(!(callbackReduce[omp_get_thread_num()]--))
+			{
+			#pragma omp critical
+			{
+				*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
+				if(!(*callback)())
+					spin=true;
+				numAnalysed+=CALLBACK_REDUCE;
+			}			
+				callbackReduce[omp_get_thread_num()]=CALLBACK_REDUCE;
+			}	
+#else
+			if(!(callbackReduce--))
+			{
+				*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*100.0f);
+				if(!(*callback)())
+					return RDF_ABORT_FAIL;
+				callbackReduce=CALLBACK_REDUCE;
+			}
+#endif
 		}
 
 	}
 
+#ifdef _OPENMP
+	if(spin)
+		return RDF_ABORT_FAIL;
+#endif
 
-	if(haveVox)
-		voxelRDF.writeFile(voxelsName.c_str());
-	
 	//Calculations complete!
 	return 0;
 }
