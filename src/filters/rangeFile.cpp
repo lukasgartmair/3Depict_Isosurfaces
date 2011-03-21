@@ -148,12 +148,16 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 
 
 				unsigned int curProg=NUM_CALLBACK;
+				bool spin=false;
 				#pragma omp parallel for private(curProg)
 				for(size_t uj=0; uj<src->data.size();uj++)
 				{
 #ifdef _OPENMP
 					unsigned int thisT=omp_get_thread_num();
 #endif
+					if(spin)
+						continue;
+					
 					//get the range ID for this particular ion.
 					unsigned int rangeID;
 					rangeID=rng.getRangeID(src->data[uj].getMassToCharge());
@@ -179,15 +183,21 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 					//update progress periodically
 					if(!curProg--)
 					{
+#pragma omp critical
+						{
 						n+=NUM_CALLBACK;
 						progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 						curProg=NUM_CALLBACK;
 
-						
+
 						if(!(*callback)())
-							return RANGEFILE_ABORT_FAIL;
+							spin=true;
+						}
 					}
 				}
+
+				if(spin)
+					return RANGEFILE_ABORT_FAIL;
 #ifdef _OPENMP
 				//Merge the arrays back together
 				for(unsigned int uk=0;uk<nT;uk++)
