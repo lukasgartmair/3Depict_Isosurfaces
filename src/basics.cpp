@@ -41,6 +41,22 @@ using std::list;
 using std::cerr;
 using std::endl;
 
+//Name of the  DTD file for state loading
+const char *DTD_NAME="threeDepict-state.dtd";
+//Program name
+const char *PROGRAM_NAME = "3Depict";
+//Program version
+const char *PROGRAM_VERSION = "0.0.5";
+//Path to font for Default FTGL  font
+const char *FONT_FILE= "FreeSans.ttf";
+
+std::string boolStrEnc(bool b)
+{
+	if(b)
+		return "1";
+	else
+		return "0";
+}
 //default font to use.
 std::string defaultFontFile;
 
@@ -88,26 +104,107 @@ void nullifyMarker(char *buffer, char marker)
 	}
 }
 
-void dh_assert(const char * const filename, const unsigned int lineNumber) 
+bool parsePointStr(const std::string &str,Point3D &pt)
 {
-    std::cerr << "ASSERTION ERROR!" << std::endl;
-    std::cerr << "Filename: " << filename << std::endl;
-    std::cerr << "Line number: " << lineNumber << std::endl;
+	//Needs to be at minimum #,#,#
+	if(str.size()< 5)
+		return false;
 
-	std::cerr << "Do you wish to continue?(y/n)";
-	char y = 'a';
-	while (y != 'n' && y != 'y')
-		std::cin >> y;
+	bool usingBrackets;
+	string tmpStr;
+	tmpStr=stripWhite(str);
 
-	if (y != 'y')
-		exit(1);
-}
 
-void dh_warn(const char * const filename, const unsigned int lineNumber,const char *message) 
-{
-	std::cerr << "Warning to programmer." << std::endl;
-	std::cerr << "Filename: " << filename << std::endl;
-	std::cerr << "Line number: " << lineNumber << std::endl;
+	//Two strings must be in sync
+	std::string allowableStartChars, allowableEndChars;
+	allowableStartChars="([{<'";
+	allowableEndChars=")]}>'";
+
+	unsigned int nSeparators=0;
+	unsigned int separatorPos[2];
+	unsigned int nStart,nEnd;
+
+	size_t startPos,endPos;
+	startPos=allowableStartChars.find(tmpStr[0]);
+	endPos=allowableEndChars.find(tmpStr[tmpStr.size()-1]);
+
+
+	std::string allowableSeparators=",; \t|_";
+
+	if(startPos ==endPos && startPos !=std::string::npos) 
+	{
+		//Could be:
+		//(#,#,#) format; where ( and ) are any of the allowable start/ends
+		if(str.size()< 7)
+			return false;
+		nStart=1;
+		nEnd=tmpStr.size()-1;
+		usingBrackets=true;
+	}
+	else if(startPos== std::string::npos && endPos == std::string::npos)
+	{
+		//Possible allowable format:
+		//(-)#,(-)#,(-)# format : brackets( ) denote optional
+		if(!(isdigit(tmpStr[0]) || tmpStr[0] == '-') || 
+			!isdigit(tmpStr[tmpStr.size()-1]))
+		       return false;
+
+		nStart=0;
+		nEnd=tmpStr.size();
+		usingBrackets=false;
+	}
+
+
+	size_t curSep=std::numeric_limits<size_t>::max();
+	for(unsigned int ui=nStart; ui<nEnd; ui++)
+	{
+		size_t separatorTypeIdx;
+		//Look through our list of allowable separators
+		separatorTypeIdx=allowableSeparators.find(tmpStr[ui]);
+		if(separatorTypeIdx != std::string::npos) 
+		{
+			if(curSep != std::numeric_limits<size_t>::max()) 
+			{
+				//Check we have been using the same separator each time
+				if(curSep != separatorTypeIdx)
+					return false;
+			}
+			else
+				curSep=separatorTypeIdx;
+
+			separatorPos[nSeparators]=ui;
+			nSeparators++;
+			if(nSeparators > 2)
+				return false;
+		}
+	}
+	if(nSeparators!=2)
+		return false;
+
+	unsigned int length;
+	if(usingBrackets)
+		length= separatorPos[0]-1;
+	else
+		length= separatorPos[0];
+	string tmpStrTwo;
+	tmpStrTwo =tmpStr.substr(nStart,length);
+	
+	float p[3];
+	if(stream_cast(p[0],tmpStrTwo))
+		return false;
+
+
+	tmpStrTwo =tmpStr.substr(separatorPos[0]+1,separatorPos[1]-(separatorPos[0]+1));
+	if(stream_cast(p[1],tmpStrTwo))
+		return false;
+	
+	tmpStrTwo =tmpStr.substr(separatorPos[1]+1,nEnd-(separatorPos[1]));
+	if(stream_cast(p[2],tmpStrTwo))
+		return false;
+
+	pt.setValueArr(p);
+
+	return true;
 }
 
 void ucharToHexStr(unsigned char c, std::string &s)
@@ -260,39 +357,6 @@ std::string getActiveChoice(std::string choiceString)
 	return tmpStr.substr(tmpStr.find("|")+1,tmpStr.size()-1);
 }
 
-//Convert my internal choice string format to wx's
-std::string wxChoiceParamString(std::string choiceString)
-{
-	string retStr;
-
-	bool haveColon=false;
-	bool haveBar=false;
-	for(unsigned int ui=0;ui<choiceString.size();ui++)
-	{
-		if(haveColon && haveBar )
-		{
-			if(choiceString[ui] != ',')
-				retStr+=choiceString[ui];
-			else
-			{
-				haveBar=false;
-				retStr+=",";
-			}
-		}
-		else
-		{
-			if(choiceString[ui]==':')
-				haveColon=true;
-			else
-			{
-				if(choiceString[ui]=='|')
-					haveBar=true;
-			}
-		}
-	}
-
-	return retStr;
-}
 
 bool parseColString(const std::string &str,
 	unsigned char &r, unsigned char &g, unsigned char &b, unsigned char &a)
@@ -361,6 +425,7 @@ void genColString(unsigned char r, unsigned char g,
 	ucharToHexStr(b,tmp);
 	s+=tmp;
 }
+
 //Strip "whitespace"
 std::string stripWhite(const std::string &str)
 {
@@ -541,323 +606,6 @@ bool Colour::fromString(const std::string &str)
 }
 
 
-void Point3D::copyValueArr(float *valArr) const
-{
-	ASSERT(valArr);
-	//compiler should unroll this automatically
-	for(unsigned int ui=0; ui<3; ui++)
-	{
-		*(valArr+ui) = *(value+ui);
-	}
-}
-
-bool Point3D::operator==(const Point3D &pt) const
-{
-	return (value[0] == pt.value[0] && value[1] == pt.value[1] && value[2] == pt.value[2]);
-}
-
-Point3D Point3D::operator=(const Point3D &pt)
-{
-	value [0] = pt.value[0];
-	value [1] = pt.value[1];
-	value [2] = pt.value[2];
-	return *this;
-}
-
-Point3D Point3D::operator+=(const Point3D &pt)
-{
-	for(unsigned int ui=0;ui<3; ui++)
-		value[ui]+= pt.value[ui];
-	
-	return *this;
-}
-
-Point3D Point3D::operator+(const Point3D &pt) const
-{
-	Point3D ptTmp;
-	
-	for(unsigned int ui=0;ui<3; ui++)
-		ptTmp.value[ui] = value[ui]  + pt.value[ui];
-	
-	return ptTmp;
-}
-
-Point3D Point3D::operator+(float f) 
-{
-	for(unsigned int ui=0;ui<3; ui++)
-		value[ui] = value[ui]  + f;
-	
-	return *this;
-}
-
-Point3D Point3D::operator-(const Point3D &pt) const
-{
-	Point3D ptTmp;
-	
-	for(unsigned int ui=0;ui<3; ui++)
-		ptTmp.value[ui] = value[ui]  - pt.value[ui];
-	
-	return ptTmp;
-}
-
-Point3D Point3D::operator-() const
-{
-	Point3D ptTmp;
-	
-	for(unsigned int ui=0;ui<3; ui++)
-		ptTmp.value[ui] = -value[ui];
-	
-	return ptTmp;
-}
-
-Point3D Point3D::operator*=(const float scale)
-{
-	value[0] = value[0]*scale;
-	value[1] = value[1]*scale;
-	value[2] = value[2]*scale;
-	
-	return *this;
-}
-
-Point3D Point3D::operator*(float scale) const
-{
-	Point3D tmpPt;
-	
-	tmpPt.value[0] = value[0]*scale;
-	tmpPt.value[1] = value[1]*scale;
-	tmpPt.value[2] = value[2]*scale;
-	
-	return tmpPt;
-}
-
-Point3D Point3D::operator*(const Point3D &pt) const
-{
-	Point3D tmpPt;
-	
-	tmpPt.value[0] = value[0]*pt[0];
-	tmpPt.value[1] = value[1]*pt[1];
-	tmpPt.value[2] = value[2]*pt[2];
-	
-	return tmpPt;
-}
-
-Point3D Point3D::operator/(float scale) const
-{
-	Point3D tmpPt;
-
-	scale = 1.0f/scale;
-	tmpPt.value[0] = value[0]*scale;
-	tmpPt.value[1] = value[1]*scale;
-	tmpPt.value[2] = value[2]*scale;
-
-	return tmpPt;
-}
-
-float Point3D::sqrDist(const Point3D &pt) const
-{
-	return (pt.value[0]-value[0])*(pt.value[0]-value[0])+
-		(pt.value[1]-value[1])*(pt.value[1]-value[1])+
-		(pt.value[2]-value[2])*(pt.value[2]-value[2]);
-}
-		
-float Point3D::dotProd(const Point3D &pt) const
-{
-	//Return the inner product
-	return value[0]*pt.value[0] + value[1]*pt.value[1] + value[2]*pt.value[2];
-}
-
-Point3D Point3D::crossProd(const Point3D &pt) const
-{
-	Point3D cross;
-
-	cross.value[0] = (pt.value[2]*value[1] - pt.value[1]*value[2]);
-	cross.value[1] = -(value[0]*pt.value[2] - pt.value[0]*value[2]);
-	cross.value[2] = (value[0]*pt.value[1] - value[1]*pt.value[0]);
-
-	return cross;
-}
-
-bool Point3D::insideBox(const Point3D &farPoint) const
-{
-	
-	return (value[0] < farPoint.value[0] && value[0] >=0) &&
-		(value[1] < farPoint.value[1] && value[1] >=0) &&
-		(value[2] < farPoint.value[2] && value[2] >=0);
-}
-
-bool Point3D::insideBox(const Point3D &lowPt,const Point3D &highPt) const
-{
-	
-	return (value[0] < highPt.value[0] && value[0] >=lowPt.value[0]) &&
-		(value[1] < highPt.value[1] && value[1] >=lowPt.value[1]) &&
-		(value[2] < highPt.value[2] && value[2] >=lowPt.value[2]);
-}
-
-//This is different to +=, because it generates no return value
-void Point3D::add(const Point3D &obj)
-{
-	value[0] = obj.value[0] + value[0];
-	value[1] = obj.value[1] + value[1];
-	value[2] = obj.value[2] + value[2];
-}
-
-float Point3D::sqrMag() const
-{
-	return value[0]*value[0] + value[1]*value[1] + value[2]*value[2];
-}
-
-Point3D Point3D::normalise()
-{
-	float mag = sqrt(sqrMag());
-
-	value[0]/=mag;
-	value[1]/=mag;
-	value[2]/=mag;
-
-	return *this;
-}
-
-void Point3D::negate() 
-{
-	value[0] = -value[0];
-	value[1] = -value[1];
-	value[2] = -value[2];
-}
-
-float Point3D::angle(const Point3D &pt) const
-{
-	return acos(dotProd(pt)/(sqrt(sqrMag()*pt.sqrMag())));
-}
-
-#ifdef __LITTLE_ENDIAN__
-
-void Point3D::switchEndian()
-{
-	floatSwapBytes(&value[0]);
-	floatSwapBytes(&value[1]);
-	floatSwapBytes(&value[2]);
-}
-#endif
-
-std::ostream& operator<<(std::ostream &stream, const Point3D &pt)
-{
-	stream << "(" << pt.value[0] << "," << pt.value[1] << "," << pt.value[2] << ")";
-	return stream;
-}
-
-bool Point3D::parse(const std::string &str)
-{
-	//Needs to be at minimum #,#,#
-	if(str.size()< 5)
-		return false;
-
-	bool usingBrackets;
-	string tmpStr;
-	tmpStr=stripWhite(str);
-
-
-	//Two strings must be in sync
-	std::string allowableStartChars, allowableEndChars;
-	allowableStartChars="([{<'";
-	allowableEndChars=")]}>'";
-
-	unsigned int nSeparators=0;
-	unsigned int separatorPos[2];
-	unsigned int nStart,nEnd;
-
-	size_t startPos,endPos;
-	startPos=allowableStartChars.find(tmpStr[0]);
-	endPos=allowableEndChars.find(tmpStr[tmpStr.size()-1]);
-
-
-	std::string allowableSeparators=",; \t|_";
-
-	if(startPos ==endPos && startPos !=std::string::npos) 
-	{
-		//Could be:
-		//(#,#,#) format; where ( and ) are any of the allowable start/ends
-		if(str.size()< 7)
-			return false;
-		nStart=1;
-		nEnd=tmpStr.size()-1;
-		usingBrackets=true;
-	}
-	else if(startPos== std::string::npos && endPos == std::string::npos)
-	{
-		//Possible allowable format:
-		//(-)#,(-)#,(-)# format : brackets( ) denote optional
-		if(!(isdigit(tmpStr[0]) || tmpStr[0] == '-') || 
-			!isdigit(tmpStr[tmpStr.size()-1]))
-		       return false;
-
-		nStart=0;
-		nEnd=tmpStr.size();
-		usingBrackets=false;
-	}
-
-
-	size_t curSep=std::numeric_limits<size_t>::max();
-	for(unsigned int ui=nStart; ui<nEnd; ui++)
-	{
-		size_t separatorTypeIdx;
-		//Look through our list of allowable separators
-		separatorTypeIdx=allowableSeparators.find(tmpStr[ui]);
-		if(separatorTypeIdx != std::string::npos) 
-		{
-			if(curSep != std::numeric_limits<size_t>::max()) 
-			{
-				//Check we have been using the same separator each time
-				if(curSep != separatorTypeIdx)
-					return false;
-			}
-			else
-				curSep=separatorTypeIdx;
-
-			separatorPos[nSeparators]=ui;
-			nSeparators++;
-			if(nSeparators > 2)
-				return false;
-		}
-	}
-	if(nSeparators!=2)
-		return false;
-
-	unsigned int length;
-	if(usingBrackets)
-		length= separatorPos[0]-1;
-	else
-		length= separatorPos[0];
-	string tmpStrTwo;
-	tmpStrTwo =tmpStr.substr(nStart,length);
-	
-	float p[3];
-	if(stream_cast(p[0],tmpStrTwo))
-		return false;
-
-
-	tmpStrTwo =tmpStr.substr(separatorPos[0]+1,separatorPos[1]-(separatorPos[0]+1));
-	if(stream_cast(p[1],tmpStrTwo))
-		return false;
-	
-	tmpStrTwo =tmpStr.substr(separatorPos[1]+1,nEnd-(separatorPos[1]));
-	if(stream_cast(p[2],tmpStrTwo))
-		return false;
-
-	value[0]=p[0];
-	value[1]=p[1];
-	value[2]=p[2];
-
-	return true;
-}
-
-void Point3D::transform3x3(const float *matrix)
-{
-	for(unsigned int ui=0;ui<3;ui++)
-	{
-		value[ui] = value[ui]*matrix[ui*3] + 
-			value[ui]*matrix[ui*3+1] + value[ui]*matrix[ui*3+2];
-	}
-}
 
 //========
 
@@ -1035,6 +783,17 @@ float BoundCube::getLargestDim() const
 	return std::max(getSize(2),f);	
 }
 
+bool BoundCube::containsPt(const Point3D &p) const
+{
+	for(unsigned int ui=0; ui<3; ui++)
+	{
+		ASSERT(valid[ui][0] && valid[ui][1]);
+		if(p.getValue(ui) < bounds[ui][0] || p.getValue(ui) > bounds[ui][1])
+			return false;
+	}
+	return true;
+}
+
 float BoundCube::getSize(unsigned int dim) const
 {
 	ASSERT(dim < 3);
@@ -1045,18 +804,6 @@ float BoundCube::getSize(unsigned int dim) const
 	}
 #endif
 	return fabs(bounds[dim][1] - bounds[dim][0]);
-}
-
-bool BoundCube::containsPt(const Point3D &p) const
-{
-	for(unsigned int ui=0; ui<3; ui++) 
-	{
-		ASSERT(valid[ui][0] && valid[ui][1]);
-		if( p[ui] < bounds[ui][0] || p[ui] > bounds[ui][1])
-			return false;
-	}
-
-	return true;
 }
 
 //checks intersection with sphere [centre,centre+radius)
@@ -1130,7 +877,7 @@ float BoundCube::getMaxDistanceToBox(const Point3D &queryPt) const
 			queryPt.sqrDist(Point3D(p[ui&1][0],p[(ui&2) >> 1][1],p[(ui&4) >> 2][2])));
 	}
 
-	return sqrt(maxDistSqr);
+	return sqrtf(maxDistSqr);
 }
 
 BoundCube BoundCube::operator=(const BoundCube &b)
@@ -1495,135 +1242,4 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 	return 0;
 }
 
-//For the table to work, we need the sizeof(size_T) at preprocess time
-#ifndef SIZEOF_SIZE_T
-#error sizeof(size_t) macro is undefined... At time of writing, this is usually 4 (32 bit) or 8. You can work it out from a simple C++ program which prints out sizeof(size_t). This cant be done automatically due to preprocessor behaviour.
-#endif
-
-//Maximum period linear shift register values (computed by
-//other program for galois polynomial)
-//Unless otherwise noted, all these entries have been verfied using the
-//verifyTable routine. 
-//
-//If you don't trust me, (who doesn't trust some random person on the internet?) 
-//you can re-run the verfication routine. 
-//
-//Note that verfication time *doubles* with every entry, so full 64-bit verification
-//is computationally intensive. I achieved 40 bits in half a day. 48 bits took over a week.
-size_t maximumLinearTable[] = {
-	  0x03,
-	  0x06,
-	  0x0C,
-	  0x14,
-	  0x30,
-	  0x60,
-	  0xb8,
-	0x0110,
-	0x0240,
-	0x0500,
-	0x0e08,
-	0x1c80,
-	0x3802,
-	0x6000,
-	0xb400,
-	0x12000,
-	0x20400,
-	0x72000,
-	0x90000,
-	0x140000,
-	0x300000,
-	0x420000,
-	0xD80000,
-	0x1200000,
-	0x3880000,
-	0x7200000,
-	0x9000000,
-	0x14000000,
-	0x32800000,
-	0x48000000,
-
-#if (SIZEOF_SIZE_T > 4)
-	0xA3000000,
-	0x100080000,
-	0x262000000,
-	0x500000000,
-	0x801000000,
-	0x1940000000,
-	0x3180000000,
-	0x4400000000,
-	0x9C00000000,
-	0x12000000000,
-	0x29400000000,
-	0x63000000000,
-	0xA6000000000,
-	0x1B0000000000,
-	0x20E000000000,
-	0x420000000000,
-	0x894000000000,
-	//Maximal linear table entries below line are unverified 
-	//Verifying the full table might take a few months of computing time
-	//But who needs to count beyond 2^49-1 (~10^14) anyway??
-	0x1008000000000,
-
-	//Really, there are more entries beyond this, but I consider it pretty much not worth the effort.
-#endif
-};
-
-
-void LinearFeedbackShiftReg::setMaskPeriod(unsigned int newMask)
-{
-	//Don't fall off the table
-	ASSERT((newMask-3) < sizeof(maximumLinearTable)/sizeof(size_t));
-
-	maskVal=maximumLinearTable[newMask-3];
-
-	//Set the mask to be all ones
-	totalMask=0;
-	for(size_t ui=0;ui<newMask;ui++)
-		totalMask|= (size_t)(1)<<ui;
-
-
-}
-
-bool LinearFeedbackShiftReg::verifyTable()
-{
-	//check each one is actually the full 2^n-1 period
-
-	size_t tableLen =  sizeof(maximumLinearTable)/sizeof(size_t);
-
-	//For the 32 bit table, this works pretty quickly.
-	//for the 64  bit table, this takes a month or so
-	for(size_t n=3;n<tableLen+3;n++)
-	{
-		size_t period;
-		setState(1);
-		setMaskPeriod(n);
-		period=0;
-		do
-		{
-			clock();
-			period++;
-		}
-		while(lfsr!=1);
-
-
-		//we should have counted every bit position in the polynomial (except 0)
-		//otherwise, this is not the maximal linear sequence
-		if(period != ((size_t)(1)<<(n-(size_t)1)) -(size_t)(1))
-			return false;
-	}
-	return true;
-}
-
-size_t LinearFeedbackShiftReg::clock()
-{
-	typedef size_t ull;
-
-	lfsr = (lfsr >> 1) ^ -(lfsr & (ull)(1u)) & maskVal; 
-	lfsr&=totalMask;
-	if( lfsr == 0u)
-		lfsr=1u;
-
-	return lfsr;
-}
 

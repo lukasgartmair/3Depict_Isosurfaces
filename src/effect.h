@@ -19,8 +19,7 @@
 #ifndef EFFECT_H
 #define EFFECT_H
 
-#include "basics.h"
-
+#include <string>
 #include <libxml/xmlreader.h>
 
 //OpenGL includes
@@ -33,13 +32,16 @@
 
 #include "cameras.h"
 
+
 //opengl allows up to 6 clipping planes
 const unsigned int MAX_OPENGL_CLIPPLANES=6;
+
+			
 
 //Effect IDs
 enum
 {
-	EFFECT_BOX_CROP=1,
+	EFFECT_BOX_CROP=0,
 	EFFECT_ANAGLYPH,
 	EFFECT_ENUM_END
 };
@@ -132,7 +134,10 @@ class BoxCropEffect : public Effect
 
 		void useCamCoords(bool enable){useCamCoordinates=enable;};
 
-		void testCroppedBounds(BoundCube &b) const;
+		//!Alters the input box to generate cropping bounding box
+		//note the box may be inside out if the cropping limits
+		//exceed themselves..
+		void getCroppedBounds(BoundCube &b) const;
 
 		float getCropValue(unsigned int pos) const {ASSERT(pos<6); return cropFractions[pos];}
 };
@@ -180,6 +185,11 @@ class AnaglyphEffect : public Effect
 
 			
 };
+
+
+Effect *makeEffect(unsigned int effectID);
+
+Effect *makeEffect(const std::string &s);
 
 
 #endif

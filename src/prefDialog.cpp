@@ -20,6 +20,8 @@
 
 #include "prefDialog.h"
 
+#include "filters/allFilter.h"
+
 #include <wx/colordlg.h>
 
 using std::vector;

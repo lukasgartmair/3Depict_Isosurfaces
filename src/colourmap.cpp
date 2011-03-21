@@ -161,12 +161,6 @@ void colorMap(unsigned char *rgb,float value,float min,float max)
     positiveColorMap(rgb,value,0,max);
   else 
     negativeColorMap(rgb,value,min,0);
-/*
-  if(value>0) 
-    hotColorMap(rgb,value,min,max);
-  else 
-    coldColorMap(rgb,value,min,max);
-	*/
 }
 
 void cyclicColorMap(unsigned char *rgb,float value,float min,float max)

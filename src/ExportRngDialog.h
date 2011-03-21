@@ -16,7 +16,7 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "wxPreprec.h"
+#include <wx/wx.h>
 #include <wx/image.h>
 
 #ifndef EXPORTRNGDIALOG_H
@@ -27,7 +27,7 @@
 // end wxGlade
 
 #include "viscontrol.h"
-
+#include "filters/rangeFile.h"
 class ExportRngDialog: public wxDialog {
 public:
     // begin wxGlade: ExportRngDialog::ids

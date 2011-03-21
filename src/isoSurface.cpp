@@ -16,7 +16,7 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "IsoSurface.h"
+#include "isoSurface.h"
 
 #include <limits>
 void TriangleWithVertexNorm::computeACWNormal(Point3D &n) const
@@ -378,7 +378,7 @@ float interpLinear(float fValue1, float fValue2, float fValueDesired)
         double fDelta = fValue2 - fValue1;
 
 	//Prevent numerical instabilities
-        if(fDelta <sqrt( std::numeric_limits<float>::epsilon()))
+        if(fDelta <sqrtf( std::numeric_limits<float>::epsilon()))
                 return 0.5;
         return (fValueDesired - fValue1)/fDelta;
 }
@@ -386,7 +386,7 @@ float interpLinear(float fValue1, float fValue2, float fValueDesired)
 //vMarchingCubes iterates over the entire dataset, calling vMarchCube on each cube
 void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVertexNorm> &tVec)
 {
-	unsigned long long nx,ny,nz;
+	size_t nx,ny,nz;
 	v.getSize(nx,ny,nz);
 
 	ASSERT(nx > 1 && ny>1 && nz>1);
@@ -437,10 +437,10 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 		Point3D asEdgeVertex[12];
 		for(int iEdge = 0; iEdge < 12; iEdge++)
 		{
-			float fOffset;
 			//if there is an intersection on this edge
 			if(iEdgeFlags & (1<<iEdge))
 			{
+				float fOffset;
 				fOffset =0.5;// interpLinear(vertexVal[ a2iEdgeConnection[iEdge][0] ], 
 					//	vertexVal[ a2iEdgeConnection[iEdge][1] ], isoValue);
 

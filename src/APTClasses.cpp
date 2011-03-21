@@ -198,7 +198,7 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 
 	//Function is only defined for 4 columns here.
 	ASSERT(outputnumcols == 4);
-	//buffersize must be a power of two and at least sizeof(IONHIT)
+	//buffersize must be a power of two and at least outputnumcols*sizeof(float)
 	const unsigned int NUMROWS=1;
 	const unsigned int BUFFERSIZE=inputnumcols * sizeof(float) * NUMROWS;
 	const unsigned int BUFFERSIZE2=outputnumcols * sizeof(float) * NUMROWS;
@@ -293,7 +293,6 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 	//TODO: probably not very nice to the disk drive. would be better to
 	//scan ahead for contigous data regions, and load that where possible.
 	//Or switch between different algorithms based upon ionsToLoad.size()/	
-	IONHIT hit;
 	std::ios::pos_type  nextIonPos;
 	for(size_t ui=0;ui<ionsToLoad.size(); ui++)
 	{
@@ -307,11 +306,9 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 		for (int i = 0; i < outputnumcols; i++) // iterate through floats
 			memcpy(&(buffer2[i * sizeof(float)]), &(buffer[index[i] * sizeof(float)]), sizeof(float));
 		
-		memcpy((char *)(&hit), buffer2, sizeof(IONHIT));
-		
 		if(!CFile.good())
 			return POS_READ_FAIL;
-		posIons[ui].setHit(&hit);
+		posIons[ui].setHit((float*)buffer2);
 		//Data bytes stored in pos files are big
 		//endian. flip as required
 		#ifdef __LITTLE_ENDIAN__
@@ -351,7 +348,8 @@ unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int output
 		unsigned int index[], vector<IonHit> &posIons,const char *posFile, 
 			unsigned int &progress, bool (*callback)())
 {
-	//buffersize must be a power of two and at least sizeof(IONHIT)
+	ASSERT(outputnumcols==4); //Due to ionHit.setHit
+	//buffersize must be a power of two and at least sizeof(float)*outputnumCols
 	const unsigned int NUMROWS=512;
 	const unsigned int BUFFERSIZE=inputnumcols * sizeof(float) * NUMROWS;
 	const unsigned int BUFFERSIZE2=outputnumcols * sizeof(float) * NUMROWS;
@@ -391,7 +389,11 @@ unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int output
 	
 	//calculate the number of points stored in the POS file
 	IonHit hit;
-	IONHIT *hitStruct;
+	typedef struct IONHIT
+	{
+		float pos[3];
+		float massToCharge;
+	} IONHIT;
 	size_t pointCount=0;
 	//regular case
 	size_t curBufferSize=BUFFERSIZE;
@@ -448,11 +450,10 @@ unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int output
 				}
 			}
 			
-			hitStruct = (IONHIT *)buffer2; 
 			unsigned int ui;
 			for(ui=0; ui<curBufferSize2; ui+=(sizeof(IONHIT)))
 			{
-				hit.setHit(hitStruct);
+				hit.setHit((float*)(buffer2+ui));
 				//Data bytes stored in pos files are big
 				//endian. flip as required
 				#ifdef __LITTLE_ENDIAN__
@@ -469,7 +470,6 @@ unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int output
 				ionP++;
 				
 				pointCount++;
-				hitStruct++;
 			}	
 			
 			if(!curProg--)
@@ -527,11 +527,6 @@ float IonHit::getMassToCharge() const
 	return massToCharge;
 }	
 
-void IonHit::setHit(const IONHIT *hit)
-{
-	pos.setValueArr((float *)hit);
-	massToCharge = hit->massToCharge;	
-}
 
 void IonHit::setPos(const Point3D &p)
 {
@@ -717,8 +712,8 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			unsigned int numIons;	
 			
 			
-			
-			if(fscanf(fpRange, "%u %u", &numIons, &numRanges) != 2)
+			//Read out the number of ions and ranges int hef ile	
+			if(fscanf(fpRange, "%64u %64u", &numIons, &numRanges) != 2)
 			{
 				errState=RANGE_ERR_FORMAT;
 				fclose(fpRange);
@@ -738,7 +733,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			ranges.reserve(numRanges);
 			ionIDs.reserve(numRanges);
 			
-			RGB colourStruct;
+			RGBf colourStruct;
 			pair<string, string> namePair;
 			
 			//Read ion short and full names as well as colour info
@@ -786,7 +781,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				
 				namePair.first= inBuffer;
 				//Read Red green blue data
-				if(!fscanf(fpRange,"%f %f %f",&(colourStruct.red),
+				if(!fscanf(fpRange,"%128f %128f %128f",&(colourStruct.red),
 					&(colourStruct.green),&(colourStruct.blue)))
 				{
 					errState=RANGE_ERR_FORMAT;
@@ -821,7 +816,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				}
 				while(inBuffer[0] != '.');
 				
-				if(!fscanf(fpRange, " %f %f",&massPair.first, 
+				if(!fscanf(fpRange, " %128f %128f",&massPair.first, 
 							&massPair.second))
 				{
 					errState=RANGE_ERR_FORMAT;
@@ -841,7 +836,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				assignedFlag=0;
 				for(unsigned int j=0; j<numIons; j++)
 				{
-					if(!fscanf(fpRange, "%u",&tempInt))
+					if(!fscanf(fpRange, "%64u",&tempInt))
 					{
 						errState=RANGE_ERR_FORMAT;
 						fclose(fpRange);
@@ -972,7 +967,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							//Env file contians only the long name, so use that for both the short and long names
 							ionNames.push_back(std::make_pair(strVec[0],strVec[0]));
 							//Use the colours (positions 1-3)
-							RGB colourStruct;
+							RGBf colourStruct;
 							if(stream_cast(colourStruct.red,strVec[1])
 								||stream_cast(colourStruct.green,strVec[2])
 							 	||stream_cast(colourStruct.blue,strVec[3]) )
@@ -1102,7 +1097,6 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				string s;
 				s=inBuffer;
 
-				cerr <<" Reading line: " << s ;
 				s=stripWhite(s);
 				if (!s.size())
 					continue;
@@ -1302,7 +1296,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							split.clear();
 							splitStrsRef(strTmp.c_str(),' ',split);
 
-							RGB col;
+							RGBf col;
 							bool haveColour,haveNameField;
 							haveColour=false;
 							haveNameField=false;
@@ -1763,7 +1757,7 @@ pair<float,float> RangeFile::getRange(unsigned int ui) const
 	return ranges[ui];
 }
 
-RGB RangeFile::getColour(unsigned int ui) const
+RGBf RangeFile::getColour(unsigned int ui) const
 {
 	ASSERT(ui <  colours.size());
 	return colours[ui];
@@ -1916,7 +1910,7 @@ unsigned int RangeFile::atomicNumberFromIonID(unsigned int ionID) const
 	return 0;	
 }
 
-void RangeFile::setColour(unsigned int id, const RGB &r) 
+void RangeFile::setColour(unsigned int id, const RGBf &r) 
 {
 	ASSERT(id < colours.size());
 	colours[id] = r;

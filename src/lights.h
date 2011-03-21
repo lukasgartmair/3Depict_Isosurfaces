@@ -18,8 +18,8 @@
 #ifndef LIGHTS_H
 #define LIGHTS_H
 
-#include "basics.h"
-
+#include "assertion.h"
+#include "mathfuncs.h"
 //OpenGL includes
 //MacOS is "special" and puts it elsewhere
 #ifdef __APPLE__ 

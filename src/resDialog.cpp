@@ -16,9 +16,9 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "ResDialog.h"
-
-
+#include "resDialog.h"
+#include "basics.h"
+#include "wxcommon.h"
 // begin wxGlade: ::extracode
 // end wxGlade
 

@@ -25,11 +25,11 @@
 //which complains bitterly about header orders.
 //#define HPMC_GPU_ISOSURFACE
 
-#include "APTClasses.h"
 #include "cameras.h"
 #include "textures.h"
 #include "voxels.h"
-#include "IsoSurface.h"
+#include "isoSurface.h"
+#include "basics.h"
 
 //STL includes
 #include <vector>
@@ -109,7 +109,6 @@ enum
 };
 
 
-#include "basics.h"
 
 //!An abstract bas class for drawing primitives
 class DrawableObj
@@ -198,8 +197,6 @@ class DrawManyPoints : public DrawableObj
 		void clear();
 		//!Add points into the drawing vector
 		void addPoints(const std::vector<Point3D> &);
-		//!Add points into the drawing vector
-		void addPoints(const std::vector<IonHit> &);
 		//!Add a single point into the drawing vector
 		void addPoint(const Point3D &);
 		//! set the color of the points to be drawn

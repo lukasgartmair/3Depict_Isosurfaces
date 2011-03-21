@@ -39,6 +39,7 @@ enum
 	MESSAGE_ERROR=1,
 	MESSAGE_INFO,
 	MESSAGE_HINT,
+	MESSAGE_NONE_BUT_HINT,
 	MESSAGE_NONE
 };
 
@@ -56,7 +57,6 @@ winconsole winC;
 
 #include "3Depict.h"
 #include <utility>
-#include "common.h"
 
 //wxWidgets stuff
 #include "wxcomponents.h"
@@ -71,15 +71,23 @@ winconsole winC;
 #include <wx/stdpaths.h>
 #include <wx/progdlg.h>
 
+#if (wxMAJOR_VERSION >= 2) && (wxMINOR_VERSION > 8)
+	#include <wx/utils.h>  // Needed for wxLaunchDefaultApplication
+#else
+	#include <wx/mimetype.h> //Needed for GetOpenCommand
+#endif
 //Custom program dialog windows
 #include "StashDialog.h" //Stash editor
-#include "ResDialog.h" // resolution selection dialog
+#include "resDialog.h" // resolution selection dialog
 #include "ExportRngDialog.h" // Range export dialog
 #include "ExportPos.h" // Ion export dialog
 #include "prefDialog.h" // Prefernces dialog
 
 //Program Icon
 #include "art.h"
+
+//Filter imports
+#include "filters/rangeFile.h"
 
 using std::pair;
 using std::max;
@@ -91,6 +99,8 @@ using std::max;
 const unsigned int STATUS_TIMER_DELAY=10000; 
 //Milliseconds between querying viscontrol for needing update
 const unsigned int UPDATE_TIMER_DELAY=50; 
+//Milliseconds between progress bar updates 
+const unsigned int PROGRESS_TIMER_DELAY=100; 
 //Seconds between autosaves
 const unsigned int AUTOSAVE_DELAY=300; 
 
@@ -119,6 +129,7 @@ enum
 {
 	COMBO_FILTER_BOUNDINGBOX,
 	COMBO_FILTER_CLIPPING,
+	COMBO_FILTER_CLUSTER_ANALYSIS,
 	COMBO_FILTER_COMPOSITION_PROFILE,
 	COMBO_FILTER_DOWNSAMPLE,
 	COMBO_FILTER_EXTERNALPROG,
@@ -132,11 +143,13 @@ enum
 
 
 //--- These settings must be modified concomittantly.
-const unsigned int FILTER_DROP_COUNT=11;
+const unsigned int FILTER_DROP_COUNT=12;
+
 
 const wxString comboFilters_choices[FILTER_DROP_COUNT] = {
         _("Bounding Box"),
         _("Clipping"),
+	_("Cluster Analysis"),
         _("Compos. Profiles"),
         _("Downsampling"),
 	_("Extern. Prog."),
@@ -151,6 +164,7 @@ const wxString comboFilters_choices[FILTER_DROP_COUNT] = {
 const unsigned int comboFiltersTypeMapping[FILTER_DROP_COUNT] = {
 	FILTER_TYPE_BOUNDBOX,
 	FILTER_TYPE_IONCLIP,
+	FILTER_TYPE_CLUSTER_ANALYSIS,
 	FILTER_TYPE_COMPOSITION,
 	FILTER_TYPE_IONDOWNSAMPLE,
 	FILTER_TYPE_EXTERNALPROC,
@@ -273,9 +287,10 @@ enum {
 MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
     wxFrame(parent, id, title, pos, size, style)
 {
-
+	initedOK=false;
 	programmaticEvent=false;
 	fullscreenState=0;
+	lastMessageType=MESSAGE_NONE;
 	//Set up the program icon handler
 	wxArtProvider::Push(new MyArtProvider);
 	SetIcon(wxArtProvider::GetIcon(_("MY_ART_ID_ICON")));
@@ -316,6 +331,16 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     splitterSpectra = new wxSplitterWindow(noteDataView, ID_SPLIT_SPECTRA, wxDefaultPosition, wxDefaultSize, wxSP_3D|wxSP_BORDER);
     window_2_pane_2 = new wxPanel(splitterSpectra, wxID_ANY);
     panelTop = new BasicGLPane(splitTopBottom);
+
+
+    //FIXME: This needs SOMETHING; but not able to work out what
+    //    if(!panelTop->m_glContext)
+ //   {
+
+//	    cerr << "Unable to initialise the openGL panel. Program cannot start. Please check your video drivers." << endl;
+//	    return;
+//    }
+
     panelLeft = new wxPanel(splitLeftRight, wxID_ANY);
     notebookControl = new wxNotebook(panelLeft, ID_NOTEBOOK_CONTROL, wxDefaultPosition, wxDefaultSize, wxNB_RIGHT);
     noteTools = new wxPanel(notebookControl, ID_NOTE_PERFORMANCE, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL);
@@ -568,8 +593,11 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     //
 
 
+    	
 	//Try to load config file. If we can't no big deal.
-    	if(configFile.read())
+	unsigned int errCode;
+    	errCode=configFile.read();
+	if(!errCode)
 	{
 		std::vector<std::string> strVec;
 
@@ -599,10 +627,21 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 	}
 	else
 	{
-		textConsoleOut->AppendText(_("Warning: Your configuration file appears to be invalid:\n"));
-		wxString wxS = _("\tConfig Load: ");
-		wxS+= wxStr( configFile.getErrMessage());
-		textConsoleOut->AppendText(wxS);
+		switch(errCode)
+		{
+			case CONFIG_ERR_NOFILE:
+				break;
+			case CONFIG_ERR_BADFILE:
+			{
+				textConsoleOut->AppendText(_("Warning: Your configuration file appears to be invalid:\n"));
+				wxString wxS = _("\tConfig Load: ");
+				wxS+= wxStr( configFile.getErrMessage());
+				textConsoleOut->AppendText(wxS);
+				break;
+			}
+			default:
+				ASSERT(false);
+		}
 	}
 	
 	//Attempt to load the auto-save file, if it exists
@@ -639,7 +678,7 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 	delete paths;
 	//-----------------
 
-	   
+	initedOK=true;   
 
 
 	updateTimer->Start(UPDATE_TIMER_DELAY,wxTIMER_CONTINUOUS);
@@ -1115,6 +1154,9 @@ void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
 		//Show a resolution chooser dialog
 		ResDialog d(this,wxID_ANY,_("Choose resolution"));
 
+		int plotW,plotH;
+		panelSpectra->GetClientSize(&plotW,&plotH);
+		d.setRes(plotW,plotH);
 		if(d.ShowModal() == wxID_CANCEL)
 			return;
 
@@ -1823,10 +1865,75 @@ void MainWindowFrame::OnViewWorldAxis(wxCommandEvent &event)
 
 void MainWindowFrame::OnHelpHelp(wxCommandEvent &event)
 {
-	std::string helpFileLocation("http://threedepict.sourceforge.net/documentation.html");
-	wxLaunchDefaultBrowser(wxStr(helpFileLocation),wxBROWSER_NEW_WINDOW);
+	//First attempt to locate the local copy of the manual.
+	string s;
+	s=locateDataFile("3Depict-manual.pdf");
 
-	statusMessage("Opening help in external web browser",MESSAGE_INFO);
+	//Also debian makes us use the lowercase "D", so check there too.
+	if(!s.size())
+		s=locateDataFile("3depict-manual.pdf");
+
+
+	//If we found it, use the default program associated with that data file
+	bool launchedOK=false;
+	if( wxFileExists(wxStr(s))  && s.size())
+	{
+		//we found the manual. Launch the default handler.
+#if (wxMAJOR_VERSION >= 2) && (wxMINOR_VERSION > 8)
+		launchedOK=wxLaunchDefaultApplication(wxStr(s));
+#else
+		//its a bit more convoluted for earlier versions of wx.
+		//we have to try xdg-open or open for linux and mac respectively
+		//for windows, we need to use the wxWidgets GetOpenCommand
+	
+		long appPID;
+
+	#if defined(__linux__)
+		//Try xdg-open first
+		wxString str;
+		str= _("xdg-open ");
+		str+=wxStr(s);
+		appPID=wxExecute(str,wxEXEC_ASYNC);
+		launchedOK=(appPID!=0);
+	#elif defined(__APPLE__)
+		//Try open first
+		wxString str;
+		str= _("open ");
+		str+=wxStr(s);
+		appPID=wxExecute(str,wxEXEC_ASYNC);
+		launchedOK=(appPID!=0);
+	#endif
+
+		//No luck still? Try wx's quirky GetOpenCommand		
+		if(!launchedOK)
+		{
+			wxString command;
+			//Sigh. In version < 2.9; wx uses the mime-type
+			//manager to wrap up the construction
+			//of wxFileType object (private constructor).
+			//so we can't just *make* a wxFileType
+			//we have to derive one from a "mime-type manager".
+			//the only way to do this is from the file extension
+			//or by passing the mime-string.
+			wxMimeTypesManager m;
+			wxFileType *t;
+				
+			t=m.GetFileTypeFromExtension(_("pdf"));
+			command=t->GetOpenCommand(wxStr(s));
+			appPID=wxExecute(command,wxEXEC_ASYNC);
+			launchedOK=(appPID!=0);
+		}
+#endif
+	}
+
+	//Still no go? Give up and launch a browser.
+	if(!launchedOK)
+	{
+		std::string helpFileLocation("http://threedepict.sourceforge.net/documentation.html");
+		wxLaunchDefaultBrowser(wxStr(helpFileLocation),wxBROWSER_NEW_WINDOW);
+
+		statusMessage("Manual not found locally. Launching web browser",MESSAGE_INFO);
+	}
 }
 
 void MainWindowFrame::OnHelpContact(wxCommandEvent &event)
@@ -2574,12 +2681,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 			}
 
 			//Load rangefile &  construct filter
-			RangeFileFilter *f = new RangeFileFilter;
-			
-			Filter *t;
-			t=configFile.getDefaultFilter(f->getType());
-			delete f;
-			f=(RangeFileFilter*)t;
+			RangeFileFilter *f=(RangeFileFilter*)configFile.getDefaultFilter(FILTER_TYPE_RANGEFILE);
 
 			//Split the filename into chunks. path, volume, name and extention
 			//the format of this is OS dependant, but wxWidgets can deal with this.
@@ -2693,11 +2795,12 @@ void MainWindowFrame::doSceneUpdate()
 	
 	//Susespend the update timer, and star thte progress timer
 	updateTimer->Stop();
-	progressTimer->Start(150);		
+	progressTimer->Start(PROGRESS_TIMER_DELAY);		
 	currentlyUpdatingScene=true;
 	haveAborted=false;
-	
-	statusMessage("",MESSAGE_NONE);
+
+		
+//	statusMessage("",MESSAGE_NONE);
 	noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,_("Cons."));
 
 	//Disable tree filters,refresh button and undo
@@ -2922,7 +3025,7 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 
 void MainWindowFrame::statusMessage(const char *message, unsigned int type)
 {
-	MainFrame_statusbar->SetStatusText(wxCStr(message),0);
+	bool sendMessage=true;
 	switch(type)
 	{
 		case MESSAGE_ERROR:
@@ -2933,12 +3036,23 @@ void MainWindowFrame::statusMessage(const char *message, unsigned int type)
 			break;
 		case MESSAGE_HINT:
 			break;
-		case MESSAGE_NONE:
-			return;
+		//Pseudo-messages
+		case MESSAGE_NONE: // No actions needed, just supply the message
+			ASSERT( string(message)== string(""));
+			break;
+		case MESSAGE_NONE_BUT_HINT:
+			ASSERT( string(message)== string(""));
+			//we need to clear any messages other than "hintMessage"
+			sendMessage=(lastMessageType==MESSAGE_HINT);
+			break;
 		default:
 			ASSERT(false);
 	}
 
+	lastMessageType=type;
+	
+	if(sendMessage)
+		MainFrame_statusbar->SetStatusText(wxCStr(message),0);
 	statusTimer->Start(STATUS_TIMER_DELAY,wxTIMER_ONE_SHOT);
 }
 
@@ -3077,7 +3191,7 @@ void MainWindowFrame::updatePostEffects()
 			BoundCube bcTmp;
 			bcTmp=panelTop->currentScene.getBound();
 
-			b->testCroppedBounds(bcTmp);	
+			b->getCroppedBounds(bcTmp);	
 
 			if(!checkFxCropCameraFrame->IsChecked())
 			{
@@ -4188,7 +4302,7 @@ bool threeDepictApp::OnInit()
 {
 
     //Register signal handler for backtraces
-        if (!wxApp::OnInit())
+    if (!wxApp::OnInit())
     	return false; 
 
     //Need to seed random number generator for entire program
@@ -4200,6 +4314,10 @@ bool threeDepictApp::OnInit()
     
     wxInitAllImageHandlers();
     MainFrame = new MainWindowFrame(NULL, wxID_ANY, wxEmptyString);
+
+    if(!MainFrame->initOK())
+	    return false;
+    
     SetTopWindow(MainFrame);
 
 #ifdef DEBUG

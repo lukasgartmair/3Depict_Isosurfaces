@@ -20,13 +20,18 @@
 #ifndef WXCOMPONENTS_H
 #define WXCOMPONENTS_H
 
-#include "common.h"
-
-#include "wxPreprec.h"
+#include <wx/dc.h>
+#include <wx/settings.h>
+#include <wx/grid.h>
 #include <wx/treectrl.h>
 #include <wx/laywin.h>
+#include <wx/filedlg.h>
 
 #include <vector>
+#include <string>
+
+#include "assertion.h"
+#include "commonConstants.h"
 
 //!3D combo grid renderer, from
 //http://nomadsync.cvs.sourceforge.net/nomadsync/nomadsync/src/EzGrid.cpp?view=markup (GPL)
@@ -119,6 +124,8 @@ class wxPropertyGrid : public wxGrid
 		PropGridHandler *m_GridHandler;
 		//First element is key number. Second element is key type
 		std::vector<std::vector<GRID_PROPERTY> > propertyKeys;
+		//Names of each of the grouped keys in propertyKeys
+		std::vector<std::string> sectionNames;
 		void fitCols(wxSize &size);
 	public:
 		wxPropertyGrid(wxWindow* parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition, 
@@ -129,7 +136,10 @@ class wxPropertyGrid : public wxGrid
 		void clearKeys();
 
 		//!Set the number of, er, sets.
-		void setNumSets(unsigned int newSetCount){propertyKeys.resize(newSetCount);};
+		void setNumSets(unsigned int newSetCount){propertyKeys.resize(newSetCount); sectionNames.resize(newSetCount);};
+
+		//Set the names for each set. (sorry :()
+		void setSetName(unsigned int set, const std::string &name) {ASSERT(set < sectionNames.size()); sectionNames[set]=name;};
 
 		//!Retreive the position of a cell, given key and set
 		void getPropertyCell(unsigned int set, unsigned int key,

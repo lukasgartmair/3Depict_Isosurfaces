@@ -26,10 +26,6 @@
 
 #include <string>
 using std::string;
-#ifdef DEBUG
-#include <iostream>
-using namespace std;
-#endif
 
 
 //These functions return nonzero on failure,

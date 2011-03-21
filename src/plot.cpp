@@ -149,7 +149,7 @@ void genErrBars(const std::vector<float> &x, const std::vector<float> &y,
 					stddev+=(y[idx]-mean)*(y[idx]-mean);
 				}
 
-				stddev=sqrt(stddev/(float)errMode.movingAverageNum);
+				stddev=sqrtf(stddev/(float)errMode.movingAverageNum);
 				errBars[ui]=stddev;
 			}
 			break;
@@ -386,6 +386,7 @@ void Multiplot::disableUserAxisBounds(bool xBound)
 	}
 
 
+	//Check to see if we have zoomed all the bounds out anyway
 	if(fabs(xUserMin -xMin)<=std::numeric_limits<float>::epsilon() &&
 		fabs(yUserMin -yMin)<=std::numeric_limits<float>::epsilon())
 	{

@@ -18,10 +18,11 @@
 
 #ifndef APTCLASSES_H
 #define APTCLASSES_H
-#include "basics.h"
+//#include "datastructs.h"
 #include "endianTest.h"
 #include "mathfuncs.h"
-#include "common.h"
+#include "commonConstants.h"
+#include "basics.h"
 
 #include <string>
 #include <iostream>
@@ -34,6 +35,11 @@
 #include <fstream>
 #include <new>//std::bad_alloc
 
+//!Allowable export ion formats
+enum
+{
+	IONFORMAT_POS=1,
+};
 
 using std::vector;
 
@@ -71,13 +77,6 @@ BoundCube getIonDataLimits(const vector<IonHit> &p);//
 
 //Range file strucutres
 //=========
-//!Data holder for colour as float
-typedef struct RGB
-{
-	float red;
-	float green;
-	float blue;
-} RGB;
 
 enum{ RANGE_ERR_OPEN =1, 
 	RANGE_ERR_FORMAT,
@@ -98,18 +97,8 @@ enum{ RANGE_FORMAT_ORNL=1,
 
 //Pos file structure
 //===========
-//!Record as stored in a .POS file
-typedef struct IONHIT
-{
-	float pos[3];
-	float massToCharge;
-} IONHIT;
 //=========
 
-enum PointDir{ 	POINTDIR_TOGETHER =0,
-                POINTDIR_IN_COMMON,
-                POINTDIR_APART
-             };
              
              
 //!This is a data holding class for POS file ions, from
@@ -127,7 +116,7 @@ class IonHit
 		IonHit(const IonHit &);
 		IonHit(Point3D p, float massToCharge);
 
-		void setHit(const IONHIT *hit);
+		void setHit(float *arr) { pos.setValueArr(arr); massToCharge=arr[3];};
 		void setMassToCharge(float newMassToCharge);
 		void setPos(const Point3D &pos);
 		void setPos(float fX, float fY, float fZ)
@@ -160,7 +149,7 @@ class RangeFile
 		//the second is the full name
 		std::vector<std::pair<std::string,std::string> > ionNames;
 		//This holds the colours for the ions
-		std::vector<RGB> colours;
+		std::vector<RGBf> colours;
 		
 		//This will contains the number of ranges
 		//
@@ -187,9 +176,9 @@ class RangeFile
 		//!Retrieve the start and end of a given range as a pair(start,end)
 		std::pair<float,float> getRange(unsigned int ) const;
 		//!Retrieve a given colour from the ion ID
-		RGB getColour(unsigned int) const;
+		RGBf getColour(unsigned int) const;
 		//!Set the colour using the ion ID
-		void setColour(unsigned int, const RGB &r);
+		void setColour(unsigned int, const RGBf &r);
 
 		
 		//!Retrieve the colour from a given ion ID

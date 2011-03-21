@@ -1,7 +1,7 @@
 #ifndef ISOSURFACE_H
 #define ISOSURFACE_H
 
-#include "basics.h"
+#include "mathfuncs.h"
 #include "voxels.h"
 
 class TriangleWithVertexNorm

@@ -25,6 +25,10 @@ extern "C"
 
 const unsigned int CALLBACK_REDUCE=5000;
 
+enum PointDir{ 	POINTDIR_TOGETHER =0,
+                POINTDIR_IN_COMMON,
+                POINTDIR_APART
+             };
 
 //!Inline func for calculating a(dot)b
 inline float dotProduct(float a1, float a2, float a3, 
@@ -136,10 +140,10 @@ float distanceToSegment(const Point3D &fA, const Point3D &fB, const Point3D &p)
 		Point3D vAB= fB-fA;
 
 		//Use formula d^2 = |(B-A)(cross)(A-P)|^2/|B-A|^2
-		return sqrt( (vAB.crossProd(fA-p)).sqrMag()/(vAB.sqrMag()));
+		return sqrtf( (vAB.crossProd(fA-p)).sqrMag()/(vAB.sqrMag()));
 	}
 
-	return sqrt( std::min(fB.sqrDist(p), fA.sqrDist(p)) );
+	return sqrtf( std::min(fB.sqrDist(p), fA.sqrDist(p)) );
 }
 
 //!Find the distance between a point, and a triangular facet -- may be positive or negative
@@ -157,7 +161,7 @@ float distanceToFacet(const Point3D &fA, const Point3D &fB,
 {
 
 	//This will check the magnitude of the incoming normal
-	ASSERT( fabs(sqrt(normal.sqrMag()) - 1.0f) < 2.0* std::numeric_limits<float>::epsilon());
+	ASSERT( fabs(sqrtf(normal.sqrMag()) - 1.0f) < 2.0* std::numeric_limits<float>::epsilon());
 	unsigned int pointDir[3];
 	pointDir[0] = vectorPointDir(fA,fB,p,p);
 	pointDir[1] = vectorPointDir(fA,fC,p,p);
@@ -188,9 +192,9 @@ float distanceToFacet(const Point3D &fA, const Point3D &fB,
 	temp = fabs((p-fA).dotProd(normal));
 
 	//check that the other points were not better than this!
-	ASSERT(sqrt(fA.sqrDist(p)) >= temp - std::numeric_limits<float>::epsilon());
-	ASSERT(sqrt(fB.sqrDist(p)) >= temp - std::numeric_limits<float>::epsilon());
-	ASSERT(sqrt(fC.sqrDist(p)) >= temp - std::numeric_limits<float>::epsilon());
+	ASSERT(sqrtf(fA.sqrDist(p)) >= temp - std::numeric_limits<float>::epsilon());
+	ASSERT(sqrtf(fB.sqrDist(p)) >= temp - std::numeric_limits<float>::epsilon());
+	ASSERT(sqrtf(fC.sqrDist(p)) >= temp - std::numeric_limits<float>::epsilon());
 
 	//Point lies above/below facet, use plane formula
 	return temp; 
@@ -553,10 +557,10 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 
 		//convert maxima from sqrDistance 
 		//to normal =distance	
-		maxDist[ui] =sqrt(maxSqrDist[ui]);
+		maxDist[ui] =sqrtf(maxSqrDist[ui]);
 	}	
 
-	maxOfMaxDists=sqrt(maxOfMaxDists);
+	maxOfMaxDists=sqrtf(maxOfMaxDists);
 	maxDist[nnMax] = maxOfMaxDists;	
 
 	//Cacluate the bin widths required to accommodate this
@@ -597,7 +601,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 
 		for(unsigned int uj=0; uj<nnPoints.size(); uj++)
 		{
-			temp=sqrt(nnPoints[uj]->sqrDist(pointList[ui]));
+			temp=sqrtf(nnPoints[uj]->sqrDist(pointList[ui]));
 			offsetTemp = (unsigned int)(temp/binWidth[uj]);
 			
 			//Prevent overflow due to temp/binWidth exceeding array dimension 
@@ -714,7 +718,7 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 					//Add the point to the histogram
 					unsigned int *bin;
 					unsigned int offset;
-					offset=((size_t) ((sqrt(sqrDist/maxSqrDist)*(float)numBins)));
+					offset=((size_t) ((sqrtf(sqrDist/maxSqrDist)*(float)numBins)));
 					bin= histogram+offset;
 
 #pragma omp atomic

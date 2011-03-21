@@ -20,10 +20,6 @@
 #ifndef SELECT_H
 #define SELECT_H
 
-class SelectionDevice;
-class SelectionBinding;
-
-#include "filter.h"
 #include "drawables.h"
 
 #include <vector>
@@ -73,9 +69,6 @@ class SelectionBinding
 		//calls recomputeParams function
 		DrawableObj *obj;
 		
-		//Pointer to filter who owns this binding
-		const Filter *owner;
-	
 		//ID number for parent to know which of its bindings this is
 		unsigned int bindingId;
 
@@ -165,14 +158,14 @@ class SelectionBinding
 		bool modified() const {return valModified;};
 };
 
-class SelectionDevice
+template<class T> class SelectionDevice
 {
 	private:
 		std::vector<SelectionBinding> bindingVec;
-		const Filter *target;
-	public:
+		const T *target;
+public:
 		//!Create a new selection device
-		SelectionDevice(const Filter *p);
+		SelectionDevice(const T *p);
 
 		//!Copy constructor (not implemented)
 		SelectionDevice(const SelectionDevice &copySrc);
@@ -186,8 +179,63 @@ class SelectionDevice
 				unsigned int keyFlags,	SelectionBinding* &b);
 
 		bool getAvailBindings(const DrawableObj *d, vector<const SelectionBinding*> &b) const;
-		void getModifiedBindings(vector<std::pair<const Filter *,SelectionBinding> > &bindings);
+		void getModifiedBindings(vector<std::pair<const T *,SelectionBinding> > &bindings);
 };
+
+template<class T>
+SelectionDevice<T>::SelectionDevice(const T *p)
+{
+	target=p;
+}
+
+template<class T>
+void SelectionDevice<T>::addBinding(SelectionBinding b)
+{
+	bindingVec.push_back(b);
+}
+
+template<class T>
+bool SelectionDevice<T>::getBinding(const DrawableObj *d,unsigned int mouseFlags, 
+					unsigned int keyFlags,SelectionBinding* &b)
+{
+	for(unsigned int ui=0;ui<bindingVec.size();ui++)
+	{
+		if(bindingVec[ui].matchesDrawable(d,mouseFlags,keyFlags))
+		{
+			b=&(bindingVec[ui]);
+			return true;
+		}
+	}
+
+	//This selection device does not match
+	//the targeted object.
+	return false;
+}
+
+template<class T>
+void SelectionDevice<T>::getModifiedBindings(vector<std::pair<const T *,SelectionBinding> > &bindings)
+{
+	ASSERT(target);
+	for(unsigned int ui=0;ui<bindingVec.size();ui++)
+	{
+		if(bindingVec[ui].modified())
+			bindings.push_back(std::make_pair(target,bindingVec[ui]));
+	}
+}
+
+template<class T>
+bool SelectionDevice<T>::getAvailBindings(const DrawableObj *d,vector<const SelectionBinding*> &b) const
+{
+	ASSERT(!b.size());
+	for(unsigned int ui=0;ui<bindingVec.size();ui++)
+	{
+		if(bindingVec[ui].matchesDrawable(d))
+			b.push_back(&(bindingVec[ui]));
+	}
+
+
+	return b.size();
+}
 
 #endif
 

@@ -48,32 +48,51 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am__3Depict_SOURCES_DIST = quat.c pngread.c rdf.cpp glPane.cpp \
-	basics.cpp cameras.cpp drawables.cpp lights.cpp 3Depict.cpp \
-	scene.cpp mathglPane.cpp plot.cpp APTClasses.cpp filter.cpp \
-	viscontrol.cpp mathfuncs.cpp wxcomponents.cpp colourmap.cpp \
-	select.cpp common.cpp XMLHelper.cpp ResDialog.cpp \
-	ExportPos.cpp ExportRngDialog.cpp StashDialog.cpp textures.cpp \
-	configFile.cpp K3DTree.cpp IsoSurface.cpp prefDialog.cpp \
-	effect.cpp wxCropPanel.cpp winconsole.cpp 3Depict.rc
-am__objects_1 = 3Depict-quat.$(OBJEXT) 3Depict-pngread.$(OBJEXT) \
-	3Depict-rdf.$(OBJEXT) 3Depict-glPane.$(OBJEXT) \
-	3Depict-basics.$(OBJEXT) 3Depict-cameras.$(OBJEXT) \
-	3Depict-drawables.$(OBJEXT) 3Depict-lights.$(OBJEXT) \
-	3Depict-3Depict.$(OBJEXT) 3Depict-scene.$(OBJEXT) \
-	3Depict-mathglPane.$(OBJEXT) 3Depict-plot.$(OBJEXT) \
-	3Depict-APTClasses.$(OBJEXT) 3Depict-filter.$(OBJEXT) \
-	3Depict-viscontrol.$(OBJEXT) 3Depict-mathfuncs.$(OBJEXT) \
-	3Depict-wxcomponents.$(OBJEXT) 3Depict-colourmap.$(OBJEXT) \
-	3Depict-select.$(OBJEXT) 3Depict-common.$(OBJEXT) \
-	3Depict-XMLHelper.$(OBJEXT) 3Depict-ResDialog.$(OBJEXT) \
-	3Depict-ExportPos.$(OBJEXT) 3Depict-ExportRngDialog.$(OBJEXT) \
-	3Depict-StashDialog.$(OBJEXT) 3Depict-textures.$(OBJEXT) \
-	3Depict-configFile.$(OBJEXT) 3Depict-K3DTree.$(OBJEXT) \
-	3Depict-IsoSurface.$(OBJEXT) 3Depict-prefDialog.$(OBJEXT) \
-	3Depict-effect.$(OBJEXT) 3Depict-wxCropPanel.$(OBJEXT)
-@HAVE_WINDRES_FALSE@am_3Depict_OBJECTS = $(am__objects_1)
-@HAVE_WINDRES_TRUE@am_3Depict_OBJECTS = $(am__objects_1) \
+am__3Depict_SOURCES_DIST = mathglPane.cpp plot.cpp prefDialog.cpp \
+	configFile.cpp filter.cpp APTClasses.cpp resDialog.cpp \
+	select.cpp drawables.cpp effect.cpp textures.cpp rdf.cpp \
+	cameras.cpp isoSurface.cpp K3DTree.cpp K3DTree-mk2.cpp \
+	basics.cpp lights.cpp xmlHelper.cpp cropPanel.cpp \
+	colourmap.cpp pngread.c mathfuncs.cpp wxcomponents.cpp \
+	wxcommon.cpp filters/allFilter.cpp filters/posLoad.cpp \
+	filters/ionDownsample.cpp filters/rangeFile.cpp \
+	filters/voxelise.cpp filters/spectrumPlot.cpp \
+	filters/transform.cpp filters/externalProgram.cpp \
+	filters/ionClip.cpp filters/ionColour.cpp \
+	filters/boundingBox.cpp filters/compositionProfile.cpp \
+	filters/spatialAnalysis.cpp filters/clusterAnalysis.cpp \
+	3Depict.cpp ExportPos.cpp ExportRngDialog.cpp glPane.cpp \
+	scene.cpp StashDialog.cpp viscontrol.cpp winconsole.cpp \
+	3Depict.rc
+am__objects_1 = 3Depict-mathglPane.$(OBJEXT) 3Depict-plot.$(OBJEXT) \
+	3Depict-prefDialog.$(OBJEXT) 3Depict-configFile.$(OBJEXT) \
+	3Depict-filter.$(OBJEXT) 3Depict-APTClasses.$(OBJEXT) \
+	3Depict-resDialog.$(OBJEXT) 3Depict-select.$(OBJEXT) \
+	3Depict-drawables.$(OBJEXT) 3Depict-effect.$(OBJEXT) \
+	3Depict-textures.$(OBJEXT) 3Depict-rdf.$(OBJEXT) \
+	3Depict-cameras.$(OBJEXT) 3Depict-isoSurface.$(OBJEXT) \
+	3Depict-K3DTree.$(OBJEXT) 3Depict-K3DTree-mk2.$(OBJEXT) \
+	3Depict-basics.$(OBJEXT) 3Depict-lights.$(OBJEXT) \
+	3Depict-xmlHelper.$(OBJEXT) 3Depict-cropPanel.$(OBJEXT) \
+	3Depict-colourmap.$(OBJEXT) 3Depict-pngread.$(OBJEXT) \
+	3Depict-mathfuncs.$(OBJEXT) 3Depict-wxcomponents.$(OBJEXT) \
+	3Depict-wxcommon.$(OBJEXT)
+am__objects_2 = 3Depict-allFilter.$(OBJEXT) 3Depict-posLoad.$(OBJEXT) \
+	3Depict-ionDownsample.$(OBJEXT) 3Depict-rangeFile.$(OBJEXT) \
+	3Depict-voxelise.$(OBJEXT) 3Depict-spectrumPlot.$(OBJEXT) \
+	3Depict-transform.$(OBJEXT) 3Depict-externalProgram.$(OBJEXT) \
+	3Depict-ionClip.$(OBJEXT) 3Depict-ionColour.$(OBJEXT) \
+	3Depict-boundingBox.$(OBJEXT) \
+	3Depict-compositionProfile.$(OBJEXT) \
+	3Depict-spatialAnalysis.$(OBJEXT) \
+	3Depict-clusterAnalysis.$(OBJEXT)
+am__objects_3 = 3Depict-3Depict.$(OBJEXT) 3Depict-ExportPos.$(OBJEXT) \
+	3Depict-ExportRngDialog.$(OBJEXT) 3Depict-glPane.$(OBJEXT) \
+	3Depict-scene.$(OBJEXT) 3Depict-StashDialog.$(OBJEXT) \
+	3Depict-viscontrol.$(OBJEXT)
+am__objects_4 = $(am__objects_1) $(am__objects_2) $(am__objects_3)
+@HAVE_WINDRES_FALSE@am_3Depict_OBJECTS = $(am__objects_4)
+@HAVE_WINDRES_TRUE@am_3Depict_OBJECTS = $(am__objects_4) \
 @HAVE_WINDRES_TRUE@	3Depict-winconsole.$(OBJEXT) \
 @HAVE_WINDRES_TRUE@	3Depict.$(OBJEXT)
 3Depict_OBJECTS = $(am_3Depict_OBJECTS)
@@ -242,14 +261,27 @@ MSYS_PATH = /c/msys/1.0/local/include/
 3Depict_LDADD = $(LIBS) $(WX_LIBS) $(MGL_LIBS)  $(FTGL_LIBS) \
 		 $(FT_LIBS) $(XML_LIBS) $(GSL_LIBS) $(GL_LIBS) $(GLU_LIBS) $(QHULL_LIBS) $(PNG_LIBS) 
 
-SOURCE_FILES = quat.c pngread.c rdf.cpp glPane.cpp basics.cpp cameras.cpp drawables.cpp lights.cpp \
-		3Depict.cpp scene.cpp mathglPane.cpp plot.cpp APTClasses.cpp filter.cpp \
-		viscontrol.cpp mathfuncs.cpp wxcomponents.cpp colourmap.cpp select.cpp common.cpp \
-		XMLHelper.cpp ResDialog.cpp ExportPos.cpp ExportRngDialog.cpp StashDialog.cpp textures.cpp \
-		configFile.cpp K3DTree.cpp IsoSurface.cpp prefDialog.cpp effect.cpp wxCropPanel.cpp
+FILTER_FILES = filters/allFilter.cpp filters/posLoad.cpp filters/ionDownsample.cpp \
+		filters/rangeFile.cpp filters/voxelise.cpp filters/spectrumPlot.cpp \
+	       	filters/transform.cpp filters/externalProgram.cpp filters/ionClip.cpp \
+		filters/ionColour.cpp filters/boundingBox.cpp  \
+		filters/compositionProfile.cpp filters/spatialAnalysis.cpp \
+		filters/clusterAnalysis.cpp
 
+
+#These source files should have heirachical couplings only; no cross-coupling
+BASE_SOURCE_FILES = mathglPane.cpp plot.cpp prefDialog.cpp configFile.cpp filter.cpp \
+		     APTClasses.cpp resDialog.cpp select.cpp \
+		     drawables.cpp effect.cpp textures.cpp rdf.cpp \
+		     cameras.cpp isoSurface.cpp K3DTree.cpp K3DTree-mk2.cpp\
+			basics.cpp lights.cpp xmlHelper.cpp cropPanel.cpp colourmap.cpp \
+			pngread.c mathfuncs.cpp wxcomponents.cpp wxcommon.cpp
+
+
+#These files are inter-dependant to some extent (mostly viscontrol)
+CROSS_DEP_SOURCE_FILE = 3Depict.cpp ExportPos.cpp ExportRngDialog.cpp glPane.cpp scene.cpp StashDialog.cpp viscontrol.cpp
+SOURCE_FILES = $(BASE_SOURCE_FILES)  $(FILTER_FILES) $(CROSS_DEP_SOURCE_FILE)
 @HAVE_WINDRES_FALSE@3Depict_SOURCES = $(SOURCE_FILES)
-
 #Do we have or need windows-XP "resource" files for look and feel?
 @HAVE_WINDRES_TRUE@3Depict_SOURCES = $(SOURCE_FILES)  winconsole.cpp 3Depict.rc
 all: all-am
@@ -337,35 +369,49 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-APTClasses.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ExportPos.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ExportRngDialog.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-IsoSurface.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-K3DTree-mk2.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-K3DTree.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ResDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-StashDialog.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-XMLHelper.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-allFilter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-basics.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-boundingBox.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-cameras.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-clusterAnalysis.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-colourmap.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-common.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-compositionProfile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-configFile.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-cropPanel.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-drawables.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-effect.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-externalProgram.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-filter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-glPane.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ionClip.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ionColour.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ionDownsample.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-isoSurface.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-lights.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-mathfuncs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-mathglPane.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-plot.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-pngread.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-posLoad.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-prefDialog.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-quat.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-rangeFile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-rdf.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-resDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-scene.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-select.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-spatialAnalysis.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-spectrumPlot.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-textures.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-transform.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-viscontrol.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-voxelise.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-winconsole.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-wxCropPanel.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-wxcommon.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-wxcomponents.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-xmlHelper.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -380,20 +426,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
-
-3Depict-quat.o: quat.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CFLAGS) $(CFLAGS) -MT 3Depict-quat.o -MD -MP -MF $(DEPDIR)/3Depict-quat.Tpo -c -o 3Depict-quat.o `test -f 'quat.c' || echo '$(srcdir)/'`quat.c
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/3Depict-quat.Tpo $(DEPDIR)/3Depict-quat.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='quat.c' object='3Depict-quat.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CFLAGS) $(CFLAGS) -c -o 3Depict-quat.o `test -f 'quat.c' || echo '$(srcdir)/'`quat.c
-
-3Depict-quat.obj: quat.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CFLAGS) $(CFLAGS) -MT 3Depict-quat.obj -MD -MP -MF $(DEPDIR)/3Depict-quat.Tpo -c -o 3Depict-quat.obj `if test -f 'quat.c'; then $(CYGPATH_W) 'quat.c'; else $(CYGPATH_W) '$(srcdir)/quat.c'; fi`
-@am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/3Depict-quat.Tpo $(DEPDIR)/3Depict-quat.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='quat.c' object='3Depict-quat.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CFLAGS) $(CFLAGS) -c -o 3Depict-quat.obj `if test -f 'quat.c'; then $(CYGPATH_W) 'quat.c'; else $(CYGPATH_W) '$(srcdir)/quat.c'; fi`
 
 3Depict-pngread.o: pngread.c
 @am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CFLAGS) $(CFLAGS) -MT 3Depict-pngread.o -MD -MP -MF $(DEPDIR)/3Depict-pngread.Tpo -c -o 3Depict-pngread.o `test -f 'pngread.c' || echo '$(srcdir)/'`pngread.c
@@ -423,118 +455,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
-3Depict-rdf.o: rdf.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-rdf.o -MD -MP -MF $(DEPDIR)/3Depict-rdf.Tpo -c -o 3Depict-rdf.o `test -f 'rdf.cpp' || echo '$(srcdir)/'`rdf.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-rdf.Tpo $(DEPDIR)/3Depict-rdf.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='rdf.cpp' object='3Depict-rdf.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-rdf.o `test -f 'rdf.cpp' || echo '$(srcdir)/'`rdf.cpp
-
-3Depict-rdf.obj: rdf.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-rdf.obj -MD -MP -MF $(DEPDIR)/3Depict-rdf.Tpo -c -o 3Depict-rdf.obj `if test -f 'rdf.cpp'; then $(CYGPATH_W) 'rdf.cpp'; else $(CYGPATH_W) '$(srcdir)/rdf.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-rdf.Tpo $(DEPDIR)/3Depict-rdf.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='rdf.cpp' object='3Depict-rdf.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-rdf.obj `if test -f 'rdf.cpp'; then $(CYGPATH_W) 'rdf.cpp'; else $(CYGPATH_W) '$(srcdir)/rdf.cpp'; fi`
-
-3Depict-glPane.o: glPane.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-glPane.o -MD -MP -MF $(DEPDIR)/3Depict-glPane.Tpo -c -o 3Depict-glPane.o `test -f 'glPane.cpp' || echo '$(srcdir)/'`glPane.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-glPane.Tpo $(DEPDIR)/3Depict-glPane.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='glPane.cpp' object='3Depict-glPane.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-glPane.o `test -f 'glPane.cpp' || echo '$(srcdir)/'`glPane.cpp
-
-3Depict-glPane.obj: glPane.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-glPane.obj -MD -MP -MF $(DEPDIR)/3Depict-glPane.Tpo -c -o 3Depict-glPane.obj `if test -f 'glPane.cpp'; then $(CYGPATH_W) 'glPane.cpp'; else $(CYGPATH_W) '$(srcdir)/glPane.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-glPane.Tpo $(DEPDIR)/3Depict-glPane.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='glPane.cpp' object='3Depict-glPane.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-glPane.obj `if test -f 'glPane.cpp'; then $(CYGPATH_W) 'glPane.cpp'; else $(CYGPATH_W) '$(srcdir)/glPane.cpp'; fi`
-
-3Depict-basics.o: basics.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-basics.o -MD -MP -MF $(DEPDIR)/3Depict-basics.Tpo -c -o 3Depict-basics.o `test -f 'basics.cpp' || echo '$(srcdir)/'`basics.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-basics.Tpo $(DEPDIR)/3Depict-basics.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='basics.cpp' object='3Depict-basics.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-basics.o `test -f 'basics.cpp' || echo '$(srcdir)/'`basics.cpp
-
-3Depict-basics.obj: basics.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-basics.obj -MD -MP -MF $(DEPDIR)/3Depict-basics.Tpo -c -o 3Depict-basics.obj `if test -f 'basics.cpp'; then $(CYGPATH_W) 'basics.cpp'; else $(CYGPATH_W) '$(srcdir)/basics.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-basics.Tpo $(DEPDIR)/3Depict-basics.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='basics.cpp' object='3Depict-basics.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-basics.obj `if test -f 'basics.cpp'; then $(CYGPATH_W) 'basics.cpp'; else $(CYGPATH_W) '$(srcdir)/basics.cpp'; fi`
-
-3Depict-cameras.o: cameras.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-cameras.o -MD -MP -MF $(DEPDIR)/3Depict-cameras.Tpo -c -o 3Depict-cameras.o `test -f 'cameras.cpp' || echo '$(srcdir)/'`cameras.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-cameras.Tpo $(DEPDIR)/3Depict-cameras.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cameras.cpp' object='3Depict-cameras.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-cameras.o `test -f 'cameras.cpp' || echo '$(srcdir)/'`cameras.cpp
-
-3Depict-cameras.obj: cameras.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-cameras.obj -MD -MP -MF $(DEPDIR)/3Depict-cameras.Tpo -c -o 3Depict-cameras.obj `if test -f 'cameras.cpp'; then $(CYGPATH_W) 'cameras.cpp'; else $(CYGPATH_W) '$(srcdir)/cameras.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-cameras.Tpo $(DEPDIR)/3Depict-cameras.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cameras.cpp' object='3Depict-cameras.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-cameras.obj `if test -f 'cameras.cpp'; then $(CYGPATH_W) 'cameras.cpp'; else $(CYGPATH_W) '$(srcdir)/cameras.cpp'; fi`
-
-3Depict-drawables.o: drawables.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-drawables.o -MD -MP -MF $(DEPDIR)/3Depict-drawables.Tpo -c -o 3Depict-drawables.o `test -f 'drawables.cpp' || echo '$(srcdir)/'`drawables.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-drawables.Tpo $(DEPDIR)/3Depict-drawables.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='drawables.cpp' object='3Depict-drawables.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-drawables.o `test -f 'drawables.cpp' || echo '$(srcdir)/'`drawables.cpp
-
-3Depict-drawables.obj: drawables.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-drawables.obj -MD -MP -MF $(DEPDIR)/3Depict-drawables.Tpo -c -o 3Depict-drawables.obj `if test -f 'drawables.cpp'; then $(CYGPATH_W) 'drawables.cpp'; else $(CYGPATH_W) '$(srcdir)/drawables.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-drawables.Tpo $(DEPDIR)/3Depict-drawables.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='drawables.cpp' object='3Depict-drawables.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-drawables.obj `if test -f 'drawables.cpp'; then $(CYGPATH_W) 'drawables.cpp'; else $(CYGPATH_W) '$(srcdir)/drawables.cpp'; fi`
-
-3Depict-lights.o: lights.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-lights.o -MD -MP -MF $(DEPDIR)/3Depict-lights.Tpo -c -o 3Depict-lights.o `test -f 'lights.cpp' || echo '$(srcdir)/'`lights.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-lights.Tpo $(DEPDIR)/3Depict-lights.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='lights.cpp' object='3Depict-lights.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-lights.o `test -f 'lights.cpp' || echo '$(srcdir)/'`lights.cpp
-
-3Depict-lights.obj: lights.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-lights.obj -MD -MP -MF $(DEPDIR)/3Depict-lights.Tpo -c -o 3Depict-lights.obj `if test -f 'lights.cpp'; then $(CYGPATH_W) 'lights.cpp'; else $(CYGPATH_W) '$(srcdir)/lights.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-lights.Tpo $(DEPDIR)/3Depict-lights.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='lights.cpp' object='3Depict-lights.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-lights.obj `if test -f 'lights.cpp'; then $(CYGPATH_W) 'lights.cpp'; else $(CYGPATH_W) '$(srcdir)/lights.cpp'; fi`
-
-3Depict-3Depict.o: 3Depict.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-3Depict.o -MD -MP -MF $(DEPDIR)/3Depict-3Depict.Tpo -c -o 3Depict-3Depict.o `test -f '3Depict.cpp' || echo '$(srcdir)/'`3Depict.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-3Depict.Tpo $(DEPDIR)/3Depict-3Depict.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='3Depict.cpp' object='3Depict-3Depict.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-3Depict.o `test -f '3Depict.cpp' || echo '$(srcdir)/'`3Depict.cpp
-
-3Depict-3Depict.obj: 3Depict.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-3Depict.obj -MD -MP -MF $(DEPDIR)/3Depict-3Depict.Tpo -c -o 3Depict-3Depict.obj `if test -f '3Depict.cpp'; then $(CYGPATH_W) '3Depict.cpp'; else $(CYGPATH_W) '$(srcdir)/3Depict.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-3Depict.Tpo $(DEPDIR)/3Depict-3Depict.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='3Depict.cpp' object='3Depict-3Depict.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-3Depict.obj `if test -f '3Depict.cpp'; then $(CYGPATH_W) '3Depict.cpp'; else $(CYGPATH_W) '$(srcdir)/3Depict.cpp'; fi`
-
-3Depict-scene.o: scene.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-scene.o -MD -MP -MF $(DEPDIR)/3Depict-scene.Tpo -c -o 3Depict-scene.o `test -f 'scene.cpp' || echo '$(srcdir)/'`scene.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-scene.Tpo $(DEPDIR)/3Depict-scene.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='scene.cpp' object='3Depict-scene.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-scene.o `test -f 'scene.cpp' || echo '$(srcdir)/'`scene.cpp
-
-3Depict-scene.obj: scene.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-scene.obj -MD -MP -MF $(DEPDIR)/3Depict-scene.Tpo -c -o 3Depict-scene.obj `if test -f 'scene.cpp'; then $(CYGPATH_W) 'scene.cpp'; else $(CYGPATH_W) '$(srcdir)/scene.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-scene.Tpo $(DEPDIR)/3Depict-scene.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='scene.cpp' object='3Depict-scene.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-scene.obj `if test -f 'scene.cpp'; then $(CYGPATH_W) 'scene.cpp'; else $(CYGPATH_W) '$(srcdir)/scene.cpp'; fi`
-
 3Depict-mathglPane.o: mathglPane.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-mathglPane.o -MD -MP -MF $(DEPDIR)/3Depict-mathglPane.Tpo -c -o 3Depict-mathglPane.o `test -f 'mathglPane.cpp' || echo '$(srcdir)/'`mathglPane.cpp
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-mathglPane.Tpo $(DEPDIR)/3Depict-mathglPane.Po
@@ -563,19 +483,33 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-plot.obj `if test -f 'plot.cpp'; then $(CYGPATH_W) 'plot.cpp'; else $(CYGPATH_W) '$(srcdir)/plot.cpp'; fi`
 
-3Depict-APTClasses.o: APTClasses.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-APTClasses.o -MD -MP -MF $(DEPDIR)/3Depict-APTClasses.Tpo -c -o 3Depict-APTClasses.o `test -f 'APTClasses.cpp' || echo '$(srcdir)/'`APTClasses.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-APTClasses.Tpo $(DEPDIR)/3Depict-APTClasses.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='APTClasses.cpp' object='3Depict-APTClasses.o' libtool=no @AMDEPBACKSLASH@
+3Depict-prefDialog.o: prefDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-prefDialog.o -MD -MP -MF $(DEPDIR)/3Depict-prefDialog.Tpo -c -o 3Depict-prefDialog.o `test -f 'prefDialog.cpp' || echo '$(srcdir)/'`prefDialog.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-prefDialog.Tpo $(DEPDIR)/3Depict-prefDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='prefDialog.cpp' object='3Depict-prefDialog.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-APTClasses.o `test -f 'APTClasses.cpp' || echo '$(srcdir)/'`APTClasses.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-prefDialog.o `test -f 'prefDialog.cpp' || echo '$(srcdir)/'`prefDialog.cpp
 
-3Depict-APTClasses.obj: APTClasses.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-APTClasses.obj -MD -MP -MF $(DEPDIR)/3Depict-APTClasses.Tpo -c -o 3Depict-APTClasses.obj `if test -f 'APTClasses.cpp'; then $(CYGPATH_W) 'APTClasses.cpp'; else $(CYGPATH_W) '$(srcdir)/APTClasses.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-APTClasses.Tpo $(DEPDIR)/3Depict-APTClasses.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='APTClasses.cpp' object='3Depict-APTClasses.obj' libtool=no @AMDEPBACKSLASH@
+3Depict-prefDialog.obj: prefDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-prefDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-prefDialog.Tpo -c -o 3Depict-prefDialog.obj `if test -f 'prefDialog.cpp'; then $(CYGPATH_W) 'prefDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/prefDialog.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-prefDialog.Tpo $(DEPDIR)/3Depict-prefDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='prefDialog.cpp' object='3Depict-prefDialog.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-APTClasses.obj `if test -f 'APTClasses.cpp'; then $(CYGPATH_W) 'APTClasses.cpp'; else $(CYGPATH_W) '$(srcdir)/APTClasses.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-prefDialog.obj `if test -f 'prefDialog.cpp'; then $(CYGPATH_W) 'prefDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/prefDialog.cpp'; fi`
+
+3Depict-configFile.o: configFile.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-configFile.o -MD -MP -MF $(DEPDIR)/3Depict-configFile.Tpo -c -o 3Depict-configFile.o `test -f 'configFile.cpp' || echo '$(srcdir)/'`configFile.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-configFile.Tpo $(DEPDIR)/3Depict-configFile.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='configFile.cpp' object='3Depict-configFile.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-configFile.o `test -f 'configFile.cpp' || echo '$(srcdir)/'`configFile.cpp
+
+3Depict-configFile.obj: configFile.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-configFile.obj -MD -MP -MF $(DEPDIR)/3Depict-configFile.Tpo -c -o 3Depict-configFile.obj `if test -f 'configFile.cpp'; then $(CYGPATH_W) 'configFile.cpp'; else $(CYGPATH_W) '$(srcdir)/configFile.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-configFile.Tpo $(DEPDIR)/3Depict-configFile.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='configFile.cpp' object='3Depict-configFile.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-configFile.obj `if test -f 'configFile.cpp'; then $(CYGPATH_W) 'configFile.cpp'; else $(CYGPATH_W) '$(srcdir)/configFile.cpp'; fi`
 
 3Depict-filter.o: filter.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-filter.o -MD -MP -MF $(DEPDIR)/3Depict-filter.Tpo -c -o 3Depict-filter.o `test -f 'filter.cpp' || echo '$(srcdir)/'`filter.cpp
@@ -591,19 +525,229 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-filter.obj `if test -f 'filter.cpp'; then $(CYGPATH_W) 'filter.cpp'; else $(CYGPATH_W) '$(srcdir)/filter.cpp'; fi`
 
-3Depict-viscontrol.o: viscontrol.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-viscontrol.o -MD -MP -MF $(DEPDIR)/3Depict-viscontrol.Tpo -c -o 3Depict-viscontrol.o `test -f 'viscontrol.cpp' || echo '$(srcdir)/'`viscontrol.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-viscontrol.Tpo $(DEPDIR)/3Depict-viscontrol.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='viscontrol.cpp' object='3Depict-viscontrol.o' libtool=no @AMDEPBACKSLASH@
+3Depict-APTClasses.o: APTClasses.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-APTClasses.o -MD -MP -MF $(DEPDIR)/3Depict-APTClasses.Tpo -c -o 3Depict-APTClasses.o `test -f 'APTClasses.cpp' || echo '$(srcdir)/'`APTClasses.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-APTClasses.Tpo $(DEPDIR)/3Depict-APTClasses.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='APTClasses.cpp' object='3Depict-APTClasses.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-viscontrol.o `test -f 'viscontrol.cpp' || echo '$(srcdir)/'`viscontrol.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-APTClasses.o `test -f 'APTClasses.cpp' || echo '$(srcdir)/'`APTClasses.cpp
 
-3Depict-viscontrol.obj: viscontrol.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-viscontrol.obj -MD -MP -MF $(DEPDIR)/3Depict-viscontrol.Tpo -c -o 3Depict-viscontrol.obj `if test -f 'viscontrol.cpp'; then $(CYGPATH_W) 'viscontrol.cpp'; else $(CYGPATH_W) '$(srcdir)/viscontrol.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-viscontrol.Tpo $(DEPDIR)/3Depict-viscontrol.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='viscontrol.cpp' object='3Depict-viscontrol.obj' libtool=no @AMDEPBACKSLASH@
+3Depict-APTClasses.obj: APTClasses.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-APTClasses.obj -MD -MP -MF $(DEPDIR)/3Depict-APTClasses.Tpo -c -o 3Depict-APTClasses.obj `if test -f 'APTClasses.cpp'; then $(CYGPATH_W) 'APTClasses.cpp'; else $(CYGPATH_W) '$(srcdir)/APTClasses.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-APTClasses.Tpo $(DEPDIR)/3Depict-APTClasses.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='APTClasses.cpp' object='3Depict-APTClasses.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-viscontrol.obj `if test -f 'viscontrol.cpp'; then $(CYGPATH_W) 'viscontrol.cpp'; else $(CYGPATH_W) '$(srcdir)/viscontrol.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-APTClasses.obj `if test -f 'APTClasses.cpp'; then $(CYGPATH_W) 'APTClasses.cpp'; else $(CYGPATH_W) '$(srcdir)/APTClasses.cpp'; fi`
+
+3Depict-resDialog.o: resDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-resDialog.o -MD -MP -MF $(DEPDIR)/3Depict-resDialog.Tpo -c -o 3Depict-resDialog.o `test -f 'resDialog.cpp' || echo '$(srcdir)/'`resDialog.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-resDialog.Tpo $(DEPDIR)/3Depict-resDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='resDialog.cpp' object='3Depict-resDialog.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-resDialog.o `test -f 'resDialog.cpp' || echo '$(srcdir)/'`resDialog.cpp
+
+3Depict-resDialog.obj: resDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-resDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-resDialog.Tpo -c -o 3Depict-resDialog.obj `if test -f 'resDialog.cpp'; then $(CYGPATH_W) 'resDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/resDialog.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-resDialog.Tpo $(DEPDIR)/3Depict-resDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='resDialog.cpp' object='3Depict-resDialog.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-resDialog.obj `if test -f 'resDialog.cpp'; then $(CYGPATH_W) 'resDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/resDialog.cpp'; fi`
+
+3Depict-select.o: select.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-select.o -MD -MP -MF $(DEPDIR)/3Depict-select.Tpo -c -o 3Depict-select.o `test -f 'select.cpp' || echo '$(srcdir)/'`select.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-select.Tpo $(DEPDIR)/3Depict-select.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='select.cpp' object='3Depict-select.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-select.o `test -f 'select.cpp' || echo '$(srcdir)/'`select.cpp
+
+3Depict-select.obj: select.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-select.obj -MD -MP -MF $(DEPDIR)/3Depict-select.Tpo -c -o 3Depict-select.obj `if test -f 'select.cpp'; then $(CYGPATH_W) 'select.cpp'; else $(CYGPATH_W) '$(srcdir)/select.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-select.Tpo $(DEPDIR)/3Depict-select.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='select.cpp' object='3Depict-select.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-select.obj `if test -f 'select.cpp'; then $(CYGPATH_W) 'select.cpp'; else $(CYGPATH_W) '$(srcdir)/select.cpp'; fi`
+
+3Depict-drawables.o: drawables.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-drawables.o -MD -MP -MF $(DEPDIR)/3Depict-drawables.Tpo -c -o 3Depict-drawables.o `test -f 'drawables.cpp' || echo '$(srcdir)/'`drawables.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-drawables.Tpo $(DEPDIR)/3Depict-drawables.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='drawables.cpp' object='3Depict-drawables.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-drawables.o `test -f 'drawables.cpp' || echo '$(srcdir)/'`drawables.cpp
+
+3Depict-drawables.obj: drawables.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-drawables.obj -MD -MP -MF $(DEPDIR)/3Depict-drawables.Tpo -c -o 3Depict-drawables.obj `if test -f 'drawables.cpp'; then $(CYGPATH_W) 'drawables.cpp'; else $(CYGPATH_W) '$(srcdir)/drawables.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-drawables.Tpo $(DEPDIR)/3Depict-drawables.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='drawables.cpp' object='3Depict-drawables.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-drawables.obj `if test -f 'drawables.cpp'; then $(CYGPATH_W) 'drawables.cpp'; else $(CYGPATH_W) '$(srcdir)/drawables.cpp'; fi`
+
+3Depict-effect.o: effect.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-effect.o -MD -MP -MF $(DEPDIR)/3Depict-effect.Tpo -c -o 3Depict-effect.o `test -f 'effect.cpp' || echo '$(srcdir)/'`effect.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-effect.Tpo $(DEPDIR)/3Depict-effect.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='effect.cpp' object='3Depict-effect.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-effect.o `test -f 'effect.cpp' || echo '$(srcdir)/'`effect.cpp
+
+3Depict-effect.obj: effect.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-effect.obj -MD -MP -MF $(DEPDIR)/3Depict-effect.Tpo -c -o 3Depict-effect.obj `if test -f 'effect.cpp'; then $(CYGPATH_W) 'effect.cpp'; else $(CYGPATH_W) '$(srcdir)/effect.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-effect.Tpo $(DEPDIR)/3Depict-effect.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='effect.cpp' object='3Depict-effect.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-effect.obj `if test -f 'effect.cpp'; then $(CYGPATH_W) 'effect.cpp'; else $(CYGPATH_W) '$(srcdir)/effect.cpp'; fi`
+
+3Depict-textures.o: textures.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-textures.o -MD -MP -MF $(DEPDIR)/3Depict-textures.Tpo -c -o 3Depict-textures.o `test -f 'textures.cpp' || echo '$(srcdir)/'`textures.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-textures.Tpo $(DEPDIR)/3Depict-textures.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='textures.cpp' object='3Depict-textures.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-textures.o `test -f 'textures.cpp' || echo '$(srcdir)/'`textures.cpp
+
+3Depict-textures.obj: textures.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-textures.obj -MD -MP -MF $(DEPDIR)/3Depict-textures.Tpo -c -o 3Depict-textures.obj `if test -f 'textures.cpp'; then $(CYGPATH_W) 'textures.cpp'; else $(CYGPATH_W) '$(srcdir)/textures.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-textures.Tpo $(DEPDIR)/3Depict-textures.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='textures.cpp' object='3Depict-textures.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-textures.obj `if test -f 'textures.cpp'; then $(CYGPATH_W) 'textures.cpp'; else $(CYGPATH_W) '$(srcdir)/textures.cpp'; fi`
+
+3Depict-rdf.o: rdf.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-rdf.o -MD -MP -MF $(DEPDIR)/3Depict-rdf.Tpo -c -o 3Depict-rdf.o `test -f 'rdf.cpp' || echo '$(srcdir)/'`rdf.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-rdf.Tpo $(DEPDIR)/3Depict-rdf.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='rdf.cpp' object='3Depict-rdf.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-rdf.o `test -f 'rdf.cpp' || echo '$(srcdir)/'`rdf.cpp
+
+3Depict-rdf.obj: rdf.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-rdf.obj -MD -MP -MF $(DEPDIR)/3Depict-rdf.Tpo -c -o 3Depict-rdf.obj `if test -f 'rdf.cpp'; then $(CYGPATH_W) 'rdf.cpp'; else $(CYGPATH_W) '$(srcdir)/rdf.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-rdf.Tpo $(DEPDIR)/3Depict-rdf.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='rdf.cpp' object='3Depict-rdf.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-rdf.obj `if test -f 'rdf.cpp'; then $(CYGPATH_W) 'rdf.cpp'; else $(CYGPATH_W) '$(srcdir)/rdf.cpp'; fi`
+
+3Depict-cameras.o: cameras.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-cameras.o -MD -MP -MF $(DEPDIR)/3Depict-cameras.Tpo -c -o 3Depict-cameras.o `test -f 'cameras.cpp' || echo '$(srcdir)/'`cameras.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-cameras.Tpo $(DEPDIR)/3Depict-cameras.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cameras.cpp' object='3Depict-cameras.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-cameras.o `test -f 'cameras.cpp' || echo '$(srcdir)/'`cameras.cpp
+
+3Depict-cameras.obj: cameras.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-cameras.obj -MD -MP -MF $(DEPDIR)/3Depict-cameras.Tpo -c -o 3Depict-cameras.obj `if test -f 'cameras.cpp'; then $(CYGPATH_W) 'cameras.cpp'; else $(CYGPATH_W) '$(srcdir)/cameras.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-cameras.Tpo $(DEPDIR)/3Depict-cameras.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cameras.cpp' object='3Depict-cameras.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-cameras.obj `if test -f 'cameras.cpp'; then $(CYGPATH_W) 'cameras.cpp'; else $(CYGPATH_W) '$(srcdir)/cameras.cpp'; fi`
+
+3Depict-isoSurface.o: isoSurface.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-isoSurface.o -MD -MP -MF $(DEPDIR)/3Depict-isoSurface.Tpo -c -o 3Depict-isoSurface.o `test -f 'isoSurface.cpp' || echo '$(srcdir)/'`isoSurface.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-isoSurface.Tpo $(DEPDIR)/3Depict-isoSurface.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='isoSurface.cpp' object='3Depict-isoSurface.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-isoSurface.o `test -f 'isoSurface.cpp' || echo '$(srcdir)/'`isoSurface.cpp
+
+3Depict-isoSurface.obj: isoSurface.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-isoSurface.obj -MD -MP -MF $(DEPDIR)/3Depict-isoSurface.Tpo -c -o 3Depict-isoSurface.obj `if test -f 'isoSurface.cpp'; then $(CYGPATH_W) 'isoSurface.cpp'; else $(CYGPATH_W) '$(srcdir)/isoSurface.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-isoSurface.Tpo $(DEPDIR)/3Depict-isoSurface.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='isoSurface.cpp' object='3Depict-isoSurface.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-isoSurface.obj `if test -f 'isoSurface.cpp'; then $(CYGPATH_W) 'isoSurface.cpp'; else $(CYGPATH_W) '$(srcdir)/isoSurface.cpp'; fi`
+
+3Depict-K3DTree.o: K3DTree.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-K3DTree.o -MD -MP -MF $(DEPDIR)/3Depict-K3DTree.Tpo -c -o 3Depict-K3DTree.o `test -f 'K3DTree.cpp' || echo '$(srcdir)/'`K3DTree.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-K3DTree.Tpo $(DEPDIR)/3Depict-K3DTree.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='K3DTree.cpp' object='3Depict-K3DTree.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-K3DTree.o `test -f 'K3DTree.cpp' || echo '$(srcdir)/'`K3DTree.cpp
+
+3Depict-K3DTree.obj: K3DTree.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-K3DTree.obj -MD -MP -MF $(DEPDIR)/3Depict-K3DTree.Tpo -c -o 3Depict-K3DTree.obj `if test -f 'K3DTree.cpp'; then $(CYGPATH_W) 'K3DTree.cpp'; else $(CYGPATH_W) '$(srcdir)/K3DTree.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-K3DTree.Tpo $(DEPDIR)/3Depict-K3DTree.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='K3DTree.cpp' object='3Depict-K3DTree.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-K3DTree.obj `if test -f 'K3DTree.cpp'; then $(CYGPATH_W) 'K3DTree.cpp'; else $(CYGPATH_W) '$(srcdir)/K3DTree.cpp'; fi`
+
+3Depict-K3DTree-mk2.o: K3DTree-mk2.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-K3DTree-mk2.o -MD -MP -MF $(DEPDIR)/3Depict-K3DTree-mk2.Tpo -c -o 3Depict-K3DTree-mk2.o `test -f 'K3DTree-mk2.cpp' || echo '$(srcdir)/'`K3DTree-mk2.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-K3DTree-mk2.Tpo $(DEPDIR)/3Depict-K3DTree-mk2.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='K3DTree-mk2.cpp' object='3Depict-K3DTree-mk2.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-K3DTree-mk2.o `test -f 'K3DTree-mk2.cpp' || echo '$(srcdir)/'`K3DTree-mk2.cpp
+
+3Depict-K3DTree-mk2.obj: K3DTree-mk2.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-K3DTree-mk2.obj -MD -MP -MF $(DEPDIR)/3Depict-K3DTree-mk2.Tpo -c -o 3Depict-K3DTree-mk2.obj `if test -f 'K3DTree-mk2.cpp'; then $(CYGPATH_W) 'K3DTree-mk2.cpp'; else $(CYGPATH_W) '$(srcdir)/K3DTree-mk2.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-K3DTree-mk2.Tpo $(DEPDIR)/3Depict-K3DTree-mk2.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='K3DTree-mk2.cpp' object='3Depict-K3DTree-mk2.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-K3DTree-mk2.obj `if test -f 'K3DTree-mk2.cpp'; then $(CYGPATH_W) 'K3DTree-mk2.cpp'; else $(CYGPATH_W) '$(srcdir)/K3DTree-mk2.cpp'; fi`
+
+3Depict-basics.o: basics.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-basics.o -MD -MP -MF $(DEPDIR)/3Depict-basics.Tpo -c -o 3Depict-basics.o `test -f 'basics.cpp' || echo '$(srcdir)/'`basics.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-basics.Tpo $(DEPDIR)/3Depict-basics.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='basics.cpp' object='3Depict-basics.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-basics.o `test -f 'basics.cpp' || echo '$(srcdir)/'`basics.cpp
+
+3Depict-basics.obj: basics.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-basics.obj -MD -MP -MF $(DEPDIR)/3Depict-basics.Tpo -c -o 3Depict-basics.obj `if test -f 'basics.cpp'; then $(CYGPATH_W) 'basics.cpp'; else $(CYGPATH_W) '$(srcdir)/basics.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-basics.Tpo $(DEPDIR)/3Depict-basics.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='basics.cpp' object='3Depict-basics.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-basics.obj `if test -f 'basics.cpp'; then $(CYGPATH_W) 'basics.cpp'; else $(CYGPATH_W) '$(srcdir)/basics.cpp'; fi`
+
+3Depict-lights.o: lights.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-lights.o -MD -MP -MF $(DEPDIR)/3Depict-lights.Tpo -c -o 3Depict-lights.o `test -f 'lights.cpp' || echo '$(srcdir)/'`lights.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-lights.Tpo $(DEPDIR)/3Depict-lights.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='lights.cpp' object='3Depict-lights.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-lights.o `test -f 'lights.cpp' || echo '$(srcdir)/'`lights.cpp
+
+3Depict-lights.obj: lights.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-lights.obj -MD -MP -MF $(DEPDIR)/3Depict-lights.Tpo -c -o 3Depict-lights.obj `if test -f 'lights.cpp'; then $(CYGPATH_W) 'lights.cpp'; else $(CYGPATH_W) '$(srcdir)/lights.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-lights.Tpo $(DEPDIR)/3Depict-lights.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='lights.cpp' object='3Depict-lights.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-lights.obj `if test -f 'lights.cpp'; then $(CYGPATH_W) 'lights.cpp'; else $(CYGPATH_W) '$(srcdir)/lights.cpp'; fi`
+
+3Depict-xmlHelper.o: xmlHelper.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-xmlHelper.o -MD -MP -MF $(DEPDIR)/3Depict-xmlHelper.Tpo -c -o 3Depict-xmlHelper.o `test -f 'xmlHelper.cpp' || echo '$(srcdir)/'`xmlHelper.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-xmlHelper.Tpo $(DEPDIR)/3Depict-xmlHelper.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='xmlHelper.cpp' object='3Depict-xmlHelper.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-xmlHelper.o `test -f 'xmlHelper.cpp' || echo '$(srcdir)/'`xmlHelper.cpp
+
+3Depict-xmlHelper.obj: xmlHelper.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-xmlHelper.obj -MD -MP -MF $(DEPDIR)/3Depict-xmlHelper.Tpo -c -o 3Depict-xmlHelper.obj `if test -f 'xmlHelper.cpp'; then $(CYGPATH_W) 'xmlHelper.cpp'; else $(CYGPATH_W) '$(srcdir)/xmlHelper.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-xmlHelper.Tpo $(DEPDIR)/3Depict-xmlHelper.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='xmlHelper.cpp' object='3Depict-xmlHelper.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-xmlHelper.obj `if test -f 'xmlHelper.cpp'; then $(CYGPATH_W) 'xmlHelper.cpp'; else $(CYGPATH_W) '$(srcdir)/xmlHelper.cpp'; fi`
+
+3Depict-cropPanel.o: cropPanel.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-cropPanel.o -MD -MP -MF $(DEPDIR)/3Depict-cropPanel.Tpo -c -o 3Depict-cropPanel.o `test -f 'cropPanel.cpp' || echo '$(srcdir)/'`cropPanel.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-cropPanel.Tpo $(DEPDIR)/3Depict-cropPanel.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cropPanel.cpp' object='3Depict-cropPanel.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-cropPanel.o `test -f 'cropPanel.cpp' || echo '$(srcdir)/'`cropPanel.cpp
+
+3Depict-cropPanel.obj: cropPanel.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-cropPanel.obj -MD -MP -MF $(DEPDIR)/3Depict-cropPanel.Tpo -c -o 3Depict-cropPanel.obj `if test -f 'cropPanel.cpp'; then $(CYGPATH_W) 'cropPanel.cpp'; else $(CYGPATH_W) '$(srcdir)/cropPanel.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-cropPanel.Tpo $(DEPDIR)/3Depict-cropPanel.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='cropPanel.cpp' object='3Depict-cropPanel.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-cropPanel.obj `if test -f 'cropPanel.cpp'; then $(CYGPATH_W) 'cropPanel.cpp'; else $(CYGPATH_W) '$(srcdir)/cropPanel.cpp'; fi`
+
+3Depict-colourmap.o: colourmap.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-colourmap.o -MD -MP -MF $(DEPDIR)/3Depict-colourmap.Tpo -c -o 3Depict-colourmap.o `test -f 'colourmap.cpp' || echo '$(srcdir)/'`colourmap.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-colourmap.Tpo $(DEPDIR)/3Depict-colourmap.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='colourmap.cpp' object='3Depict-colourmap.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-colourmap.o `test -f 'colourmap.cpp' || echo '$(srcdir)/'`colourmap.cpp
+
+3Depict-colourmap.obj: colourmap.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-colourmap.obj -MD -MP -MF $(DEPDIR)/3Depict-colourmap.Tpo -c -o 3Depict-colourmap.obj `if test -f 'colourmap.cpp'; then $(CYGPATH_W) 'colourmap.cpp'; else $(CYGPATH_W) '$(srcdir)/colourmap.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-colourmap.Tpo $(DEPDIR)/3Depict-colourmap.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='colourmap.cpp' object='3Depict-colourmap.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-colourmap.obj `if test -f 'colourmap.cpp'; then $(CYGPATH_W) 'colourmap.cpp'; else $(CYGPATH_W) '$(srcdir)/colourmap.cpp'; fi`
 
 3Depict-mathfuncs.o: mathfuncs.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-mathfuncs.o -MD -MP -MF $(DEPDIR)/3Depict-mathfuncs.Tpo -c -o 3Depict-mathfuncs.o `test -f 'mathfuncs.cpp' || echo '$(srcdir)/'`mathfuncs.cpp
@@ -633,75 +777,229 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-wxcomponents.obj `if test -f 'wxcomponents.cpp'; then $(CYGPATH_W) 'wxcomponents.cpp'; else $(CYGPATH_W) '$(srcdir)/wxcomponents.cpp'; fi`
 
-3Depict-colourmap.o: colourmap.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-colourmap.o -MD -MP -MF $(DEPDIR)/3Depict-colourmap.Tpo -c -o 3Depict-colourmap.o `test -f 'colourmap.cpp' || echo '$(srcdir)/'`colourmap.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-colourmap.Tpo $(DEPDIR)/3Depict-colourmap.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='colourmap.cpp' object='3Depict-colourmap.o' libtool=no @AMDEPBACKSLASH@
+3Depict-wxcommon.o: wxcommon.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-wxcommon.o -MD -MP -MF $(DEPDIR)/3Depict-wxcommon.Tpo -c -o 3Depict-wxcommon.o `test -f 'wxcommon.cpp' || echo '$(srcdir)/'`wxcommon.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-wxcommon.Tpo $(DEPDIR)/3Depict-wxcommon.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='wxcommon.cpp' object='3Depict-wxcommon.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-colourmap.o `test -f 'colourmap.cpp' || echo '$(srcdir)/'`colourmap.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-wxcommon.o `test -f 'wxcommon.cpp' || echo '$(srcdir)/'`wxcommon.cpp
 
-3Depict-colourmap.obj: colourmap.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-colourmap.obj -MD -MP -MF $(DEPDIR)/3Depict-colourmap.Tpo -c -o 3Depict-colourmap.obj `if test -f 'colourmap.cpp'; then $(CYGPATH_W) 'colourmap.cpp'; else $(CYGPATH_W) '$(srcdir)/colourmap.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-colourmap.Tpo $(DEPDIR)/3Depict-colourmap.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='colourmap.cpp' object='3Depict-colourmap.obj' libtool=no @AMDEPBACKSLASH@
+3Depict-wxcommon.obj: wxcommon.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-wxcommon.obj -MD -MP -MF $(DEPDIR)/3Depict-wxcommon.Tpo -c -o 3Depict-wxcommon.obj `if test -f 'wxcommon.cpp'; then $(CYGPATH_W) 'wxcommon.cpp'; else $(CYGPATH_W) '$(srcdir)/wxcommon.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-wxcommon.Tpo $(DEPDIR)/3Depict-wxcommon.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='wxcommon.cpp' object='3Depict-wxcommon.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-colourmap.obj `if test -f 'colourmap.cpp'; then $(CYGPATH_W) 'colourmap.cpp'; else $(CYGPATH_W) '$(srcdir)/colourmap.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-wxcommon.obj `if test -f 'wxcommon.cpp'; then $(CYGPATH_W) 'wxcommon.cpp'; else $(CYGPATH_W) '$(srcdir)/wxcommon.cpp'; fi`
 
-3Depict-select.o: select.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-select.o -MD -MP -MF $(DEPDIR)/3Depict-select.Tpo -c -o 3Depict-select.o `test -f 'select.cpp' || echo '$(srcdir)/'`select.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-select.Tpo $(DEPDIR)/3Depict-select.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='select.cpp' object='3Depict-select.o' libtool=no @AMDEPBACKSLASH@
+3Depict-allFilter.o: filters/allFilter.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-allFilter.o -MD -MP -MF $(DEPDIR)/3Depict-allFilter.Tpo -c -o 3Depict-allFilter.o `test -f 'filters/allFilter.cpp' || echo '$(srcdir)/'`filters/allFilter.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-allFilter.Tpo $(DEPDIR)/3Depict-allFilter.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/allFilter.cpp' object='3Depict-allFilter.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-select.o `test -f 'select.cpp' || echo '$(srcdir)/'`select.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-allFilter.o `test -f 'filters/allFilter.cpp' || echo '$(srcdir)/'`filters/allFilter.cpp
 
-3Depict-select.obj: select.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-select.obj -MD -MP -MF $(DEPDIR)/3Depict-select.Tpo -c -o 3Depict-select.obj `if test -f 'select.cpp'; then $(CYGPATH_W) 'select.cpp'; else $(CYGPATH_W) '$(srcdir)/select.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-select.Tpo $(DEPDIR)/3Depict-select.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='select.cpp' object='3Depict-select.obj' libtool=no @AMDEPBACKSLASH@
+3Depict-allFilter.obj: filters/allFilter.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-allFilter.obj -MD -MP -MF $(DEPDIR)/3Depict-allFilter.Tpo -c -o 3Depict-allFilter.obj `if test -f 'filters/allFilter.cpp'; then $(CYGPATH_W) 'filters/allFilter.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/allFilter.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-allFilter.Tpo $(DEPDIR)/3Depict-allFilter.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/allFilter.cpp' object='3Depict-allFilter.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-select.obj `if test -f 'select.cpp'; then $(CYGPATH_W) 'select.cpp'; else $(CYGPATH_W) '$(srcdir)/select.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-allFilter.obj `if test -f 'filters/allFilter.cpp'; then $(CYGPATH_W) 'filters/allFilter.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/allFilter.cpp'; fi`
 
-3Depict-common.o: common.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-common.o -MD -MP -MF $(DEPDIR)/3Depict-common.Tpo -c -o 3Depict-common.o `test -f 'common.cpp' || echo '$(srcdir)/'`common.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-common.Tpo $(DEPDIR)/3Depict-common.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='common.cpp' object='3Depict-common.o' libtool=no @AMDEPBACKSLASH@
+3Depict-posLoad.o: filters/posLoad.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-posLoad.o -MD -MP -MF $(DEPDIR)/3Depict-posLoad.Tpo -c -o 3Depict-posLoad.o `test -f 'filters/posLoad.cpp' || echo '$(srcdir)/'`filters/posLoad.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-posLoad.Tpo $(DEPDIR)/3Depict-posLoad.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/posLoad.cpp' object='3Depict-posLoad.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-common.o `test -f 'common.cpp' || echo '$(srcdir)/'`common.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-posLoad.o `test -f 'filters/posLoad.cpp' || echo '$(srcdir)/'`filters/posLoad.cpp
 
-3Depict-common.obj: common.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-common.obj -MD -MP -MF $(DEPDIR)/3Depict-common.Tpo -c -o 3Depict-common.obj `if test -f 'common.cpp'; then $(CYGPATH_W) 'common.cpp'; else $(CYGPATH_W) '$(srcdir)/common.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-common.Tpo $(DEPDIR)/3Depict-common.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='common.cpp' object='3Depict-common.obj' libtool=no @AMDEPBACKSLASH@
+3Depict-posLoad.obj: filters/posLoad.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-posLoad.obj -MD -MP -MF $(DEPDIR)/3Depict-posLoad.Tpo -c -o 3Depict-posLoad.obj `if test -f 'filters/posLoad.cpp'; then $(CYGPATH_W) 'filters/posLoad.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/posLoad.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-posLoad.Tpo $(DEPDIR)/3Depict-posLoad.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/posLoad.cpp' object='3Depict-posLoad.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-common.obj `if test -f 'common.cpp'; then $(CYGPATH_W) 'common.cpp'; else $(CYGPATH_W) '$(srcdir)/common.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-posLoad.obj `if test -f 'filters/posLoad.cpp'; then $(CYGPATH_W) 'filters/posLoad.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/posLoad.cpp'; fi`
 
-3Depict-XMLHelper.o: XMLHelper.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-XMLHelper.o -MD -MP -MF $(DEPDIR)/3Depict-XMLHelper.Tpo -c -o 3Depict-XMLHelper.o `test -f 'XMLHelper.cpp' || echo '$(srcdir)/'`XMLHelper.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-XMLHelper.Tpo $(DEPDIR)/3Depict-XMLHelper.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='XMLHelper.cpp' object='3Depict-XMLHelper.o' libtool=no @AMDEPBACKSLASH@
+3Depict-ionDownsample.o: filters/ionDownsample.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ionDownsample.o -MD -MP -MF $(DEPDIR)/3Depict-ionDownsample.Tpo -c -o 3Depict-ionDownsample.o `test -f 'filters/ionDownsample.cpp' || echo '$(srcdir)/'`filters/ionDownsample.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ionDownsample.Tpo $(DEPDIR)/3Depict-ionDownsample.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/ionDownsample.cpp' object='3Depict-ionDownsample.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-XMLHelper.o `test -f 'XMLHelper.cpp' || echo '$(srcdir)/'`XMLHelper.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ionDownsample.o `test -f 'filters/ionDownsample.cpp' || echo '$(srcdir)/'`filters/ionDownsample.cpp
 
-3Depict-XMLHelper.obj: XMLHelper.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-XMLHelper.obj -MD -MP -MF $(DEPDIR)/3Depict-XMLHelper.Tpo -c -o 3Depict-XMLHelper.obj `if test -f 'XMLHelper.cpp'; then $(CYGPATH_W) 'XMLHelper.cpp'; else $(CYGPATH_W) '$(srcdir)/XMLHelper.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-XMLHelper.Tpo $(DEPDIR)/3Depict-XMLHelper.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='XMLHelper.cpp' object='3Depict-XMLHelper.obj' libtool=no @AMDEPBACKSLASH@
+3Depict-ionDownsample.obj: filters/ionDownsample.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ionDownsample.obj -MD -MP -MF $(DEPDIR)/3Depict-ionDownsample.Tpo -c -o 3Depict-ionDownsample.obj `if test -f 'filters/ionDownsample.cpp'; then $(CYGPATH_W) 'filters/ionDownsample.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/ionDownsample.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ionDownsample.Tpo $(DEPDIR)/3Depict-ionDownsample.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/ionDownsample.cpp' object='3Depict-ionDownsample.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-XMLHelper.obj `if test -f 'XMLHelper.cpp'; then $(CYGPATH_W) 'XMLHelper.cpp'; else $(CYGPATH_W) '$(srcdir)/XMLHelper.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ionDownsample.obj `if test -f 'filters/ionDownsample.cpp'; then $(CYGPATH_W) 'filters/ionDownsample.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/ionDownsample.cpp'; fi`
 
-3Depict-ResDialog.o: ResDialog.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ResDialog.o -MD -MP -MF $(DEPDIR)/3Depict-ResDialog.Tpo -c -o 3Depict-ResDialog.o `test -f 'ResDialog.cpp' || echo '$(srcdir)/'`ResDialog.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ResDialog.Tpo $(DEPDIR)/3Depict-ResDialog.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ResDialog.cpp' object='3Depict-ResDialog.o' libtool=no @AMDEPBACKSLASH@
+3Depict-rangeFile.o: filters/rangeFile.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-rangeFile.o -MD -MP -MF $(DEPDIR)/3Depict-rangeFile.Tpo -c -o 3Depict-rangeFile.o `test -f 'filters/rangeFile.cpp' || echo '$(srcdir)/'`filters/rangeFile.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-rangeFile.Tpo $(DEPDIR)/3Depict-rangeFile.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/rangeFile.cpp' object='3Depict-rangeFile.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ResDialog.o `test -f 'ResDialog.cpp' || echo '$(srcdir)/'`ResDialog.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-rangeFile.o `test -f 'filters/rangeFile.cpp' || echo '$(srcdir)/'`filters/rangeFile.cpp
 
-3Depict-ResDialog.obj: ResDialog.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ResDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-ResDialog.Tpo -c -o 3Depict-ResDialog.obj `if test -f 'ResDialog.cpp'; then $(CYGPATH_W) 'ResDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/ResDialog.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ResDialog.Tpo $(DEPDIR)/3Depict-ResDialog.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ResDialog.cpp' object='3Depict-ResDialog.obj' libtool=no @AMDEPBACKSLASH@
+3Depict-rangeFile.obj: filters/rangeFile.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-rangeFile.obj -MD -MP -MF $(DEPDIR)/3Depict-rangeFile.Tpo -c -o 3Depict-rangeFile.obj `if test -f 'filters/rangeFile.cpp'; then $(CYGPATH_W) 'filters/rangeFile.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/rangeFile.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-rangeFile.Tpo $(DEPDIR)/3Depict-rangeFile.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/rangeFile.cpp' object='3Depict-rangeFile.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ResDialog.obj `if test -f 'ResDialog.cpp'; then $(CYGPATH_W) 'ResDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/ResDialog.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-rangeFile.obj `if test -f 'filters/rangeFile.cpp'; then $(CYGPATH_W) 'filters/rangeFile.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/rangeFile.cpp'; fi`
+
+3Depict-voxelise.o: filters/voxelise.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-voxelise.o -MD -MP -MF $(DEPDIR)/3Depict-voxelise.Tpo -c -o 3Depict-voxelise.o `test -f 'filters/voxelise.cpp' || echo '$(srcdir)/'`filters/voxelise.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-voxelise.Tpo $(DEPDIR)/3Depict-voxelise.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/voxelise.cpp' object='3Depict-voxelise.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-voxelise.o `test -f 'filters/voxelise.cpp' || echo '$(srcdir)/'`filters/voxelise.cpp
+
+3Depict-voxelise.obj: filters/voxelise.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-voxelise.obj -MD -MP -MF $(DEPDIR)/3Depict-voxelise.Tpo -c -o 3Depict-voxelise.obj `if test -f 'filters/voxelise.cpp'; then $(CYGPATH_W) 'filters/voxelise.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/voxelise.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-voxelise.Tpo $(DEPDIR)/3Depict-voxelise.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/voxelise.cpp' object='3Depict-voxelise.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-voxelise.obj `if test -f 'filters/voxelise.cpp'; then $(CYGPATH_W) 'filters/voxelise.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/voxelise.cpp'; fi`
+
+3Depict-spectrumPlot.o: filters/spectrumPlot.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-spectrumPlot.o -MD -MP -MF $(DEPDIR)/3Depict-spectrumPlot.Tpo -c -o 3Depict-spectrumPlot.o `test -f 'filters/spectrumPlot.cpp' || echo '$(srcdir)/'`filters/spectrumPlot.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-spectrumPlot.Tpo $(DEPDIR)/3Depict-spectrumPlot.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/spectrumPlot.cpp' object='3Depict-spectrumPlot.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-spectrumPlot.o `test -f 'filters/spectrumPlot.cpp' || echo '$(srcdir)/'`filters/spectrumPlot.cpp
+
+3Depict-spectrumPlot.obj: filters/spectrumPlot.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-spectrumPlot.obj -MD -MP -MF $(DEPDIR)/3Depict-spectrumPlot.Tpo -c -o 3Depict-spectrumPlot.obj `if test -f 'filters/spectrumPlot.cpp'; then $(CYGPATH_W) 'filters/spectrumPlot.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/spectrumPlot.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-spectrumPlot.Tpo $(DEPDIR)/3Depict-spectrumPlot.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/spectrumPlot.cpp' object='3Depict-spectrumPlot.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-spectrumPlot.obj `if test -f 'filters/spectrumPlot.cpp'; then $(CYGPATH_W) 'filters/spectrumPlot.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/spectrumPlot.cpp'; fi`
+
+3Depict-transform.o: filters/transform.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-transform.o -MD -MP -MF $(DEPDIR)/3Depict-transform.Tpo -c -o 3Depict-transform.o `test -f 'filters/transform.cpp' || echo '$(srcdir)/'`filters/transform.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-transform.Tpo $(DEPDIR)/3Depict-transform.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/transform.cpp' object='3Depict-transform.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-transform.o `test -f 'filters/transform.cpp' || echo '$(srcdir)/'`filters/transform.cpp
+
+3Depict-transform.obj: filters/transform.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-transform.obj -MD -MP -MF $(DEPDIR)/3Depict-transform.Tpo -c -o 3Depict-transform.obj `if test -f 'filters/transform.cpp'; then $(CYGPATH_W) 'filters/transform.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/transform.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-transform.Tpo $(DEPDIR)/3Depict-transform.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/transform.cpp' object='3Depict-transform.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-transform.obj `if test -f 'filters/transform.cpp'; then $(CYGPATH_W) 'filters/transform.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/transform.cpp'; fi`
+
+3Depict-externalProgram.o: filters/externalProgram.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-externalProgram.o -MD -MP -MF $(DEPDIR)/3Depict-externalProgram.Tpo -c -o 3Depict-externalProgram.o `test -f 'filters/externalProgram.cpp' || echo '$(srcdir)/'`filters/externalProgram.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-externalProgram.Tpo $(DEPDIR)/3Depict-externalProgram.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/externalProgram.cpp' object='3Depict-externalProgram.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-externalProgram.o `test -f 'filters/externalProgram.cpp' || echo '$(srcdir)/'`filters/externalProgram.cpp
+
+3Depict-externalProgram.obj: filters/externalProgram.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-externalProgram.obj -MD -MP -MF $(DEPDIR)/3Depict-externalProgram.Tpo -c -o 3Depict-externalProgram.obj `if test -f 'filters/externalProgram.cpp'; then $(CYGPATH_W) 'filters/externalProgram.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/externalProgram.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-externalProgram.Tpo $(DEPDIR)/3Depict-externalProgram.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/externalProgram.cpp' object='3Depict-externalProgram.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-externalProgram.obj `if test -f 'filters/externalProgram.cpp'; then $(CYGPATH_W) 'filters/externalProgram.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/externalProgram.cpp'; fi`
+
+3Depict-ionClip.o: filters/ionClip.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ionClip.o -MD -MP -MF $(DEPDIR)/3Depict-ionClip.Tpo -c -o 3Depict-ionClip.o `test -f 'filters/ionClip.cpp' || echo '$(srcdir)/'`filters/ionClip.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ionClip.Tpo $(DEPDIR)/3Depict-ionClip.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/ionClip.cpp' object='3Depict-ionClip.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ionClip.o `test -f 'filters/ionClip.cpp' || echo '$(srcdir)/'`filters/ionClip.cpp
+
+3Depict-ionClip.obj: filters/ionClip.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ionClip.obj -MD -MP -MF $(DEPDIR)/3Depict-ionClip.Tpo -c -o 3Depict-ionClip.obj `if test -f 'filters/ionClip.cpp'; then $(CYGPATH_W) 'filters/ionClip.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/ionClip.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ionClip.Tpo $(DEPDIR)/3Depict-ionClip.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/ionClip.cpp' object='3Depict-ionClip.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ionClip.obj `if test -f 'filters/ionClip.cpp'; then $(CYGPATH_W) 'filters/ionClip.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/ionClip.cpp'; fi`
+
+3Depict-ionColour.o: filters/ionColour.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ionColour.o -MD -MP -MF $(DEPDIR)/3Depict-ionColour.Tpo -c -o 3Depict-ionColour.o `test -f 'filters/ionColour.cpp' || echo '$(srcdir)/'`filters/ionColour.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ionColour.Tpo $(DEPDIR)/3Depict-ionColour.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/ionColour.cpp' object='3Depict-ionColour.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ionColour.o `test -f 'filters/ionColour.cpp' || echo '$(srcdir)/'`filters/ionColour.cpp
+
+3Depict-ionColour.obj: filters/ionColour.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ionColour.obj -MD -MP -MF $(DEPDIR)/3Depict-ionColour.Tpo -c -o 3Depict-ionColour.obj `if test -f 'filters/ionColour.cpp'; then $(CYGPATH_W) 'filters/ionColour.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/ionColour.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ionColour.Tpo $(DEPDIR)/3Depict-ionColour.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/ionColour.cpp' object='3Depict-ionColour.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ionColour.obj `if test -f 'filters/ionColour.cpp'; then $(CYGPATH_W) 'filters/ionColour.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/ionColour.cpp'; fi`
+
+3Depict-boundingBox.o: filters/boundingBox.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-boundingBox.o -MD -MP -MF $(DEPDIR)/3Depict-boundingBox.Tpo -c -o 3Depict-boundingBox.o `test -f 'filters/boundingBox.cpp' || echo '$(srcdir)/'`filters/boundingBox.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-boundingBox.Tpo $(DEPDIR)/3Depict-boundingBox.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/boundingBox.cpp' object='3Depict-boundingBox.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-boundingBox.o `test -f 'filters/boundingBox.cpp' || echo '$(srcdir)/'`filters/boundingBox.cpp
+
+3Depict-boundingBox.obj: filters/boundingBox.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-boundingBox.obj -MD -MP -MF $(DEPDIR)/3Depict-boundingBox.Tpo -c -o 3Depict-boundingBox.obj `if test -f 'filters/boundingBox.cpp'; then $(CYGPATH_W) 'filters/boundingBox.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/boundingBox.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-boundingBox.Tpo $(DEPDIR)/3Depict-boundingBox.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/boundingBox.cpp' object='3Depict-boundingBox.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-boundingBox.obj `if test -f 'filters/boundingBox.cpp'; then $(CYGPATH_W) 'filters/boundingBox.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/boundingBox.cpp'; fi`
+
+3Depict-compositionProfile.o: filters/compositionProfile.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-compositionProfile.o -MD -MP -MF $(DEPDIR)/3Depict-compositionProfile.Tpo -c -o 3Depict-compositionProfile.o `test -f 'filters/compositionProfile.cpp' || echo '$(srcdir)/'`filters/compositionProfile.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-compositionProfile.Tpo $(DEPDIR)/3Depict-compositionProfile.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/compositionProfile.cpp' object='3Depict-compositionProfile.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-compositionProfile.o `test -f 'filters/compositionProfile.cpp' || echo '$(srcdir)/'`filters/compositionProfile.cpp
+
+3Depict-compositionProfile.obj: filters/compositionProfile.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-compositionProfile.obj -MD -MP -MF $(DEPDIR)/3Depict-compositionProfile.Tpo -c -o 3Depict-compositionProfile.obj `if test -f 'filters/compositionProfile.cpp'; then $(CYGPATH_W) 'filters/compositionProfile.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/compositionProfile.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-compositionProfile.Tpo $(DEPDIR)/3Depict-compositionProfile.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/compositionProfile.cpp' object='3Depict-compositionProfile.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-compositionProfile.obj `if test -f 'filters/compositionProfile.cpp'; then $(CYGPATH_W) 'filters/compositionProfile.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/compositionProfile.cpp'; fi`
+
+3Depict-spatialAnalysis.o: filters/spatialAnalysis.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-spatialAnalysis.o -MD -MP -MF $(DEPDIR)/3Depict-spatialAnalysis.Tpo -c -o 3Depict-spatialAnalysis.o `test -f 'filters/spatialAnalysis.cpp' || echo '$(srcdir)/'`filters/spatialAnalysis.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-spatialAnalysis.Tpo $(DEPDIR)/3Depict-spatialAnalysis.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/spatialAnalysis.cpp' object='3Depict-spatialAnalysis.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-spatialAnalysis.o `test -f 'filters/spatialAnalysis.cpp' || echo '$(srcdir)/'`filters/spatialAnalysis.cpp
+
+3Depict-spatialAnalysis.obj: filters/spatialAnalysis.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-spatialAnalysis.obj -MD -MP -MF $(DEPDIR)/3Depict-spatialAnalysis.Tpo -c -o 3Depict-spatialAnalysis.obj `if test -f 'filters/spatialAnalysis.cpp'; then $(CYGPATH_W) 'filters/spatialAnalysis.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/spatialAnalysis.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-spatialAnalysis.Tpo $(DEPDIR)/3Depict-spatialAnalysis.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/spatialAnalysis.cpp' object='3Depict-spatialAnalysis.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-spatialAnalysis.obj `if test -f 'filters/spatialAnalysis.cpp'; then $(CYGPATH_W) 'filters/spatialAnalysis.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/spatialAnalysis.cpp'; fi`
+
+3Depict-clusterAnalysis.o: filters/clusterAnalysis.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-clusterAnalysis.o -MD -MP -MF $(DEPDIR)/3Depict-clusterAnalysis.Tpo -c -o 3Depict-clusterAnalysis.o `test -f 'filters/clusterAnalysis.cpp' || echo '$(srcdir)/'`filters/clusterAnalysis.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-clusterAnalysis.Tpo $(DEPDIR)/3Depict-clusterAnalysis.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/clusterAnalysis.cpp' object='3Depict-clusterAnalysis.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-clusterAnalysis.o `test -f 'filters/clusterAnalysis.cpp' || echo '$(srcdir)/'`filters/clusterAnalysis.cpp
+
+3Depict-clusterAnalysis.obj: filters/clusterAnalysis.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-clusterAnalysis.obj -MD -MP -MF $(DEPDIR)/3Depict-clusterAnalysis.Tpo -c -o 3Depict-clusterAnalysis.obj `if test -f 'filters/clusterAnalysis.cpp'; then $(CYGPATH_W) 'filters/clusterAnalysis.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/clusterAnalysis.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-clusterAnalysis.Tpo $(DEPDIR)/3Depict-clusterAnalysis.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/clusterAnalysis.cpp' object='3Depict-clusterAnalysis.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-clusterAnalysis.obj `if test -f 'filters/clusterAnalysis.cpp'; then $(CYGPATH_W) 'filters/clusterAnalysis.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/clusterAnalysis.cpp'; fi`
+
+3Depict-3Depict.o: 3Depict.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-3Depict.o -MD -MP -MF $(DEPDIR)/3Depict-3Depict.Tpo -c -o 3Depict-3Depict.o `test -f '3Depict.cpp' || echo '$(srcdir)/'`3Depict.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-3Depict.Tpo $(DEPDIR)/3Depict-3Depict.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='3Depict.cpp' object='3Depict-3Depict.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-3Depict.o `test -f '3Depict.cpp' || echo '$(srcdir)/'`3Depict.cpp
+
+3Depict-3Depict.obj: 3Depict.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-3Depict.obj -MD -MP -MF $(DEPDIR)/3Depict-3Depict.Tpo -c -o 3Depict-3Depict.obj `if test -f '3Depict.cpp'; then $(CYGPATH_W) '3Depict.cpp'; else $(CYGPATH_W) '$(srcdir)/3Depict.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-3Depict.Tpo $(DEPDIR)/3Depict-3Depict.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='3Depict.cpp' object='3Depict-3Depict.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-3Depict.obj `if test -f '3Depict.cpp'; then $(CYGPATH_W) '3Depict.cpp'; else $(CYGPATH_W) '$(srcdir)/3Depict.cpp'; fi`
 
 3Depict-ExportPos.o: ExportPos.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ExportPos.o -MD -MP -MF $(DEPDIR)/3Depict-ExportPos.Tpo -c -o 3Depict-ExportPos.o `test -f 'ExportPos.cpp' || echo '$(srcdir)/'`ExportPos.cpp
@@ -731,6 +1029,34 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ExportRngDialog.obj `if test -f 'ExportRngDialog.cpp'; then $(CYGPATH_W) 'ExportRngDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/ExportRngDialog.cpp'; fi`
 
+3Depict-glPane.o: glPane.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-glPane.o -MD -MP -MF $(DEPDIR)/3Depict-glPane.Tpo -c -o 3Depict-glPane.o `test -f 'glPane.cpp' || echo '$(srcdir)/'`glPane.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-glPane.Tpo $(DEPDIR)/3Depict-glPane.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='glPane.cpp' object='3Depict-glPane.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-glPane.o `test -f 'glPane.cpp' || echo '$(srcdir)/'`glPane.cpp
+
+3Depict-glPane.obj: glPane.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-glPane.obj -MD -MP -MF $(DEPDIR)/3Depict-glPane.Tpo -c -o 3Depict-glPane.obj `if test -f 'glPane.cpp'; then $(CYGPATH_W) 'glPane.cpp'; else $(CYGPATH_W) '$(srcdir)/glPane.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-glPane.Tpo $(DEPDIR)/3Depict-glPane.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='glPane.cpp' object='3Depict-glPane.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-glPane.obj `if test -f 'glPane.cpp'; then $(CYGPATH_W) 'glPane.cpp'; else $(CYGPATH_W) '$(srcdir)/glPane.cpp'; fi`
+
+3Depict-scene.o: scene.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-scene.o -MD -MP -MF $(DEPDIR)/3Depict-scene.Tpo -c -o 3Depict-scene.o `test -f 'scene.cpp' || echo '$(srcdir)/'`scene.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-scene.Tpo $(DEPDIR)/3Depict-scene.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='scene.cpp' object='3Depict-scene.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-scene.o `test -f 'scene.cpp' || echo '$(srcdir)/'`scene.cpp
+
+3Depict-scene.obj: scene.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-scene.obj -MD -MP -MF $(DEPDIR)/3Depict-scene.Tpo -c -o 3Depict-scene.obj `if test -f 'scene.cpp'; then $(CYGPATH_W) 'scene.cpp'; else $(CYGPATH_W) '$(srcdir)/scene.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-scene.Tpo $(DEPDIR)/3Depict-scene.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='scene.cpp' object='3Depict-scene.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-scene.obj `if test -f 'scene.cpp'; then $(CYGPATH_W) 'scene.cpp'; else $(CYGPATH_W) '$(srcdir)/scene.cpp'; fi`
+
 3Depict-StashDialog.o: StashDialog.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-StashDialog.o -MD -MP -MF $(DEPDIR)/3Depict-StashDialog.Tpo -c -o 3Depict-StashDialog.o `test -f 'StashDialog.cpp' || echo '$(srcdir)/'`StashDialog.cpp
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-StashDialog.Tpo $(DEPDIR)/3Depict-StashDialog.Po
@@ -745,103 +1071,19 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-StashDialog.obj `if test -f 'StashDialog.cpp'; then $(CYGPATH_W) 'StashDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/StashDialog.cpp'; fi`
 
-3Depict-textures.o: textures.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-textures.o -MD -MP -MF $(DEPDIR)/3Depict-textures.Tpo -c -o 3Depict-textures.o `test -f 'textures.cpp' || echo '$(srcdir)/'`textures.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-textures.Tpo $(DEPDIR)/3Depict-textures.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='textures.cpp' object='3Depict-textures.o' libtool=no @AMDEPBACKSLASH@
+3Depict-viscontrol.o: viscontrol.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-viscontrol.o -MD -MP -MF $(DEPDIR)/3Depict-viscontrol.Tpo -c -o 3Depict-viscontrol.o `test -f 'viscontrol.cpp' || echo '$(srcdir)/'`viscontrol.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-viscontrol.Tpo $(DEPDIR)/3Depict-viscontrol.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='viscontrol.cpp' object='3Depict-viscontrol.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-textures.o `test -f 'textures.cpp' || echo '$(srcdir)/'`textures.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-viscontrol.o `test -f 'viscontrol.cpp' || echo '$(srcdir)/'`viscontrol.cpp
 
-3Depict-textures.obj: textures.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-textures.obj -MD -MP -MF $(DEPDIR)/3Depict-textures.Tpo -c -o 3Depict-textures.obj `if test -f 'textures.cpp'; then $(CYGPATH_W) 'textures.cpp'; else $(CYGPATH_W) '$(srcdir)/textures.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-textures.Tpo $(DEPDIR)/3Depict-textures.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='textures.cpp' object='3Depict-textures.obj' libtool=no @AMDEPBACKSLASH@
+3Depict-viscontrol.obj: viscontrol.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-viscontrol.obj -MD -MP -MF $(DEPDIR)/3Depict-viscontrol.Tpo -c -o 3Depict-viscontrol.obj `if test -f 'viscontrol.cpp'; then $(CYGPATH_W) 'viscontrol.cpp'; else $(CYGPATH_W) '$(srcdir)/viscontrol.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-viscontrol.Tpo $(DEPDIR)/3Depict-viscontrol.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='viscontrol.cpp' object='3Depict-viscontrol.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-textures.obj `if test -f 'textures.cpp'; then $(CYGPATH_W) 'textures.cpp'; else $(CYGPATH_W) '$(srcdir)/textures.cpp'; fi`
-
-3Depict-configFile.o: configFile.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-configFile.o -MD -MP -MF $(DEPDIR)/3Depict-configFile.Tpo -c -o 3Depict-configFile.o `test -f 'configFile.cpp' || echo '$(srcdir)/'`configFile.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-configFile.Tpo $(DEPDIR)/3Depict-configFile.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='configFile.cpp' object='3Depict-configFile.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-configFile.o `test -f 'configFile.cpp' || echo '$(srcdir)/'`configFile.cpp
-
-3Depict-configFile.obj: configFile.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-configFile.obj -MD -MP -MF $(DEPDIR)/3Depict-configFile.Tpo -c -o 3Depict-configFile.obj `if test -f 'configFile.cpp'; then $(CYGPATH_W) 'configFile.cpp'; else $(CYGPATH_W) '$(srcdir)/configFile.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-configFile.Tpo $(DEPDIR)/3Depict-configFile.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='configFile.cpp' object='3Depict-configFile.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-configFile.obj `if test -f 'configFile.cpp'; then $(CYGPATH_W) 'configFile.cpp'; else $(CYGPATH_W) '$(srcdir)/configFile.cpp'; fi`
-
-3Depict-K3DTree.o: K3DTree.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-K3DTree.o -MD -MP -MF $(DEPDIR)/3Depict-K3DTree.Tpo -c -o 3Depict-K3DTree.o `test -f 'K3DTree.cpp' || echo '$(srcdir)/'`K3DTree.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-K3DTree.Tpo $(DEPDIR)/3Depict-K3DTree.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='K3DTree.cpp' object='3Depict-K3DTree.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-K3DTree.o `test -f 'K3DTree.cpp' || echo '$(srcdir)/'`K3DTree.cpp
-
-3Depict-K3DTree.obj: K3DTree.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-K3DTree.obj -MD -MP -MF $(DEPDIR)/3Depict-K3DTree.Tpo -c -o 3Depict-K3DTree.obj `if test -f 'K3DTree.cpp'; then $(CYGPATH_W) 'K3DTree.cpp'; else $(CYGPATH_W) '$(srcdir)/K3DTree.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-K3DTree.Tpo $(DEPDIR)/3Depict-K3DTree.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='K3DTree.cpp' object='3Depict-K3DTree.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-K3DTree.obj `if test -f 'K3DTree.cpp'; then $(CYGPATH_W) 'K3DTree.cpp'; else $(CYGPATH_W) '$(srcdir)/K3DTree.cpp'; fi`
-
-3Depict-IsoSurface.o: IsoSurface.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-IsoSurface.o -MD -MP -MF $(DEPDIR)/3Depict-IsoSurface.Tpo -c -o 3Depict-IsoSurface.o `test -f 'IsoSurface.cpp' || echo '$(srcdir)/'`IsoSurface.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-IsoSurface.Tpo $(DEPDIR)/3Depict-IsoSurface.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='IsoSurface.cpp' object='3Depict-IsoSurface.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-IsoSurface.o `test -f 'IsoSurface.cpp' || echo '$(srcdir)/'`IsoSurface.cpp
-
-3Depict-IsoSurface.obj: IsoSurface.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-IsoSurface.obj -MD -MP -MF $(DEPDIR)/3Depict-IsoSurface.Tpo -c -o 3Depict-IsoSurface.obj `if test -f 'IsoSurface.cpp'; then $(CYGPATH_W) 'IsoSurface.cpp'; else $(CYGPATH_W) '$(srcdir)/IsoSurface.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-IsoSurface.Tpo $(DEPDIR)/3Depict-IsoSurface.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='IsoSurface.cpp' object='3Depict-IsoSurface.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-IsoSurface.obj `if test -f 'IsoSurface.cpp'; then $(CYGPATH_W) 'IsoSurface.cpp'; else $(CYGPATH_W) '$(srcdir)/IsoSurface.cpp'; fi`
-
-3Depict-prefDialog.o: prefDialog.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-prefDialog.o -MD -MP -MF $(DEPDIR)/3Depict-prefDialog.Tpo -c -o 3Depict-prefDialog.o `test -f 'prefDialog.cpp' || echo '$(srcdir)/'`prefDialog.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-prefDialog.Tpo $(DEPDIR)/3Depict-prefDialog.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='prefDialog.cpp' object='3Depict-prefDialog.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-prefDialog.o `test -f 'prefDialog.cpp' || echo '$(srcdir)/'`prefDialog.cpp
-
-3Depict-prefDialog.obj: prefDialog.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-prefDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-prefDialog.Tpo -c -o 3Depict-prefDialog.obj `if test -f 'prefDialog.cpp'; then $(CYGPATH_W) 'prefDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/prefDialog.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-prefDialog.Tpo $(DEPDIR)/3Depict-prefDialog.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='prefDialog.cpp' object='3Depict-prefDialog.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-prefDialog.obj `if test -f 'prefDialog.cpp'; then $(CYGPATH_W) 'prefDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/prefDialog.cpp'; fi`
-
-3Depict-effect.o: effect.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-effect.o -MD -MP -MF $(DEPDIR)/3Depict-effect.Tpo -c -o 3Depict-effect.o `test -f 'effect.cpp' || echo '$(srcdir)/'`effect.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-effect.Tpo $(DEPDIR)/3Depict-effect.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='effect.cpp' object='3Depict-effect.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-effect.o `test -f 'effect.cpp' || echo '$(srcdir)/'`effect.cpp
-
-3Depict-effect.obj: effect.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-effect.obj -MD -MP -MF $(DEPDIR)/3Depict-effect.Tpo -c -o 3Depict-effect.obj `if test -f 'effect.cpp'; then $(CYGPATH_W) 'effect.cpp'; else $(CYGPATH_W) '$(srcdir)/effect.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-effect.Tpo $(DEPDIR)/3Depict-effect.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='effect.cpp' object='3Depict-effect.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-effect.obj `if test -f 'effect.cpp'; then $(CYGPATH_W) 'effect.cpp'; else $(CYGPATH_W) '$(srcdir)/effect.cpp'; fi`
-
-3Depict-wxCropPanel.o: wxCropPanel.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-wxCropPanel.o -MD -MP -MF $(DEPDIR)/3Depict-wxCropPanel.Tpo -c -o 3Depict-wxCropPanel.o `test -f 'wxCropPanel.cpp' || echo '$(srcdir)/'`wxCropPanel.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-wxCropPanel.Tpo $(DEPDIR)/3Depict-wxCropPanel.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='wxCropPanel.cpp' object='3Depict-wxCropPanel.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-wxCropPanel.o `test -f 'wxCropPanel.cpp' || echo '$(srcdir)/'`wxCropPanel.cpp
-
-3Depict-wxCropPanel.obj: wxCropPanel.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-wxCropPanel.obj -MD -MP -MF $(DEPDIR)/3Depict-wxCropPanel.Tpo -c -o 3Depict-wxCropPanel.obj `if test -f 'wxCropPanel.cpp'; then $(CYGPATH_W) 'wxCropPanel.cpp'; else $(CYGPATH_W) '$(srcdir)/wxCropPanel.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-wxCropPanel.Tpo $(DEPDIR)/3Depict-wxCropPanel.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='wxCropPanel.cpp' object='3Depict-wxCropPanel.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-wxCropPanel.obj `if test -f 'wxCropPanel.cpp'; then $(CYGPATH_W) 'wxCropPanel.cpp'; else $(CYGPATH_W) '$(srcdir)/wxCropPanel.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-viscontrol.obj `if test -f 'viscontrol.cpp'; then $(CYGPATH_W) 'viscontrol.cpp'; else $(CYGPATH_W) '$(srcdir)/viscontrol.cpp'; fi`
 
 3Depict-winconsole.o: winconsole.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-winconsole.o -MD -MP -MF $(DEPDIR)/3Depict-winconsole.Tpo -c -o 3Depict-winconsole.o `test -f 'winconsole.cpp' || echo '$(srcdir)/'`winconsole.cpp

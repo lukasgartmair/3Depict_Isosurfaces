@@ -24,6 +24,14 @@ enum
 	CONFIG_PANELMODE_END_ENUM
 };
 
+enum
+{
+	CONFIG_ERR_NOFILE=1,
+	CONFIG_ERR_BADFILE,
+	CONFIG_ERR_NOPARSER
+};
+
+
 class ConfigFile 
 {
 	private:
@@ -43,7 +51,7 @@ class ConfigFile
 
 		void getRecentFiles(std::vector<std::string> &filenames) const; 
 		void removeRecentFile(const std::string &str);
-		bool read();
+		unsigned int read();
 		bool write();
 
 		std::string getErrMessage() const { return errMessage;};

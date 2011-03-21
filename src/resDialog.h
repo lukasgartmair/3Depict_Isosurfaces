@@ -16,11 +16,10 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "wxPreprec.h"
+#include <wx/wx.h>
 #include <wx/image.h>
 
-#include "basics.h"
-#include "common.h"
+#include "assertion.h"
 // begin wxGlade: ::dependencies
 // end wxGlade
 

@@ -16,6 +16,8 @@
  */
 #include "K3DTree.h"
 
+using std::vector;
+
 #include <limits>
 
 //Axis compare

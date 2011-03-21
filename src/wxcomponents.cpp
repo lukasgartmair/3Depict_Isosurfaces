@@ -17,6 +17,10 @@
 */
 
 #include "wxcomponents.h"
+#include "wxcommon.h"
+#include "basics.h"
+
+
 #include <wx/clipbrd.h>
 #include <wx/filefn.h>
 
@@ -27,6 +31,39 @@ using std::ofstream;
 using std::vector;
 
 
+//Convert my internal choice string format to wx's
+std::string wxChoiceParamString(std::string choiceString)
+{
+	std::string retStr;
+
+	bool haveColon=false;
+	bool haveBar=false;
+	for(unsigned int ui=0;ui<choiceString.size();ui++)
+	{
+		if(haveColon && haveBar )
+		{
+			if(choiceString[ui] != ',')
+				retStr+=choiceString[ui];
+			else
+			{
+				haveBar=false;
+				retStr+=",";
+			}
+		}
+		else
+		{
+			if(choiceString[ui]==':')
+				haveColon=true;
+			else
+			{
+				if(choiceString[ui]=='|')
+					haveBar=true;
+			}
+		}
+	}
+
+	return retStr;
+}
 
 
 BEGIN_EVENT_TABLE(PropGridHandler, wxEvtHandler)
@@ -213,6 +250,7 @@ unsigned int wxPropertyGrid::getTypeFromRow(int row) const
 void  wxPropertyGrid::clearKeys()
 {
 	propertyKeys.clear();
+	sectionNames.clear();
 }
 
 void wxPropertyGrid::addKey(const std::string &name, unsigned int set,
@@ -342,13 +380,24 @@ void wxPropertyGrid::propertyLayout()
 		}
 
 		//Add a blank, light grey, read only row, but not if it is the last
-		//use to denote spacing between sets to user
+		//use to denote spacing between sets to user.
 		if (ui+1 < propertyKeys.size())
 		{
+			//Optionally give it a description; if one has been provided
+			if(sectionNames[ui+1].size())
+			{
+				this->SetCellValue(sepRows[ui],0,wxStr(sectionNames[ui+1]));
+				wxFont f;
+				f.SetStyle(wxFONTSTYLE_ITALIC);
+				f.SetPointSize(f.GetPointSize()*0.75);
+				this->SetCellFont(sepRows[ui],0,f);
+			}
+
 			wxGridCellAttr *readOnlyRowAttr=new wxGridCellAttr;
 			readOnlyRowAttr->SetReadOnly(true);
 			readOnlyRowAttr->SetBackgroundColour(wxColour(*wxLIGHT_GREY));
 			this->SetRowAttr(sepRows[ui],readOnlyRowAttr);
+
 		}
 	}
 

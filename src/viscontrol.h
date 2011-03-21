@@ -26,7 +26,7 @@
 #include <stack>
 #include <deque>
 
-#include "wxPreprec.h"
+#include <wx/wx.h>
 #include <wx/treectrl.h>
 #include <wx/grid.h>
 

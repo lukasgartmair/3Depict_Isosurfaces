@@ -15,9 +15,10 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include "wxPreprec.h"
+
 
 // begin wxGlade: ::dependencies
+#include <wx/wx.h>
 #include <wx/splitter.h>
 #include <wx/statline.h>
 #include <wx/notebook.h>
@@ -30,15 +31,14 @@
 //Local stuff
 #include "glPane.h"
 #include "mathglPane.h"
-#include "wxCropPanel.h" // cropping tools
+#include "cropPanel.h" // cropping tools
 
 #include "APTClasses.h"
-#include "common.h"
 #include "viscontrol.h"
 #include "configFile.h"
 
-#ifndef QUICK3D_H
-#define QUICK3D_H
+#ifndef THREEDEPICT_H 
+#define THREEDEPICT_H
 
 class FileDropTarget;
 
@@ -108,6 +108,10 @@ private:
 	
 	//!Current fullscreen status
 	unsigned int fullscreenState;
+
+	bool initedOK;
+
+	unsigned int lastMessageType;
 protected:
     wxTimer *statusTimer;
     wxTimer *progressTimer;
@@ -301,6 +305,10 @@ public:
 
     virtual void SetCommandLineFiles(wxArrayString &files);
     virtual void updateLastRefreshBox();
+
+
+    bool initOK() const {return initedOK;}
+
 }; // wxGlade: end class
 
 

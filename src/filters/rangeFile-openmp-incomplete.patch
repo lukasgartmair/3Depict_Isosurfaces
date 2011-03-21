@@ -1,0 +1,171 @@
+diff -r c300f10c2ffa src/filters/rangeFile.cpp
+--- a/src/filters/rangeFile.cpp	Sun Mar 20 00:14:26 2011 +0000
++++ b/src/filters/rangeFile.cpp	Sun Mar 20 22:08:02 2011 +0000
+@@ -115,9 +115,18 @@
+ 	haveIonSize=false;
+ 	sameSize=true;
+ 
++	size_t totalSize=numElements(dataIn);
++
++
++	progress.step=1;
++	progress.filterProgress=0;
++	progress.stepName="Pre-Allocate";
++	progress.maxStep=2;	
+ 
+ 	vector<size_t> dSizes;
+ 	dSizes.resize(d.size(),0);
++				
++	size_t n=0;
+ 	//Do a first sweep to obtain range sizes needed
+ 	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
+ 	{
+@@ -135,6 +144,7 @@
+ 					dSizeArr[uk].resize(dSizes.size(),0);
+ #endif
+ 				const IonStreamData *src = ((const IonStreamData *)dataIn[ui]);
++				unsigned int curProg=NUM_CALLBACK;
+ 				#pragma omp parallel for
+ 				for(size_t uj=0; uj<src->data.size();uj++)
+ 				{
+@@ -159,6 +169,35 @@
+ 
+ 						}
+ 					}
++					else if ( !enabledRanges[rangeID] && !dropUnranged)
++					{
++						//Then we must be an unranged ion, not a disabled one.
++						//these are kept
++						#ifdef _OPENMP
++							dSizeArr[thisT][dSizes.size()-1]++;
++						#else
++							dSizes[dSizes.size()-1]++;
++						#endif
++					}	
++
++					//update progress every now and again
++					if(!curProg--)
++					{
++#pragma omp critical
++						{
++						n+=NUM_CALLBACK;
++						progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
++						curProg=NUM_CALLBACK;
++
++						
++						if(!(*callback)())
++						{
++							for(unsigned int ui=0;ui<d.size();ui++)
++								delete d[ui];
++							return RANGEFILE_ABORT_FAIL;
++						}
++						}
++					}
+ 				}
+ #ifdef _OPENMP
+ 				//Merge the arrays back together
+@@ -178,7 +217,7 @@
+ 	try
+ 	{
+ 		for(size_t ui=0;ui<d.size();ui++)
+-			d[ui]->data.reserve(dSizes[ui]);
++			d[ui]->data.resize(dSizes[ui]);
+ 	}
+ 	catch(std::bad_alloc)
+ 	{
+@@ -189,10 +228,23 @@
+ 
+ 	dSizes.clear();
+ 
+-	size_t totalSize=numElements(dataIn);
++	//Update progress info
++	progress.step=2;
++	progress.filterProgress=0;
++	progress.stepName="Range";
++	//Reset the current position in the ion stream (progress)
++	n=0;
++	
++	vector<size_t> rangeTails;
++	rangeTails.resize(d.size(),0);
++
++	size_t off=d.size()-1;
++
++
+ 	//Go through each data stream, if it is an ion stream, range it, and keep it for later
+ 	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
+ 	{
++		std::cerr << "Ranging..." << ui << " of " << dataIn.size() << endl;	
+ 		switch(dataIn[ui]->getStreamType())
+ 		{
+ 			case STREAM_TYPE_IONS: 
+@@ -219,13 +271,17 @@
+ 					haveIonSize=true;
+ 				}
+ 
++				const IonStreamData *ionData;
++				ionData=((const IonStreamData *)dataIn[ui]);
++				
++
+ 				unsigned int curProg=NUM_CALLBACK;
+-				size_t n=0;
+-				for(vector<IonHit>::const_iterator it=((const IonStreamData *)dataIn[ui])->data.begin();
+-					       it!=((const IonStreamData *)dataIn[ui])->data.end(); ++it)
++
++#pragma omp parallel for private(curProg)
++				for(size_t uj=0;uj<ionData->data.size();uj++)
+ 				{
+ 					unsigned int ionID, rangeID;
+-					rangeID=rng.getRangeID(it->getMassToCharge());
++					rangeID=rng.getRangeID(ionData->data[uj].getMassToCharge());
+ 
+ 					//If ion is unranged, then it will have a rangeID of -1
+ 					if(rangeID != (unsigned int)-1)
+@@ -236,14 +292,38 @@
+ 					if((rangeID != (unsigned int)-1 && enabledRanges[rangeID] && enabledIons[ionID]))
+ 					{
+ 						ASSERT(ionID < enabledRanges.size());
+-						d[ionID]->data.push_back(*it);
++
++						//Claim the current range tail, then increment it.
++						//we will then use this position to make our final ion assignment
++						//this allows us to access the ionID array independantly from every other thread
++						size_t thisTail;
++#pragma omp critical
++						{
++						thisTail=rangeTails[ionID];
++						rangeTails[ionID]++; 
++						}
++						ASSERT(rangeTails[ionID]  < d[ionID]->data.size());
++						d[ionID]->data[rangeTails[ionID]]=ionData->data[uj];
+ 					}
+ 					else if(!dropUnranged && rangeID == (unsigned int)-1)
+-						d[d.size()-1]->data.push_back(*it);
++					{
++						size_t thisTail;
++#pragma omp critical
++						{
++						thisTail=rangeTails[off];
++						rangeTails[off]++; 
++						}
++
++						ASSERT(rangeTails[off]  < d[off]->data.size());
++						d[off]->data[rangeTails[off]]=ionData->data[uj];
++					}
+ 
+ 					//update progress every 5000 ions
+ 					if(!curProg--)
+ 					{
++
++#pragma omp critical
++						{
+ 						n+=NUM_CALLBACK;
+ 						progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
+ 						curProg=NUM_CALLBACK;
+@@ -255,6 +335,7 @@
+ 								delete d[ui];
+ 							return RANGEFILE_ABORT_FAIL;
+ 						}
++						}
+ 					}
+ 
+ 				}

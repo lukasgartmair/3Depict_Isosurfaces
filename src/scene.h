@@ -32,6 +32,7 @@ class Scene;
 //cameras.h uses libxml2. libxml2 conflicts with wx headers, and must go last
 #include "cameras.h" 
 
+#include "filter.h"
 #include "textures.h"
 #include "effect.h"
 
@@ -74,7 +75,7 @@ class Scene
 		std::vector<const DrawableObj * > refObjects;
 
 		//!Bindings for interactive object properties
-		std::vector<SelectionDevice *> selectionDevices;
+		std::vector<SelectionDevice<Filter> *> selectionDevices;
 
 		//!Various OpenGL effects
 		std::vector<const Effect *> effects;
@@ -282,7 +283,7 @@ class Scene
 		unsigned int glSelect(bool storeSelection=true);
 
 		//!Add selection devices to the scene.
-		void addSelectionDevices(const std::vector<SelectionDevice *> &d);
+		void addSelectionDevices(const std::vector<SelectionDevice<Filter> *> &d);
 
 		//!Clear the current selection devices 
 		void clearDevices();

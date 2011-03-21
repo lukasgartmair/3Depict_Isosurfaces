@@ -1,37 +1,66 @@
-/*
- *	effect.cpp  - OpenGL postprocessing effects 
- *	Copyright (C) 2010, D Haley 
-
- *	This program is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
-
- *	This program is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
-
- *	You should have received a copy of the GNU General Public License
- *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include "effect.h"
 #include <limits>
 
 #include <iostream>
 #include <cstdlib>
 using std::endl;
-using std::cerr;
 
-#include "common.h"
-#include "quat.h"
-#include "XMLHelper.h"
+#include <string>
+
+#include "mathfuncs.h"
+#include "xmlHelper.h"
+#include "basics.h"
+
+#include "commonConstants.h"
 
 Camera* Effect::curCam=0;
 BoundCube Effect::bc;
 float MIN_CROP_FRACTION=0.0001;
 
+unsigned int NUM_EFFECTS=2;
+const char *EFFECT_NAMES[] = { "",
+				"boxcrop",
+				"anaglyph"
+				};
+
+//factory functions
+Effect *makeEffect(unsigned int effectID)
+{
+	Effect *e;
+	switch(effectID)
+	{
+		case EFFECT_ANAGLYPH:
+			e = new AnaglyphEffect;
+			break;
+
+		case EFFECT_BOX_CROP:
+			e=new BoxCropEffect;
+			break;
+	
+		default:
+			ASSERT(false);
+	}
+
+	return e;
+}
+
+
+
+Effect *makeEffect(const std::string &str)
+{
+	Effect *e=0;
+
+	for(unsigned int ui=0;ui<NUM_EFFECTS; ui++)
+	{
+		if(str == EFFECT_NAMES[ui])
+		{
+			e=makeEffect(ui);
+			break;
+		}
+	}
+
+	return e;
+}
 
 //Colour matrices, for accumulation buffer stereo
 
@@ -102,7 +131,7 @@ void BoxCropEffect::enable(unsigned int pass) const
 		//If needed, perform a rotation to align the box up
 		//vector with the camera up vector
 		Point3f r;
-		if(fabs(angle) > sqrt(std::numeric_limits<float>::epsilon()))
+		if(fabs(angle) > sqrtf(std::numeric_limits<float>::epsilon()))
 		{
 			Point3D rotateAxis;
 			rotateAxis = z.crossProd(Point3D(0,0,1));
@@ -303,9 +332,8 @@ void BoxCropEffect::setFractions(const float *frac)
 }
 
 
-void BoxCropEffect::testCroppedBounds(BoundCube &b)  const
+void BoxCropEffect::getCroppedBounds(BoundCube &b)  const
 {
-	//FIXME: Need coordinate modified box....
 	Point3D pLow,pHi;
 	b.getBounds(pLow,pHi);
 

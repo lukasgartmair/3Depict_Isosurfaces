@@ -30,10 +30,10 @@
 
 #include "colourmap.h"
 
-#include "IsoSurface.h"
+#include "isoSurface.h"
 
 #include <limits>
-#include "quat.h"
+#include "mathfuncs.h"
 
 //OpenGL debugging macro
 #if DEBUG
@@ -329,7 +329,7 @@ void DrawCylinder::draw() const
 
 	float angle = dir.angle(dirNormal);
 	dir = dir.crossProd(dirNormal);
-	float length=sqrt(direction.sqrMag());
+	float length=sqrtf(direction.sqrMag());
 
 	glRotatef(angle*180.0f/M_PI,dir[0],dir[1],dir[2]);
 
@@ -491,7 +491,7 @@ void DrawManyPoints::addPoints(const vector<Point3D> &vp)
 	std::copy(vp.begin(),vp.end(),pts.begin());
 }
 
-
+/*
 void DrawManyPoints::addPoints(const vector<IonHit> &vp)
 {
 	pts.reserve(pts.size()+vp.size());
@@ -499,7 +499,7 @@ void DrawManyPoints::addPoints(const vector<IonHit> &vp)
 		pts.push_back(vp[ui].getPos());
 	haveCachedBounds=false;
 }
-
+*/
 void DrawManyPoints::shuffle()
 {
 	std::random_shuffle(pts.begin(),pts.end());
@@ -698,13 +698,13 @@ void DrawGLText::draw() const
 
 		//---	
 		//Textdir and updir MUST be normal to one another
-		ASSERT(textDir.dotProd(up) < sqrt(std::numeric_limits<float>::epsilon()));
+		ASSERT(textDir.dotProd(up) < sqrtf(std::numeric_limits<float>::epsilon()));
 
 		//rotate around textdir cross X, if the two are not the same
 		Point3D rotateAxis;
 		Point3D newUp=up;
 		float angle=textDir.angle(Point3D(1,0,0) );
-		if(angle > sqrt(std::numeric_limits<float>::epsilon()))
+		if(angle > sqrtf(std::numeric_limits<float>::epsilon()))
 		{
 			rotateAxis = textDir.crossProd(Point3D(-1,0,0));
 			rotateAxis.normalise();
@@ -729,7 +729,7 @@ void DrawGLText::draw() const
 
 		//rotate new up direction into y around x axis
 		angle = newUp.angle(Point3D(0,1,0));
-		if(angle > sqrt(std::numeric_limits<float>::epsilon()))
+		if(angle > sqrtf(std::numeric_limits<float>::epsilon()))
 		{
 			rotateAxis = newUp.crossProd(Point3D(0,-1,0));
 			rotateAxis.normalise();
@@ -1301,7 +1301,7 @@ void DrawField3D::draw() const
 	{
 		case VOLUME_POINTS:
 		{
-			unsigned long long fieldSizeX,fieldSizeY,fieldSizeZ;
+			size_t fieldSizeX,fieldSizeY,fieldSizeZ;
 			Point3D p;
 
 			field->getSize(fieldSizeX,fieldSizeY, fieldSizeZ);

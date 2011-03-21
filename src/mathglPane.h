@@ -17,11 +17,10 @@
 */
 
 
-#include "wxPreprec.h"
+#include <wx/wx.h>
 #include <wx/image.h>
 
 #include "plot.h"
-#include "filter.h"
 
 #include <mgl/mgl_zb.h>
 

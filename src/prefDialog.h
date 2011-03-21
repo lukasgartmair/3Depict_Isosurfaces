@@ -13,7 +13,7 @@
 
 #include <vector>
 
-#include  "filter.h"
+#include "filter.h"
 
 // begin wxGlade: ::extracode
 // end wxGlade

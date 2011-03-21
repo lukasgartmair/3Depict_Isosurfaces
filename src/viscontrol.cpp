@@ -17,20 +17,18 @@
 */
 
 #include "viscontrol.h"
-#include "XMLHelper.h"
+#include "xmlHelper.h"
 
 #include <list>
 #include <stack>
 
-#include "common.h"
 #include "scene.h"
 #include "drawables.h"
 
+#include "filters/allFilter.h"
+
 using std::list;
 using std::stack;
-//DEBUGGING
-#include <iostream>
-using std::endl;
 
 //oh no! global. window to safeYield/ needs to be set
 wxWindow *yieldWindow=0;
@@ -620,10 +618,10 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 			//Get the number of bytes that the filter expects to use
 			//---
 			unsigned long long cacheBytes;
-			if(inDataStack.size())
-				cacheBytes=(*filtIt)->numBytesForCache(numElements(inDataStack.top()));
-			else
+			if(inDataStack.empty())
 				cacheBytes=(*filtIt)->numBytesForCache(0);
+			else
+				cacheBytes=(*filtIt)->numBytesForCache(numElements(inDataStack.top()));
 
 			if(cacheBytes != (unsigned long long)(-1))
 			{
@@ -658,20 +656,43 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 						curData,curProg,wxYieldCallback);
 
 #ifdef DEBUG
-			//Filter outputs should never be null pointers.
+			//Filter outputs should 
+			//	- never be null pointers.
+			//	- Not contain zero sized point streams
 			for(unsigned int ui=0;ui<inDataStack.top().size();ui++)
 			{
 				ASSERT(inDataStack.top()[ui]);
 			}
+
+			for(size_t ui=0;ui<curData.size();ui++)
+			{	
+				const FilterStreamData *f;
+				f=(curData[ui]);
+
+				switch(f->getStreamType())
+				{
+					case STREAM_TYPE_IONS:
+					{
+						const IonStreamData *ionData;
+						ionData=((const IonStreamData *)f);
+
+//						ASSERT(ionData->data.size());
+						break;
+					}
+					default:
+					;
+				}
+				
+			}
 #endif
 			//Ensure that (1) yield is called, regardless of what filter does
-			//(2) yield is called after 100% update	
+			 //(2) yield is called after 100% update	
 			curProg.filterProgress=100;	
 			(*wxYieldCallback)();
 
 
 			//Retrieve the user interaction "devices", and send them to the scene
-			vector<SelectionDevice *> curDevices;
+			vector<SelectionDevice<Filter> *> curDevices;
 			(*filtIt)->getSelectionDevices(curDevices);
 			targetScene->addSelectionDevices(curDevices);
 			curDevices.clear();
@@ -924,8 +945,10 @@ unsigned int VisController::updateScene()
 					const IonStreamData *ionData;
 					ionData=((const IonStreamData *)((*it)[ui]));
 
+					//ASSERT(ionData->data.size());
 					//Can't just do a swap, as we need to strip the m/c value.
-					curIonDraw->addPoints(ionData->data);
+					for(size_t ui=0;ui<ionData->data.size();ui++)
+						curIonDraw->addPoint(ionData->data[ui].getPosRef());
 
 					//Set the colour from the ionstream data
 					curIonDraw->setColour(ionData->r,
@@ -957,6 +980,8 @@ unsigned int VisController::updateScene()
 					const PlotStreamData *plotData;
 					plotData=((PlotStreamData *)((*it)[ui]));
 
+					//The plot should have some data in it.
+					ASSERT(plotData->GetNumBasicObjects());
 					//Construct a new plot
 					unsigned int plotID;
 					plotID=targetPlots->addPlot(plotData->xyData,plotData->errDat,
@@ -1070,7 +1095,7 @@ unsigned int VisController::updateScene()
 							}
 					
 							delete dS;
-#endif
+#else
 
 							DrawIsoSurface *d = new DrawIsoSurface;
 
@@ -1084,7 +1109,7 @@ unsigned int VisController::updateScene()
 							d->wantsLight=true;
 
 							targetScene->addDrawable(d);
-
+#endif
 							break;
 						}
 						default:
@@ -1121,7 +1146,7 @@ unsigned int VisController::updateScene()
 
 #if defined(_WIN32) || defined(_WIN64)
 		//Bug under windows. SetSelection(wxNOT_FOUND) does not work for multiseletion list boxes
-		plotSelList->SetSelection(-1, false);
+		plotList->SetSelection(-1, false);
 #else
  		plotSelList->SetSelection(wxNOT_FOUND); //Clear selection
 #endif
@@ -2140,36 +2165,27 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 			{
 				tmpStr =(const char *)nodePtr->name;
 
-				if(tmpStr == "anaglyph")
+				Effect *e;
+				e = makeEffect(tmpStr);
+				if(!e)
 				{
-					AnaglyphEffect *e=new AnaglyphEffect;
+					errStream << "Unrecognised effect :" << tmpStr << endl;
+					throw 1;
+				}
 
-					
-
-					if(!e->readState(nodePtr->xmlChildrenNode))
+				//Check the effects are unique
+				for(unsigned int ui=0;ui<newEffectVec.size();ui++)
+				{
+					if(newEffectVec[ui]->getType()== e->getType())
 					{
-						errStream << "Unable to parse anaglyph effect" << endl;
+						delete e;
+						errStream << "Duplicate effect found" << tmpStr << " cannot use." << endl;
 						throw 1;
-						
 					}
 
-				
-					newEffectVec.push_back(e);	
-
 				}
-				else if (tmpStr == "boxcrop")
-				{
-					BoxCropEffect *e=new BoxCropEffect;
 
-					if(!e->readState(nodePtr->xmlChildrenNode))
-					{
-						errStream << "Unable to parse anaglyph effect" << endl;
-						throw 1;
-						
-					}
-					newEffectVec.push_back(e);	
-
-				}
+				newEffectVec.push_back(e);				
 			}
 		}
 		nodePtr=nodeStack.top();
@@ -2353,6 +2369,7 @@ unsigned int VisController::loadFilterTree(const xmlNodePtr &treeParent, tree<Fi
 	std::stack<xmlNodePtr>  nodeStack;
 	nodeStack.push(nodePtr);
 
+	bool needCleanup=false;
 	while (inTree)
 	{
 		//Jump to the next XML node at this depth
@@ -2386,11 +2403,17 @@ unsigned int VisController::loadFilterTree(const xmlNodePtr &treeParent, tree<Fi
 		{
 			//Can't have children without parent
 			if (!newTree.size())
-				goto loadFilterTreeCleanup;
+			{
+				needCleanup=true;
+				break;
+			}
 
 			//Child node should have its own child
 			if (!nodePtr->xmlChildrenNode)
-				goto loadFilterTreeCleanup;
+			{
+				needCleanup=true;
+				break;
+			}
 
 			nodeStack.push(nodePtr);
 			treeNodeStack.push(lastFilt);
@@ -2398,117 +2421,30 @@ unsigned int VisController::loadFilterTree(const xmlNodePtr &treeParent, tree<Fi
 			nodePtr=nodePtr->xmlChildrenNode;
 			continue;
 		}
-		else if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"posload")) //Is this a "posload" filter?
-		{
-			//It is!, lets make a new one and load the state
-			newFilt= new PosLoadFilter;
-			cleanupList.push_back(newFilt);
-			if (!newFilt->readState(nodePtr->xmlChildrenNode,stateFileDir))
-				goto loadFilterTreeCleanup;
-		}
-		else if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"iondownsample")) //Is this a "iondownsample" filter?
-		{
-			//It is!, lets make a new one and load the state
-			newFilt= new IonDownsampleFilter;
-			cleanupList.push_back(newFilt);
-
-			if (!newFilt->readState(nodePtr->xmlChildrenNode))
-				goto loadFilterTreeCleanup;
-		}
-		else if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"rangefile")) //Is this a "rangefile" filter?
-		{
-			//It is!, lets make a new one and load the state
-			newFilt= new RangeFileFilter;
-			cleanupList.push_back(newFilt);
-
-			if (!newFilt->readState(nodePtr->xmlChildrenNode,stateFileDir))
-				goto loadFilterTreeCleanup;
-		}
-		else if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"spectrumplot")) //Is this a "spectrumplot" filter?
-		{
-			//It is!, lets make a new one and load the state
-			newFilt= new SpectrumPlotFilter;
-			cleanupList.push_back(newFilt);
-
-			if (!newFilt->readState(nodePtr->xmlChildrenNode))
-				goto loadFilterTreeCleanup;
-		}
-		else if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"ionclip")) //Is this a "ionclip" filter?
-		{
-			//It is!, lets make a new one and load the state
-			newFilt= new IonClipFilter;
-			cleanupList.push_back(newFilt);
-
-			if (!newFilt->readState(nodePtr->xmlChildrenNode))
-				goto loadFilterTreeCleanup;
-		}
-		else if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"ioncolour")) //Is this a "ioncolour" filter?
-		{
-			//It is!, lets make a new one and load the state
-			newFilt= new IonColourFilter;
-			cleanupList.push_back(newFilt);
-
-			if (!newFilt->readState(nodePtr->xmlChildrenNode))
-				goto loadFilterTreeCleanup;
-		}
-		else if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"compositionprofile")) //Is this a "compositionprofile" filter?
-		{
-			//It is!, lets make a new one and load the state
-			newFilt= new CompositionProfileFilter;
-			cleanupList.push_back(newFilt);
-
-			if (!newFilt->readState(nodePtr->xmlChildrenNode))
-				goto loadFilterTreeCleanup;
-		}
-		else if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"boundingbox")) //Is this a "boundingbox" filter?
-		{
-			//It is!, lets make a new one and load the state
-			newFilt= new BoundingBoxFilter;
-			cleanupList.push_back(newFilt);
-
-			if (!newFilt->readState(nodePtr->xmlChildrenNode))
-				goto loadFilterTreeCleanup;
-		}
-		else if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"transform")) //Is this a "transform" filter?
-		{
-			//It is!, lets make a new one and load the state
-			newFilt= new TransformFilter;
-			cleanupList.push_back(newFilt);
-
-			if (!newFilt->readState(nodePtr->xmlChildrenNode))
-				goto loadFilterTreeCleanup;
-		}
-		else if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"externalprog")) //Is this a "transform" filter?
-		{
-			//It is!, lets make a new one and load the state
-			newFilt= new ExternalProgramFilter;
-			cleanupList.push_back(newFilt);
-
-			if (!newFilt->readState(nodePtr->xmlChildrenNode))
-				goto loadFilterTreeCleanup;
-		}
-		else if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"spatialanalysis")) //Is this a "transform" filter?
-		{
-			//It is!, lets make a new one and load the state
-			newFilt= new SpatialAnalysisFilter;
-			cleanupList.push_back(newFilt);
-
-			if (!newFilt->readState(nodePtr->xmlChildrenNode))
-				goto loadFilterTreeCleanup;
-		}
-		else if(!xmlStrcmp(nodePtr->name,(const xmlChar*)"voxelise"))
-		{
-			newFilt=new VoxeliseFilter;
-		        cleanupList.push_back(newFilt);
-
-			if(!newFilt->readState(nodePtr->xmlChildrenNode))
-				goto loadFilterTreeCleanup;	
-		}
 		else
 		{
-			errStream << "WARNING: Skipping node " << (const char *)nodePtr->name << " as it was not recognised" << endl;
-			nodeUnderstood=false;
+			//Well, its not  a "children" node, so it could
+			//be a filter... Lets find out
+			std::string tmpStr;
+			tmpStr=(char *)nodePtr->name;
+
+			newFilt=makeFilter(tmpStr);
+			if(newFilt)
+			{
+				cleanupList.push_back(newFilt);
+				if (!newFilt->readState(nodePtr->xmlChildrenNode,stateFileDir))
+				{
+					needCleanup=true;
+					break;
+				}
+			}
+			else
+			{
+				errStream << "WARNING: Skipping node " << (const char *)nodePtr->name << " as it was not recognised" << endl;
+				nodeUnderstood=false;
+			}
 		}
+
 
 		//Skip this item
 		if (nodeUnderstood)
@@ -2535,12 +2471,12 @@ unsigned int VisController::loadFilterTree(const xmlNodePtr &treeParent, tree<Fi
 	}
 
 
-	return 0;
+	//All good?
+	if(!needCleanup)
+		return 0;
 
-//OK, so this is a bit unforgivable, but I need to have a cleanup function. The goto
-//is purely local in scope.
-loadFilterTreeCleanup:
-
+	//OK, we hit an error, we need to delete any pointers on the
+	//cleanup list
 	if(nodePtr)
 		errStream << "Error processing node: " << (const char *)nodePtr->name << endl;
 
@@ -2548,6 +2484,7 @@ loadFilterTreeCleanup:
 			it!=cleanupList.end(); ++it)
 		delete *it;
 
+	//No good..
 	return 1;
 
 }
@@ -2715,6 +2652,8 @@ void VisController::addStashedToFilters(const Filter *parent, unsigned int stash
 
 	//nuke the appended node, which was just acting as a dummy
 	filters.erase(node);
+
+	initFilterTree();
 }
 
 void VisController::deleteStash(unsigned int stashId)

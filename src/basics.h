@@ -22,6 +22,8 @@
 //!Basic objects header file
 
 #include "endianTest.h"
+#include "assertion.h"
+#include "mathfuncs.h"
 
 #include <iostream>
 #include <cmath>
@@ -31,33 +33,33 @@
 #include <list>
 #include <utility>
 #include <fstream>
+#include <algorithm>
 
-#if defined(WIN32) || defined(WIN64)
-#include <wx/wx.h>
-#include <wx/msw/registry.h>
-#endif
-
-class Point3D;
 class K3DTree;
 
-#ifdef DEBUG
 
-void dh_assert(const char * const filename, const unsigned int lineNumber); 
-void dh_warn(const char * const filename, const unsigned int lineNumber,
-							const char *message);
+std::string boolStrEnc(bool b);
 
-	#ifndef ASSERT
-	#define ASSERT(f) if(!(f)) {dh_assert(__FILE__,__LINE__);}
-	#endif
 
-	#ifndef WARN
-	#define WARN(f,g) if(!(f)) { dh_warn(__FILE__,__LINE__,g);}
-	#endif
+extern const char *DTD_NAME;
+extern const char *PROGRAM_NAME;
+extern const char *PROGRAM_VERSION;
+extern const char *FONT_FILE;
 
-#else
-	#define ASSERT(f)
-	#define WARN(f,g) 
-#endif
+
+
+//C file peek function
+inline int fpeek(FILE *stream)
+{
+	int c;
+
+	c = fgetc(stream);
+	ungetc(c, stream);
+
+	return c;
+}
+
+
 
 //!Text file loader errors
 enum
@@ -68,49 +70,6 @@ enum
 	ERR_FILE_FORMAT_FAIL,
 };
 
-inline std::string locateDataFile(const char *name)
-{
-	//Possible strategies:
-	//Linux:
-	//TODO: Implement me. Currently we just return the name
-	//which is equivalent to using current working dir (cwd).
-	//	- Look in cwd.
-	//	- Look in $PREFIX from config.h
-	//	- Look in .config
-	//Windows
-	//	- Locate a registry key that has the install path, which is preset by
-	//	  application installer
-	//	- Look in cwd
-
-#if defined(WIN32) || defined(WIN64)
-
-	//This must match the key used in the installer
-	wxRegKey *pRegKey = new wxRegKey(_("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\3Depict.exe"));
-
-	if( pRegKey->Exists() )
-	{
-		//Now we are talkin. Regkey exists
-		//OK, lets see if this dir actually exists or if we are being lied to (old dead regkey, for example)
-		wxString keyVal;
-		//Get the default key
-		pRegKey->QueryValue(_(""),keyVal);
-		//Strip the "3Depict.exe" from the key string
-		std::string s;
-		s = (const char *)keyVal.mb_str();
-		
-		if(s.size() > 11)
-		{
-			s=s.substr(0,s.size()-11);			
-			return s + std::string(name);
-		}
-	}
-
-#endif	
-
-	//Mac
-	//	- Look in cwd
-	return  std::string(name);
-}
 
 template<class T1, class T2>
 bool hasFirstInPairVec(const std::vector<std::pair<T1,T2> > &v, const std::pair<T1,T2> &r)
@@ -211,6 +170,7 @@ std::string lowercase(std::string s);
 
 void stripZeroEntries(std::vector<std::string> &s);
 
+bool parsePointStr(const std::string &str,Point3D &pt);
 
 bool parseColString(const std::string &str,
 	unsigned char &r, unsigned char &g, unsigned char &b, unsigned char &a);
@@ -326,7 +286,7 @@ public:
 
     void setBounds(const BoundCube &b)
     {
-		for(unsigned int ui=0;ui<2;ui++)
+		for(unsigned int ui=0;ui<3;ui++)
 		{
 			bounds[ui][0] = b.bounds[ui][0];
 			valid[ui][0] = b.valid[ui][0];
@@ -399,118 +359,9 @@ public:
 
     //FIXME: Hack!
     friend class K3DTree;
+    friend class K3DTreeMk2;
 };
 
-//!A 3D point data class storage
-/*! A  3D point data class
- * contains operator overloads and some basic
- * mathematical functions
- */
-class Point3D
-{
-        private:
-				//!Value data
-                float value[3];
-        public:
-				//!Constructor
-                inline Point3D() {};
-				//!Constructor with initialising values
-                inline Point3D(float x,float y,float z) 
-					{ value[0] = x, value[1] = y, value[2] = z;}
-                //!Set by value (ith dim 0, 1 2)
-                inline void setValue(unsigned int ui, float val){value[ui]=val;};
-				//!Set all values
-                inline void setValue(float fX,float fY, float fZ)
-                        {value[0]=fX; value[1]=fY; value[2]=fZ;}
-
-                //!Set by pointer
-                inline void setValueArr(const float *val)
-                        {
-                                value[0]=*val;
-                                value[1]=*(val+1);
-                                value[2]=*(val+2);
-                        };
-
-                //!Get value of ith dim (0, 1, 2)
-                inline float getValue(unsigned int ui) const {return value[ui];};
-		//Retrieve the internal pointer. Only use if you know why.
-                inline const float *getValueArr() const { return value;};
-
-                //!get into an array (note array must hold sizeof(float)*3 bytes of valid mem
-                void copyValueArr(float *value) const;
-
-                //!Add a point to this, without generating a return value
-                void add(const Point3D &obj);
-
-		//!Equality operator
-                bool operator==(const Point3D &pt) const;
-		//!assignemnt operator
-                Point3D operator=(const Point3D &pt);
-		//!+= operator
-                Point3D operator+=(const Point3D &pt);
-                Point3D operator+(float f);
-		//!multiplication= operator
-                Point3D operator*=(const float scale);
-		//!Addition operator
-                Point3D operator+(const Point3D &pt) const;
-		//!multiplication
-                Point3D operator*(float scale) const;
-		//!multiplication
-				Point3D operator*(const Point3D &pt) const;
-		//!Division. 
-                Point3D operator/(float scale) const;
-		//!Subtraction
-                Point3D operator-(const Point3D &pt) const;
-		//!returns a negative of the existing value
-                Point3D operator-() const;
-		//!Output streaming operator. Users (x,y,z) as format for output
-                friend std::ostream &operator<<(std::ostream &stream, const Point3D &);
-                //!make point unit magnitude, maintaining direction
-		Point3D normalise();
-                //!returns the square of distance another pt
-                float sqrDist(const Point3D &pt) const;
-
-                //!Calculate the dot product of this and another pint
-                float dotProd(const Point3D &pt) const;
-                //!Calculate the cross product of this and another point
-                Point3D crossProd(const Point3D &pt) const;
-
-				//!Calculate the angle between two position vectors in radiians
-				float angle(const Point3D &pt) const;
-
-                //!overload for array indexing returns |pt|^2
-                float sqrMag() const;
-
-				//!Retrieve by value
-                inline float operator[](unsigned int ui) const { ASSERT(ui < 3); return value[ui];}
-				//!Retrieve element by referene
-                inline float &operator[](unsigned int ui) { ASSERT(ui < 3); return value[ui];}
-
-                //!Is a given point stored inside a box bounded by orign and this pt?
-                /*!returns true if this point is located inside (0,0,0) -> Farpoint
-                * assuming box shape (non zero edges return false)
-                * farPoint must be positive in all dim
-                */
-                bool insideBox(const Point3D &farPoint) const;
-
-
-				//!Tests if this point lies inside the rectangular prism 
-				/*!Returns true if this point lies inside the box bounded
-				 * by lowPoint and highPoint
-				 */
-                bool insideBox(const Point3D &lowPoint, const Point3D &highPoint) const;
-
-		//!Makes each value negative of old value
-		void negate();
-
-		//Perform a 3x3 matrix transformation. 
-		void transform3x3(const float *matrix);
-#ifdef __LITTLE_ENDIAN__
-                //!Flip the endian state for data stored in this point
-                void switchEndian();
-#endif
-		bool parse(const std::string &str);
-};
 
 //!A colour data storage structure 
 class Colour
@@ -532,33 +383,404 @@ inline float getLum(float r, float g, float b)
 	return 0.5*(max(max(r,g),b) + min(r,min(g,b)));
 }
 
-
-//This class implements a Linear Feedback Shift Register (in software) 
-//This is a mathematical construct based upon polynomials over closed natural numbers (N mod p).
-//This will generate a weakly random digit string, but with guaranteed no duplicates, using O(1)
-//memory and O(n) calls. The no duplicate guarantee is weak-ish, with no repitition in the
-//shift register for 2^n-1 iterations. n can be set by setMaskPeriod.
-class LinearFeedbackShiftReg
-{
-	size_t lfsr;
-	size_t maskVal;
-	size_t totalMask;
-	public:
-		//Get a value from the shift register, and advance
-		size_t clock();
-		//Set the internal lfsr state. Note 0 is the lock-up state.
-		void setState(size_t newState) { lfsr=newState;};
-		//set the mask to use such that the period is 2^n-1. 3 is minimum 60 is maximum
-		void setMaskPeriod(unsigned int newMask);
-
-		//!Check the validity of the table
-		bool verifyTable();
-};
-
 //!Return only the filename component
 std::string onlyFilename( const std::string& path );
 //!Return only  the directory name component of the full path 
 std::string onlyDir( const std::string& path );
 
+//OK, this is a bit tricky. We override the operators to call
+//a callback, so the UI updates keep happening, even inside the STL function
+//----
+template<class T>
+class GreaterWithCallback 
+{
+	private:
+		bool (*callback)(void);
+		//!Reduction frequency (use callback every k its)
+		unsigned int redMax;
+		//!Current reduction counter
+		unsigned int reduction;
+		//!pointer to progress value
+		unsigned int *prgPtr;
+	public:
+		//!Second argument is a "reduction" value to set the number of calls
+		//to the random functor before initiating a callback
+		GreaterWithCallback( bool (*ptr)(void),unsigned int red)
+			{ callback=ptr; reduction=redMax=red;};
+
+		bool operator()(const T &a, const T &b) 
+		{
+			if(!reduction--)
+			{
+				reduction=redMax;
+				//Execute callback
+				(*callback)();
+			}
+
+			return a < b;
+		}
+};
+
+
+template<class T>
+class EqualWithCallback 
+{
+	private:
+		bool (*callback)(void);
+		//!Reduction frequency (use callback every k its)
+		unsigned int redMax;
+		//!Current reduction counter
+		unsigned int reduction;
+		//!pointer to progress value
+		unsigned int *prgPtr;
+	public:
+		//!Second argument is a "reduction" value to set the number of calls
+		//to the random functor before initiating a callback
+		EqualWithCallback( bool (*ptr)(void),unsigned int red)
+			{ callback=ptr; reduction=redMax=red;};
+
+		bool operator()(const T &a, const T &b) 
+		{
+			if(!reduction--)
+			{
+				reduction=redMax;
+				//Execute callback
+				(*callback)();
+			}
+
+			return a ==b;
+		}
+};
+//----
+
+
+//Randomly select subset. Subset will be (somewhat) sorted on output
+template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<T> &source, 
+							RandNumGen &rng, size_t num,unsigned int &progress,bool (*callback)(), bool strongRandom=false)
+{
+	const unsigned int NUM_CALLBACK=50000;
+	//If there are not enough points, just copy it across in whole
+	if(source.size() <= num)
+	{
+		num=source.size();
+		result.resize(source.size());
+		for(size_t ui=0; ui<num; ui++)
+			result[ui] = source[ui]; 
+	
+		return num;
+	}
+
+	result.resize(num);
+
+	if(strongRandom)
+	{
+
+		size_t numTicksNeeded;
+		//If the number of items is larger than half the source size,
+		//switch to tracking vacancies, rather than data
+		if(num < source.size()/2)
+			numTicksNeeded=num;
+		else
+			numTicksNeeded=source.size()-num;
+
+		//Randomly selected items 
+		//---------
+		std::vector<size_t> ticks;
+		ticks.resize(numTicksNeeded);
+
+		//Create an array of numTicksNeededbers and fill 
+		for(size_t ui=0; ui<numTicksNeeded; ui++)
+			ticks[ui]=(size_t)(rng.genUniformDev()*(source.size()-1));
+
+		//Remove duplicates. Intersperse some callbacks to be nice
+		GreaterWithCallback<size_t> gFunctor(callback,50000);
+		std::sort(ticks.begin(),ticks.end(),gFunctor);
+		EqualWithCallback<size_t> eqFunctor(callback,50000);
+		std::vector<size_t>::iterator newLast;
+		newLast=std::unique(ticks.begin(),ticks.end());	
+		ticks.erase(newLast,ticks.end());
+
+		std::vector<size_t> moreTicks;
+		//Top up with unique entries
+		while(ticks.size() +moreTicks.size() < numTicksNeeded)
+		{
+			size_t index;
+
+			//This is actually not too bad. the collision probability is at most 50%
+			//due the switching behaviour above, for any large number of items 
+			//So this is at worst case nlog(n) (I think)
+			index =rng.genUniformDev()*(source.size()-1);
+			if(!binary_search(ticks.begin(),ticks.end(),index) &&
+				std::find(moreTicks.begin(),moreTicks.end(),index) ==moreTicks.end())
+				moreTicks.push_back(index);
+
+		}
+
+		ticks.reserve(numTicksNeeded);
+		for(size_t ui=0;ui<moreTicks.size();ui++)
+			ticks.push_back(moreTicks[ui]);
+
+		moreTicks.clear();
+
+		ASSERT(ticks.size() == numTicksNeeded);
+		//---------
+		
+		size_t pos=0;
+		//Transfer the output
+		unsigned int curProg=NUM_CALLBACK;
+
+		if(num < source.size()/2)
+		{
+			for(std::vector<size_t>::iterator it=ticks.begin();it!=ticks.end();it++)
+			{
+
+				result[pos]=source[*it];
+				pos++;
+				if(!curProg--)
+				{
+					progress= (unsigned int)((float)(pos)/((float)num)*100.0f);
+					(*callback)();
+					curProg=NUM_CALLBACK;
+				}
+			}
+		}
+		else
+		{
+			//Sort the ticks properly (mostly sorted anyway..)
+			std::sort(ticks.begin(),ticks.end(),gFunctor);
+
+			unsigned int curTick=0;
+			for(size_t ui=0;ui<source.size(); ui++)
+			{
+				//Don't copy if this is marked
+				if(ui == ticks[curTick])
+					curTick++;
+				else
+				{
+					ASSERT(result.size() > (ui-curTick));
+					result[ui-curTick]=source[ui];
+				}
+				
+				if(!curProg--)
+				{
+					progress= (unsigned int)(((float)(ui)/(float)source.size())*100.0f);
+					(*callback)();
+					curProg=NUM_CALLBACK;
+				}
+			}
+		}
+
+		ticks.clear();
+	}	
+	else
+	{
+		//Use a weak randomisation
+		LinearFeedbackShiftReg l;
+
+		//work out the mask level we need to use
+		size_t i=1;
+		unsigned int j=0;
+		while(i < (source.size()<<1))
+		{
+			i=i<<1;
+			j++;
+		}
+
+		//linear shift table starts at 3.
+		if(j<3) {
+			j=3;
+			i = 1 << j;
+		}
+
+		size_t start;
+		//start at a random position  in the linear state
+		start =(size_t)(rng.genUniformDev()*i);
+		l.setMaskPeriod(j);
+		l.setState(start);
+
+		size_t ui=0;	
+		unsigned int curProg=NUM_CALLBACK;
+		//generate unique weak random numbers.
+		while(ui<num)
+		{
+			size_t res;
+			res= l.clock();
+			
+			//use the source if it lies within range.
+			//drop it silently if it is out of range
+			if(res< source.size())
+			{
+				result[ui] =source[res];
+				ui++;
+			}
+			if(!curProg--)
+			{
+				progress= (unsigned int)((float)(ui)/((float)source.size())*100.0f);
+				(*callback)();
+				curProg=NUM_CALLBACK;
+			}
+		}
+
+	}
+
+	return num;
+}
+
+//Randomly select subset. Subset will be (somewhat) sorted on output
+template<class T> size_t randomDigitSelection(std::vector<T> &result, const size_t max,
+			RandNumGen &rng, size_t num,unsigned int &progress,bool (*callback)(),
+			bool strongRandom=false)
+{
+	//If there are not enough points, just copy it across in whole
+	if(max < num)
+	{
+		num=max;
+		result.resize(max);
+		for(size_t ui=0; ui<num; ui++)
+			result[ui] = ui; 
+	
+		return num;
+	}
+
+	result.resize(num);
+
+	if(strongRandom)
+	{
+
+		size_t numTicksNeeded;
+		//If the number of items is larger than half the source size,
+		//switch to tracking vacancies, rather than data
+		if(num < max/2)
+			numTicksNeeded=num;
+		else
+			numTicksNeeded=max-num;
+
+		//Randomly selected items 
+		//---------
+		std::vector<size_t> ticks;
+		ticks.resize(numTicksNeeded);
+
+		std::cerr << "Generating some unique numbers:" << std::endl;
+		//Create an array of numTicksNeededbers and fill 
+		for(size_t ui=0; ui<numTicksNeeded; ui++)
+			ticks[ui]=(size_t)(rng.genUniformDev()*(max-1));
+
+		//Remove duplicates. Intersperse some callbacks to be nice
+		GreaterWithCallback<size_t> gFunctor(callback,50000);
+		std::sort(ticks.begin(),ticks.end(),gFunctor);
+		EqualWithCallback<size_t> eqFunctor(callback,50000);
+		
+		std::vector<size_t>::iterator itLast;
+		itLast=std::unique(ticks.begin(),ticks.end(),eqFunctor);	
+		ticks.erase(itLast,ticks.end());
+		std::vector<size_t> moreTicks;
+		//Top up with unique entries
+		std::cerr << "Topping up" << std::endl;
+		while(ticks.size() +moreTicks.size() < numTicksNeeded)
+		{
+			size_t index;
+
+			//This is actually not too bad. the collision probability is at most 50%
+			//due the switching behaviour above, for any large number of items 
+			//So this is at worst case nlog(n) (I think)
+			index =rng.genUniformDev()*(max-1);
+			if(!binary_search(ticks.begin(),ticks.end(),index) &&
+				std::find(moreTicks.begin(),moreTicks.end(),index) ==moreTicks.end())
+				moreTicks.push_back(index);
+
+		}
+		std::cerr << "Finished topup" << std::endl;
+
+		ticks.reserve(numTicksNeeded);
+		for(size_t ui=0;ui<moreTicks.size();ui++)
+			ticks.push_back(moreTicks[ui]);
+
+		moreTicks.clear();
+
+		ASSERT(ticks.size() == numTicksNeeded);
+		//---------
+		
+		size_t pos=0;
+		//Transfer the output
+		unsigned int curProg=70000;
+
+		if(num < max/2)
+		{
+			for(std::vector<size_t>::iterator it=ticks.begin();it!=ticks.end();it++)
+			{
+
+				result[pos]=*it;
+				pos++;
+				if(!curProg--)
+				{
+					progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
+					(*callback)();
+					curProg=70000;
+				}
+			}
+		}
+		else
+		{
+			//Sort the ticks properly (mostly sorted anyway..)
+			std::sort(ticks.begin(),ticks.end(),gFunctor);
+			
+			unsigned int curTick=0;
+			for(size_t ui=0;ui<numTicksNeeded; ui++)
+			{
+				//Don't copy if this is marked
+				if(ui == ticks[curTick])
+					curTick++;
+				else
+					result[ui-curTick]=ui;
+				
+				if(!curProg--)
+				{
+					progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
+					(*callback)();
+					curProg=70000;
+				}
+			}
+		}
+
+		ticks.clear();
+	}
+	else	
+	{
+		//Use a weak randomisation
+		LinearFeedbackShiftReg l;
+
+		//work out the mask level we need to use
+		size_t i=1;
+		unsigned int j=0;
+		while(i < (max<<1))
+		{
+			i=i<<1;
+			j++;
+		}
+		
+		size_t start;
+		//start at a random position  in the linear state
+		start =(size_t)(rng.genUniformDev()*i);
+		l.setMaskPeriod(j);
+		l.setState(start);
+
+		size_t ui=0;	
+		//generate unique weak random numbers.
+		while(ui<num)
+		{
+			size_t res;
+			res= l.clock();
+			
+			//use the source if it lies within range.
+			//drop it silently if it is out of range
+			if(res<max) 
+			{
+				result[ui] =res;
+				ui++;
+			}
+		}
+	}
+	return num;
+}
 
 #endif

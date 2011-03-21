@@ -20,7 +20,7 @@
 #define WXCROPPANEL_H
 
 #include <wx/wx.h>
-#include "basics.h"
+#include "assertion.h"
 
 //Selection method
 enum

@@ -32,10 +32,9 @@
 #include <utility>
 #include <string>
 
-#include "basics.h"
 #include "pngread.h"
-
-
+#include "basics.h"
+#include "wxcommon.h"
 //Named Textures
 enum
 {

@@ -17,9 +17,9 @@
 */
 
 #include "configFile.h"
-#include "XMLHelper.h"
+#include "xmlHelper.h"
 
-#include "common.h"
+#include "filters/allFilter.h"
 
 const char *CONFIG_FILENAME="config.xml";
 const unsigned int MAX_RECENT=15;
@@ -99,7 +99,7 @@ Filter *ConfigFile::getDefaultFilter(unsigned int type) const
 	return makeFilter(type);	
 }
 
-bool ConfigFile::read()
+unsigned int ConfigFile::read()
 {
 
 	string filename;
@@ -120,29 +120,15 @@ bool ConfigFile::read()
 
 	if(!context)
 	{
-		return false;
+		return CONFIG_ERR_NOPARSER;
 	}
 
-	//Open the XML file
-	//TODO: Nowhere do i check which DTD I have validated against.
-	doc = xmlCtxtReadFile(context, filename.c_str(), NULL, XML_PARSE_DTDVALID);
+	//Open the XML file again, but without DTD validation
+	doc = xmlCtxtReadFile(context, filename.c_str(), NULL, 0);
 
 	if(!doc)
-	{
-		//Open the XML file again, but without DTD validation
-		doc = xmlCtxtReadFile(context, filename.c_str(), NULL, 0);
+		return CONFIG_ERR_NOFILE;
 
-		if(!doc)
-			return false;
-	}
-	else
-	{
-		//Check for context validity
-		if(!context->valid)
-		{
-			//TODO: Implement some kind of warn message?
-		}
-	}
 	//release the context
 	xmlFreeParserCtxt(context);
 
@@ -321,14 +307,14 @@ nodeptrEndJump:
 		//Code threw an error, just say "bad parse" and be done with it
 		delete paths;
 		xmlFreeDoc(doc);
-		return false;
+		return CONFIG_ERR_BADFILE;
 	}
 
 
 	delete paths;
 	xmlFreeDoc(doc);
 
-	return true;
+	return 0;
 
 }
 

@@ -17,11 +17,9 @@
 */
 
 
-#include "wxCropPanel.h"
+#include "cropPanel.h"
 
 #include <wx/dcbuffer.h>
-
-#include "basics.h"
 
 //DEBUG ONLY
 //---
@@ -136,7 +134,7 @@ void CropPanel::mouseMove(wxMouseEvent &event)
 			}
 		}
 
-		minDist=sqrt(minDist);
+		minDist=sqrtf(minDist);
 		bool haveCorner;
 
 		const float MIN_CUTOFF_DISTANCE= 3;
@@ -149,7 +147,7 @@ void CropPanel::mouseMove(wxMouseEvent &event)
 		float meanY = (float)(crop[1] + (1.0-crop[3]))*0.5;
 		
 		float centreDist;
-		centreDist=sqrt((xMouse-meanX)*(xMouse-meanX)
+		centreDist=sqrtf((xMouse-meanX)*(xMouse-meanX)
 				+ (yMouse-meanY)*(yMouse-meanY));
 		//Check the centre, which is allowed to trump the corners
 		if(haveCorner)

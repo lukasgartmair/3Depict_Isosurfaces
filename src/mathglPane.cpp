@@ -16,7 +16,6 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "wxPreprec.h"
 #include <wx/sizer.h>
 #include <wx/dcbuffer.h>
 #include "mathglPane.h"
@@ -523,7 +522,7 @@ void MathGLPane::updateMouseCursor()
 
 void MathGLPane::mouseDoubleLeftClick(wxMouseEvent& event)
 {
-	if(!thePlot)
+	if(!thePlot || !gr)
 		return;
 
 	panning=dragging=false;

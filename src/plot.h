@@ -38,42 +38,12 @@
 
 #include "basics.h"
 
-enum
-{
-  PLOT_TYPE_LINES=0,
-  PLOT_TYPE_BARS,
-  PLOT_TYPE_STEPS,
-  PLOT_TYPE_STEM,
-  PLOT_TYPE_ENDOFENUM,
-};
 
-enum
-{
-	PLOT_ERROR_NONE,
-	PLOT_ERROR_MOVING_AVERAGE,
-	PLOT_ERROR_ENDOFENUM
-};
 
 enum{
 	EDGE_MODE_HOLD,
 };
 
-enum{
-	REGION_LEFT_EXTEND=1,
-	REGION_MOVE,
-	REGION_RIGHT_EXTEND
-};
-
-//!Structure to handle error bar drawing in plot
-struct PLOT_ERROR
-{
-	//!Plot data estimator mode
-	unsigned int mode;
-	//!Number of data points for moving average
-	unsigned int movingAverageNum;
-	//!Edge mode
-	unsigned int edgeMode;
-};
 
 #include "filter.h"
 

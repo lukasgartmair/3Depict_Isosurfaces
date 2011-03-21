@@ -21,14 +21,120 @@
 #include <cstdlib>
 #include <cmath>
 #include <limits>
+#include <iostream>
 
-//This should be the largest value a signed integer can hold
-//(or one less...)
+#include "assertion.h"
+#include "endianTest.h"
 
-//This have been verified to produce correct output
-//using histogram analysis and mean value analysis.
+//!A 3D point data class storage
+/*! A  3D point data class
+ * contains operator overloads and some basic
+ * mathematical functions
+ */
+class Point3D
+{
+        private:
+				//!Value data
+                float value[3];
+        public:
+				//!Constructor
+                inline Point3D() {};
+				//!Constructor with initialising values
+                inline Point3D(float x,float y,float z) 
+					{ value[0] = x, value[1] = y, value[2] = z;}
+                //!Set by value (ith dim 0, 1 2)
+                inline void setValue(unsigned int ui, float val){value[ui]=val;};
+				//!Set all values
+                inline void setValue(float fX,float fY, float fZ)
+                        {value[0]=fX; value[1]=fY; value[2]=fZ;}
+
+                //!Set by pointer
+                inline void setValueArr(const float *val)
+                        {
+                                value[0]=*val;
+                                value[1]=*(val+1);
+                                value[2]=*(val+2);
+                        };
+
+                //!Get value of ith dim (0, 1, 2)
+                inline float getValue(unsigned int ui) const {return value[ui];};
+		//Retrieve the internal pointer. Only use if you know why.
+                inline const float *getValueArr() const { return value;};
+
+                //!get into an array (note array must hold sizeof(float)*3 bytes of valid mem
+                void copyValueArr(float *value) const;
+
+                //!Add a point to this, without generating a return value
+                void add(const Point3D &obj);
+
+		//!Equality operator
+                bool operator==(const Point3D &pt) const;
+		//!assignemnt operator
+                Point3D operator=(const Point3D &pt);
+		//!+= operator
+                Point3D operator+=(const Point3D &pt);
+                Point3D operator+(float f);
+		//!multiplication= operator
+                Point3D operator*=(const float scale);
+		//!Addition operator
+                Point3D operator+(const Point3D &pt) const;
+		//!multiplication
+                Point3D operator*(float scale) const;
+		//!multiplication
+				Point3D operator*(const Point3D &pt) const;
+		//!Division. 
+                Point3D operator/(float scale) const;
+		//!Subtraction
+                Point3D operator-(const Point3D &pt) const;
+		//!returns a negative of the existing value
+                Point3D operator-() const;
+		//!Output streaming operator. Users (x,y,z) as format for output
+                friend std::ostream &operator<<(std::ostream &stream, const Point3D &);
+                //!make point unit magnitude, maintaining direction
+		Point3D normalise();
+                //!returns the square of distance another pt
+                float sqrDist(const Point3D &pt) const;
+
+                //!Calculate the dot product of this and another pint
+                float dotProd(const Point3D &pt) const;
+                //!Calculate the cross product of this and another point
+                Point3D crossProd(const Point3D &pt) const;
+
+				//!Calculate the angle between two position vectors in radiians
+				float angle(const Point3D &pt) const;
+
+                //!overload for array indexing returns |pt|^2
+                float sqrMag() const;
+
+				//!Retrieve by value
+                inline float operator[](unsigned int ui) const { ASSERT(ui < 3); return value[ui];}
+				//!Retrieve element by referene
+                inline float &operator[](unsigned int ui) { ASSERT(ui < 3); return value[ui];}
+
+                //!Is a given point stored inside a box bounded by orign and this pt?
+                /*!returns true if this point is located inside (0,0,0) -> Farpoint
+                * assuming box shape (non zero edges return false)
+                * farPoint must be positive in all dim
+                */
+                bool insideBox(const Point3D &farPoint) const;
 
 
+				//!Tests if this point lies inside the rectangular prism 
+				/*!Returns true if this point lies inside the box bounded
+				 * by lowPoint and highPoint
+				 */
+                bool insideBox(const Point3D &lowPoint, const Point3D &highPoint) const;
+
+		//!Makes each value negative of old value
+		void negate();
+
+		//Perform a 3x3 matrix transformation. 
+		void transform3x3(const float *matrix);
+#ifdef __LITTLE_ENDIAN__
+                //!Flip the endian state for data stored in this point
+                void switchEndian();
+#endif
+};
 
 //IMPORTANT!!!
 //===============
@@ -60,8 +166,65 @@ class RandNumGen
 		float genGaussDev();
 };
 
-//As per ISO 31-11 : theta is zenith, phi is azimuth
-//Point3D pointFromSpherical(float r, float theta, float phi);
+//needed for sincos
+#ifdef __LINUX__ 
+#ifdef __GNUC__
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#endif
+#endif
+//needed for sin and cos
+#include <math.h>
+
+typedef struct 
+{
+	float a;
+	float b;
+	float c;
+	float d;
+} Quaternion;
+
+typedef struct
+{
+	float fx;
+	float fy;
+	float fz;
+} Point3f;
+
+//Uses quaternion mathematics to perform a rotation around your favourite axis
+//IMPORTANT: rotVec must be normalised before passing to this function 
+//failure to do so will have wierd results
+//Note result is stored in  point passsed as argument
+void quat_rot(Point3f *point, Point3f *rotVec, float angle);
+
+//Retrieve the quaternion for repeated rotations. pass to the quat_rot_apply_quats
+void quat_get_rot_quat(Point3f *rotVec, float angle,  Quaternion *rotQuat);
+
+//Use previously generated quats from quat_get_rot_quats to rotate a point
+void quat_rot_apply_quat(Point3f *point, Quaternion *rotQuat);
+
+//This class implements a Linear Feedback Shift Register (in software) 
+//This is a mathematical construct based upon polynomials over closed natural numbers (N mod p).
+//This will generate a weakly random digit string, but with guaranteed no duplicates, using O(1)
+//memory and O(n) calls. The no duplicate guarantee is weak-ish, with no repitition in the
+//shift register for 2^n-1 iterations. n can be set by setMaskPeriod.
+class LinearFeedbackShiftReg
+{
+	size_t lfsr;
+	size_t maskVal;
+	size_t totalMask;
+	public:
+		//Get a value from the shift register, and advance
+		size_t clock();
+		//Set the internal lfsr state. Note 0 is the lock-up state.
+		void setState(size_t newState) { lfsr=newState;};
+		//set the mask to use such that the period is 2^n-1. 3 is minimum 60 is maximum
+		void setMaskPeriod(unsigned int newMask);
+
+		//!Check the validity of the table
+		bool verifyTable();
+};
+
 
 #endif
-

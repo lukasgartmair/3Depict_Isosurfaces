@@ -22,7 +22,6 @@
 SelectionBinding::SelectionBinding()
 {
 	obj=0;
-	owner=0;
 	valModified=false;
 	bindingId=drawActionId=0;
 }
@@ -86,7 +85,7 @@ void SelectionBinding::applyTransform(const Point3D &worldVec, bool permanent)
 		case BIND_MODE_FLOAT_SCALE:
 		{
 			//Compute the new scalar as the magnitude of the difference vector
-			fTmp = sqrt(worldVec.sqrMag());
+			fTmp = sqrtf(worldVec.sqrMag());
 			fTmp = std::max(fMin,fTmp);
 			fTmp = std::min(fMax,fTmp);
 
@@ -96,7 +95,7 @@ void SelectionBinding::applyTransform(const Point3D &worldVec, bool permanent)
 		case BIND_MODE_FLOAT_TRANSLATE:
 		{
 			//Compute the new scalar as an offset by the mag of the scalar
-			fTmp =0.5*cachedValFloat+sqrt(worldVec.sqrMag()); 
+			fTmp =0.5*cachedValFloat+sqrtf(worldVec.sqrMag()); 
 			fTmp = std::max(fMin,fTmp);
 			fTmp = std::min(fMax,fTmp);
 			
@@ -117,7 +116,7 @@ void SelectionBinding::applyTransform(const Point3D &worldVec, bool permanent)
 		}
 		case BIND_MODE_POINT3D_ROTATE:
 		{
-			if(worldVec.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()))
+			if(worldVec.sqrMag() > sqrtf(std::numeric_limits<float>::epsilon()))
 			{
 				vecs.push_back(worldVec);
 				cachedValPoint3D = worldVec;
@@ -127,10 +126,10 @@ void SelectionBinding::applyTransform(const Point3D &worldVec, bool permanent)
 		}
 		case BIND_MODE_POINT3D_ROTATE_LOCK:
 		{
-			if(worldVec.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()))
+			if(worldVec.sqrMag() > sqrtf(std::numeric_limits<float>::epsilon()))
 			{
 				//Renormalise the vector back to the same scale as the cached value
-				vecs.push_back(worldVec*sqrt(cachedValPoint3D.sqrMag()/worldVec.sqrMag()));
+				vecs.push_back(worldVec*sqrtf(cachedValPoint3D.sqrMag()/worldVec.sqrMag()));
 				if(permanent)
 					cachedValPoint3D=vecs.back();
 			}
@@ -222,59 +221,5 @@ bool SelectionBinding::matchesDrawable(const DrawableObj *d,
 bool SelectionBinding::matchesDrawable(const DrawableObj *d) const
 {
 	return (obj == d);
-}
-
-SelectionDevice::SelectionDevice(const Filter *p)
-{
-	target=p;
-}
-
-void SelectionDevice::addBinding(SelectionBinding b)
-{
-	bindingVec.push_back(b);
-}
-
-bool SelectionDevice::getBinding(const DrawableObj *d,unsigned int mouseFlags, 
-					unsigned int keyFlags,SelectionBinding* &b)
-{
-#ifdef DEBUG
-	//REMOVE ME SOON - this is improbable, but not theoretically impossible
-	ASSERT(bindingVec.size() < 1000);
-#endif
-	for(unsigned int ui=0;ui<bindingVec.size();ui++)
-	{
-		if(bindingVec[ui].matchesDrawable(d,mouseFlags,keyFlags))
-		{
-			b=&(bindingVec[ui]);
-			return true;
-		}
-	}
-
-	//This selection device does not match
-	//the targeted object.
-	return false;
-}
-
-void SelectionDevice::getModifiedBindings(vector<std::pair<const Filter *,SelectionBinding> > &bindings)
-{
-	ASSERT(target);
-	for(unsigned int ui=0;ui<bindingVec.size();ui++)
-	{
-		if(bindingVec[ui].modified())
-			bindings.push_back(std::make_pair(target,bindingVec[ui]));
-	}
-}
-
-bool SelectionDevice::getAvailBindings(const DrawableObj *d,vector<const SelectionBinding*> &b) const
-{
-	ASSERT(!b.size());
-	for(unsigned int ui=0;ui<bindingVec.size();ui++)
-	{
-		if(bindingVec[ui].matchesDrawable(d))
-			b.push_back(&(bindingVec[ui]));
-	}
-
-
-	return b.size();
 }
 

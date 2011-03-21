@@ -17,14 +17,10 @@
 #ifndef VOXELS_H
 #define VOXELS_H
 
-#include "basics.h"
 
 const unsigned int MAX_CALLBACK=500;
 
-//FIXME: This is a hack. my class layout is completely borked. the voxels
-//need to be able to count ions, so I need a declaration. APTClasses.h,
-//basics.h and common.h need to be refactored
-#include "APTClasses.h"
+#include "basics.h"
 
 #include <vector>
 #include <deque>
@@ -38,13 +34,6 @@ const unsigned int MAX_CALLBACK=500;
 #include <queue>
 
 using namespace std;
-
-#ifdef USE_STXXL
-#ifdef _OPENMP
-#error STXXL is not thread safe, and cannot be used with openMP at this time.
-#endif
-#include <stxxl.h>
-#endif
 
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_eigen.h>
@@ -132,12 +121,12 @@ void push_sorted (std::list<T> & storage, T item)
 #ifdef _OPENMP
 //Auto-detect the openMP iterator type.
 #if ( __GNUC__ > 4 && __GNUC_MINOR__ > 3 )
-	#define MP_INT_TYPE unsigned long long
+	#define MP_INT_TYPE size_t
 #else
 	#define MP_INT_TYPE long long 
 #endif
 #else
-	#define MP_INT_TYPE unsigned long long
+	#define MP_INT_TYPE size_t
 #endif
 
 
@@ -149,23 +138,14 @@ template<class T> class Voxels
 {
 	private:
 		//!Number of bins in data set (X,Y,Z)
-		unsigned long long binCount[3];
+		size_t binCount[3];
 
 		//!Voxel array 
-#ifndef USE_STXXL
 		std::vector<T> voxels;
-#endif
-		//!Alternate description for voxel array
-		/*VECTOR_GENERATOR<double,8,16,8*1024*1024,RC,lru>
-		 * result:external vector of double's , with 8 blocks per page,
-		16 pages, 8MB blocks, Random Cyclic allocation and lru cache replacement strategy */
-#ifdef USE_STXXL
-		stxxl::vector<T,12,stxxl::lru_pager<8>, 8*1024*1024> voxels;
-#endif
-
-		//FIXME: Before switching to getDataRef, we have to replace all calls to getDataRef with getDataIt - stxxl does not guarantee valid pointers, but does for valid references
-
-		//!Scaling value for furthest bound of the dataset. Dataset is assumed to sit in a rectilinear volume from (0,0,0)
+		
+		//!Scaling value for furthest bound of the dataset. 
+		//Dataset is assumed to sit in a rectilinear volume from minBound
+		//to maxBound
 		Point3D minBound, maxBound;
 	
 		bool (*callback)(void);
@@ -189,21 +169,21 @@ template<class T> class Voxels
 
 
 		//!Retrieve the XYZ voxel location associated with a given position
-		void getIndex(unsigned long long &x, unsigned long long &y,
-				unsigned long long &z, const Point3D &p) const;
+		void getIndex(size_t &x, size_t &y,
+				size_t &z, const Point3D &p) const;
 		
 		//!Get the position associated with an XYZ voxel
-		Point3D getPoint(unsigned long long x, 
-				unsigned long long y, unsigned long long z) const;
+		Point3D getPoint(size_t x, 
+				size_t y, size_t z) const;
 		//!Retrieve the value of a specific voxel
-		inline T getData(unsigned long long x, unsigned long long y, unsigned long long z) const;
+		inline T getData(size_t x, size_t y, size_t z) const;
 		//!Retrieve value of the nth voxel
-		inline T getData(unsigned long long i) const { return voxels[i];}
+		inline T getData(size_t i) const { return voxels[i];}
 		//!Retrieve the value of the nth voxel
 		/* No guarantees are made about the ordering of the voxel, however each voxel will be obtained uniquely
 		 * by its ith index
 		 */
-		//const T &getDataRef(unsigned long long i) const { return voxels[i];};
+		//const T &getDataRef(size_t i) const { return voxels[i];};
 
 		//!Returns underlying pointer --  UNSUPPORTED FUNCTION -- USE AT YOUR PERIL
 		/* No guarantees are made about world not exploding
@@ -214,31 +194,31 @@ template<class T> class Voxels
 		//const T *getDataPtr() const { return voxels;};
 
 
-		void setEntry(unsigned long long n, const T &val) { voxels[n] = val;};
+		void setEntry(size_t n, const T &val) { voxels[n] = val;};
 		//!Retrieve a reference to the data ata  given position
-		//const T &getDataRef(unsigned long long x, unsigned long long y, unsigned long long z) const;
+		//const T &getDataRef(size_t x, size_t y, size_t z) const;
 		//!Set the value of a point in the dataset
-		void setData(unsigned long long x, unsigned long long y, unsigned long long z, const T &val);
+		void setData(size_t x, size_t y, size_t z, const T &val);
 		//!Set the value of nth point in the dataset
-		void setData(unsigned long long n, const T &val);
+		void setData(size_t n, const T &val);
 		
 		//!Get the size of the data field
-		void getSize(unsigned long long &x, unsigned long long &y, unsigned long long &z) const;
-		unsigned long long getSize() const {return voxels.size();};
+		void getSize(size_t &x, size_t &y, size_t &z) const;
+		size_t getSize() const {return voxels.size();};
 
 		//!Resize the data field
 		/*! This will destroy any data that was already in place
 		 * If the data needs to be preserved use "resizeKeepData"
 		 * Data will *not* be initialised
 		 */
-		unsigned long long resize(unsigned long long newX, unsigned long long newY, unsigned long long newZ, const Point3D &newMinBound=Point3D(0.0f,0.0f,0.0f), const Point3D &newMaxBound=Point3D(1.0f,1.0f,1.0f));
+		size_t resize(size_t newX, size_t newY, size_t newZ, const Point3D &newMinBound=Point3D(0.0f,0.0f,0.0f), const Point3D &newMaxBound=Point3D(1.0f,1.0f,1.0f));
 		
 		//!Resize the data field, maintaining data as best as possible
 		/*! This will preserve data by resizing as much as possible 
 		 * about the origin. If the bounds are extended, the "fill" value is used
 		 * by default iff doFill is set to true. 
 		 */
-		unsigned long long resizeKeepData(unsigned long long &newX, unsigned long long &newY, unsigned long long &newZ, 
+		size_t resizeKeepData(size_t &newX, size_t &newY, size_t &newZ, 
 					unsigned int direction=CLIP_LOWER_SOUTH_WEST, const Point3D &newMinBound=Point3D(0.0f,0.0f,0.0f), const Point3D &newMaxBound=Point3D(1.0f,1.0f,1.0f), const T &fill=T(0),bool doFill=false);
 
 
@@ -247,7 +227,7 @@ template<class T> class Voxels
 		 * are binned into a single cell. Number of blocks binned is rate^3. Field must be larger than rate
 		 * in all directions. Currently only CLIP_NONE is supported.
 		 */
-		void rebin(Voxels<T> &dest, unsigned long long rate, unsigned long long clipMode=CLIP_NONE) const;
+		void rebin(Voxels<T> &dest, size_t rate, size_t clipMode=CLIP_NONE) const;
 		
 		//!Get the total value of the data field.
 		/*! An "initial value" is provided to provide the definition of a zero value
@@ -265,22 +245,22 @@ template<class T> class Voxels
 		void setBounds(const Point3D &pMin, const Point3D &pMax);
 
 		//!Initialise the voxel storage
-		unsigned long long init(unsigned long long nX,unsigned long long nY,unsigned long long nZ, const BoundCube &bound);
+		size_t init(size_t nX,size_t nY,size_t nZ, const BoundCube &bound);
 		//!Initialise the voxel storage
-		unsigned long long init(unsigned long long nX,unsigned long long nY, unsigned long long nZ);
+		size_t init(size_t nX,size_t nY, size_t nZ);
 		//!Load the voxels from file
-		/*! Format is flat unsigned long longs in column major
+		/*! Format is flat size_ts in column major
 		 * return codes:
 		 * 1: File open error 
 		 * 2: Data size error
 		 */
-		unsigned long long loadFile(const char *cpFilename, unsigned long long nX,
-						unsigned long long nY, unsigned long long nZ, bool silent=false);
+		size_t loadFile(const char *cpFilename, size_t nX,
+						size_t nY, size_t nZ, bool silent=false);
 		//!Write the voxel objects in column major written out to file
 		/*! Format is flat objects ("T"s) in column major format.
 		 * Returns nonzero on failure
 		 */
-		unsigned long long writeFile(const char *cpFilename) const;
+		size_t writeFile(const char *cpFilename) const;
 
 		//! Detect the position of the peaks in the dataset -- UNTESTED/UNCONFIRMED. USE AT YOUR PERIL.
 		/*! Uses a simple gaussian smoothed SSD to locate peaks
@@ -289,26 +269,26 @@ template<class T> class Voxels
 		 *  kernelLen is the size of the gaussian kernel (eg 3 produces a 3 by 3 by 3 kernel)
 		 */
 		void peakDetect(std::vector<Point3D> &dataVec,float sigmaThresh, 
-			float sigmaSmooth, unsigned long long kernelLen) const;
+			float sigmaSmooth, size_t kernelLen) const;
 
 		//!Run convolution over this data, placing the correlation data into "result"
 		/*! 
 		 * Datasets MUST have the same pitch (spacing) for the result to be defined
 		 * template type must have a  T(0.0) constructor that intialises it to some "zero"
 		 */
-		unsigned long long convolve(const Voxels<T> &templateVec, Voxels<T> &result,
-							 bool showProgress=true,unsigned long long boundMode=BOUND_CLIP) const; 
+		size_t convolve(const Voxels<T> &templateVec, Voxels<T> &result,
+							 bool showProgress=true,size_t boundMode=BOUND_CLIP) const; 
 
 		
 		//!Set this object to a normalised gaussian kernel, centered around the middle of the dataset
-		void setGaussianKernelCube(float stdDev, float bound, unsigned long long sideLen);
+		void setGaussianKernelCube(float stdDev, float bound, size_t sideLen);
 		
 		//!Second derivative by difference approximation 
 		/*! Returns the first order central difference approximation to the
 		 * second derivative. Bound mode can (when implemented) bye used to compute
 		 * appropriate differences.
 		 */
-		void secondDifference(Voxels<T> &result, unsigned long long boundMode=BOUND_CLIP) const;
+		void secondDifference(Voxels<T> &result, size_t boundMode=BOUND_CLIP) const;
 
 
 		//!Find the positions of the voxels that are above or below a given value
@@ -328,12 +308,12 @@ template<class T> class Voxels
 		 * antialiasingLevel - the number of times to subdivide the voxels into 8 parts 
 		 *  and test these voxels for internal/external. The resultant fraction of  inside/outside voxels is summed.
 		 */
-		void makeSphericalKernel(unsigned long long sideLen, float bound, const T &val, unsigned int antialiasLevel=0);
+		void makeSphericalKernel(size_t sideLen, float bound, const T &val, unsigned int antialiasLevel=0);
 
 		//!Return the sizeof value for the T type
 		/*! Maybe there is a better way to do this, I don't know
 		 */
-		unsigned long long sizeofType() const { return sizeof(T);}; 
+		size_t sizeofType() const { return sizeof(T);}; 
 
 
 		//!Binarise the data into a result vector
@@ -373,10 +353,10 @@ template<class T> class Voxels
 		//!Generate a histogram of data values. / operator must be defined for target type
 		/*! Data bins are evenly spaced between min and max. Formula for binning is (val-min())/(max()-min())*histBinCount
 		 */
-		int histogram(std::vector<unsigned long long> &v, unsigned long long histBinCount) const;
+		int histogram(std::vector<size_t> &v, size_t histBinCount) const;
 
 		//!Find the largest or smallest n objects
-		void findSorted(std::vector<unsigned long long> &x, std::vector<unsigned long long> &y, std::vector<unsigned long long> &z, unsigned long long n, bool largest=true) const;
+		void findSorted(std::vector<size_t> &x, std::vector<size_t> &y, std::vector<size_t> &z, size_t n, bool largest=true) const;
 
 		//!Generate a dataset that consists of the counts of points in a given voxel
 		/*! Ensure that the voxel scaling factors 
@@ -387,14 +367,13 @@ template<class T> class Voxels
 		 * than let wrap-around errors occur
 		 */
 		int countPoints( const std::vector<Point3D> &points, bool noWrap=true, bool doErase=false);
-		int countPoints( const std::vector<IonHit> &points, bool noWrap=true, bool doErase=false);
 	
 		//! divide countPoints by volume to get density
 		int calculateDensity();
 
 		//!increment the position specified
-		inline void increment(unsigned long long x, unsigned long long y, unsigned long long z){
-			typedef unsigned long long ull;
+		inline void increment(size_t x, size_t y, size_t z){
+			typedef size_t ull;
 	//Typecast everything to at least 64 bit uints.
 	voxels[(ull)z*(ull)binCount[1]*(ull)binCount[0]
 		+(ull)y*(ull)binCount[0] + (ull)x]++;}
@@ -410,14 +389,14 @@ template<class T> class Voxels
 template<class T, class U>
 void castVoxels(const Voxels<T> &src, Voxels<U> &dest)
 {
-	unsigned long long x,y,z;
+	size_t x,y,z;
 
 	//Resize the dest
 	src.getSize(x,y,z);
 	
 	dest.resize(x,y,z,src.getBounds());
 
-	unsigned long long numEntries=x*y*z;
+	size_t numEntries=x*y*z;
 #pragma omp parallel for 
 	for(MP_INT_TYPE ui=0; ui <(MP_INT_TYPE)numEntries; ui++)
 	{
@@ -430,16 +409,16 @@ void castVoxels(const Voxels<T> &src, Voxels<U> &dest)
 template<class T, class U>
 void sumVoxels(const Voxels<T> &src, U &counter)
 {
-	unsigned long long nx,ny,nz;
+	size_t nx,ny,nz;
 
 	src.getSize(nx,ny,nz);
 	
 	counter=0;
-	for(unsigned long long ui=0; ui<nx; ui++)
+	for(size_t ui=0; ui<nx; ui++)
 	{
-		for(unsigned long long uj=0; uj<ny; uj++)	
+		for(size_t uj=0; uj<ny; uj++)	
 		{
-			for(unsigned long long uk=0; uk<nz; uk++)	
+			for(size_t uk=0; uk<nz; uk++)	
 				counter+=src.getData(ui,uj,uk);
 		}
 	}
@@ -475,17 +454,17 @@ template<class T>
 void Voxels<T>::setPoint(const Point3D &point,const T &val)
 {
 	ASSERT(voxels.size());
-	unsigned long long pos[3];
-	for(unsigned long long ui=0;ui<3;ui++)
-		pos[ui] = (unsigned long long)round(point[ui]*(float)binCount[ui]);
+	size_t pos[3];
+	for(size_t ui=0;ui<3;ui++)
+		pos[ui] = (size_t)round(point[ui]*(float)binCount[ui]);
 
 
 	voxels[pos[2]*binCount[1]*binCount[0] + pos[1]*binCount[0] + pos[0]]=val; 
 }
 
 template<class T>
-void Voxels<T>::setData(unsigned long long x, unsigned long long y, 
-			unsigned long long z, const T &val)
+void Voxels<T>::setData(size_t x, size_t y, 
+			size_t z, const T &val)
 {
 	ASSERT(voxels.size());
 
@@ -494,7 +473,7 @@ void Voxels<T>::setData(unsigned long long x, unsigned long long y,
 }
 
 template<class T>
-inline void Voxels<T>::setData(unsigned long long n, const T &val)
+inline void Voxels<T>::setData(size_t n, const T &val)
 {
 	ASSERT(voxels.size());
 	ASSERT(n<voxels.size());
@@ -506,15 +485,15 @@ template<class T>
 T Voxels<T>::getPointData(const Point3D &point) const
 {
 	ASSERT(voxels.size());
-	unsigned long long pos[3];
-	for(unsigned long long ui=0;ui<3;ui++)
-		pos[ui] = (unsigned long long)round(point[ui]*(float)binCount[ui]);
+	size_t pos[3];
+	for(size_t ui=0;ui<3;ui++)
+		pos[ui] = (size_t)round(point[ui]*(float)binCount[ui]);
 
 	return voxels[pos[2]*binCount[1]*binCount[0] + pos[1]*binCount[0] + pos[0]]; 
 }
 
 template<class T>
-Point3D Voxels<T>::getPoint(unsigned long long x, unsigned long long y, unsigned long long z) const
+Point3D Voxels<T>::getPoint(size_t x, size_t y, size_t z) const
 {
 	ASSERT(x < binCount[0] && y<binCount[1] && z<binCount[2]);
 
@@ -532,7 +511,7 @@ Point3D Voxels<T>::getPitch() const
 }
 
 template<class T>
-void Voxels<T>::getSize(unsigned long long &x, unsigned long long &y, unsigned long long &z) const
+void Voxels<T>::getSize(size_t &x, size_t &y, size_t &z) const
 {
 	ASSERT(voxels.size());
 	x=binCount[0];
@@ -541,7 +520,7 @@ void Voxels<T>::getSize(unsigned long long &x, unsigned long long &y, unsigned l
 }
 
 template<class T>
-unsigned long long Voxels<T>::resize(unsigned long long x, unsigned long long y, unsigned long long z, const Point3D &newMinBound, const Point3D &newMaxBound) 
+size_t Voxels<T>::resize(size_t x, size_t y, size_t z, const Point3D &newMinBound, const Point3D &newMaxBound) 
 {
 	voxels.clear();
 
@@ -553,7 +532,7 @@ unsigned long long Voxels<T>::resize(unsigned long long x, unsigned long long y,
 	minBound=newMinBound;
 	maxBound=newMaxBound;
 
-	unsigned long long binCountMax = binCount[0]*binCount[1]*binCount[2];
+	size_t binCountMax = binCount[0]*binCount[1]*binCount[2];
 	try
 	{
 	voxels.resize(binCountMax);
@@ -567,7 +546,7 @@ unsigned long long Voxels<T>::resize(unsigned long long x, unsigned long long y,
 }
 
 template<class T>
-unsigned long long Voxels<T>::resizeKeepData(unsigned long long &newX, unsigned long long &newY, unsigned long long &newZ, 
+size_t Voxels<T>::resizeKeepData(size_t &newX, size_t &newY, size_t &newZ, 
 			unsigned int direction, const Point3D &newMinBound, const Point3D &newMaxBound, const T &fill,bool doFill)
 {
 
@@ -585,12 +564,12 @@ unsigned long long Voxels<T>::resizeKeepData(unsigned long long &newX, unsigned 
 		{
 			minBound=newMinBound;
 			maxBound=newMaxBound;
-			unsigned long long itStop[3];
+			size_t itStop[3];
 			itStop[0]=std::min(newX,binCount[0]);
 			itStop[1]=std::min(newY,binCount[1]);
 			itStop[2]=std::min(newZ,binCount[2]);
 
-			unsigned long long itMax[3];
+			size_t itMax[3];
 			itMax[0]=std::max(newX,binCount[0]);
 			itMax[1]=std::max(newY,binCount[1]);
 			itMax[2]=std::max(newZ,binCount[2]);
@@ -603,14 +582,14 @@ unsigned long long Voxels<T>::resizeKeepData(unsigned long long &newX, unsigned 
 				//corner cases
 				bool spin=false;
 #pragma omp parallel for
-				for(unsigned long long ui=0;ui<itMax[0];ui++)
+				for(size_t ui=0;ui<itMax[0];ui++)
 				{
 					if(spin)
 						continue;
 
-					for(unsigned long long uj=0;uj<itMax[1];uj++)
+					for(size_t uj=0;uj<itMax[1];uj++)
 					{
-						for(unsigned long long uk=0;uk<itMax[2];uk++)
+						for(size_t uk=0;uk<itMax[2];uk++)
 						{
 							if(itStop[0]< binCount[0] && 
 								itStop[1]<binCount[1] && itStop[2] < binCount[2])
@@ -667,15 +646,15 @@ void Voxels<T>::setBounds(const Point3D &pMin, const Point3D &pMax)
 }
 
 template<class T>
-unsigned long long Voxels<T>::init(unsigned long long nX, unsigned long long nY,
-	       				unsigned long long nZ, const BoundCube &bound)
+size_t Voxels<T>::init(size_t nX, size_t nY,
+	       				size_t nZ, const BoundCube &bound)
 {
 	binCount[0]=nX;
 	binCount[1]=nY;
 	binCount[2]=nZ;
 
 	//voxels.clear();
-	typedef unsigned long long ull;
+	typedef size_t ull;
 	ull binCountMax;
        
 	//TODO: need to check validity of boundcube
@@ -685,14 +664,14 @@ unsigned long long Voxels<T>::init(unsigned long long nX, unsigned long long nY,
 	voxels.resize(binCountMax);
 
 #pragma omp parallel for
-	for(unsigned long long ui=0; ui<binCountMax; ui++) 
+	for(size_t ui=0; ui<binCountMax; ui++) 
 		voxels[ui]=0;
 
 	return 0;
 }
 
 template<class T>
-unsigned long long Voxels<T>::init(unsigned long long nX, unsigned long long nY, unsigned long long nZ)
+size_t Voxels<T>::init(size_t nX, size_t nY, size_t nZ)
 
 {
 	Point3D pMin(0,0,0), pMax(nX,nY,nZ); 
@@ -701,7 +680,7 @@ unsigned long long Voxels<T>::init(unsigned long long nX, unsigned long long nY,
 }
 
 template<class T>
-unsigned long long Voxels<T>::loadFile(const char *cpFilename, unsigned long long nX, unsigned long long nY, unsigned long long nZ , bool silent)
+size_t Voxels<T>::loadFile(const char *cpFilename, size_t nX, size_t nY, size_t nZ , bool silent)
 {
 	std::ifstream CFile(cpFilename,std::ios::binary);
 
@@ -711,7 +690,7 @@ unsigned long long Voxels<T>::loadFile(const char *cpFilename, unsigned long lon
 	CFile.seekg(0,std::ios::end);
 	
 	
-	unsigned long long fileSize = CFile.tellg();
+	size_t fileSize = CFile.tellg();
 	if(fileSize !=nX*nY*nZ*sizeof(T))
 		return VOXELS_BAD_FILE_SIZE;
 
@@ -744,7 +723,7 @@ unsigned long long Voxels<T>::loadFile(const char *cpFilename, unsigned long lon
 	{
 	
 		//Still have data? Keep going	
-		while((unsigned long long)CFile.tellg() <= fileSize-curBufferSize)
+		while((size_t)CFile.tellg() <= fileSize-curBufferSize)
 		{
 			//Update progress bar
 			if(!silent & ((unsigned int)(((float)CFile.tellg()*100.0f)/(float)fileSize) > lastFrac))
@@ -761,7 +740,7 @@ unsigned long long Voxels<T>::loadFile(const char *cpFilename, unsigned long lon
 				return VOXELS_BAD_FILE_READ;
 
 			//Place the chunk contents into ram
-			for(unsigned long long position=0; position<curBufferSize; position+=(sizeof(T)))
+			for(size_t position=0; position<curBufferSize; position+=(sizeof(T)))
 				voxels[ui++] = (*((T *)(buffer+position)));
 		}
 				
@@ -785,7 +764,7 @@ unsigned long long Voxels<T>::loadFile(const char *cpFilename, unsigned long lon
 }
 
 template<class T>
-unsigned long long Voxels<T>::writeFile(const char *filename) const
+size_t Voxels<T>::writeFile(const char *filename) const
 {
 
 	ASSERT(voxels.size())
@@ -796,7 +775,7 @@ unsigned long long Voxels<T>::writeFile(const char *filename) const
 		return 1;
 
 	
-	for(unsigned long long ui=0; ui<binCount[0]*binCount[1]*binCount[2]; ui++)
+	for(size_t ui=0; ui<binCount[0]*binCount[1]*binCount[2]; ui++)
 	{
 		T v;
 		v=voxels[ui];
@@ -817,9 +796,9 @@ T Voxels<T>::getSum(const T &initialValue) const
 #pragma omp parallel for private(val) reduction(+:returnVal) 
 	for(MP_INT_TYPE ui=0; ui<binCount[0] ; ui++)
 	{
-		for(unsigned long long uj=0; uj<binCount[1]; uj++ )
+		for(size_t uj=0; uj<binCount[1]; uj++ )
 		{
-			for(unsigned long long uk=0; uk<binCount[1]; uk++) 
+			for(size_t uk=0; uk<binCount[1]; uk++) 
 			{
 				val=getData(ui,uj,uk);	
 				returnVal+=val; 
@@ -832,7 +811,7 @@ T Voxels<T>::getSum(const T &initialValue) const
 
 template<class T>
 void Voxels<T>::peakDetect(std::vector<Point3D> &dataVec,float sigmaThresh, 
-			float sigmaSmooth, unsigned long long kernelSize) const
+			float sigmaSmooth, size_t kernelSize) const
 {
 	ASSERT(voxels.size());
 
@@ -885,12 +864,12 @@ void Voxels<T>::swap(Voxels<T> &kernel)
 }
 
 template<class T>
-unsigned long long Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &result,  bool showProgress, unsigned long long boundMode) const
+size_t Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &result,  bool showProgress, size_t boundMode) const
 {
 	ASSERT(voxels.size());
 
 	//Check the kernel can fit within this datasest
-	unsigned long long x,y,z;
+	size_t x,y,z;
 	kernel.getSize(x,y,z);
 	if(binCount[0] <x || binCount[1]< y || binCount[2] < z)
 		return 1;
@@ -902,14 +881,14 @@ unsigned long long Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &resul
 	if(showProgress)
 	{
 		cerr << std::endl <<  "|";
-		for(unsigned long long ui=0; ui<100; ui++)
+		for(size_t ui=0; ui<100; ui++)
 			cerr << "." ; 
 		cerr << "|" << std::endl << "|";
 	}
 	
 
-	unsigned long long progress=0;
-	unsigned long long its=0;
+	size_t progress=0;
+	size_t its=0;
 	switch(boundMode)
 	{
 		case BOUND_CLIP:
@@ -921,7 +900,7 @@ unsigned long long Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &resul
 			resultMaxBound=maxBound*Point3D((float)(binCount[0]-x)/(float)binCount[0],
 				(float)(binCount[1]-y)/(float)binCount[1],(float)(binCount[2]-z)/(float)binCount[2] );
 			//Set up the result box
-			unsigned long long sX,sY,sZ;
+			size_t sX,sY,sZ;
 			sX = binCount[0] -x;
 			sY = binCount[1] -y;
 			sZ = binCount[2] -z;
@@ -938,32 +917,32 @@ unsigned long long Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &resul
 			{
 				if(spin)
 					continue;
-			for (unsigned long long uj=0;uj<binCount[1]-y; uj++)
+			for (size_t uj=0;uj<binCount[1]-y; uj++)
 			{
 #pragma omp critical
 				{
 					its++;
 					//Update progress bar
-					if(showProgress && progress < (unsigned long long) ((float)its/itsToDo*100) )
+					if(showProgress && progress < (size_t) ((float)its/itsToDo*100) )
 					{
 						cerr <<  ".";
-						progress = (unsigned long long) ((float)its/itsToDo*100);
+						progress = (size_t) ((float)its/itsToDo*100);
 					}
 					if(!(*callback)())
 						spin=true;
 				}
-			for (unsigned long long uk=0;uk<binCount[2]-z; uk++)
+			for (size_t uk=0;uk<binCount[2]-z; uk++)
 			{
 				T tally;
 				tally=T(0.0);
 
 				//	T origVal;
 				//Convolve this element with the kernel 
-				for(unsigned long long ul=0; ul<x; ul++)
+				for(size_t ul=0; ul<x; ul++)
 				{
-				for(unsigned long long um=0; um<y; um++)
+				for(size_t um=0; um<y; um++)
 				{
-				for(unsigned long long un=0; un<z; un++)
+				for(size_t un=0; un<z; un++)
 				{
 					tally+=(getData(ui+ ul,uj + um,uk + un))*
 							kernel.getData(ul,um,un);
@@ -999,9 +978,9 @@ unsigned long long Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &resul
 }
 
 template<class T>
-T Voxels<T>::getData(unsigned long long x, unsigned long long y, unsigned long long z) const
+T Voxels<T>::getData(size_t x, size_t y, size_t z) const
 {
-	typedef unsigned long long ull;
+	typedef size_t ull;
 	ASSERT(x < binCount[0] && y < binCount[1] && z < binCount[2]);
 	ull off; //byte offset
 
@@ -1015,9 +994,9 @@ T Voxels<T>::getData(unsigned long long x, unsigned long long y, unsigned long l
 
 /*
 template<class T>
-const T &Voxels<T>::getDataRef(unsigned long long x, unsigned long long y, unsigned long long z) const
+const T &Voxels<T>::getDataRef(size_t x, size_t y, size_t z) const
 {
-	typedef unsigned long long ull;
+	typedef size_t ull;
 	ASSERT(x < binCount[0] && y < binCount[1] && z < binCount[2]);
 	ull off;//byte offset
 
@@ -1029,15 +1008,15 @@ const T &Voxels<T>::getDataRef(unsigned long long x, unsigned long long y, unsig
 */
 
 template<class T>
-void Voxels<T>::setGaussianKernelCube(float stdDev, float bound, unsigned long long sideLen)
+void Voxels<T>::setGaussianKernelCube(float stdDev, float bound, size_t sideLen)
 {
 	T obj;
 
 	//Equivariance gaussian.
-	float product = 1.0/(stdDev*stdDev*stdDev*sqrt(2.0*M_PI));
+	float product = 1.0/(stdDev*stdDev*stdDev*sqrtf(2.0*M_PI));
 
 	float scale;
-	const unsigned long long halfLen = sideLen/2;
+	const size_t halfLen = sideLen/2;
 
 	resize(sideLen,sideLen,sideLen,Point3D(bound,bound,bound));
 
@@ -1054,7 +1033,7 @@ void Voxels<T>::setGaussianKernelCube(float stdDev, float bound, unsigned long l
 		{
 			for(MP_INT_TYPE uk=0;uk<sideLen;uk++)
 			{
-				unsigned long long offset;
+				size_t offset;
 				offset = (ui-halfLen)*(ui-halfLen) + (uj-halfLen)*(uj-halfLen) + (uk-halfLen)*(uk-halfLen);
 
 				obj = T(product*exp(-scale*((float)offset)/(twoVariance)));
@@ -1065,7 +1044,7 @@ void Voxels<T>::setGaussianKernelCube(float stdDev, float bound, unsigned long l
 }
 
 template<class T>
-void Voxels<T>::secondDifference(Voxels<T> &result, unsigned long long boundMode) const
+void Voxels<T>::secondDifference(Voxels<T> &result, size_t boundMode) const
 {
 	//Only clipping mode is supported at this time
 	ASSERT(boundMode=BOUND_CLIP);
@@ -1131,9 +1110,9 @@ void Voxels<T>::thresholdForPosition(std::vector<Point3D> &p, const T &thresh, b
 #pragma omp parallel for 
 		for(MP_INT_TYPE ui=0;ui<binCount[0]; ui++)
 		{
-			for(unsigned long long uj=0;uj<binCount[1]; uj++)
+			for(size_t uj=0;uj<binCount[1]; uj++)
 			{
-				for(unsigned long long uk=0;uk<binCount[2]; uk++)
+				for(size_t uk=0;uk<binCount[2]; uk++)
 				{
 					if( getData(ui,uj,uk) < thresh)
 					{
@@ -1150,9 +1129,9 @@ void Voxels<T>::thresholdForPosition(std::vector<Point3D> &p, const T &thresh, b
 #pragma omp parallel for 
 		for(MP_INT_TYPE ui=0;ui<binCount[0]; ui++)
 		{
-			for(unsigned long long uj=0;uj<binCount[1]; uj++)
+			for(size_t uj=0;uj<binCount[1]; uj++)
 			{
-				for(unsigned long long uk=0;uk<binCount[2]; uk++)
+				for(size_t uk=0;uk<binCount[2]; uk++)
 				{
 					if( getData(ui,uj,uk) > thresh)
 					{
@@ -1176,9 +1155,9 @@ void Voxels<T>::binarise(Voxels<T> &result, const T &thresh,
 #pragma omp parallel for
 	for(MP_INT_TYPE ui=0;ui<(MP_INT_TYPE)binCount[0]; ui++)
 	{
-		for(unsigned long long uj=0;uj<binCount[1]; uj++)
+		for(size_t uj=0;uj<binCount[1]; uj++)
 		{
-			for(unsigned long long uk=0;uk<binCount[2]; uk++)
+			for(size_t uk=0;uk<binCount[2]; uk++)
 			{
 				if( getData(ui,uj,uk) < thresh)
 					result.setData(ui,uj,uk,offThresh);
@@ -1192,7 +1171,7 @@ void Voxels<T>::binarise(Voxels<T> &result, const T &thresh,
 }
 
 template<class T>
-void Voxels<T>::rebin(Voxels<T> &result, unsigned long long rate, unsigned long long clipDir) const
+void Voxels<T>::rebin(Voxels<T> &result, size_t rate, size_t clipDir) const
 {
 	//Check that the binsize can be reduced by this factor
 	//or clipping allowed
@@ -1203,7 +1182,7 @@ void Voxels<T>::rebin(Voxels<T> &result, unsigned long long rate, unsigned long 
 	ASSERT(binCount[0] > rate && binCount[1] && rate && binCount[2] > rate);
 
 	
-	unsigned long long newBin[3];
+	size_t newBin[3];
 	newBin[0]=binCount[0]/rate;
 	newBin[1]=binCount[1]/rate;
 	newBin[2]=binCount[2]/rate;
@@ -1219,7 +1198,7 @@ void Voxels<T>::rebin(Voxels<T> &result, unsigned long long rate, unsigned long 
 		cerr << ".";
 	cerr << "| 100%" << std::endl << "|";
 
-	unsigned long long its=0;
+	size_t its=0;
 	unsigned int progress =0;
 	float itsToDo = binCount[0]/rate;
 #pragma omp parallel for shared(progress,its) 
@@ -1229,27 +1208,27 @@ void Voxels<T>::rebin(Voxels<T> &result, unsigned long long rate, unsigned long 
 		{
 			its++;
 			//Update progress bar
-			if(progress < (unsigned long long) ((float)its/itsToDo*100) )
+			if(progress < (size_t) ((float)its/itsToDo*100) )
 			{
 				cerr <<  ".";
-				progress = (unsigned long long) ((float)its/itsToDo*100);
+				progress = (size_t) ((float)its/itsToDo*100);
 			}
 		}
 
-		for(unsigned long long uj=0; uj<binCount[1]-rate; uj+=rate)
+		for(size_t uj=0; uj<binCount[1]-rate; uj+=rate)
 		{
 
-			for(unsigned long long uk=0; uk<binCount[2]-rate; uk+=rate)
+			for(size_t uk=0; uk<binCount[2]-rate; uk+=rate)
 			{
 				double sum;
 				sum=0;
 
 				//Forgive the indenting. This is deep.
-				for(unsigned long long uir=0; uir<rate; uir++)
+				for(size_t uir=0; uir<rate; uir++)
 				{
-					for(unsigned long long ujr=0; ujr<rate; ujr++)
+					for(size_t ujr=0; ujr<rate; ujr++)
 					{
-						for(unsigned long long ukr=0; ukr<rate; ukr++)
+						for(size_t ukr=0; ukr<rate; ukr++)
 						{
 							ASSERT(ui+uir < binCount[0]);
 							ASSERT(uj+ujr < binCount[1]);
@@ -1277,10 +1256,10 @@ void Voxels<T>::rebin(Voxels<T> &result, unsigned long long rate, unsigned long 
 }
 
 template<class T>
-void Voxels<T>::makeSphericalKernel(unsigned long long sideLen, float bound, const T &val, unsigned int antialiasLevel) 
+void Voxels<T>::makeSphericalKernel(size_t sideLen, float bound, const T &val, unsigned int antialiasLevel) 
 {
 
-	const unsigned long long halfLen = sideLen/2;
+	const size_t halfLen = sideLen/2;
 	float sqrSideLen=(float)halfLen*(float)halfLen;
 	resize(sideLen,sideLen,sideLen,Point3D(bound,bound,bound));
 
@@ -1292,9 +1271,9 @@ void Voxels<T>::makeSphericalKernel(unsigned long long sideLen, float bound, con
 #pragma omp parallel for shared(sqrSideLen)
 		for(MP_INT_TYPE ui=0;ui<sideLen;ui++)
 		{
-			for(unsigned long long uj=0;uj<sideLen;uj++)
+			for(size_t uj=0;uj<sideLen;uj++)
 			{
-				for(unsigned long long uk=0;uk<sideLen;uk++)
+				for(size_t uk=0;uk<sideLen;uk++)
 				{
 					float offset;
 					//Calcuate r^2
@@ -1315,9 +1294,9 @@ void Voxels<T>::makeSphericalKernel(unsigned long long sideLen, float bound, con
 #pragma omp parallel for shared(sqrSideLen)
 		for(MP_INT_TYPE ui=0;ui<sideLen;ui++)
 		{
-			for(unsigned long long uj=0;uj<sideLen;uj++)
+			for(size_t uj=0;uj<sideLen;uj++)
 			{
-				for(unsigned long long uk=0;uk<sideLen;uk++)
+				for(size_t uk=0;uk<sideLen;uk++)
 				{
 					float offset[8],x,y,z;
 					bool insideSphere,fullCalc;
@@ -1375,7 +1354,7 @@ void Voxels<T>::makeSphericalKernel(unsigned long long sideLen, float bound, con
 
 						//Level 0 corresponds to 1/8th of the original voxel. Level n = 1/(2^3(n+1)) 
 						//each voxel has side lenght L_v = originalLen/(2^(level+1))
-						while(positionStack.size())
+						while(!positionStack.empty())
 						{
 							thisCentre = positionStack.top().first;
 							thisLevel = positionStack.top().second;
@@ -1491,11 +1470,11 @@ void Voxels<T>::moravecHarrisFeatures(Voxels<float> &eigA, Voxels<float> &eigB,V
 	//Calculate the directional derivatives
 	float deriv[3];
 	//Work out boundary
-	for(unsigned long long ui=1; ui<binCount[0]-1; ui++)
+	for(size_t ui=1; ui<binCount[0]-1; ui++)
 	{
-		for(unsigned long long uj=1; uj<binCount[1]-1; uj++)
+		for(size_t uj=1; uj<binCount[1]-1; uj++)
 		{
-			for(unsigned long long uk=1; uk<binCount[2]-1; uk++)
+			for(size_t uk=1; uk<binCount[2]-1; uk++)
 			{
 				
 				//dx by first order central difference
@@ -1549,16 +1528,16 @@ template<class T>
 T Voxels<T>::min() const
 {
 	ASSERT(voxels.size());
-	unsigned long long numPts = binCount[0]*binCount[1]*binCount[2];
+	size_t numPts = binCount[0]*binCount[1]*binCount[2];
 	T minVal;
 	minVal = voxels[0];
 #ifdef _OPENMP
 	//Unfortunately openMP doesn't lend itself well here
 	//But we can code around it.
-	unsigned long long maxThr = omp_get_max_threads();	
+	size_t maxThr = omp_get_max_threads();	
 	T minArr[maxThr];
 	//Init all mins
-	for(unsigned long long ui=0; ui<maxThr; ui++)
+	for(size_t ui=0; ui<maxThr; ui++)
 		minArr[ui] = voxels[0];
 
 	//parallel min search	
@@ -1567,11 +1546,11 @@ T Voxels<T>::min() const
 		minArr[omp_get_thread_num()] = std::min(minArr[omp_get_thread_num()],voxels[ui]);	
 
 	//find min of mins
-	for(unsigned long long ui=0;ui<maxThr; ui++)
+	for(size_t ui=0;ui<maxThr; ui++)
 		minVal=std::min(minArr[ui],minVal);
 #else
 
-	for(unsigned long long ui=0;ui<numPts; ui++)
+	for(size_t ui=0;ui<numPts; ui++)
 		minVal=std::min(minVal,voxels[ui]);
 #endif
 	return minVal;
@@ -1581,16 +1560,16 @@ template<class T>
 T Voxels<T>::max() const
 {
 	ASSERT(voxels.size());
-	unsigned long long numPts = binCount[0]*binCount[1]*binCount[2];
+	size_t numPts = binCount[0]*binCount[1]*binCount[2];
 	T maxVal;
 	maxVal = voxels[0];
 #ifdef _OPENMP
 	//Unfortunately openMP doesn't lend itself well here
 	//But we can code around it.
-	unsigned long long maxThr = omp_get_max_threads();	
+	size_t maxThr = omp_get_max_threads();	
 	T maxArr[maxThr];
 	//Init all maxs
-	for(unsigned long long ui=0; ui<maxThr; ui++)
+	for(size_t ui=0; ui<maxThr; ui++)
 		maxArr[ui] = voxels[0];
 
 	//parallel max search	
@@ -1599,11 +1578,11 @@ T Voxels<T>::max() const
 		maxArr[omp_get_thread_num()] = std::max(maxArr[omp_get_thread_num()],voxels[ui]);	
 
 	//find max of maxs
-	for(unsigned long long ui=0;ui<maxThr; ui++)
+	for(size_t ui=0;ui<maxThr; ui++)
 		maxVal=std::max(maxArr[ui],maxVal);
 #else
 
-	for(unsigned long long ui=0;ui<numPts; ui++)
+	for(size_t ui=0;ui<numPts; ui++)
 		maxVal=std::max(maxVal,voxels[ui]);
 #endif
 	return maxVal;
@@ -1613,16 +1592,16 @@ template<class T>
 void Voxels<T>::minMax(T &minVal,T &maxVal) const
 {
 	ASSERT(voxels.size());
-	unsigned long long numPts = binCount[0]*binCount[1]*binCount[2];
+	size_t numPts = binCount[0]*binCount[1]*binCount[2];
 	maxVal=voxels[0];
 	minVal=voxels[0];
 #ifdef _OPENMP
 	//Unfortunately openMP doesn't lend itself well here
 	//But we can code around it.
-	unsigned long long maxThr = omp_get_max_threads();	
+	size_t maxThr = omp_get_max_threads();	
 	T minArr[maxThr],maxArr[maxThr];
 	//Init all maxs
-	for(unsigned long long ui=0; ui<maxThr; ui++)
+	for(size_t ui=0; ui<maxThr; ui++)
 	{
 		maxArr[ui] = voxels[0];
 		minArr[ui]=voxels[0];
@@ -1637,14 +1616,14 @@ void Voxels<T>::minMax(T &minVal,T &maxVal) const
 	}
 
 	//find max of maxs
-	for(unsigned long long ui=0;ui<maxThr; ui++)
+	for(size_t ui=0;ui<maxThr; ui++)
 	{
 		maxVal=std::max(maxArr[ui],maxVal);
 		minVal=std::min(minArr[ui],minVal);
 	}
 #else
 
-	for(unsigned long long ui=0;ui<numPts; ui++)
+	for(size_t ui=0;ui<numPts; ui++)
 	{
 		maxVal=std::max(maxVal,voxels[ui]);
 		minVal=std::min(minVal,voxels[ui]);
@@ -1664,10 +1643,10 @@ void Voxels<T>::fillSpheresByPosition( const std::vector<Point3D> &spherePos, fl
 	ASSERT(binCount[1] == binCount[2]);
 
 	//Size of rectangular box that contains the sphere
-	unsigned long long numBlocks[3];
-	numBlocks[0] = (unsigned long long)(2.0*rad*binCount[0]/(maxBound[0]-minBound[0]));
-	numBlocks[1] = (unsigned long long)(2.0*rad*binCount[1]/(maxBound[1]-minBound[1]));
-	numBlocks[2] = (unsigned long long)(2.0*rad*binCount[2]/(maxBound[2]-minBound[2]));
+	size_t numBlocks[3];
+	numBlocks[0] = (size_t)(2.0*rad*binCount[0]/(maxBound[0]-minBound[0]));
+	numBlocks[1] = (size_t)(2.0*rad*binCount[1]/(maxBound[1]-minBound[1]));
+	numBlocks[2] = (size_t)(2.0*rad*binCount[2]/(maxBound[2]-minBound[2]));
 
 	//Construct the sphere kernel
 	std::vector<int> vX,vY,vZ;
@@ -1675,9 +1654,9 @@ void Voxels<T>::fillSpheresByPosition( const std::vector<Point3D> &spherePos, fl
 #pragma omp parallel for
 	for(MP_INT_TYPE ui=0;ui<numBlocks[0]; ui++)
 	{
-		for(unsigned long long uj=0;uj<numBlocks[1]; uj++)
+		for(size_t uj=0;uj<numBlocks[1]; uj++)
 		{
-			for(unsigned long long uk=0;uk<numBlocks[2]; uk++)
+			for(size_t uk=0;uk<numBlocks[2]; uk++)
 			{
 				long long delta[3];
 				float sqrDist;
@@ -1712,12 +1691,12 @@ void Voxels<T>::fillSpheresByPosition( const std::vector<Point3D> &spherePos, fl
 #pragma omp parallel for	
 	for(MP_INT_TYPE ui=0; ui<spherePos.size(); ui++)
 	{
-		unsigned long long sphereCentre[3];
+		size_t sphereCentre[3];
 	
 		getIndex(sphereCentre[0],sphereCentre[1],sphereCentre[2],spherePos[ui]);
 
 		//Calculate the points that lie within the sphere
-		for(unsigned long long uj=0;uj<vX.size(); uj++)
+		for(size_t uj=0;uj<vX.size(); uj++)
 		{
 			long long p[3];
 			
@@ -1747,10 +1726,10 @@ int Voxels<T>::countPoints( const std::vector<Point3D> &points, bool noWrap, boo
 		fill(0);	
 	}
 
-	unsigned long long x,y,z;
+	size_t x,y,z;
 
 	unsigned int downSample=MAX_CALLBACK;
-	for(unsigned long long ui=0; ui<points.size(); ui++)
+	for(size_t ui=0; ui<points.size(); ui++)
 	{
 		if(!downSample--)
 		{
@@ -1783,45 +1762,10 @@ int Voxels<T>::countPoints( const std::vector<Point3D> &points, bool noWrap, boo
 	return 0;
 }
 
+/*
 template<class T>
 int Voxels<T>::countPoints( const std::vector<IonHit> &points, bool noWrap, bool doErase)
-{
-	if (doErase)
-		fill(0);
-
-	unsigned long long x,y,z;
-
-	unsigned int downSample=MAX_CALLBACK;
-	for (unsigned long long ui=0; ui<points.size(); ui++)
-	{
-		if(!downSample--)
-		{
-			if(!(*callback)())
-				return VOXEL_ABORT_ERR;
-			downSample=MAX_CALLBACK;
-		}
-		T value;
-		getIndex(x,y,z,points[ui].getPos());
-
-		//Ensure it lies within the dataset
-		if (x < binCount[0] && y < binCount[1] && z< binCount[2]
-		        && x >= 0 && y >= 0 && z >= 0)
-		{
-			{
-				value=getData(x,y,z)+T(1);
-
-				//Prevent wrap-around errors
-				if (noWrap) {
-					if (value > getData(x,y,z))
-						setData(x,y,z,value);
-				} else {
-					setData(x,y,z,value);
-				}
-			}
-		}
-	}
-	return 0;
-}
+*/
 
 template<class T>
 int Voxels<T>::calculateDensity()
@@ -1834,30 +1778,30 @@ int Voxels<T>::calculateDensity()
 	
 	// normalise the voxel value based on volume
 #pragma omp parallel for
-	for(unsigned long long ui=0; ui<voxels.size(); ui++) 
+	for(size_t ui=0; ui<voxels.size(); ui++) 
 		voxels[ui] /= volume;
 
 	return 0;
 }
 
 template<class T>
-void Voxels<T>::getIndex(unsigned long long &x, unsigned long long &y,
-	       			unsigned long long &z, const Point3D &p) const
+void Voxels<T>::getIndex(size_t &x, size_t &y,
+	       			size_t &z, const Point3D &p) const
 {
 	//ASSERT(p[0] >=0 && p[1] >=0 && p[2] >=0);
 
 
 	ASSERT(p[0] >=minBound[0] && p[1] >=minBound[1] && p[2] >=minBound[2] &&
 		   p[0] <=maxBound[0] && p[1] <=maxBound[1] && p[2] <=maxBound[2]);
-	x=(unsigned long long)((p[0]-minBound[0])/(maxBound[0]-minBound[0])*(float)binCount[0]);
-	y=(unsigned long long)((p[1]-minBound[1])/(maxBound[1]-minBound[1])*(float)binCount[1]);
-	z=(unsigned long long)((p[2]-minBound[2])/(maxBound[2]-minBound[2])*(float)binCount[2]);
+	x=(size_t)((p[0]-minBound[0])/(maxBound[0]-minBound[0])*(float)binCount[0]);
+	y=(size_t)((p[1]-minBound[1])/(maxBound[1]-minBound[1])*(float)binCount[1]);
+	z=(size_t)((p[2]-minBound[2])/(maxBound[2]-minBound[2])*(float)binCount[2]);
 }
 
 template<class T>
 void Voxels<T>::fill(const T &v)
 {
-	unsigned long long nBins = binCount[0]*binCount[1]*binCount[2];
+	size_t nBins = binCount[0]*binCount[1]*binCount[2];
 
 #pragma omp parallel for
 	for(MP_INT_TYPE ui=0;ui<(MP_INT_TYPE)nBins; ui++)
@@ -1866,7 +1810,7 @@ void Voxels<T>::fill(const T &v)
 
 
 template<class T>
-int Voxels<T>::histogram(std::vector<unsigned long long> &v, unsigned long long histBinCount) const
+int Voxels<T>::histogram(std::vector<size_t> &v, size_t histBinCount) const
 {
 
 	T maxVal=max();
@@ -1874,12 +1818,12 @@ int Voxels<T>::histogram(std::vector<unsigned long long> &v, unsigned long long 
 	
 #ifdef _OPENMP
 	//We need an array for each thread to store results
-	unsigned long long *vals;
+	size_t *vals;
 
-	vals = new unsigned long long[omp_get_max_threads()*histBinCount];
+	vals = new size_t[omp_get_max_threads()*histBinCount];
 
 	//Zero out the array
-	for(unsigned long long ui=0;ui<omp_get_max_threads()*histBinCount; ui++)
+	for(size_t ui=0;ui<omp_get_max_threads()*histBinCount; ui++)
 		*(vals+ui)=0;
 	
 
@@ -1891,12 +1835,12 @@ int Voxels<T>::histogram(std::vector<unsigned long long> &v, unsigned long long 
 	{
 		if(spin)
 			continue;
-		unsigned long long *basePtr;
-		unsigned long long offset;
+		size_t *basePtr;
+		size_t offset;
 		basePtr=vals + omp_get_thread_num()*histBinCount;
-		for(unsigned long long uj=0; uj <binCount[1]; uj++)
+		for(size_t uj=0; uj <binCount[1]; uj++)
 		{
-			for(unsigned long long uk=0; uk <binCount[2]; uk++)
+			for(size_t uk=0; uk <binCount[2]; uk++)
 			{
 				offset = (getData(ui,uj,uk)-minVal)/(maxVal -minVal)*(histBinCount-1);
 				
@@ -1915,11 +1859,11 @@ int Voxels<T>::histogram(std::vector<unsigned long long> &v, unsigned long long 
 		return VOXEL_ABORT_ERR;
 	//Merge the values
 	v.resize(histBinCount);
-	for(unsigned long long thr=0;thr<omp_get_max_threads(); thr++)
+	for(size_t thr=0;thr<omp_get_max_threads(); thr++)
 	{
-		unsigned long long *basePtr;
+		size_t *basePtr;
 		basePtr=vals + thr*histBinCount;
-		for(unsigned long long ui=0;ui<histBinCount; ui++)
+		for(size_t ui=0;ui<histBinCount; ui++)
 		{
 			v[ui]+=basePtr[ui];
 		}
@@ -1927,23 +1871,23 @@ int Voxels<T>::histogram(std::vector<unsigned long long> &v, unsigned long long 
 
 #else
 	//We need an array for each thread to store results
-	unsigned long long *vals=new unsigned long long[histBinCount];
+	size_t *vals=new size_t[histBinCount];
 
-	for(unsigned long long ui=0;ui<histBinCount; ui++)
+	for(size_t ui=0;ui<histBinCount; ui++)
 		vals[ui]=0;
-	unsigned long long bc;
+	size_t bc;
 	bc=binCount[0];
 	bc*=binCount[1];
 	bc*=binCount[2];
-	for(unsigned long long ui=0; ui <bc; ui++)
+	for(size_t ui=0; ui <bc; ui++)
 	{
-		unsigned long long offset;
-		offset = (unsigned long long)((getData(ui)-minVal)/(maxVal -minVal)*histBinCount);
+		size_t offset;
+		offset = (size_t)((getData(ui)-minVal)/(maxVal -minVal)*histBinCount);
 		vals[offset]++ ;
 	}
 
 	v.resize(histBinCount);
-	for(unsigned long long ui=0;ui<histBinCount; ui++)
+	for(size_t ui=0;ui<histBinCount; ui++)
 		v[ui]=vals[ui];
 		
 #endif
@@ -1956,11 +1900,11 @@ int Voxels<T>::histogram(std::vector<unsigned long long> &v, unsigned long long 
 }
 
 template<class T>
-void Voxels<T>::findSorted(std::vector<unsigned long long> &x, std::vector<unsigned long long> &y, 
-			std::vector<unsigned long long> &z, unsigned long long n, bool largest) const
+void Voxels<T>::findSorted(std::vector<size_t> &x, std::vector<size_t> &y, 
+			std::vector<size_t> &z, size_t n, bool largest) const
 {
 	//Could be better if we didn't use indexed data aquisition (record opsition)
-	std::deque<unsigned long long> bSx,bSy,bSz;
+	std::deque<size_t> bSx,bSy,bSz;
 
 	if(!voxels.size())
 		return;
@@ -1972,11 +1916,11 @@ void Voxels<T>::findSorted(std::vector<unsigned long long> &x, std::vector<unsig
 	if(largest)
 	{
 		
-		for(unsigned long long ui=0;ui<binCount[0]; ui++)
+		for(size_t ui=0;ui<binCount[0]; ui++)
 		{
-			for(unsigned long long uj=0;uj<binCount[1]; uj++)
+			for(size_t uj=0;uj<binCount[1]; uj++)
 			{
-				for(unsigned long long uk=0;uk<binCount[2]; uk++)
+				for(size_t uk=0;uk<binCount[2]; uk++)
 				{
 					
 					if ( getData(ui,uj,uk) > curBest)
@@ -1997,11 +1941,11 @@ void Voxels<T>::findSorted(std::vector<unsigned long long> &x, std::vector<unsig
 	}
 	else
 	{
-		for(unsigned long long ui=0;ui<binCount[0]; ui++)
+		for(size_t ui=0;ui<binCount[0]; ui++)
 		{
-			for(unsigned long long uj=0;uj<binCount[1]; uj++)
+			for(size_t uj=0;uj<binCount[1]; uj++)
 			{
-				for(unsigned long long uk=0;uk<binCount[2]; uk++)
+				for(size_t uk=0;uk<binCount[2]; uk++)
 				{
 					
 					if ( getData(ui,uj,uk) < curBest)

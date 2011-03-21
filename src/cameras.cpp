@@ -16,23 +16,11 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//OpenGL debugging macro
-#if DEBUG
-#define glError() { \
-		GLenum err = glGetError(); \
-		while (err != GL_NO_ERROR) { \
-					fprintf(stderr, "glError: %s caught at %s:%u\n", (char *)gluErrorString(err), __FILE__, __LINE__); \
-					err = glGetError(); \
-				} \
-		std::cerr << "glErr Clean " << __FILE__ << ":" << __LINE__ << std::endl; \
-}
-#else
-#define glError()
-#endif
-#include "quat.h"
-#include "common.h"
 #include "cameras.h"
-#include "XMLHelper.h"
+#include "mathfuncs.h"
+#include "xmlHelper.h"
+
+#include "commonConstants.h"
 
 //MacOS is "special" and puts it elsewhere
 #ifdef __APPLE__
@@ -317,7 +305,7 @@ void CameraLookAt::apply(float aspect,const BoundCube &b,bool loadIdentity,
 								topRestrict*height,nearPlane,farPlane);
 			else
 			{
-				float workingDist=farPlane;//sqrt((target-origin).sqrMag());
+				float workingDist=farPlane;//sqrtf((target-origin).sqrMag());
 				glFrustum(leftRestrict*width+frustumDistortion*nearPlane/workingDist,
 						rightRestrict*width+frustumDistortion*nearPlane/workingDist,
 						bottomRestrict*height,	topRestrict*height,nearPlane,farPlane);
@@ -369,8 +357,8 @@ void CameraLookAt::translate(float moveLR, float moveUD)
 	}
 	
 
-	moveLR=moveLR*sqrt(target.sqrDist(origin)*fovMultiplier);
-	moveUD=moveUD*sqrt(target.sqrDist(origin)*fovMultiplier);
+	moveLR=moveLR*sqrtf(target.sqrDist(origin)*fovMultiplier);
+	moveUD=moveUD*sqrtf(target.sqrDist(origin)*fovMultiplier);
 
 	origin+=upDirection*moveUD + (upDirection.crossProd(viewDirection))*moveLR;
 	target+=upDirection*moveUD + (upDirection.crossProd(viewDirection))*moveLR;
@@ -386,30 +374,30 @@ void CameraLookAt::forwardsDolly(float moveRate)
 		//Prevent camera orientation inversion, which occurs when moving past the target
 		if((viewDirection*moveRate).sqrMag() > target.sqrDist(origin))
 		{
-			if((target-origin).sqrMag() < sqrt(std::numeric_limits<float>::epsilon()))
+			if((target-origin).sqrMag() < sqrtf(std::numeric_limits<float>::epsilon()))
 					return;
 
 			//Yes, this simplifies analytically. However i think the numerics come into play.
-			float moveInv = 1.0/(fabs(moveRate) + sqrt(std::numeric_limits<float>::epsilon()));
+			float moveInv = 1.0/(fabs(moveRate) + sqrtf(std::numeric_limits<float>::epsilon()));
 			newOrigin=origin+viewDirection*moveInv/(1.0+moveInv);
 
 		}
 		else
 		{
 			//scale moverate by orbit distance
-			moveRate = 0.05*moveRate*sqrt(target.sqrDist(origin));
+			moveRate = 0.05*moveRate*sqrtf(target.sqrDist(origin));
 			newOrigin=origin+viewDirection*moveRate;
 		}
 
 		//Only accept origin change if it is sufficiently far from the target
-		if(newOrigin.sqrDist(target)>sqrt(std::numeric_limits<float>::epsilon()))
+		if(newOrigin.sqrDist(target)>sqrtf(std::numeric_limits<float>::epsilon()))
 			origin=newOrigin;
 	}
 	else
 	{
 		float deltaSqr;
 		deltaSqr = (target-origin).sqrMag();
-		if(deltaSqr< sqrt(std::numeric_limits<float>::epsilon()))
+		if(deltaSqr< sqrtf(std::numeric_limits<float>::epsilon()))
 			return;
 
 		Point3D virtualOrigin;
@@ -468,7 +456,7 @@ void CameraLookAt::pivot(float leftRightRad,float updownRad)
 	newDir+= Point3D(rNew.fx,rNew.fy,rNew.fz);
 	target = target+newDir;
 	target.normalise(); 
-	target*=sqrt((target).sqrDist(origin));
+	target*=sqrtf((target).sqrDist(origin));
 
 	recomputeViewDirection();
 	recomputeUpDirection();
@@ -575,7 +563,7 @@ void CameraLookAt::ensureVisible(const BoundCube &boundCube, unsigned int face)
 	//Multiply by 1.4 to give a bit of border.
 	origin=boxCentroid+faceOutVector*1.4*outDistance;
 
-	orthoScale = sqrt(target.sqrDist(origin))/2.0;
+	orthoScale = sqrtf(target.sqrDist(origin))/2.0;
 
 
 	//Set the default up direction
@@ -717,11 +705,11 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 		case KEY_LOOKAT_ORIGIN:
 		{
 			Point3D newPt;
-			if(!newPt.parse(value))
+			if(!parsePointStr(value,newPt))
 				return false;
 
 			//Disallow origin to be set to same as target
-			if(newPt.sqrDist(target) < sqrt(std::numeric_limits<float>::epsilon()))
+			if(newPt.sqrDist(target) < sqrtf(std::numeric_limits<float>::epsilon()))
 				return false;
 
 			origin= newPt;
@@ -731,11 +719,11 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 		case KEY_LOOKAT_TARGET:
 		{
 			Point3D newPt;
-			if(!newPt.parse(value))
+			if(!parsePointStr(value,newPt))
 				return false;
 
 			//Disallow origin to be set to same as target
-			if(newPt.sqrDist(origin) < sqrt(std::numeric_limits<float>::epsilon()))
+			if(newPt.sqrDist(origin) < sqrtf(std::numeric_limits<float>::epsilon()))
 				return false;
 			target = newPt;
 
@@ -744,12 +732,12 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 		case KEY_LOOKAT_UPDIRECTION:
 		{
 			Point3D newDir;
-			if(!newDir.parse(value))
+			if(!parsePointStr(value,newDir))
 				return false;
 
 			//View direction and up direction may not be the same
 			if(viewDirection.crossProd(newDir).sqrMag() < 
-				sqrt(std::numeric_limits<float>::epsilon()))
+				sqrtf(std::numeric_limits<float>::epsilon()))
 				return false;
 
 			upDirection=newDir;
@@ -779,7 +767,7 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 				{
 					//use the distance to the target as the orthographic 
 					//scaling size (size of parallel frustrum)
-					orthoScale=sqrt(target.sqrDist(origin));
+					orthoScale=sqrtf(target.sqrDist(origin));
 				}
 
 				ltmp=PROJECTION_MODE_ORTHOGONAL;

@@ -33,14 +33,14 @@ enum
 };
 
 //!Generate the NN histogram specified up to a given NN
-unsigned int generateNNHist( const vector<Point3D> &pointList, 
+unsigned int generateNNHist( const std::vector<Point3D> &pointList, 
 			const K3DTree &tree,unsigned int nnMax, unsigned int numBins,
-		       	vector<vector<size_t> > &histogram, float *binWidth,
+		       	std::vector<std::vector<size_t> > &histogram, float *binWidth,
 		       	unsigned int *progressPtr,bool (*callback)(void));
 
 //!Generate an NN histogram using distance max cutoffs. Input histogram must be zeroed,
 //if a voxelsname is given, a 3D RDF will be recorded. in this case voxelBins must be nonzero
-unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &tree,
+unsigned int generateDistHist(const std::vector<Point3D> &pointList, const K3DTree &tree,
 			unsigned int *histogram, float distMax,
 			unsigned int numBins, unsigned int &warnBiasCount,
 			unsigned int *progressPtr,bool (*callback)(void));

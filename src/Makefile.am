@@ -18,12 +18,29 @@ MSYS_PATH=/c/msys/1.0/local/include/
 		 $(FT_LIBS) $(XML_LIBS) $(GSL_LIBS) $(GL_LIBS) $(GLU_LIBS) $(QHULL_LIBS) $(PNG_LIBS) 
 
 bin_PROGRAMS= 3Depict
-SOURCE_FILES=quat.c pngread.c rdf.cpp glPane.cpp basics.cpp cameras.cpp drawables.cpp lights.cpp \
-		3Depict.cpp scene.cpp mathglPane.cpp plot.cpp APTClasses.cpp filter.cpp \
-		viscontrol.cpp mathfuncs.cpp wxcomponents.cpp colourmap.cpp select.cpp common.cpp \
-		XMLHelper.cpp ResDialog.cpp ExportPos.cpp ExportRngDialog.cpp StashDialog.cpp textures.cpp \
-		configFile.cpp K3DTree.cpp IsoSurface.cpp prefDialog.cpp effect.cpp wxCropPanel.cpp
 
+FILTER_FILES = filters/allFilter.cpp filters/posLoad.cpp filters/ionDownsample.cpp \
+		filters/rangeFile.cpp filters/voxelise.cpp filters/spectrumPlot.cpp \
+	       	filters/transform.cpp filters/externalProgram.cpp filters/ionClip.cpp \
+		filters/ionColour.cpp filters/boundingBox.cpp  \
+		filters/compositionProfile.cpp filters/spatialAnalysis.cpp \
+		filters/clusterAnalysis.cpp
+
+
+
+#These source files should have heirachical couplings only; no cross-coupling
+BASE_SOURCE_FILES=  mathglPane.cpp plot.cpp prefDialog.cpp configFile.cpp filter.cpp \
+		     APTClasses.cpp resDialog.cpp select.cpp \
+		     drawables.cpp effect.cpp textures.cpp rdf.cpp \
+		     cameras.cpp isoSurface.cpp K3DTree.cpp K3DTree-mk2.cpp\
+			basics.cpp lights.cpp xmlHelper.cpp cropPanel.cpp colourmap.cpp \
+			pngread.c mathfuncs.cpp wxcomponents.cpp wxcommon.cpp
+
+#These files are inter-dependant to some extent (mostly viscontrol)
+CROSS_DEP_SOURCE_FILE=3Depict.cpp ExportPos.cpp ExportRngDialog.cpp glPane.cpp scene.cpp StashDialog.cpp viscontrol.cpp
+
+
+SOURCE_FILES= $(BASE_SOURCE_FILES)  $(FILTER_FILES) $(CROSS_DEP_SOURCE_FILE)
 #Do we have or need windows-XP "resource" files for look and feel?
 if HAVE_WINDRES
 3Depict_SOURCES=$(SOURCE_FILES)  winconsole.cpp 3Depict.rc

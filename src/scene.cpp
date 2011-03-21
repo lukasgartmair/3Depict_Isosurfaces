@@ -813,7 +813,7 @@ void Scene::finaliseCam()
 	}
 }
 
-void Scene::addSelectionDevices(const vector<SelectionDevice *> &d)
+void Scene::addSelectionDevices(const vector<SelectionDevice<Filter> *> &d)
 {
 	for(unsigned int ui=0;ui<d.size();ui++)
 	{
