@@ -59,8 +59,11 @@ EVT_MOUSEWHEEL(BasicGLPane::mouseWheelMoved)
 EVT_PAINT(BasicGLPane::render)
 END_EVENT_TABLE()
 
-//Radii per pixel	
+//Controls camera pan/translate/pivot speed; Radii per pixel or distance/pixel
 const float CAMERA_MOVE_RATE=0.05;
+
+// Controls zoom speed, in err, zoom units.. Ahem. 
+const float CAMERA_SCROLL_RATE=0.05;
 
 int attribList[] = {WX_GL_RGBA,
 			WX_GL_DEPTH_SIZE,
@@ -75,7 +78,8 @@ wxGLCanvas(parent, wxID_ANY,  wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas
 	haveCameraUpdates=false;
 	applyingDevice=false;
 	paneInitialised=false;
-	
+
+	mouseMoveFactor=mouseZoomFactor=1.0f;	
 	dragging=false;
 	lastMoveShiftDown=false;
 	selectionMode=false;
@@ -228,8 +232,8 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 	//left-right and up-down move values
 	float lrMove,udMove;	
 
-	//Movement rate multiplier
-	float camMultRate;
+	//Movement rate multiplier -- intialise to user value
+	float camMultRate=mouseMoveFactor;
 	if(event.m_shiftDown)
 	{
 		//Commit the current temp cam using the last camera rate
@@ -237,7 +241,7 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 		if(!lastMoveShiftDown && currentScene.haveTempCam())
 			currentScene.commitTempCam();
 
-		camMultRate=5.0f;
+		camMultRate*=5.0f;
 
 		lastMoveShiftDown=true;
 
@@ -248,7 +252,6 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 		//and then restart the motion.
  		if(lastMoveShiftDown && currentScene.haveTempCam())
 			currentScene.commitTempCam();
-		camMultRate=1.0f;
 
 		lastMoveShiftDown=false;
 	}
@@ -269,7 +272,7 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 	#endif
 
 	bool swingMode;
-	#if defined(WIN32) || defined(WIN64)
+	#if defined(WIN32) || defined(WIN64) || defined(__APPLE__)
 		swingMode=wxGetKeyState(WXK_ALT);
 	#else
 		swingMode=wxGetKeyState(WXK_TAB);
@@ -373,17 +376,17 @@ void BasicGLPane::mouseDown(wxMouseEvent& event)
 
 void BasicGLPane::mouseWheelMoved(wxMouseEvent& event) 
 {
-	const float CAMERA_SCROLL_RATE=-1.3/event.GetWheelDelta();
 	const float SHIFT_MULTIPLIER=5;
 
-	float cameraMoveRate=CAMERA_SCROLL_RATE*(float)event.GetWheelRotation();
+	float cameraMoveRate=-(float)event.GetWheelRotation()/(float)event.GetWheelDelta();
 
-
+	cameraMoveRate*=mouseZoomFactor;
 
 	if(event.ShiftDown())
 		cameraMoveRate*=SHIFT_MULTIPLIER;
 
-	//Do a backwards rotate by wheel delta
+	cameraMoveRate*=CAMERA_SCROLL_RATE;
+	//Move by specified deltea
 	currentScene.getActiveCam()->forwardsDolly(cameraMoveRate);
 
 	//if we are using a temporary camera, update that too

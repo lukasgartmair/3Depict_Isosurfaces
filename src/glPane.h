@@ -45,7 +45,6 @@ private:
 	//The scene ID value for object currently being "hovered" over
 	unsigned int hoverObject;
 
-
 	//!Last mouseflags/keyflags during selection event
 	unsigned int lastMouseFlags,lastKeyFlags;
 
@@ -62,6 +61,11 @@ private:
 
 	//!Are we currently applying a device in the scene?
 	bool applyingDevice;
+
+
+	//Parameters for modifying mouse speed
+	float mouseZoomFactor,mouseMoveFactor;
+
 public:
 	//!The scene object, holds all info about 3D drawable components
 	Scene currentScene;
@@ -82,6 +86,11 @@ public:
 	int getWidth();
 	int getHeight();
   
+
+	void setMouseMoveFactor(float f) { mouseMoveFactor=f;};
+	void setMouseZoomFactor(float f) { mouseZoomFactor=f;};
+
+
        	
 	//!Set the background colour (openGL clear colour)
 	void setGlClearColour(float r,float g,float b);	

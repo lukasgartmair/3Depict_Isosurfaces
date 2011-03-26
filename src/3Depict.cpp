@@ -332,14 +332,12 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     window_2_pane_2 = new wxPanel(splitterSpectra, wxID_ANY);
     panelTop = new BasicGLPane(splitTopBottom);
 
-
-    //FIXME: This needs SOMETHING; but not able to work out what
-    //    if(!panelTop->m_glContext)
- //   {
-
-//	    cerr << "Unable to initialise the openGL panel. Program cannot start. Please check your video drivers." << endl;
+    //I had to work this out by studying the construtor
+/*    if(!panelTop->m_glContext)
+    {
+	    cerr << "Unable to initialise the openGL panel. Program cannot start. Please check your video drivers." << endl;
 //	    return;
-//    }
+    }*/
 
     panelLeft = new wxPanel(splitLeftRight, wxID_ANY);
     notebookControl = new wxNotebook(panelLeft, ID_NOTEBOOK_CONTROL, wxDefaultPosition, wxDefaultSize, wxNB_RIGHT);
@@ -601,12 +599,14 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 	{
 		std::vector<std::string> strVec;
 
+		//Set the files that are listed in the recent files 
+		//menu
 		configFile.getRecentFiles(strVec);
 
 		for(unsigned int ui=0;ui<strVec.size();ui++)
 			recentHistory->AddFileToHistory(wxStr(strVec[ui]));
 
-
+		//Set the panel defaults (hidden/shown)
 		if(!configFile.getPanelEnabled(CONFIG_STARTUPPANEL_CONTROL))
 		{
 			splitLeftRight->Unsplit(panelLeft);
@@ -624,6 +624,14 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 		}
 
 
+		//Set the mouse zoom speeds
+		float zoomRate,moveRate;
+		zoomRate=configFile.getMouseZoomRate();
+		moveRate=configFile.getMouseMoveRate();
+
+
+		panelTop->setMouseZoomFactor((float)zoomRate/100.0f);
+		panelTop->setMouseMoveFactor((float)moveRate/100.0f);
 	}
 	else
 	{
@@ -1704,9 +1712,14 @@ void MainWindowFrame::OnEditPreferences(wxCommandEvent &event)
 
 	//obtain direct copies of the cloned Filter pointers
 	configFile.getFilterDefaults(filterDefaults);
-
 	p->setFilterDefaults(filterDefaults);
 
+	//Get the default mouse parameters
+	unsigned int mouseZoomRate,mouseMoveRate;
+	mouseZoomRate=configFile.getMouseZoomRate();
+	mouseMoveRate=configFile.getMouseMoveRate();
+	
+	
 	unsigned int panelMode;
 
 	//Set Panel startup flags
@@ -1718,6 +1731,9 @@ void MainWindowFrame::OnEditPreferences(wxCommandEvent &event)
 	panelMode=configFile.getStartupPanelMode();
 
 	p->setPanelDefaults(panelMode,controlStartup,rawStartup,plotStartup);
+	
+	p->setMouseZoomRate(mouseZoomRate);
+	p->setMouseMoveRate(mouseMoveRate);
 
 	//Initialise panel
 	p->initialise();
@@ -1733,6 +1749,15 @@ void MainWindowFrame::OnEditPreferences(wxCommandEvent &event)
 
 	//obtain cloned copies of the pointers
 	p->getFilterDefaults(filterDefaults);
+
+	mouseZoomRate=p->getMouseZoomRate();
+	mouseMoveRate=p->getMouseMoveRate();
+
+	panelTop->setMouseZoomFactor((float)mouseZoomRate/100.0f);
+	panelTop->setMouseMoveFactor((float)mouseMoveRate/100.0f);
+
+	configFile.setMouseZoomRate(mouseZoomRate);
+	configFile.setMouseMoveRate(mouseMoveRate);
 
 	//Note that this transfers control of pointer to the config file 
 	configFile.setFilterDefaults(filterDefaults);

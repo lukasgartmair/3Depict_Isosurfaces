@@ -18,8 +18,12 @@ This manual page documents briefly the
 .\" \fI<whatever>\fP escape sequences to invode bold face and italics,
 .\" respectively.
 \fB3depict\fP is a program that allows for visualisation and analysis of point datasets with associated spectral data.
+.PP
+Note that the program is a best-effort system. It is by no means guaranteed that the algorithms in this program are free form errors in implementation, or follow conventions for any specific user-application. 
 .SH OPTIONS
-This program has no command line options, other than a sequence of files to open, or an XML file containg the previous program state (this may be generated from within the program's graphical interface). Currently the program can read "POS" (position) formatted files, which are simply uncompressed sequences of 4-byte floats (IEEE 597) in (x,y,z,value) form. All other work is done through the graphical interface.
+This program has no command line options, other than a sequence of data or XML files to open, the XML files being containing a previous program state (this may be generated from within the program's graphical interface). Currently the program can read "POS" (position) formatted files, which are simply uncompressed sequences of 4-byte floats (IEEE 597) in (x,y,z,value) form. All other work is done through the graphical interface.
+.PP
+As a further note, the XML file format has not been stabilised for the 0.0.x series; and may change between revisions
 .SH AUTHOR
 3Depict was written by D. Haley in 2010 
 .PP

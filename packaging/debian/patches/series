@@ -1,2 +1,3 @@
 texture-path.patch
-debian-naming-desktop.patch
+debian-desktop-naming.patch
+disable-assertion-blocking.patch

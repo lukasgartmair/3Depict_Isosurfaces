@@ -32,7 +32,7 @@ ifneq "$(wildcard /usr/share/misc/config.guess)" ""
 	cp -f /usr/share/misc/config.guess config.guess
 endif
 	#Note the PNG_CFLAGS are required to shut pkg-config macro up
-	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info CFLAGS="$(CFLAGS) -fopenmp" CXXFLAGS="$(CXXFLAGS) -fopenmp -DGLIBCXX_PARALLEL" LDFLAGS="-Wl,-z,defs" --with-libpng-link="-lpng" --with-libpng-flags="-I/lib"
+	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --enable-openmp-parallel 
 
 
 build: build-stamp

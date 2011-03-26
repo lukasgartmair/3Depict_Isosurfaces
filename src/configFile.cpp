@@ -24,6 +24,8 @@
 const char *CONFIG_FILENAME="config.xml";
 const unsigned int MAX_RECENT=15;
 
+const unsigned int MAX_MOUSE_PERCENT= 400;
+
 
 
 #include <wx/stdpaths.h>
@@ -55,7 +57,6 @@ void ConfigFile::getRecentFiles(std::vector<std::string> &files) const
 	std::copy(recentFiles.begin(),recentFiles.end(),files.begin());
 }
 
-
 void ConfigFile::removeRecentFile(const std::string &str)
 {
 	std::deque<string>::iterator it;
@@ -64,7 +65,6 @@ void ConfigFile::removeRecentFile(const std::string &str)
 	if(it!=recentFiles.end())
 		recentFiles.erase(it);
 }
-
 
 void ConfigFile::getFilterDefaults(vector<Filter *>  &defs)
 {
@@ -188,7 +188,7 @@ unsigned int ConfigFile::read()
 		nodeStack.pop();
 		
 		//Advance and push
-		if(nodePtr->next)
+		if(!nodePtr->next)
 			goto nodeptrEndJump;
 
 		nodePtr=nodePtr->next;
@@ -239,8 +239,9 @@ unsigned int ConfigFile::read()
 		nodeStack.pop();
 		
 		//Advance and push
-		if(nodePtr->next)
+		if(!nodePtr->next)
 			goto nodeptrEndJump;
+
 		nodePtr=nodePtr->next;
 		nodeStack.push(nodePtr);
 		if(!XMLHelpFwdToElem(nodePtr,"startuppanels"))
@@ -295,6 +296,36 @@ unsigned int ConfigFile::read()
 						startupPanelView[CONFIG_STARTUPPANEL_PLOTLIST]=false;
 				}
 		
+			}
+		}
+
+		//restore old node	
+		nodePtr=nodeStack.top();
+		nodeStack.pop();
+		
+		//Advance and push, as needed
+		if(!nodePtr->next)
+			goto nodeptrEndJump;
+
+		nodePtr=nodePtr->next;
+		nodeStack.push(nodePtr);
+		if(!XMLHelpFwdToElem(nodePtr,"mousedefaults"))
+		{
+			xmlNodePtr mouseDataNodePtr=nodePtr->xmlChildrenNode;
+			if(mouseDataNodePtr)
+			{
+				nodeStack.push(mouseDataNodePtr);
+				if(!XMLHelpFwdToElem(mouseDataNodePtr,"speed"))
+				{
+					unsigned int percentage;
+					if(XMLGetAttrib(mouseDataNodePtr,percentage,"zoom") && percentage <MAX_MOUSE_PERCENT)
+						mouseZoomRatePercent=percentage;
+					
+					if(XMLGetAttrib(mouseDataNodePtr,percentage,"move") && percentage < MAX_MOUSE_PERCENT)
+						mouseMoveRatePercent=percentage;
+				}
+				mouseDataNodePtr=nodeStack.top();
+				nodeStack.pop();
 			}
 		}
 
@@ -359,6 +390,11 @@ bool ConfigFile::write()
 			"\" control=\"" << boolStrEnc(startupPanelView[CONFIG_STARTUPPANEL_CONTROL])  << 
 			"\" plotlist=\"" << boolStrEnc(startupPanelView[CONFIG_STARTUPPANEL_PLOTLIST]) << "\"/>" << endl;
 	}
+
+	f << tabs(1) <<  "<mousedefaults> " << endl;
+	f << tabs(2) <<  "<speed zoom=\"" << mouseZoomRatePercent << "\" move=\"" << 
+	       		mouseMoveRatePercent << "\"/>" << endl;
+	f << tabs(1) <<  "</mousedefaults> " << endl;
 
 	f << "</threeDepictconfig>" << endl;
 

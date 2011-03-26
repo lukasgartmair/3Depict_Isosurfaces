@@ -30,7 +30,8 @@ private:
 
 	//the user specified defaults.  This class must clean up this poitner
 	std::vector<Filter *> filterDefaults;
-//!Current default filter setting (def. filter panel). Is null iff using hard-coded version
+
+	//!Current default filter setting (def. filter panel). Is null iff using hard-coded version
 	Filter *curFilter;
 
 	bool programmaticEvent;
@@ -43,8 +44,11 @@ private:
 	//!Update the filter property grid, as needed
 	void updateFilterProp(const Filter *f);
 
+	//!Percentile speeds for mouse zoom and move 
+	unsigned int mouseZoomRatePercent,mouseMoveRatePercent;
 protected:
 	// begin wxGlade: PrefDialog::attributes
+	wxStaticBox* sizerCamSpeed_staticbox;
 	wxStaticBox* sizer_2_staticbox;
 	wxStaticBox* filterPropSizer_staticbox;
 	wxStaticText* lblFilters;
@@ -58,10 +62,19 @@ protected:
 	wxCheckBox* chkRawData;
 	wxCheckBox* chkPlotlist;
 	wxPanel* panelStartup;
+	wxStaticText* lblMoveSpeed;
 	wxNotebook* notePrefPanels;
 	wxButton* btnOK;
 	wxButton* btnCancel;
-	// end wxGlade
+	wxSlider* sliderCamMoveRate;
+	wxStaticText* labelFastCamMoveRate;
+	wxStaticText* labelSlowCamMoveRate;
+	wxStaticText* lblZoomSpeed;
+	wxStaticText* labelSlowCamZoomRate;
+	wxSlider* sliderCamZoomRate;
+	wxStaticText* labelSlowFastZoomRate;
+	wxPanel* notePrefPanels_pane_3;
+    // end wxGlade
 
 	DECLARE_EVENT_TABLE();
 
@@ -87,7 +100,16 @@ public:
 	void getPanelDefaults(unsigned int &panelMode, bool &panelControl,
 					bool &panelRaw,bool &panelPlotlist) const;
 
+
+	void setMouseZoomRate(unsigned int rate) { mouseZoomRatePercent=rate;};
+	void setMouseMoveRate(unsigned int rate) { mouseMoveRatePercent=rate;};
+
+	unsigned int getMouseZoomRate() const { return  mouseZoomRatePercent;};
+	unsigned int getMouseMoveRate() const { return mouseMoveRatePercent;};
+
 	virtual void OnStartupPanelCombo(wxCommandEvent &event); // wxGlade: <event_handler>
+	void OnMouseMoveSlider(wxScrollEvent &event);
+	void OnMouseZoomSlider(wxScrollEvent &event);
 
 	void initialise();
 	void cleanup();

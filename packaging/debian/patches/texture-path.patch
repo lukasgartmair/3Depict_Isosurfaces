@@ -1,14 +1,13 @@
-Index: 3depict-0.0.3/src/basics.h
+Index: 3depict-0.0.5/src/wxcommon.cpp
 ===================================================================
---- 3depict-0.0.3.orig/src/basics.h	2010-09-22 20:26:26.000000000 +0100
-+++ 3depict-0.0.3/src/basics.h	2010-09-22 20:26:31.000000000 +0100
-@@ -107,7 +107,7 @@
-
- 	//	  an application installer
- 	//Mac
- 	//	- Look in cwd
--	return std::string(name);
-+	return std::string("/usr/share/3depict/") + std::string(name);
- }
+--- a/src/wxcommon.cpp	Sat Mar 26 20:09:37 2011 +0000
++++ b/src/wxcommon.cpp	Sat Mar 26 20:15:58 2011 +0000
+@@ -47,7 +47,7 @@
  
- template<class T1, class T2>
+ #ifdef __linux__
+ 
+-	return std::string("/usr/share/3Depict/") + std::string(name);
++	return std::string("/usr/share/3depict/") + std::string(name);
+ #else
+ 
+ 	//E.g. Mac

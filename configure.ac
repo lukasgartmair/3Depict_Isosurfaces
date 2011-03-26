@@ -1,4 +1,4 @@
-AC_INIT([3Depict], [0.0.4], [mycae@yahoo.com])
+AC_INIT([3Depict], [0.0.5], [mycae@yahoo.com])
 AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CXX
 AC_PROG_CC
@@ -296,10 +296,10 @@ dnl -----------
 
 #Should we compile with openMP?
 AC_ARG_ENABLE(openmp-parallel,
-  [  --enable-openmp-parallel:  Enable OpenMP multi-CPU usage; requires GCC > 4.2 for paralell STL support ])
+  [  --enable-openmp-parallel  Enable OpenMP multi-CPU usage; requires GCC > 4.2 for paralell STL support ])
 #Should we enable or disable debug checking?
-AC_ARG_ENABLE(no-debug-checks,
-  [  --enable-no-debug-checks: Disable any debug checking, provides faster operation, but less information needed to debug internal problems, or to provide problem reports to developers ])
+AC_ARG_ENABLE(debug-checks,
+  [  --disable-debug-checks Disable any debug checking, provides faster operation, but less information needed to debug internal problems, or to provide problem reports to developers ],[],[enable_no_debug_checks=="yes"])
 
 
 if test x"$enable_openmp_parallel" != x"" ; 

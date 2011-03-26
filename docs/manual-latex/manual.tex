@@ -38,7 +38,7 @@
 \begin{minipage}{0.3\textwidth}
 \begin{flushright} \large
 \emph{Version:} \\
- 0.0.3, November 2010\end{flushright}
+ 0.0.5, March 2011\end{flushright}
 \end{minipage}
 
 \vfill
@@ -177,6 +177,7 @@ The basic keys for controlling the camera move mode (left click) are :
 \item \textbf{Ctrl}: Pan camera 
 \item  \textbf{Tab} : Swivel camera (Look about)
 \item  \textbf{Ctrl +Tab} (Windows \textbf{Ctrl+Alt}): Roll camera around viewport centre. Note that the rolling motion is controlled by the position of the mouse click.
+\item \txtbf{Space/Shift+Space/Ctrl+Space} : Reset camera bounds and position to look along X,Y or Z axes respectively.
 \item \textbf{+/-} : Zoom in/out.
 
 \end{itemize}
@@ -396,7 +397,7 @@ The profile filter conducts a density or ``compositional'' analysis of a given s
 \subsubsection{Spatial analysis}
  
  
- This filter conducts spatially oriented data analysis of incoming ions, and reassigns the 'value' component of the ion data. The nature of the reassignment depends upon the selected algorithm and the incoming data itself. Note that the exact values computed by the spatial algorithms may be affected by subsampling; however trends are usually unaffected, provided the number of incoming data elements is sufficiently large. 
+ This filter conducts spatially oriented data analysis of incoming ions, and reassigns the `value' component of the ion data. The nature of the reassignment depends upon the selected algorithm and the incoming data itself. Note that the exact values computed by the spatial algorithms may be affected by subsampling; however trends are usually unaffected, provided the number of incoming data elements is sufficiently large. 
 \begin{itemize}
  
 \item  Algorithms 
@@ -405,6 +406,38 @@ The profile filter conducts a density or ``compositional'' analysis of a given s
 \end{itemize}
 
 \end{itemize}
+
+
+\subsubsection{Clustering analysis}
+
+The cluster analysis filter is designed to aid in the detection and analysis of spatial clustering in segregated data. Cluster analyses are used to determine the extent of non-random spatial relationships between dataset members.
+
+The method works by identifying two data types -- ``core'' and ``bulk'' members of the dataset (in APT these are usually called ``solute'' and ``matrix''). The program attempts to determine adjacencies between core elements, and to group them together, extracting them from the bulk of the dataset. To do this, the filter uses the scalar value associated with each point to classify it. Range data (which must be present as a parent filter), is used to identify regions of value to classify value regions. Each of these regions then can be selected to belong to either the ``core'' group or the bulk group -- but not both.
+
+The clustering algorithm implemented in \emph{3Depict} is a modification of the clustering algorithm outlined in Stephenson \emph{et al}\cite{Stephenson07}, and to a lesser extent Hyde \emph{et al}~\cite{Hyde10} and Vaumousse and Cerezo~\cite{Vaumousse03}\footnote{These sources are not freely available. Some of these concepts are discussed by in this work which is available online : ``Design in Light Alloys by Understanding the Solute Clustering Processes During the Early Stages of Age Hardening in Al-Cu-Mg Alloys'' ; \url{http://hdl.handle.net/2123/4008}.}.  
+
+
+Parameter Description:
+\begin{itemize}
+ \item \textbf{Core classification distance} : This distance is the maximum distance between which items initially marked ``core'' by their value can be separated from another core point (up to Core kNN Max) in order to not be discounted in the clustering. This aids in removing isolated points that are initially marked as core. This option is disabled if the value is set to 0.
+ \item \textbf{Core kNN max} : The Core k$^\mathrm{th}$ nearest neighbour maximum for core classification. This modifies the core classification stage, only looking up to some max kNN (unclassified core only) for other core points
+\end{itemize}
+
+Algorithm Description; each of these is conducted in sequence to generate the final clustered output.
+\begin{itemize}
+ \item \textbf{Core Classification (Optional,\emph{Core Classify Dist} nonzero)}: Core classification; work only on core ions (bulk is ignored). Each "core" point has sphere of specified size placed around it, if point's kth-NN is within a given radius, then it is used as core, otherwise it is rejected to ``bulk''.
+
+ \item \textbf{Cluster Construction}: A ``backbone'' is constructed using the core points (after classification). Each core point has a sphere placed around it of fixed size; if it  contacts another point, then these are considered as part of the same cluster.
+ \item \textbf{Bulk Inclusion (Optional, \emph{Bulk Link Dist} nonzero)} : For each cluster, every point has a sphere placed around it. Bulk points that lie within this union of spheres are assigned to the cluster. This assignment is unambiguous \emph{iff} this radius is smaller than that for the cluster construction step
+ \item \textbf{Bulk Erosion (Optional, \emph{Erode Dist} nonzero)} : Each unclustered bulk ion has a sphere placed around it. This sphere strips out clustered ``bulk'' points from the cluster and returns them to the unclustered data. This is only done once (\emph{i.e.}, not iterative).
+\end{itemize}
+
+Note that there are more steps listed in the filter progress due to the need to generate data query structures.
+
+Several post-processing options are available as part of the filter. The size distribution (number of items) can be computed, as can the composition. A frequency table is generated and printed to the program console. Note that the ``count bulk'' parameter specifies whether to include points classified as ``bulk'' in these frequency and chemistry tables or not.
+
+Whilst much effort has been placed into optimisation of the clustering algorithm, the query itself is quite slow. The clustering algorithm is best operated on a small region of data to optimise the parameters prior to applying the algorithm to the full dataset.
+
  
 \subsubsection{External program}
  
@@ -561,5 +594,8 @@ Each filter is an object derived from a base class. If you don't know what that 
 The main trick to realise is that each filter takes in something, and spits out something. That is, each filter does all of its work in the \texttt{::refresh} functions. The easiest examples of this will probably be the ion downsampling and transform filters. They might look a bit daunting, but much of the code is simply there to keep things running as fast as it can, and to provide many options. Each filter can only work with its own properties, and that of the FilterStreamData pointers passed into the refresh function. It can really do anything it wants here.
 
 To have properties appear up in the left hand panel, you have to implement the \texttt{getProperties($\ldots$)} function -- try copying one that seems closest to your situation. To have these properties take effect, you need to implement the \texttt{setProperties($\ldots$)} function. If you wish to ``peek-ahead'' at the filters coming into the filter (this is a little advanced, but can sometimes be necessary), you have to implement the \texttt{initFilter($\ldots$)} function.
+
+\bibliographystyle{unsrt}
+\bibliography{manual}
 
 \end{document}

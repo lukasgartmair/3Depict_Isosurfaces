@@ -30,6 +30,13 @@
 using std::ofstream;
 using std::vector;
 
+#ifdef __APPLE__
+const float FONT_HEADING_SCALEFACTOR=1.0f;
+#else
+const float FONT_HEADING_SCALEFACTOR=0.75f;
+#endif
+
+
 
 //Convert my internal choice string format to wx's
 std::string wxChoiceParamString(std::string choiceString)
@@ -389,7 +396,7 @@ void wxPropertyGrid::propertyLayout()
 				this->SetCellValue(sepRows[ui],0,wxStr(sectionNames[ui+1]));
 				wxFont f;
 				f.SetStyle(wxFONTSTYLE_ITALIC);
-				f.SetPointSize(f.GetPointSize()*0.75);
+				f.SetPointSize(f.GetPointSize()*FONT_HEADING_SCALEFACTOR);
 				this->SetCellFont(sepRows[ui],0,f);
 			}
 

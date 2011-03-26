@@ -237,9 +237,25 @@ void ClusterAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 			bool different=false;
 			if(!haveRangeParent)
 			{
-				//well, things have changed, we didn't have a 
-				//range parent before.
-				different=true;
+				//well, things have may have changed, we didn't have a 
+				//range parent before. Or, we could have been loaded in from
+				//a file.
+
+				if(ionCoreEnabled.size() != r->rangeFile->getNumIons() ||
+					ionBulkEnabled.size() != r->rangeFile->getNumIons())
+					different=true;
+				else
+				{
+					//The ion lengths are the same; if so, we can just fill in the gaps
+					// -- the file does not store names; just sequence IDs.
+					ionNames.clear();
+					ionNames.reserve(r->rangeFile->getNumRanges());
+					for(unsigned int uj=0;uj<r->rangeFile->getNumIons();uj++)
+					{
+						if(r->enabledIons[uj])
+							ionNames.push_back(r->rangeFile->getName(uj));
+					}
+				}
 			}
 			else
 			{
@@ -265,6 +281,8 @@ void ClusterAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 						}
 					}
 				}
+				else
+					different=true;
 			}
 			haveRangeParent=true;
 
@@ -280,6 +298,10 @@ void ClusterAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 					if(r->enabledIons[uj])
 						ionNames.push_back(r->rangeFile->getName(uj));
 				}
+
+				//Zerou out any current data
+				ionCoreEnabled.clear(); 
+				ionBulkEnabled.clear();
 
 				ionCoreEnabled.resize(ionNames.size(),false);
 				ionBulkEnabled.resize(ionNames.size(),true);
@@ -811,7 +833,7 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 			if(stream_cast(ltmp,value))
 				return false;
 			
-			if(ltmp<= 0.0)
+			if(ltmp< 0.0)
 				return false;
 			
 			coreDist=ltmp;
@@ -823,7 +845,7 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 		case KEY_CORECLASSIFYKNN:
 		{
 			std::string tmp;
-			float ltmp;
+			int ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
 			
@@ -1233,8 +1255,22 @@ bool ClusterAnalysisFilter::writeState(std::ofstream &f,unsigned int format,
 			f << tabs(depth+1) << "<wantclustercomposition value=\"" <<wantClusterComposition<< "\" normalise=\"" << 
 					normaliseComposition<< "\"/>"  << endl;
 
-			//FIXME: Core/Bulk ion selection?? How to deal with when we don't know what
-			//incoming range data we have??
+
+			f << tabs(depth+1) << "<enabledions>"  << endl;
+			f << tabs(depth+2) << "<core>"  << endl;
+			for(size_t ui=0;ui<ionCoreEnabled.size();ui++)
+			{
+				f<< tabs(depth+3) << "<ion enabled=\"" << (int)ionCoreEnabled[ui] << "\"/>" <<  std::endl; 
+			}
+			f << tabs(depth+2) << "</core>"  << endl;
+			f << tabs(depth+2) << "<bulk>"  << endl;
+			for(size_t ui=0;ui<ionBulkEnabled.size();ui++)
+			{
+				f<< tabs(depth+3) << "<ion enabled=\"" << (int)ionBulkEnabled[ui] << "\"/>" <<  std::endl; 
+			}
+			f << tabs(depth+2) << "</bulk>"  << endl;
+			f << tabs(depth+1) << "</enabledions>"  << endl;
+			
 			f << tabs(depth) << "</" << trueName() << ">" << endl;
 			break;
 		}
@@ -1333,6 +1369,44 @@ bool ClusterAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &pa
 		return false;
 	//===
 
+
+	//erase current enabled list.	
+	ionCoreEnabled.clear();
+	ionBulkEnabled.clear();
+
+	//Retrieve enabled selections
+	if(XMLHelpFwdToElem(nodePtr,"enabledions"))
+		return false;
+
+	//Jump to ion sequence (<core>/<bulk> level)
+	nodePtr=nodePtr->xmlChildrenNode;
+
+	if(XMLHelpFwdToElem(nodePtr,"core"))
+		return false;
+	//Jump to <ion> level
+	tmpPtr=nodePtr->xmlChildrenNode;
+	
+	while(!XMLHelpFwdToElem(tmpPtr,"ion"))
+	{
+		int enabled;
+		if(!XMLGetAttrib(tmpPtr,enabled,"enabled"))
+			return false;
+
+		ionCoreEnabled.push_back(enabled);
+	}
+
+	if(XMLHelpFwdToElem(nodePtr,"bulk"))
+		return false;
+	tmpPtr=nodePtr->xmlChildrenNode;
+
+	while(!XMLHelpFwdToElem(tmpPtr,"ion"))
+	{
+		int enabled;
+		if(!XMLGetAttrib(tmpPtr,enabled,"enabled"))
+			return false;
+
+		ionBulkEnabled.push_back(enabled);
+	}
 
 	return true;
 }
@@ -1688,6 +1762,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 
 		//So-called "envelope" step.
 		float bulkLinkSqr=bulkLink*bulkLink;
+		size_t prog=PROGRESS_REDUCE;
 		//Now do the same thing with the matrix, but use the clusters as the "seed"
 		//positions
 		for(size_t ui=0;ui<allCoreClusters.size();ui++)
@@ -1703,7 +1778,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 				while(true)
 				{
 					float curDistSqr;
-					//Find the next point that we have not yet retreived
+					//Find the next point that we have not yet retrieved
 					//the find will tag the point, so we won't see it again
 					bulkTreeIdx=bulkTree.findNearestUntagged(
 							*(coreTree.getPt(curIdx)),bBulk, true);
@@ -1726,20 +1801,23 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 						//Record it as part of the cluster	
 						thisBulkCluster.push_back(bulkTreeIdx);
 					}
+				
+					prog--;	
+					if(!prog)
+					{
+						prog=PROGRESS_REDUCE;
+						//Progress may be a little non-linear if cluster sizes are not random
+						progress.filterProgress= (unsigned int)(((float)ui/(float)allCoreClusters.size())*100.0f);
+						if(!(*callback)())
+							return ABORT_ERR;
+
+					}
 				}
 
 				
 
 			}
 
-			if(!(ui%PROGRESS_REDUCE))
-			{
-				//Progress may be a little non-linear if cluster sizes are not random
-				progress.filterProgress= (unsigned int)(((float)ui/(float)allCoreClusters.size())*100.0f);
-				if(!(*callback)())
-					return ABORT_ERR;
-
-			}
 
 			allBulkClusters.push_back(dummy);
 			allBulkClusters.back().swap(thisBulkCluster);

@@ -45,8 +45,11 @@ class ConfigFile
 
 		//!Method for showing/hiding panel at startup
 		unsigned int panelMode;
+	
+		//!Percentile speeds for mouse zoom and move 
+		unsigned int mouseZoomRatePercent,mouseMoveRatePercent;
 	public:
-		ConfigFile() { panelMode=CONFIG_PANELMODE_REMEMBER;};
+		ConfigFile() { panelMode=CONFIG_PANELMODE_REMEMBER;mouseZoomRatePercent=mouseMoveRatePercent=100;};
 		void addRecentFile(const std::string &str);
 
 		void getRecentFiles(std::vector<std::string> &filenames) const; 
@@ -72,6 +75,16 @@ class ConfigFile
 		
 		//!Return startup status of UI panels
 		void setPanelEnabled(unsigned int panelID,bool enabled, bool permanent=false);
+
+		//!Get the mouse movement rate (for all but zoom)
+		unsigned int getMouseMoveRate() const { return mouseMoveRatePercent; }
+		//!Get the mouse movement rate for zoom
+		unsigned int getMouseZoomRate() const { return mouseZoomRatePercent; }
+
+		//Set the mouse zoom rate(percent)
+		void setMouseZoomRate(unsigned int rate) { mouseZoomRatePercent=rate;};
+		//Set the mouse move rate (percent)
+		void setMouseMoveRate(unsigned int rate) { mouseMoveRatePercent=rate;};
 
 		//!Return the current panelmode
 		unsigned int getStartupPanelMode() const;

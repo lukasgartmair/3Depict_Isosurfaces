@@ -372,20 +372,20 @@ void CameraLookAt::forwardsDolly(float moveRate)
 		Point3D newOrigin;
 
 		//Prevent camera orientation inversion, which occurs when moving past the target
-		if((viewDirection*moveRate).sqrMag() > target.sqrDist(origin))
+		if(moveRate > sqrt(target.sqrDist(origin)))
 		{
 			if((target-origin).sqrMag() < sqrtf(std::numeric_limits<float>::epsilon()))
 					return;
 
 			//Yes, this simplifies analytically. However i think the numerics come into play.
-			float moveInv = 1.0/(fabs(moveRate) + sqrtf(std::numeric_limits<float>::epsilon()));
+			float moveInv = 1.0/(fabs(moveRate) + std::numeric_limits<float>::epsilon());
 			newOrigin=origin+viewDirection*moveInv/(1.0+moveInv);
 
 		}
 		else
 		{
 			//scale moverate by orbit distance
-			moveRate = 0.05*moveRate*sqrtf(target.sqrDist(origin));
+			moveRate = moveRate*sqrtf(target.sqrDist(origin));
 			newOrigin=origin+viewDirection*moveRate;
 		}
 
@@ -842,7 +842,7 @@ bool CameraLookAt::readState(xmlNodePtr nodePtr)
 	//Retrieve orthographic scaling
 	if(!XMLGetNextElemAttrib(nodePtr,orthoScale,"orthoscale","value"))
 		return false;
-	if(orthoScale <=0 || isnan(orthoScale))
+	if(orthoScale <=0 || std::isnan(orthoScale))
 		return false;
 
 	

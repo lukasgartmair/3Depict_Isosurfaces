@@ -70,6 +70,29 @@ bool XMLGetNextElemAttrib(xmlNodePtr &nodePtr, T &v, const char *nodeName, const
 }
 
 
+template<class T>
+bool XMLGetAttrib(xmlNodePtr &nodePtr, T&v, const char *attrib)
+{
+	std::string tmpStr;
+	xmlChar *xmlString;
+	//====
+	
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)attrib);
+	if(!xmlString)
+		return false;
+	tmpStr=(char *)xmlString;
+
+	if(stream_cast(v,tmpStr))
+	{
+		xmlFree(xmlString);
+		return false;
+	}
+
+	xmlFree(xmlString);
+
+	return true;
+}
+
 /* Defined in the bowels of the xmlLib2 library
  * Enum xmlElementType {
  *	XML_ELEMENT_NODE = 1
