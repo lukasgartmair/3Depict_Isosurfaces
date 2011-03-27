@@ -177,7 +177,7 @@ The basic keys for controlling the camera move mode (left click) are :
 \item \textbf{Ctrl}: Pan camera 
 \item  \textbf{Tab} : Swivel camera (Look about)
 \item  \textbf{Ctrl +Tab} (Windows \textbf{Ctrl+Alt}): Roll camera around viewport centre. Note that the rolling motion is controlled by the position of the mouse click.
-\item \txtbf{Space/Shift+Space/Ctrl+Space} : Reset camera bounds and position to look along X,Y or Z axes respectively.
+\item \textbf{Space/Shift+Space/Ctrl+Space} : Reset camera bounds and position to look along X,Y or Z axes respectively.
 \item \textbf{+/-} : Zoom in/out.
 
 \end{itemize}
@@ -420,7 +420,7 @@ The clustering algorithm implemented in \emph{3Depict} is a modification of the 
 Parameter Description:
 \begin{itemize}
  \item \textbf{Core classification distance} : This distance is the maximum distance between which items initially marked ``core'' by their value can be separated from another core point (up to Core kNN Max) in order to not be discounted in the clustering. This aids in removing isolated points that are initially marked as core. This option is disabled if the value is set to 0.
- \item \textbf{Core kNN max} : The Core k$^\mathrm{th}$ nearest neighbour maximum for core classification. This modifies the core classification stage, only looking up to some max kNN (unclassified core only) for other core points
+ \item \textbf{Core kNN max} : The Core k-th nearest neighbour maximum for core classification. This modifies the core classification stage, only looking up to some max kNN (unclassified core only) for other core points
 \end{itemize}
 
 Algorithm Description; each of these is conducted in sequence to generate the final clustered output.
