@@ -1430,7 +1430,7 @@ std::string ClusterAnalysisFilter::getErrString(unsigned int i) const
 unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<const FilterStreamData *> &dataIn,
 		std::vector< std::vector<IonHit> > &clusteredCore, 
 		std::vector<std::vector<IonHit>  > &clusteredBulk,ProgressData &progress,
-					bool (*callback)(void)) const
+					bool (*callback)(void)) 
 {
 
 	//Clustering algorithm, as per 
@@ -1477,6 +1477,35 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	if(needCoring)
 		numClusterSteps++;
 
+
+
+	//Quick sanity check
+	if(needBulkLink)
+	{
+		//It is mildly dodgy to use a "bulk" distance larger than your core distance
+		//with relative dodgyness, depending upon cluster number density.
+		//
+		//This is because bulk components can "bridge", and assignment to the core
+		//clusters will depend upon the order in which the ions are traversed.
+		//At this point we should warn the user that this is the case, and suggest to them
+		//that we hope they know what they are doing.
+
+
+		if(bulkLink > linkDist)
+		{
+			consoleOutput.push_back("");
+			consoleOutput.push_back(" --------------------------- Parameter selection notice ------------- "  );
+			consoleOutput.push_back("You have specified a bulk distance larger than your link distance."  );
+			consoleOutput.push_back("You can do this; thats OK, but the output is no longer independant of the computational process;"  );
+			consoleOutput.push_back("This will be a problem in the case where two or more clusters can equally lay claim to a \"bulk\" ion. "  );
+			consoleOutput.push_back(" If your inter-cluster distance is sufficiently large (larger than your bulk linking distance), then you can get away with this."  );
+			consoleOutput.push_back(" In theory it is possible to \"join\" the clusters, but this has not been implemented for speed reasons.");
+			consoleOutput.push_back("If you want this, please contact the author, or just use the source to add this in yourself."  );
+			consoleOutput.push_back("---------------------------------------------------------------------- "  );
+			consoleOutput.push_back("");
+		}	
+
+	}
 
 	//Collate the ions into "core", and "bulk" ions, based upon our ranging data
 	//----------
@@ -1527,39 +1556,53 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		ASSERT(coreIons.size() == coreTree.size());
 		coreOK.resize(coreTree.size());
 		float coreDistSqr=coreDist*coreDist;
+
 		//TODO: the trees internal Tags prevent us from parallelising this. 
 		//       :(. If we could pass a tag map to the tree, this would solve the problem
 		for(size_t ui=0;ui<coreTree.size();ui++)
 		{
 			const Point3D *p;
 			size_t pNN;	
-			float nnSqrDist;
 			unsigned int k;
+			float nnSqrDist;
 			vector<size_t> tagsToClear;
-
+		
+			//Don't match ourselves -- to do this we must "tag" this tree node before we start
 			p=coreTree.getPt(ui);
 			coreTree.tag(ui);
-			k=0;
+			tagsToClear.push_back(ui);
+			
+			k=1;
 
 			//Loop through this ions NNs, seeing if the kth NN is within a given radius
 			do
 			{
 				pNN=coreTree.findNearestUntagged(*p,bCore,true);
-				if(pNN != (size_t)-1)
-				{
-					nnSqrDist=p->sqrDist(*(coreTree.getPt(pNN)));
-					tagsToClear.push_back(pNN);
-				}
+				tagsToClear.push_back(pNN);
 				k++;
-			}while( pNN !=(size_t)-1 && k<=coreKNN &&  nnSqrDist < coreDistSqr);
+
+			}while( pNN !=(size_t)-1 && k<coreKNN);
+			
 
 			//Core is only OK if the NN is good, and within the 
 			//specified distance
-			coreOK[ui] = (pNN !=(size_t)-1 && nnSqrDist < coreDistSqr);
+			if(pNN == (size_t)-1)
+			{
+				coreOK[ui]=false;
+				ASSERT(tagsToClear.back() == (size_t) -1);
+				tagsToClear.pop_back(); //get rid of the -1
+			}
+			else
+			{
+				nnSqrDist=p->sqrDist(*(coreTree.getPt(pNN)));
+				coreOK[ui] = nnSqrDist < coreDistSqr;
+			}
+
 
 			//reset the tags, so we can find near NNs
 			coreTree.clearTags(tagsToClear);
-		
+			tagsToClear.clear();
+
 			if(!(ui%PROGRESS_REDUCE))
 			{
 				progress.filterProgress= (unsigned int)(((float)ui/(float)coreTree.size())*100.0f);
@@ -1624,10 +1667,12 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	if(!(*callback)())
 		return ABORT_ERR;
 		
+	size_t progressCount=0;
 
 	vector<vector<size_t> > allCoreClusters,allBulkClusters;
-
 	const float linkDistSqr=linkDist*linkDist;
+	
+	
 	//When this queue is exhausted, move to the next cluster
 	for(size_t ui=0;ui<coreTree.size();ui++)
 	{
@@ -1650,11 +1695,9 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		size_t clustIdx;
 		thisClusterQueue.push_front(ui);
 		soluteCluster.push_back(ui);
-		curPt=ui;
-
-		progressCount=0;
 		do
 		{
+			curPt=thisClusterQueue.front();
 			curDistSqr=0;
 			//Loop over this solute's NNs
 			while(true)
@@ -1665,13 +1708,14 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 				ASSERT(bCore.isValid());
 				clustIdx=coreTree.findNearestUntagged(
 						*(coreTree.getPt(curPt)),bCore, true);
-	
+
 
 				ASSERT(clustIdx == -1 || coreTree.getTag(clustIdx));
 				if(clustIdx != (size_t)-1)
 				{
 					curDistSqr=coreTree.getPt(clustIdx)->sqrDist(
 							*(coreTree.getPt(curPt)) );
+
 				}
 
 				//Point out of clustering range, or no more points
@@ -1681,7 +1725,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 					//Un-tag the point; as it was too far away
 					if(clustIdx !=(size_t)-1)
 						coreTree.tag(clustIdx,false);
-
+					
 					thisClusterQueue.pop_front();
 					break;
 				}
@@ -1702,6 +1746,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 						return ABORT_ERR;
 				}
 			}
+
 
 		} // Keep looping whilst we have coreTree to cluster.
 		while(thisClusterQueue.size() && clustIdx !=(size_t)-1);
@@ -1728,7 +1773,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	// computation.
 	// The advantage to doing it now is that we can (potentially) drop lots of clusters
 	// from or analysis before we do the following steps, saving lots of time
-	if(!sizeCountBulk && (nMin > 0 || nMax <(size_t)-1) )
+	if(!sizeCountBulk && (nMin > 0 || nMax <(size_t)-1) && wantCropSize )
 	{
 		for(size_t ui=0;ui<allCoreClusters.size();)
 		{
@@ -1843,7 +1888,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		//Now perform the "erosion" step, where we strip off previously
 		//tagged matrix, if it is within a given distance of some untagged
 		//matrix
-		size_t numCounted;
+		size_t numCounted=0;
 		bool spin=false;
 
 		const float dErosionSqr=dErosion*dErosion;
@@ -1863,7 +1908,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 				nnId = bulkTree.findNearestUntagged(
 							*(bulkTree.getPt(bulkTreeId)),bBulk, false);
 				
-				if(bulkTreeId !=(size_t)-1)
+				if(nnId !=(size_t)-1)
 				{
 					float curDistSqr;
 					curDistSqr=bulkTree.getPt(bulkTreeId)->sqrDist(
@@ -1965,7 +2010,6 @@ bool ClusterAnalysisFilter::paranoidDebugAssert(
 		case CLUSTER_LINK_ERODE:
 		{
 			float bulkLinkSqr = bulkLink*bulkLink;
-			cerr << " Bulk linkage dist :" << bulkLinkSqr  << endl;
 
 			//Every bulk ion should be within the enveloping distance from the corresponding core ions
 			//If the bulklink is zero, we shouldn't have ANY bulk at all.
@@ -2115,8 +2159,8 @@ void ClusterAnalysisFilter::createRangedIons(const std::vector<const FilterStrea
 	
 }
 
-PlotStreamData* ClusterAnalysisFilter::clusterSizeDistribution(vector<vector<IonHit> > &core, 
-						vector<vector<IonHit> > &bulk) const
+PlotStreamData* ClusterAnalysisFilter::clusterSizeDistribution(const vector<vector<IonHit> > &core, 
+						const vector<vector<IonHit> > &bulk) const
 {
 	//each cluster is represented by one entry in core and bulk
 	ASSERT(bulk.size() == core.size() || !bulk.size());
@@ -2216,7 +2260,7 @@ bool ClusterAnalysisFilter::stripClusterBySize(vector<vector<IonHit> > &clustere
 			}
 			if(!(ui%PROGRESS_REDUCE)  && clusteredCore.size())
 			{
-				progress.filterProgress= (unsigned int)(((float)ui/(float)clusteredCore.size())*100.0f);
+				progress.filterProgress= (unsigned int)(((float)ui/(float)clusteredCore.size()+1)*100.0f);
 				
 				if(!(*callback)())
 					return ABORT_ERR;
@@ -2237,7 +2281,7 @@ bool ClusterAnalysisFilter::stripClusterBySize(vector<vector<IonHit> > &clustere
 			}
 			if(!(ui%PROGRESS_REDUCE) )
 			{
-				progress.filterProgress= (unsigned int)(((float)ui/(float)clusteredCore.size())*100.0f);
+				progress.filterProgress= (unsigned int)(((float)ui/(float)clusteredCore.size()+1)*100.0f);
 				
 				if(!(*callback)())
 					return ABORT_ERR;
@@ -2261,7 +2305,7 @@ bool ClusterAnalysisFilter::stripClusterBySize(vector<vector<IonHit> > &clustere
 			}
 			if(!(ui%PROGRESS_REDUCE) )
 			{
-				progress.filterProgress= (unsigned int)(((float)ui/(float)clusteredCore.size())*100.0f);
+				progress.filterProgress= (unsigned int)(((float)ui/(float)clusteredCore.size()+1)*100.0f);
 				
 				if(!(*callback)())
 					return ABORT_ERR;

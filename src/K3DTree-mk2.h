@@ -140,6 +140,10 @@ class K3DTreeMk2
 		size_t size() { return indexedPoints.size(); ASSERT(nodes.size() == indexedPoints.size());}
 		
 		size_t rootIdx() { return treeRoot;}
+
+		size_t tagCount() const;
+
+		void clearAllTags();
 };
 
 #endif

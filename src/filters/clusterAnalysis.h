@@ -43,11 +43,12 @@ class ClusterAnalysisFilter : public Filter
 		//!Which ions are core/builk for a  particular incoming range?
 		std::vector<bool> ionCoreEnabled,ionBulkEnabled;
 	
-	
+
+		//Do cluster refresh using Link Algorithm (Core + max sep)
 		unsigned int refreshLinkClustering(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector< std::vector<IonHit> > &clusteredCore, 
 				std::vector<std::vector<IonHit>  > &clusteredBulk,ProgressData &progress,
-					       		bool (*callback)(void)) const;
+					       		bool (*callback)(void));
 
 
 		//Helper function to create core and bulk vectors of ions from input ionstreams
@@ -67,8 +68,8 @@ class ClusterAnalysisFilter : public Filter
 						vector<vector<IonHit> > &clusteredBulk,
 							bool (*callback)(void), ProgressData &p) const;
 		//Build a plot that is the cluster size distribution as  afunction of cluster size
-		PlotStreamData *clusterSizeDistribution(vector<vector<IonHit> > &solutes, 
-						vector<vector<IonHit> > &matrix) const;
+		PlotStreamData *clusterSizeDistribution(const vector<vector<IonHit> > &solutes, 
+						const vector<vector<IonHit> > &matrix) const;
 
 
 		//Build plots that are the cluster size distribution as

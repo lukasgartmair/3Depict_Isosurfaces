@@ -66,108 +66,147 @@ bool K3DTreeMk2::build()
 		BUILT_BOTH
 	};
 
+	
+	//Clear any existing tags
+	clearAllTags();
 	maxDepth=0;
+
 	//No indexedPoints? That was easy.
 	if(!indexedPoints.size())
 		return true;
+
 	
 	ASSERT(treeBounds.isValid());
 
 	//Maintain a stack of nodeoffsets, and whether we have built the left hand side
 	stack<pair<size_t,size_t> > limits;
 	stack<char> buildStatus;
+	stack<size_t> splitStack;
 
+	//Data runs from 0 to size-1 INCLUSIVE
 	limits.push(make_pair(0,indexedPoints.size()-1));
 	buildStatus.push(BUILT_NONE);
-	
+	splitStack.push((size_t)-1);
+
+
 	AxisCompareMk2 axisCmp;
 
 	size_t numSeen=0; // for progress reporting	
-	size_t median;
+	size_t splitIndex=0;
+
+
+	
+	size_t *childPtr=0;
+
+#ifdef DEBUG
+	for(size_t ui=0;ui<nodes.size();ui++)
+	{
+		nodes[ui].childLeft=nodes[ui].childRight=(size_t)-2;
+	}
+#endif
 	do
 	{
-		//Sort our current subregion
-		//with the exception of this sort, we don't even need to LOOK
-		//at the indexedPoints. Its all implicit in the balanced tree strucutre
-		median=(limits.top().second+limits.top().first)/2;
 
 		switch(buildStatus.top())
 		{
 			case BUILT_NONE:
 			{
+				//OK, so we have not seen this data at this level before
+				int curAxis=(limits.size()-1)%3;
 				//First time we have seen this group? OK, we need to sort
 				//along its hyper plane.
-				axisCmp.setAxis((limits.size()-1)%3);
+				axisCmp.setAxis(curAxis);
+			
+				//Sort data; note that the limits.top().second is the INCLUSIVE
+				// upper end.	
 				std::sort(indexedPoints.begin()+limits.top().first,
-						indexedPoints.begin() + limits.top().second,axisCmp);
-				nodes[median].tagged=false;
-				//Either of these cases results in use 
-				//handling the left branch.
-				buildStatus.top()++;
+						indexedPoints.begin() + limits.top().second+1,axisCmp);
+
+				//Initially assume that the mid node is the median; then we slide it up 
+				splitIndex=(limits.top().second+limits.top().first)/2;
+				
+				//Keep sliding the split towards the upper boundary until we hit a different
+				//data value. This ensure that all data on the left of the sub-tree is <= 
+				// to this data value for the specified sort axis
+				while(splitIndex != limits.top().second
+					&& indexedPoints[splitIndex].first.getValue(curAxis) ==
+				       		indexedPoints[splitIndex+1].first.getValue(curAxis))
+					splitIndex++;
+
+				buildStatus.top()++; //Increment the build status to "left" case.
+						
+
+				if(limits.size() ==1)
+				{
+					//root node
+					treeRoot=splitIndex;
+				}
+				else
+					*childPtr=splitIndex;
 
 				//look to see if there is any left data
-				if(median >limits.top().first)
+				if(splitIndex >limits.top().first)
 				{
 					//There is; we have to branch again
 					limits.push(make_pair(
-						limits.top().first,median-1));
+						limits.top().first,splitIndex-1));
 					
 					buildStatus.push(BUILT_NONE);
-
-					size_t newMedian;
-					newMedian=(limits.top().first+(median-1))/2;
-					nodes[median].childLeft=newMedian;
-
+					//Set the child pointer, as we don't know
+					//the correct value until the next sort.
+					childPtr=&nodes[splitIndex].childLeft;
 				}
 				else
 				{
 					//There is not. Set the left branch to null
-					nodes[median].childLeft=(size_t)-1;
+					nodes[splitIndex].childLeft=(size_t)-1;
 				}
+				splitStack.push(splitIndex);
+
 				break;
 			}
+
 			case BUILT_LEFT:
 			{
 				//Either of these cases results in use 
 				//handling the right branch.
 				buildStatus.top()++;
+				splitIndex=splitStack.top();
 				//Check to see if there is any right data
-				if(median <limits.top().second)
+				if(splitIndex <limits.top().second)
 				{
 					//There is; we have to branch again
 					limits.push(make_pair(
-						median+1,limits.top().second));
+						splitIndex+1,limits.top().second));
 					buildStatus.push(BUILT_NONE);
 
-					size_t newMedian;
-					newMedian=(limits.top().second+(median+1))/2;
-					nodes[median].childRight=newMedian;
-
+					//Set the child pointer, as we don't know
+					//the correct value until the next sort.
+					childPtr=&nodes[splitIndex].childRight;
 				}
 				else
 				{
 					//There is not. Set the right branch to null
-					nodes[median].childRight=(size_t)-1;
+					nodes[splitIndex].childRight=(size_t)-1;
 				}
 
 				break;
 			}
 			case BUILT_BOTH:
 			{
+				ASSERT(nodes[splitStack.top()].childLeft != (size_t)-2
+					&& nodes[splitStack.top()].childRight!= (size_t)-2 );
 				maxDepth=std::max(maxDepth,limits.size());
 				//pop limits and build status.
 				limits.pop();
 				buildStatus.pop();
-				
+				splitStack.pop();
 				ASSERT(limits.size() == buildStatus.size());
 				
 
 				numSeen++;
 				break;
 			}
-			default:
-				ASSERT(false);
-
 		}	
 
 		if(!(numSeen%PROGRESS_REDUCE) && progress)
@@ -177,11 +216,9 @@ bool K3DTreeMk2::build()
 			if(!(*callback)())
 				return false;
 		}
-	
+
 	}while(!limits.empty());
 
-	//Set the tree root to the median of the tree
-	treeRoot=(indexedPoints.size()-1)/2;
 
 	return true;
 }
@@ -247,26 +284,42 @@ void K3DTreeMk2::dump(std::ostream &strm,  size_t depth, size_t offset) const
 		{
 			strm << ui << " "<< indexedPoints[ui].first << std::endl;
 		}
-		offset=(indexedPoints.size()-1)/2;
+
+		strm << "----------------" << std::endl;
+		offset=treeRoot;
 	}
 
 	for(size_t ui=0;ui<depth; ui++)
 		strm << "\t";
 
-	strm << "(" << indexedPoints[offset].first[0] 
+	strm << offset << " : (" << indexedPoints[offset].first[0] 
 		<< "," << indexedPoints[offset].first[1] << "," << indexedPoints[offset].first[2]
 		<< ")" << std::endl;
 
 
 
+	for(size_t ui=0;ui<depth; ui++)
+		strm << "\t";
+	strm << "<l>" <<std::endl;
 
 	if(nodes[offset].childLeft!=(size_t)-1)
 	{
 		dump(strm,depth+1,nodes[offset].childLeft);
 	}
-	
+	for(size_t ui=0;ui<depth; ui++)
+		strm << "\t";
+	strm << "</l>" <<std::endl;
+
+	for(size_t ui=0;ui<depth; ui++)
+		strm << "\t";
+	strm << "<r>" <<std::endl;
+
 	if(nodes[offset].childRight!=(size_t)-1)
 		dump(strm,depth+1,nodes[offset].childRight);
+	
+	for(size_t ui=0;ui<depth; ui++)
+		strm << "\t";
+	strm << "</r>" <<std::endl;
 }
 
 size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
@@ -333,8 +386,7 @@ size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
 						//estimate sphere
 						tmpEdge= curDomain.bounds[curAxis][1];
 						curDomain.bounds[curAxis][1] = indexedPoints[curNode].first[curAxis];
-						if(bestPoint!=(size_t)-1 && 
-							!curDomain.intersects(indexedPoints[bestPoint].first,bestDistSqr))
+						if(!curDomain.intersects(searchPt,bestDistSqr))
 						{
 							curDomain.bounds[curAxis][1] = tmpEdge; 
 							visit++;
@@ -364,8 +416,7 @@ size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
 						tmpEdge= curDomain.bounds[curAxis][0];
 						curDomain.bounds[curAxis][0] = indexedPoints[curNode].first[curAxis];
 						
-						if(bestPoint !=(size_t)-1 && 
-							!curDomain.intersects(indexedPoints[bestPoint].first,bestDistSqr))
+						if(!curDomain.intersects(searchPt,bestDistSqr))
 						{
 							curDomain.bounds[curAxis][0] =tmpEdge; 
 							visit++;
@@ -402,8 +453,7 @@ size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
 						tmpEdge= curDomain.bounds[curAxis][0];
 						curDomain.bounds[curAxis][0] = indexedPoints[curNode].first[curAxis];
 						
-						if(bestPoint !=(size_t)-1&& 
-							!curDomain.intersects(indexedPoints[bestPoint].first,bestDistSqr))
+						if(!curDomain.intersects(searchPt,bestDistSqr))
 						{
 							curDomain.bounds[curAxis][0] = tmpEdge; 
 							visit++;
@@ -434,7 +484,7 @@ size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
 						tmpEdge= curDomain.bounds[curAxis][1];
 						curDomain.bounds[curAxis][1] = indexedPoints[curNode].first[curAxis];
 						
-						if(bestPoint !=(size_t)-1&& !curDomain.intersects(indexedPoints[bestPoint].first,bestDistSqr))
+						if(!curDomain.intersects(searchPt,bestDistSqr))
 						{
 							curDomain.bounds[curAxis][1] = tmpEdge; 
 							visit++;
@@ -514,11 +564,30 @@ size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
 	return bestPoint;	
 
 }
-		
+
+size_t K3DTreeMk2::tagCount() const
+{
+	size_t count=0;
+	for(size_t ui=0;ui<nodes.size();ui++)
+	{
+		if(nodes[ui].tagged)
+			count++;
+	
+	}
+
+	return count;
+}
 
 void K3DTreeMk2::clearTags(std::vector<size_t> &tagsToClear)
 {
 #pragma omp parallel for
 	for(size_t ui=0;ui<tagsToClear.size();ui++)
+		nodes[tagsToClear[ui]].tagged=false;
+}
+
+void K3DTreeMk2::clearAllTags()
+{
+#pragma omp parallel for
+	for(size_t ui=0;ui<nodes.size();ui++)
 		nodes[ui].tagged=false;
 }
