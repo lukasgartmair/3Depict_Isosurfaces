@@ -989,6 +989,18 @@ bool VoxeliseFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	
 }
 
+int VoxeliseFilter::getRefreshBlockMask() const
+{
+	//Absolutely nothing can go through this filter.
+	return STREAMTYPE_MASK_ALL;
+}
+
+int VoxeliseFilter::getRefreshEmitMask() const
+{
+	return STREAM_TYPE_VOXEL | STREAM_TYPE_DRAW;
+}
+
+
 void VoxeliseFilter::setPropFromBinding(const SelectionBinding &b)
 {
 }	

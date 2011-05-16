@@ -104,7 +104,7 @@ public:
 	bool saveImage(unsigned int width, unsigned int height,const char *filename, bool showProgress=true);
 	//!Save an image sequence to files by orbiting the camera
 	bool saveImageSequence(unsigned int width, unsigned int height, unsigned int nFrames,
-			wxString &path, wxString &prefix, wxString &extention);
+			wxString &path, wxString &prefix, wxString &extension);
 
 	//!Get the background colour
 	void getGlClearColour(float &r,float &g,float &b) { currentScene.getBackgroundColour(r,g,b);}

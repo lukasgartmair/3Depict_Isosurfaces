@@ -92,7 +92,9 @@ std::string convertFileStringToCanonical(const std::string &s);
 //!A routine for loading numeric data from a text file
 unsigned int loadTextData(const char *cpFilename, 
 		std::vector<std::vector<float> > &dataVec,
-	       	std::vector<std::string> &header,const char delim);
+	       	std::vector<std::string> &header,const char *delim);
+
+
 
 template<class T>
 bool writeTextFile(const char *cpFilename, 
@@ -222,7 +224,7 @@ bool getFilesize(const char *fname, size_t  &size);
 int getTotalRAM();
 
 //!Get available ram in MB
-int getAvailRAM();
+size_t getAvailRAM();
 
 inline std::string tabs(unsigned int nTabs)
 {
@@ -340,6 +342,8 @@ public:
     //of the cube
     bool containsPt(const Point3D &pt) const;
 
+    //!Is this bounding cube completely contained within a sphere centred on pt of sqr size sqrRad?
+    bool containedInSphere(const Point3D &pt, float sqrRad) const;
 
     //!Returns maximum distnace to box corners (which is an upper bound on max box distance). 
     //Bounding box must be valid.
@@ -348,12 +352,16 @@ public:
     //Get the largest dimension of the bound cube
     float getLargestDim() const;
 
+    //Return the rectilinear volume represented by this prism.
+    float volume() const { return (bounds[0][1] - bounds[0][0])*
+	    	(bounds[1][1] - bounds[1][0])*(bounds[2][1] - bounds[2][0]);}
     void limits();
     BoundCube operator=(const BoundCube &);
     //!Expand (as needed) volume such that the argument bounding cube is enclosed by this one
     void expand(const BoundCube &b);
     //!Expand such that point is contained in this volume. Existing volume must be valid
     void expand(const Point3D &p);
+
 
     friend  std::ostream &operator<<(std::ostream &stream, const BoundCube& b);
 
@@ -632,7 +640,7 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 			bool strongRandom=false)
 {
 	//If there are not enough points, just copy it across in whole
-	if(max < num)
+	if(max <=num)
 	{
 		num=max;
 		result.resize(max);

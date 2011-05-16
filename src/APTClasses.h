@@ -287,4 +287,11 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 			vector<IonHit> &posIons,const char *posFile, size_t limitCount,
 					       	unsigned int &progress, bool (*callback)(),bool strongRandom);
 
+
+
+unsigned int limitLoadTextFile(int numColsTotal, unsigned int selectedCols[], 
+			vector<IonHit> &posIons,const char *posFile, const char *deliminator, const size_t limitCount,
+					       	unsigned int &progress, bool (*callback)(),bool strongRandom);
+
+
 #endif

@@ -184,7 +184,7 @@ The basic keys for controlling the camera move mode (left click) are :
 For any motion, the \texttt{Shift} key may be used to increase the camera move speed.  Scrolling on the window zooms in or out. For a perspective camera, zooming is performed by moving the camera closer to the object. For an orthographic camera, zooming simply scales the view, whilst holding the camera position constant.
 
 \section{Creating a scene}
-Initially the program window will appear with only the default world axes visible. To provide a more interesting view, it is necessary to inject data into the program.  To do so, select the File menu, and then select using ``Open''. At time of writing, only two formats are currently supported. Firstly are ``POS'' files, which consist of X,Y,Z and a values (usually mass-to-charge) \footnote{For a technical description of the file format see Section~\ref{sec:posformat}}. To load a file, navigate to an existing POS file on your disk. If you do not have a POS file, small example files are available on the project website, on the documentation page.  
+Initially the program window will appear with only the default world axes visible. To provide a more interesting view, it is necessary to inject data into the program.  To do so, select the File menu, and then select using ``Open''. At time of writing, only two formats are currently supported. Firstly are ``POS'' files, and secondly are text files, each which consist of X,Y,Z and a values (usually mass-to-charge) \footnote{For a technical description of the POS file format see Section~\ref{sec:posformat}. For a description of suitable text formats see~\ref{sec:textformat}}. To load a file, navigate to an existing POS file on your disk. If you do not have a POS or text file, small example files are available on the project website, on the documentation page.  
 
 Upon selecting the file and then \texttt{Open}/\texttt{OK}, the file will be loaded into the viewport. Note that the entire file is not loaded, but rather a random selection of elements in the file. 
 
@@ -559,6 +559,13 @@ Note that\emph{3Depict} guarantees to be able to read its own range files, and w
 \label{sec:posformat}
 This file is a four-field fixed width record file, with an integer number of entries. The file is uncompressed raw 32 bit IEEE754 floating point data, and can be loaded using most languages relatively easily. Note that the order of the floating point numbers ``endian-ness'' is fixed as big-endian. The floating point values are X,Y,Z and an arbitrary scalar value. The file may not contain invalid (Not-a-Number ``NaN'') values. \emph{3Depict} will accept files with different numbers of records (eg XYZ only, or XYZMI (where I is ignored)), but this must be manually specified.
 
+\subsubsection{Text files}
+\label{sec:textformat}
+The text files that are accepted by \emph{3Depict} must be ASCII formatted, and consist of at least four columns of data, separated by an acceptable delimiter. The accepted delimiters are currently tab, space and comma. The numeric format must be in the English locale, i.e. with a period used as the decimal separator, consisting of the digits 0--9 and the + and - symbols.
+
+Each file may have a contigous header that does not consist of this format, however if ANY portion of the header is interpretable as per the above, this will be considered to be the end of the header, and the remainder of the file is the file body. All lines in the file body must be intepretable as per the above.  
+
+Note that due to the need to do multiple passes over the text file to interpret it, and the need to do string to binary conversions, this will be considerably slower than using a POS formatted file for large inputs.
 
 \subsection{Modifying the program}
 

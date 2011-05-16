@@ -67,6 +67,13 @@ class IonDownsampleFilter : public Filter
 		
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
+	
+		//!Get the stream types that will be dropped during ::refresh	
+		int getRefreshBlockMask() const;
+
+		//!Get the stream types that will be generated during ::refresh	
+		int getRefreshEmitMask() const;	
+		
 };
 
 #endif

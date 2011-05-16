@@ -2,6 +2,7 @@
 #include "../xmlHelper.h"
 
 #include <map>
+#include <queue>
 
 enum
 {
@@ -48,6 +49,13 @@ const char SIZE_DIST_DATALABEL[] ="Size Distribution";
 const char CHEM_DIST_DATALABEL[] ="Chemistry Distribution";
 
 using std::vector;
+
+//Optimisation tuning value;
+// number of points to expect in a KD query sphere before the bulk query pays off
+//  in terms of algorithm speed
+const float SPHERE_PRESEARCH_CUTOFF = 75;
+
+
 
 void makeFrequencyTable(const IonStreamData *i ,const RangeFile *r, 
 				std::vector<std::pair<string,size_t> > &freqTable) 
@@ -458,6 +466,9 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	{
 		PlotStreamData *d;
 		d=clusterSizeDistribution(clusteredCore,clusteredBulk);
+		//Jump the plot index to some large number, so
+		//we don't hit the cluster size distribution index
+		d->index=1000;
 
 		if(d)
 		{
@@ -483,6 +494,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 
 		for(unsigned int ui=0;ui<plots.size();ui++)
 		{
+			plots[ui]->index=ui;
 
 			if(cache)
 			{
@@ -1411,6 +1423,19 @@ bool ClusterAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &pa
 	return true;
 }
 
+int ClusterAnalysisFilter::getRefreshBlockMask() const
+{
+	//Anything but ions can go through this filter.
+	return STREAM_TYPE_IONS;
+}
+
+int ClusterAnalysisFilter::getRefreshEmitMask() const
+{
+	if(wantClusterSizeDist || wantClusterComposition)
+		return STREAM_TYPE_IONS | STREAM_TYPE_PLOT;
+	else
+		return STREAM_TYPE_IONS;
+}
 
 std::string ClusterAnalysisFilter::getErrString(unsigned int i) const
 {
@@ -1683,7 +1708,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		vector<size_t> soluteCluster,dummy;
 		//Queue for atoms in this cluster waiting to be checked
 		//for their NNs.
-		std::deque<size_t> thisClusterQueue;
+		std::queue<size_t> thisClusterQueue;
 		
 		
 		//This solute is already clustered. move along.
@@ -1692,14 +1717,20 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		coreTree.tag(ui);
 
 	
+	
 		size_t clustIdx;
-		thisClusterQueue.push_front(ui);
+		thisClusterQueue.push(ui);
 		soluteCluster.push_back(ui);
 		do
 		{
 			curPt=thisClusterQueue.front();
+			const Point3D *thisPt;
+			thisPt=coreTree.getPt(curPt);
 			curDistSqr=0;
-			//Loop over this solute's NNs
+
+
+
+			//Now loop over this solute's NNs not found by prev. method
 			while(true)
 			{
 				ASSERT(curPt < coreTree.size());
@@ -1707,7 +1738,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 				//the find will tag the point, so we won't see it again
 				ASSERT(bCore.isValid());
 				clustIdx=coreTree.findNearestUntagged(
-						*(coreTree.getPt(curPt)),bCore, true);
+						*thisPt,bCore, true);
 
 
 				ASSERT(clustIdx == -1 || coreTree.getTag(clustIdx));
@@ -1726,13 +1757,13 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 					if(clustIdx !=(size_t)-1)
 						coreTree.tag(clustIdx,false);
 					
-					thisClusterQueue.pop_front();
+					thisClusterQueue.pop();
 					break;
 				}
 				else
 				{
 					//Record it as part of the cluster	
-					thisClusterQueue.push_back(clustIdx);
+					thisClusterQueue.push(clustIdx);
 					soluteCluster.push_back(clustIdx);
 				}
 			
@@ -1805,6 +1836,12 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 
 		bulkTree.getBoundCube(bBulk);
 
+		//Compute the expected number of points that we would encapsulate
+		//if we were to place  a sphere of size bulkLink in the KD domain.
+		// This allows us to choose whether to use a bulk "grab" approach, or not.
+		bool expectedPtsInSearchEnough;
+		expectedPtsInSearchEnough=((float)bulkTree.size())/bBulk.volume()*4.0/3.0*M_PI*pow(bulkLink,3.0)> SPHERE_PRESEARCH_CUTOFF;
+
 		//So-called "envelope" step.
 		float bulkLinkSqr=bulkLink*bulkLink;
 		size_t prog=PROGRESS_REDUCE;
@@ -1819,6 +1856,40 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 				size_t curIdx,bulkTreeIdx;
 				curIdx=allCoreClusters[ui][uj];
 
+				const Point3D *curPt;
+				curPt=(coreTree.getPt(curIdx));
+
+
+				//First do a grab of any sub-regions for cur pt
+				// based upon intersecting KD regions
+				// For readability, I have not factored this
+				// out of the loop; it should not have  a giant performance
+				// cost.
+				//---
+				if(expectedPtsInSearchEnough)
+				{
+					vector<pair<size_t,size_t> > blocks;
+					bulkTree.getTreesInSphere(*curPt,bulkLinkSqr,bBulk,blocks);
+
+					for(size_t uj=0; uj<blocks.size();uj++)
+					{
+						for(size_t uk=blocks[uj].first; uk<=blocks[uj].second;uk++)
+						{
+							if(!bulkTree.getTag(uk))
+							{
+								//Tag, then record it as part of the cluster	
+								bulkTree.tag(uk);
+								thisBulkCluster.push_back(uk);
+							}
+						}
+
+					}
+				}
+
+				//--
+
+
+
 				//Scan for bulkTree NN.
 				while(true)
 				{
@@ -1826,12 +1897,14 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 					//Find the next point that we have not yet retrieved
 					//the find will tag the point, so we won't see it again
 					bulkTreeIdx=bulkTree.findNearestUntagged(
-							*(coreTree.getPt(curIdx)),bBulk, true);
+							*curPt,bBulk, true);
 		
 
 					if(bulkTreeIdx !=(size_t)-1)
-						curDistSqr=bulkTree.getPt(bulkTreeIdx)->sqrDist(
-								*(coreTree.getPt(curIdx)) );
+					{
+						curDistSqr=bulkTree.getPt(
+							bulkTreeIdx)->sqrDist(*curPt);
+					}
 
 					//Point out of clustering range, or no more points
 					if(bulkTreeIdx == (size_t)-1 || curDistSqr > bulkLinkSqr )
@@ -1996,6 +2069,9 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 bool ClusterAnalysisFilter::paranoidDebugAssert(
 	const std::vector<vector<IonHit> > &core, const std::vector<vector<IonHit> > &bulk) const
 {
+	using std::cerr;
+	using std::endl;
+
 	for(size_t ui=0;ui<bulk.size(); ui++)
 	{
 		if(bulk[ui].size())
@@ -2215,6 +2291,7 @@ PlotStreamData* ClusterAnalysisFilter::clusterSizeDistribution(const vector<vect
 	dist->r=1;
 	dist->g=0;
 	dist->b=0;
+
 
 	dist->xLabel="Cluster Size";
 	dist->yLabel="Frequency";

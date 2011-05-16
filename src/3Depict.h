@@ -68,8 +68,8 @@ private:
 
 	//!Update the progress information in the status bar
 	void updateProgressStatus();
-	//!Perform an update to the 3D Scene
-	void doSceneUpdate();
+	//!Perform an update to the 3D Scene. Returns false if refresh failed
+	bool doSceneUpdate();
 
 	//!Update the post-processing effects in the 3D scene. 
 	void updatePostEffects(); 

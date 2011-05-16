@@ -6,45 +6,59 @@
 
 enum
 {
-	KEY_TRANSFORM_MODE,
-	KEY_TRANSFORM_SCALEFACTOR,
-	KEY_TRANSFORM_ORIGIN,
+	KEY_MODE,
+	KEY_SCALEFACTOR,
+	KEY_ORIGIN,
 	KEY_TRANSFORM_SHOWORIGIN,
-	KEY_TRANSFORM_ORIGINMODE,
-	KEY_TRANSFORM_ROTATE_ANGLE,
-	KEY_TRANSFORM_ROTATE_AXIS,
+	KEY_ORIGINMODE,
+	KEY_NOISELEVEL,
+	KEY_NOISETYPE,
+	KEY_ROTATE_ANGLE,
+	KEY_ROTATE_AXIS,
 };
 
 //Possible transform modes (scaling, rotation etc)
 enum
 {
-	TRANSFORM_TRANSLATE,
-	TRANSFORM_SCALE,
-	TRANSFORM_ROTATE,
-	TRANSFORM_VALUE_SHUFFLE,
-	TRANSFORM_MODE_ENUM_END
+	MODE_TRANSLATE,
+	MODE_SCALE,
+	MODE_ROTATE,
+	MODE_VALUE_SHUFFLE,
+	MODE_SPATIAL_NOISE,
+	MODE_ENUM_END
 };
 
 //!Possible mode for selection of origin in transform filter
 enum
 {
-	TRANSFORM_ORIGINMODE_SELECT,
-	TRANSFORM_ORIGINMODE_CENTREBOUND,
-	TRANSFORM_ORIGINMODE_MASSCENTRE,
-	TRANSFORM_ORIGINMODE_END, // Not actually origin mode, just end of enum
+	ORIGINMODE_SELECT,
+	ORIGINMODE_CENTREBOUND,
+	ORIGINMODE_MASSCENTRE,
+	ORIGINMODE_END, // Not actually origin mode, just end of enum
+};
+
+//!Possible noise modes
+enum
+{
+	NOISETYPE_GAUSSIAN,
+	NOISETYPE_WHITE,
+	NOISETYPE_END
 };
 
 //!Error codes
 enum
 {
-	TRANSFORM_CALLBACK_FAIL=1,
+	ERR_CALLBACK_FAIL=1,
+	ERR_NOMEM
 };
 
 //=== Transform filter === 
 TransformFilter::TransformFilter()
 {
-	transformMode=TRANSFORM_TRANSLATE;
-	originMode=TRANSFORM_ORIGINMODE_SELECT;
+	randGen.initTimer();
+	transformMode=MODE_TRANSLATE;
+	originMode=ORIGINMODE_SELECT;
+	noiseType=NOISETYPE_WHITE;
 	//Set up default value
 	vectorParams.resize(1);
 	vectorParams[0] = Point3D(0,0,0);
@@ -71,6 +85,7 @@ Filter *TransformFilter::cloneUncached() const
 	p->originMode=originMode;
 	p->transformMode=transformMode;
 	p->showOrigin=showOrigin;
+	p->noiseType=noiseType;
 	//We are copying wether to cache or not,
 	//not the cache itself
 	p->cache=cache;
@@ -108,7 +123,7 @@ DrawStreamData* TransformFilter::makeMarkerSphere(SelectionDevice<Filter>* &s) c
 	//as bindings are selected by first match.
 	//====
 	//The object is selectable
-	if (originMode == TRANSFORM_ORIGINMODE_SELECT )
+	if (originMode == ORIGINMODE_SELECT )
 	{
 		dS->canSelect=true;
 
@@ -148,8 +163,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		if(filterOutputs.size() && showPrimitive)
 		{
 			//If the user is using a transform mode that requires origin selection 
-			if(showOrigin && (transformMode == TRANSFORM_ROTATE ||
-					transformMode == TRANSFORM_SCALE) )
+			if(showOrigin && (transformMode == MODE_ROTATE ||
+					transformMode == MODE_SCALE) )
 			{
 				SelectionDevice<Filter> *s;
 				getOut.push_back(makeMarkerSphere(s));
@@ -167,7 +182,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 	//so set the origin variable depending upon this
 	switch(originMode)
 	{
-		case TRANSFORM_ORIGINMODE_CENTREBOUND:
+		case ORIGINMODE_CENTREBOUND:
 		{
 			BoundCube masterB;
 			masterB.setInverseLimits();
@@ -195,7 +210,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 				vectorParams[0]=masterB.getCentroid();
 			break;
 		}
-		case TRANSFORM_ORIGINMODE_MASSCENTRE:
+		case ORIGINMODE_MASSCENTRE:
 		{
 			Point3D massCentre(0,0,0);
 			size_t numCentres=0;
@@ -225,15 +240,15 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 			break;
 
 		}
-		case TRANSFORM_ORIGINMODE_SELECT:
+		case ORIGINMODE_SELECT:
 			break;
 		default:
 			ASSERT(false);
 	}
 
 	//If the user is using a transform mode that requires origin selection 
-	if(showOrigin && (transformMode == TRANSFORM_ROTATE ||
-			transformMode == TRANSFORM_SCALE) )
+	if(showOrigin && (transformMode == MODE_ROTATE ||
+			transformMode == MODE_SCALE) )
 	{
 		SelectionDevice<Filter> *s;
 		getOut.push_back(makeMarkerSphere(s));
@@ -245,7 +260,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 	//ion streams, generating new outgoing ion streams with
 	//the modified positions
 	size_t totalSize=numElements(dataIn);
-	if( transformMode != TRANSFORM_VALUE_SHUFFLE)
+	if( transformMode != MODE_VALUE_SHUFFLE)
 	{
 		//Dont cross the streams. Why? It would be bad.
 		//  - Im fuzzy on the whole good-bad thing, what do you mean bad?"
@@ -256,7 +271,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		{
 			switch(transformMode)
 			{
-				case TRANSFORM_SCALE:
+				case MODE_SCALE:
 				{
 					//We are going to scale the incoming point data
 					//around the specified origin.
@@ -273,7 +288,16 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							//Set up scaling output ion stream 
 							IonStreamData *d=new IonStreamData;
 							const IonStreamData *src = (const IonStreamData *)dataIn[ui];
-							d->data.resize(src->data.size());
+
+							try
+							{
+								d->data.resize(src->data.size());
+							}
+							catch(std::bad_alloc)
+							{
+								delete d;
+								return ERR_NOMEM;
+							}
 							d->r = src->r;
 							d->g = src->g;
 							d->b = src->b;
@@ -317,7 +341,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							if(spin)
 							{			
 								delete d;
-								return TRANSFORM_CALLBACK_FAIL;
+								return ERR_CALLBACK_FAIL;
 							}
 
 #else
@@ -338,7 +362,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 									if(!(*callback)())
 									{
 										delete d;
-										return TRANSFORM_CALLBACK_FAIL;
+										return ERR_CALLBACK_FAIL;
 									}
 									curProg=NUM_CALLBACK;
 								}
@@ -368,7 +392,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 					}
 					break;
 				}
-				case TRANSFORM_TRANSLATE:
+				case MODE_TRANSLATE:
 				{
 					//We are going to scale the incoming point data
 					//around the specified origin.
@@ -384,7 +408,15 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							IonStreamData *d=new IonStreamData;
 
 							const IonStreamData *src = (const IonStreamData *)dataIn[ui];
-							d->data.resize(src->data.size());
+							try
+							{
+								d->data.resize(src->data.size());
+							}
+							catch(std::bad_alloc)
+							{
+								delete d;
+								return ERR_NOMEM;
+							}
 							d->r = src->r;
 							d->g = src->g;
 							d->b = src->b;
@@ -428,7 +460,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							if(spin)
 							{			
 								delete d;
-								return TRANSFORM_CALLBACK_FAIL;
+								return ERR_CALLBACK_FAIL;
 							}
 
 #else
@@ -449,7 +481,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 									if(!(*callback)())
 									{
 										delete d;
-										return TRANSFORM_CALLBACK_FAIL;
+										return ERR_CALLBACK_FAIL;
 									}
 									curProg=NUM_CALLBACK;
 								}
@@ -477,7 +509,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 					}
 					break;
 				}
-				case TRANSFORM_ROTATE:
+				case MODE_ROTATE:
 				{
 					Point3D origin=vectorParams[0];
 					switch(dataIn[ui]->getStreamType())
@@ -488,7 +520,15 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							const IonStreamData *src = (const IonStreamData *)dataIn[ui];
 							//Set up output ion stream 
 							IonStreamData *d=new IonStreamData;
-							d->data.resize(src->data.size());
+							try
+							{
+								d->data.resize(src->data.size());
+							}
+							catch(std::bad_alloc)
+							{
+								delete d;
+								return ERR_NOMEM;
+							}
 							d->r = src->r;
 							d->g = src->g;
 							d->b = src->b;
@@ -521,6 +561,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 
 							size_t pos=0;
 
+							//TODO: Parallelise rotation
 							//Copy across the ions into the target
 							for(vector<IonHit>::const_iterator it=src->data.begin();
 								       it!=src->data.end(); ++it)
@@ -541,7 +582,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 									if(!(*callback)())
 									{
 										delete d;
-										return TRANSFORM_CALLBACK_FAIL;
+										return ERR_CALLBACK_FAIL;
 									}
 									curProg=NUM_CALLBACK;
 								}
@@ -568,10 +609,135 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 
 					break;
 				}
-									
+				case MODE_SPATIAL_NOISE:
+				{
+					ASSERT(scalarParams.size() ==1 &&
+							vectorParams.size()==0);
+					switch(dataIn[ui]->getStreamType())
+					{
+						case STREAM_TYPE_IONS:
+						{
+							//Set up scaling output ion stream 
+							IonStreamData *d=new IonStreamData;
 
+							const IonStreamData *src = (const IonStreamData *)dataIn[ui];
+							try
+							{
+								d->data.resize(src->data.size());
+							}
+							catch(std::bad_alloc)
+							{
+								delete d;
+								return ERR_NOMEM;
+							}
+							d->r = src->r;
+							d->g = src->g;
+							d->b = src->b;
+							d->a = src->a;
+							d->ionSize = src->ionSize;
+							d->valueType=src->valueType;
+
+							float scaleFactor=scalarParams[0];
+							ASSERT(src->data.size() <= totalSize);
+							unsigned int curProg=NUM_CALLBACK;
+
+							//NOTE: This *cannot* be parallelised without parallelising the random
+							// number generator safely. If using multiple random number generators,
+							// one would need to ensure sufficient entropy in EACH generator. This
+							// is not trivial to prove, and so has not been done here. Bootstrapping
+							// each random number generator using non-random seeds could be problematic
+							// same as feeding back a random number into other rng instances 
+							//
+							// One solution is to use the unix /dev/urandom interface or the windows
+							// cryptographic API, alternatively use the TR1 header's mersenne twister with
+							// multi-seeding:
+							//  http://theo.phys.sci.hiroshima-u.ac.jp/~ishikawa/PRNG/mt_stream_en.html
+							switch(noiseType)
+							{
+								case NOISETYPE_WHITE:
+								{
+									for(size_t ui=0;ui<src->data.size();ui++)
+									{
+										Point3D pt;
+
+										pt.setValue(0,randGen.genUniformDev()-0.5f);
+										pt.setValue(1,randGen.genUniformDev()-0.5f);
+										pt.setValue(2,randGen.genUniformDev()-0.5f);
+
+										pt*=scaleFactor;
+
+										//set the position for the given ion
+										d->data[ui].setPos(src->data[ui].getPosRef() + pt);
+										d->data[ui].setMassToCharge(src->data[ui].getMassToCharge());
+										
+										
+										if(!curProg--)
+										{
+											curProg=NUM_CALLBACK;
+											progress.filterProgress= (unsigned int)((float)(ui)/((float)totalSize)*100.0f);
+											if(!(*callback)())
+											{
+												delete d;
+												return ERR_CALLBACK_FAIL;
+											}
+										}
+									}
+									break;
+								}
+								case NOISETYPE_GAUSSIAN:
+								{
+									for(size_t ui=0;ui<src->data.size();ui++)
+									{
+										Point3D pt;
+
+										pt.setValue(0,randGen.genGaussDev());
+										pt.setValue(1,randGen.genGaussDev());
+										pt.setValue(2,randGen.genGaussDev());
+
+										pt*=scaleFactor;
+
+										//set the position for the given ion
+										d->data[ui].setPos(src->data[ui].getPosRef() + pt);
+										d->data[ui].setMassToCharge(src->data[ui].getMassToCharge());
+										
+										
+										if(!curProg--)
+										{
+											curProg=NUM_CALLBACK;
+											progress.filterProgress= (unsigned int)((float)(ui)/((float)totalSize)*100.0f);
+											if(!(*callback)())
+											{
+												delete d;
+												return ERR_CALLBACK_FAIL;
+											}
+										}
+									}
+
+									break;
+								}
+							}
+							
+							ASSERT(d->data.size() == src->data.size());
+							if(cache)
+							{
+								d->cached=1;
+								filterOutputs.push_back(d);
+								cacheOK=true;
+							}
+							else
+								d->cached=0;
+							
+							getOut.push_back(d);
+							break;
+						}
+						default:
+							getOut.push_back(dataIn[ui]);
+							break;
+					}
+					break;
 				}
 			}
+		}
 	}
 	else
 	{
@@ -601,9 +767,16 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		vector<float> ionData;
 
 		//TODO: Ouch. Memory intensive -- could do a better job
-		//of this
-		ionData.resize(totalSize);
-		d->data.resize(totalSize);
+		//of this?
+		try
+		{
+			ionData.resize(totalSize);
+			d->data.resize(totalSize);
+		}
+		catch(std::bad_alloc)
+		{
+			return ERR_NOMEM; 
+		}
 
 		//merge the datasets
 		for(size_t ui=0;ui<dataIn.size() ;ui++)
@@ -630,7 +803,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							if(!(*callback)())
 							{
 								delete d;
-								return TRANSFORM_CALLBACK_FAIL;
+								return ERR_CALLBACK_FAIL;
 							}
 						}
 
@@ -653,14 +826,14 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		if(!(*callback)())
 		{
 			delete d;
-			return TRANSFORM_CALLBACK_FAIL;
+			return ERR_CALLBACK_FAIL;
 		}
 		//Shuffle the value data.TODO: callback functor	
 		std::random_shuffle(d->data.begin(),d->data.end());	
 		if(!(*callback)())
 		{
 			delete d;
-			return TRANSFORM_CALLBACK_FAIL;
+			return ERR_CALLBACK_FAIL;
 		}
 
 		progress.step=2;
@@ -669,7 +842,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		if(!(*callback)())
 		{
 			delete d;
-			return TRANSFORM_CALLBACK_FAIL;
+			return ERR_CALLBACK_FAIL;
 		}
 		
 		
@@ -689,7 +862,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 				if(!(*callback)())
 				{
 					delete d;
-					return TRANSFORM_CALLBACK_FAIL;
+					return ERR_CALLBACK_FAIL;
 				}
 			}
 
@@ -723,16 +896,18 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 
 	string tmpStr;
 	vector<pair<unsigned int,string> > choices;
-	choices.push_back(make_pair((unsigned int) TRANSFORM_TRANSLATE,"Translate"));
-	choices.push_back(make_pair((unsigned int)TRANSFORM_SCALE,"Scale"));
-	choices.push_back(make_pair((unsigned int)TRANSFORM_ROTATE,"Rotate"));
-	choices.push_back(make_pair((unsigned int)TRANSFORM_VALUE_SHUFFLE,"Value Shuffle"));
+	choices.push_back(make_pair((unsigned int) MODE_TRANSLATE,"Translate"));
+	choices.push_back(make_pair((unsigned int)MODE_SCALE,"Scale"));
+	choices.push_back(make_pair((unsigned int)MODE_ROTATE,"Rotate"));
+	choices.push_back(make_pair((unsigned int)MODE_VALUE_SHUFFLE,"Value Shuffle"));
+	choices.push_back(make_pair((unsigned int)MODE_SPATIAL_NOISE,"Spatial Noise"));
 	
 	tmpStr= choiceString(choices,transformMode);
+	choices.clear();
 	
 	s.push_back(make_pair(string("Mode"),tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_TRANSFORM_MODE);
+	keys.push_back(KEY_MODE);
 	
 	propertyList.data.push_back(s);
 	propertyList.types.push_back(type);
@@ -741,17 +916,17 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 	s.clear();type.clear();keys.clear();
 	
 	//non-translation transforms require a user to select an origin	
-	if(transformMode == TRANSFORM_SCALE || transformMode == TRANSFORM_ROTATE)
+	if(transformMode == MODE_SCALE || transformMode == MODE_ROTATE)
 	{
 		vector<pair<unsigned int,string> > choices;
-		for(unsigned int ui=0;ui<TRANSFORM_ORIGINMODE_END;ui++)
+		for(unsigned int ui=0;ui<ORIGINMODE_END;ui++)
 			choices.push_back(make_pair(ui,getOriginTypeString(ui)));
 		
 		tmpStr= choiceString(choices,originMode);
 
 		s.push_back(make_pair(string("Origin mode"),tmpStr));
 		type.push_back(PROPERTY_TYPE_CHOICE);
-		keys.push_back(KEY_TRANSFORM_ORIGINMODE);
+		keys.push_back(KEY_ORIGINMODE);
 	
 		stream_cast(tmpStr,showOrigin);	
 		s.push_back(make_pair(string("Show marker"),tmpStr));
@@ -763,62 +938,90 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 
 	switch(transformMode)
 	{
-		case TRANSFORM_TRANSLATE:
+		case MODE_TRANSLATE:
 		{
 			ASSERT(vectorParams.size() == 1);
 			ASSERT(scalarParams.size() == 0);
 			
 			stream_cast(tmpStr,vectorParams[0]);
-			keys.push_back(KEY_TRANSFORM_ORIGIN);
+			keys.push_back(KEY_ORIGIN);
 			s.push_back(make_pair("Translation", tmpStr));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			break;
 		}
-		case TRANSFORM_SCALE:
+		case MODE_SCALE:
 		{
 			ASSERT(vectorParams.size() == 1);
 			ASSERT(scalarParams.size() == 1);
 			
 
-			if(originMode == TRANSFORM_ORIGINMODE_SELECT)
+			if(originMode == ORIGINMODE_SELECT)
 			{
 				stream_cast(tmpStr,vectorParams[0]);
-				keys.push_back(KEY_TRANSFORM_ORIGIN);
+				keys.push_back(KEY_ORIGIN);
 				s.push_back(make_pair("Origin", tmpStr));
 				type.push_back(PROPERTY_TYPE_POINT3D);
 			}
 
 			stream_cast(tmpStr,scalarParams[0]);
-			keys.push_back(KEY_TRANSFORM_SCALEFACTOR);
+			keys.push_back(KEY_SCALEFACTOR);
 			s.push_back(make_pair("Scale Fact.", tmpStr));
 			type.push_back(PROPERTY_TYPE_REAL);
 			break;
 		}
-		case TRANSFORM_ROTATE:
+		case MODE_ROTATE:
 		{
 			ASSERT(vectorParams.size() == 2);
 			ASSERT(scalarParams.size() == 1);
-			if(originMode == TRANSFORM_ORIGINMODE_SELECT)
+			if(originMode == ORIGINMODE_SELECT)
 			{
 				stream_cast(tmpStr,vectorParams[0]);
-				keys.push_back(KEY_TRANSFORM_ORIGIN);
+				keys.push_back(KEY_ORIGIN);
 				s.push_back(make_pair("Origin", tmpStr));
 				type.push_back(PROPERTY_TYPE_POINT3D);
 			}
 			stream_cast(tmpStr,vectorParams[1]);
-			keys.push_back(KEY_TRANSFORM_ROTATE_AXIS);
+			keys.push_back(KEY_ROTATE_AXIS);
 			s.push_back(make_pair("Axis", tmpStr));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 
 			stream_cast(tmpStr,scalarParams[0]);
-			keys.push_back(KEY_TRANSFORM_ROTATE_ANGLE);
+			keys.push_back(KEY_ROTATE_ANGLE);
 			s.push_back(make_pair("Angle (deg)", tmpStr));
 			type.push_back(PROPERTY_TYPE_REAL);
 			break;
 		}
-		case TRANSFORM_VALUE_SHUFFLE:
+		case MODE_VALUE_SHUFFLE:
 		{
 			//No options...
+			break;	
+		}
+		case MODE_SPATIAL_NOISE:
+		{
+			for(unsigned int ui=0;ui<NOISETYPE_END;ui++)
+				choices.push_back(make_pair(ui,getNoiseTypeString(ui)));
+			tmpStr= choiceString(choices,noiseType);
+			choices.clear();
+			
+			s.push_back(make_pair(string("Noise Type"),tmpStr));
+			type.push_back(PROPERTY_TYPE_CHOICE);
+			keys.push_back(KEY_NOISETYPE);
+
+
+			stream_cast(tmpStr,scalarParams[0]);
+			keys.push_back(KEY_NOISELEVEL);
+			if(noiseType == NOISETYPE_WHITE)
+				s.push_back(make_pair("Noise level", tmpStr));
+			else if(noiseType == NOISETYPE_GAUSSIAN)
+				s.push_back(make_pair("Standard dev.", tmpStr));
+			else
+			{
+				ASSERT(false);
+			}
+
+			type.push_back(PROPERTY_TYPE_REAL);
+
+
 			break;	
 		}
 		default:
@@ -832,7 +1035,7 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 		propertyList.data.push_back(s);
 		propertyList.types.push_back(type);
 		propertyList.keys.push_back(keys);
-		propertyList.keyNames.push_back("Trans. Params");
+		propertyList.keyNames.push_back("Transform Params");
 	}
 
 }
@@ -844,17 +1047,22 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
-		case KEY_TRANSFORM_MODE:
+		case KEY_MODE:
 		{
 
+			//TODO: Mkove these into an array,
+			//so they are synced with ::getProperties 
+			// (it wont work if these are not synced)
 			if(value == "Translate")
-				transformMode= TRANSFORM_TRANSLATE;
+				transformMode= MODE_TRANSLATE;
 			else if ( value == "Scale" )
-				transformMode= TRANSFORM_SCALE;
+				transformMode= MODE_SCALE;
 			else if ( value == "Rotate")
-				transformMode= TRANSFORM_ROTATE;
+				transformMode= MODE_ROTATE;
 			else if ( value == "Value Shuffle")
-				transformMode= TRANSFORM_VALUE_SHUFFLE;
+				transformMode= MODE_VALUE_SHUFFLE;
+			else if ( value == "Spatial Noise")
+				transformMode= MODE_SPATIAL_NOISE;
 			else
 				return false;
 
@@ -862,19 +1070,22 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 			scalarParams.clear();
 			switch(transformMode)
 			{
-				case TRANSFORM_SCALE:
+				case MODE_SCALE:
 					vectorParams.push_back(Point3D(0,0,0));
 					scalarParams.push_back(1.0f);
 					break;
-				case TRANSFORM_TRANSLATE:
+				case MODE_TRANSLATE:
 					vectorParams.push_back(Point3D(0,0,0));
 					break;
-				case TRANSFORM_ROTATE:
+				case MODE_ROTATE:
 					vectorParams.push_back(Point3D(0,0,0));
 					vectorParams.push_back(Point3D(1,0,0));
 					scalarParams.push_back(0.0f);
 					break;
-				case TRANSFORM_VALUE_SHUFFLE:
+				case MODE_VALUE_SHUFFLE:
+					break;
+				case MODE_SPATIAL_NOISE:
+					scalarParams.push_back(0.1f);
 					break;
 				default:
 					ASSERT(false);
@@ -886,8 +1097,9 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 		//The rotation angle, and the scale factor are both stored
 		//in scalaraparams[0]. All we need ot do is set that,
 		//as either can take any valid floating pt value
-		case KEY_TRANSFORM_ROTATE_ANGLE:
-		case KEY_TRANSFORM_SCALEFACTOR:
+		case KEY_ROTATE_ANGLE:
+		case KEY_SCALEFACTOR:
+		case KEY_NOISELEVEL:
 		{
 			float newScale;
 			if(stream_cast(newScale,value))
@@ -901,7 +1113,7 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			return true;
 		}
-		case KEY_TRANSFORM_ORIGIN:
+		case KEY_ORIGIN:
 		{
 			Point3D newPt;
 			if(!parsePointStr(value,newPt))
@@ -916,7 +1128,7 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 
 			return true;
 		}
-		case KEY_TRANSFORM_ROTATE_AXIS:
+		case KEY_ROTATE_AXIS:
 		{
 			ASSERT(vectorParams.size() ==2);
 			ASSERT(scalarParams.size() ==1);
@@ -937,13 +1149,13 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 			return true;
 		}
 			break;
-		case KEY_TRANSFORM_ORIGINMODE:
+		case KEY_ORIGINMODE:
 		{
 			size_t i;
-			for (i = 0; i < TRANSFORM_MODE_ENUM_END; i++)
+			for (i = 0; i < MODE_ENUM_END; i++)
 				if (value == getOriginTypeString(i)) break;
 		
-			if( i == TRANSFORM_MODE_ENUM_END)
+			if( i == MODE_ENUM_END)
 				return false;
 
 			if(originMode != i)
@@ -970,6 +1182,23 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 
 			break;
 		}
+		case KEY_NOISETYPE:
+		{
+			size_t i;
+			for (i = 0; i < NOISETYPE_END; i++)
+				if (value == getNoiseTypeString(i)) break;
+		
+			if( i == NOISETYPE_END)
+				return false;
+
+			if(noiseType != i)
+			{
+				noiseType = i;
+				needUpdate=true;
+				clearCache();
+			}
+			break;
+		}
 		default:
 			ASSERT(false);
 	}	
@@ -980,8 +1209,15 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 std::string  TransformFilter::getErrString(unsigned int code) const
 {
 
-	//Currently the only error is aborting
-	return std::string("Aborted");
+	switch(code)
+	{
+		//User aborted in a callback
+		case ERR_CALLBACK_FAIL:
+			return std::string("Aborted");
+		//Caught a memory issue
+		case ERR_NOMEM:
+			return std::string("Unable to allocate memory");
+	}
 }
 
 bool TransformFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
@@ -995,6 +1231,8 @@ bool TransformFilter::writeState(std::ofstream &f,unsigned int format, unsigned 
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
 			f << tabs(depth+1) << "<transformmode value=\"" << transformMode<< "\"/>"<<endl;
 			f << tabs(depth+1) << "<originmode value=\"" << originMode<< "\"/>"<<endl;
+			
+			f << tabs(depth+1) << "<noisetype value=\"" << noiseType<< "\"/>"<<endl;
 
 			string tmpStr;
 			if(showOrigin)
@@ -1046,7 +1284,7 @@ bool TransformFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	//====
 	if(!XMLGetNextElemAttrib(nodePtr,transformMode,"transformmode","value"))
 		return false;
-	if(transformMode>= TRANSFORM_MODE_ENUM_END)
+	if(transformMode>= MODE_ENUM_END)
 	       return false;	
 	//====
 	
@@ -1054,7 +1292,15 @@ bool TransformFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	//====
 	if(!XMLGetNextElemAttrib(nodePtr,originMode,"originmode","value"))
 		return false;
-	if(originMode>= TRANSFORM_ORIGINMODE_END)
+	if(originMode>= ORIGINMODE_END)
+	       return false;	
+	//====
+	
+	//Retrieve origination type 
+	//====
+	if(!XMLGetNextElemAttrib(nodePtr,originMode,"noisetype","value"))
+		return false;
+	if(noiseType>= NOISETYPE_END)
 	       return false;	
 	//====
 	
@@ -1143,25 +1389,41 @@ bool TransformFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	//Check the scalar params match the selected primitive	
 	switch(transformMode)
 	{
-		case TRANSFORM_TRANSLATE:
+		case MODE_TRANSLATE:
 			if(vectorParams.size() != 1 || scalarParams.size() !=0)
 				return false;
 			break;
-		case TRANSFORM_SCALE:
+		case MODE_SCALE:
 			if(vectorParams.size() != 1 || scalarParams.size() !=1)
 				return false;
 			break;
-		case TRANSFORM_ROTATE:
+		case MODE_ROTATE:
 			if(vectorParams.size() != 2 || scalarParams.size() !=1)
 				return false;
 			break;
-		case TRANSFORM_VALUE_SHUFFLE:
+		case MODE_VALUE_SHUFFLE:
+		case MODE_SPATIAL_NOISE:
 			break;
 		default:
 			ASSERT(false);
 			return false;
 	}
 	return true;
+}
+
+
+int TransformFilter::getRefreshBlockMask() const
+{
+	//Only ions cannot go through this filter.
+	return STREAM_TYPE_IONS;
+}
+
+int TransformFilter::getRefreshEmitMask() const
+{
+	if(showPrimitive)
+		return STREAM_TYPE_IONS;
+	else
+		return STREAM_TYPE_IONS | STREAM_TYPE_DRAW;
 }
 
 
@@ -1182,13 +1444,24 @@ std::string TransformFilter::getOriginTypeString(unsigned int i) const
 {
 	switch(i)
 	{
-		case TRANSFORM_ORIGINMODE_SELECT:
+		case ORIGINMODE_SELECT:
 			return std::string("Specify");
-		case TRANSFORM_ORIGINMODE_CENTREBOUND:
+		case ORIGINMODE_CENTREBOUND:
 			return std::string("Boundbox Centre");
-		case TRANSFORM_ORIGINMODE_MASSCENTRE:
+		case ORIGINMODE_MASSCENTRE:
 			return std::string("Mass Centre");
 	}
 	ASSERT(false);
 }
 
+std::string TransformFilter::getNoiseTypeString(unsigned int i) const
+{
+	switch(i)
+	{
+		case NOISETYPE_WHITE:
+			return std::string("White");
+		case NOISETYPE_GAUSSIAN:
+			return std::string("Gaussian");
+	}
+	ASSERT(false);
+}

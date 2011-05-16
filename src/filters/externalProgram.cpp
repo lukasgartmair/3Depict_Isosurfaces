@@ -406,21 +406,8 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			//Possible delimiters to try when loading file
 			//try each in turn
 			const char *delimString ="\t, ";
-			unsigned int uj=0;
-			while(delimString[uj])
-			{
-				if(!loadTextData(sTmp.c_str(),dataVec,header,delimString[uj]))
-					break;
-
-				dataVec.clear();
-				header.clear();
-				uj++;
-			}
-
-			//well we ran out of delimiters. bad luck
-			if(!delimString[uj] || !dataVec.size())
+			if(!loadTextData(sTmp.c_str(),dataVec,header,delimString))
 				return EXTERNALPROG_READPLOT_FAIL;
-
 
 			//Check that the input has the correct size
 			for(unsigned int uj=0;uj<dataVec.size()-1;uj+=2)
@@ -447,7 +434,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 				d->a=1.0;
 
 
-				//set the title to the filename (trim the .xy extention
+				//set the title to the filename (trim the .xy extension
 				//and the working directory name)
 				string tmpFilename;
 				tmpFilename=sTmp.substr(workingDir.size(),sTmp.size()-
@@ -735,3 +722,14 @@ bool ExternalProgramFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 	return true;
 }
 
+int ExternalProgramFilter::getRefreshBlockMask() const
+{
+	//Absolutely nothing can go through this filter.
+	return 0;
+}
+
+int ExternalProgramFilter::getRefreshEmitMask() const
+{
+	//Can only generate ion streams and plot streams
+	return STREAM_TYPE_IONS | STREAM_TYPE_PLOT;
+}

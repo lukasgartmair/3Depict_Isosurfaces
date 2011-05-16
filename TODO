@@ -6,15 +6,17 @@ TODO List - worlds simplest bugtracking system
 	Fix Needs testing:
 	To Implement:
 		== Next version ==
-		* Billboard text
+		* Improved isosurface rendering
+		* Parallelise animation save?
 
 		== Eventually == 
+		* Billboard text
+		* Improved resolution dialog (Easy fix, but needs time/thought)
+		* Stream information filter (Easy fix, but needs time/thought)
 		* Binomial?
-		* Optimised normal computation for raw triangles -> isosurface 
-		* Overlay device handling -- drag and drop overlay entities
 		* Polynomial error estimator in graph
-		* Text data load functions
 		* Shear-warp volume render mode for voxels
+		* Gaussian noise for spatial transform (Easy Fix)
 		* Ion exchange filter
 		* Front-to back alpha blending ordering support for
 		 scene drawing of non-pointcloud objects
@@ -25,22 +27,22 @@ TODO List - worlds simplest bugtracking system
 		* VTK/xyzm output
 		* BB cache for ion data?
 		* Option to warn on file overwrite with save after merge (default off)
-		* Unit testing system
 		* Language Translation support
-		* Theora video
-		* Improved resolution dialog
+		* Theora video?
 
 	Outstanding bugs:
 		== Next release==
+		* Scroll wheel on text area for camera drop down does not scroll cameras; only on button (wxGTK only??)
+		* Postprocess camera crop is buggy when dataset is upside down (numerical stability problem??)
+
+		== Eventually==
+		* openGL detection is unreliable; crash on startup if openGL not available.
+		  (Possibly this? https://bugzilla.redhat.com/show_bug.cgi?id=684390)
 		* Loading a full pos file directly onto the video card cannot be aborted.
 		* Colour bar drawing broken when tiling an output image
 		* Spatial analysis filter does not update its output graph strings.
-		* Data files when failed to load, do remove, but are put back at next program load	
-		* Voxels will attempt to construct isosurface even with 1 cell across any dimension
-
-		== Eventually==	
+		* Data files when failing to load, do remove, but are put back at next program load	
 		* Error bar masking for graph (mathgl draws error bars outside plot boundary)
-		* Windows appears to have weird front-back drawing behaviour for point clouds.
 		* Pos load add could always add to bottom of filter list,
 		 rather than default value
 		* Grid copy/ctrl-c doesn't seem to work under GTK. The data gets
@@ -52,18 +54,28 @@ TODO List - worlds simplest bugtracking system
 
 		== Needs reproducing ==
 		* Invalid range file being opened cause Package export to crash
-		* was abe to get assertion (excomponents.cpp:399) when selecting orthogonal camera.
+		* was able to get assertion (excomponents.cpp:399) when selecting orthogonal camera.
+		* Windows appears to have weird front-back drawing behaviour for point clouds.
+		* Debian user reports unconditional segfault in libmgl during STIX font parse. 
+			- Debian Bug 623431 : http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=623431
+			- Patches sent upstream, but no way to test if this actually did anything, as bug reporter non-responsive and cannot
+			  reproduce this problem locally.
+
 	Auditing:
 		== Next release ==
 		* Check each filter is actually reporting the required cache memory
 
 	Performance:
-		* Scene is being continuosly refreshed during post effects, causing CPU usage
+		* Scene is sometimes continuously refreshed during post effects, causing CPU usage
 		  to max out.
 		* Clipping sphere/cylinder does BB test? (only useful if we have bb cache)
 		* Pos limit loader could alter its behaviour when
 		 sampling rates some percentage to be determined (load
 		 file, skip buffer).
+		* Clipping should be parallelised
+		* Clustering could be paralellised, but is complex. Split & weld along KD tree lines using 
+		  cluster BB interactions.
+		* Spectrum plot always clears cache when properties change -- this is not neccesary for many cases.
 	
 	Misc:
 
@@ -76,8 +88,5 @@ TODO List - worlds simplest bugtracking system
 		  the different bits, and then force a refresh. This would allow for removal 
 		  of the callback mechanism that is currently in use
 	* work out which inline FIXMEs and TODOs are still valid, and need attention
-	* Re-arrange source to reduce compile-time interdependence (bad .h file arrangement?)
-		- Move filter base class to own source file, as program should be minimally aware of
-		  actual filters
 	* I have multiple colour classes floating about. might be an idea to unify them.
 	* K3DTree currently requires public access to members of boundcube

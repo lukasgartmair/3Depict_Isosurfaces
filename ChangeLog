@@ -1,3 +1,60 @@
+* May 16, 2011  : 0.0.6
+	Features:
+	- Text data file loading
+	- Cameras can now be locked
+	- Add noise mode to transform filter (gaussian/white)
+
+	User Visible Bugfixes/Changes:
+	- Clustering algorithm now gives sensible results. 
+		- Previous implementation was wrong in several respects. Now
+		  should behave correctly, even on corner cases.
+		- Now performs bounds-in-sphere check for large queries,
+		  significantly improving the scaling characteristics of
+		  the search when using large bulk link radii
+	- Fix error in plot causing assertion error during mouseover
+	- Fix plot behaviour when all data == 0.
+	- Fix crash when moving range on empty data 
+	- Workaround for wxWidgets bug where recent file list >9 items
+	  would not load
+	- Fix incorrect "loaded file" message if uninterpretable pos file
+	  loaded.
+	- Fix bug in undo/redo where tree may not reset correctly if it
+	  contains range data after undo/redo op.
+	- Fix opengl bug with isosurface draw which appears up under some
+	  video card/driver combinations, which lead to undefined video
+	  behaviour (bad glPopAttrib()/glEnd() ordering)
+
+
+	Technical Bugfixes/Features:
+	- Signficantly more complex refresh system, now performs type analysis
+	  on tree to determine minimal subsections of tree to refresh. Now filters
+	  that cannot cache well will penalise the refresh system much less.
+
+
+* March 27, 2011  : 0.0.5
+	Features:
+	- Clustering algorithm
+		- Modification of methods of Stephenson et al.; this
+		includes Max. Sep algorithm. See manual for algorithm
+		description and parameter details
+	- Value shuffle mode in transform filter
+	- Mouse preferences for zoom and other controls
+	
+	User Visible Bugfixes/Changes:
+	- Add hint to resolution dialog to maintain aspect ratio in output plots by default
+	- Mac binary now distributed through packagemaker.
+
+	Technical Bugfixes/Features:
+	- Major code refactor; simplify code layout to aid further code development, speed compilation
+	- Fix "press shift to refresh" hint not working
+	- Fix voxels not reporting cache size
+	- Fix possible crash bug in double click plot when no plot visible.
+	- Filters now support named sections in property sets
+	- Disallow zero sized ion streams from rangefiles	
+	- Fix off-by-one bug in boundcube set func (can cause assertion error)
+	- Improve progress reporting for LSFR random selections
+
+
 * January 23, 2011  : 0.0.4
 
 

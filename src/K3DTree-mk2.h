@@ -117,6 +117,16 @@ class K3DTreeMk2
 		size_t findNearestUntagged(const Point3D &queryPt,
 						const BoundCube &b, bool tag=true);
 
+	
+		//!Get the contigous node IDs for a subset of points in the tree that are contained
+		// within a sphere positioned about pt, with a sqr radius of sqrDist.
+		// 	- This does *NOT* get *all* points - only some. 
+		// 	- It should be faster than using findNearestUntagged repeatedly 
+		// 	  for large enough sqrDist. 
+		// 	- It does not check tags.	
+		void getTreesInSphere(const Point3D &pt, float sqrDist, const BoundCube &domainCube,
+					std::vector<std::pair<size_t,size_t> > &contigousBlocks ) const;
+
 		//Obtain a point from its internal index
 		const Point3D *getPt(size_t index) { return &(indexedPoints[index].first);};
 

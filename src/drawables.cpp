@@ -1530,8 +1530,8 @@ void DrawIsoSurface::draw() const
 		glNormal3fv(mesh[ui].normal[2].getValueArr());
 		glVertex3fv(mesh[ui].p[2].getValueArr());
 	}
-	glPopAttrib();
 	glEnd();
+	glPopAttrib();
 }
 
 

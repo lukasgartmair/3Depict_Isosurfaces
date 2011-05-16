@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <utility>
+#include <queue>
 
 using std::stack;
 using std::vector;
@@ -562,6 +563,103 @@ size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
 	if(bestPoint != (size_t) -1)
 		nodes[bestPoint].tagged|=shouldTag;
 	return bestPoint;	
+
+}
+
+
+void K3DTreeMk2::getTreesInSphere(const Point3D &pt, float sqrDist, const BoundCube &domainCube,
+					vector<pair<size_t,size_t> > &contigousBlocks ) const
+{
+	using std::queue;
+	using std::pair;
+	using std::make_pair;
+
+	queue<int> nodeQueue;
+	queue<int> axisQueue;
+	queue<BoundCube> boundQueue;
+
+	queue<pair<int,int> > limitQueue;
+	if(treeRoot == (size_t) -1)
+		return;
+
+
+	nodeQueue.push(treeRoot);
+	boundQueue.push(domainCube);
+	axisQueue.push(0);
+	limitQueue.push(make_pair(0,nodes.size()));	
+	do
+	{
+		BoundCube tmpCube;
+		size_t axis,curNode;
+		tmpCube=boundQueue.front();
+
+		ASSERT(nodeQueue.size() == boundQueue.size() &&
+			nodeQueue.size() == axisQueue.size() &&
+			nodeQueue.size() == limitQueue.size());
+		
+		//There are three cases here.
+		//	- KD limits for this subdomain
+		//	   wholly contained by sphere
+		//	   	> contigous subtree is interior.
+		//	- KD Limits for this subdomain partially
+		//	    contained by sphere.
+		//	    	> some subtree may be interior -- refine.
+		//	- Does not intersect, do nothing.
+
+		if(tmpCube.containedInSphere(pt,sqrDist))
+		{
+			//We are? Interesting. We must be a contigous block from our lower
+			//to upper limits
+			contigousBlocks.push_back(limitQueue.front());
+		}
+		else if(tmpCube.intersects(pt,sqrDist))
+		{
+			//Not wholly contained... but our kids might be!
+			axis=axisQueue.front();
+			curNode=nodeQueue.front();
+
+			if(nodes[curNode].childLeft !=(size_t)-1)
+			{
+				//Construct left hand domain
+				tmpCube=boundQueue.front();
+				//Set upper bound
+				tmpCube.bounds[axis][1] = indexedPoints[curNode].first[axis];
+				
+				if(tmpCube.intersects(pt,sqrDist))
+				{
+					//We have to examine left child.
+					nodeQueue.push(nodes[curNode].childLeft);
+					boundQueue.push(tmpCube);
+					limitQueue.push(make_pair(
+						limitQueue.front().first,curNode-1));
+					axisQueue.push((axis+1)%3);
+				}
+			}
+			
+			if(nodes[curNode].childRight !=(size_t)-1)
+			{
+				//Construct right hand domain
+				tmpCube=boundQueue.front();
+				//Set lower bound
+				tmpCube.bounds[axis][0] = indexedPoints[curNode].first[axis];
+				
+				if(tmpCube.intersects(pt,sqrDist))
+				{
+					//We have to examine right child.
+					nodeQueue.push(nodes[curNode].childRight);
+					boundQueue.push(tmpCube);
+					limitQueue.push(make_pair(curNode+1,limitQueue.front().second ));
+					axisQueue.push((axis+1)%3);
+				}
+			}
+		}
+	
+		axisQueue.pop();
+		limitQueue.pop();
+		boundQueue.pop();
+		nodeQueue.pop();	
+	}
+	while(nodeQueue.size());
 
 }
 

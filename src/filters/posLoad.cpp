@@ -9,26 +9,43 @@ const size_t MAX_IONS_LOAD_DEFAULT=5*1024*1024/(4*sizeof(float)); //5 MB worth.
 
 // Tp prevent the dropdown lists from getting too unwieldy, set an artificial maximum
 const unsigned int MAX_NUM_FILE_COLS=5000; 
+
+//Allowable text file deliminators
+const char *TEXT_DELIMINATORS = "\t ,";
+
 enum
 {
-	KEY_POSLOAD_FILE,
-	KEY_POSLOAD_SIZE,
-	KEY_POSLOAD_COLOUR,
-	KEY_POSLOAD_IONSIZE,
-	KEY_POSLOAD_ENABLED,
-	KEY_POSLOAD_SELECTED_COLUMN0,
-	KEY_POSLOAD_SELECTED_COLUMN1,
-	KEY_POSLOAD_SELECTED_COLUMN2,
-	KEY_POSLOAD_SELECTED_COLUMN3,
-	KEY_POSLOAD_NUMBER_OF_COLUMNS,
+	KEY_FILE,
+	KEY_FILETYPE,
+	KEY_SIZE,
+	KEY_COLOUR,
+	KEY_IONSIZE,
+	KEY_ENABLED,
+	KEY_SELECTED_COLUMN0,
+	KEY_SELECTED_COLUMN1,
+	KEY_SELECTED_COLUMN2,
+	KEY_SELECTED_COLUMN3,
+	KEY_NUMBER_OF_COLUMNS,
 };
 
+//Supported data types
+enum
+{
+	FILEDATA_TYPE_POS,
+	FILEDATA_TYPE_TEXT,
+	FILEDATA_TYPE_ENUM_END, // Not a data type, just end of enum
+};
+
+const char *AVAILABLE_FILEDATA_TYPES[] = { 	"POS Data",
+					"Text Data",
+					};
+
 // == Pos load filter ==
-PosLoadFilter::PosLoadFilter()
+DataLoadFilter::DataLoadFilter()
 {
 	cache=true;
 	maxIons=MAX_IONS_LOAD_DEFAULT;
-	fileType=FILE_TYPE_POS;
+	fileType=FILEDATA_TYPE_POS;
 	//default ion colour is red.
 	r=a=1.0f;
 	g=b=0.0f;
@@ -45,16 +62,20 @@ PosLoadFilter::PosLoadFilter()
 	}
 }
 
-Filter *PosLoadFilter::cloneUncached() const
+Filter *DataLoadFilter::cloneUncached() const
 {
-	PosLoadFilter *p=new PosLoadFilter;
+	DataLoadFilter *p=new DataLoadFilter;
 	p->ionFilename=ionFilename;
 	p->maxIons=maxIons;
 	p->ionSize=ionSize;
+	p->fileType=fileType;
+	p->guessType=guessType;
+	//Colours
 	p->r=r;	
 	p->g=g;	
 	p->b=b;	
 	p->a=a;	
+	//Bounding volume
 	p->bound.setBounds(bound);
 	p->volumeRestrict=volumeRestrict;
 	p->numColumns=numColumns;
@@ -78,40 +99,38 @@ Filter *PosLoadFilter::cloneUncached() const
 	return p;
 }
 
-void PosLoadFilter::setFilename(const char *name)
+void DataLoadFilter::setFilename(const char *name)
 {
 	ionFilename = name;
 	guessNumColumns();
 }
 
-void PosLoadFilter::setFilename(const std::string &name)
+void DataLoadFilter::setFilename(const std::string &name)
 {
 	ionFilename = name;
 	guessNumColumns();
 }
 
-void PosLoadFilter::guessNumColumns()
+void DataLoadFilter::guessNumColumns()
 {
-	//Test the extention to determine what we will do
+	//Test the extension to determine what we will do
 	string extension;
 	if(ionFilename.size() > 4)
 		extension = ionFilename.substr ( ionFilename.size() - 4, 4 );
 
-	//Set extention to lowercase version
+	//Set extension to lowercase version
 	for(size_t ui=0;ui<extension.size();ui++)
 		extension[ui] = tolower(extension[ui]);
 
 	if( extension == std::string(".pos")) {
 		numColumns = 4;
-		fileType = FILE_TYPE_POS;
 		return;
 	}
-	fileType = FILE_TYPE_NULL;
 	numColumns = 4;
 }
 
 //!Get (approx) number of bytes required for cache
-size_t PosLoadFilter::numBytesForCache(size_t nObjects) const 
+size_t DataLoadFilter::numBytesForCache(size_t nObjects) const 
 {
 	//Otherwise we hvae to work it out, based upon the file
 	size_t result;
@@ -124,12 +143,12 @@ size_t PosLoadFilter::numBytesForCache(size_t nObjects) const
 	return result;	
 }
 
-string PosLoadFilter::getValueLabel()
+string DataLoadFilter::getValueLabel()
 {
 	return std::string("Mass-to-Charge (amu/e)");
 }
 
-unsigned int PosLoadFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
+unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
 {
 	//use the cached copy if we have it.
@@ -157,27 +176,54 @@ unsigned int PosLoadFilter::refresh(const std::vector<const FilterStreamData *> 
 
 
 	unsigned int uiErr;	
-	if(maxIons)
+	switch(fileType)
 	{
-		//Load the pos file, limiting how much you pull from it
-		if((uiErr = LimitLoadPosFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
-							maxIons,progress.filterProgress,callback,strongRandom)))
+		case FILEDATA_TYPE_POS:
 		{
-			consoleOutput.push_back(string("Error loading file: ") + ionFilename);
-			delete ionData;
-			return uiErr;
+			if(maxIons)
+			{
+				//Load the pos file, limiting how much you pull from it
+				if((uiErr = LimitLoadPosFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
+									maxIons,progress.filterProgress,callback,strongRandom)))
+				{
+					consoleOutput.push_back(string("Error loading file: ") + ionFilename);
+					delete ionData;
+					return uiErr;
+				}
+			}
+			else
+			{
+				if((uiErr = GenericLoadFloatFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
+									progress.filterProgress,callback)))
+				{
+					consoleOutput.push_back(string("Error loading file: ") + ionFilename);
+					delete ionData;
+					return uiErr;
+				}
+			}	
+			break;
 		}
-	}
-	else
-	{
-		//Load the pos file
-		if((uiErr = GenericLoadFloatFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
-							progress.filterProgress,callback)))
+		case FILEDATA_TYPE_TEXT:
 		{
-			consoleOutput.push_back(string("Error loading file: ") + ionFilename);
-			delete ionData;
-			return uiErr;
+
+			
+
+			//Load the data from a text file
+			if((uiErr = limitLoadTextFile(INDEX_LENGTH,index,ionData->data, ionFilename.c_str(),TEXT_DELIMINATORS,
+								maxIons,progress.filterProgress,callback,strongRandom)))
+			{
+				consoleOutput.push_back(string("Error loading file: ") + ionFilename);
+				delete ionData;
+				return uiErr;
+			}
+			
+
+			
+			break;
 		}
+		
+		default:
+			ASSERT(false);
 	}
 
 	ionData->r = r;
@@ -211,7 +257,7 @@ unsigned int PosLoadFilter::refresh(const std::vector<const FilterStreamData *> 
 	return 0;
 };
 
-void PosLoadFilter::getProperties(FilterProperties &propertyList) const
+void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 {
 	propertyList.data.clear();
 	propertyList.types.clear();
@@ -220,17 +266,50 @@ void PosLoadFilter::getProperties(FilterProperties &propertyList) const
 	vector<pair<string,string> > s;
 	vector<unsigned int> type,keys;
 
+	//Set up the  file  name and type data
+	// ------
 	s.push_back(std::make_pair("File", ionFilename));
 	type.push_back(PROPERTY_TYPE_STRING);
-	keys.push_back(KEY_POSLOAD_FILE);
-	
-	string colStr;
-	stream_cast(colStr,numColumns);
-	s.push_back(std::make_pair("Number of columns", colStr));
-	keys.push_back(KEY_POSLOAD_NUMBER_OF_COLUMNS);
-	type.push_back(PROPERTY_TYPE_INTEGER);
+	keys.push_back(KEY_FILE);
 
 	vector<pair<unsigned int,string> > choices;
+	string strChoice;
+
+	for(unsigned int ui=0;ui<FILEDATA_TYPE_ENUM_END; ui++)
+		choices.push_back(make_pair(ui,AVAILABLE_FILEDATA_TYPES[ui]));	
+					
+	strChoice=choiceString(choices,fileType);
+	s.push_back(std::make_pair("File type",strChoice));
+	type.push_back(PROPERTY_TYPE_CHOICE);
+	keys.push_back(KEY_FILETYPE);
+
+	//---------
+	propertyList.data.push_back(s);
+	propertyList.types.push_back(type);
+	propertyList.keys.push_back(keys);
+	s.clear(); type.clear(); keys.clear();
+	
+	string colStr;
+	switch(fileType)
+	{
+		case FILEDATA_TYPE_POS:
+		{
+			stream_cast(colStr,numColumns);
+			s.push_back(std::make_pair("Number of columns", colStr));
+			keys.push_back(KEY_NUMBER_OF_COLUMNS);
+			type.push_back(PROPERTY_TYPE_INTEGER);
+			break;
+		}
+		case FILEDATA_TYPE_TEXT:
+		{
+			break;
+		}
+		default:
+			ASSERT(false);
+			
+	}
+
+	choices.clear();
 	for (int i = 0; i < numColumns; i++) {
 		string tmp;
 		stream_cast(tmp,i);
@@ -239,28 +318,28 @@ void PosLoadFilter::getProperties(FilterProperties &propertyList) const
 	
 	colStr= choiceString(choices,index[0]);
 	s.push_back(std::make_pair("x", colStr));
-	keys.push_back(KEY_POSLOAD_SELECTED_COLUMN0);
+	keys.push_back(KEY_SELECTED_COLUMN0);
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
 	colStr= choiceString(choices,index[1]);
 	s.push_back(std::make_pair("y", colStr));
-	keys.push_back(KEY_POSLOAD_SELECTED_COLUMN1);
+	keys.push_back(KEY_SELECTED_COLUMN1);
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
 	colStr= choiceString(choices,index[2]);
 	s.push_back(std::make_pair("z", colStr));
-	keys.push_back(KEY_POSLOAD_SELECTED_COLUMN2);
+	keys.push_back(KEY_SELECTED_COLUMN2);
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
 	colStr= choiceString(choices,index[3]);
 	s.push_back(std::make_pair("value", colStr));
-	keys.push_back(KEY_POSLOAD_SELECTED_COLUMN3);
+	keys.push_back(KEY_SELECTED_COLUMN3);
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
 	string tmpStr;
 	stream_cast(tmpStr,enabled);
 	s.push_back(std::make_pair("Enabled", tmpStr));
-	keys.push_back(KEY_POSLOAD_ENABLED);
+	keys.push_back(KEY_ENABLED);
 	type.push_back(PROPERTY_TYPE_BOOL);
 
 	if(enabled)
@@ -269,7 +348,7 @@ void PosLoadFilter::getProperties(FilterProperties &propertyList) const
 		stream_cast(tmpStr,maxIons*sizeof(float)*4/(1024*1024));
 		s.push_back(std::make_pair("Load Limit (MB)",tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
-		keys.push_back(KEY_POSLOAD_SIZE);
+		keys.push_back(KEY_SIZE);
 		
 		string thisCol;
 		//Convert the ion colour to a hex string	
@@ -278,12 +357,12 @@ void PosLoadFilter::getProperties(FilterProperties &propertyList) const
 
 		s.push_back(make_pair(string("Default colour "),thisCol)); 
 		type.push_back(PROPERTY_TYPE_COLOUR);
-		keys.push_back(KEY_POSLOAD_COLOUR);
+		keys.push_back(KEY_COLOUR);
 
 		stream_cast(tmpStr,ionSize);
 		s.push_back(make_pair(string("Draw Size"),tmpStr)); 
 		type.push_back(PROPERTY_TYPE_REAL);
-		keys.push_back(KEY_POSLOAD_IONSIZE);
+		keys.push_back(KEY_IONSIZE);
 	}
 
 	propertyList.data.push_back(s);
@@ -291,14 +370,36 @@ void PosLoadFilter::getProperties(FilterProperties &propertyList) const
 	propertyList.keys.push_back(keys);
 }
 
-bool PosLoadFilter::setProperty( unsigned int set, unsigned int key, 
+bool DataLoadFilter::setProperty( unsigned int set, unsigned int key, 
 					const std::string &value, bool &needUpdate)
 {
 	
 	needUpdate=false;
 	switch(key)
 	{
-		case KEY_POSLOAD_FILE:
+		case KEY_FILETYPE:
+		{
+			std::string tmp;
+			int ltmp;
+			ltmp=(unsigned int)-1;
+			
+			for(unsigned int ui=0;ui<FILEDATA_TYPE_ENUM_END; ui++)
+			{
+				if(AVAILABLE_FILEDATA_TYPES[ui] == value)
+				{
+					ltmp=ui;
+					break;
+				}
+			}
+			if(ltmp == (unsigned int) -1 || ltmp == fileType)
+				return false;
+
+			fileType=FILEDATA_TYPE_TEXT;
+			clearCache();
+			needUpdate=true;
+			break;
+		}
+		case KEY_FILE:
 		{
 			//ensure that the new file can be found
 			//Try to open the file
@@ -314,7 +415,7 @@ bool PosLoadFilter::setProperty( unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_POSLOAD_ENABLED:
+		case KEY_ENABLED:
 		{
 			string stripped=stripWhite(value);
 
@@ -335,7 +436,7 @@ bool PosLoadFilter::setProperty( unsigned int set, unsigned int key,
 			clearCache();
 			break;
 		}
-		case KEY_POSLOAD_SIZE:
+		case KEY_SIZE:
 		{
 			std::string tmp;
 			size_t ltmp;
@@ -352,7 +453,7 @@ bool PosLoadFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_POSLOAD_COLOUR:
+		case KEY_COLOUR:
 		{
 			unsigned char newR,newG,newB,newA;
 
@@ -390,7 +491,7 @@ bool PosLoadFilter::setProperty( unsigned int set, unsigned int key,
 
 			break;
 		}
-		case KEY_POSLOAD_IONSIZE:
+		case KEY_IONSIZE:
 		{
 			std::string tmp;
 			float ltmp;
@@ -420,7 +521,7 @@ bool PosLoadFilter::setProperty( unsigned int set, unsigned int key,
 
 			break;
 		}
-		case KEY_POSLOAD_SELECTED_COLUMN0:
+		case KEY_SELECTED_COLUMN0:
 		{
 			std::string tmp;
 			int ltmp;
@@ -436,7 +537,7 @@ bool PosLoadFilter::setProperty( unsigned int set, unsigned int key,
 			
 			break;
 		}
-		case KEY_POSLOAD_SELECTED_COLUMN1:
+		case KEY_SELECTED_COLUMN1:
 		{
 			std::string tmp;
 			int ltmp;
@@ -452,7 +553,7 @@ bool PosLoadFilter::setProperty( unsigned int set, unsigned int key,
 			
 			break;
 		}
-		case KEY_POSLOAD_SELECTED_COLUMN2:
+		case KEY_SELECTED_COLUMN2:
 		{
 			std::string tmp;
 			int ltmp;
@@ -468,7 +569,7 @@ bool PosLoadFilter::setProperty( unsigned int set, unsigned int key,
 			
 			break;
 		}
-		case KEY_POSLOAD_SELECTED_COLUMN3:
+		case KEY_SELECTED_COLUMN3:
 		{
 			std::string tmp;
 			unsigned int ltmp;
@@ -484,7 +585,7 @@ bool PosLoadFilter::setProperty( unsigned int set, unsigned int key,
 			
 			break;
 		}
-		case KEY_POSLOAD_NUMBER_OF_COLUMNS:
+		case KEY_NUMBER_OF_COLUMNS:
 		{
 			std::string tmp;
 			int ltmp;
@@ -510,7 +611,7 @@ bool PosLoadFilter::setProperty( unsigned int set, unsigned int key,
 	return true;
 }
 
-bool PosLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileDir)
+bool DataLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileDir)
 {
 	//Retrieve user string
 	//===
@@ -605,13 +706,23 @@ bool PosLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 	return true;
 }
 
-std::string  PosLoadFilter::getErrString(unsigned int code) const
+int DataLoadFilter::getRefreshBlockMask() const
+{
+	return 0;
+}
+
+int DataLoadFilter::getRefreshEmitMask() const
+{
+	return STREAM_TYPE_IONS;
+}
+
+std::string  DataLoadFilter::getErrString(unsigned int code) const
 {
 	ASSERT(code < POS_ERR_FINAL);
 	return posErrStrings[code];
 }
 
-bool PosLoadFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+bool DataLoadFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -643,7 +754,7 @@ bool PosLoadFilter::writeState(std::ofstream &f,unsigned int format, unsigned in
 
 }
 
-bool PosLoadFilter::writePackageState(std::ofstream &f, unsigned int format,
+bool DataLoadFilter::writePackageState(std::ofstream &f, unsigned int format,
 			const std::vector<std::string> &valueOverrides, unsigned int depth) const
 {
 	ASSERT(valueOverrides.size() == 1);
@@ -653,16 +764,16 @@ bool PosLoadFilter::writePackageState(std::ofstream &f, unsigned int format,
 
 
 	//override const -- naughty, but we know what we are doing...
-	const_cast<PosLoadFilter*>(this)->ionFilename=valueOverrides[0];
+	const_cast<DataLoadFilter*>(this)->ionFilename=valueOverrides[0];
 	bool result;
 	result=writeState(f,format,depth);
 
-	const_cast<PosLoadFilter*>(this)->ionFilename=tmpIonFilename;
+	const_cast<DataLoadFilter*>(this)->ionFilename=tmpIonFilename;
 
 	return result;
 }
 
-void PosLoadFilter::getStateOverrides(std::vector<string> &externalAttribs) const 
+void DataLoadFilter::getStateOverrides(std::vector<string> &externalAttribs) const 
 {
 	externalAttribs.push_back(ionFilename);
 }

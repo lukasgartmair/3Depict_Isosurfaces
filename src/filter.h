@@ -88,6 +88,7 @@ enum
 //Current bitmask using functions are
 //	VisController::safeDeleteFilterList
 const unsigned int NUM_STREAM_TYPES=5;
+const unsigned int STREAMTYPE_MASK_ALL= (1<<(NUM_STREAM_TYPES+1)) -1;
 enum
 {
 	STREAM_TYPE_IONS=1,
@@ -96,6 +97,7 @@ enum
 	STREAM_TYPE_RANGE=8,
 	STREAM_TYPE_VOXEL=16,
 };
+
 
 //Keys for binding IDs
 enum
@@ -249,7 +251,7 @@ class PlotStreamData : public FilterStreamData
 	public:
 		PlotStreamData(){ streamType=STREAM_TYPE_PLOT;
 				plotType=PLOT_TYPE_LINES;errDat.mode=PLOT_ERROR_NONE;
-				r=1.0,g=0.0,b=0.0,a=1.0;logarithmic=false;};
+				r=1.0,g=0.0,b=0.0,a=1.0;logarithmic=false; parent=0; index=(unsigned int)-1;};
 		void clear() {xyData.clear();};
 		size_t GetNumBasicObjects() const { return xyData.size();};
 		float r,g,b,a;
@@ -396,10 +398,20 @@ class Filter
 		/* Current supported formats are STATE_FORMAT_XML
 		 */
 		virtual bool readState(xmlNodePtr& n, const std::string &packDir="") = 0; 
+		
+		//!Get the bitmask encoded list of filterStreams that this filter blocks from propagation.
+		// i.e. if this filterstream is passed to refresh, it is not emitted.
+		// This MUST always be consistent with ::refresh for filters current state.
+		virtual int getRefreshBlockMask() const =0; 
+		
+		//!Get the bitmask encoded list of filterstreams that this filter emits from ::refresh.
+		// This MUST always be consistent with ::refresh for filters current state.
+		virtual int getRefreshEmitMask() const = 0;
+
+		//====
 	
 		//!Return the unique name for a given filter	
 		string trueName() const { return FILTER_NAMES[getType()];};
-		//====
 
 
 
@@ -423,7 +435,7 @@ class Filter
 		//!Return a user-specified string, or just the typestring if user set string not active
 		virtual std::string getUserString() const ;
 		//!Set a user-specified string
-		virtual void setUserString(const std::string &str) { userString=str;}; 
+		virtual bool setUserString(const std::string &str) { userString=str; return false;}; 
 		
 
 		//!Modified version of writeState for packaging. By default simply calls writeState.
@@ -458,7 +470,10 @@ class Filter
 		//!Get the filter messages from the console
 		void getConsoleStrings(std::vector<std::string > &v) { v.resize(consoleOutput.size());std::copy(consoleOutput.begin(),consoleOutput.end(),v.begin()); consoleOutput.clear();};
 
+		//!Should filters use strong randomisation (where applicable) or not?
 		static void setStrongRandom(bool strongRand) {strongRandom=strongRand;}; 
+
+
 };
 
 
@@ -468,8 +483,12 @@ class ProgressData
 	public:
 		//!Progress of filter (out of 100) for current filter
 		unsigned int filterProgress;
-		//!Number of filters that we have proccessed (n out of m filters)
+		//!Number of filters (n) that we have proccessed (n out of m filters)
 		unsigned int totalProgress;
+
+		//!number of filters which need processing for this update
+		unsigned int totalNumFilters;
+
 		//!Current step
 		unsigned int step;
 		//!Maximum steps

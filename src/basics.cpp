@@ -29,6 +29,8 @@
 #ifdef __APPLE__
 	#include <sys/types.h>
 	#include <sys/sysctl.h>
+	#include <mach/mach.h>
+	#include <unistd.h>
 #elif defined __linux__
 	//Needed for getting ram total usage under linux
 	#include <sys/sysinfo.h>
@@ -812,30 +814,26 @@ bool BoundCube::intersects(const Point3D &pt, float sqrRad)
 	Point3D nearPt;
 	
 	//Find the closest point on the cube  to the sphere
-	unsigned int ui=2;
-	const float *val=pt.getValueArr()+ui;
-	do
+	for(unsigned int ui=0;ui<3;ui++)
 	{
-		if(*val <= bounds[ui][0])
+		if(pt.getValue(ui) <= bounds[ui][0])
 		{
 			nearPt.setValue(ui,bounds[ui][0]);
-			--val;
 			continue;
 		}
 		
-		if(*val >=bounds[ui][1])
+		if(pt.getValue(ui) >=bounds[ui][1])
 		{
 			nearPt.setValue(ui,bounds[ui][1]);
-			--val;
 			continue;
 		}
 	
-		nearPt.setValue(ui,*val);
-		--val;
-	}while(ui--);
+		nearPt.setValue(ui,pt[ui]);
+	}
 
 	//now test the distance from nrPt to pt
-	return (nearPt.sqrDist(pt) < sqrRad);
+	//Note that the touching case is considered to be an intersection
+	return (nearPt.sqrDist(pt) <=sqrRad);
 }
 
 Point3D BoundCube::getCentroid() const
@@ -878,6 +876,35 @@ float BoundCube::getMaxDistanceToBox(const Point3D &queryPt) const
 	}
 
 	return sqrtf(maxDistSqr);
+}
+
+bool BoundCube::containedInSphere(const Point3D &queryPt,float sqrDist) const
+{
+#ifdef DEBUG
+	for(unsigned int ui=0;ui<3; ui++)
+	{
+		ASSERT(valid[ui][1] && valid [ui][0]);
+	}
+#endif
+
+	float maxDistSqr=0.0f;
+
+	//Could probably be a bit more compact.
+	
+
+	//Set lower and upper corners on the bounding rectangle
+	Point3D p[2];
+	p[0].setValue(bounds[0][0],bounds[1][0],bounds[2][0]);
+	p[1].setValue(bounds[0][1],bounds[1][1],bounds[2][1]);
+
+	//Count binary-wise selecting upper and lower limits, to enumerate all 8 verticies.
+	for(unsigned int ui=0;ui<9; ui++)
+	{
+		if(queryPt.sqrDist(Point3D(p[ui&1][0],p[(ui&2) >> 1][1],p[(ui&4) >> 2][2])) > sqrDist)
+			return false;
+	}
+
+	return true;
 }
 
 BoundCube BoundCube::operator=(const BoundCube &b)
@@ -1063,7 +1090,7 @@ int getTotalRAM()
     return ret;
 }
 
-int getAvailRAM()
+size_t getAvailRAM()
 {
     int ret = 0;
 #if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)   
@@ -1076,12 +1103,18 @@ int getAvailRAM()
 	ret= MemStat.dwAvailPhys / (1024*1024);
 
 #elif __APPLE__ || __FreeBSD__
-	uint64_t mem;
-	size_t len = sizeof(mem);
-
-	sysctlbyname("hw.usermem", &mem, &len, NULL, 0);
-
-	ret = (int)(mem/(1024*1024));
+	uint64_t        memsize;
+	
+	size_t                  pagesize;
+	mach_port_t             sls_port = mach_host_self();
+	mach_msg_type_number_t  vmCount = HOST_VM_INFO_COUNT;
+	vm_statistics_data_t    vm;
+	kern_return_t           error;
+	
+	error = host_statistics(sls_port , HOST_VM_INFO , (host_info_t) &vm, &vmCount);
+	pagesize = (unsigned long)sysconf(_SC_PAGESIZE);
+	memsize = (vm.free_count + vm.inactive_count) * pagesize;//(vm.wire_count + vm.active_count + vm.inactive_count + vm.free_count + vm.zero_fill_count ) * pagesize;
+	ret = (size_t)(memsize/(1024*1024));
 #elif __linux__
 	{
 		struct sysinfo sysInf;
@@ -1114,7 +1147,7 @@ bool strhas(const char *cpTest, const char *cpPossible)
 }
 
 //A routine for loading numeric data from a text file
-unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVec,vector<string> &headerVec, const char delim)
+unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVec,vector<string> &headerVec, const char *delim)
 {
 	const unsigned int BUFFER_SIZE=4096;
 	char inBuffer[BUFFER_SIZE];
@@ -1196,10 +1229,26 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 
 	}
 
+	//Drop the blank bits from the field
 	stripZeroEntries(prevStrs);
+	//switch this out as being the header
 	if(prevStrs.size() == num_fields)
 		std::swap(headerVec,prevStrs);
 
+	if(atHeader)
+	{
+		//re-wind back to the beginning of the file
+		//as we didn't find a header/data split
+		CFile.clear(); // clear EOF bit
+		CFile.seekg(0,std::ios::beg);
+		CFile.getline(inBuffer,BUFFER_SIZE);
+		
+		
+		splitStrsRef(inBuffer,delim,strVec);	
+		stripZeroEntries(strVec);
+		num_fields=strVec.size();
+
+	}
 
 	float f;
 	std::stringstream ss;
@@ -1235,9 +1284,6 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 		//Grab a line from the file
 		CFile.getline(inBuffer,BUFFER_SIZE);
 	}
-
-	if(atHeader)
-		return ERR_FILE_FORMAT_FAIL;
 
 	return 0;
 }

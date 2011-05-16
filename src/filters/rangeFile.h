@@ -54,6 +54,14 @@ class RangeFileFilter : public Filter
 		unsigned int updateRng();
 		virtual std::string typeString() const { return std::string("Ranging");};
 
+		//Types that will be dropped during ::refresh
+		int getRefreshBlockMask() const;
+		
+		//Types that are emitted by filer during ::refrash
+		int getRefreshEmitMask() const;
+
+	
+
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
 		void getProperties(FilterProperties &propertyList) const;
 

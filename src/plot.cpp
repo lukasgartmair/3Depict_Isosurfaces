@@ -357,8 +357,8 @@ void Multiplot::setColours(unsigned int plotUniqueID, float rN,float gN,float bN
 void Multiplot::setBounds(float xMin, float xMax,
 			float yMin,float yMax)
 {
-	ASSERT(xMin < xMax);
-	ASSERT(yMin< yMax);
+	ASSERT(xMin<xMax);
+	ASSERT(yMin<=yMax);
 	xUserMin=xMin;
 	yUserMin=std::max(0.0f,yMin);
 	xUserMax=xMax;
@@ -410,7 +410,7 @@ void Multiplot::getBounds(float &xMin, float &xMax,
 		scanBounds(xMin,xMax,yMin,yMax);
 	}
 
-	ASSERT(xMin < xMax && yMin < yMax);
+	ASSERT(xMin <xMax && yMin <=yMax);
 }
 
 void Multiplot::scanBounds(float &xMin,float &xMax,float &yMin,float &yMax) const
@@ -435,7 +435,7 @@ void Multiplot::scanBounds(float &xMin,float &xMax,float &yMin,float &yMax) cons
 
 	//If we are in log mode, then we need to set the
 	//log of that bound before emitting it.
-	if(isLogarithmic())
+	if(isLogarithmic() && yMax)
 	{
 		yMin=log10(std::max(yMin,1.0f));
 		yMax=log10(yMax);
@@ -497,6 +497,7 @@ void Multiplot::drawPlot(mglGraph *gr) const
 	maxX=-std::numeric_limits<float>::max();
 	minY=std::numeric_limits<float>::max();
 	maxY=-std::numeric_limits<float>::max();
+
 	std::wstring xLabel,yLabel,plotTitle;
 	bool notLog=false;
 	for(unsigned int ui=0;ui<plottingData.size(); ui++)
@@ -555,8 +556,8 @@ void Multiplot::drawPlot(mglGraph *gr) const
 	mglPoint min,max;
 	if(applyUserBounds)
 	{
-		ASSERT(yUserMax > yUserMin);
-		ASSERT(xUserMax > xUserMin);
+		ASSERT(yUserMax >=yUserMin);
+		ASSERT(xUserMax >=xUserMin);
 
 		max.x =xUserMax;
 		max.y=yUserMax;
@@ -586,6 +587,20 @@ void Multiplot::drawPlot(mglGraph *gr) const
 		
 		gr->Org=axisCross;
 	}
+
+
+	//"Push" bounds around to prevent min == max
+	if(min.x == max.x)
+	{
+		min.x-=0.5;
+		max.x+=0.5;
+	}
+
+	if(min.y == max.y)
+	{
+		max.y+=1;
+	}
+
 	gr->Axis(min,max,axisCross);
 
 	//I don't like the default, nor this. 

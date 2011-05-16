@@ -61,6 +61,14 @@ class IonClipFilter :  public Filter
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
 		bool readState(xmlNodePtr &node, const std::string &packDir);
+	
+		//!Get the stream types that will be dropped during ::refresh	
+		int getRefreshBlockMask() const;
+
+		//!Get the stream types that will be generated during ::refresh	
+		int getRefreshEmitMask() const;	
+		
+		
 		//!Set internal property value using a selection binding 
 		void setPropFromBinding(const SelectionBinding &b);
 };

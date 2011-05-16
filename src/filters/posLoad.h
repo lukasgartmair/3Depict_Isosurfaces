@@ -3,11 +3,17 @@
 
 #include "../filter.h"
 
-class PosLoadFilter:public Filter
+class DataLoadFilter:public Filter
 {
 	protected:
 		//!filename from which the ions are being loaded
 		std::string ionFilename;
+
+		//!Type of file to open
+		unsigned int fileType;
+
+		//!Try our best to guess the file type?
+		bool guessType;
 
 		//!Maximum number of ions to load, 0 if ion limiting disabled
 		size_t maxIons;
@@ -19,10 +25,10 @@ class PosLoadFilter:public Filter
 		float ionSize;
 	
 		//!Number of columns & type of file
-		unsigned int numColumns, fileType;
+		unsigned int numColumns;
 
-		//!index of columns into pos file
 		static const unsigned int INDEX_LENGTH = 4;
+		//!index of columns into pos file, if pos data is visualised as a set of float record presented as a table (one line per record)
 		unsigned int index[INDEX_LENGTH];//x,y,z,value
 
 		//!Is pos load enabled?
@@ -35,7 +41,7 @@ class PosLoadFilter:public Filter
 		BoundCube bound;
 
 	public:
-		PosLoadFilter();
+		DataLoadFilter();
 		//!Duplicate filter contents, excluding cache.
 		Filter *cloneUncached() const;
 		//!Set the source string
@@ -77,6 +83,10 @@ class PosLoadFilter:public Filter
 		//fails, filter will be in an undefined state.
 		bool readState(xmlNodePtr &node, const std::string &packDir);
 		
+		//!Get the block mask for this filter (bitmaks of streams blocked from propagation during ::refresh)
+		int getRefreshBlockMask() const; 
+		//!Get the refresh mask for this filter (bitmaks of streams emitted during ::refresh)
+		int getRefreshEmitMask() const; 
 	
 		//!Pos filter has state overrides	
 		virtual void getStateOverrides(std::vector<string> &overrides) const; 

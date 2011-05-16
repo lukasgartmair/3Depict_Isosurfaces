@@ -533,3 +533,13 @@ bool IonColourFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	return true;
 }
 
+int IonColourFilter::getRefreshBlockMask() const
+{
+	//Anything but ions can go through this filter.
+	return STREAM_TYPE_IONS;
+}
+
+int IonColourFilter::getRefreshEmitMask() const
+{
+	return  STREAM_TYPE_DRAW;
+}

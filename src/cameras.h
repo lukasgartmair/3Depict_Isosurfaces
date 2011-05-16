@@ -56,6 +56,8 @@ class CameraProperties
 class Camera
 {
 	protected:
+
+		bool lock;
 		//!Camera location
 		Point3D origin;
 		//!Direction camera is looking in

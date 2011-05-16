@@ -19,7 +19,7 @@ Filter *makeFilter(const std::string &s)
 	{
 		
 		case FILTER_TYPE_POSLOAD:
-			f=new PosLoadFilter;
+			f=new DataLoadFilter;
 			break;
 		case FILTER_TYPE_IONDOWNSAMPLE:
 			f=new IonDownsampleFilter;
@@ -80,7 +80,7 @@ Filter *makeFilter(unsigned int ui)
 	switch(ui)
 	{
 		case FILTER_TYPE_POSLOAD:
-			f=new PosLoadFilter;
+			f=new DataLoadFilter;
 			break;
 		case FILTER_TYPE_IONDOWNSAMPLE:
 			f=new IonDownsampleFilter;

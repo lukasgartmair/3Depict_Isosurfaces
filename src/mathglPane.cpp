@@ -478,9 +478,15 @@ void MathGLPane::updateMouseCursor()
 
 	GetClientSize(&w,&h);
 	
-	if(!w || !h || !thePlot)
+	if(!w || !h || !thePlot )
 		return;
-	
+
+	if(!thePlot->getNumVisible())
+	{
+		SetCursor(wxNullCursor);
+		return;
+	}
+
 	//Update mouse cursor
 	//---------------
 	//Draw a rectangle between the start and end positions
@@ -502,6 +508,10 @@ void MathGLPane::updateMouseCursor()
 	}
 	else
 	{
+
+		float xMin,xMax,yMin,yMax;
+
+		thePlot->getBounds(xMin,xMax,yMin,yMax);
 		//Look at mouse position relative to the axis position
 		//to determine the cursor style.
 		if(curMouse.x < axisX)
@@ -514,8 +524,8 @@ void MathGLPane::updateMouseCursor()
 		}
 		else if(curMouse.y > axisY )
 			SetCursor(wxCURSOR_SIZEWE);
-		else
-			SetCursor(wxCURSOR_MAGNIFIER);
+		else 
+			SetCursor(wxCURSOR_MAGNIFIER); //we can zoom
 	}
 	//---------------
 }
@@ -577,7 +587,6 @@ unsigned int MathGLPane::getRegionUnderCursor(const wxPoint  &mousePos,
 	//pronounced "christmouse" (no, not really)
 	float xMouse;
 
-
 	mglPoint pMouse= gr->CalcXYZ(mousePos.x,mousePos.y);
 	xMouse=pMouse.x;
 
@@ -615,7 +624,7 @@ void MathGLPane::mouseDown(wxMouseEvent& event)
 
 		GetClientSize(&w,&h);
 		
-		if(!w || !h)
+		if(!w || !h || !thePlot->getNumVisible())
 			return;
 
 		int axisX,axisY;
@@ -628,9 +637,13 @@ void MathGLPane::mouseDown(wxMouseEvent& event)
 		alternateDown=event.ShiftDown();
 		draggingStart = event.GetPosition();
 
+		float xMin,xMax,yMin,yMax;
+		thePlot->getBounds(xMin,xMax,yMin,yMax);
+		
 		//Set the interaction mode
 		if(event.LeftDown() && !alternateDown )
 		{
+
 			//check to see if we have hit a region
 			unsigned int region,regionSide;
 			if(!limitInteract && (region=getRegionUnderCursor(curMouse,regionSide)) != 
@@ -650,8 +663,6 @@ void MathGLPane::mouseDown(wxMouseEvent& event)
 		{
 			panning=true;
 
-			float xMin,xMax,yMin,yMax;
-			thePlot->getBounds(xMin,xMax,yMin,yMax);
 			origPanMinX=xMin;
 			origPanMaxX=xMax;
 

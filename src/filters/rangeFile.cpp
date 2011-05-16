@@ -238,7 +238,11 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 	
 
 	//Step 2: Go through each data stream, if it is an ion stream, range it.
-	//TODO: Stop using iterators, so we can //-ise. I have a patch, but it doesn't work yet.
+	//	I tried parallelising this a few different ways, but the linear performance wa simply better.
+	//		- Tried an array of openmp locks
+	//		- Tried keeping a unique offset number and fixing the size of the output vectors
+	//		- Tried straight criticalling the push_back
+	//	 Trying to merge vectors in // is tricky. result was 9-10x slower than linear
 	//=========================================
 	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
 	{
@@ -270,6 +274,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 
 				unsigned int curProg=NUM_CALLBACK;
 				const size_t off=d.size()-1;
+
 				for(vector<IonHit>::const_iterator it=((const IonStreamData *)dataIn[ui])->data.begin();
 					       it!=((const IonStreamData *)dataIn[ui])->data.end(); ++it)
 				{
@@ -286,14 +291,11 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 						{
 							ASSERT(ionID < enabledRanges.size());
 
-						//	ASSERT(d[ionID]->data.capacity() > d[ionID]->data.size());
 							d[ionID]->data.push_back(*it);
 						}
 					}
 					else if(!dropUnranged)//If it is unranged, then the rangeID is still -1 (as above).
 					{
-						//Only keep the ion if we have asked to keep unranged ions
-					//	ASSERT(d[d.size()-1]->data.capacity() > d[d.size()-1]->data.size());
 						d[off]->data.push_back(*it);
 					}
 
@@ -927,7 +929,7 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 
 	rngName=convertFileStringToNative(rngName);
 
-	//try using the extention name of the file to guess format
+	//try using the extension name of the file to guess format
 	guessFormat(rngName);
 
 	//Load range file using guessed format
@@ -1091,6 +1093,15 @@ void RangeFileFilter::getStateOverrides(std::vector<string> &externalAttribs) co
 	externalAttribs.push_back(rngName);
 }
 
+int RangeFileFilter::getRefreshBlockMask() const
+{
+	return STREAM_TYPE_RANGE | STREAM_TYPE_IONS ;
+}
+
+int RangeFileFilter::getRefreshEmitMask() const
+{
+	return STREAM_TYPE_RANGE | STREAM_TYPE_IONS ;
+}
 
 void RangeFileFilter::setPropFromRegion(unsigned int method, unsigned int regionID, float newPos)
 {

@@ -142,6 +142,10 @@ class VisController
 		
 		//!Update the console strings
 		void updateConsole(const std::vector<std::string> &v, const Filter *f) const;
+
+		//!Get the filter refresh seed points in tree, by examination of tree caches, block/emit of filters
+		//and tree topology
+		void getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propStarts) const;
 	public:
 		VisController();
 		~VisController();

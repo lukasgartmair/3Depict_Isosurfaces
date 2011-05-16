@@ -66,6 +66,14 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
 {
 
+	if(cacheOK)
+	{
+		//Only report the spectrum plot
+		for(unsigned int ui=0;ui<filterOutputs.size(); ui++)
+			getOut.push_back(filterOutputs[ui]);
+		return 0;
+	}
+
 
 	size_t totalSize=numElements(dataIn);
 	
@@ -425,6 +433,8 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 			if(newWidth < 0.0f || newWidth > (maxPlot - minPlot))
 				return false;
 
+
+
 			needUpdate=true;
 			binWidth=newWidth;
 
@@ -551,6 +561,8 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 
 	}
 
+	
+	clearCache();
 	return true;
 }
 
@@ -707,3 +719,13 @@ bool SpectrumPlotFilter::readState(xmlNodePtr &nodePtr, const std::string &state
 	return true;
 }
 
+int SpectrumPlotFilter::getRefreshBlockMask() const
+{
+	//Absolutely nothing can go through this filter.
+	return STREAMTYPE_MASK_ALL;
+}
+
+int SpectrumPlotFilter::getRefreshEmitMask() const
+{
+	return STREAM_TYPE_PLOT;
+}

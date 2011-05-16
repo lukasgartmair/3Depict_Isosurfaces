@@ -22,7 +22,8 @@
 #include "filters/allFilter.h"
 
 const char *CONFIG_FILENAME="config.xml";
-const unsigned int MAX_RECENT=15;
+
+const unsigned int MAX_RECENT=9;
 
 const unsigned int MAX_MOUSE_PERCENT= 400;
 

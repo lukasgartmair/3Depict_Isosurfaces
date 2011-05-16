@@ -14,6 +14,8 @@ class TransformFilter : public Filter
 		bool showOrigin;
 		//!Mode for selection of origin for transform
 		unsigned int originMode;
+		//!Mode for particular noise type
+		unsigned int noiseType;
 		//!Scalar values for transformation (scaling factors, rotation angle )
 		std::vector<float> scalarParams;
 		//!Vector values for transformation (translation or rotation vectors)
@@ -23,9 +25,14 @@ class TransformFilter : public Filter
 		bool showPrimitive;
 			
 		std::string getOriginTypeString(unsigned int i) const;
+		
+		std::string getNoiseTypeString(unsigned int i) const;
 
 		//!Make the marker sphere
 		DrawStreamData* makeMarkerSphere(SelectionDevice<Filter>* &s) const;
+		
+		//!random number generator
+		RandNumGen randGen;
 	public:
 		TransformFilter(); 
 		//!Duplicate filter contents, excluding cache.
@@ -60,6 +67,13 @@ class TransformFilter : public Filter
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
 		bool readState(xmlNodePtr &node, const std::string &packDir);
+		
+		//!Get the stream types that will be dropped during ::refresh	
+		int getRefreshBlockMask() const;
+
+		//!Get the stream types that will be generated during ::refresh	
+		int getRefreshEmitMask() const;	
+		
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b);
 

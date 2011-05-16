@@ -53,6 +53,43 @@ bool wxYieldCallback()
 	return !(*abortVisCtlOp);
 }
 
+
+//!Returns true if the testChild is a child of testParent.
+// returns false if testchild == testParent, or if the testParent
+// is not a parent of testChild.
+bool isChild(const tree<Filter *> &treeInst,
+		tree<Filter *>::iterator testParent,
+		tree<Filter *>::iterator testChild)
+{
+	// NOTE: A comparison against tree root (treeInst.begin())is INVALID
+	// for trees that have multiple base nodes.
+	while(treeInst.depth(testChild))
+	{
+		testChild=treeInst.parent(testChild);
+		
+		if(testChild== testParent)
+			return true;
+	}
+
+	return false;
+}
+
+size_t countChildFilters(const tree<Filter *> &treeInst,
+			const vector<tree<Filter *>::iterator> &nodes)
+{
+	set<Filter*> childIts;
+	for(size_t ui=0;ui<nodes.size();ui++)
+	{
+		for(tree<Filter*>::pre_order_iterator it=nodes[ui];
+				it!=treeInst.end();it++)
+			childIts.insert(*it);
+
+	}
+
+	return childIts.size()-nodes.size();
+}
+
+
 VisController::VisController()
 {
 	targetScene=0;
@@ -162,7 +199,7 @@ unsigned int VisController::LoadIonSet(const std::string &filename)
 	pushUndoStack();
 
 
-	PosLoadFilter *p = new PosLoadFilter();
+	DataLoadFilter *p = new DataLoadFilter();
 
 	p->setFilename(filename);
 
@@ -561,6 +598,262 @@ void VisController::initFilterTree() const
 	}
 }
 
+
+void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propStarts) const
+{
+
+	if(!filters.size())
+		return;
+
+	const bool STUPID_ALGORITHM=false;
+	if(STUPID_ALGORITHM)
+	{
+		//Stupid version
+		//start at root every time
+		propStarts.push_back(filters.begin());
+	}
+	else
+	{
+		//Do something clever. Here we examine the types of data that are
+		//propagated through the tree, and which filters emit, or block transmission
+		//of any given type. From this information, and the cache status of each filter
+		//(recall caches only cache data generated inside the filter), it is possible to
+		//skip certain initial element refreshes.
+
+		cerr << "=========Beginning type analysis==========" << endl;
+
+		//Block and emit adjuncts for tree
+		map<Filter *, size_t> accumulatedEmitTypes,accumulatedBlockTypes;
+
+		cerr << "------Stage 1 : Build emit map -----------" << endl;
+
+		//Build the accumulated emit type map. This describes
+		//what possible types can be emitted at any point in the tree.
+		for(tree<Filter *>::iterator it=filters.begin_breadth_first(); 
+					it!=filters.end_breadth_first(); ++it)
+		{
+			//FIXME: HACK -- why does the BFS not terminate correctly?
+			if(!filters.is_valid(it))
+			{
+#ifdef DEBUG
+				cerr << "Odd. BFS it termination not detected. Ugly hack used. Moving along. " << endl;
+				cerr << "Iterator is invalid, yet node is nonzero? (it.node : " << it.node << endl;
+#endif
+				break;
+			}
+
+			ASSERT(filters.is_valid(it));
+			cerr << "Examining filter in tree :" << (*it)->getUserString() << endl;
+			size_t curEmit;
+			//Root node is special, does not combine with the 
+			//previous filter
+			if(!filters.depth(it)) //TODO: Checkme, 0 or 1?
+				curEmit=(*it)->getRefreshEmitMask();
+			else
+			{
+				//Normal child. We need to remove any types that
+				//are blocked (& (~blocked)), then add any types that are emitted
+				//(|)
+				curEmit=accumulatedEmitTypes[*(filters.parent(it))];
+				curEmit&=(~(*it)->getRefreshBlockMask() )& STREAMTYPE_MASK_ALL;
+				curEmit|=(*it)->getRefreshEmitMask();
+			}
+			
+			accumulatedEmitTypes.insert(make_pair(*it,curEmit));
+						
+		}
+
+		//Build the accumulated block map;  this describes
+		//what types, if emitted, will NOT be propagated to the final output
+		for(size_t ui=filters.max_depth()+1; ui; )
+		{
+			ui--;
+
+			for(tree<Filter * >::iterator it=filters.begin();it!=filters.end();++it)
+			{
+				//Check to see if we are at the correct depth
+				if(filters.depth(it) != ui)
+					continue;
+
+
+				int blockMask;
+
+				if((*it)->haveCache())
+				{
+					//Loop over the children of this filter, grab their block masks
+					for(tree<Filter *>::sibling_iterator itJ=it.begin(); itJ!=it.end();itJ++)
+					{
+						if((*itJ)->haveCache())
+							blockMask&=(*itJ)->getRefreshBlockMask();
+						else
+						{
+							blockMask&=0;
+							//The only reason to keep looping is to 
+							//alter the blockmask. If it is at any point zero,
+							//then the answer will be zero, due to the & operator.
+							break;
+						}
+
+					}
+				
+					//OK, so we now know which filters the children will ALL block.
+					//Combine this with our block list for this filter, and we this will give ush
+					//the blocklist for this subtree section
+					blockMask|=(*it)->getRefreshBlockMask();
+				}
+				else
+					blockMask=0;
+			
+				accumulatedBlockTypes.insert(make_pair(*it,blockMask));
+			}
+		
+		}
+#ifdef DEBUG
+		cerr << "-----------Stage 2 complete. -----------"<< endl;
+	
+		ASSERT(accumulatedEmitTypes.size() == accumulatedBlockTypes.size());
+		ASSERT(accumulatedEmitTypes.size() == filters.size());
+
+		cerr << "Emit map :" << endl;
+		cerr << "--------------------" <<endl;
+		//Dump the emit and block maps
+		for(tree<Filter *>::iterator it=filters.begin(); 
+					it!=filters.end(); ++it)
+		{
+			cerr << tabs(filters.depth(it)) << (*it)->getUserString() << std::hex << accumulatedEmitTypes[*it] << endl;
+		}
+		cerr << "--------------------" <<endl;
+
+		cerr << "Block map :" << endl;
+		cerr << "--------------------" <<endl;
+		for(tree<Filter *>::iterator it=filters.begin(); 
+					it!=filters.end(); ++it)
+		{
+			cerr << tabs(filters.depth(it)) << (*it)->getUserString() << std::hex << accumulatedBlockTypes[*it] << endl;
+		}
+
+		cerr << std::dec;
+		cerr << "--------------------" <<endl;
+#endif
+		vector<tree<Filter *>::iterator > seedFilts;
+	
+
+
+		cerr << "------Stage 3 : Locate seed filters-----------" << endl;
+
+		for(tree<Filter *>::iterator it=filters.begin_breadth_first(); 
+					it!=filters.end_breadth_first(); ++it)
+		{
+			//FIXME: HACK -- why does the BFS not terminate correctly?
+			if(!filters.is_valid(it))
+			{
+#ifdef DEBUG
+				cerr << "Odd. BFS it termination not detected. Ugly hack used. Moving along. " << endl;
+				cerr << "Iterator is invalid, yet node is nonzero? (it.node : " << it.node << endl;
+#endif
+				break;
+			}
+
+			//Check to see if we have an insertion point above us.
+			//if so, we cannot press on, as we have determined that
+			//we must start higher up.
+			bool isChildFilt;
+			isChildFilt=false;
+			for(unsigned int ui=0;ui<seedFilts.size();ui++)
+			{
+				if(isChild(filters,seedFilts[ui],it))
+				{
+					isChildFilt=true;
+					continue;
+				}
+			}
+
+			if(isChildFilt)
+				continue;
+			
+			//If we are a leaf, then we have to do our work, or nothing will be generated
+			//so check that
+			bool isLeaf;
+			isLeaf=false;
+			for(tree<Filter*>::leaf_iterator  itJ= filters.begin_leaf(); 
+							itJ!=filters.end_leaf(); itJ++)
+
+			{
+				if(itJ == it)
+				{
+					isLeaf=true;
+					seedFilts.push_back(it);
+					break;
+				}
+			}
+
+			if(isLeaf)
+				continue;
+
+			//Check to see if we can use these children as insertion
+			//points in the tree
+			//i.e., ask, "Do all subtrees block everything we emit from here?"
+			int emitMask,blockMask;
+			emitMask=accumulatedEmitTypes[*it];
+			blockMask=~0;
+			for(tree<Filter *>::sibling_iterator itJ=filters.begin(it); itJ!=filters.end(it);itJ++)
+				blockMask&=accumulatedBlockTypes[*itJ];
+
+			if( emitMask & ((~blockMask) & STREAMTYPE_MASK_ALL)) 
+			{
+#ifdef DEBUG
+				cerr << "Adding  " << (*it)->getUserString() << " at level " << filters.depth(it) << " to seed list." << endl;
+			        cerr << "Upstream Emit mask is " << std::hex << emitMask <<  " downstream block mask is " << blockMask << endl; 
+				cerr << std::dec;
+#endif
+				//Oh noes! we don't block, we will have to stop here,
+				// for this subtree. We cannot go further down.
+				seedFilts.push_back(it);
+			}
+
+		}
+
+
+#ifdef DEBUG
+		cerr << "-----------Stage 3 complete. -----------"<< endl;
+		cerr << "=========== Type analysis complete=========" << endl;
+	
+
+		cerr << "Created  :" << seedFilts.size() << " seed filters " << endl;
+
+		for(unsigned int ui=0;ui<seedFilts.size() ;ui++)
+		{
+			cerr <<  "Depth  :" << filters.depth(seedFilts[ui]) <<   "  UserString :" << (*seedFilts[ui])->getUserString() << endl;
+		}
+#endif
+		propStarts.swap(seedFilts);
+
+
+	}
+
+#ifdef DEBUG
+	for(unsigned int ui=0;ui<propStarts.size();ui++)
+	{
+		for(unsigned int uj=ui+1;uj<propStarts.size();uj++)
+		{
+			//Check for uniqueness
+			ASSERT(propStarts[ui] !=propStarts[uj]);
+
+
+			//Check for no-parent relation (either direction)
+			ASSERT(!isChild(filters,propStarts[ui],propStarts[uj]) &&
+				!isChild(filters,propStarts[uj],propStarts[ui]));
+		}
+	}
+
+
+
+#endif
+
+
+
+}
+
 unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<const FilterStreamData * > > > &outData)
 	
 {
@@ -587,6 +880,8 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 	inDataStack.push(curData);
 
 
+
+
 	//Keep redoing the refresh until the user stops fiddling with the filter tree.
 	do
 	{
@@ -596,203 +891,258 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 			curProg.reset();
 		}
 
-		//Depth-first search from root node, refreshing filters as we proceed.
-		for(tree<Filter * >::pre_order_iterator filtIt=filters.begin();
-						filtIt!=filters.end(); filtIt++)
+		vector<tree<Filter *>::iterator> baseTreeNodes;
+
+		baseTreeNodes.clear();
+
+		getFilterRefreshStarts(baseTreeNodes);
+		
+
+		curProg.totalNumFilters=countChildFilters(filters,baseTreeNodes)+baseTreeNodes.size();
+
+		cerr << "Total Number of filters  to refresh is apparently:" <<curProg.totalNumFilters << endl;
+
+		for(unsigned int itPos=0;itPos<baseTreeNodes.size(); itPos++)
 		{
-
-			//Step 0 : Pop the cache until we reach our current level, 
-			//	deleting any pointers that would otherwise be lost.
-			//---
-			popPointerStack(pointerTrackList,
-				inDataStack,filters.depth(filtIt)+1);
-			//---
-
-			//Step 1: Set up the progress system
-			//---
-			curProg.clock();
-			curProg.curFilter=*filtIt;	
-			//---
-			
-			//Step 2: Check if we should cache this filter or not.
-			//Get the number of bytes that the filter expects to use
-			//---
-			unsigned long long cacheBytes;
-			if(inDataStack.empty())
-				cacheBytes=(*filtIt)->numBytesForCache(0);
-			else
-				cacheBytes=(*filtIt)->numBytesForCache(numElements(inDataStack.top()));
-
-			if(cacheBytes != (unsigned long long)(-1))
+			//Depth-first search from root node, refreshing filters as we proceed.
+			for(tree<Filter * >::pre_order_iterator filtIt=baseTreeNodes[itPos];
+							filtIt!=filters.end(); filtIt++)
 			{
-				//As long as we have caching enabled, let us cache according to the
-				//selected strategy
-				switch(cacheStrategy)
+				//Check to see if this node is a child of the base node.
+				//if not, move on.
+				if( filtIt!= baseTreeNodes[itPos] &&
+					!isChild(filters,baseTreeNodes[itPos],filtIt))
 				{
-					case CACHE_NEVER:
-						(*filtIt)->setCaching(false);
-						break;
-					case CACHE_DEPTH_FIRST:
-						(*filtIt)->setCaching(cacheBytes/(1024*1024) < maxCachePercent*getAvailRAM());
-						break;
-
+					cerr << "Not a child, or base node. (i.e. not in refresh path). Moving on... " << endl;
+					continue;
 				}
-			}
-			else
-				(*filtIt)->setCaching(false);
 
-			//---
 
-			//Step 3: Take the stack top, and turn it into "curdata" using the filter
-			//	record the result on the stack
-			//	We also record any Selection devices that are generated by the filter.
-			//	This is the guts of the system.
-			//---
-			//
-			(*wxYieldCallback)();
+				//Step 0 : Pop the cache until we reach our current level, 
+				//	deleting any pointers that would otherwise be lost.
+				//	Recall that the zero size in the stack may not correspond to the
+				//	tree root, but rather corresponds to our insertion level
+				//---
+				popPointerStack(pointerTrackList,
+					inDataStack,filters.depth(filtIt) - filters.depth(baseTreeNodes[itPos])+1);
+				//---
 
-			//Take the stack top, filter it and generate "curData"
-			errCode=(*filtIt)->refresh(inDataStack.top(),
-						curData,curProg,wxYieldCallback);
+				//Step 1: Set up the progress system
+				//---
+				curProg.clock();
+				curProg.curFilter=*filtIt;	
+				//---
+				
+				//Step 2: Check if we should cache this filter or not.
+				//Get the number of bytes that the filter expects to use
+				//---
+				unsigned long long cacheBytes;
+				if(inDataStack.empty())
+					cacheBytes=(*filtIt)->numBytesForCache(0);
+				else
+					cacheBytes=(*filtIt)->numBytesForCache(numElements(inDataStack.top()));
+
+				if(cacheBytes != (unsigned long long)(-1))
+				{
+					//As long as we have caching enabled, let us cache according to the
+					//selected strategy
+					switch(cacheStrategy)
+					{
+						case CACHE_NEVER:
+							(*filtIt)->setCaching(false);
+							break;
+						case CACHE_DEPTH_FIRST:
+							(*filtIt)->setCaching(cacheBytes/(1024*1024) < maxCachePercent*getAvailRAM());
+							break;
+
+					}
+				}
+				else
+					(*filtIt)->setCaching(false);
+
+				//---
+
+				//Step 3: Take the stack top, and turn it into "curdata" using the filter
+				//	record the result on the stack
+				//	We also record any Selection devices that are generated by the filter.
+				//	This is the guts of the system.
+				//---
+				//
+				(*wxYieldCallback)();
+
+				cerr << "Refreshing Filter " << (*filtIt)->getUserString() << endl;
+
+				//Take the stack top, filter it and generate "curData"
+				errCode=(*filtIt)->refresh(inDataStack.top(),
+							curData,curProg,wxYieldCallback);
 
 #ifdef DEBUG
-			//Filter outputs should 
-			//	- never be null pointers.
-			//	- Not contain zero sized point streams
-			for(unsigned int ui=0;ui<inDataStack.top().size();ui++)
-			{
-				ASSERT(inDataStack.top()[ui]);
-			}
-
-			for(size_t ui=0;ui<curData.size();ui++)
-			{	
-				const FilterStreamData *f;
-				f=(curData[ui]);
-
-				switch(f->getStreamType())
-				{
-					case STREAM_TYPE_IONS:
-					{
-						const IonStreamData *ionData;
-						ionData=((const IonStreamData *)f);
-
-//						ASSERT(ionData->data.size());
-						break;
-					}
-					default:
-					;
-				}
-				
-			}
-#endif
-			//Ensure that (1) yield is called, regardless of what filter does
-			 //(2) yield is called after 100% update	
-			curProg.filterProgress=100;	
-			(*wxYieldCallback)();
-
-
-			//Retrieve the user interaction "devices", and send them to the scene
-			vector<SelectionDevice<Filter> *> curDevices;
-			(*filtIt)->getSelectionDevices(curDevices);
-			targetScene->addSelectionDevices(curDevices);
-			curDevices.clear();
-
-			//Retrieve any console messages from the filter
-			vector<string> consoleMessages;
-			(*filtIt)->getConsoleStrings(consoleMessages);
-			updateConsole(consoleMessages,(*filtIt));
-
-			//check for any error in filter update (including user abort)
-			if(errCode)
-			{
-				//clear any intermediary pointers
-				popPointerStack(pointerTrackList,inDataStack,0);
-				ASSERT(pointerTrackList.size() == 0);
-				ASSERT(inDataStack.size() ==0);
-				amRefreshing=false;
-				return errCode;
-			}
-
-
-			//Update the filter output information
-			(*filtIt)->updateOutputInfo(curData);
-			
-			
-			//is this node a leaf of the tree?
-			bool isLeaf;
-			isLeaf=false;
-			for(tree<Filter *>::leaf_iterator leafIt=filters.begin_leaf();
-					leafIt!=filters.end_leaf(); leafIt++)
-			{
-				if(*leafIt == *filtIt)
-				{
-					isLeaf=true;
-					break;
-				}
-			}
-		
-			//If this is not a leaf, keep track of intermediary pointers
-			if(!isLeaf)
-			{
-				//The filter will generate a list of new pointers. If any out-going data 
-				//streams are un-cached, track them
-				for(unsigned int ui=0;ui<curData.size(); ui++)
-				{
-					//Keep an eye on this pointer. It is not cached (owned) by the filter
-					//and needs to be tracked (for possible later deletion)
-					ASSERT(curData[ui]);
-
-					list<const FilterStreamData *>::iterator it;
-					it = find(pointerTrackList.begin(),pointerTrackList.end(),curData[ui]);
-					//Check it is not cached, and that we are not already tracking it.
-					if(!curData[ui]->cached && it!=pointerTrackList.end()) 
-					{
-						//track pointer.
-						pointerTrackList.push_back(curData[ui]);
-					}
-				}	
-				
-				//Put this in the intermediary stack, 
-				//so it is available for any other children at this leve.
-				inDataStack.push(curData);
-			}
-			else
-			{
-				//The filter has created an ouput. Record it for passing to updateScene
-				outData.push_back(make_pair(*filtIt,curData));
+				//Filter outputs should 
+				//	- never be null pointers.
 				for(unsigned int ui=0;ui<curData.size();ui++)
 				{
-					//Search through the pointer list. If we find it,
-					//then it is handled by VisController::updateScene, 
-					//and we do not need to delete it using the stack
-					//if we don't find it, then it is a new pointer, and we still don't need
-					//to delete it. At any rate, we need to make sure that it is not
-					//deleted by the popPointerStack function.
-					list<const FilterStreamData *>::iterator it;
-					it=find(pointerTrackList.begin(),pointerTrackList.end(),
-								curData[ui]);
-
-					//The pointer is an output from the filter, so we don't need to track it
-					if(it!=pointerTrackList.end())
-						pointerTrackList.erase(it);
-
-					//Pointer should be only in the track list once.
-					ASSERT(find(pointerTrackList.begin(),pointerTrackList.end(),
-								curData[ui]) == pointerTrackList.end());
-				
+					ASSERT(curData[ui]);
 				}
-			}	
 
-			//Cur data is recorded either in outDta or on the data stack
-			curData.clear();
-			//---
+				//Filter outputs should 
+				//	- never contain duplicate pointers
+				for(unsigned int ui=0;ui<curData.size();ui++)
+				{
+					for(unsigned int uj=ui+1;uj<curData.size();uj++)
+					{
+						ASSERT(curData[ui]!= curData[uj]);
+					}
+				}
+
+
+				//Filter outputs should 
+				//	- Not contain zero sized point streams
+				for(size_t ui=0;ui<curData.size();ui++)
+				{	
+					const FilterStreamData *f;
+					f=(curData[ui]);
+
+					switch(f->getStreamType())
+					{
+						case STREAM_TYPE_IONS:
+						{
+							const IonStreamData *ionData;
+							ionData=((const IonStreamData *)f);
+
+							//FIXME: Re-enable. This is
+							//triggering a lot of bugs,
+							//and I disabled this close to the
+							//release as I did not have time
+							//to fix all of them
+//							ASSERT(ionData->data.size());
+							break;
+						}
+						default:
+						;
+					}
+					
+				}
 			
-			//check for any pending updates to the filter data
-			//in case we need to start again, user has changed something
-			if(pendingUpdates)
-				break;
-		}
+				//Filter outputs should 
+				//	- Always have isCached set to 0 or 1.
+				for(unsigned int ui=0;ui<curData.size();ui++)
+				{
+					ASSERT(curData[ui]->cached == 1 ||
+						curData[ui]->cached == 0);
+				}
 
+
+#endif
+				//Ensure that (1) yield is called, regardless of what filter does
+				 //(2) yield is called after 100% update	
+				curProg.filterProgress=100;	
+				(*wxYieldCallback)();
+
+
+				//Retrieve the user interaction "devices", and send them to the scene
+				vector<SelectionDevice<Filter> *> curDevices;
+				(*filtIt)->getSelectionDevices(curDevices);
+				targetScene->addSelectionDevices(curDevices);
+				curDevices.clear();
+
+				//Retrieve any console messages from the filter
+				vector<string> consoleMessages;
+				(*filtIt)->getConsoleStrings(consoleMessages);
+				updateConsole(consoleMessages,(*filtIt));
+
+				//check for any error in filter update (including user abort)
+				if(errCode)
+				{
+					//clear any intermediary pointers
+					popPointerStack(pointerTrackList,inDataStack,0);
+					ASSERT(pointerTrackList.size() == 0);
+					ASSERT(inDataStack.size() ==0);
+					amRefreshing=false;
+					return errCode;
+				}
+
+
+				//Update the filter output information
+				(*filtIt)->updateOutputInfo(curData);
+				
+				
+				//is this node a leaf of the tree?
+				bool isLeaf;
+				isLeaf=false;
+				for(tree<Filter *>::leaf_iterator leafIt=filters.begin_leaf();
+						leafIt!=filters.end_leaf(); leafIt++)
+				{
+					if(*leafIt == *filtIt)
+					{
+						isLeaf=true;
+						break;
+					}
+				}
+			
+				//If this is not a leaf, keep track of intermediary pointers
+				if(!isLeaf)
+				{
+					//The filter will generate a list of new pointers. If any out-going data 
+					//streams are un-cached, track them
+					for(unsigned int ui=0;ui<curData.size(); ui++)
+					{
+						//Keep an eye on this pointer. It is not cached (owned) by the filter
+						//and needs to be tracked (for possible later deletion)
+						ASSERT(curData[ui]);
+
+						list<const FilterStreamData *>::iterator it;
+						it = find(pointerTrackList.begin(),pointerTrackList.end(),curData[ui]);
+						//Check it is not cached, and that we are not already tracking it.
+						if(!curData[ui]->cached && it!=pointerTrackList.end()) 
+						{
+							//track pointer.
+							pointerTrackList.push_back(curData[ui]);
+						}
+					}	
+					
+					//Put this in the intermediary stack, 
+					//so it is available for any other children at this leve.
+					inDataStack.push(curData);
+				}
+				else
+				{
+					//The filter has created an ouput. Record it for passing to updateScene
+					outData.push_back(make_pair(*filtIt,curData));
+					for(unsigned int ui=0;ui<curData.size();ui++)
+					{
+						//Search through the pointer list. If we find it,
+						//then it is handled by VisController::updateScene, 
+						//and we do not need to delete it using the stack
+						//if we don't find it, then it is a new pointer, and we still don't need
+						//to delete it. At any rate, we need to make sure that it is not
+						//deleted by the popPointerStack function.
+						list<const FilterStreamData *>::iterator it;
+						it=find(pointerTrackList.begin(),pointerTrackList.end(),
+									curData[ui]);
+
+						//The pointer is an output from the filter, so we don't need to track it
+						if(it!=pointerTrackList.end())
+							pointerTrackList.erase(it);
+
+						//Pointer should be only in the track list once.
+						ASSERT(find(pointerTrackList.begin(),pointerTrackList.end(),
+									curData[ui]) == pointerTrackList.end());
+					
+					}
+				}	
+
+				//Cur data is recorded either in outDta or on the data stack
+				curData.clear();
+				//---
+				
+				//check for any pending updates to the filter data
+				//in case we need to start again, user has changed something
+				if(pendingUpdates)
+					break;
+			}
+
+		}
+		
 		popPointerStack(pointerTrackList,inDataStack,0);
 	}while(pendingUpdates);
 	
@@ -802,7 +1152,7 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 	ASSERT(inDataStack.size() ==0);
 
 	//Progress data should reflect number of filters
-	ASSERT(curProg.totalProgress == numFilters());
+	//ASSERT(curProg.totalProgress == numFilters());
 
 	//====Output scrubbing ===
 
@@ -979,9 +1329,14 @@ unsigned int VisController::updateScene()
 					//Draw plot
 					const PlotStreamData *plotData;
 					plotData=((PlotStreamData *)((*it)[ui]));
-
+					
 					//The plot should have some data in it.
 					ASSERT(plotData->GetNumBasicObjects());
+					//The plto should have a parent filter
+					ASSERT(plotData->parent);
+					//The plot should have an index, so we can keep
+					//filter choices between refreshes (where possible)
+					ASSERT(plotData->index !=(unsigned int)-1);
 					//Construct a new plot
 					unsigned int plotID;
 					plotID=targetPlots->addPlot(plotData->xyData,plotData->errDat,
@@ -2282,6 +2637,8 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 
 			if(maxCount)
 				stashedFilters.push_back(newStashes[ui]);
+			else
+				errStream << " Unable to merge stashes correctly. This is improbable, so please report this." << endl;
 		}
 
 		if(filters.size())
@@ -2832,6 +3189,8 @@ void VisController::popUndoStack()
 	//Pop the undo stack
 	undoFilterStack.pop_back();
 	
+	//Filter topology has changed. Update
+	initFilterTree();
 }
 
 void VisController::popRedoStack()
@@ -2870,6 +3229,9 @@ void VisController::popRedoStack()
 	
 	//Pop the redo stack
 	redoFilterStack.pop_back();
+
+	//Filter topology has changed. Update
+	initFilterTree();
 }
 
 

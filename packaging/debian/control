@@ -12,7 +12,6 @@ Vcs-Browser: http://git.debian.org/?p=debian-science/packages/3depict.git
 
 Package: 3depict
 Architecture: any
-Section: science
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: visualisation and analysis for single valued point data 
  This program provides a graphical interface for the scientific analysis

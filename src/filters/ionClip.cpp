@@ -1194,6 +1194,19 @@ bool IonClipFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 	return true;
 }
 
+int IonClipFilter::getRefreshBlockMask() const
+{
+	return STREAM_TYPE_IONS ;
+}
+
+int IonClipFilter::getRefreshEmitMask() const
+{
+	if(showPrimitive)
+		return STREAM_TYPE_IONS | STREAM_TYPE_DRAW;
+	else
+		return  STREAM_TYPE_IONS ;
+}
+
 void IonClipFilter::setPropFromBinding(const SelectionBinding &b)
 {
 	switch(b.getID())

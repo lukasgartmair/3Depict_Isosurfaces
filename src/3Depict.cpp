@@ -104,8 +104,6 @@ const unsigned int PROGRESS_TIMER_DELAY=100;
 //Seconds between autosaves
 const unsigned int AUTOSAVE_DELAY=300; 
 
-const unsigned int DEFAULT_IONS_VIEW=100;
-
 //!Number of pages in the panel at the bottom
 const unsigned int NOTE_CONSOLE_PAGE_OFFSET= 2;
 
@@ -284,6 +282,7 @@ enum {
 
 
 };
+
 MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
     wxFrame(parent, id, title, pos, size, style)
 {
@@ -300,6 +299,9 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 	SetDropTarget(dropTarget);
 	
 	//Set up the recently used files menu
+	// Note that this cannot exceed 9. Items show up, but do not trigger events.
+	// This is bug 12141 in wxWidgets : http://trac.wxwidgets.org/ticket/12141
+	ASSERT(configFile.getMaxHistory() <=9);
 	recentHistory= new wxFileHistory(configFile.getMaxHistory());
 
 
@@ -825,15 +827,19 @@ void MainWindowFrame::OnFileOpen(wxCommandEvent &event)
 	//structure
 	visControl.updateWxTreeCtrl(treeFilters);
 	refreshButton->Enable(visControl.numFilters());
-	
-	doSceneUpdate();
+
+	bool updateOK;	
+	updateOK =doSceneUpdate();
 	//If we are using the default camera,
 	//move it to make sure that it is visible
-	if(visControl.numCams() == 1)
-		visControl.ensureSceneVisible(3);
+	if(updateOK)
+	{
+		if(visControl.numCams() == 1)
+			visControl.ensureSceneVisible(3);
 
-	statusMessage("Loaded file.",MESSAGE_INFO);
-	
+			statusMessage("Loaded file.",MESSAGE_INFO);
+	}
+
 	panelTop->Refresh();
 	
 	wxF->Destroy();
@@ -909,7 +915,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 {
 	std::string dataFile = stlStr(fileStr);
 	
-	//Split the filename into chunks. path, volume, name and extention
+	//Split the filename into chunks. path, volume, name and extension
 	//the format of this is OS dependant, but wxWidgets can deal with this.
 	wxFileName fname;
 	wxString volume,path,name,ext;
@@ -917,7 +923,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 	fname.SplitPath(fileStr,&volume,
 			&path,&name,&ext, &hasExt);
 
-	//Test the extention to determine what we will do
+	//Test the extension to determine what we will do
 	//TODO: This is really lazy, and I should use something like libmagic.
 	std::string extStr;
 	extStr=stlStr(ext);
@@ -1138,7 +1144,7 @@ void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
 
 	std::string dataFile = stlStr(wxF->GetPath());
 	
-	//Split the filename into chunks. path, volume, name and extention
+	//Split the filename into chunks. path, volume, name and extension
 	//the format of this is OS dependant, but wxWidgets can deal with this.
 	wxFileName fname;
 	wxString volume,path,name,ext;
@@ -1154,7 +1160,7 @@ void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
 
 	unsigned int errCode;
 
-	//Try to save the file (if we recognise the extention)
+	//Try to save the file (if we recognise the extension)
 	if(strExt == "svg")
 		errCode=panelSpectra->saveSVG(dataFile);
 	else if (strExt == "png")
@@ -1175,7 +1181,7 @@ void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
 	else
 	{
 		std::string errString;
-		errString="Unknown file extention. Please use \"svg\" or \"png\"";
+		errString="Unknown file extension. Please use \"svg\" or \"png\"";
 		wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
 						,wxT("Unable to save"),wxOK|wxICON_ERROR);
 		wxD->ShowModal();
@@ -2708,7 +2714,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 			//Load rangefile &  construct filter
 			RangeFileFilter *f=(RangeFileFilter*)configFile.getDefaultFilter(FILTER_TYPE_RANGEFILE);
 
-			//Split the filename into chunks. path, volume, name and extention
+			//Split the filename into chunks. path, volume, name and extension
 			//the format of this is OS dependant, but wxWidgets can deal with this.
 			wxFileName fname;
 			wxString volume,path,name,ext;
@@ -2727,7 +2733,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 			       f->setFormat(RANGE_FORMAT_RRNG);	
 			else
 			{
-				statusMessage("Unknown file extention",MESSAGE_ERROR);
+				statusMessage("Unknown file extension",MESSAGE_ERROR);
 				return;
 			}
 				
@@ -2814,7 +2820,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 	editRedoMenuItem->Enable(visControl.getRedoSize());
 }
 
-void MainWindowFrame::doSceneUpdate()
+bool MainWindowFrame::doSceneUpdate()
 {
 	//Update scene
 	
@@ -2825,7 +2831,7 @@ void MainWindowFrame::doSceneUpdate()
 	haveAborted=false;
 
 		
-//	statusMessage("",MESSAGE_NONE);
+	statusMessage("",MESSAGE_NONE);
 	noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,_("Cons."));
 
 	//Disable tree filters,refresh button and undo
@@ -2899,6 +2905,9 @@ void MainWindowFrame::doSceneUpdate()
 		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,_("§Cons."));
 
 
+	//Return a value dependant upon whether we succesfully loaded 
+	//the data or not
+	return errCode == 0;
 }
 
 void MainWindowFrame::OnStatusBarTimer(wxTimerEvent &event)
@@ -3107,7 +3116,9 @@ void MainWindowFrame::updateProgressStatus()
 		std::string totalProg,totalCount,step,maxStep;
 		stream_cast(totalProg,p.totalProgress);
 		stream_cast(filterProg,p.filterProgress);
-		stream_cast(totalCount,visControl.numFilters());
+		stream_cast(totalCount,p.totalNumFilters);
+
+
 		stream_cast(step,p.step);
 		stream_cast(maxStep,p.maxStep);
 
@@ -3613,6 +3624,9 @@ void MainWindowFrame::OnCameraGridCellEditorShow(wxGridEvent &event)
 			else
 				s="0";
 			visControl.setCamProperties(camUniqueID,set,key,s);
+		
+			//For some reason this does not  redraw neatly. Force a redraw
+			visControl.updateCamPropertyGrid(gridCameraProperties,camUniqueID);
 
 			event.Veto();
 			break;
@@ -3655,6 +3669,7 @@ void MainWindowFrame::OnCameraGridCellEditorShow(wxGridEvent &event)
 	}
 
 	panelTop->Refresh(false);
+	
 }
 
 void MainWindowFrame::OnButtonGridCopy(wxCommandEvent &event)

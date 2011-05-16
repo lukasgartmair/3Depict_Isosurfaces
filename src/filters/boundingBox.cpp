@@ -764,3 +764,13 @@ bool BoundingBoxFilter::readState(xmlNodePtr &nodePtr, const std::string &stateF
 	return true;	
 }
 
+int BoundingBoxFilter::getRefreshBlockMask() const
+{
+	//Everything goes through this filter
+	return 0;
+}
+
+int BoundingBoxFilter::getRefreshEmitMask() const
+{
+	return  STREAM_TYPE_DRAW;
+}

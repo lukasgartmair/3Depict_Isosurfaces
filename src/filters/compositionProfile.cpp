@@ -675,6 +675,10 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			if(stream_cast(newNumBins,value))
 				return false;
 
+			//zero bins disallowed
+			if(!newNumBins)
+				return false;
+
 			nBins=newNumBins;
 
 			clearCache();
@@ -1081,6 +1085,19 @@ bool CompositionProfileFilter::writeState(std::ofstream &f,unsigned int format, 
 	return true;
 }
 
+
+bool CompositionProfileFilter::setUserString(const std::string &str)
+{
+	if(userString != str)
+	{
+		userString=str;
+		clearCache();
+		return true;
+	}	
+	else
+		return false;
+}
+
 bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileDir)
 {
 	//Retrieve user string
@@ -1363,6 +1380,20 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	//====
 
 	return true;
+}
+
+int CompositionProfileFilter::getRefreshBlockMask() const
+{
+	//Absolutely anything can go through this filter.
+	return 0;
+}
+
+int CompositionProfileFilter::getRefreshEmitMask() const
+{
+	if(showPrimitive)
+		return STREAM_TYPE_PLOT | STREAM_TYPE_DRAW;
+	else
+		return STREAM_TYPE_PLOT;
 }
 
 void CompositionProfileFilter::setPropFromBinding(const SelectionBinding &b)

@@ -40,6 +40,7 @@ using std::pair;
 //!Key types for property setting and getting via property grids
 enum
 {
+	KEY_LOOKAT_LOCK,
 	KEY_LOOKAT_ORIGIN,
 	KEY_LOOKAT_TARGET,
 	KEY_LOOKAT_UPDIRECTION,
@@ -52,6 +53,7 @@ enum
 
 Camera::Camera() : origin(0.0f,0.0f,0.0f), viewDirection(0.0f,0.0f,-1.0f), upDirection(0.0f,0.0f,1.0f)
 {
+	lock=false;
 }
 
 Camera::~Camera()
@@ -76,28 +78,38 @@ Point3D Camera::getUpDirection() const
 
 void Camera::setOrigin(const Point3D &pt)
 {
+	if(lock)
+		return;
 	origin=pt;
 }
 
 void Camera::setViewDirection(const Point3D &pt)
 {
+	if(lock)
+		return;
 	viewDirection=pt;
 	viewDirection.normalise();
 }
 
 void Camera::setUpDirection(const Point3D &pt)
 {
+	if(lock)
+		return;
 	upDirection = pt;
 	upDirection.normalise();
 }
 
 void Camera::forwardsDolly(float moveRate)
 {
+	if(lock)
+		return;
 	origin=origin+ viewDirection*moveRate;
 }
 
 void Camera::move(float moveLR, float moveUD)
 {
+	if(lock)
+		return;
 	//Right is the cross product of up and 
 	//view direction (check sign)
 	//Up is simply the up vector
@@ -106,12 +118,16 @@ void Camera::move(float moveLR, float moveUD)
 
 void Camera::translate(float moveLR, float moveUD)
 {
+	if(lock)
+		return;
 	//This camera has no target. Just do plain move
 	move(moveLR,moveUD);
 }
 
 void Camera::pivot(float lrRad, float udRad)
 {
+	if(lock)
+		return;
 	Point3f viewNew, rotateAxis;
 
 	//rotate normalised rOrig around axis one then two
@@ -169,7 +185,7 @@ Camera *CameraLookAt::clone() const
 	retCam->orthoScale=orthoScale;
 	retCam->typeNum=typeNum;
 	retCam->userString=userString;
-
+	retCam->lock=lock;
 
 	retCam->target = target;
 	retCam->fovAngle = fovAngle;
@@ -236,6 +252,8 @@ void CameraLookAt::doPerspCalcs(float aspectRatio, const BoundCube &bc,bool load
 
 void CameraLookAt::setOrigin(const Point3D &newOrigin)
 {
+	if(lock)
+		return;
 	ASSERT(newOrigin.sqrDist(target)>std::numeric_limits<float>::epsilon());
 	origin=newOrigin;
 	recomputeViewDirection();
@@ -341,6 +359,8 @@ void CameraLookAt::apply(float aspect,const BoundCube &b,bool loadIdentity,
 
 void CameraLookAt::translate(float moveLR, float moveUD)
 {
+	if(lock)
+		return;
 	float fovMultiplier=1.0f;
 	if(projectionMode== PROJECTION_MODE_PERSPECTIVE)
 	{
@@ -366,6 +386,8 @@ void CameraLookAt::translate(float moveLR, float moveUD)
 
 void CameraLookAt::forwardsDolly(float moveRate)
 {
+	if(lock)
+		return;
 
 	if(projectionMode == PROJECTION_MODE_PERSPECTIVE)
 	{
@@ -410,6 +432,8 @@ void CameraLookAt::forwardsDolly(float moveRate)
 //Clockwise roll looking from camera view by rollRad radians
 void CameraLookAt::roll(float rollRad)
 {
+	if(lock)
+		return;
 	Point3f rNew,rotateAxis;
 
 	rotateAxis.fx=viewDirection[0];
@@ -427,6 +451,8 @@ void CameraLookAt::roll(float rollRad)
 
 void CameraLookAt::pivot(float leftRightRad,float updownRad)
 {
+	if(lock)
+		return;
 
 	Point3f rNew,rotateAxis;
 	Point3D tmp;
@@ -465,6 +491,8 @@ void CameraLookAt::pivot(float leftRightRad,float updownRad)
 //Make a given bounding box visible, as much as possible
 void CameraLookAt::ensureVisible(const BoundCube &boundCube, unsigned int face)
 {
+	if(lock)
+		return;
 	//Face is defined by the following net
 	//	1
 	//  2   3   4
@@ -598,6 +626,8 @@ void CameraLookAt::recomputeUpDirection()
 
 void CameraLookAt::move(float moveLRAngle, float moveUDAngle)
 {
+	if(lock)
+		return;
 
 	//Think of the camera as moving around the surface of a sphere
 	Point3f curOrig;
@@ -644,6 +674,14 @@ void CameraLookAt::getProperties(CameraProperties &p) const
 
 	vector<pair<string,string> > s;
 	vector<unsigned int> type,keys;
+
+	if(lock)
+		s.push_back(std::make_pair("Lock","1"));
+	else
+		s.push_back(std::make_pair("Lock","0"));
+
+	type.push_back(PROPERTY_TYPE_BOOL);
+	keys.push_back(KEY_LOOKAT_LOCK);
 
 	string ptStr;
 	stream_cast(ptStr,origin);
@@ -702,6 +740,17 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 
 	switch(key)
 	{
+		case KEY_LOOKAT_LOCK:
+		{
+			if(value == "1")
+				lock=true;
+			else if (value == "0")
+				lock=false;
+			else
+				return false;
+
+			break;
+		}
 		case KEY_LOOKAT_ORIGIN:
 		{
 			Point3D newPt;
@@ -808,7 +857,11 @@ bool CameraLookAt::writeState(std::ostream &f, unsigned int format,
 	f << tabs(nTabs+1) << "<userstring value=\"" << userString << "\"/>" << endl;
 	f << tabs(nTabs+1) << "<projectionmode value=\""<< projectionMode << "\"/>" << endl;
 	f << tabs(nTabs+1) << "<orthoscale value=\""<< orthoScale << "\"/>" << endl;
-			
+	
+	if(lock)	
+		f<< tabs(nTabs+1) <<  "<lock value=\"1\"/>" << endl;
+	else
+		f<< tabs(nTabs+1) <<  "<lock value=\"0\"/>" << endl;
 	f << tabs(nTabs+1) << "<origin x=\"" << origin[0] << "\" y=\"" << origin[1] <<
 	       	"\" z=\"" << origin[2] << "\"/>" << endl;
 	f << tabs(nTabs+1) << "<target x=\"" << target[0] << "\" y=\"" << target[1] <<
@@ -848,6 +901,22 @@ bool CameraLookAt::readState(xmlNodePtr nodePtr)
 	
 	float x,y,z;
 	xmlChar *xmlString;
+
+
+	//retrieve lock state
+	if(XMLHelpFwdToElem(nodePtr,"lock"))
+		return false;
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
+
+	std::string strTmp;
+	strTmp=(char*)xmlString;
+	if(strTmp == "1")
+		lock=true;
+	else if(strTmp == "0")
+		lock=false;
+	else
+		return false;
+
 	//Retrieve origin
 	//====
 	if(XMLHelpFwdToElem(nodePtr,"origin"))

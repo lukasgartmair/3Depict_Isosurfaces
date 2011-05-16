@@ -765,3 +765,13 @@ bool IonDownsampleFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	return true;
 }
 
+
+int IonDownsampleFilter::getRefreshBlockMask() const
+{
+	return STREAM_TYPE_IONS ;
+}
+
+int IonDownsampleFilter::getRefreshEmitMask() const
+{
+	return  STREAM_TYPE_IONS;
+}
