@@ -54,9 +54,9 @@ order=-1
 
 [item:manual.tex]
 archive=true
-column=261
+column=11
 encoding=UTF-8
 highlight=LaTeX
-line=438
+line=40
 open=true
 order=0

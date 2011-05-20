@@ -34,7 +34,7 @@
 #endif
 #include <mgl/mgl.h>
 
-
+#undef isnan
 
 #include "basics.h"
 

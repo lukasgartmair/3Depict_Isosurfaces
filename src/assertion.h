@@ -22,13 +22,15 @@
 		std::cerr << "Filename: " << filename << std::endl;
 		std::cerr << "Line number: " << lineNumber << std::endl;
 
-		std::cerr << "Do you wish to continue?(y/n)";
+	/*	Commented out for release
+	 * 	std::cerr << "Do you wish to continue?(y/n)";
 		char y = 'a';
 		while (y != 'n' && y != 'y')
 			std::cin >> y;
 
 		if (y != 'y')
 			exit(1);
+			*/
 	}
 
 	inline void dh_warn(const char * const filename, const unsigned int lineNumber,const char *message) 

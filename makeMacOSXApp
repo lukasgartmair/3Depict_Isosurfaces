@@ -11,6 +11,11 @@ if [ $1 = '--update-config=yes' ]; then
 		SHOULD_PARALLEL="--enable-openmp-parallel"
 	fi
 
+	if [ $3 = '--debug=no' ]; then
+		echo "Building debug off"
+		DISABLE_DEBUG="--enable-no-debug-checks"
+	fi
+
 	PNG_DIR="/usr/local"
 	./configure --with-freetype=/usr/local \
 		--with-wx-prefix=/usr/local \
@@ -18,6 +23,7 @@ if [ $1 = '--update-config=yes' ]; then
 		--with-libpng-flags="-I$PNG_DIR/include" \
 		--with-libpng-link="-L$PNG_DIR/lib -lpng14" \
 		$SHOULD_PARALLEL \
+		$DISABLE_DEBUG \
 		LDFLAGS="-lqhull -headerpad_max_install_names"
 
 	if [ $? -ne 0 ]; then

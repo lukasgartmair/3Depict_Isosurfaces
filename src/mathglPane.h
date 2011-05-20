@@ -23,6 +23,7 @@
 #include "plot.h"
 
 #include <mgl/mgl_zb.h>
+#undef is_nan
 
 #include <vector>
 #ifndef MATHGLPANE_H
