@@ -11,24 +11,26 @@
 		- Now performs bounds-in-sphere check for large queries,
 		  significantly improving the scaling characteristics of
 		  the search when using large bulk link radii
-	- Fix error in plot causing assertion error during mouseover
-	- Fix plot behaviour when all data == 0.
 	- Fix crash when moving range on empty data 
 	- Workaround for wxWidgets bug where recent file list >9 items
 	  would not load
-	- Fix incorrect "loaded file" message if uninterpretable pos file
-	  loaded.
 	- Fix bug in undo/redo where tree may not reset correctly if it
 	  contains range data after undo/redo op.
-	- Fix opengl bug with isosurface draw which appears up under some
-	  video card/driver combinations, which lead to undefined video
-	  behaviour (bad glPopAttrib()/glEnd() ordering)
 
 
 	Technical Bugfixes/Features:
 	- Signficantly more complex refresh system, now performs type analysis
 	  on tree to determine minimal subsections of tree to refresh. Now filters
 	  that cannot cache well will penalise the refresh system much less.
+	- Fix corner case bug in LFSR selection routines (power of two
+ 	  selection from same size array results in single duplicate).
+	- Fix opengl bug with isosurface draw which appears up under some
+	  video card/driver combinations, which lead to undefined video
+	  behaviour (bad glPopAttrib()/glEnd() ordering)
+	- Fix incorrect "loaded file" message if uninterpretable pos file
+	  loaded.
+	- Fix error in plot causing assertion error during mouseover
+	- Fix plot behaviour when all data == 0.
 
 
 * March 27, 2011  : 0.0.5

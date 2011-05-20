@@ -112,6 +112,7 @@ bool parsePointStr(const std::string &str,Point3D &pt)
 	if(str.size()< 5)
 		return false;
 
+	//GCC might bitch about this. Ignore gcc.
 	bool usingBrackets;
 	string tmpStr;
 	tmpStr=stripWhite(str);
@@ -124,6 +125,7 @@ bool parsePointStr(const std::string &str,Point3D &pt)
 
 	unsigned int nSeparators=0;
 	unsigned int separatorPos[2];
+	//GCC might bitch about this. Ignore gcc.
 	unsigned int nStart,nEnd;
 
 	size_t startPos,endPos;
@@ -887,7 +889,6 @@ bool BoundCube::containedInSphere(const Point3D &queryPt,float sqrDist) const
 	}
 #endif
 
-	float maxDistSqr=0.0f;
 
 	//Could probably be a bit more compact.
 	
@@ -907,7 +908,7 @@ bool BoundCube::containedInSphere(const Point3D &queryPt,float sqrDist) const
 	return true;
 }
 
-BoundCube BoundCube::operator=(const BoundCube &b)
+const BoundCube &BoundCube::operator=(const BoundCube &b)
 {
 	for(unsigned int ui=0;ui<3; ui++)
 	{

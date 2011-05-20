@@ -69,25 +69,26 @@ class Point3D
 
 		//!Equality operator
                 bool operator==(const Point3D &pt) const;
-		//!assignemnt operator
-                Point3D operator=(const Point3D &pt);
+		//!assignment operator
+                const Point3D &operator=(const Point3D &pt);
 		//!+= operator
-                Point3D operator+=(const Point3D &pt);
-                Point3D operator+(float f);
+                const Point3D &operator+=(const Point3D &pt);
+
+		const Point3D operator+(float f) const;
 		//!multiplication= operator
-                Point3D operator*=(const float scale);
+                const Point3D &operator*=(const float scale);
 		//!Addition operator
-                Point3D operator+(const Point3D &pt) const;
+                const Point3D operator+(const Point3D &pt) const;
 		//!multiplication
-                Point3D operator*(float scale) const;
+                const Point3D operator*(float scale) const;
 		//!multiplication
-				Point3D operator*(const Point3D &pt) const;
+		const Point3D operator*(const Point3D &pt) const;
 		//!Division. 
-                Point3D operator/(float scale) const;
+                const Point3D operator/(float scale) const;
 		//!Subtraction
-                Point3D operator-(const Point3D &pt) const;
+                const Point3D operator-(const Point3D &pt) const;
 		//!returns a negative of the existing value
-                Point3D operator-() const;
+                const Point3D operator-() const;
 		//!Output streaming operator. Users (x,y,z) as format for output
                 friend std::ostream &operator<<(std::ostream &stream, const Point3D &);
                 //!make point unit magnitude, maintaining direction

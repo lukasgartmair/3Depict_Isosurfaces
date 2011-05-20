@@ -489,6 +489,8 @@ void AnaglyphEffect::enable(unsigned int passNumber) const
 					case ANAGLYPH_HALF_COLOUR:
 						leftEyeMatrix=halfMatrix;
 						break;
+					default:
+						ASSERT(false);
 				}
 			}	
 

@@ -822,6 +822,11 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 				ltmp=PROJECTION_MODE_ORTHOGONAL;
 
 			}
+			else
+			{
+				ASSERT(false);
+				return false;
+			}
 			
 			if(ltmp>=PROJECTION_MODE_ENUM_END)
 				return false;

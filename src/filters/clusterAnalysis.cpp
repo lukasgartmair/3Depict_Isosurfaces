@@ -466,12 +466,12 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	{
 		PlotStreamData *d;
 		d=clusterSizeDistribution(clusteredCore,clusteredBulk);
-		//Jump the plot index to some large number, so
-		//we don't hit the cluster size distribution index
-		d->index=1000;
 
 		if(d)
 		{
+			//Jump the plot index to some large number, so
+			//we don't hit the cluster size distribution index
+			d->index=1000;
 			if(cache)
 			{
 				d->cached=1;
@@ -1692,17 +1692,16 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	if(!(*callback)())
 		return ABORT_ERR;
 		
-	size_t progressCount=0;
 
 	vector<vector<size_t> > allCoreClusters,allBulkClusters;
 	const float linkDistSqr=linkDist*linkDist;
 	
+	size_t progressCount=0;
 	
 	//When this queue is exhausted, move to the next cluster
 	for(size_t ui=0;ui<coreTree.size();ui++)
 	{
 		size_t curPt;
-		size_t progressCount;
 		float curDistSqr;
 		//Indicies of each cluster
 		vector<size_t> soluteCluster,dummy;

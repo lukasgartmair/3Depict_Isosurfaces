@@ -995,7 +995,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 		//Check to see if we have any effects that we need to enable
 		vector<const Effect*> effs;
 		panelTop->currentScene.getEffects(effs);
-		if(effs.size())
+		if(!effs.empty())
 		{
 			//OK, we have some effects; we will need to update the UI
 			updateFxUI(effs);
@@ -1982,7 +1982,7 @@ void MainWindowFrame::OnButtonStashDialog(wxCommandEvent &event)
 
 	ASSERT(comboStash->GetCount() == stashList.size())
 
-	if(!stashList.size())
+	if(stashList.empty())
 	{
 		statusMessage("No filter stashes to edit.",MESSAGE_ERROR);
 		return;
@@ -3363,7 +3363,7 @@ void MainWindowFrame::updateFxUI(const vector<const Effect*> &effs)
 	}
 
 	//Re-enable the effects UI as needed
-	if(effs.size())
+	if(!effs.empty())
 	{
 #ifndef APPLE_EFFECTS_WORKAROUND
 		checkPostProcessing->SetValue(true);

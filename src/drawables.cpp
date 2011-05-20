@@ -349,12 +349,7 @@ void DrawCylinder::draw() const
 	}
 	else
 	{
-		gluDisk(qCap[0],0,radius,slices,1);
-		gluCylinder(q,radius,radius, length,slices,stacks);
-
-		//Draw the end cap at z=l	
-		glTranslatef(0,0,length);
-		gluDisk(qCap[1],0,radius,slices,1);
+		ASSERT(false);
 	}
 
 	glPopMatrix();

@@ -133,7 +133,7 @@ class IonHit
 		//but you must supply a valid array.
 		void makePosData(float *floatArr) const;
 		float getMassToCharge() const;
-		IonHit operator=(const IonHit &obj);
+		const IonHit &operator=(const IonHit &obj);
 		float operator[](unsigned int ui) const;	
 		IonHit operator+(const Point3D &obj);
 };	

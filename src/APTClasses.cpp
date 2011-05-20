@@ -818,7 +818,7 @@ void IonHit::switchEndian()
 }
 #endif
 
-IonHit IonHit::operator=(const IonHit &obj)
+const IonHit &IonHit::operator=(const IonHit &obj)
 {
 	massToCharge=obj.massToCharge;
 	pos = obj.pos;
@@ -828,6 +828,8 @@ IonHit IonHit::operator=(const IonHit &obj)
 
 IonHit IonHit::operator+(const Point3D &obj)
 {
+	//FIXME: I think this is wrong???
+	ASSERT(false);
 	pos.add(obj);	
 	return *this;
 }

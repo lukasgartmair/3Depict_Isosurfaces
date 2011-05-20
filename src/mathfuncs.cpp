@@ -41,7 +41,7 @@ bool Point3D::operator==(const Point3D &pt) const
 	return (value[0] == pt.value[0] && value[1] == pt.value[1] && value[2] == pt.value[2]);
 }
 
-Point3D Point3D::operator=(const Point3D &pt)
+const Point3D &Point3D::operator=(const Point3D &pt)
 {
 	value [0] = pt.value[0];
 	value [1] = pt.value[1];
@@ -49,7 +49,7 @@ Point3D Point3D::operator=(const Point3D &pt)
 	return *this;
 }
 
-Point3D Point3D::operator+=(const Point3D &pt)
+const Point3D &Point3D::operator+=(const Point3D &pt)
 {
 	for(unsigned int ui=0;ui<3; ui++)
 		value[ui]+= pt.value[ui];
@@ -57,7 +57,7 @@ Point3D Point3D::operator+=(const Point3D &pt)
 	return *this;
 }
 
-Point3D Point3D::operator+(const Point3D &pt) const
+const Point3D Point3D::operator+(const Point3D &pt) const
 {
 	Point3D ptTmp;
 	
@@ -67,15 +67,16 @@ Point3D Point3D::operator+(const Point3D &pt) const
 	return ptTmp;
 }
 
-Point3D Point3D::operator+(float f) 
+const Point3D Point3D::operator+(float f)  const
 {
+	Point3D pTmp;
 	for(unsigned int ui=0;ui<3; ui++)
-		value[ui] = value[ui]  + f;
-	
-	return *this;
+		pTmp.value[ui] = value[ui]  + f;
+
+	return pTmp;
 }
 
-Point3D Point3D::operator-(const Point3D &pt) const
+const Point3D Point3D::operator-(const Point3D &pt) const
 {
 	Point3D ptTmp;
 	
@@ -85,7 +86,7 @@ Point3D Point3D::operator-(const Point3D &pt) const
 	return ptTmp;
 }
 
-Point3D Point3D::operator-() const
+const Point3D Point3D::operator-() const
 {
 	Point3D ptTmp;
 	
@@ -95,7 +96,7 @@ Point3D Point3D::operator-() const
 	return ptTmp;
 }
 
-Point3D Point3D::operator*=(const float scale)
+const Point3D &Point3D::operator*=(const float scale)
 {
 	value[0] = value[0]*scale;
 	value[1] = value[1]*scale;
@@ -104,7 +105,7 @@ Point3D Point3D::operator*=(const float scale)
 	return *this;
 }
 
-Point3D Point3D::operator*(float scale) const
+const Point3D Point3D::operator*(float scale) const
 {
 	Point3D tmpPt;
 	
@@ -115,7 +116,7 @@ Point3D Point3D::operator*(float scale) const
 	return tmpPt;
 }
 
-Point3D Point3D::operator*(const Point3D &pt) const
+const Point3D Point3D::operator*(const Point3D &pt) const
 {
 	Point3D tmpPt;
 	
@@ -126,7 +127,7 @@ Point3D Point3D::operator*(const Point3D &pt) const
 	return tmpPt;
 }
 
-Point3D Point3D::operator/(float scale) const
+const Point3D Point3D::operator/(float scale) const
 {
 	Point3D tmpPt;
 

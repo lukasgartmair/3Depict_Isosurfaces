@@ -550,11 +550,11 @@ size_t Voxels<T>::getEdgeIndex(size_t x,size_t y, size_t z, unsigned int index) 
 	//  		    ->ASCII ART TIME<-
 	// In each individual cube, the offsets look like this:
 	//		------------7-----------
-	//		\		       |\
-	//		|\ 		       | \
+	//		\		       |\ .
+	//		|\ 		       | \ .
 	//		| 10		       |  11
-	//		|  \		       |   \
-	//		|   \		       |    \
+	//		|  \		       |   \ .
+	//		|   \		       |    \ .
 	//		|    \ --------6-------------|
 	//		|     |                |     |
 	//              2     |                3     |

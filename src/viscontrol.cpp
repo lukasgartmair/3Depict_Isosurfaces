@@ -676,7 +676,7 @@ void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &pr
 					continue;
 
 
-				int blockMask;
+				int blockMask=0xFFFF;
 
 				if((*it)->haveCache())
 				{

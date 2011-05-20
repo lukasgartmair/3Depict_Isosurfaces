@@ -26,7 +26,12 @@ FILTER_FILES = filters/allFilter.cpp filters/posLoad.cpp filters/ionDownsample.c
 		filters/compositionProfile.cpp filters/spatialAnalysis.cpp \
 		filters/clusterAnalysis.cpp
 
-
+FILTER_HEADER_FILES = filters/allFilter.h filters/posLoad.h filters/ionDownsample.h \
+		filters/rangeFile.h filters/voxelise.h filters/spectrumPlot.h \
+	       	filters/transform.h filters/externalProgram.h filters/ionClip.h \
+		filters/ionColour.h filters/boundingBox.h  \
+		filters/compositionProfile.h filters/spatialAnalysis.h \
+		filters/clusterAnalysis.h
 
 #These source files should have heirachical couplings only; no cross-coupling
 BASE_SOURCE_FILES=  mathglPane.cpp plot.cpp prefDialog.cpp configFile.cpp filter.cpp \
@@ -36,14 +41,31 @@ BASE_SOURCE_FILES=  mathglPane.cpp plot.cpp prefDialog.cpp configFile.cpp filter
 			basics.cpp lights.cpp xmlHelper.cpp cropPanel.cpp colourmap.cpp \
 			pngread.c mathfuncs.cpp wxcomponents.cpp wxcommon.cpp
 
+BASE_HEADER_FILES=   mathglPane.h plot.h prefDialog.h configFile.h filter.h \
+		     APTClasses.h resDialog.h select.h \
+		     drawables.h effect.h textures.h rdf.h \
+		     cameras.h isoSurface.h K3DTree.h K3DTree-mk2.h\
+			basics.h lights.h xmlHelper.h cropPanel.h colourmap.h \
+			pngread.h mathfuncs.h wxcomponents.h wxcommon.h voxels.h \
+		       endianTest.h assertion.h commonConstants.h  art.h tree.hh 3Depict.xpm
+
+
 #These files are inter-dependant to some extent (mostly viscontrol)
-CROSS_DEP_SOURCE_FILE=3Depict.cpp ExportPos.cpp ExportRngDialog.cpp glPane.cpp scene.cpp StashDialog.cpp viscontrol.cpp
+CROSS_DEP_SOURCE_FILES=3Depict.cpp ExportPos.cpp ExportRngDialog.cpp glPane.cpp scene.cpp StashDialog.cpp viscontrol.cpp
+CROSS_DEP_HEADER_FILES=3Depict.h ExportPos.h ExportRngDialog.h glPane.h scene.h StashDialog.h viscontrol.h
 
 
-SOURCE_FILES= $(BASE_SOURCE_FILES)  $(FILTER_FILES) $(CROSS_DEP_SOURCE_FILE)
+
+SOURCE_FILES= $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(FILTER_FILES) $(FILTER_HEADER_FILES) $(CROSS_DEP_SOURCE_FILES) $(CROSS_DEP_HEADER_FILES)
+
+
 #Do we have or need windows-XP "resource" files for look and feel?
 if HAVE_WINDRES
 3Depict_SOURCES=$(SOURCE_FILES)  winconsole.cpp 3Depict.rc
 else
 3Depict_SOURCES=$(SOURCE_FILES)
 endif
+
+#Tarball options
+EXTRA_DIST = textures tex-source glade-skeleton
+

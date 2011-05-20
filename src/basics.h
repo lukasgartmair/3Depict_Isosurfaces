@@ -356,7 +356,7 @@ public:
     float volume() const { return (bounds[0][1] - bounds[0][0])*
 	    	(bounds[1][1] - bounds[1][0])*(bounds[2][1] - bounds[2][0]);}
     void limits();
-    BoundCube operator=(const BoundCube &);
+    const BoundCube &operator=(const BoundCube &);
     //!Expand (as needed) volume such that the argument bounding cube is enclosed by this one
     void expand(const BoundCube &b);
     //!Expand such that point is contained in this volume. Existing volume must be valid

@@ -149,7 +149,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 
 				unsigned int curProg=NUM_CALLBACK;
 				bool spin=false;
-				#pragma omp parallel for private(curProg)
+				#pragma omp parallel for firstprivate(curProg)
 				for(size_t uj=0; uj<src->data.size();uj++)
 				{
 #ifdef _OPENMP

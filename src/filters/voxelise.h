@@ -87,7 +87,6 @@ public:
 	//!Set internal property value using a selection binding  
 	void setPropFromBinding(const SelectionBinding &b) ;
 	
-	VoxeliseFilter operator=(const VoxeliseFilter &v);
 	
 	//!calculate the widths of the bins in 3D
 	void calculateWidthsFromNumBins(Point3D &widths, unsigned long long *nb) {

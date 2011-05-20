@@ -305,6 +305,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 					}
 				}
 
+				break;
 			}
 			default:
 				//Don't propagate any type.
