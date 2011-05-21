@@ -16,8 +16,7 @@ TODO List - worlds simplest bugtracking system
 		* Binomial?
 		* Polynomial error estimator in graph
 		* Shear-warp volume render mode for voxels
-		* Gaussian noise for spatial transform (Easy Fix)
-		* Ion exchange filter
+		* Ion exchange/explode filter
 		* Front-to back alpha blending ordering support for
 		 scene drawing of non-pointcloud objects
 		* DTD (Document type descriptor) for state files, to

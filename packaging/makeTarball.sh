@@ -17,6 +17,12 @@ else
 	echo " NOTICE: Version number exists in HG"
 fi
 
+#Check version number in basics.cpp is set concomitantly.
+
+if [ x"`grep PROGRAM_VERSION src/basics.cpp | grep $VER`" == x"" ] ; then
+	echo " WARNING: Program version not set to match between configure.ac. and basics.cpp"
+fi
+
 
 rm -rf tarball
 mkdir tarball
