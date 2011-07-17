@@ -19,6 +19,57 @@
 #include "isoSurface.h"
 
 #include <limits>
+#include <map>
+
+
+#ifdef DEBUG
+template<class T1, class T2>
+bool mapUnique(const std::map<T1,T2> &m) 
+{
+	vector<T2> vec;
+	vec.reserve(m.size());
+
+	for(typename std::map<T1,T2>::const_iterator it = m.begin(); it!=m.end(); it++)
+	{
+		if(std::find(vec.begin(),vec.end(),it->second) != vec.end())
+			return false;
+
+		vec.push_back(it->second);
+
+	}
+
+	return true;
+}
+#endif
+
+
+//input vector "vec" must be sorted and unique
+template<class T>
+void removeElements( const std::vector<size_t> &elems,std::vector<T> &vec)
+{
+	if(vec.empty() || elems.empty())
+		return;
+
+	if(vec.size() == elems.size())
+	{
+		vec.clear();
+		return;
+	}
+
+	size_t offset=vec.size()-1;	
+	//Run backwards, swapping out 
+	for(size_t ui=elems.size();ui--;)
+	{
+		ASSERT(ui <= offset);
+		std::swap(vec[elems[ui]],vec[offset]);
+		offset--;
+	}
+	vec.resize(offset+1);
+}
+
+
+
+
 void TriangleWithVertexNorm::computeACWNormal(Point3D &n) const
 {
 	Point3D a,b;
@@ -30,11 +81,48 @@ void TriangleWithVertexNorm::computeACWNormal(Point3D &n) const
 	n.normalise();
 }
 
+void TriangleWithVertexNorm::safeComputeACWNormal(Point3D &n) const
+{
+	Point3D a,b;
+
+	a = p[0]-p[1];
+	b = p[0]-p[2];
+
+	n=a.crossProd(b);
+	if(n.sqrMag() < sqrt(std::numeric_limits<float>::epsilon()) )
+		n=Point3D(0,0,1);	
+	else
+		n.normalise();
+
+
+
+}
+
+float TriangleWithVertexNorm::computeArea() const
+{
+	Point3D a,b;
+
+	a = p[0]-p[1];
+	b = p[0]-p[2];
+
+	return	a.crossProd(b).sqrMag();
+
+}
+
 bool TriangleWithVertexNorm::isDegenerate() const
 {
 	return (p[0].sqrDist(p[1]) < std::numeric_limits<float>::epsilon() ||
 	p[0].sqrDist(p[2]) < std::numeric_limits<float>::epsilon() ||
 	p[2].sqrDist(p[1]) < std::numeric_limits<float>::epsilon());
+}
+
+void TriangleWithVertexNorm::getCentroid(Point3D &c) const
+{
+	c=p[0];
+        c+=p[1];
+	c+=p[2];
+
+	c*=1.0f/3.0f;
 }
 
 //This code is a modified version of the following:
@@ -354,6 +442,13 @@ static const float a2fVertexOffset[8][3] =
         {0.0, 0.0, 1.0},{1.0, 0.0, 1.0},{1.0, 1.0, 1.0},{0.0, 1.0, 1.0}
 };
 
+//The deltas for the vertex offsets.  This is the int version of a2fVertexOffset
+const unsigned int VERTEX_OFFSET[8][3] = 
+{
+        {0, 0, 0},{1, 0, 0},{1, 1, 0},{0, 1, 0},
+        {0, 0, 1},{1, 0, 1},{1, 1, 1},{0, 1, 1}
+};
+
 //a2iEdgeConnection lists the index of the endpoint vertices for each of the 12 edges of the cube
 static const int a2iEdgeConnection[12][2] = 
 {
@@ -370,6 +465,14 @@ static const float a2fEdgeDirection[12][3] =
         {0.0, 0.0, 1.0},{0.0, 0.0, 1.0},{ 0.0, 0.0, 1.0},{0.0,  0.0, 1.0}
 };
 
+//Mapping between edges as defined in a2iEdgeConenction, (and thus implicitly in edge table)
+//and the voxels.h definition
+int edgeRemap[12]  ={ 0,6,1,4,
+		      2,7,3,5,
+		      8,10,11,9};
+
+
+
 
 //fGetOffset finds the approximate point of intersection of the surface
 // between two points with the values fValue1 and fValue2
@@ -383,6 +486,7 @@ float interpLinear(float fValue1, float fValue2, float fValueDesired)
         return (fValueDesired - fValue1)/fDelta;
 }
 
+
 //vMarchingCubes iterates over the entire dataset, calling vMarchCube on each cube
 void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVertexNorm> &tVec)
 {
@@ -390,6 +494,11 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 	v.getSize(nx,ny,nz);
 
 	ASSERT(nx > 1 && ny>1 && nz>1);
+
+	//Don't try to isosurface a any volume with a unitary dimension.
+	if(nx ==1 || ny ==1 || nz == 1)
+		return;
+
 	Point3D gridSpacing;
 	gridSpacing=v.getPitch();
 
@@ -397,106 +506,251 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 	BoundCube boundC;
 	boundC.setBounds(v.getMinBounds(),v.getMaxBounds());
 #endif
-	float vertexVal[8];
+
+	vector<TriangleWithIndexedVertices> indexedTriVec;
+
 	//Loop over the vertexs, with the mesh such that the 
 	//nominally cube centres are now on a grid that is dual
 	//to the original grid (excluding the external boundary of course)
+#pragma omp parallel for
         for(size_t iX = 0; iX < nx-1; iX++)
-        for(size_t iY = 0; iY < ny-1; iY++)
-        for(size_t iZ = 0; iZ < nz-1; iZ++)
-        {
-		int iEdgeFlags,iFlagIndex;
-		iEdgeFlags=iFlagIndex=0;
-		Point3D position;
-		//Lower left corner of cell for dual grid
-		position=v.getPoint(iX,iY,iZ) + gridSpacing*0.5;
-
-		//This must match a2fVertexOffset
-		vertexVal[0] = v.getData(iX,iY,iZ);
-		vertexVal[1] = v.getData(iX+1,iY,iZ);
-		vertexVal[2] = v.getData(iX+1,iY+1,iZ);
-		vertexVal[3] = v.getData(iX,iY+1,iZ);
-
-		vertexVal[4] = v.getData(iX,iY,iZ+1);
-		vertexVal[5] = v.getData(iX+1,iY,iZ+1);
-		vertexVal[6] = v.getData(iX+1,iY+1,iZ+1);
-		vertexVal[7] = v.getData(iX,iY+1,iZ+1);
-
-		//Find which vertices are inside of the surface and which are outside
-		for(int iVertexTest = 0; iVertexTest < 8; iVertexTest++)
+	{
+		int iEdgeFlags,iFlagIndex;	
+		for(size_t iY = 0; iY < ny-1; iY++)
 		{
-			if(vertexVal[iVertexTest] <= isoValue) 
-				iFlagIndex |= 1<<iVertexTest;
+		for(size_t iZ = 0; iZ < nz-1; iZ++)
+		{
+			iEdgeFlags=iFlagIndex=0;
+			Point3D position;
+			//Lower left corner of cell for dual grid
+			position=v.getPoint(iX,iY,iZ) + gridSpacing*0.5;
+
+			//Find which vertices are inside of the surface and which are outside
+			for(int iVertexTest = 0; iVertexTest < 8; iVertexTest++)
+			{
+				float f;
+				f=v.getData(iX+VERTEX_OFFSET[iVertexTest][0],
+						iY+VERTEX_OFFSET[iVertexTest][1],
+						iZ+VERTEX_OFFSET[iVertexTest][2]);
+
+				//Compute posiion in triangle and edge connection
+				//tables
+				if(f <= isoValue) 
+					iFlagIndex |= 1<<iVertexTest;
+			}
+			//Find which edges are intersected by the surface
+			iEdgeFlags = aiCubeEdgeFlags[iFlagIndex];
+			if(!iEdgeFlags) 
+				continue;
+
+
+			//Find the point of intersection of the surface with each edge
+			//Then find the normal to the surface at those points
+			size_t asEdgeVertex[12];
+			for(int iEdge = 0; iEdge < 12; iEdge++)
+			{
+				//if there is an intersection on this edge
+				if(iEdgeFlags & (1<<iEdge))
+				{
+					//Store a  reference to the vertex position
+					asEdgeVertex[iEdge] = v.getEdgeIndex(iX,iY,iZ,edgeRemap[iEdge]);
+				}
+			}
+
+		
+			//Store the triangles that were found.  There can be up to five per cube; 
+			//these are listed as triplets in the connection table
+			for(int iTriangle = 0; iTriangle < 5; iTriangle++)
+			{
+				//Check to see if this triplet is a valid triangle
+				if(a2iTriangleConnectionTable[iFlagIndex][3*iTriangle] < 0)
+					break;
+
+				TriangleWithIndexedVertices t;
+				for(int iCorner = 0; iCorner < 3; iCorner++)
+				{
+					int iVertex;
+					iVertex = a2iTriangleConnectionTable[iFlagIndex][3*iTriangle+iCorner];
+					//we should only be accessing an edge if the edge was set.
+					ASSERT((1 << iVertex) & iEdgeFlags);
+
+
+
+
+					t.p[iCorner] = asEdgeVertex[iVertex];
+				}
+#pragma omp critical
+				indexedTriVec.push_back(t);
+			}
 		}
-		//Find which edges are intersected by the surface
-		iEdgeFlags = aiCubeEdgeFlags[iFlagIndex];
-		if(!iEdgeFlags) 
+		}
+	}
+
+	//---------
+
+	//OK, so we set up a network of triangle vertices which consist of edge numbers
+	//and a list of triangles which are the triplets of those numbers.
+	//Convert this into a 
+
+	//Map that contains a list of triangles in the vector  "indexedTriVec"
+	// which share a particular edge (or rather, position along that edge)
+	// First element is the edge index. Second element is the list of triangles
+	// who share this edge.
+	//
+	// We will need this when we do the vertex normals.
+	std::map<size_t,list<size_t> > edgeTriMap;
+#pragma omp parallel for 
+	for(size_t ui=0;ui<indexedTriVec.size(); ui++)	
+	{
+		for(size_t uj=0;uj<3;uj++)
+		{
+			map<size_t,list<size_t> >::iterator it;
+			it = edgeTriMap.find((indexedTriVec[ui].p[uj] >>2 ) << 2);
+			if(it == edgeTriMap.end())
+			{
+
+				list<size_t> seedList;
+				seedList.push_back(ui);
+#pragma omp critical
+				edgeTriMap.insert(
+					make_pair((indexedTriVec[ui].p[uj] >>2 ) << 2,seedList));
+						
+			}
+			else
+			{
+				it->second.push_back(ui);
+			}
+		}
+
+	}
+
+
+	//Generate the position points for each edge
+	map<size_t,Point3D> pointMap;
+	for(map<size_t,list<size_t> >::iterator it=edgeTriMap.begin();
+		it!=edgeTriMap.end(); ++it)
+	{
+		Point3D low,high,voxelFrameIntersection; 
+		float lowF,highF,alpha;
+
+		if(pointMap.find((it->first>>2)<<2) != pointMap.end())
 			continue;
-		//Find the point of intersection of the surface with each edge
-		//Then find the normal to the surface at those points
-		Point3D asEdgeVertex[12];
-		for(int iEdge = 0; iEdge < 12; iEdge++)
+
+		//Low/high sides of edge's scalar values
+		v.getEdgeEndApproxVals(it->first,lowF,highF);
+
+
+		//Get the edge's low and high end node positions
+		v.getEdgeEnds((it->first>>2)<<2,low,high);
+		
+		//OK, now we have that, lets use the values to "lever" the 
+		//solution point note node locations for isosurface 
+		if(fabs(highF-lowF) < sqrt(std::numeric_limits<float>::epsilon()))
 		{
-			//if there is an intersection on this edge
-			if(iEdgeFlags & (1<<iEdge))
-			{
-				float fOffset;
-				fOffset =0.5;// interpLinear(vertexVal[ a2iEdgeConnection[iEdge][0] ], 
-					//	vertexVal[ a2iEdgeConnection[iEdge][1] ], isoValue);
-
-				ASSERT(fOffset >= -0.01 && fOffset < 1.01 );
-
-				asEdgeVertex[iEdge][0]= position[0] + 
-					(a2fVertexOffset[ a2iEdgeConnection[iEdge][0] ][0]  +  
-					 	fOffset * a2fEdgeDirection[iEdge][0]) * gridSpacing[0];
-
-				asEdgeVertex[iEdge][1] = position[1]+ 
-					(a2fVertexOffset[ a2iEdgeConnection[iEdge][0] ][1]  +  
-					 fOffset * a2fEdgeDirection[iEdge][1]) * gridSpacing[1];
-				asEdgeVertex[iEdge][2] = position[2] + 
-					(a2fVertexOffset[ a2iEdgeConnection[iEdge][0] ][2]  +  
-					 fOffset * a2fEdgeDirection[iEdge][2]) * gridSpacing[2];
-
-
-				ASSERT(boundC.containsPt(asEdgeVertex[iEdge] ));
-				//We will have to set normal later
-			}
+			//Prevent divide by zero
+			voxelFrameIntersection=(low+high)*0.5;
+		}
+		else
+		{
+			//interpolate
+			alpha= (isoValue- lowF) / (highF- lowF);
+			voxelFrameIntersection=low + (high-low)*alpha;
 		}
 
+			
+		pointMap.insert(make_pair((it->first>>2)<<2,voxelFrameIntersection));
+	}	
+
+
+	tVec.resize(indexedTriVec.size());
+	vector<size_t> popTris;
+	//Set all triangle verticies
+	#pragma omp parallel for
+	for(size_t ui=0;ui<tVec.size();ui++)
+	{
 	
-		//Store the triangles that were found.  There can be up to five per cube
-		for(int iTriangle = 0; iTriangle < 5; iTriangle++)
+		//Do a lookup of the edge point locations
+		// by mapping the edge indicies to the edge poitns 
+		for(int uj=0;uj<3;uj++)
+			tVec[ui].p[uj] = pointMap.at((indexedTriVec[ui].p[uj]>>2)<<2);
+
+		if(tVec[ui].isDegenerate())
 		{
-			if(a2iTriangleConnectionTable[iFlagIndex][3*iTriangle] < 0)
-				break;
+#pragma omp critical
+			popTris.push_back(ui);
+		}
+	}
+	
 
-			TriangleWithVertexNorm t;
-			for(int iCorner = 0; iCorner < 3; iCorner++)
-			{
-				int iVertex;
-				iVertex = a2iTriangleConnectionTable[iFlagIndex][3*iTriangle+iCorner];
+	//Remove any degenerate triangles from both indexed and real maps
+	removeElements(popTris,tVec);
+	removeElements(popTris,indexedTriVec);
 
-				//we should only be accessing an edge if the edge was set.
-				ASSERT((1 << iVertex) & iEdgeFlags);
-				t.p[iCorner] = asEdgeVertex[iVertex];
-				//The mesh must be within the grid
-				ASSERT(boundC.containsPt(t.p[iCorner]));
-			}
+	if(!tVec.size())
+		return;
+	
+	//set all triangle edge normals by inverse face area weighting.
+	// The idea is that big triangles don't affect the normal at the pooint
+	// as they are quite delocalised. Little triangles affect it mroe.
+	// This is entirely empirical
+	// ----
+	
+	vector<Point3D> origNormal;
+	origNormal.resize(indexedTriVec.size());
+	#pragma omp parallel for
+	for(size_t ui=0;ui<indexedTriVec.size();ui++)
+		tVec[ui].safeComputeACWNormal(origNormal[ui]);
 
-			if(!t.isDegenerate())
-			{
-				Point3D p;
-				t.computeACWNormal(p);
-				
-				//Assign pure normals,
-				for(unsigned int ui=0;ui<3;ui++)
-					t.normal[ui]=p;
 
-				tVec.push_back(t);
-			}
+	//Loop over all vertices again, then asssign a weighted
+	//normal in place of the original normal. Lets cheat and
+	//re-use "pointmap".
+	// --
+	for(map<size_t,Point3D>::iterator it=pointMap.begin(); 
+					it!=pointMap.end();++it)
+		it->second=Point3D(0,0,0);
+
+	//Construct the shared normals
+	float smallNum=sqrt(std::numeric_limits<float>::epsilon());
+	for(size_t ui=0;ui<indexedTriVec.size();ui++)
+	{
+		//For eachvertex in our current triangle
+		//update the weight mapping
+		float weight;
+		weight=tVec[ui].computeArea();
+
+		if(weight > smallNum)
+		{
+			for(int uj=0;uj<3;uj++)
+				pointMap.at((indexedTriVec[ui].p[uj]>>2) <<2)+=origNormal[ui]*weight;
 		}
 	}
 
 
+	//re-normalise normals
+	for(map<size_t,Point3D>::iterator it=pointMap.begin(); 
+					it!=pointMap.end();++it)
+	{
+		if(it->second.sqrMag() > smallNum)
+			it->second.normalise();
+		else
+			it->second=Point3D(0,0,1);
+	}
+
+	//assign these normals to the vertices of each triangle
+	#pragma omp parallel for
+	for(size_t ui=0;ui<indexedTriVec.size();ui++)
+	{
+		for(unsigned int uj=0;uj<3;uj++)
+			tVec[ui].normal[uj] = pointMap.at((indexedTriVec[ui].p[uj]>>2)<<2);
+	}	
+	// --
 	
+	// ----
+
+
+	//TODO: We could use something like triStripper 
+	// to optimise this, rather than just build the raw triangles
+	// http://users.telenet.be/tfautre/softdev/tristripper/
+
 }

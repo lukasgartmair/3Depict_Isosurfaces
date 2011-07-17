@@ -52,7 +52,7 @@ class RangeFileFilter : public Filter
 					ProgressData &progress, bool (*callback)(void));
 		//!Force a re-read of the rangefile Return value is range file reading error code
 		unsigned int updateRng();
-		virtual std::string typeString() const { return std::string("Ranging");};
+		virtual std::string typeString() const { return std::string(TRANS("Ranging"));};
 
 		//Types that will be dropped during ::refresh
 		int getRefreshBlockMask() const;

@@ -70,6 +70,7 @@ winconsole winC;
 #include <wx/filefn.h>
 #include <wx/stdpaths.h>
 #include <wx/progdlg.h>
+#include <wx/display.h>
 
 #if (wxMAJOR_VERSION >= 2) && (wxMINOR_VERSION > 8)
 	#include <wx/utils.h>  // Needed for wxLaunchDefaultApplication
@@ -82,6 +83,8 @@ winconsole winC;
 #include "ExportRngDialog.h" // Range export dialog
 #include "ExportPos.h" // Ion export dialog
 #include "prefDialog.h" // Prefernces dialog
+
+#include "translation.h"
 
 //Program Icon
 #include "art.h"
@@ -104,6 +107,15 @@ const unsigned int PROGRESS_TIMER_DELAY=100;
 //Seconds between autosaves
 const unsigned int AUTOSAVE_DELAY=300; 
 
+//Default window size
+const unsigned int DEFAULT_WIN_WIDTH=1024;
+const unsigned int DEFAULT_WIN_HEIGHT=800;
+
+//minimum startup window size
+const unsigned int MIN_WIN_WIDTH=100;
+const unsigned int MIN_WIN_HEIGHT=100;
+
+
 //!Number of pages in the panel at the bottom
 const unsigned int NOTE_CONSOLE_PAGE_OFFSET= 2;
 
@@ -111,54 +123,42 @@ const unsigned int NOTE_CONSOLE_PAGE_OFFSET= 2;
 const float BASELINE_SHIFT_FACTOR=0.0002f;
 
 
-const char *cameraIntroString= "New camera name...";
-const char *stashIntroString="New stash name....";
+const char *cameraIntroString=NTRANS("New camera name...");
+const char *stashIntroString=NTRANS("New stash name....");
 
 //Name of autosave state file. MUST end in .xml
 const char *AUTOSAVE_FILENAME = "autosave.xml";
 
+
+
+wxLocale* usrLocale;
+long language;
 //This is the dropdown matching list. This must match
 //the order for comboFilters_choices, as declared in 
 //MainFrame's constructor
 
-//This enum MUST be arranged to match sorted list box contents
-//comboFilters_choices[..]
-enum
-{
-	COMBO_FILTER_BOUNDINGBOX,
-	COMBO_FILTER_CLIPPING,
-	COMBO_FILTER_CLUSTER_ANALYSIS,
-	COMBO_FILTER_COMPOSITION_PROFILE,
-	COMBO_FILTER_DOWNSAMPLE,
-	COMBO_FILTER_EXTERNALPROG,
-	COMBO_FILTER_COLOUR,
-	COMBO_FILTER_TRANSFORM,
-	COMBO_FILTER_SPECTRUM,
-	COMBO_FILTER_RANGEFILE,
-	COMBO_FILTER_SPATIAL_ANALYSIS,
-	COMBO_FILTER_VOXELS,
-};
-
-
 //--- These settings must be modified concomittantly.
-const unsigned int FILTER_DROP_COUNT=12;
+const unsigned int FILTER_DROP_COUNT=13;
 
 
-const wxString comboFilters_choices[FILTER_DROP_COUNT] = {
-        _("Bounding Box"),
-        _("Clipping"),
-	_("Cluster Analysis"),
-        _("Compos. Profiles"),
-        _("Downsampling"),
-	_("Extern. Prog."),
-        _("Ion Colour"),
-        _("Ion Transform"),
-	_("Mass Spectrum"),
-        _("Range File"),
-	_("Spat. Analysis"),
-	_("Voxelisation"),
+const char * comboFilters_choices[FILTER_DROP_COUNT] =
+{
+	NTRANS("Bounding Box"),
+	NTRANS("Clipping"),
+	NTRANS("Cluster Analysis"),
+	NTRANS("Compos. Profiles"),
+	NTRANS("Downsampling"),
+	NTRANS("Extern. Prog."),
+	NTRANS("Ion Colour"),
+	NTRANS("Ion Info"),
+	NTRANS("Ion Transform"),
+	NTRANS("Mass Spectrum"),
+	NTRANS("Range File"),
+	NTRANS("Spat. Analysis"),
+	NTRANS("Voxelisation")
 };
 
+//Mapping between filter ID and combo position
 const unsigned int comboFiltersTypeMapping[FILTER_DROP_COUNT] = {
 	FILTER_TYPE_BOUNDBOX,
 	FILTER_TYPE_IONCLIP,
@@ -167,6 +167,7 @@ const unsigned int comboFiltersTypeMapping[FILTER_DROP_COUNT] = {
 	FILTER_TYPE_IONDOWNSAMPLE,
 	FILTER_TYPE_EXTERNALPROC,
 	FILTER_TYPE_IONCOLOURFILTER,
+	FILTER_TYPE_IONINFO,
 	FILTER_TYPE_TRANSFORM,
 	FILTER_TYPE_SPECTRUMPLOT,
 	FILTER_TYPE_RANGEFILE,
@@ -283,16 +284,68 @@ enum {
 
 };
 
+
+ 
+void initLanguageSupport()
+{
+	language =  wxLANGUAGE_DEFAULT;
+
+	// load language if possible, fall back to english otherwise
+	if(wxLocale::IsAvailable(language))
+	{
+		usrLocale = new wxLocale( language, wxLOCALE_CONV_ENCODING );
+		
+#if defined(__WXMAC__)
+		wxStandardPaths* paths = (wxStandardPaths*) &wxStandardPaths::Get();
+		usrLocale->AddCatalogLookupPathPrefix(paths->GetResourcesDir());
+#endif
+		usrLocale->AddCatalog(wxCStr(PROGRAM_NAME));
+		usrLocale->AddCatalog(wxT("wxstd"));
+
+		if(! usrLocale->IsOk() )
+		{
+			std::cerr << "Unable to initialise usrLocale, falling back to English" << std::endl;
+			delete usrLocale;
+			usrLocale = new wxLocale( wxLANGUAGE_ENGLISH );
+			language = wxLANGUAGE_ENGLISH;
+		}
+		else
+		{
+			//Set the gettext language
+			textdomain( PROGRAM_NAME );
+			setlocale (LC_ALL, "");
+#ifdef __WXMAC__
+			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
+#elif defined(WIN32) || defined(WIN64)
+			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
+#else
+			bindtextdomain( PROGRAM_NAME, "/usr/share/locale" );
+			bind_textdomain_codeset(PROGRAM_NAME, "utf-8");
+#endif
+		}
+	}
+	else
+	{
+		std::cout << "Language not supported, falling back to English" << endl;
+		usrLocale = new wxLocale( wxLANGUAGE_ENGLISH );
+		language = wxLANGUAGE_ENGLISH;
+	}
+}
+
+
+
+
 MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
     wxFrame(parent, id, title, pos, size, style)
-{
+{	
 	initedOK=false;
 	programmaticEvent=false;
 	fullscreenState=0;
+	verCheckThread=0;
 	lastMessageType=MESSAGE_NONE;
 	//Set up the program icon handler
 	wxArtProvider::Push(new MyArtProvider);
-	SetIcon(wxArtProvider::GetIcon(_("MY_ART_ID_ICON")));
+	SetIcon(wxArtProvider::GetIcon(wxT("MY_ART_ID_ICON")));
 
 	//Set up the drag and drop handler
 	dropTarget = new FileDropTarget(this);
@@ -334,12 +387,23 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     window_2_pane_2 = new wxPanel(splitterSpectra, wxID_ANY);
     panelTop = new BasicGLPane(splitTopBottom);
 
-    //I had to work this out by studying the construtor
-/*    if(!panelTop->m_glContext)
+    
+#if defined(__WXGTK20__)
+    //I had to work this out by studying the construtor, and then testing simultaneously
+    //on a broken and working Gl install. booyah.
+    if(!panelTop->m_glWidget)
     {
-	    cerr << "Unable to initialise the openGL panel. Program cannot start. Please check your video drivers." << endl;
-//	    return;
-    }*/
+		wxMessageDialog *wxD  =new wxMessageDialog(this,
+				wxTRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please check your video drivers.") 
+			,wxTRANS("OpenGL Failed"),wxICON_ERROR|wxOK);
+		
+		wxD->ShowModal();
+
+		cerr << wxTRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please check your video drivers.") << endl;
+		delete wxD;
+		return;
+    }
+#endif
 
     panelLeft = new wxPanel(splitLeftRight, wxID_ANY);
     notebookControl = new wxNotebook(panelLeft, ID_NOTEBOOK_CONTROL, wxDefaultPosition, wxDefaultSize, wxNB_RIGHT);
@@ -352,182 +416,199 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     noteData = new wxPanel(notebookControl, ID_NOTE_DATA, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL);
     filterSplitter = new wxSplitterWindow(noteData,ID_SPLIT_FILTERPROP , wxDefaultPosition, wxDefaultSize, wxSP_3D|wxSP_BORDER);
     filterPropertyPane = new wxPanel(filterSplitter, wxID_ANY);
-    //topPanelSizer_staticbox = new wxStaticBox(panelTop, -1, _(""));
+    //topPanelSizer_staticbox = new wxStaticBox(panelTop, -1, wxT(""));
     filterTreePane = new wxPanel(filterSplitter, wxID_ANY);
     MainFrame_Menu = new wxMenuBar();
     wxMenu* File = new wxMenu();
-    File->Append(ID_FILE_OPEN, _("&Open...\tCtrl+O"), _("Open state file"), wxITEM_NORMAL);
-    File->Append(ID_FILE_MERGE, _("&Merge...\tCtrl+Shift+O"), _("Merge other file"), wxITEM_NORMAL);
+    File->Append(ID_FILE_OPEN, wxTRANS("&Open...\tCtrl+O"), wxTRANS("Open state file"), wxITEM_NORMAL);
+    File->Append(ID_FILE_MERGE, wxTRANS("&Merge...\tCtrl+Shift+O"), wxTRANS("Merge other file"), wxITEM_NORMAL);
     
     recentFilesMenu=new wxMenu();
     recentHistory->UseMenu(recentFilesMenu);
-    File->AppendSubMenu(recentFilesMenu,_("&Recent"));
-    fileSave = File->Append(ID_FILE_SAVE, _("&Save\tCtrl+S"), _("Save state to file"), wxITEM_NORMAL);
+    File->AppendSubMenu(recentFilesMenu,wxTRANS("&Recent"));
+    fileSave = File->Append(ID_FILE_SAVE, wxTRANS("&Save\tCtrl+S"), wxTRANS("Save state to file"), wxITEM_NORMAL);
     fileSave->Enable(false);
-    File->Append(ID_FILE_SAVEAS, _("Save &As...\tCtrl+Shift+S"), _("Save current state to new file"), wxITEM_NORMAL);
+    File->Append(ID_FILE_SAVEAS, wxTRANS("Save &As...\tCtrl+Shift+S"), wxTRANS("Save current state to new file"), wxITEM_NORMAL);
     File->AppendSeparator();
     wxMenu* FileExport = new wxMenu();
-    FileExport->Append(ID_FILE_EXPORT_PLOT, _("&Plot...\tCtrl+P"), _("Export Current Plot"), wxITEM_NORMAL);
-    FileExport->Append(ID_FILE_EXPORT_IMAGE, _("&Image...\tCtrl+I"), _("Export Current 3D View"), wxITEM_NORMAL);
-    FileExport->Append(ID_FILE_EXPORT_IONS, _("Ion&s...\tCtrl+N"), _("Export Ion Data"), wxITEM_NORMAL);
-    FileExport->Append(ID_FILE_EXPORT_RANGE, _("Ran&ges...\tCtrl+G"), _("Export Range Data"), wxITEM_NORMAL);
-    FileExport->Append(ID_FILE_EXPORT_ANIMATION, _("Ani&mation...\tCtrl+M"), _("Export Animation"), wxITEM_NORMAL);
-    FileExport->Append(ID_FILE_EXPORT_PACKAGE, _("Pac&kage...\tCtrl+K"), _("Export analysis package"), wxITEM_NORMAL);
+    FileExport->Append(ID_FILE_EXPORT_PLOT, wxTRANS("&Plot...\tCtrl+P"), wxTRANS("Export Current Plot"), wxITEM_NORMAL);
+    FileExport->Append(ID_FILE_EXPORT_IMAGE, wxTRANS("&Image...\tCtrl+I"), wxTRANS("Export Current 3D View"), wxITEM_NORMAL);
+    FileExport->Append(ID_FILE_EXPORT_IONS, wxTRANS("Ion&s...\tCtrl+N"), wxTRANS("Export Ion Data"), wxITEM_NORMAL);
+    FileExport->Append(ID_FILE_EXPORT_RANGE, wxTRANS("Ran&ges...\tCtrl+G"), wxTRANS("Export Range Data"), wxITEM_NORMAL);
+    FileExport->Append(ID_FILE_EXPORT_ANIMATION, wxTRANS("Ani&mation...\tCtrl+M"), wxTRANS("Export Animation"), wxITEM_NORMAL);
+    FileExport->Append(ID_FILE_EXPORT_PACKAGE, wxTRANS("Pac&kage...\tCtrl+K"), wxTRANS("Export analysis package"), wxITEM_NORMAL);
 
-    File->AppendSubMenu(FileExport,_("&Export"));
+    File->AppendSubMenu(FileExport,wxTRANS("&Export"));
     File->AppendSeparator();
 #ifdef __APPLE__
-    File->Append(ID_FILE_EXIT, _("&Quit\tCtrl+Q"), _("Exit Program"), wxITEM_NORMAL);
+    File->Append(ID_FILE_EXIT, wxTRANS("&Quit\tCtrl+Q"), wxTRANS("Exit Program"), wxITEM_NORMAL);
 #else
-    File->Append(ID_FILE_EXIT, _("E&xit"), _("Exit Program"), wxITEM_NORMAL);
+    File->Append(ID_FILE_EXIT, wxTRANS("E&xit"), wxTRANS("Exit Program"), wxITEM_NORMAL);
 #endif
-    MainFrame_Menu->Append(File, _("&File"));
+    MainFrame_Menu->Append(File, wxTRANS("&File"));
     wxMenu* wxglade_tmp_menu_1 = new wxMenu();
     wxglade_tmp_menu_1->Append(ID_VIEW_BACKGROUND, 
-		    _("&Background Colour...\tCtrl+B"),_("Change background colour"));
+		    wxTRANS("&Background Colour...\tCtrl+B"),wxTRANS("Change background colour"));
     wxglade_tmp_menu_1->AppendSeparator(); //Separator
 #ifndef __APPLE__
     checkMenuControlPane= wxglade_tmp_menu_1->Append(ID_VIEW_CONTROL_PANE, 
-		    _("&Control Pane\tF3"), _("Toggle left control pane"), wxITEM_CHECK);
+		    wxTRANS("&Control Pane\tF3"), wxTRANS("Toggle left control pane"), wxITEM_CHECK);
 #else
     checkMenuControlPane= wxglade_tmp_menu_1->Append(ID_VIEW_CONTROL_PANE, 
-		    _("&Control Pane\tAlt+C"), _("Toggle left control pane"), wxITEM_CHECK);
+		    wxTRANS("&Control Pane\tAlt+C"), wxTRANS("Toggle left control pane"), wxITEM_CHECK);
 
 #endif
     checkMenuControlPane->Check();
 #ifndef __APPLE__
     checkMenuRawDataPane= wxglade_tmp_menu_1->Append(ID_VIEW_RAW_DATA_PANE, 
-		    _("&Raw Data Pane\tF4"), _("Toggle raw data  pane (bottom)"), wxITEM_CHECK);
+		    wxTRANS("&Raw Data Pane\tF4"), wxTRANS("Toggle raw data  pane (bottom)"), wxITEM_CHECK);
 #else
     checkMenuRawDataPane= wxglade_tmp_menu_1->Append(ID_VIEW_RAW_DATA_PANE, 
-		    _("&Raw Data Pane\tAlt+R"), _("Toggle raw data  pane (bottom)"), wxITEM_CHECK);
+		    wxTRANS("&Raw Data Pane\tAlt+R"), wxTRANS("Toggle raw data  pane (bottom)"), wxITEM_CHECK);
 #endif
     checkMenuRawDataPane->Check();
 #ifndef __APPLE__
-    checkMenuSpectraList=wxglade_tmp_menu_1->Append(ID_VIEW_SPECTRA, _("&Plot List\tF5"),_("Toggle plot list"), wxITEM_CHECK);
+    checkMenuSpectraList=wxglade_tmp_menu_1->Append(ID_VIEW_SPECTRA, wxTRANS("&Plot List\tF5"),wxTRANS("Toggle plot list"), wxITEM_CHECK);
 #else
-    checkMenuSpectraList=wxglade_tmp_menu_1->Append(ID_VIEW_SPECTRA, _("&Plot List\tAlt+P"),_("Toggle plot list"), wxITEM_CHECK);
+    checkMenuSpectraList=wxglade_tmp_menu_1->Append(ID_VIEW_SPECTRA, wxTRANS("&Plot List\tAlt+P"),wxTRANS("Toggle plot list"), wxITEM_CHECK);
 #endif
     checkMenuSpectraList->Check();
 
     wxglade_tmp_menu_1->AppendSeparator(); //Separator
     wxMenu* viewPlot= new wxMenu();
-    checkViewLegend=viewPlot->Append(ID_VIEW_PLOT_LEGEND,_("&Legend\tCtrl+L"),_("Toggle Legend display"),wxITEM_CHECK);
+    checkViewLegend=viewPlot->Append(ID_VIEW_PLOT_LEGEND,wxTRANS("&Legend\tCtrl+L"),wxTRANS("Toggle Legend display"),wxITEM_CHECK);
     checkViewLegend->Check();
-    wxglade_tmp_menu_1->AppendSubMenu(viewPlot,_("&Plot..."));
-    checkViewWorldAxis=wxglade_tmp_menu_1->Append(ID_VIEW_WORLDAXIS,_("&Axis\tCtrl+Shift+I"),_("Toggle World Axis display"),wxITEM_CHECK);
+    wxglade_tmp_menu_1->AppendSubMenu(viewPlot,wxTRANS("P&lot..."));
+    checkViewWorldAxis=wxglade_tmp_menu_1->Append(ID_VIEW_WORLDAXIS,wxTRANS("&Axis\tCtrl+Shift+I"),wxTRANS("Toggle World Axis display"),wxITEM_CHECK);
     checkViewWorldAxis->Check();
     
     wxglade_tmp_menu_1->AppendSeparator(); //Separator
 #ifndef __APPLE__
-    menuViewFullscreen=wxglade_tmp_menu_1->Append(ID_VIEW_FULLSCREEN, _("&Fullscreen mode\tF11"),_("Next fullscreen mode: with toolbars"));
+    menuViewFullscreen=wxglade_tmp_menu_1->Append(ID_VIEW_FULLSCREEN, wxTRANS("&Fullscreen mode\tF11"),wxTRANS("Next fullscreen mode: with toolbars"));
 #else
-    menuViewFullscreen=wxglade_tmp_menu_1->Append(ID_VIEW_FULLSCREEN, _("&Fullscreen mode\tCtrl+Shift+F"),_("Next fullscreen mode: with toolbars"));
+    menuViewFullscreen=wxglade_tmp_menu_1->Append(ID_VIEW_FULLSCREEN, wxTRANS("&Fullscreen mode\tCtrl+Shift+F"),wxTRANS("Next fullscreen mode: with toolbars"));
 #endif
 
 
     wxMenu *Edit = new wxMenu();
-    editUndoMenuItem = Edit->Append(ID_EDIT_UNDO,_("&Undo\tCtrl+Z"));
+    editUndoMenuItem = Edit->Append(ID_EDIT_UNDO,wxTRANS("&Undo\tCtrl+Z"));
     editUndoMenuItem->Enable(false);
-    editRedoMenuItem = Edit->Append(ID_EDIT_REDO,_("&Redo\tCtrl+Y"));
-    editRedoMenuItem->Enable(false);
+    editRedoMenuItem = Edit->Append(ID_EDIT_REDO,wxTRANS("&Redo\tCtrl+Y"));
+   editRedoMenuItem->Enable(false);
     Edit->AppendSeparator();
-    Edit->Append(ID_EDIT_PREFERENCES,_("&Preferences"));
+    Edit->Append(ID_EDIT_PREFERENCES,wxTRANS("&Preferences"));
 
-    MainFrame_Menu->Append(Edit, _("&Edit"));
+    MainFrame_Menu->Append(Edit, wxTRANS("&Edit"));
 
 
-    MainFrame_Menu->Append(wxglade_tmp_menu_1, _("&View"));
+    MainFrame_Menu->Append(wxglade_tmp_menu_1, wxTRANS("&View"));
     wxMenu* Help = new wxMenu();
-    Help->Append(ID_HELP_HELP, _("&Help...\tCtrl+H"), _("Show help files and documentation"), wxITEM_NORMAL);
-    Help->Append(ID_HELP_CONTACT, _("&Contact..."), _("Open contact page"), wxITEM_NORMAL);
+    Help->Append(ID_HELP_HELP, wxTRANS("&Help...\tCtrl+H"), wxTRANS("Show help files and documentation"), wxITEM_NORMAL);
+    Help->Append(ID_HELP_CONTACT, wxTRANS("&Contact..."), wxTRANS("Open contact page"), wxITEM_NORMAL);
     Help->AppendSeparator();
-    Help->Append(ID_HELP_ABOUT, _("&About..."), _("Information about this program"), wxITEM_NORMAL);
-    MainFrame_Menu->Append(Help, _("&Help"));
+    Help->Append(ID_HELP_ABOUT, wxTRANS("&About..."), wxTRANS("Information about this program"), wxITEM_NORMAL);
+    MainFrame_Menu->Append(Help, wxTRANS("&Help"));
     SetMenuBar(MainFrame_Menu);
-    lblSettings = new wxStaticText(noteData, wxID_ANY, _("Stashed Filters"));
+    lblSettings = new wxStaticText(noteData, wxID_ANY, wxTRANS("Stashed Filters"));
     const wxString *comboStash_choices = NULL;
     comboStash = new wxComboBox(noteData, ID_COMBO_STASH, wxT(""), wxDefaultPosition, wxDefaultSize, 0, comboStash_choices, wxCB_DROPDOWN|wxCB_SORT|wxTE_PROCESS_ENTER );
-    btnStashManage = new wxButton(noteData, ID_BTN_STASH_MANAGE, _("..."),wxDefaultPosition,wxSize(28,28));
-    filteringLabel = new wxStaticText(noteData, wxID_ANY, _("Data Filtering"));
-    comboFilters = new wxComboBox(filterTreePane, ID_COMBO_FILTER, wxT(""), wxDefaultPosition, wxDefaultSize, FILTER_DROP_COUNT, comboFilters_choices, wxCB_DROPDOWN|wxCB_READONLY|wxCB_SORT);
+    btnStashManage = new wxButton(noteData, ID_BTN_STASH_MANAGE, wxT("..."),wxDefaultPosition,wxSize(28,28));
+    filteringLabel = new wxStaticText(noteData, wxID_ANY, wxTRANS("Data Filtering"));
 
 
+    //Workaround for wx bug http://trac.wxwidgets.org/ticket/4398
+    //Combo box wont sort even when asked under wxGTK<3.0
+    // use sortedArrayString, rather than normal arraystring
+    wxSortedArrayString filterNames;
+    for(unsigned int ui=0;ui<FILTER_DROP_COUNT; ui++)
+    {
+	const char * str = comboFilters_choices[ui];
+
+	//construct translation->comboFilters_choices offset.
+	filterMap[TRANS(str)] = ui;
+	//Add to filter name wxArray
+	wxString wxStrTrans = wxTRANS(str);
+	filterNames.Add(wxStrTrans);
+    }
+
+
+
+    comboFilters = new wxComboBox(filterTreePane, ID_COMBO_FILTER, wxT(""), wxDefaultPosition, wxDefaultSize, filterNames, wxCB_DROPDOWN|wxCB_READONLY|wxCB_SORT);
 
 
     treeFilters = new wxTreeCtrl(filterTreePane, ID_TREE_FILTERS, wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_HIDE_ROOT|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER|wxTR_EDIT_LABELS);
-    lastRefreshLabel = new wxStaticText(filterTreePane, wxID_ANY, _("Last Outputs"));
+    lastRefreshLabel = new wxStaticText(filterTreePane, wxID_ANY, wxTRANS("Last Outputs"));
     listLastRefresh = new wxListCtrl(filterTreePane, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxSUNKEN_BORDER);
-    checkAutoUpdate = new wxCheckBox(filterTreePane, ID_CHECK_AUTOUPDATE, _("Auto Refresh"));
+    checkAutoUpdate = new wxCheckBox(filterTreePane, ID_CHECK_AUTOUPDATE, wxTRANS("Auto Refresh"));
     refreshButton = new wxButton(filterTreePane, wxID_REFRESH, wxEmptyString);
-    btnFilterTreeExpand= new wxButton(filterTreePane, ID_BTN_EXPAND, _("▼"),wxDefaultPosition,wxSize(30,30));
-    btnFilterTreeCollapse = new wxButton(filterTreePane, ID_BTN_COLLAPSE, _("▲"),wxDefaultPosition,wxSize(30,30));
-    propGridLabel = new wxStaticText(filterPropertyPane, wxID_ANY, _("Filter settings"));
+    btnFilterTreeExpand= new wxButton(filterTreePane, ID_BTN_EXPAND, wxT("▼"),wxDefaultPosition,wxSize(30,30));
+    btnFilterTreeCollapse = new wxButton(filterTreePane, ID_BTN_COLLAPSE, wxT("▲"),wxDefaultPosition,wxSize(30,30));
+    propGridLabel = new wxStaticText(filterPropertyPane, wxID_ANY, wxTRANS("Filter settings"));
     gridFilterProperties = new wxPropertyGrid(filterPropertyPane, ID_GRID_FILTER_PROPERTY);
-    labelCameraName = new wxStaticText(noteCamera, wxID_ANY, _("Camera Name"));
+    labelCameraName = new wxStaticText(noteCamera, wxID_ANY, wxTRANS("Camera Name"));
     const wxString *comboCamera_choices = NULL;
     comboCamera = new wxComboBox(noteCamera, ID_COMBO_CAMERA, wxT(""), wxDefaultPosition, wxDefaultSize, 0, comboCamera_choices, wxCB_DROPDOWN|wxTE_PROCESS_ENTER );
     buttonRemoveCam = new wxButton(noteCamera, wxID_REMOVE, wxEmptyString);
     cameraNamePropertySepStaticLine = new wxStaticLine(noteCamera, wxID_ANY);
     gridCameraProperties = new wxPropertyGrid(noteCamera, ID_GRID_CAMERA_PROPERTY);
 #ifndef APPLE_EFFECTS_WORKAROUND
-    checkPostProcessing = new wxCheckBox(notePost, ID_EFFECT_ENABLE, _("3D Post-processing"));
+    checkPostProcessing = new wxCheckBox(notePost, ID_EFFECT_ENABLE, wxTRANS("3D Post-processing"));
 #endif
-    checkFxCrop = new wxCheckBox(noteFxPanelCrop, ID_EFFECT_CROP_ENABLE, _("Enable Cropping"));
+    checkFxCrop = new wxCheckBox(noteFxPanelCrop, ID_EFFECT_CROP_ENABLE, wxTRANS("Enable Cropping"));
     const wxString comboFxCropAxisOne_choices[] = {
-        _("x-y"),
-        _("x-z"),
-        _("y-x"),
-        _("y-z"),
-        _("z-x"),
-        _("z-y")
+        wxTRANS("x-y"),
+        wxTRANS("x-z"),
+        wxTRANS("y-x"),
+        wxTRANS("y-z"),
+        wxTRANS("z-x"),
+        wxTRANS("z-y")
     };
     comboFxCropAxisOne = new wxComboBox(noteFxPanelCrop, ID_EFFECT_CROP_AXISONE_COMBO, wxT(""), wxDefaultPosition, wxDefaultSize, 6, comboFxCropAxisOne_choices, wxCB_DROPDOWN|wxCB_SIMPLE|wxCB_DROPDOWN|wxCB_READONLY);
     panelFxCropOne = new CropPanel(noteFxPanelCrop, ID_EFFECT_CROP_AXISONE_COMBO,
 		   		 wxDefaultPosition,wxDefaultSize,wxEXPAND|wxSHAPED);
     const wxString comboFxCropAxisTwo_choices[] = {
-        _("x-y"),
-        _("x-z"),
-        _("y-x"),
-        _("y-z"),
-        _("z-x"),
-        _("z-y")
+        wxTRANS("x-y"),
+        wxTRANS("x-z"),
+        wxTRANS("y-x"),
+        wxTRANS("y-z"),
+        wxTRANS("z-x"),
+        wxTRANS("z-y")
     };
     comboFxCropAxisTwo = new wxComboBox(noteFxPanelCrop, ID_EFFECT_CROP_AXISTWO_COMBO, wxT(""), wxDefaultPosition, wxDefaultSize, 6, comboFxCropAxisTwo_choices, wxCB_DROPDOWN|wxCB_SIMPLE|wxCB_DROPDOWN|wxCB_READONLY);
     panelFxCropTwo = new CropPanel(noteFxPanelCrop, ID_EFFECT_CROP_AXISTWO_COMBO,wxDefaultPosition,wxDefaultSize,wxEXPAND|wxSHAPED);
-    checkFxCropCameraFrame = new wxCheckBox(noteFxPanelCrop,ID_EFFECT_CROP_CHECK_COORDS,_("Use camera coordinates"));
-    labelFxCropDx = new wxStaticText(noteFxPanelCrop, wxID_ANY, _("dX"));
+    checkFxCropCameraFrame = new wxCheckBox(noteFxPanelCrop,ID_EFFECT_CROP_CHECK_COORDS,wxTRANS("Use camera coordinates"));
+    labelFxCropDx = new wxStaticText(noteFxPanelCrop, wxID_ANY, wxTRANS("dX"));
     textFxCropDx = new wxTextCtrl(noteFxPanelCrop, ID_EFFECT_CROP_TEXT_DX, wxEmptyString);
-    labelFxCropDy = new wxStaticText(noteFxPanelCrop, wxID_ANY, _("dY"));
+    labelFxCropDy = new wxStaticText(noteFxPanelCrop, wxID_ANY, wxTRANS("dY"));
     textFxCropDy = new wxTextCtrl(noteFxPanelCrop, ID_EFFECT_CROP_TEXT_DY, wxEmptyString);
-    labelFxCropDz = new wxStaticText(noteFxPanelCrop, wxID_ANY, _("dZ"));
+    labelFxCropDz = new wxStaticText(noteFxPanelCrop, wxID_ANY, wxTRANS("dZ"));
     textFxCropDz = new wxTextCtrl(noteFxPanelCrop, ID_EFFECT_CROP_TEXT_DZ, wxEmptyString);
-    checkFxEnableStereo = new wxCheckBox(noteFxPanelStereo, ID_EFFECT_STEREO_ENABLE, _("Enable Anaglyphic Stereo"));
-    checkFxStereoLensFlip= new wxCheckBox(noteFxPanelStereo, ID_EFFECT_STEREO_LENSFLIP, _("Flip Channels"));
-    lblFxStereoMode = new wxStaticText(noteFxPanelStereo, wxID_ANY, _("Anaglyph Mode"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
+    checkFxEnableStereo = new wxCheckBox(noteFxPanelStereo, ID_EFFECT_STEREO_ENABLE, wxTRANS("Enable Anaglyphic Stereo"));
+    checkFxStereoLensFlip= new wxCheckBox(noteFxPanelStereo, ID_EFFECT_STEREO_LENSFLIP, wxTRANS("Flip Channels"));
+    lblFxStereoMode = new wxStaticText(noteFxPanelStereo, wxID_ANY, wxTRANS("Anaglyph Mode"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
     const wxString comboFxStereoMode_choices[] = {
-        _("Red-Blue"),
-        _("Red-Green"),
-        _("Red-Cyan"),
-        _("Green-Magenta"),
+        wxTRANS("Red-Blue"),
+        wxTRANS("Red-Green"),
+        wxTRANS("Red-Cyan"),
+        wxTRANS("Green-Magenta"),
     };
     comboFxStereoMode = new wxComboBox(noteFxPanelStereo, ID_EFFECT_STEREO_COMBO, wxT(""), wxDefaultPosition, wxDefaultSize, 4, comboFxStereoMode_choices, wxCB_DROPDOWN|wxCB_SIMPLE|wxCB_READONLY);
     bitmapFxStereoGlasses = new wxStaticBitmap(noteFxPanelStereo, wxID_ANY, wxNullBitmap);
-    labelFxStereoBaseline = new wxStaticText(noteFxPanelStereo, wxID_ANY, _("Baseline Separation"));
+    labelFxStereoBaseline = new wxStaticText(noteFxPanelStereo, wxID_ANY, wxTRANS("Baseline Separation"));
     sliderFxStereoBaseline = new wxSlider(noteFxPanelStereo,ID_EFFECT_STEREO_BASELINE_SLIDER, 20, 0, 100);
-    checkAlphaBlend = new wxCheckBox(noteTools,ID_CHECK_ALPHA , _("Smooth && translucent objects"));
+    checkAlphaBlend = new wxCheckBox(noteTools,ID_CHECK_ALPHA , wxTRANS("Smooth && translucent objects"));
     checkAlphaBlend->SetValue(true);
-    checkLighting = new wxCheckBox(noteTools, ID_CHECK_LIGHTING, _("3D lighting"));
+    checkLighting = new wxCheckBox(noteTools, ID_CHECK_LIGHTING, wxTRANS("3D lighting"));
     checkLighting->SetValue(true);
-    checkWeakRandom = new wxCheckBox(noteTools, ID_CHECK_WEAKRANDOM, _("Fast and weak randomisation."));
+    checkWeakRandom = new wxCheckBox(noteTools, ID_CHECK_WEAKRANDOM, wxTRANS("Fast and weak randomisation."));
     checkWeakRandom->SetValue(true);
-    checkCaching = new wxCheckBox(noteTools, ID_CHECK_CACHING, _("Filter caching"));
+    checkCaching = new wxCheckBox(noteTools, ID_CHECK_CACHING, wxTRANS("Filter caching"));
     checkCaching->SetValue(true);
-    labelMaxRamUsage = new wxStaticText(noteTools, wxID_ANY, _("Max. Ram usage (%)"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
+    labelMaxRamUsage = new wxStaticText(noteTools, wxID_ANY, wxTRANS("Max. Ram usage (%)"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
     spinCachePercent = new wxSpinCtrl(noteTools, ID_SPIN_CACHEPERCENT, wxT("50"), wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 100);
     panelView = new wxPanel(panelTop, ID_PANEL_VIEW);
     panelSpectra = new MathGLPane(splitterSpectra, wxID_ANY);
-    plotListLabel = new wxStaticText(window_2_pane_2, wxID_ANY, _("Plot List"));
+    plotListLabel = new wxStaticText(window_2_pane_2, wxID_ANY, wxTRANS("Plot List"));
     const wxString *list_box_1_choices = NULL;
     plotList = new wxListBox(window_2_pane_2, ID_LIST_PLOTS, wxDefaultPosition, wxDefaultSize, 0, list_box_1_choices, wxLB_MULTIPLE|wxLB_NEEDED_SB|wxLB_SORT);
     gridRawData = new CopyGrid(noteRaw, ID_GRID_RAW_DATA);
@@ -578,8 +659,8 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     splitterSpectra->SetSashGravity(0.82);
 
     //Last Refresh box
-    listLastRefresh->InsertColumn(0,_("Type"));
-    listLastRefresh->InsertColumn(1,_("Num"));
+    listLastRefresh->InsertColumn(0,wxTRANS("Type"));
+    listLastRefresh->InsertColumn(1,wxTRANS("Num"));
     MainFrame_statusbar = CreateStatusBar(3, 0);
 
     //Inform top panel about timer and timeouts
@@ -643,8 +724,8 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 				break;
 			case CONFIG_ERR_BADFILE:
 			{
-				textConsoleOut->AppendText(_("Warning: Your configuration file appears to be invalid:\n"));
-				wxString wxS = _("\tConfig Load: ");
+				textConsoleOut->AppendText(wxTRANS("Warning: Your configuration file appears to be invalid:\n"));
+				wxString wxS = wxTRANS("\tConfig Load: ");
 				wxS+= wxStr( configFile.getErrMessage());
 				textConsoleOut->AppendText(wxS);
 				break;
@@ -653,6 +734,9 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 				ASSERT(false);
 		}
 	}
+	
+	//Try to set the window size to a nice size
+	SetSize(getNiceWindowSize());
 	
 	//Attempt to load the auto-save file, if it exists
 	//-----------------
@@ -667,13 +751,13 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 	{
 		//Well, looky here, looks like we got an autosave
 		wxMessageDialog *wxD  =new wxMessageDialog(this,
-					_("An auto-save file was found, would you like to restore it?.") 
-					,wxT("Autosave"),wxYES_NO|wxICON_QUESTION|wxYES_DEFAULT );
+					wxTRANS("An auto-save file was found, would you like to restore it?.") 
+					,wxTRANS("Autosave"),wxYES_NO|wxICON_QUESTION|wxYES_DEFAULT );
 
 		if(wxD->ShowModal()== wxID_YES)
 		{
 			if(!loadFile(filePath))
-				statusMessage("Unable to load autosave file..",MESSAGE_ERROR);
+				statusMessage(TRANS("Unable to load autosave file.."),MESSAGE_ERROR);
 			else
 			{
 				requireFirstUpdate=true;
@@ -693,6 +777,23 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 
 	updateTimer->Start(UPDATE_TIMER_DELAY,wxTIMER_CONTINUOUS);
 	autoSaveTimer->Start(AUTOSAVE_DELAY*1000,wxTIMER_CONTINUOUS);
+
+#ifndef DISABLE_ONLINE_UPDATE
+        wxDateTime datetime = wxDateTime::Today();	
+	
+	//Annoy the user, on average, every (% blah) days. Note that you need to choose the modulo numbers
+	//carefully, such that the GCD of the maximum day (7), maximum week (53 or 52) and modulo number
+	//are all coprime. Otherwise the numbers might "sync" and either always be true, or never be true.
+	//See Euclid's algorithm for details
+	const int MODULO_NUMBER=5;
+       	if( configFile.getAllowOnlineVersionCheck() && 
+			datetime.GetWeekOfYear() % MODULO_NUMBER == (datetime.GetWeekDay()) % MODULO_NUMBER)
+	{
+		verCheckThread=new VersionCheckThread(this);
+		verCheckThread->Create();
+		verCheckThread->Run();
+	}
+#endif
 }
 
 MainWindowFrame::~MainWindowFrame()
@@ -703,7 +804,11 @@ MainWindowFrame::~MainWindowFrame()
 	delete progressTimer;
 	delete updateTimer;
 	delete autoSaveTimer;
+
+	//delete the file history  pointer
+	delete recentHistory;
 }
+
 
 BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_GRID_CMD_EDITOR_SHOWN(ID_GRID_FILTER_PROPERTY,MainWindowFrame::OnFilterGridCellEditorShow)
@@ -789,7 +894,9 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_CHECKBOX(ID_EFFECT_STEREO_LENSFLIP, MainWindowFrame::OnFxStereoLensFlip)
     EVT_COMBOBOX(ID_EFFECT_STEREO_COMBO, MainWindowFrame::OnFxStereoCombo)
     EVT_COMMAND_SCROLL(ID_EFFECT_STEREO_BASELINE_SLIDER, MainWindowFrame::OnFxStereoBaseline)
-   
+  
+
+    EVT_COMMAND(wxID_ANY, RemoteUpdateAvailEvent, MainWindowFrame::OnCheckUpdatesThread)
     // end wxGlade
 END_EVENT_TABLE();
 
@@ -803,8 +910,8 @@ void MainWindowFrame::OnFileOpen(wxCommandEvent &event)
 		return;
 
 	//Load a file, either a state file, or a new pos file
-	wxFileDialog *wxF = new wxFileDialog(this,wxT("Select Data or State File..."), wxT(""),
-		wxT(""),wxT("3Depict file (*.xml, *.pos)|*.xml;*.pos|POS File (*.pos)|*.pos|XML State File (*.xml)|*.xml|All Files (*)|*"),wxOPEN|wxFILE_MUST_EXIST);
+	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Select Data or State File..."), wxT(""),
+		wxT(""),wxTRANS("3Depict file (*.xml, *.pos)|*.xml;*.pos|POS File (*.pos)|*.pos|XML State File (*.xml)|*.xml|All Files (*)|*"),wxFD_OPEN|wxFD_FILE_MUST_EXIST);
 
 	//Show the file dialog	
 	if( (wxF->ShowModal() == wxID_CANCEL))
@@ -823,6 +930,7 @@ void MainWindowFrame::OnFileOpen(wxCommandEvent &event)
 	recentHistory->AddFileToHistory(wxF->GetPath());
 	
 
+
 	//Get vis controller to update tree control to match internal
 	//structure
 	visControl.updateWxTreeCtrl(treeFilters);
@@ -837,7 +945,7 @@ void MainWindowFrame::OnFileOpen(wxCommandEvent &event)
 		if(visControl.numCams() == 1)
 			visControl.ensureSceneVisible(3);
 
-			statusMessage("Loaded file.",MESSAGE_INFO);
+			statusMessage(TRANS("Loaded file."),MESSAGE_INFO);
 	}
 
 	panelTop->Refresh();
@@ -852,8 +960,8 @@ void MainWindowFrame::OnFileMerge(wxCommandEvent &event)
 		return;
 
 	//Load a file, either a state file, or a new pos file
-	wxFileDialog *wxF = new wxFileDialog(this,wxT("Select Data or State File..."), wxT(""),
-		wxT(""),wxT("3Depict file (*.xml, *.pos)|*.xml;*.pos|POS File (*.pos)|*.pos|XML State File (*.xml)|*.xml|All Files (*)|*"),wxOPEN|wxFILE_MUST_EXIST);
+	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Select Data or State File..."), wxT(""),
+		wxT(""),wxTRANS("3Depict file (*.xml, *.pos)|*.xml;*.pos|POS File (*.pos)|*.pos|XML State File (*.xml)|*.xml|All Files (*)|*"),wxFD_OPEN|wxFD_FILE_MUST_EXIST);
 
 	//Show the file dialog	
 	if( (wxF->ShowModal() == wxID_CANCEL))
@@ -893,9 +1001,9 @@ void MainWindowFrame::OnDropFiles(const wxArrayString &files)
 	if(!wxm.CmdDown() && files.Count())
 	{
 #ifdef __APPLE__    
-		statusMessage("Tip: You can use ⌘ (command) to merge",MESSAGE_HINT);
+		statusMessage(TRANS("Tip: You can use ⌘ (command) to merge"),MESSAGE_HINT);
 #else
-		statusMessage("Tip: You can use ctrl to merge",MESSAGE_HINT);
+		statusMessage(TRANS("Tip: You can use ctrl to merge"),MESSAGE_HINT);
 #endif
 	}
 
@@ -938,8 +1046,8 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 			str=ss.str();
 			textConsoleOut->AppendText(wxStr(str));
 			wxMessageDialog *wxD  =new wxMessageDialog(this,
-						_("Error loading state file.\nSee console for more info.") 
-						,wxT("Load error"),wxOK|wxICON_ERROR);
+						wxTRANS("Error loading state file.\nSee console for more info.") 
+						,wxTRANS("Load error"),wxOK|wxICON_ERROR);
 			wxD->ShowModal();
 			wxD->Destroy();
 			return false;
@@ -949,8 +1057,8 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 		if(visControl.hasHazardousContents())
 		{
 			wxMessageDialog *wxD  =new wxMessageDialog(this,
-						_("This state file contains filters that can be unsafe to run\nDo you wish to remove these before continuing?.") 
-						,wxT("Security warning"),wxYES_NO|wxICON_WARNING|wxYES_DEFAULT );
+						wxTRANS("This state file contains filters that can be unsafe to run\nDo you wish to remove these before continuing?.") 
+						,wxTRANS("Security warning"),wxYES_NO|wxICON_WARNING|wxYES_DEFAULT );
 
 			if(wxD->ShowModal()!= wxID_NO)
 				visControl.makeFiltersSafe();
@@ -990,7 +1098,15 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 			visControl.updateCamPropertyGrid(gridCameraProperties,uniqueID);
 		}
 		else
+		{
+			//Reset the camera property fields & combo box
 			gridCameraProperties->clear();
+			comboCamera->SetValue(wxCStr(TRANS(cameraIntroString)));
+		}
+
+		//reset the stash combo box
+		comboStash->SetValue(wxCStr(TRANS(stashIntroString)));
+
 
 		//Check to see if we have any effects that we need to enable
 		vector<const Effect*> effs;
@@ -1034,7 +1150,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 			std::string errString;
 			errString = posErrStrings[err];
 			wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
-							,wxT("Load error"),wxOK|wxICON_ERROR);
+							,wxTRANS("Load error"),wxOK|wxICON_ERROR);
 			wxD->ShowModal();
 			wxD->Destroy();
 
@@ -1099,10 +1215,10 @@ void MainWindowFrame::OnFileSave(wxCommandEvent &event)
 	if(!visControl.saveState(dataFile.c_str(),dummyMap))
 	{
 		std::string errString;
-		errString="Unable to save. Check output destination can be written to.";
+		errString=TRANS("Unable to save. Check output destination can be written to.");
 		
 		wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
-						,wxT("Save error"),wxOK|wxICON_ERROR);
+						,wxTRANS("Save error"),wxOK|wxICON_ERROR);
 		wxD->ShowModal();
 		wxD->Destroy();
 	}
@@ -1127,17 +1243,17 @@ void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
 	if(!panelSpectra->getNumVisible())
 	{
 		std::string errString;
-		errString="No plot available. Please create a plot before exporting.";
+		errString=TRANS("No plot available. Please create a plot before exporting.");
 		wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
-						,wxT("Unable to save"),wxOK|wxICON_ERROR);
+						,wxTRANS("Unable to save"),wxOK|wxICON_ERROR);
 		wxD->ShowModal();
 
 		wxD->Destroy();
 		return;
 	}
 
-	wxFileDialog *wxF = new wxFileDialog(this,wxT("Save plot..."), wxT(""),
-		wxT(""),wxT("By Ext. (svg,png)|*.svg;*.png|Scalable Vector Graphics File (*.svg)|*.svg|PNG File (*.png)|*.png|All Files (*)|*"),wxSAVE);
+	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Save plot..."), wxT(""),
+		wxT(""),wxTRANS("By Extension (svg,png)|*.svg;*.png|Scalable Vector Graphics File (*.svg)|*.svg|PNG File (*.png)|*.png|All Files (*)|*"),wxFD_SAVE);
 
 	if( (wxF->ShowModal() == wxID_CANCEL))
 		return;
@@ -1166,7 +1282,7 @@ void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
 	else if (strExt == "png")
 	{
 		//Show a resolution chooser dialog
-		ResDialog d(this,wxID_ANY,_("Choose resolution"));
+		ResDialog d(this,wxID_ANY,wxTRANS("Choose resolution"));
 
 		int plotW,plotH;
 		panelSpectra->GetClientSize(&plotW,&plotH);
@@ -1181,9 +1297,9 @@ void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
 	else
 	{
 		std::string errString;
-		errString="Unknown file extension. Please use \"svg\" or \"png\"";
+		errString=TRANS("Unknown file extension. Please use \"svg\" or \"png\"");
 		wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
-						,wxT("Unable to save"),wxOK|wxICON_ERROR);
+						,wxTRANS("Unable to save"),wxOK|wxICON_ERROR);
 		wxD->ShowModal();
 
 		wxD->Destroy();
@@ -1197,7 +1313,7 @@ void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
 		errString=panelSpectra->getErrString(errCode);
 		
 		wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
-						,wxT("Save error"),wxOK|wxICON_ERROR);
+						,wxTRANS("Save error"),wxOK|wxICON_ERROR);
 		wxD->ShowModal();
 		wxD->Destroy();
 	}
@@ -1210,8 +1326,8 @@ void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
 
 void MainWindowFrame::OnFileExportImage(wxCommandEvent &event)
 {
-	wxFileDialog *wxF = new wxFileDialog(this,wxT("Save Image..."), wxT(""),
-		wxT(""),wxT("PNG File (*.png)|*.png|All Files (*)|*"),wxSAVE);
+	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Save Image..."), wxT(""),
+		wxT(""),wxTRANS("PNG File (*.png)|*.png|All Files (*)|*"),wxFD_SAVE);
 
 	if( (wxF->ShowModal() == wxID_CANCEL))
 		return;
@@ -1219,7 +1335,7 @@ void MainWindowFrame::OnFileExportImage(wxCommandEvent &event)
 	std::string dataFile = stlStr(wxF->GetPath());
 	
 	//Show a resolution chooser dialog
-	ResDialog d(this,wxID_ANY,_("Choose resolution"));
+	ResDialog d(this,wxID_ANY,wxTRANS("Choose resolution"));
 
 	//Use the current res as the dialog default
 	int w,h;
@@ -1234,8 +1350,8 @@ void MainWindowFrame::OnFileExportImage(wxCommandEvent &event)
 		(d.getWidth() > w && d.getHeight() < h))
 	{
 		wxMessageDialog *wxD  =new wxMessageDialog(this,
-				wxT("Limitation on the screenshot dimension; please ensure that both width and height exceed the initial values,\n or that they are smaller than the intial values.\n If this bothers you, please submit a bug."),
-				wxT("Program limitation"),wxOK|wxICON_ERROR);
+				wxTRANS("Limitation on the screenshot dimension; please ensure that both width and height exceed the initial values,\n or that they are smaller than the initial values.\n If this bothers you, please submit a bug."),
+				wxTRANS("Program limitation"),wxOK|wxICON_ERROR);
 
 		wxD->ShowModal();
 
@@ -1250,10 +1366,10 @@ void MainWindowFrame::OnFileExportImage(wxCommandEvent &event)
 	if(!saveOK)
 	{
 		std::string errString;
-		errString="Unable to save. Check output destination can be written to.";
+		errString=TRANS("Unable to save. Check output destination can be written to.");
 		
 		wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
-						,wxT("Save error"),wxOK|wxICON_ERROR);
+						,wxTRANS("Save error"),wxOK|wxICON_ERROR);
 		wxD->ShowModal();
 		wxD->Destroy();
 	}
@@ -1268,15 +1384,15 @@ void MainWindowFrame::OnFileExportImage(wxCommandEvent &event)
 
 void MainWindowFrame::OnFileExportVideo(wxCommandEvent &event)
 {
-	wxFileDialog *wxF = new wxFileDialog(this,wxT("Save Image..."), wxT(""),
-		wxT(""),wxT("PNG File (*.png)|*.png|All Files (*)|*"),wxSAVE);
+	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Save Image..."), wxT(""),
+		wxT(""),wxTRANS("PNG File (*.png)|*.png|All Files (*)|*"),wxFD_SAVE);
 
 	if( (wxF->ShowModal() == wxID_CANCEL))
 		return;
 
 	
 	//Show a resolution chooser dialog
-	ResDialog d(this,wxID_ANY,_("Choose resolution"));
+	ResDialog d(this,wxID_ANY,wxTRANS("Choose resolution"));
 
 	//Use the current res as the dialog default
 	int w,h;
@@ -1294,8 +1410,8 @@ void MainWindowFrame::OnFileExportVideo(wxCommandEvent &event)
 		(d.getWidth() > w && d.getHeight() < h) )
 	{
 		wxMessageDialog *wxD  =new wxMessageDialog(this,
-				wxT("Limitation on the screenshot dimension; please ensure that both width and height exceed the initial values,\n or that they are smaller than the intial values.\n If this bothers, please submit a bug."),
-				wxT("Program limitation"),wxOK|wxICON_ERROR);
+				wxTRANS("Limitation on the screenshot dimension; please ensure that both width and height exceed the initial values,\n or that they are smaller than the initial values.\n If this bothers, please submit a bug."),
+				wxTRANS("Program limitation"),wxOK|wxICON_ERROR);
 
 		wxD->ShowModal();
 
@@ -1313,12 +1429,12 @@ void MainWindowFrame::OnFileExportVideo(wxCommandEvent &event)
 			&path,&name,&ext, &hasExt);
 
 	if(!hasExt)
-		ext=_("png");
+		ext=wxT("png");
 
 	///TODO: This is nasty and hackish. We should present a nice,
 	//well layed out dialog for frame count (show angular increment) 
-	wxTextEntryDialog *teD = new wxTextEntryDialog(this,_("Number of frames"),_("Frame count"),
-						_("180"),(long int)wxOK|wxCANCEL);
+	wxTextEntryDialog *teD = new wxTextEntryDialog(this,wxTRANS("Number of frames"),wxTRANS("Frame count"),
+						wxT("180"),(long int)wxOK|wxCANCEL);
 
 	unsigned int numFrames=0;
 	std::string strTmp;
@@ -1343,17 +1459,17 @@ void MainWindowFrame::OnFileExportVideo(wxCommandEvent &event)
 	if(!saveOK)
 	{
 		std::string errString;
-		errString="Unable to save. Check output destination can be written to.";
+		errString=TRANS("Unable to save. Check output destination can be written to.");
 		
 		wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
-						,wxT("Save error"),wxOK|wxICON_ERROR);
+						,wxTRANS("Save error"),wxOK|wxICON_ERROR);
 		wxD->ShowModal();
 		wxD->Destroy();
 	}
 	else
 	{
 		std::string dataFile = stlStr(wxF->GetPath());
-		dataFile=std::string("Saved 3D View :") + dataFile;
+		dataFile=std::string(TRANS("Saved 3D View :")) + dataFile;
 		statusMessage(dataFile.c_str(),MESSAGE_INFO);
 	}
 	wxF->Destroy();
@@ -1364,16 +1480,16 @@ void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
 {
 	if(!treeFilters->GetCount())
 	{
-		statusMessage("No filters means no data to export",MESSAGE_ERROR);
+		statusMessage(TRANS("No filters means no data to export"),MESSAGE_ERROR);
 		return;
 
 	}
 
 	//This could be nicer, or reordered
-	wxTextEntryDialog *wxT = new wxTextEntryDialog(this,_("Package name"),
-					_("Package directory name"),_(""),wxOK|wxCANCEL);
+	wxTextEntryDialog *wxT = new wxTextEntryDialog(this,wxTRANS("Package name"),
+					wxTRANS("Package directory name"),wxT(""),wxOK|wxCANCEL);
 
-	wxT->SetValue(_("AnalysisPackage"));
+	wxT->SetValue(wxTRANS("AnalysisPackage"));
 
 	if(wxT->ShowModal() == wxID_CANCEL)
 	{
@@ -1385,8 +1501,8 @@ void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
 	//Pop up a directory dialog, to choose the base path for the new folder
 	wxDirDialog *wxD = new wxDirDialog(this);
 
-	wxMessageDialog *wxMesD  =new wxMessageDialog(this,wxT("Package folder already exists, won't overwrite.")
-					,wxT("Not available"),wxICON_ERROR);
+	wxMessageDialog *wxMesD  =new wxMessageDialog(this,wxTRANS("Package folder already exists, won't overwrite.")
+					,wxTRANS("Not available"),wxICON_ERROR);
 
 	unsigned int res;
 	res = wxD->ShowModal();
@@ -1417,8 +1533,8 @@ void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
 	//Check to see that the folder actually exists
 	if(!wxMkdir(folder))
 	{
-		wxMessageDialog *wxMesD  =new wxMessageDialog(this,wxT("Package folder creation failed\ncheck writing to this location is possible.")
-						,wxT("Folder creation failed"),wxICON_ERROR);
+		wxMessageDialog *wxMesD  =new wxMessageDialog(this,wxTRANS("Package folder creation failed\ncheck writing to this location is possible.")
+						,wxTRANS("Folder creation failed"),wxICON_ERROR);
 
 		wxMesD->ShowModal();
 		wxMesD->Destroy();
@@ -1435,18 +1551,18 @@ void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
 	if(!visControl.saveState(dataFile.c_str(),fileMapping,true))
 	{
 		std::string errString;
-		errString="Unable to save. Check output destination can be written to.";
+		errString=TRANS("Unable to save. Check output destination can be written to.");
 		
 		wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
-						,wxT("Save error"),wxOK|wxICON_ERROR);
+						,wxTRANS("Save error"),wxOK|wxICON_ERROR);
 		wxD->ShowModal();
 		wxD->Destroy();
 	}
 	else
 	{
 		//Copy the files in the mapping
-		wxProgressDialog *wxP = new wxProgressDialog(_("Copying"),
-					_("Copying referenced files"),fileMapping.size());
+		wxProgressDialog *wxP = new wxProgressDialog(wxTRANS("Copying"),
+					wxTRANS("Copying referenced files"),fileMapping.size());
 
 		wxP->Show();
 		for(map<string,string>::iterator it=fileMapping.begin();
@@ -1454,8 +1570,8 @@ void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
 		{
 			if(!wxCopyFile(wxStr(it->second),folder+wxStr(it->first)))
 			{
-				wxMessageDialog *wxD  =new wxMessageDialog(this,_("Error copying file")
-								,wxT("Save error"),wxOK|wxICON_ERROR);
+				wxMessageDialog *wxD  =new wxMessageDialog(this,wxTRANS("Error copying file")
+								,wxTRANS("Save error"),wxOK|wxICON_ERROR);
 				wxD->ShowModal();
 				wxD->Destroy();
 				wxP->Destroy();
@@ -1469,8 +1585,8 @@ void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
 
 
 		wxString s;
-		s=wxString(_("Saved package: ")) + folder;
-		statusMessage(stlStr(s),MESSAGE_INFO);
+		s=wxString(wxTRANS("Saved package: ")) + folder;
+		statusMessage(stlStr(s).c_str(),MESSAGE_INFO);
 	}
 	
 	wxD->Destroy();
@@ -1480,16 +1596,16 @@ void MainWindowFrame::OnFileExportIons(wxCommandEvent &event)
 {
 	if(!treeFilters->GetCount())
 	{
-		statusMessage("No filters means no data to export",MESSAGE_ERROR);
+		statusMessage(TRANS("No filters means no data to export"),MESSAGE_ERROR);
 		return;
 
 	}
 	//Load up the export dialog
-	ExportPosDialog *exportDialog=new ExportPosDialog(this,wxID_ANY,_("Export"));
+	ExportPosDialog *exportDialog=new ExportPosDialog(this,wxID_ANY,wxTRANS("Export"));
 	
 	//create a file chooser for later.
-	wxFileDialog *wxF = new wxFileDialog(this,wxT("Save pos..."), wxT(""),
-		wxT(""),wxT("POS Data (*.pos)|*.pos|All Files (*)|*"),wxSAVE);
+	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Save pos..."), wxT(""),
+		wxT(""),wxTRANS("POS Data (*.pos)|*.pos|All Files (*)|*"),wxFD_SAVE);
 
 
 	exportDialog->initialiseData(&visControl);
@@ -1523,10 +1639,10 @@ void MainWindowFrame::OnFileExportIons(wxCommandEvent &event)
 	if(visControl.exportIonStreams(exportVec,dataFile))
 	{
 		std::string errString;
-		errString="Unable to save. Check output destination can be written to.";
+		errString=TRANS("Unable to save. Check output destination can be written to.");
 		
 		wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
-						,wxT("Save error"),wxOK|wxICON_ERROR);
+						,wxTRANS("Save error"),wxOK|wxICON_ERROR);
 		wxD->ShowModal();
 		wxD->Destroy();
 	}
@@ -1552,11 +1668,11 @@ void MainWindowFrame::OnFileExportRange(wxCommandEvent &event)
 
 	if(!treeFilters->GetCount())
 	{
-		statusMessage("No filters means no data to export",
+		statusMessage(TRANS("No filters means no data to export"),
 				MESSAGE_ERROR);
 		return;
 	}
-	ExportRngDialog *rngDialog = new ExportRngDialog(this,wxID_ANY,_("Export Ranges"),
+	ExportRngDialog *rngDialog = new ExportRngDialog(this,wxID_ANY,wxTRANS("Export Ranges"),
 							wxDefaultPosition,wxSize(600,400));
 
 	vector<const Filter *> rangeData;
@@ -1579,8 +1695,8 @@ void MainWindowFrame::OnFileExportRange(wxCommandEvent &event)
 void MainWindowFrame::OnFileSaveAs(wxCommandEvent &event)
 {
 	//Show a file save dialog
-	wxFileDialog *wxF = new wxFileDialog(this,wxT("Save state..."), wxT(""),
-		wxT(""),wxT("XML state file (*.xml)|*.xml|All Files (*)|*"),wxSAVE);
+	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Save state..."), wxT(""),
+		wxT(""),wxT("XML state file (*.xml)|*.xml|All Files (*)|*"),wxFD_SAVE);
 
 	//Show, then check for user cancelling dialog
 	if( (wxF->ShowModal() == wxID_CANCEL))
@@ -1597,8 +1713,8 @@ void MainWindowFrame::OnFileSaveAs(wxCommandEvent &event)
 	//Check file already exists (no overwrite without asking)
 	if(wxFileExists(wxF->GetPath()))
 	{
-		wxMessageDialog *wxD  =new wxMessageDialog(this,wxT("File already exists, overwrite?")
-						,wxT("Overwrite?"),wxOK|wxCANCEL|wxICON_QUESTION);
+		wxMessageDialog *wxD  =new wxMessageDialog(this,wxTRANS("File already exists, overwrite?")
+						,wxTRANS("Overwrite?"),wxOK|wxCANCEL|wxICON_QUESTION);
 		if(wxD->ShowModal() == wxID_CANCEL)
 		{
 			wxD->Destroy();
@@ -1616,17 +1732,36 @@ void MainWindowFrame::OnFileSaveAs(wxCommandEvent &event)
 	}
 	else
 		dataFile+=".xml";
-		
+	
+
+	bool oldRelPath=visControl.usingRelPaths();
+	//Check to see if we have are using relative paths,
+	//and if so, do any of our filters
+	if(visControl.usingRelPaths() && visControl.hasStateOverrides())
+	{
+		wxMessageDialog *wxD  =new wxMessageDialog(this,wxTRANS("Files have been referred to using relative paths. Keep relative paths?")
+						,wxTRANS("Overwrite?"),wxYES|wxNO|wxICON_QUESTION);
+
+		//Just for the moment, set relative paths to false, if the user asks.
+		//we will restore this later
+		if(wxD->ShowModal() == wxID_NO)
+		{
+			oldRelPath=true;
+			visControl.setUseRelPaths(false);
+		}
+
+	}
+
 
 	std::map<string,string> dummyMap;
 	//Try to save the viscontrol state
 	if(!visControl.saveState(dataFile.c_str(),dummyMap))
 	{
 		std::string errString;
-		errString="Unable to save. Check output destination can be written to.";
+		errString=TRANS("Unable to save. Check output destination can be written to.");
 		
 		wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
-						,wxT("Save error"),wxOK|wxICON_ERROR);
+						,wxTRANS("Save error"),wxOK|wxICON_ERROR);
 		wxD->ShowModal();
 		wxD->Destroy();
 	}
@@ -1639,9 +1774,12 @@ void MainWindowFrame::OnFileSaveAs(wxCommandEvent &event)
 		configFile.addRecentFile(dataFile);
 		recentHistory->AddFileToHistory(wxStr(dataFile));
 	
-		dataFile=std::string("Saved state: ") + dataFile;
+		dataFile=std::string(TRANS("Saved state: ")) + dataFile;
 		statusMessage(dataFile.c_str(),MESSAGE_INFO);
 	}
+
+	//Restore the relative path behaviour
+	visControl.setUseRelPaths(oldRelPath);
 }
 
 
@@ -1737,7 +1875,12 @@ void MainWindowFrame::OnEditPreferences(wxCommandEvent &event)
 	panelMode=configFile.getStartupPanelMode();
 
 	p->setPanelDefaults(panelMode,controlStartup,rawStartup,plotStartup);
-	
+
+#ifndef DISABLE_ONLINE_UPDATE
+	p->setAllowOnlineUpdate(configFile.getAllowOnlineVersionCheck());
+#endif
+
+
 	p->setMouseZoomRate(mouseZoomRate);
 	p->setMouseMoveRate(mouseMoveRate);
 
@@ -1777,6 +1920,10 @@ void MainWindowFrame::OnEditPreferences(wxCommandEvent &event)
 
 	configFile.setStartupPanelMode(panelMode);
 
+#ifndef DISABLE_ONLINE_UPDATE
+	configFile.setAllowOnline(p->getAllowOnlineUpdate());
+	configFile.setAllowOnlineVersionCheck(p->getAllowOnlineUpdate());
+#endif
 	p->cleanup();
 	p->Destroy();
 }
@@ -1922,14 +2069,14 @@ void MainWindowFrame::OnHelpHelp(wxCommandEvent &event)
 	#if defined(__linux__)
 		//Try xdg-open first
 		wxString str;
-		str= _("xdg-open ");
+		str= wxT("xdg-open ");
 		str+=wxStr(s);
 		appPID=wxExecute(str,wxEXEC_ASYNC);
 		launchedOK=(appPID!=0);
 	#elif defined(__APPLE__)
 		//Try open first
 		wxString str;
-		str= _("open ");
+		str= wxT("open ");
 		str+=wxStr(s);
 		appPID=wxExecute(str,wxEXEC_ASYNC);
 		launchedOK=(appPID!=0);
@@ -1949,7 +2096,7 @@ void MainWindowFrame::OnHelpHelp(wxCommandEvent &event)
 			wxMimeTypesManager m;
 			wxFileType *t;
 				
-			t=m.GetFileTypeFromExtension(_("pdf"));
+			t=m.GetFileTypeFromExtension(wxT("pdf"));
 			command=t->GetOpenCommand(wxStr(s));
 			appPID=wxExecute(command,wxEXEC_ASYNC);
 			launchedOK=(appPID!=0);
@@ -1963,7 +2110,7 @@ void MainWindowFrame::OnHelpHelp(wxCommandEvent &event)
 		std::string helpFileLocation("http://threedepict.sourceforge.net/documentation.html");
 		wxLaunchDefaultBrowser(wxStr(helpFileLocation),wxBROWSER_NEW_WINDOW);
 
-		statusMessage("Manual not found locally. Launching web browser",MESSAGE_INFO);
+		statusMessage(TRANS("Manual not found locally. Launching web browser"),MESSAGE_INFO);
 	}
 }
 
@@ -1972,7 +2119,7 @@ void MainWindowFrame::OnHelpContact(wxCommandEvent &event)
 	std::string contactFileLocation("http://threedepict.sourceforge.net/contact.html");
 	wxLaunchDefaultBrowser(wxStr(contactFileLocation),wxBROWSER_NEW_WINDOW);
 
-	statusMessage("Opening contact page in external web browser",MESSAGE_INFO);
+	statusMessage(TRANS("Opening contact page in external web browser"),MESSAGE_INFO);
 }
 
 void MainWindowFrame::OnButtonStashDialog(wxCommandEvent &event)
@@ -1984,11 +2131,11 @@ void MainWindowFrame::OnButtonStashDialog(wxCommandEvent &event)
 
 	if(stashList.empty())
 	{
-		statusMessage("No filter stashes to edit.",MESSAGE_ERROR);
+		statusMessage(TRANS("No filter stashes to edit."),MESSAGE_ERROR);
 		return;
 	}
 
-	StashDialog *s = new StashDialog(this,wxID_ANY,_("Filter Stashes"));
+	StashDialog *s = new StashDialog(this,wxID_ANY,wxTRANS("Filter Stashes"));
 	s->setVisController(&visControl);
 	s->ready();
 	s->ShowModal();
@@ -2017,11 +2164,11 @@ void MainWindowFrame::OnHelpAbout(wxCommandEvent &event)
 	wxAboutDialogInfo info;
 	info.SetName(wxCStr(PROGRAM_NAME));
 	info.SetVersion(wxCStr(PROGRAM_VERSION));
-	info.SetDescription(_("Quick and dirty analysis for point data.")); 
-	info.SetWebSite(_("https://sourceforge.net/apps/phpbb/threedepict/"));
+	info.SetDescription(wxTRANS("Quick and dirty analysis for point data.")); 
+	info.SetWebSite(wxT("https://sourceforge.net/apps/phpbb/threedepict/"));
 
-	info.AddDeveloper(_("D. Haley"));	
-	info.AddDeveloper(_("A. Ceguerra"));	
+	info.AddDeveloper(wxT("D. Haley"));	
+	info.AddDeveloper(wxT("A. Ceguerra"));	
 	//GNU GPL v3
 	info.SetCopyright(_T("Copyright (C) 2010 3Depict team\n This software is licenced under the GPL Version 3.0 or later\n This program comes with ABSOLUTELY NO WARRANTY.\nThis is free software, and you are welcome to redistribute it\nunder certain conditions; Please see the file COPYING in the program directory for details"));	
 
@@ -2029,7 +2176,7 @@ void MainWindowFrame::OnHelpAbout(wxCommandEvent &event)
 
 
 	wxArrayString s;
-	s.Add(wxString(_("Compiled with wx Version: " )) + 
+	s.Add(wxString(wxTRANS("Compiled with wx Version: " )) + 
 			wxString(wxSTRINGIZE_T(wxVERSION_STRING)));
 	info.SetTranslators(s);
 
@@ -2047,13 +2194,13 @@ void MainWindowFrame::OnComboStashText(wxCommandEvent &event)
 	int n = comboStash->FindString(comboStash->GetValue());
 	
 	if ( n== wxNOT_FOUND ) 
-		statusMessage("Press enter to store new stash",MESSAGE_HINT);
+		statusMessage(TRANS("Press enter to store new stash"),MESSAGE_HINT);
 	else
 	{
 		//The combo generates an ontext event when a string
 		//is selected (yeah, I know, wierd..) Block this case.
 		if(comboStash->GetSelection() != n)
-			statusMessage("Press enter to restore stash",MESSAGE_HINT);
+			statusMessage(TRANS("Press enter to restore stash"),MESSAGE_HINT);
 	}
 }
 
@@ -2091,7 +2238,7 @@ void MainWindowFrame::OnComboStashEnter(wxCommandEvent &event)
 		//If there is a problem with the selection, abort
 		if(!id.IsOk() || (id == treeFilters->GetRootItem()))
 		{
-			statusMessage("Unable to create stash, selection invalid",MESSAGE_ERROR);
+			statusMessage(TRANS("Unable to create stash, selection invalid"),MESSAGE_ERROR);
 			return;
 		}
 
@@ -2103,7 +2250,7 @@ void MainWindowFrame::OnComboStashEnter(wxCommandEvent &event)
 		n=comboStash->Append(wxStr(userText),(wxClientData *)new wxListUint(n));
 		ASSERT(comboStash->GetClientObject(n));
 		
-		statusMessage("Created new filter tree stash",MESSAGE_INFO);
+		statusMessage(TRANS("Created new filter tree stash"),MESSAGE_INFO);
 
 	}
 	else
@@ -2135,11 +2282,11 @@ void MainWindowFrame::OnComboStashEnter(wxCommandEvent &event)
 		}
 	
 		//clear the text in the combo box
-		comboStash->SetValue(_(""));
+		comboStash->SetValue(wxT(""));
 	}
 
 	//clear the text in the combo box
-	comboStash->SetValue(_(""));
+	comboStash->SetValue(wxT(""));
 }
 
 
@@ -2168,7 +2315,7 @@ void MainWindowFrame::OnComboStash(wxCommandEvent &event)
 	}
 	
 	//clear the text in the combo box
-	comboStash->SetValue(_(""));
+	comboStash->SetValue(wxT(""));
 }
 
 
@@ -2292,7 +2439,7 @@ void MainWindowFrame::updateLastRefreshBox()
 			{
 				long index;
 				stream_cast(n,numOut);
-				index=listLastRefresh->InsertItem(0,wxCStr(STREAM_NAMES[ui]));
+				index=listLastRefresh->InsertItem(0,wxCStr(TRANS(STREAM_NAMES[ui])));
 				listLastRefresh->SetItem(index,1,wxStr(n));
 			}
 		}
@@ -2364,9 +2511,9 @@ void MainWindowFrame::OnTreeBeginDrag(wxTreeEvent &event)
 		event.Allow();
 
 #ifdef __APPLE__    
-		statusMessage("Moving - Hold ⌘ (command) to copy",MESSAGE_HINT);
+		statusMessage(TRANS("Moving - Hold ⌘ (command) to copy"),MESSAGE_HINT);
 #else
-		statusMessage("Moving - Hold control to copy",MESSAGE_HINT);
+		statusMessage(TRANS("Moving - Hold control to copy"),MESSAGE_HINT);
 #endif
 	}
 
@@ -2540,8 +2687,7 @@ void MainWindowFrame::OnGridCameraPropertyChange(wxGridEvent &event)
 	cameraId = l->value;
 
 	int row=event.GetRow();
-	if(visControl.setCamProperties(cameraId,gridCameraProperties->getSetFromRow(row),
-					gridCameraProperties->getKeyFromRow(row),value))
+	if(visControl.setCamProperties(cameraId,gridCameraProperties->getKeyFromRow(row),value))
 		visControl.updateCamPropertyGrid(gridCameraProperties,cameraId);
 	else
 		event.Veto();
@@ -2560,9 +2706,9 @@ void MainWindowFrame::OnComboCameraText(wxCommandEvent &event)
 	int n = comboCamera->FindString(comboCamera->GetValue());
 	
 	if ( n== wxNOT_FOUND ) 
-		statusMessage("Press enter to store new camera",MESSAGE_HINT);
+		statusMessage(TRANS("Press enter to store new camera"),MESSAGE_HINT);
 	else
-		statusMessage("Press enter to restore camera",MESSAGE_HINT);
+		statusMessage(TRANS("Press enter to restore camera"),MESSAGE_HINT);
 }
 
 void MainWindowFrame::OnComboCameraEnter(wxCommandEvent &event)
@@ -2587,7 +2733,7 @@ void MainWindowFrame::OnComboCameraEnter(wxCommandEvent &event)
 		l =(wxListUint*)  comboCamera->GetClientObject(comboCamera->GetSelection());
 		visControl.setCam(l->value);
 		
-		std::string s = std::string("Restored camera: " ) +stlStr(comboCamera->GetValue());	
+		std::string s = std::string(TRANS("Restored camera: ") ) +stlStr(comboCamera->GetValue());	
 		
 		statusMessage(s.c_str(),MESSAGE_INFO);
 		
@@ -2605,7 +2751,7 @@ void MainWindowFrame::OnComboCameraEnter(wxCommandEvent &event)
 	//Do not delete as this will be deleted by wx..
 	comboCamera->Append(comboCamera->GetValue(),(wxClientData *)new wxListUint(u));	
 
-	std::string s = std::string("Stored camera: " ) +stlStr(comboCamera->GetValue());	
+	std::string s = std::string(TRANS("Stored camera: " )) +stlStr(comboCamera->GetValue());	
 	statusMessage(s.c_str(),MESSAGE_INFO);
 
 	visControl.setCam(u);
@@ -2624,7 +2770,7 @@ void MainWindowFrame::OnComboCamera(wxCommandEvent &event)
 
 	visControl.updateCamPropertyGrid(gridCameraProperties,l->value);
 
-	std::string s = std::string("Restored camera: " ) +stlStr(comboCamera->GetValue());	
+	std::string s = std::string(TRANS("Restored camera: ") ) +stlStr(comboCamera->GetValue());	
 	statusMessage(s.c_str(),MESSAGE_INFO);
 	
 	panelTop->Refresh(false);
@@ -2687,22 +2833,31 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 	if(!id.IsOk() || id == treeFilters->GetRootItem())
 	{
 		if(treeFilters->GetCount())
-			statusMessage("Select an item from the filter tree before choosing a new filter");
+			statusMessage(TRANS("Select an item from the filter tree before choosing a new filter"));
 		else
-			statusMessage("Load data source (file->open) before choosing a new filter");
+			statusMessage(TRANS("Load data source (file->open) before choosing a new filter"));
 		return;
 	}
 
 	//Perform the appropriate action for the particular filter,
 	//or use the default action for every other filter
 	bool haveErr=false;
-	switch(event.GetSelection())
+
+
+	//Convert the string into a filter ID based upon our mapping
+	wxString s;
+	s=comboFilters->GetString(event.GetSelection());
+	size_t filterType;
+	filterType=filterMap[stlStr(s)];
+
+	ASSERT(stlStr(s) == TRANS(comboFilters_choices[filterType]));
+	switch(comboFiltersTypeMapping[filterType])
 	{
-		case COMBO_FILTER_RANGEFILE:
+		case FILTER_TYPE_RANGEFILE:
 		{
 			///Prompt user for file
-			wxFileDialog *wxF = new wxFileDialog(this,wxT("Select RNG File..."),wxT(""),wxT(""),
-					wxT("Range Files (*rng; *env; *rrng)|*rng;*env;*rrng|RNG File (*.rng)|*.rng|Environment File (*.env)|*.env|RRNG Files (*.rrng)|*.rrng|All Files (*)|*"),wxOPEN|wxFILE_MUST_EXIST);
+			wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Select RNG File..."),wxT(""),wxT(""),
+					wxTRANS("Range Files (*rng; *env; *rrng)|*rng;*env;*rrng|RNG File (*.rng)|*.rng|Environment File (*.env)|*.env|RRNG Files (*.rrng)|*.rrng|All Files (*)|*"),wxFD_OPEN|wxFD_FILE_MUST_EXIST);
 			
 
 			if( (wxF->ShowModal() == wxID_CANCEL))
@@ -2733,7 +2888,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 			       f->setFormat(RANGE_FORMAT_RRNG);	
 			else
 			{
-				statusMessage("Unknown file extension",MESSAGE_ERROR);
+				statusMessage(TRANS("Unknown file extension"),MESSAGE_ERROR);
 				return;
 			}
 				
@@ -2751,7 +2906,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 					break;
 				default:
 				{
-					errString = "Failed reading range file, may not readable or may be invalid: ";
+					errString = TRANS("Failed reading range file, may not readable or may be invalid: ");
 					errString += "\n";
 					errString+=dataFile;
 					
@@ -2761,7 +2916,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 			if(errCode)
 			{
 				wxMessageDialog *wxD  =new wxMessageDialog(this,
-					wxStr(errString),wxT("Error loading file"),wxOK|wxICON_ERROR);
+					wxStr(errString),wxTRANS("Error loading file"),wxOK|wxICON_ERROR);
 				wxD->ShowModal();
 				wxD->Destroy();
 				delete f;
@@ -2782,12 +2937,10 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 		default:
 		{
 			Filter *t;
-			unsigned int filterType;
-			filterType=comboFiltersTypeMapping[event.GetSelection()];
 		
 			ASSERT(filterType < FILTER_TYPE_ENUM_END);
 			//Generate the appropriate filter
-			t=configFile.getDefaultFilter(filterType);
+			t=configFile.getDefaultFilter(comboFiltersTypeMapping[filterType]);
 			//Tree data contains unique identifier for vis control to do matching
 			wxTreeItemData *tData=treeFilters->GetItemData(id);
 			
@@ -2804,7 +2957,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 	if(haveErr)
 	{
 		//Clear thue combo box
-		comboFilters->SetValue(_(""));
+		comboFilters->SetValue(wxT(""));
 		return;
 	}
 
@@ -2814,7 +2967,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 	if(checkAutoUpdate->GetValue())
 		doSceneUpdate();
 
-	comboFilters->SetValue(_(""));
+	comboFilters->SetValue(wxT(""));
 	
 	editUndoMenuItem->Enable(visControl.getUndoSize());
 	editRedoMenuItem->Enable(visControl.getRedoSize());
@@ -2832,7 +2985,7 @@ bool MainWindowFrame::doSceneUpdate()
 
 		
 	statusMessage("",MESSAGE_NONE);
-	noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,_("Cons."));
+	noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,wxTRANS("Cons."));
 
 	//Disable tree filters,refresh button and undo
 	treeFilters->Enable(false);
@@ -2870,7 +3023,7 @@ bool MainWindowFrame::doSceneUpdate()
 		if(p.curFilter)
 			errString = p.curFilter->getErrString(errCode);
 		else
-			errString = "Refresh Aborted.";
+			errString = TRANS("Refresh Aborted.");
 	
 		statusMessage(errString.c_str(),MESSAGE_ERROR);	
 	}
@@ -2900,9 +3053,9 @@ bool MainWindowFrame::doSceneUpdate()
 
 	//Add (or hide) a litle "Star" to inform the user there is some info available
 	if(textConsoleOut->IsEmpty() || noteDataView->GetSelection()==NOTE_CONSOLE_PAGE_OFFSET)
-		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,_("Cons."));
+		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,wxTRANS("Cons."));
 	else
-		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,_("§Cons."));
+		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,wxTRANS("§Cons."));
 
 
 	//Return a value dependant upon whether we succesfully loaded 
@@ -2933,9 +3086,9 @@ void MainWindowFrame::OnAutosaveTimer(wxTimerEvent &event)
 	//Save a state file to the configuration dir
 	//with the title "autosave.xml"
 	//
-	wxStandardPaths *paths = new wxStandardPaths;
 
-	wxString filePath = paths->GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);
+	wxString filePath = wxStandardPaths::Get().GetDocumentsDir()
+					+wxCStr("/.")+wxCStr(PROGRAM_NAME);
 
 
 	//create the dir
@@ -2948,7 +3101,8 @@ void MainWindowFrame::OnAutosaveTimer(wxTimerEvent &event)
 	s=  stlStr(filePath);
 	std::map<string,string> dummyMap;
 	if(visControl.saveState(s.c_str(),dummyMap))
-		statusMessage("Autosave complete.",MESSAGE_INFO);
+		statusMessage(TRANS("Autosave complete."),MESSAGE_INFO);
+
 
 }
 
@@ -3101,7 +3255,7 @@ void MainWindowFrame::updateProgressStatus()
 
 	if(haveAborted)
 	{
-		progressString="Aborted.";
+		progressString=TRANS("Aborted.");
 	}
 	else
 	{
@@ -3127,11 +3281,11 @@ void MainWindowFrame::updateProgressStatus()
 		if(p.curFilter)
 		{
 			if(!p.maxStep)
-				progressString = totalProg+" of " + totalCount +
+				progressString = totalProg+TRANS(" of ") + totalCount +
 						 " (" + p.curFilter->typeString() +")";
 			else
 			{
-				progressString = totalProg+" of " + totalCount +
+				progressString = totalProg+TRANS(" of ") + totalCount +
 						 " (" + p.curFilter->typeString() + ", "
 							+ step + "/" + maxStep + ": " + 
 						       p.stepName+")";
@@ -3142,15 +3296,15 @@ void MainWindowFrame::updateProgressStatus()
 			//If we have no filter, then we must be done if the totalProgress is
 			//equal to the total count.
 			if(totalProg == totalCount)
-				progressString = "Updated.";
+				progressString = TRANS("Updated.");
 			else
 				progressString = totalProg + " of " + totalCount;
 		}
 
 		if( p.filterProgress != 100)
-			filterProg+="\% Done (Esc aborts)";
+			filterProg+=TRANS("\% Done (Esc aborts)");
 		else
-			filterProg+="\% Done";
+			filterProg+=TRANS("\% Done");
 
 	}
 
@@ -3246,9 +3400,9 @@ void MainWindowFrame::updatePostEffects()
 			}
 			else
 			{
-				textFxCropDx->SetValue(_(""));
-				textFxCropDy->SetValue(_(""));
-				textFxCropDz->SetValue(_(""));
+				textFxCropDx->SetValue(wxT(""));
+				textFxCropDy->SetValue(wxT(""));
+				textFxCropDz->SetValue(wxT(""));
 			}
 			
 			//well, we dealt with this update.
@@ -3257,9 +3411,9 @@ void MainWindowFrame::updatePostEffects()
 		}
 		else
 		{
-			textFxCropDx->SetValue(_(""));
-			textFxCropDy->SetValue(_(""));
-			textFxCropDz->SetValue(_(""));
+			textFxCropDx->SetValue(wxT(""));
+			textFxCropDy->SetValue(wxT(""));
+			textFxCropDz->SetValue(wxT(""));
 			delete b;
 
 			//we should let this return true, 
@@ -3400,18 +3554,18 @@ void MainWindowFrame::OnViewFullscreen(wxCommandEvent &event)
 		case 0:
 			flags= wxFULLSCREEN_NOTOOLBAR;
 			ShowFullScreen(true,flags);
-			menuViewFullscreen->SetHelp(_("Next Fullscren mode: none"));	
+			menuViewFullscreen->SetHelp(wxTRANS("Next Fullscreen mode: none"));	
 			break;
 		case 1:
-			menuViewFullscreen->SetHelp(_("Next Fullscren mode: complete"));	
+			menuViewFullscreen->SetHelp(wxTRANS("Next Fullscreen mode: complete"));	
 			ShowFullScreen(false);
 			break;
 		case 2:
-			menuViewFullscreen->SetHelp(_("Next Fullscren mode: none"));	
+			menuViewFullscreen->SetHelp(wxTRANS("Next Fullscreen mode: none"));	
 			ShowFullScreen(true);
 			break;
 		case 3:
-			menuViewFullscreen->SetHelp(_("Next Fullscren mode: with toolbars"));	
+			menuViewFullscreen->SetHelp(wxTRANS("Next Fullscreen mode: with toolbars"));	
 			ShowFullScreen(false);
 			break;
 
@@ -3457,7 +3611,7 @@ void MainWindowFrame::OnButtonRefresh(wxCommandEvent &event)
 	else
 	{
 		if(checkCaching->IsChecked())
-			statusMessage("Use shift-click to force full refresh",MESSAGE_HINT);
+			statusMessage(TRANS("Use shift-click to force full refresh"),MESSAGE_HINT);
 	}
 	doSceneUpdate();	
 }
@@ -3623,7 +3777,7 @@ void MainWindowFrame::OnCameraGridCellEditorShow(wxGridEvent &event)
 				s= "1";
 			else
 				s="0";
-			visControl.setCamProperties(camUniqueID,set,key,s);
+			visControl.setCamProperties(camUniqueID,key,s);
 		
 			//For some reason this does not  redraw neatly. Force a redraw
 			visControl.updateCamPropertyGrid(gridCameraProperties,camUniqueID);
@@ -3654,7 +3808,7 @@ void MainWindowFrame::OnCameraGridCellEditorShow(wxGridEvent &event)
 			
 				//Pass the new colour to the viscontrol system, which updates
 				//the filters	
-				visControl.setCamProperties(camUniqueID,set,key,s);
+				visControl.setCamProperties(camUniqueID,key,s);
 			}
 
 			//Set the filter property
@@ -3681,7 +3835,7 @@ void MainWindowFrame::OnButtonGridSave(wxCommandEvent &event)
 {
 	if(!gridRawData->GetRows()| !gridRawData->GetCols())
 	{
-		statusMessage("No data to save",MESSAGE_ERROR);
+		statusMessage(TRANS("No data to save"),MESSAGE_ERROR);
 		return;
 	}
 	gridRawData->saveData();	
@@ -3790,14 +3944,14 @@ void MainWindowFrame::OnClose(wxCloseEvent &event)
 			visControl.abort();
 			haveAborted=true;
 
-			statusMessage("Aborting...",MESSAGE_INFO);
+			statusMessage(TRANS("Aborting..."),MESSAGE_INFO);
 			return;
 		}
 		else
 		{
 			wxMessageDialog *wxD  =new wxMessageDialog(this,
-					wxT("Waiting for refresh to abort. Exiting could lead to the program backgrounding. Exit anyway? "),
-					wxT("Confirmation request"),wxOK|wxCANCEL|wxICON_ERROR);
+					wxTRANS("Waiting for refresh to abort. Exiting could lead to the program backgrounding. Exit anyway? "),
+					wxTRANS("Confirmation request"),wxOK|wxCANCEL|wxICON_ERROR);
 
 			if(wxD->ShowModal() != wxID_OK)
 			{
@@ -3816,8 +3970,8 @@ void MainWindowFrame::OnClose(wxCloseEvent &event)
 			{
 				//Prompt for close
 				wxMessageDialog *wxD  =new wxMessageDialog(this,
-						wxT("Are you sure you wish to exit 3Depict?"),\
-						wxT("Confirmation request"),wxOK|wxCANCEL|wxICON_ERROR);
+						wxTRANS("Are you sure you wish to exit 3Depict?"),\
+						wxTRANS("Confirmation request"),wxOK|wxCANCEL|wxICON_ERROR);
 				if(wxD->ShowModal() != wxID_OK)
 				{
 					event.Veto();
@@ -3825,7 +3979,7 @@ void MainWindowFrame::OnClose(wxCloseEvent &event)
 					return;
 				}
 				wxD->Destroy();
-				
+			
 			}
 		}
 	}
@@ -3841,10 +3995,27 @@ void MainWindowFrame::OnClose(wxCloseEvent &event)
 
 	delete paths;
 
+	//Remember current window size for next time
+	wxSize winSize;
+	winSize=GetSize();
+	configFile.setInitialAppSize(winSize.GetWidth(),winSize.GetHeight());
+
 	//Try to save the configuration
 	configFile.write();
 
-	Destroy();
+	 if(verCheckThread)
+	 {
+		 if(!verCheckThread->isComplete())
+		 {
+			 //Kill it.
+			 verCheckThread->Kill();
+		 }
+		 delete verCheckThread;
+	}
+	 
+
+	 //Terminate the program
+ 	 Destroy();
 }
 
 
@@ -4016,71 +4187,143 @@ void MainWindowFrame::OnNoteDataView(wxNotebookEvent &evt)
 {
 	//Get rid of the console page
 	if(evt.GetSelection() == NOTE_CONSOLE_PAGE_OFFSET)
-		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,_("Cons."));
+		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,wxTRANS("Cons."));
 
 	//Keep processing
 	evt.Skip();
+}
+
+void MainWindowFrame::OnCheckUpdatesThread(wxCommandEvent &evt)
+{
+	//Check to see if we have a new version or not, and
+	//what that version number is
+	
+	ASSERT(verCheckThread->isComplete());
+
+	//Check to see if we got the version number OK. 
+	// this might have failed, eg if the user has no net connection,
+	// or the remote RSS is not parseable
+	if(verCheckThread->isRetrieveOK())
+	{
+		string remoteMax=verCheckThread->getVerStr().c_str();
+
+		string s;
+		if(remoteMax != PROGRAM_VERSION)
+		{
+			//Use status bar message to notify user about update
+			s = string(TRANS("Update Notice: New version ")) + remoteMax + TRANS(" found online.");
+		}
+		else
+		{
+			s=string(TRANS("Online Check: " ))+string(PROGRAM_NAME) + TRANS(" is up-to-date."); 
+		}
+		statusMessage(s.c_str(),MESSAGE_INFO);
+	}
+
+	//Wait for, then delete the other thread, as we are done with it
+	verCheckThread->Wait();
+
+	delete verCheckThread;
+	verCheckThread=0;
+
+}
+
+wxSize MainWindowFrame::getNiceWindowSize() const
+{
+	wxDisplay *disp=new wxDisplay;
+	wxRect r = disp->GetClientArea();
+
+	bool haveDisplaySizePref;
+	unsigned int xPref,yPref;
+
+	haveDisplaySizePref=configFile.getInitialAppSize(xPref,yPref);
+
+	//So Min size trumps all
+	// - then client area 
+	// - then saved setting
+	// - then default size (100x100)
+	wxSize winSize;
+	if(haveDisplaySizePref)
+		winSize.Set(xPref,yPref);
+	else
+	{
+		winSize.Set(DEFAULT_WIN_WIDTH,DEFAULT_WIN_HEIGHT);
+	}
+
+	//Override using minimal window sizes
+	winSize.Set(std::max(winSize.GetWidth(),(int)MIN_WIN_WIDTH),
+			std::max(winSize.GetHeight(),(int)MIN_WIN_HEIGHT));
+
+	//Shrink to display size, as needed	
+	winSize.Set(std::min(winSize.GetWidth(),r.GetWidth()),
+			std::min(winSize.GetHeight(),r.GetHeight()));
+
+
+	delete disp;
+
+	return winSize;
+
 }
 
 void MainWindowFrame::set_properties()
 {
     // begin wxGlade: MainWindowFrame::set_properties
     SetTitle(wxCStr(PROGRAM_NAME));
-    comboFilters->SetToolTip(_("List of available filters"));
+    comboFilters->SetToolTip(wxTRANS("List of available filters"));
     comboFilters->SetSelection(-1);
-    treeFilters->SetToolTip(_("Tree of data filters"));
-    checkAutoUpdate->SetToolTip(_("Enable/Disable automatic updates of data when filter change takes effect"));
+    treeFilters->SetToolTip(wxTRANS("Tree of data filters"));
+    checkAutoUpdate->SetToolTip(wxTRANS("Enable/Disable automatic updates of data when filter change takes effect"));
     checkAutoUpdate->SetValue(true);
 
-    checkAlphaBlend->SetToolTip(_("Enable/Disable \"Alpha blending\" (transparency) in rendering system. This is used to smooth objects (avoids artefacts known as \"jaggies\") and to make transparent surfaces. Disabling will provide faster rendering but look more blocky")); 
-    checkLighting->SetToolTip(_("Enable/Disable lighting calculations in rendering, for objects that request this. Lighting provides important depth cues for objects comprised of 3D surfaces. Disabling may allow faster rendering in complex scenes"));
-    checkWeakRandom->SetToolTip(_("Enable/Disable weak randomisation (Galois linear feedback shift register). Strong randomisation uses a much slower random selection method, but provides better protection against inadvertant correlations, and is recommended for final analyses"));
-    checkCaching->SetToolTip(_("Enable/Disable caching of intermediate results during filter updates. This will use less system RAM, though changes to any filter property will cause the entire filter tree to be recomputed, greatly slowing computations"));
+    checkAlphaBlend->SetToolTip(wxTRANS("Enable/Disable \"Alpha blending\" (transparency) in rendering system. This is used to smooth objects (avoids artefacts known as \"jaggies\") and to make transparent surfaces. Disabling will provide faster rendering but look more blocky")); 
+    checkLighting->SetToolTip(wxTRANS("Enable/Disable lighting calculations in rendering, for objects that request this. Lighting provides important depth cues for objects comprised of 3D surfaces. Disabling may allow faster rendering in complex scenes"));
+    checkWeakRandom->SetToolTip(wxTRANS("Enable/Disable weak randomisation (Galois linear feedback shift register). Strong randomisation uses a much slower random selection method, but provides better protection against inadvertent correlations, and is recommended for final analyses"));
+    checkCaching->SetToolTip(wxTRANS("Enable/Disable caching of intermediate results during filter updates. This will use less system RAM, though changes to any filter property will cause the entire filter tree to be recomputed, greatly slowing computations"));
 
     gridFilterProperties->CreateGrid(0, 2);
     gridFilterProperties->EnableDragRowSize(false);
-    gridFilterProperties->SetColLabelValue(0, _("Property"));
-    gridFilterProperties->SetColLabelValue(1, _("Value"));
+    gridFilterProperties->SetColLabelValue(0, wxTRANS("Property"));
+    gridFilterProperties->SetColLabelValue(1, wxTRANS("Value"));
     gridCameraProperties->CreateGrid(4, 2);
     gridCameraProperties->EnableDragRowSize(false);
     gridCameraProperties->SetSelectionMode(wxGrid::wxGridSelectRows);
-    gridCameraProperties->SetColLabelValue(0, _("Property"));
-    gridCameraProperties->SetColLabelValue(1, _("Value"));
-    gridCameraProperties->SetToolTip(_("Camera data information"));
+    gridCameraProperties->SetColLabelValue(0, wxTRANS("Property"));
+    gridCameraProperties->SetColLabelValue(1, wxTRANS("Value"));
+    gridCameraProperties->SetToolTip(wxTRANS("Camera data information"));
     noteCamera->SetScrollRate(10, 10);
 #ifndef APPLE_EFFECTS_WORKAROUND
-    checkPostProcessing->SetToolTip(_("Enable/disable visual effects on final 3D output"));
+    checkPostProcessing->SetToolTip(wxTRANS("Enable/disable visual effects on final 3D output"));
 #endif
-    checkFxCrop->SetToolTip(_("Enable cropping post-process effect"));
+    checkFxCrop->SetToolTip(wxTRANS("Enable cropping post-process effect"));
     comboFxCropAxisOne->SetSelection(0);
     comboFxCropAxisTwo->SetSelection(0);
-    checkFxEnableStereo->SetToolTip(_("Colour based 3D effect enable/disable - requires appropriate colour filter 3D glasses."));
-    comboFxStereoMode->SetToolTip(_("Glasses colour mode"));
+    checkFxEnableStereo->SetToolTip(wxTRANS("Colour based 3D effect enable/disable - requires appropriate colour filter 3D glasses."));
+    comboFxStereoMode->SetToolTip(wxTRANS("Glasses colour mode"));
     comboFxStereoMode->SetSelection(0);
-    sliderFxStereoBaseline->SetToolTip(_("Level of separation between left and right images, which sets 3D depth to visual distortion tradeoff"));
+    sliderFxStereoBaseline->SetToolTip(wxTRANS("Level of separation between left and right images, which sets 3D depth to visual distortion tradeoff"));
     gridRawData->CreateGrid(10, 2);
     gridRawData->EnableEditing(false);
     gridRawData->EnableDragRowSize(false);
-    gridRawData->SetColLabelValue(0, _("X"));
-    gridRawData->SetColLabelValue(1, _("Y"));
-    btnRawDataSave->SetToolTip(_("Save raw data to file"));
-    btnRawDataClip->SetToolTip(_("Copy raw data to clipboard"));
-    textConsoleOut->SetToolTip(_("Program text output"));
+    gridRawData->SetColLabelValue(0, wxTRANS("X"));
+    gridRawData->SetColLabelValue(1, wxTRANS("Y"));
+    btnRawDataSave->SetToolTip(wxTRANS("Save raw data to file"));
+    btnRawDataClip->SetToolTip(wxTRANS("Copy raw data to clipboard"));
+    textConsoleOut->SetToolTip(wxTRANS("Program text output"));
     // end wxGlade
     //
 
+    PlotWrapper *p=new PlotWrapper; //plotting area
+    
+    panelSpectra->setPlotWrapper(p);
+    panelSpectra->setPlotList(plotList);
+    
     //Set the controls that the viscontrol needs to interact with
     visControl.setScene(&panelTop->currentScene); //GL scene
-
     visControl.setRawGrid(gridRawData); //Raw data grid
-    
-
-    Multiplot *p=new Multiplot; //plotting area
-    panelSpectra->setPlot(p);
-    panelSpectra->setPlotList(plotList);
-    visControl.setPlot(p);
+    visControl.setPlotWrapper(p);
     visControl.setPlotList(plotList);
     visControl.setConsole(textConsoleOut);
+
 
     refreshButton->Enable(false);
     comboCamera->Connect(wxID_ANY,
@@ -4149,7 +4392,7 @@ void MainWindowFrame::do_layout()
     filterPropGridSizer->Add(propGridLabel, 0, 0, 0);
     filterPropGridSizer->Add(gridFilterProperties, 1, wxLEFT|wxEXPAND, 4);
     filterPropertyPane->SetSizer(filterPropGridSizer);
-    filterSplitter->SplitHorizontally(filterTreePane, filterPropertyPane);
+//    filterSplitter->SplitHorizontally(filterTreePane, filterPropertyPane);//DISABLED This has to be done later to get the window to work.
     filterPaneSizer->Add(filterSplitter, 1, wxEXPAND, 0);
     noteData->SetSizer(filterPaneSizer);
     camPaneSizer->Add(labelCameraName, 0, 0, 0);
@@ -4195,8 +4438,8 @@ void MainWindowFrame::do_layout()
     sizerFxStereo->Add(sizerSetereoBaseline, 0, wxEXPAND, 0);
     sizerFxStereo->Add(checkFxStereoLensFlip, 0, wxLEFT, 5);
     noteFxPanelStereo->SetSizer(sizerFxStereo);
-    noteEffects->AddPage(noteFxPanelCrop, _("Crop"));
-    noteEffects->AddPage(noteFxPanelStereo, _("Stereo"));
+    noteEffects->AddPage(noteFxPanelCrop, wxTRANS("Crop"));
+    noteEffects->AddPage(noteFxPanelStereo, wxTRANS("Stereo"));
     postProcessSizer->Add(noteEffects, 1, wxEXPAND, 0);
     notePost->SetSizer(postProcessSizer);
     sizerTools->Add(checkAlphaBlend, 0, wxLEFT|wxTOP|wxBOTTOM, 5);
@@ -4207,10 +4450,10 @@ void MainWindowFrame::do_layout()
     sizerToolsRamUsage->Add(spinCachePercent, 0, 0, 5);
     sizerTools->Add(sizerToolsRamUsage, 1, wxTOP|wxEXPAND, 5);
     noteTools->SetSizer(sizerTools);
-    notebookControl->AddPage(noteData, _("Data"));
-    notebookControl->AddPage(noteCamera, _("Cam"));
-    notebookControl->AddPage(notePost, _("Post"));
-    notebookControl->AddPage(noteTools, _("Tools"));
+    notebookControl->AddPage(noteData, wxTRANS("Data"));
+    notebookControl->AddPage(noteCamera, wxTRANS("Cam"));
+    notebookControl->AddPage(notePost, wxTRANS("Post"));
+    notebookControl->AddPage(noteTools, wxTRANS("Tools"));
     sizerLeft->Add(notebookControl, 1, wxLEFT|wxBOTTOM|wxEXPAND, 2);
     panelLeft->SetSizer(sizerLeft);
     topPanelSizer->Add(panelView, 1, wxEXPAND, 0);
@@ -4227,16 +4470,15 @@ void MainWindowFrame::do_layout()
     noteRaw->SetSizer(rawDataGridSizer);
     textConsoleSizer->Add(textConsoleOut, 1, wxEXPAND, 0);
     noteDataViewConsole->SetSizer(textConsoleSizer);
-    noteDataView->AddPage(splitterSpectra, _("Spec."));
-    noteDataView->AddPage(noteRaw, _("Raw"));
-    noteDataView->AddPage(noteDataViewConsole, _("Cons."));
-    splitTopBottom->SplitHorizontally(panelTop, noteDataView);
+    noteDataView->AddPage(splitterSpectra, wxTRANS("Spec."));
+    noteDataView->AddPage(noteRaw, wxTRANS("Raw"));
+    noteDataView->AddPage(noteDataViewConsole, wxTRANS("Cons."));
+//    splitTopBottom->SplitHorizontally(panelTop, noteDataView);
     rightPanelSizer->Add(splitTopBottom, 1, wxEXPAND, 0);
     panelRight->SetSizer(rightPanelSizer);
     splitLeftRight->SplitVertically(panelLeft, panelRight);
     topSizer->Add(splitLeftRight, 1, wxEXPAND, 0);
     SetSizer(topSizer);
-    topSizer->Fit(this);
     Layout();
     // end wxGlade
     //
@@ -4248,9 +4490,10 @@ void MainWindowFrame::do_layout()
 
 	//Set the combo text
 	haveSetComboCamText=false;
-	comboCamera->SetValue(wxCStr(cameraIntroString));
+	comboCamera->SetValue(wxCStr(TRANS(cameraIntroString)));
 	haveSetComboStashText=false;
-	comboStash->SetValue(wxCStr(stashIntroString));
+	comboStash->SetValue(wxCStr(TRANS(stashIntroString)));
+
 }
 
 class threeDepictApp: public wxApp {
@@ -4263,16 +4506,19 @@ public:
     virtual bool OnCmdLineParsed(wxCmdLineParser& parser);
 		 
     int FilterEvent(wxEvent &event);
-
+#ifdef __APPLE__
+    void MacOpenFile(const wxString & fileName);
+    void MacReopenFile(const wxString & fileName);
+#endif
 };
 
 
 //Command line parameter table
 static const wxCmdLineEntryDesc g_cmdLineDesc [] =
 {
-	{ wxCMD_LINE_SWITCH, wxT("h"), wxT("help"), wxT("displays this message"),
+	{ wxCMD_LINE_SWITCH, wxT("h"), wxT("help"), wxNTRANS("displays this message"),
 		wxCMD_LINE_VAL_NONE, wxCMD_LINE_OPTION_HELP },
-	{ wxCMD_LINE_PARAM,  NULL, NULL, _("inputfile"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_MULTIPLE |wxCMD_LINE_PARAM_OPTIONAL},
+	{ wxCMD_LINE_PARAM,  NULL, NULL, wxNTRANS("inputfile"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_MULTIPLE |wxCMD_LINE_PARAM_OPTIONAL},
 	{ wxCMD_LINE_NONE }
 };
 
@@ -4281,6 +4527,7 @@ IMPLEMENT_APP(threeDepictApp)
 //Catching key events globally.
 int threeDepictApp::FilterEvent(wxEvent& event)
 {
+
     if ( event.GetEventType()==wxEVT_KEY_DOWN )
     {
 	//Re-task the escape key globally as aborting
@@ -4304,14 +4551,14 @@ void threeDepictApp::OnInitCmdLine(wxCmdLineParser& parser)
 	wxString name,version,preamble;
 
 	name=wxCStr(PROGRAM_NAME);
-	name=name+ _(" ");
+	name=name+ wxT(" ");
 	version=wxCStr(PROGRAM_VERSION);
-	version+=_("\n");
+	version+=wxT("\n");
 
-	preamble=_("Copyright (C) 2010  3Depict team\n");
-	preamble+=_("This program comes with ABSOLUTELY NO WARRANTY; for details see LICENCE file.\n");
-	preamble+=_("This is free software, and you are welcome to redistribute it under certain conditions.\n");
-	preamble+=_("Source code is available under the terms of the GNU GPL v3.0 or any later version (http://www.gnu.org/licenses/gpl.txt)");
+	preamble=wxT("Copyright (C) 2010  3Depict team\n");
+	preamble+=wxT("This program comes with ABSOLUTELY NO WARRANTY; for details see LICENCE file.\n");
+	preamble+=wxT("This is free software, and you are welcome to redistribute it under certain conditions.\n");
+	preamble+=wxT("Source code is available under the terms of the GNU GPL v3.0 or any later version (http://www.gnu.org/licenses/gpl.txt)");
 	parser.SetLogo(name+version+preamble);
 
 	parser.SetDesc (g_cmdLineDesc);
@@ -4329,18 +4576,42 @@ bool threeDepictApp::OnCmdLineParsed(wxCmdLineParser& parser)
 		if( f.FileExists() )
 			commandLineFiles.Add(f.GetFullPath());
 		else
-			std::cerr << "File : " << stlStr(f.GetFullPath()) << " does not exist. Skipping" << std::endl;
+			std::cerr << TRANS("File : ") << stlStr(f.GetFullPath()) << TRANS(" does not exist. Skipping") << std::endl;
 
 	}
 
 	return true;
 }
 
+#ifdef __APPLE__
+//Mac OSX drag/drop file support
+void threeDepictApp::MacOpenFile(const wxString &filename)
+{
+	ASSERT(mainFrame);
+	wxArrayString array;
+	array.Add(filename);
+
+	mainFrame->OnDropFiles(filename);
+}
+
+void threeDepictApp::MacReopenFile(const wxString &filename)
+{
+	ASSERT(mainFrame);
+	mainFrame->Raise();
+
+	MacOpenFile(filename);
+}
+
+#endif
 
 
 bool threeDepictApp::OnInit()
 {
 
+    initLanguageSupport();
+	
+
+    //Set the gettext language
     //Register signal handler for backtraces
     if (!wxApp::OnInit())
     	return false; 
@@ -4353,11 +4624,12 @@ bool threeDepictApp::OnInit()
     setDefaultFontFile(fontFinder.getBestFontFile(TTFFINDER_FONT_SANS));
     
     wxInitAllImageHandlers();
-    MainFrame = new MainWindowFrame(NULL, wxID_ANY, wxEmptyString);
+    MainFrame = new MainWindowFrame(NULL, wxID_ANY, wxEmptyString,wxDefaultPosition,wxDefaultSize);
 
     if(!MainFrame->initOK())
 	    return false;
-    
+  
+ 
     SetTopWindow(MainFrame);
 
 #ifdef DEBUG
@@ -4382,9 +4654,13 @@ bool threeDepictApp::OnInit()
 	}
 #endif
 
+
     if(commandLineFiles.GetCount())
     	MainFrame->SetCommandLineFiles(commandLineFiles);
 
+
+
     MainFrame->Show();
+    MainFrame->fixSplitterWindow();
     return true;
 }

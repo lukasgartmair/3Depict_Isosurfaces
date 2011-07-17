@@ -16,8 +16,8 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "viscontrol.h"
 #include "xmlHelper.h"
+#include "viscontrol.h"
 
 #include <list>
 #include <stack>
@@ -26,6 +26,7 @@
 #include "drawables.h"
 
 #include "filters/allFilter.h"
+#include "translation.h"
 
 using std::list;
 using std::stack;
@@ -103,6 +104,7 @@ VisController::VisController()
 	abortVisCtlOp=&doProgressAbort;
 	amRefreshing=false;
 	pendingUpdates=false;
+	useRelativePathsForSave=false;
 	curProg.reset();
 
 	//Assign global variable its init value
@@ -362,8 +364,7 @@ bool VisController::setFilterProperties(unsigned long long filterId, unsigned in
 
 }
 
-bool VisController::setCamProperties(unsigned long long camUniqueID, unsigned int set, 
-				unsigned int key, const std::string &value)
+bool VisController::setCamProperties(unsigned long long camUniqueID,unsigned int key, const std::string &value)
 {
 	return targetScene->setCamProperty(camUniqueID,key,value);
 }
@@ -614,18 +615,17 @@ void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &pr
 	}
 	else
 	{
-		//Do something clever. Here we examine the types of data that are
+		//Do something hopefully non-stupid. Here we examine the types of data that are
 		//propagated through the tree, and which filters emit, or block transmission
-		//of any given type. From this information, and the cache status of each filter
+		//of any given type (ie their output is influenced only by certain data types).
+
+		//From this information, and the cache status of each filter
 		//(recall caches only cache data generated inside the filter), it is possible to
 		//skip certain initial element refreshes.
-
-		cerr << "=========Beginning type analysis==========" << endl;
 
 		//Block and emit adjuncts for tree
 		map<Filter *, size_t> accumulatedEmitTypes,accumulatedBlockTypes;
 
-		cerr << "------Stage 1 : Build emit map -----------" << endl;
 
 		//Build the accumulated emit type map. This describes
 		//what possible types can be emitted at any point in the tree.
@@ -634,16 +634,10 @@ void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &pr
 		{
 			//FIXME: HACK -- why does the BFS not terminate correctly?
 			if(!filters.is_valid(it))
-			{
-#ifdef DEBUG
-				cerr << "Odd. BFS it termination not detected. Ugly hack used. Moving along. " << endl;
-				cerr << "Iterator is invalid, yet node is nonzero? (it.node : " << it.node << endl;
-#endif
 				break;
-			}
 
 			ASSERT(filters.is_valid(it));
-			cerr << "Examining filter in tree :" << (*it)->getUserString() << endl;
+			
 			size_t curEmit;
 			//Root node is special, does not combine with the 
 			//previous filter
@@ -708,51 +702,18 @@ void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &pr
 			}
 		
 		}
-#ifdef DEBUG
-		cerr << "-----------Stage 2 complete. -----------"<< endl;
-	
-		ASSERT(accumulatedEmitTypes.size() == accumulatedBlockTypes.size());
-		ASSERT(accumulatedEmitTypes.size() == filters.size());
-
-		cerr << "Emit map :" << endl;
-		cerr << "--------------------" <<endl;
-		//Dump the emit and block maps
-		for(tree<Filter *>::iterator it=filters.begin(); 
-					it!=filters.end(); ++it)
-		{
-			cerr << tabs(filters.depth(it)) << (*it)->getUserString() << std::hex << accumulatedEmitTypes[*it] << endl;
-		}
-		cerr << "--------------------" <<endl;
-
-		cerr << "Block map :" << endl;
-		cerr << "--------------------" <<endl;
-		for(tree<Filter *>::iterator it=filters.begin(); 
-					it!=filters.end(); ++it)
-		{
-			cerr << tabs(filters.depth(it)) << (*it)->getUserString() << std::hex << accumulatedBlockTypes[*it] << endl;
-		}
-
-		cerr << std::dec;
-		cerr << "--------------------" <<endl;
-#endif
+		
 		vector<tree<Filter *>::iterator > seedFilts;
 	
 
 
-		cerr << "------Stage 3 : Locate seed filters-----------" << endl;
 
 		for(tree<Filter *>::iterator it=filters.begin_breadth_first(); 
 					it!=filters.end_breadth_first(); ++it)
 		{
 			//FIXME: HACK -- why does the BFS not terminate correctly?
 			if(!filters.is_valid(it))
-			{
-#ifdef DEBUG
-				cerr << "Odd. BFS it termination not detected. Ugly hack used. Moving along. " << endl;
-				cerr << "Iterator is invalid, yet node is nonzero? (it.node : " << it.node << endl;
-#endif
 				break;
-			}
 
 			//Check to see if we have an insertion point above us.
 			//if so, we cannot press on, as we have determined that
@@ -801,11 +762,6 @@ void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &pr
 
 			if( emitMask & ((~blockMask) & STREAMTYPE_MASK_ALL)) 
 			{
-#ifdef DEBUG
-				cerr << "Adding  " << (*it)->getUserString() << " at level " << filters.depth(it) << " to seed list." << endl;
-			        cerr << "Upstream Emit mask is " << std::hex << emitMask <<  " downstream block mask is " << blockMask << endl; 
-				cerr << std::dec;
-#endif
 				//Oh noes! we don't block, we will have to stop here,
 				// for this subtree. We cannot go further down.
 				seedFilts.push_back(it);
@@ -814,18 +770,6 @@ void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &pr
 		}
 
 
-#ifdef DEBUG
-		cerr << "-----------Stage 3 complete. -----------"<< endl;
-		cerr << "=========== Type analysis complete=========" << endl;
-	
-
-		cerr << "Created  :" << seedFilts.size() << " seed filters " << endl;
-
-		for(unsigned int ui=0;ui<seedFilts.size() ;ui++)
-		{
-			cerr <<  "Depth  :" << filters.depth(seedFilts[ui]) <<   "  UserString :" << (*seedFilts[ui])->getUserString() << endl;
-		}
-#endif
 		propStarts.swap(seedFilts);
 
 
@@ -855,7 +799,6 @@ void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &pr
 }
 
 unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<const FilterStreamData * > > > &outData)
-	
 {
 	amRefreshing=true;
 	doProgressAbort=false;
@@ -879,9 +822,6 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 	//size to be non-zero)
 	inDataStack.push(curData);
 
-
-
-
 	//Keep redoing the refresh until the user stops fiddling with the filter tree.
 	do
 	{
@@ -900,8 +840,6 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 
 		curProg.totalNumFilters=countChildFilters(filters,baseTreeNodes)+baseTreeNodes.size();
 
-		cerr << "Total Number of filters  to refresh is apparently:" <<curProg.totalNumFilters << endl;
-
 		for(unsigned int itPos=0;itPos<baseTreeNodes.size(); itPos++)
 		{
 			//Depth-first search from root node, refreshing filters as we proceed.
@@ -912,10 +850,7 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 				//if not, move on.
 				if( filtIt!= baseTreeNodes[itPos] &&
 					!isChild(filters,baseTreeNodes[itPos],filtIt))
-				{
-					cerr << "Not a child, or base node. (i.e. not in refresh path). Moving on... " << endl;
 					continue;
-				}
 
 
 				//Step 0 : Pop the cache until we reach our current level, 
@@ -962,79 +897,25 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 
 				//---
 
-				//Step 3: Take the stack top, and turn it into "curdata" using the filter
-				//	record the result on the stack
+				//Step 3: Take the stack top, and turn it into "curdata" and refresh using the filter.
+				//	Record the result on the stack.
 				//	We also record any Selection devices that are generated by the filter.
 				//	This is the guts of the system.
 				//---
 				//
 				(*wxYieldCallback)();
 
-				cerr << "Refreshing Filter " << (*filtIt)->getUserString() << endl;
 
 				//Take the stack top, filter it and generate "curData"
 				errCode=(*filtIt)->refresh(inDataStack.top(),
 							curData,curProg,wxYieldCallback);
 
 #ifdef DEBUG
-				//Filter outputs should 
-				//	- never be null pointers.
-				for(unsigned int ui=0;ui<curData.size();ui++)
-				{
-					ASSERT(curData[ui]);
-				}
-
-				//Filter outputs should 
-				//	- never contain duplicate pointers
-				for(unsigned int ui=0;ui<curData.size();ui++)
-				{
-					for(unsigned int uj=ui+1;uj<curData.size();uj++)
-					{
-						ASSERT(curData[ui]!= curData[uj]);
-					}
-				}
-
-
-				//Filter outputs should 
-				//	- Not contain zero sized point streams
-				for(size_t ui=0;ui<curData.size();ui++)
-				{	
-					const FilterStreamData *f;
-					f=(curData[ui]);
-
-					switch(f->getStreamType())
-					{
-						case STREAM_TYPE_IONS:
-						{
-							const IonStreamData *ionData;
-							ionData=((const IonStreamData *)f);
-
-							//FIXME: Re-enable. This is
-							//triggering a lot of bugs,
-							//and I disabled this close to the
-							//release as I did not have time
-							//to fix all of them
-//							ASSERT(ionData->data.size());
-							break;
-						}
-						default:
-						;
-					}
-					
-				}
-			
-				//Filter outputs should 
-				//	- Always have isCached set to 0 or 1.
-				for(unsigned int ui=0;ui<curData.size();ui++)
-				{
-					ASSERT(curData[ui]->cached == 1 ||
-						curData[ui]->cached == 0);
-				}
-
-
+				//Perform sanity checks on filter output
+				checkRefreshValidity(curData,*filtIt);
 #endif
 				//Ensure that (1) yield is called, regardless of what filter does
-				 //(2) yield is called after 100% update	
+				//(2) yield is called after 100% update	
 				curProg.filterProgress=100;	
 				(*wxYieldCallback)();
 
@@ -1339,23 +1220,20 @@ unsigned int VisController::updateScene()
 					ASSERT(plotData->index !=(unsigned int)-1);
 					//Construct a new plot
 					unsigned int plotID;
-					plotID=targetPlots->addPlot(plotData->xyData,plotData->errDat,
-								plotData->logarithmic); 
-					targetPlots->setType(plotID,plotData->plotType);
-					targetPlots->setColours(plotID,plotData->r,
-								plotData->g,plotData->b);
-					targetPlots->setStrings(plotID,plotData->xLabel,
-								plotData->yLabel,plotData->dataLabel);
-					targetPlots->setParentData(plotID,plotData->parent,
-								plotData->index);
 
-					//Construct any regions that the pot may have
+					//Create a 1D plot
+					Plot1D *oneDPlot = new Plot1D;
+
+					oneDPlot->setData(plotData->xyData);
+					oneDPlot->setLogarithmic(plotData->logarithmic);
+
+					//Construct any regions that the plot may have
 					for(unsigned int ui=0;ui<plotData->regions.size();ui++)
 					{
 						//add a region to the plot,
 						//using the region data stored
 						//in the plot stream
-						targetPlots->addRegion(plotID,
+						oneDPlot->addRegion(plotID,
 							plotData->regionID[ui],
 							plotData->regions[ui].first,
 							plotData->regions[ui].second,
@@ -1363,6 +1241,28 @@ unsigned int VisController::updateScene()
 							plotData->regionG[ui],
 							plotData->regionB[ui],plotData->regionParent);
 					}
+
+					plotID=targetPlots->addPlot(oneDPlot);
+					
+					targetPlots->setTraceStyle(plotID,plotData->plotType);
+					targetPlots->setColours(plotID,plotData->r,
+								plotData->g,plotData->b);
+
+					std::wstring xL,yL,titleW;
+					std::string x,y,t;
+
+					xL=stlStrToStlWStr(plotData->xLabel);
+					yL=stlStrToStlWStr(plotData->yLabel);
+					titleW=stlStrToStlWStr(plotData->dataLabel);
+
+					x=stlWStrToStlStr(xL);
+					y=stlWStrToStlStr(yL);
+					t=stlWStrToStlStr(titleW);
+
+					targetPlots->setStrings(plotID,x,y,t);
+					targetPlots->setParentData(plotID,plotData->parent,
+								plotData->index);
+					
 
 					//Append the plot to the list in the user interface
 					wxListUint *l = new wxListUint(plotID);
@@ -1455,10 +1355,8 @@ unsigned int VisController::updateScene()
 							DrawIsoSurface *d = new DrawIsoSurface;
 
 							d->swapVoxels(v);
-							//FIXME: No alpha value, because the drawable does not
-							//support depth sorting :(
 							d->setColour(vSrc->r,vSrc->g,
-									vSrc->b,1.0);
+									vSrc->b,vSrc->a);
 							d->setScalarThresh(vSrc->isoLevel);
 
 							d->wantsLight=true;
@@ -1587,7 +1485,77 @@ unsigned int VisController::updateScene()
 	amRefreshing=false;
 	return 0;
 }
-		
+
+
+#ifdef DEBUG
+void VisController::checkRefreshValidity(const vector< const FilterStreamData *> curData, 
+							const Filter *refreshFilter) const
+{
+	//Filter outputs should
+	//	- never be null pointers.
+	for(unsigned int ui=0; ui<curData.size(); ui++)
+	{
+		ASSERT(curData[ui]);
+	}
+
+	//Filter outputs should
+	//	- never contain duplicate pointers
+	for(unsigned int ui=0; ui<curData.size(); ui++)
+	{
+		for(unsigned int uj=ui+1; uj<curData.size(); uj++)
+		{
+			ASSERT(curData[ui]!= curData[uj]);
+		}
+	}
+
+
+	//Filter outputs should
+	//	- Not contain zero sized point streams
+	for(size_t ui=0; ui<curData.size(); ui++)
+	{
+		const FilterStreamData *f;
+		f=(curData[ui]);
+
+		switch(f->getStreamType())
+		{
+		case STREAM_TYPE_IONS:
+		{
+			const IonStreamData *ionData;
+			ionData=((const IonStreamData *)f);
+
+		//	ASSERT(ionData->data.size());
+			break;
+		}
+		default:
+			;
+		}
+
+	}
+
+	//Filter outputs should
+	//	- Always have isCached set to 0 or 1.
+	for(unsigned int ui=0; ui<curData.size(); ui++)
+	{
+		ASSERT(curData[ui]->cached == 1 ||
+		curData[ui]->cached == 0);
+	}
+
+	//Filter outputs for this filter should only be from those specified in filter emit mask
+	for(unsigned int ui=0; ui<curData.size(); ui++)
+	{
+		if(!curData[ui]->parent)
+		{
+			cerr << "Warning: orphan filter stream (FilterStreamData::parent == 0). This must be set when creating new filters in the ::refresh function for the filter. " << endl;
+			cerr << "Filter :"  << refreshFilter->getUserString() << "Stream Type: " << STREAM_NAMES[getBitNum(curData[ui]->getStreamType())] << endl;
+		}
+		if(curData[ui]->parent == refreshFilter)
+		{
+			ASSERT(curData[ui]->getStreamType() & refreshFilter->getRefreshEmitMask());
+		}
+	}
+}
+#endif
+
 void VisController::safeDeleteFilterList(
 		std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > &outData, 
 						unsigned long long typeMask, bool maskPrevents) const
@@ -2017,6 +1985,16 @@ bool VisController::saveState(const char *cpFilename, std::map<string,string> &f
        	else
 		f << "0";
 	f<< "\"/>"  << endl;
+
+
+	if(writePackage || useRelativePathsForSave)
+	{
+		//Are we saving the sate as a package, if so
+		//make sure we let other 3depict loaders know
+		//that we want to use relative paths
+		f << tabs(1) << "<userelativepaths/>"<< endl;
+	}
+
 	//---------------
 
 
@@ -2051,7 +2029,7 @@ bool VisController::saveState(const char *cpFilename, std::map<string,string> &f
 		}
 
 		//If we are writing a package, override the filter storage values
-		if(writePackage)
+		if(writePackage || useRelativePathsForSave)
 		{
 			vector<string> valueOverrides;
 			(*filtIt)->getStateOverrides(valueOverrides);
@@ -2120,7 +2098,10 @@ bool VisController::saveState(const char *cpFilename, std::map<string,string> &f
 		}
 		f <<tabs(1) <<  "</cameras>" << endl;
 	}
-
+	
+	if(camVec.size())
+		delete camVec[0];
+	camVec.clear();
 
 	if(stashedFilters.size())
 	{
@@ -2162,7 +2143,7 @@ bool VisController::saveState(const char *cpFilename, std::map<string,string> &f
 				}
 
 				//If we are writing a package, override the filter storage values
-				if(writePackage)
+				if(writePackage || useRelativePathsForSave)
 				{
 					vector<string> valueOverrides;
 					(*filtIt)->getStateOverrides(valueOverrides);
@@ -2246,6 +2227,10 @@ bool VisController::saveState(const char *cpFilename, std::map<string,string> &f
 bool VisController::loadState(const char *cpFilename, std::ostream &errStream, bool merge) 
 {
 	//Load the state from an XML file
+	//FIXME: This could leave the viscontrol in a half
+	//  loaded state if the file was non-parseable.
+	//  Create disposable data structure to hold intermed. state
+	
 	//here we use libxml2's loading routines
 	//http://xmlsoft.org/
 	//Tutorial: http://xmlsoft.org/tutorial/xmltutorial.pdf
@@ -2257,7 +2242,7 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 
 	if(!context)
 	{
-		errStream << "Failed to allocate parser" << std::endl;
+		errStream << TRANS("Failed to allocate parser") << std::endl;
 		return false;
 	}
 
@@ -2270,6 +2255,11 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 	//release the context
 	xmlFreeParserCtxt(context);
 	
+
+	//By default, lets not use relative paths
+	if(!merge)
+		useRelativePathsForSave=false;
+
 	//Lets do some parsing goodness
 	//ahh parsing - verbose and boring
 	tree<Filter *> newFilterTree;
@@ -2288,14 +2278,14 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 		//Umm where is our root node guys?
 		if(!nodePtr)
 		{
-			errStream << "Unable to retrieve root node in input state file... Is this really a non-empty XML file?" <<  endl;
+			errStream << TRANS("Unable to retrieve root node in input state file... Is this really a non-empty XML file?") <<  endl;
 			throw 1;
 		}
 		
 		//This *should* be an threeDepict state file
 		if(xmlStrcmp(nodePtr->name, (const xmlChar *)"threeDepictstate"))
 		{
-			errStream << "Base state node missing. Is this really a state XML file??" << endl;
+			errStream << TRANS("Base state node missing. Is this really a state XML file??") << endl;
 			throw 1;
 		}
 		//push root tag	
@@ -2309,19 +2299,26 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 		{
 			xmlString=xmlGetProp(nodePtr, (const xmlChar *)"version"); 
 
-		//FIXME: IMPLEMENT ME			
-		//	if(versionNewer(xmlString,(const xmlChar *)"0.0.1"))
-		//	{
-		//		xmlFree(xmlString);
-		//		errStream << "State was created by a newer version of this program.. " 
-		//			<< "file reading will continue, but may fail." << endl 
-		//			<< "\tfile version:" << (char *)xmlString << std::endl;
-		//	}
+			vector<string> vecStrs;
+			vecStrs.push_back((char *)xmlString);
+			if(vecStrs[0].find_first_not_of("0123456789.")!= std::string::npos)
+			{
+				vecStrs.push_back(PROGRAM_VERSION);
+				if(getMaxVerStr(vecStrs)!=PROGRAM_VERSION)
+				{
+					errStream << TRANS("State was created by a newer version of this program.. ")
+						<< TRANS("file reading will continue, but may fail.") << endl ;
+				}
+			}
+			else
+			{
+				errStream<< TRANS("Warning, unparseable version number in state file. File reading will continue, but may fail") << endl;
+			}
 			xmlFree(xmlString);
 		}
 		else
 		{
-			errStream<< "Unable to find the \"writer\" node" << endl;
+			errStream<< TRANS("Unable to find the \"writer\" node") << endl;
 			throw 1;
 		}
 	
@@ -2331,63 +2328,74 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 		float rTmp,gTmp,bTmp;
 		if(XMLHelpFwdToElem(nodePtr,"backcolour"))
 		{
-			errStream<< "Unable to find the \"backcolour\" node." << endl;
+			errStream<< TRANS("Unable to find the \"backcolour\" node.") << endl;
 			throw 1;
 		}
 
 		xmlString=xmlGetProp(nodePtr,(const xmlChar *)"r");
 		if(!xmlString)
 		{
-			errStream<< "\"backcolour\" node missing \"r\" value." << endl;
+			errStream<< TRANS("\"backcolour\" node missing \"r\" value.") << endl;
 			throw 1;
 		}
 		if(stream_cast(rTmp,(char *)xmlString))
 		{
-			errStream<< "Unable to interpret \"backColour\" node's \"r\" value." << endl;
+			errStream<< TRANS("Unable to interpret \"backColour\" node's \"r\" value.") << endl;
 			throw 1;
 		}
 
+		xmlFree(xmlString);
 		xmlString=xmlGetProp(nodePtr,(const xmlChar *)"g");
 		if(!xmlString)
 		{
-			errStream<< "\"backcolour\" node missing \"g\" value." << endl;
+			errStream<< TRANS("\"backcolour\" node missing \"g\" value.") << endl;
 			throw 1;
 		}
 
 		if(stream_cast(gTmp,(char *)xmlString))
 		{
-			errStream<< "Unable to interpret \"backColour\" node's \"g\" value." << endl;
+			errStream<< TRANS("Unable to interpret \"backColour\" node's \"g\" value.") << endl;
 			throw 1;
 		}
 
+		xmlFree(xmlString);
 		xmlString=xmlGetProp(nodePtr,(const xmlChar *)"b");
 		if(!xmlString)
 		{
-			errStream<< "\"backcolour\" node missing \"b\" value." << endl;
+			errStream<< TRANS("\"backcolour\" node missing \"b\" value.") << endl;
 			throw 1;
 		}
 
 		if(stream_cast(bTmp,(char *)xmlString))
 		{
-			errStream<< "Unable to interpret \"backColour\" node's \"b\" value." << endl;
+			errStream<< TRANS("Unable to interpret \"backColour\" node's \"b\" value.") << endl;
 			throw 1;
 		}
 
 		if(rTmp > 1.0 || gTmp>1.0 || bTmp > 1.0 || 
 			rTmp < 0.0 || gTmp < 0.0 || bTmp < 0.0)
 		{
-			errStream<< "\"backcolour\"s rgb values must be in range [0,1]" << endl;
+			errStream<< TRANS("\"backcolour\"s rgb values must be in range [0,1]") << endl;
 			throw 1;
 		}
 		targetScene->setBackgroundColour(rTmp,gTmp,bTmp);
 		xmlFree(xmlString);
+
+		nodeStack.push(nodePtr);
+
+
+		if(!XMLHelpFwdToElem(nodePtr,"userelativepaths"))
+			useRelativePathsForSave|=true;
+		
+		nodePtr=nodeStack.top();
+
 		//====
 		
 		//Get the axis visibilty
 		unsigned int axisIsVis;
 		if(!XMLGetNextElemAttrib(nodePtr,axisIsVis,"showaxis","value"))
 		{
-			errStream << "Unable to find or interpret \"showaxis\" node" << endl;
+			errStream << TRANS("Unable to find or interpret \"showaxis\" node") << endl;
 			throw 1;
 		}
 		targetScene->setWorldAxisVisible(axisIsVis==1);
@@ -2395,7 +2403,7 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 		//find filtertree data
 		if(XMLHelpFwdToElem(nodePtr,"filtertree"))
 		{
-			errStream << "Unable to locate \"filtertree\" node." << endl;
+			errStream << TRANS("Unable to locate \"filtertree\" node.") << endl;
 			throw 1;
 		}
 
@@ -2411,7 +2419,7 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 			nodePtr=nodePtr->xmlChildrenNode;
 			if(XMLHelpFwdToElem(nodePtr,"active"))
 			{
-				errStream << "Cameras section missing \"active\" node." << endl;
+				errStream << TRANS("Cameras section missing \"active\" node.") << endl;
 				throw 1;
 			}
 
@@ -2419,13 +2427,13 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 			xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
 			if(!xmlString)
 			{
-				errStream<< "Unable to find property \"value\"  for \"cameras->active\" node." << endl;
+				errStream<< TRANS("Unable to find property \"value\"  for \"cameras->active\" node.") << endl;
 				throw 1;
 			}
 
 			if(stream_cast(activeCam,xmlString))
 			{
-				errStream<< "Unable to interpret property \"value\"  for \"cameras->active\" node." << endl;
+				errStream<< TRANS("Unable to interpret property \"value\"  for \"cameras->active\" node.") << endl;
 				throw 1;
 			}
 
@@ -2447,7 +2455,7 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 				}
 				else
 				{
-					errStream << "Unable to interpret the camera type" << endl;
+					errStream << TRANS("Unable to interpret the camera type") << endl;
 					throw 1;
 				}
 
@@ -2482,20 +2490,20 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 				xmlString=xmlGetProp(nodePtr,(const xmlChar *)"name");
 				if(!xmlString)
 				{
-					errStream << "Unable to locate stash name for stash " << newStashTree.size()+1 << endl;
+					errStream << TRANS("Unable to locate stash name for stash ") << newStashTree.size()+1 << endl;
 					throw 1;
 				}
 				stashName=(char *)xmlString;
 
 				if(!stashName.size())
 				{
-					errStream << "Empty stash name for stash " << newStashTree.size()+1 << endl;
+					errStream << TRANS("Empty stash name for stash ") << newStashTree.size()+1 << endl;
 					throw 1;
 				}
 
 				if(loadFilterTree(nodePtr,newStashTree,errStream,stateDir))
 				{
-					errStream << "For stash " << newStashTree.size()+1 << endl;
+					errStream << TRANS("For stash ") << newStashTree.size()+1 << endl;
 					throw 1;
 				}
 			
@@ -2524,7 +2532,7 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 				e = makeEffect(tmpStr);
 				if(!e)
 				{
-					errStream << "Unrecognised effect :" << tmpStr << endl;
+					errStream << TRANS("Unrecognised effect :") << tmpStr << endl;
 					throw 1;
 				}
 
@@ -2534,11 +2542,23 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 					if(newEffectVec[ui]->getType()== e->getType())
 					{
 						delete e;
-						errStream << "Duplicate effect found" << tmpStr << " cannot use." << endl;
+						errStream << TRANS("Duplicate effect found") << tmpStr << TRANS(" cannot use.") << endl;
 						throw 1;
 					}
 
 				}
+
+				nodeStack.push(nodePtr);
+				//Parse the effect
+				if(!e->readState(nodePtr))
+				{
+					errStream << TRANS("Error reading effect : ") << e->getName() << std::endl;
+				
+					throw 1;
+				}
+				nodePtr=nodeStack.top();
+				nodeStack.pop();
+
 
 				newEffectVec.push_back(e);				
 			}
@@ -2638,7 +2658,7 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 			if(maxCount)
 				stashedFilters.push_back(newStashes[ui]);
 			else
-				errStream << " Unable to merge stashes correctly. This is improbable, so please report this." << endl;
+				errStream << TRANS(" Unable to merge stashes correctly. This is improbable, so please report this.") << endl;
 		}
 
 		if(filters.size())
@@ -2797,7 +2817,7 @@ unsigned int VisController::loadFilterTree(const xmlNodePtr &treeParent, tree<Fi
 			}
 			else
 			{
-				errStream << "WARNING: Skipping node " << (const char *)nodePtr->name << " as it was not recognised" << endl;
+				errStream << TRANS("WARNING: Skipping node ") << (const char *)nodePtr->name << TRANS(" as it was not recognised") << endl;
 				nodeUnderstood=false;
 			}
 		}
@@ -2835,7 +2855,7 @@ unsigned int VisController::loadFilterTree(const xmlNodePtr &treeParent, tree<Fi
 	//OK, we hit an error, we need to delete any pointers on the
 	//cleanup list
 	if(nodePtr)
-		errStream << "Error processing node: " << (const char *)nodePtr->name << endl;
+		errStream << TRANS("Error processing node: ") << (const char *)nodePtr->name << endl;
 
 	for(list<Filter*>::iterator it=cleanupList.begin();
 			it!=cleanupList.end(); ++it)
@@ -2876,8 +2896,8 @@ void VisController::stripHazardousFilters(tree<Filter *> &thisTree)
 
 bool VisController::hasHazardous(const tree<Filter *> &thisTree) const
 {
-	for(tree<Filter * >::pre_order_iterator it=filters.begin();
-					it!=filters.end(); ++it)
+	for(tree<Filter * >::pre_order_iterator it=thisTree.begin();
+					it!=thisTree.end(); ++it)
 	{
 		if ((*it)->canBeHazardous())
 			return true;
@@ -3100,7 +3120,9 @@ void VisController::updateRawGrid() const
 		startCol=curCol;
 		for(unsigned int uj=0;uj<labels[ui].size();uj++)
 		{
-			targetRawGrid->SetColLabelValue(curCol,wxStr(labels[ui][uj]));
+			std::string s;
+			s=stlWStrToStlStr(labels[ui][uj]);
+			targetRawGrid->SetColLabelValue(curCol,wxStr(s));
 			curCol++;
 		}
 
@@ -3299,4 +3321,30 @@ void VisController::setStrongRandom(bool strongRand)
 void VisController::setEffects(bool enable)
 {
 	targetScene->setEffects(enable);
+}
+
+bool VisController::hasStateOverrides() const
+{
+	for(tree<Filter *>::iterator it=filters.begin(); it!=filters.end(); ++it)
+	{
+		vector<string> overrides;
+		(*it)->getStateOverrides(overrides);
+
+		if(overrides.size())
+			return true;
+	}
+
+	for(unsigned int uj=0;uj<stashedFilters.size();uj++)
+	{
+		for(tree<Filter *>::iterator it=stashedFilters[uj].second.begin(); it!=stashedFilters[uj].second.end(); ++it)
+		{
+			vector<string> overrides;
+			(*it)->getStateOverrides(overrides);
+
+			if(overrides.size())
+				return true;
+		}
+	}
+
+	return false;
 }

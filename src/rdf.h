@@ -29,7 +29,7 @@ enum
 	RDF_ERR_NEGATIVE_SCALE_FACT,
 	RDF_ERR_INSUFFICIENT_INPUT_POINTS,
 	RDF_FILE_OPEN_FAIL,
-	RDF_ABORT_FAIL,
+	RDF_ABORT_FAIL
 };
 
 //!Generate the NN histogram specified up to a given NN

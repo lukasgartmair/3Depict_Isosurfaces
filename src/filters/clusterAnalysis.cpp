@@ -1,6 +1,8 @@
 #include "clusterAnalysis.h"
 #include "../xmlHelper.h"
 
+#include "../translation.h"
+
 #include <map>
 #include <queue>
 
@@ -45,8 +47,8 @@ enum
 	COMPOSITION_NORMALISED
 };
 
-const char SIZE_DIST_DATALABEL[] ="Size Distribution";
-const char CHEM_DIST_DATALABEL[] ="Chemistry Distribution";
+const char SIZE_DIST_DATALABEL[] =NTRANS("Size Distribution");
+const char CHEM_DIST_DATALABEL[] =NTRANS("Chemistry Distribution");
 
 using std::vector;
 
@@ -370,7 +372,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	
 	if(!haveRangeParent)
 	{
-		consoleOutput.push_back(string("No range data. Can't cluster."));
+		consoleOutput.push_back(string(TRANS("No range data. Can't cluster.")));
 		return 0;
 	}
 
@@ -381,7 +383,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	if(!haveACore)
 	{
 		consoleOutput.push_back(
-			string("No ranges selected for cluster \"core\". Cannot continue with clustering."));
+			string(TRANS("No ranges selected for cluster \"core\". Cannot continue with clustering.")));
 		return NOCORE_ERR;
 	}
 
@@ -390,7 +392,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	if(!haveABulk)
 	{
 		consoleOutput.push_back(
-			string("No ranges selected for cluster \"bulk\". Cannot continue with clustering."));
+			string(TRANS("No ranges selected for cluster \"bulk\". Cannot continue with clustering.")));
 		return NOBULK_ERR;
 	}
 
@@ -512,13 +514,13 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 
 	//Construct the output clustered data.
 	IonStreamData *i = new IonStreamData;
-	
+	i->parent =this;	
 	std::string sDebugConsole,stmp;
 	stream_cast(stmp,clusteredCore.size());
 
-	sDebugConsole="Found :";
+	sDebugConsole=TRANS("Found :");
 	sDebugConsole+=stmp;
-	sDebugConsole+= " clusters";
+	sDebugConsole+= TRANS(" clusters");
 	consoleOutput.push_back(sDebugConsole);
 
 	size_t totalSize=0;
@@ -589,9 +591,9 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 
 
 			if(haveBulk)
-				consoleOutput.push_back("Compositions (fractional, core+bulk)");
+				consoleOutput.push_back(TRANS("Compositions (fractional, core+bulk)"));
 			else if(haveCore)
-				consoleOutput.push_back("Compositions (fractional, core only)");
+				consoleOutput.push_back(TRANS("Compositions (fractional, core only)"));
 
 			std::string compString,tmp;
 			for(unsigned int ui=0;ui<compTable.size();ui++)
@@ -609,7 +611,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 			vector<pair<string,size_t> > freqTable;
 			makeFrequencyTable(i,r->rangeFile,freqTable);
 
-			consoleOutput.push_back("Frequencies (core+bulk)");
+			consoleOutput.push_back(TRANS("Frequencies (core+bulk)"));
 
 			std::string freqString,tmp;
 			for(unsigned int ui=0;ui<freqTable.size();ui++)
@@ -639,11 +641,11 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 
 	string tmpStr;
 	vector<pair<unsigned int,string> > choices;
-	tmpStr="Core Link + Erode";
+	tmpStr=TRANS("Core Link + Erode");
 	choices.push_back(make_pair((unsigned int)CLUSTER_LINK_ERODE,tmpStr));
 	
 	tmpStr= choiceString(choices,algorithm);
-	s.push_back(make_pair(string("Algorithm"),tmpStr));
+	s.push_back(make_pair(string(TRANS("Algorithm")),tmpStr));
 	choices.clear();
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	keys.push_back(KEY_CLUSTERANALYSIS_ALGORITHM);
@@ -651,34 +653,34 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	propertyList.data.push_back(s);
 	propertyList.types.push_back(type);
 	propertyList.keys.push_back(keys);
-	propertyList.keyNames.push_back("Algorithm");
+	propertyList.keyNames.push_back(TRANS("Algorithm"));
 
 	s.clear(); type.clear(); keys.clear(); 
 
 	if(algorithm == CLUSTER_LINK_ERODE)
 	{
 		stream_cast(tmpStr,coreDist);
-		s.push_back(make_pair(string("Core Classify Dist"),tmpStr));
+		s.push_back(make_pair(string(TRANS("Core Classify Dist")),tmpStr));
 		type.push_back(PROPERTY_TYPE_REAL);
 		keys.push_back(KEY_CORECLASSIFYDIST);
 		
 		stream_cast(tmpStr,coreKNN);
-		s.push_back(make_pair(string("Classify Knn Max"),tmpStr));
+		s.push_back(make_pair(string(TRANS("Classify Knn Max")),tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
 		keys.push_back(KEY_CORECLASSIFYKNN);
 		
 		stream_cast(tmpStr,linkDist);
-		s.push_back(make_pair(string("Core Link Dist"),tmpStr));
+		s.push_back(make_pair(string(TRANS("Core Link Dist")),tmpStr));
 		type.push_back(PROPERTY_TYPE_REAL);
 		keys.push_back(KEY_LINKDIST);
 		
 		stream_cast(tmpStr,bulkLink);
-		s.push_back(make_pair(string("Bulk Link (Envelope) Dist"),tmpStr));
+		s.push_back(make_pair(string(TRANS("Bulk Link (Envelope) Dist")),tmpStr));
 		type.push_back(PROPERTY_TYPE_REAL);
 		keys.push_back(KEY_BULKLINK);
 		
 		stream_cast(tmpStr,dErosion);
-		s.push_back(make_pair(string("Erode Dist"),tmpStr));
+		s.push_back(make_pair(string(TRANS("Erode Dist")),tmpStr));
 		type.push_back(PROPERTY_TYPE_REAL);
 		keys.push_back(KEY_ERODEDIST);
 	}
@@ -686,7 +688,7 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	propertyList.data.push_back(s);
 	propertyList.types.push_back(type);
 	propertyList.keys.push_back(keys);
-	propertyList.keyNames.push_back("Clustering Params");
+	propertyList.keyNames.push_back(TRANS("Clustering Params"));
 	
 	s.clear(); type.clear(); keys.clear(); 
 
@@ -695,7 +697,7 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	else
 		tmpStr="0";
 
-	s.push_back(make_pair("Count bulk",tmpStr));
+	s.push_back(make_pair(TRANS("Count bulk"),tmpStr));
 	type.push_back(PROPERTY_TYPE_BOOL);
 	keys.push_back(KEY_SIZE_COUNT_BULK);
 
@@ -704,19 +706,19 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	else
 		tmpStr="0";
 
-	s.push_back(make_pair("Size Cropping",tmpStr));
+	s.push_back(make_pair(TRANS("Size Cropping"),tmpStr));
 	type.push_back(PROPERTY_TYPE_BOOL);
 	keys.push_back(KEY_CROP_SIZE);
 
 	if(wantCropSize)
 	{
 		stream_cast(tmpStr,nMin);
-		s.push_back(make_pair("Min Size",tmpStr));
+		s.push_back(make_pair(TRANS("Min Size"),tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
 		keys.push_back(KEY_CROP_NMIN);
 		
 		stream_cast(tmpStr,nMax);
-		s.push_back(make_pair("Max Size",tmpStr));
+		s.push_back(make_pair(TRANS("Max Size"),tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
 		keys.push_back(KEY_CROP_NMAX);
 
@@ -728,7 +730,7 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		tmpStr="0";
 
 
-	s.push_back(make_pair("Size Distribution",tmpStr));
+	s.push_back(make_pair(TRANS("Size Distribution"),tmpStr));
 	type.push_back(PROPERTY_TYPE_BOOL);
 	keys.push_back(KEY_WANT_CLUSTERSIZEDIST);
 	if(wantClusterSizeDist)
@@ -738,7 +740,7 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		else
 			tmpStr="0";
 
-		s.push_back(make_pair("Log Scale",tmpStr));
+		s.push_back(make_pair(TRANS("Log Scale"),tmpStr));
 		type.push_back(PROPERTY_TYPE_BOOL);
 		keys.push_back(KEY_WANT_LOGSIZEDIST);
 	}
@@ -751,7 +753,7 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		tmpStr="0";
 
 
-	s.push_back(make_pair("Chemistry Dist.",tmpStr));
+	s.push_back(make_pair(TRANS("Chemistry Dist."),tmpStr));
 	type.push_back(PROPERTY_TYPE_BOOL);
 	keys.push_back(KEY_WANT_COMPOSITIONDIST);
 
@@ -763,7 +765,7 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		else
 			tmpStr="0";
 
-		s.push_back(make_pair("Normalise",tmpStr));
+		s.push_back(make_pair(TRANS("Normalise"),tmpStr));
 		type.push_back(PROPERTY_TYPE_BOOL);
 		keys.push_back(KEY_NORMALISE_COMPOSITION);
 	}
@@ -771,7 +773,7 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	propertyList.data.push_back(s);
 	propertyList.types.push_back(type);
 	propertyList.keys.push_back(keys);
-	propertyList.keyNames.push_back("Postprocess");
+	propertyList.keyNames.push_back(TRANS("Postprocess"));
 	
 	s.clear(); type.clear(); keys.clear(); 
 
@@ -793,7 +795,7 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		propertyList.data.push_back(s);
 		propertyList.types.push_back(type);
 		propertyList.keys.push_back(keys);
-		propertyList.keyNames.push_back("Core Ranges");
+		propertyList.keyNames.push_back(TRANS("Core Ranges"));
 		
 		s.clear(); type.clear(); keys.clear(); 
 		
@@ -810,7 +812,7 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		propertyList.data.push_back(s);
 		propertyList.types.push_back(type);
 		propertyList.keys.push_back(keys);
-		propertyList.keyNames.push_back("Bulk Ranges");
+		propertyList.keyNames.push_back(TRANS("Bulk Ranges"));
 	}	
 
 }
@@ -826,8 +828,7 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 		{
 			size_t ltmp=CLUSTER_ALGORITHM_ENUM_END;
 
-			std::string tmp;
-			if(value == "Max. Sep + Erode")
+			if(value == TRANS("Max. Sep + Erode"))
 				ltmp=CLUSTER_LINK_ERODE;
 			else
 				return false;
@@ -840,7 +841,6 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 		}
 		case KEY_CORECLASSIFYDIST:
 		{
-			std::string tmp;
 			float ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
@@ -856,7 +856,6 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 		}	
 		case KEY_CORECLASSIFYKNN:
 		{
-			std::string tmp;
 			int ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
@@ -872,7 +871,6 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 		}	
 		case KEY_LINKDIST:
 		{
-			std::string tmp;
 			float ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
@@ -888,7 +886,6 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 		}	
 		case KEY_BULKLINK:
 		{
-			std::string tmp;
 			float ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
@@ -904,7 +901,6 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 		}	
 		case KEY_ERODEDIST:
 		{
-			std::string tmp;
 			float ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
@@ -1121,7 +1117,6 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 		}
 		case KEY_CROP_NMIN:
 		{
-			std::string tmp;
 			size_t ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
@@ -1137,7 +1132,6 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 		}	
 		case KEY_CROP_NMAX:
 		{
-			std::string tmp;
 			size_t ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
@@ -1442,11 +1436,11 @@ std::string ClusterAnalysisFilter::getErrString(unsigned int i) const
 	switch(i)
 	{
 		case ABORT_ERR:
-			return std::string("Clustering aborted");
+			return std::string(TRANS("Clustering aborted"));
 		case NOCORE_ERR:
-			return std::string("No core ions for cluster");
+			return std::string(TRANS("No core ions for cluster"));
 		case NOBULK_ERR:
-			return std::string("No bulk ions for cluster");
+			return std::string(TRANS("No bulk ions for cluster"));
 		default:
 			ASSERT(false);
 	}
@@ -1519,14 +1513,14 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		if(bulkLink > linkDist)
 		{
 			consoleOutput.push_back("");
-			consoleOutput.push_back(" --------------------------- Parameter selection notice ------------- "  );
-			consoleOutput.push_back("You have specified a bulk distance larger than your link distance."  );
-			consoleOutput.push_back("You can do this; thats OK, but the output is no longer independant of the computational process;"  );
-			consoleOutput.push_back("This will be a problem in the case where two or more clusters can equally lay claim to a \"bulk\" ion. "  );
-			consoleOutput.push_back(" If your inter-cluster distance is sufficiently large (larger than your bulk linking distance), then you can get away with this."  );
-			consoleOutput.push_back(" In theory it is possible to \"join\" the clusters, but this has not been implemented for speed reasons.");
-			consoleOutput.push_back("If you want this, please contact the author, or just use the source to add this in yourself."  );
-			consoleOutput.push_back("---------------------------------------------------------------------- "  );
+			consoleOutput.push_back(TRANS(" --------------------------- Parameter selection notice ------------- ")  );
+			consoleOutput.push_back(TRANS("You have specified a bulk distance larger than your link distance.")  );
+			consoleOutput.push_back(TRANS("You can do this; thats OK, but the output is no longer independent of the computational process;")  );
+			consoleOutput.push_back(TRANS("This will be a problem in the case where two or more clusters can equally lay claim to a \"bulk\" ion. ")  );
+			consoleOutput.push_back(TRANS(" If your inter-cluster distance is sufficiently large (larger than your bulk linking distance), then you can get away with this.")  );
+			consoleOutput.push_back(TRANS(" In theory it is possible to \"join\" the clusters, but this has not been implemented for speed reasons."));
+			consoleOutput.push_back(TRANS("If you want this, please contact the author, or just use the source to add this in yourself.")  );
+			consoleOutput.push_back(TRANS("---------------------------------------------------------------------- ")  );
 			consoleOutput.push_back("");
 		}	
 
@@ -1589,7 +1583,6 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 			const Point3D *p;
 			size_t pNN;	
 			unsigned int k;
-			float nnSqrDist;
 			vector<size_t> tagsToClear;
 		
 			//Don't match ourselves -- to do this we must "tag" this tree node before we start
@@ -1619,6 +1612,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 			}
 			else
 			{
+				float nnSqrDist;
 				nnSqrDist=p->sqrDist(*(coreTree.getPt(pNN)));
 				coreOK[ui] = nnSqrDist < coreDistSqr;
 			}
@@ -1740,7 +1734,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 						*thisPt,bCore, true);
 
 
-				ASSERT(clustIdx == -1 || coreTree.getTag(clustIdx));
+				ASSERT(clustIdx == (unsigned int)-1 || coreTree.getTag(clustIdx));
 				if(clustIdx != (size_t)-1)
 				{
 					curDistSqr=coreTree.getPt(clustIdx)->sqrDist(
@@ -1839,7 +1833,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		//if we were to place  a sphere of size bulkLink in the KD domain.
 		// This allows us to choose whether to use a bulk "grab" approach, or not.
 		bool expectedPtsInSearchEnough;
-		expectedPtsInSearchEnough=((float)bulkTree.size())/bBulk.volume()*4.0/3.0*M_PI*pow(bulkLink,3.0)> SPHERE_PRESEARCH_CUTOFF;
+		expectedPtsInSearchEnough=((float)bulkTree.size())/bBulk.volume()*4.0/3.0*M_PI*pow(bulkLink,3.0f)> SPHERE_PRESEARCH_CUTOFF;
 
 		//So-called "envelope" step.
 		float bulkLinkSqr=bulkLink*bulkLink;
@@ -2298,7 +2292,7 @@ PlotStreamData* ClusterAnalysisFilter::clusterSizeDistribution(const vector<vect
 	dist->dataLabel=SIZE_DIST_DATALABEL;
 	dist->logarithmic=logClusterSize;
 
-	dist->plotType=PLOT_TYPE_STEM;
+	dist->plotType=PLOT_TRACE_STEM;
 	dist->xyData.resize(countMap.size());
 	std::copy(countMap.begin(),countMap.end(),dist->xyData.begin());
 
@@ -2525,7 +2519,7 @@ void ClusterAnalysisFilter::genCompositionVersusSize(const vector<vector<IonHit>
 		p->dataLabel=string(CHEM_DIST_DATALABEL) + string(":") + rng->getName(ui);
 		p->logarithmic=logClusterSize && !normaliseComposition;
 
-		p->plotType=PLOT_TYPE_STEM;
+		p->plotType=PLOT_TRACE_STEM;
 
 		p->xyData.resize(countMap.size());
 

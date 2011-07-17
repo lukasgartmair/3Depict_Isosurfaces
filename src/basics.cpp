@@ -25,6 +25,7 @@
 #include <vector>
 #include <fstream>
 #include <algorithm>
+#include <map>
 
 #ifdef __APPLE__
 	#include <sys/types.h>
@@ -48,9 +49,96 @@ const char *DTD_NAME="threeDepict-state.dtd";
 //Program name
 const char *PROGRAM_NAME = "3Depict";
 //Program version
-const char *PROGRAM_VERSION = "0.0.6";
+const char *PROGRAM_VERSION = "0.0.7";
 //Path to font for Default FTGL  font
 const char *FONT_FILE= "FreeSans.ttf";
+
+//default font to use.
+std::string defaultFontFile;
+
+std::string getMaxVerStr(const std::vector<std::string> &verStrings)
+{
+	std::vector<std::pair<size_t,std::vector<unsigned int> > > verNum;
+	std::vector<unsigned int> thisVer;
+
+
+	//break string up into numeric components
+	for(unsigned int ui=0;ui<verStrings.size();ui++)
+	{
+		std::vector<std::string> strVerNum;
+		strVerNum.clear();
+
+		// period or hyphen are valid version number separators
+		splitStrsRef(verStrings[ui].c_str(),".-",strVerNum);
+
+		//Check to see if we can interpret the values
+		for(unsigned int uj=0;uj<strVerNum.size();uj++)
+		{
+			int i;
+			
+			//Try to cast the string (returns true on failure)
+			if(!stream_cast(strVerNum[uj],i))
+				thisVer.push_back(i);
+
+		}
+
+		if(thisVer.size())
+			verNum.push_back(make_pair(ui,thisVer));
+	}
+		
+	
+	if(!verNum.size())
+		return std::string("");
+
+	//OK, so now we have an integral list.
+	//Find the minimal element in each set until we 
+	//knock out all elements but one
+	size_t maxVerLen=0;
+	for(unsigned int ui=0;ui<verNum.size();ui++)
+		maxVerLen=std::max(maxVerLen,verNum[ui].second.size());
+
+		
+	unsigned int pos=0;
+	while(pos<maxVerLen && verNum.size() > 1)
+	{
+		unsigned int thisMax;
+		thisMax=0;
+
+		for(unsigned int ui=0;ui<verNum.size();ui++)
+		{
+			if(pos < verNum[ui].second.size() )
+				thisMax=std::max(thisMax,verNum[ui].second[pos]);
+		}
+
+
+
+		//Kill off any version numbers that were not 
+		//the max value, or had insufficient numbers
+		for(unsigned int ui=verNum.size();ui;)
+		{
+			ui--;
+
+			if(verNum[ui].second.size() <=pos || 
+				verNum[ui].second[pos] < thisMax )
+			{
+				std::swap(verNum[ui],verNum.back());
+				verNum.pop_back();
+
+				if(ui)
+					ui--;
+			}
+		}
+
+		//move to next number
+		pos++;
+	}
+
+
+	ASSERT(verNum.size() ==1);
+
+
+	return verStrings[verNum[0].first];
+}
 
 std::string boolStrEnc(bool b)
 {
@@ -59,8 +147,56 @@ std::string boolStrEnc(bool b)
 	else
 		return "0";
 }
-//default font to use.
-std::string defaultFontFile;
+
+//Adapted from KILE project, used under GPLv2 or later (ie, we choose GPLV3+). 
+//http://quickgit.kde.org/?p=kile.git&a=blob&h=7733f4b33f2b7deecddf1974216ea91a011bbb15&hb=f6579f3022b0fa2d13adca31d268186b29ada72f&f=src/plaintolatexconverter.h
+std::wstring convertToLaTeX(const std::wstring& toConv) 
+{
+	std::map<wchar_t,std::wstring> replaceMap;
+
+	//TODO: make latexReplaceMap global or something
+	if(!replaceMap.size())
+	{
+		// Fill the replacement map
+/*		replaceMap.insert(std::make_pair(L'$', L"\\$"));
+		replaceMap.insert(std::make_pair(L'%', L"\\%"));
+		replaceMap.insert(std::make_pair(L'^', L"\\^"));
+		replaceMap.insert(std::make_pair(L'&', L"\\&"));
+		replaceMap.insert(std::make_pair(L'_', L"\\_"));
+		replaceMap.insert(std::make_pair(L'#', L"\\#"));
+		replaceMap.insert(std::make_pair(L'{', L"\\{"));
+		replaceMap.insert(std::make_pair(L'}', L"\\}"));
+		replaceMap.insert(std::make_pair(L'~', L"$\\sim$"));
+		replaceMap.insert(std::make_pair(L'ä',L"\\\"a"));
+		replaceMap.insert(std::make_pair(L'ö',L"\\\"o"));
+		replaceMap.insert(std::make_pair(L'ü',L"\\\"u"));
+		replaceMap.insert(std::make_pair(L'Ä',L"\\\"A"));
+		replaceMap.insert(std::make_pair(L'Ö',L"\\\"O"));
+		replaceMap.insert(std::make_pair(L'Ü',L"\\\"U"));
+*/
+	}        
+
+        std::wstring result(toConv);
+ 
+        // Replacing what must be...
+        size_t sSize = result.length();
+        std::map<wchar_t, std::wstring>::const_iterator mapEnd = replaceMap.end();
+        for(size_t i = 0 ; i < sSize ; ++i) 
+        {
+                std::map<wchar_t, std::wstring>::const_iterator it = replaceMap.find(result.at(i));
+ 
+                if(it != mapEnd) { // The character must be replaced
+                        result.replace(i, 1, it->second);
+                        uint len = (it->second).length();
+                        if(1 < len) {
+                                i += len - 1;
+                                sSize += len - 1;
+                        }
+                }
+        }
+ 
+        return result;
+}
 
 std::string onlyFilename( const std::string& path) 
 {
@@ -560,57 +696,6 @@ void splitStrsRef(const char *cpStr, const char *delim,std::vector<string> &v )
 		
 }
 
-std::string Colour::asString() const
-{
-	string s,sTmp;
-	stream_cast(sTmp,r);
-	s +=sTmp + ",";
-	stream_cast(sTmp,g);
-	s +=sTmp + ",";
-	stream_cast(sTmp,b);
-	s +=sTmp +","; 
-	stream_cast(sTmp,a);
-	s +=sTmp; 
-
-	return s;
-}
-
-bool Colour::fromString(const std::string &str)
-{
-	if(!str.size())
-		return false;
-	float rTmp,gTmp,bTmp,aTmp;
-
-	vector<string> splitColours;
-
-	splitStrsRef(str.c_str(),',',splitColours);
-
-
-	//Needs to be an r,g,b and a term
-	if(splitColours.size() != 4)
-		return false;
-
-	if(stream_cast(rTmp,splitColours[0]))
-		return false;
-
-	if(stream_cast(gTmp,splitColours[1]))
-		return false;
-
-	if(stream_cast(bTmp,splitColours[2]))
-		return false;
-
-	if(stream_cast(aTmp,splitColours[3]))
-		return false;
-
-	r=rTmp;
-	g=gTmp;
-	b=bTmp;
-	a=aTmp;
-	return true;
-}
-
-
-
 //========
 
 void BoundCube::setBounds(const std::vector<Point3D> &points)
@@ -727,6 +812,19 @@ void BoundCube::expand(const Point3D &p)
 	}
 }
 
+void BoundCube::expand(float f) 
+{
+	//If self not valid, ensure that it will be after this run
+	//ASSERT(isValid())
+	for(unsigned int ui=0; ui<3; ui++)
+	{
+		//Check lower bound is lower to new pt
+		bounds[ui][0]-=f;
+
+		//Check upper bound is upper to new pt
+		bounds[ui][1]+=f;
+	}
+}
 
 void BoundCube::setBounds(const Point3D *p, unsigned int n)
 {

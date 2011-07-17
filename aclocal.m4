@@ -1,4 +1,4 @@
-# generated automatically by aclocal 1.11 -*- Autoconf -*-
+# generated automatically by aclocal 1.11.1 -*- Autoconf -*-
 
 # Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
 # 2005, 2006, 2007, 2008, 2009  Free Software Foundation, Inc.
@@ -13,176 +13,14 @@
 
 m4_ifndef([AC_AUTOCONF_VERSION],
   [m4_copy([m4_PACKAGE_VERSION], [AC_AUTOCONF_VERSION])])dnl
-m4_if(m4_defn([AC_AUTOCONF_VERSION]), [2.63],,
-[m4_warning([this file was generated for autoconf 2.63.
+m4_if(m4_defn([AC_AUTOCONF_VERSION]), [2.68],,
+[m4_warning([this file was generated for autoconf 2.68.
 You have another version of autoconf.  It may work, but is not guaranteed to.
 If you have problems, you may need to regenerate the build system entirely.
 To do so, use the procedure documented by the package, typically `autoreconf'.])])
 
-# Configure path for the GNU Scientific Library
-# Christopher R. Gabriel <cgabriel@linux.it>, April 2000
-
-
-AC_DEFUN([AX_PATH_GSL],
-[
-AC_ARG_WITH(gsl-prefix,[  --with-gsl-prefix=PFX   Prefix where GSL is installed (optional)],
-            gsl_prefix="$withval", gsl_prefix="")
-AC_ARG_WITH(gsl-exec-prefix,[  --with-gsl-exec-prefix=PFX Exec prefix where GSL is installed (optional)],
-            gsl_exec_prefix="$withval", gsl_exec_prefix="")
-AC_ARG_ENABLE(gsltest, [  --disable-gsltest       Do not try to compile and run a test GSL program],
-		    , enable_gsltest=yes)
-
-  if test "x${GSL_CONFIG+set}" != xset ; then
-     if test "x$gsl_prefix" != x ; then
-         GSL_CONFIG="$gsl_prefix/bin/gsl-config"
-     fi
-     if test "x$gsl_exec_prefix" != x ; then
-        GSL_CONFIG="$gsl_exec_prefix/bin/gsl-config"
-     fi
-  fi
-
-  AC_PATH_PROG(GSL_CONFIG, gsl-config, no)
-  min_gsl_version=ifelse([$1], ,0.2.5,$1)
-  AC_MSG_CHECKING(for GSL - version >= $min_gsl_version)
-  no_gsl=""
-  if test "$GSL_CONFIG" = "no" ; then
-    no_gsl=yes
-  else
-    GSL_CFLAGS=`$GSL_CONFIG --cflags`
-    GSL_LIBS=`$GSL_CONFIG --libs`
-
-    gsl_major_version=`$GSL_CONFIG --version | \
-           sed 's/^\([[0-9]]*\).*/\1/'`
-    if test "x${gsl_major_version}" = "x" ; then
-       gsl_major_version=0
-    fi
-
-    gsl_minor_version=`$GSL_CONFIG --version | \
-           sed 's/^\([[0-9]]*\)\.\{0,1\}\([[0-9]]*\).*/\2/'`
-    if test "x${gsl_minor_version}" = "x" ; then
-       gsl_minor_version=0
-    fi
-
-    gsl_micro_version=`$GSL_CONFIG --version | \
-           sed 's/^\([[0-9]]*\)\.\{0,1\}\([[0-9]]*\)\.\{0,1\}\([[0-9]]*\).*/\3/'`
-    if test "x${gsl_micro_version}" = "x" ; then
-       gsl_micro_version=0
-    fi
-
-    if test "x$enable_gsltest" = "xyes" ; then
-      ac_save_CFLAGS="$CFLAGS"
-      ac_save_LIBS="$LIBS"
-      CFLAGS="$CFLAGS $GSL_CFLAGS"
-      LIBS="$LIBS $GSL_LIBS"
-
-      rm -f conf.gsltest
-      AC_TRY_RUN([
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-char* my_strdup (const char *str);
-
-char*
-my_strdup (const char *str)
-{
-  char *new_str;
-  
-  if (str)
-    {
-      new_str = (char *)malloc ((strlen (str) + 1) * sizeof(char));
-      strcpy (new_str, str);
-    }
-  else
-    new_str = NULL;
-  
-  return new_str;
-}
-
-int main (void)
-{
-  int major = 0, minor = 0, micro = 0;
-  int n;
-  char *tmp_version;
-
-  system ("touch conf.gsltest");
-
-  /* HP/UX 9 (%@#!) writes to sscanf strings */
-  tmp_version = my_strdup("$min_gsl_version");
-
-  n = sscanf(tmp_version, "%d.%d.%d", &major, &minor, &micro) ;
-
-  if (n != 2 && n != 3) {
-     printf("%s, bad version string\n", "$min_gsl_version");
-     exit(1);
-   }
-
-   if (($gsl_major_version > major) ||
-      (($gsl_major_version == major) && ($gsl_minor_version > minor)) ||
-      (($gsl_major_version == major) && ($gsl_minor_version == minor) && ($gsl_micro_version >= micro)))
-     { 
-       exit(0);
-     }   
-   else
-     {
-       exit(1);
-     }
-}
-
-],, no_gsl=yes,[echo $ac_n "cross compiling; assumed OK... $ac_c"])
-       CFLAGS="$ac_save_CFLAGS"
-       LIBS="$ac_save_LIBS"
-     fi
-  fi
-  if test "x$no_gsl" = x ; then
-     AC_MSG_RESULT(yes)
-     ifelse([$2], , :, [$2])     
-  else
-     AC_MSG_RESULT(no)
-     if test "$GSL_CONFIG" = "no" ; then
-       echo "*** The gsl-config script installed by GSL could not be found"
-       echo "*** If GSL was installed in PREFIX, make sure PREFIX/bin is in"
-       echo "*** your path, or set the GSL_CONFIG environment variable to the"
-       echo "*** full path to gsl-config."
-     else
-       if test -f conf.gsltest ; then
-        :
-       else
-          echo "*** Could not run GSL test program, checking why..."
-          CFLAGS="$CFLAGS $GSL_CFLAGS"
-          LIBS="$LIBS $GSL_LIBS"
-          AC_TRY_LINK([
-#include <stdio.h>
-],      [ return 0; ],
-        [ echo "*** The test program compiled, but did not run. This usually means"
-          echo "*** that the run-time linker is not finding GSL or finding the wrong"
-          echo "*** version of GSL. If it is not finding GSL, you'll need to set your"
-          echo "*** LD_LIBRARY_PATH environment variable, or edit /etc/ld.so.conf to point"
-          echo "*** to the installed location  Also, make sure you have run ldconfig if that"
-          echo "*** is required on your system"
-	  echo "***"
-          echo "*** If you have an old version installed, it is best to remove it, although"
-          echo "*** you may also be able to get things to work by modifying LD_LIBRARY_PATH"],
-        [ echo "*** The test program failed to compile or link. See the file config.log for the"
-          echo "*** exact error that occured. This usually means GSL was incorrectly installed"
-          echo "*** or that you have moved GSL since it was installed. In the latter case, you"
-          echo "*** may want to edit the gsl-config script: $GSL_CONFIG" ])
-          CFLAGS="$ac_save_CFLAGS"
-          LIBS="$ac_save_LIBS"
-       fi
-     fi
-#     GSL_CFLAGS=""
-#     GSL_LIBS=""
-     ifelse([$3], , :, [$3])
-  fi
-  AC_SUBST(GSL_CFLAGS)
-  AC_SUBST(GSL_LIBS)
-  rm -f conf.gsltest
-])
-
-AU_ALIAS([AM_PATH_GSL], [AX_PATH_GSL])
-
 # pkg.m4 - Macros to locate and utilise pkg-config.            -*- Autoconf -*-
+# serial 1 (pkg-config-0.24)
 # 
 # Copyright © 2004 Scott James Remnant <scott@netsplit.com>.
 #
@@ -210,7 +48,10 @@ AU_ALIAS([AM_PATH_GSL], [AX_PATH_GSL])
 AC_DEFUN([PKG_PROG_PKG_CONFIG],
 [m4_pattern_forbid([^_?PKG_[A-Z_]+$])
 m4_pattern_allow([^PKG_CONFIG(_PATH)?$])
-AC_ARG_VAR([PKG_CONFIG], [path to pkg-config utility])dnl
+AC_ARG_VAR([PKG_CONFIG], [path to pkg-config utility])
+AC_ARG_VAR([PKG_CONFIG_PATH], [directories to add to pkg-config's search path])
+AC_ARG_VAR([PKG_CONFIG_LIBDIR], [path overriding pkg-config's built-in search path])
+
 if test "x$ac_cv_env_PKG_CONFIG_set" != "xset"; then
 	AC_PATH_TOOL([PKG_CONFIG], [pkg-config])
 fi
@@ -223,7 +64,6 @@ if test -n "$PKG_CONFIG"; then
 		AC_MSG_RESULT([no])
 		PKG_CONFIG=""
 	fi
-		
 fi[]dnl
 ])# PKG_PROG_PKG_CONFIG
 
@@ -232,20 +72,19 @@ fi[]dnl
 # Check to see whether a particular set of modules exists.  Similar
 # to PKG_CHECK_MODULES(), but does not set variables or print errors.
 #
-#
-# Similar to PKG_CHECK_MODULES, make sure that the first instance of
-# this or PKG_CHECK_MODULES is called, or make sure to call
-# PKG_CHECK_EXISTS manually
+# Please remember that m4 expands AC_REQUIRE([PKG_PROG_PKG_CONFIG])
+# only at the first occurence in configure.ac, so if the first place
+# it's called might be skipped (such as if it is within an "if", you
+# have to call PKG_CHECK_EXISTS manually
 # --------------------------------------------------------------
 AC_DEFUN([PKG_CHECK_EXISTS],
 [AC_REQUIRE([PKG_PROG_PKG_CONFIG])dnl
 if test -n "$PKG_CONFIG" && \
     AC_RUN_LOG([$PKG_CONFIG --exists --print-errors "$1"]); then
-  m4_ifval([$2], [$2], [:])
+  m4_default([$2], [:])
 m4_ifvaln([$3], [else
   $3])dnl
 fi])
-
 
 # _PKG_CONFIG([VARIABLE], [COMMAND], [MODULES])
 # ---------------------------------------------
@@ -299,6 +138,7 @@ and $1[]_LIBS to avoid the need to call pkg-config.
 See the pkg-config man page for more details.])
 
 if test $pkg_failed = yes; then
+   	AC_MSG_RESULT([no])
         _PKG_SHORT_ERRORS_SUPPORTED
         if test $_pkg_short_errors_supported = yes; then
 	        $1[]_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors "$2" 2>&1`
@@ -308,7 +148,7 @@ if test $pkg_failed = yes; then
 	# Put the nasty error message in config.log where it belongs
 	echo "$$1[]_PKG_ERRORS" >&AS_MESSAGE_LOG_FD
 
-	ifelse([$4], , [AC_MSG_ERROR(dnl
+	m4_default([$4], [AC_MSG_ERROR(
 [Package requirements ($2) were not met:
 
 $$1_PKG_ERRORS
@@ -316,394 +156,26 @@ $$1_PKG_ERRORS
 Consider adjusting the PKG_CONFIG_PATH environment variable if you
 installed software in a non-standard prefix.
 
-_PKG_TEXT
-])],
-		[AC_MSG_RESULT([no])
-                $4])
+_PKG_TEXT])[]dnl
+        ])
 elif test $pkg_failed = untried; then
-	ifelse([$4], , [AC_MSG_FAILURE(dnl
+     	AC_MSG_RESULT([no])
+	m4_default([$4], [AC_MSG_FAILURE(
 [The pkg-config script could not be found or is too old.  Make sure it
 is in your PATH or set the PKG_CONFIG environment variable to the full
 path to pkg-config.
 
 _PKG_TEXT
 
-To get pkg-config, see <http://pkg-config.freedesktop.org/>.])],
-		[$4])
+To get pkg-config, see <http://pkg-config.freedesktop.org/>.])dnl
+        ])
 else
 	$1[]_CFLAGS=$pkg_cv_[]$1[]_CFLAGS
 	$1[]_LIBS=$pkg_cv_[]$1[]_LIBS
         AC_MSG_RESULT([yes])
-	ifelse([$3], , :, [$3])
+	$3
 fi[]dnl
 ])# PKG_CHECK_MODULES
-
-dnl ---------------------------------------------------------------------------
-dnl Macros for wxWidgets detection. Typically used in configure.in as:
-dnl
-dnl     AC_ARG_ENABLE(...)
-dnl     AC_ARG_WITH(...)
-dnl        ...
-dnl     AM_OPTIONS_WXCONFIG
-dnl        ...
-dnl        ...
-dnl     AM_PATH_WXCONFIG(2.6.0, wxWin=1)
-dnl     if test "$wxWin" != 1; then
-dnl        AC_MSG_ERROR([
-dnl                wxWidgets must be installed on your system
-dnl                but wx-config script couldn't be found.
-dnl
-dnl                Please check that wx-config is in path, the directory
-dnl                where wxWidgets libraries are installed (returned by
-dnl                'wx-config --libs' command) is in LD_LIBRARY_PATH or
-dnl                equivalent variable and wxWidgets version is 2.3.4 or above.
-dnl        ])
-dnl     fi
-dnl     CPPFLAGS="$CPPFLAGS $WX_CPPFLAGS"
-dnl     CXXFLAGS="$CXXFLAGS $WX_CXXFLAGS_ONLY"
-dnl     CFLAGS="$CFLAGS $WX_CFLAGS_ONLY"
-dnl
-dnl     LIBS="$LIBS $WX_LIBS"
-dnl ---------------------------------------------------------------------------
-
-dnl ---------------------------------------------------------------------------
-dnl AM_OPTIONS_WXCONFIG
-dnl
-dnl adds support for --wx-prefix, --wx-exec-prefix, --with-wxdir and
-dnl --wx-config command line options
-dnl ---------------------------------------------------------------------------
-
-AC_DEFUN([AM_OPTIONS_WXCONFIG],
-[
-    AC_ARG_WITH(wxdir,
-                [  --with-wxdir=PATH       Use uninstalled version of wxWidgets in PATH],
-                [ wx_config_name="$withval/wx-config"
-                  wx_config_args="--inplace"])
-    AC_ARG_WITH(wx-config,
-                [  --with-wx-config=CONFIG wx-config script to use (optional)],
-                wx_config_name="$withval" )
-    AC_ARG_WITH(wx-prefix,
-                [  --with-wx-prefix=PREFIX Prefix where wxWidgets is installed (optional)],
-                wx_config_prefix="$withval", wx_config_prefix="")
-    AC_ARG_WITH(wx-exec-prefix,
-                [  --with-wx-exec-prefix=PREFIX
-                          Exec prefix where wxWidgets is installed (optional)],
-                wx_config_exec_prefix="$withval", wx_config_exec_prefix="")
-])
-
-dnl Helper macro for checking if wx version is at least $1.$2.$3, set's
-dnl wx_ver_ok=yes if it is:
-AC_DEFUN([_WX_PRIVATE_CHECK_VERSION],
-[
-    wx_ver_ok=""
-    if test "x$WX_VERSION" != x ; then
-      if test $wx_config_major_version -gt $1; then
-        wx_ver_ok=yes
-      else
-        if test $wx_config_major_version -eq $1; then
-           if test $wx_config_minor_version -gt $2; then
-              wx_ver_ok=yes
-           else
-              if test $wx_config_minor_version -eq $2; then
-                 if test $wx_config_micro_version -ge $3; then
-                    wx_ver_ok=yes
-                 fi
-              fi
-           fi
-        fi
-      fi
-    fi
-])
-
-dnl ---------------------------------------------------------------------------
-dnl AM_PATH_WXCONFIG(VERSION, [ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND
-dnl                  [, WX-LIBS [, ADDITIONAL-WX-CONFIG-FLAGS]]]])
-dnl
-dnl Test for wxWidgets, and define WX_C*FLAGS, WX_LIBS and WX_LIBS_STATIC
-dnl (the latter is for static linking against wxWidgets). Set WX_CONFIG_NAME
-dnl environment variable to override the default name of the wx-config script
-dnl to use. Set WX_CONFIG_PATH to specify the full path to wx-config - in this
-dnl case the macro won't even waste time on tests for its existence.
-dnl
-dnl Optional WX-LIBS argument contains comma- or space-separated list of
-dnl wxWidgets libraries to link against (it may include contrib libraries). If
-dnl it is not specified then WX_LIBS and WX_LIBS_STATIC will contain flags to
-dnl link with all of the core wxWidgets libraries.
-dnl
-dnl Optional ADDITIONAL-WX-CONFIG-FLAGS argument is appended to wx-config
-dnl invocation command in present. It can be used to fine-tune lookup of
-dnl best wxWidgets build available.
-dnl
-dnl Example use:
-dnl   AM_PATH_WXCONFIG([2.6.0], [wxWin=1], [wxWin=0], [html,core,net]
-dnl                    [--unicode --debug])
-dnl ---------------------------------------------------------------------------
-
-dnl
-dnl Get the cflags and libraries from the wx-config script
-dnl
-AC_DEFUN([AM_PATH_WXCONFIG],
-[
-  dnl do we have wx-config name: it can be wx-config or wxd-config or ...
-  if test x${WX_CONFIG_NAME+set} != xset ; then
-     WX_CONFIG_NAME=wx-config
-  fi
-
-  if test "x$wx_config_name" != x ; then
-     WX_CONFIG_NAME="$wx_config_name"
-  fi
-
-  dnl deal with optional prefixes
-  if test x$wx_config_exec_prefix != x ; then
-     wx_config_args="$wx_config_args --exec-prefix=$wx_config_exec_prefix"
-     WX_LOOKUP_PATH="$wx_config_exec_prefix/bin"
-  fi
-  if test x$wx_config_prefix != x ; then
-     wx_config_args="$wx_config_args --prefix=$wx_config_prefix"
-     WX_LOOKUP_PATH="$WX_LOOKUP_PATH:$wx_config_prefix/bin"
-  fi
-  if test "$cross_compiling" = "yes"; then
-     wx_config_args="$wx_config_args --host=$host_alias"
-  fi
-
-  dnl don't search the PATH if WX_CONFIG_NAME is absolute filename
-  if test -x "$WX_CONFIG_NAME" ; then
-     AC_MSG_CHECKING(for wx-config)
-     WX_CONFIG_PATH="$WX_CONFIG_NAME"
-     AC_MSG_RESULT($WX_CONFIG_PATH)
-  else
-     AC_PATH_PROG(WX_CONFIG_PATH, $WX_CONFIG_NAME, no, "$WX_LOOKUP_PATH:$PATH")
-  fi
-
-  if test "$WX_CONFIG_PATH" != "no" ; then
-    WX_VERSION=""
-
-    min_wx_version=ifelse([$1], ,2.2.1,$1)
-    if test -z "$5" ; then
-      AC_MSG_CHECKING([for wxWidgets version >= $min_wx_version])
-    else
-      AC_MSG_CHECKING([for wxWidgets version >= $min_wx_version ($5)])
-    fi
-
-    WX_CONFIG_WITH_ARGS="$WX_CONFIG_PATH $wx_config_args $5 $4"
-
-    WX_VERSION=`$WX_CONFIG_WITH_ARGS --version 2>/dev/null`
-    wx_config_major_version=`echo $WX_VERSION | \
-           sed 's/\([[0-9]]*\).\([[0-9]]*\).\([[0-9]]*\)/\1/'`
-    wx_config_minor_version=`echo $WX_VERSION | \
-           sed 's/\([[0-9]]*\).\([[0-9]]*\).\([[0-9]]*\)/\2/'`
-    wx_config_micro_version=`echo $WX_VERSION | \
-           sed 's/\([[0-9]]*\).\([[0-9]]*\).\([[0-9]]*\)/\3/'`
-
-    wx_requested_major_version=`echo $min_wx_version | \
-           sed 's/\([[0-9]]*\).\([[0-9]]*\).\([[0-9]]*\)/\1/'`
-    wx_requested_minor_version=`echo $min_wx_version | \
-           sed 's/\([[0-9]]*\).\([[0-9]]*\).\([[0-9]]*\)/\2/'`
-    wx_requested_micro_version=`echo $min_wx_version | \
-           sed 's/\([[0-9]]*\).\([[0-9]]*\).\([[0-9]]*\)/\3/'`
-
-    _WX_PRIVATE_CHECK_VERSION([$wx_requested_major_version],
-                              [$wx_requested_minor_version],
-                              [$wx_requested_micro_version])
-
-    if test -n "$wx_ver_ok"; then
-
-      AC_MSG_RESULT(yes (version $WX_VERSION))
-      WX_LIBS=`$WX_CONFIG_WITH_ARGS --libs`
-
-      dnl is this even still appropriate?  --static is a real option now
-      dnl and WX_CONFIG_WITH_ARGS is likely to contain it if that is
-      dnl what the user actually wants, making this redundant at best.
-      dnl For now keep it in case anyone actually used it in the past.
-      AC_MSG_CHECKING([for wxWidgets static library])
-      WX_LIBS_STATIC=`$WX_CONFIG_WITH_ARGS --static --libs 2>/dev/null`
-      if test "x$WX_LIBS_STATIC" = "x"; then
-        AC_MSG_RESULT(no)
-      else
-        AC_MSG_RESULT(yes)
-      fi
-
-      dnl starting with version 2.2.6 wx-config has --cppflags argument
-      wx_has_cppflags=""
-      if test $wx_config_major_version -gt 2; then
-        wx_has_cppflags=yes
-      else
-        if test $wx_config_major_version -eq 2; then
-           if test $wx_config_minor_version -gt 2; then
-              wx_has_cppflags=yes
-           else
-              if test $wx_config_minor_version -eq 2; then
-                 if test $wx_config_micro_version -ge 6; then
-                    wx_has_cppflags=yes
-                 fi
-              fi
-           fi
-        fi
-      fi
-
-      dnl starting with version 2.7.0 wx-config has --rescomp option
-      wx_has_rescomp=""
-      if test $wx_config_major_version -gt 2; then
-        wx_has_rescomp=yes
-      else
-        if test $wx_config_major_version -eq 2; then
-           if test $wx_config_minor_version -ge 7; then
-              wx_has_rescomp=yes
-           fi
-        fi
-      fi
-      if test "x$wx_has_rescomp" = x ; then
-         dnl cannot give any useful info for resource compiler
-         WX_RESCOMP=
-      else
-         WX_RESCOMP=`$WX_CONFIG_WITH_ARGS --rescomp`
-      fi
-
-      if test "x$wx_has_cppflags" = x ; then
-         dnl no choice but to define all flags like CFLAGS
-         WX_CFLAGS=`$WX_CONFIG_WITH_ARGS --cflags`
-         WX_CPPFLAGS=$WX_CFLAGS
-         WX_CXXFLAGS=$WX_CFLAGS
-
-         WX_CFLAGS_ONLY=$WX_CFLAGS
-         WX_CXXFLAGS_ONLY=$WX_CFLAGS
-      else
-         dnl we have CPPFLAGS included in CFLAGS included in CXXFLAGS
-         WX_CPPFLAGS=`$WX_CONFIG_WITH_ARGS --cppflags`
-         WX_CXXFLAGS=`$WX_CONFIG_WITH_ARGS --cxxflags`
-         WX_CFLAGS=`$WX_CONFIG_WITH_ARGS --cflags`
-
-         WX_CFLAGS_ONLY=`echo $WX_CFLAGS | sed "s@^$WX_CPPFLAGS *@@"`
-         WX_CXXFLAGS_ONLY=`echo $WX_CXXFLAGS | sed "s@^$WX_CFLAGS *@@"`
-      fi
-
-      ifelse([$2], , :, [$2])
-
-    else
-
-       if test "x$WX_VERSION" = x; then
-          dnl no wx-config at all
-          AC_MSG_RESULT(no)
-       else
-          AC_MSG_RESULT(no (version $WX_VERSION is not new enough))
-       fi
-
-       WX_CFLAGS=""
-       WX_CPPFLAGS=""
-       WX_CXXFLAGS=""
-       WX_LIBS=""
-       WX_LIBS_STATIC=""
-       WX_RESCOMP=""
-       ifelse([$3], , :, [$3])
-
-    fi
-  else
-
-    WX_CFLAGS=""
-    WX_CPPFLAGS=""
-    WX_CXXFLAGS=""
-    WX_LIBS=""
-    WX_LIBS_STATIC=""
-    WX_RESCOMP=""
-
-    ifelse([$3], , :, [$3])
-
-  fi
-
-  AC_SUBST(WX_CPPFLAGS)
-  AC_SUBST(WX_CFLAGS)
-  AC_SUBST(WX_CXXFLAGS)
-  AC_SUBST(WX_CFLAGS_ONLY)
-  AC_SUBST(WX_CXXFLAGS_ONLY)
-  AC_SUBST(WX_LIBS)
-  AC_SUBST(WX_LIBS_STATIC)
-  AC_SUBST(WX_VERSION)
-  AC_SUBST(WX_RESCOMP)
-])
-
-dnl ---------------------------------------------------------------------------
-dnl Get information on the wxrc program for making C++, Python and xrs
-dnl resource files.
-dnl
-dnl     AC_ARG_ENABLE(...)
-dnl     AC_ARG_WITH(...)
-dnl        ...
-dnl     AM_OPTIONS_WXCONFIG
-dnl        ...
-dnl     AM_PATH_WXCONFIG(2.6.0, wxWin=1)
-dnl     if test "$wxWin" != 1; then
-dnl        AC_MSG_ERROR([
-dnl                wxWidgets must be installed on your system
-dnl                but wx-config script couldn't be found.
-dnl
-dnl                Please check that wx-config is in path, the directory
-dnl                where wxWidgets libraries are installed (returned by
-dnl                'wx-config --libs' command) is in LD_LIBRARY_PATH or
-dnl                equivalent variable and wxWidgets version is 2.6.0 or above.
-dnl        ])
-dnl     fi
-dnl
-dnl     AM_PATH_WXRC([HAVE_WXRC=1], [HAVE_WXRC=0])
-dnl     if test "x$HAVE_WXRC" != x1; then
-dnl         AC_MSG_ERROR([
-dnl                The wxrc program was not installed or not found.
-dnl     
-dnl                Please check the wxWidgets installation.
-dnl         ])
-dnl     fi
-dnl
-dnl     CPPFLAGS="$CPPFLAGS $WX_CPPFLAGS"
-dnl     CXXFLAGS="$CXXFLAGS $WX_CXXFLAGS_ONLY"
-dnl     CFLAGS="$CFLAGS $WX_CFLAGS_ONLY"
-dnl
-dnl     LDFLAGS="$LDFLAGS $WX_LIBS"
-dnl ---------------------------------------------------------------------------
-
-
-
-dnl ---------------------------------------------------------------------------
-dnl AM_PATH_WXRC([ACTION-IF-FOUND [, ACTION-IF-NOT-FOUND]])
-dnl
-dnl Test for wxWidgets' wxrc program for creating either C++, Python or XRS
-dnl resources.  The variable WXRC will be set and substituted in the configure
-dnl script and Makefiles.
-dnl
-dnl Example use:
-dnl   AM_PATH_WXRC([wxrc=1], [wxrc=0])
-dnl ---------------------------------------------------------------------------
-
-dnl
-dnl wxrc program from the wx-config script
-dnl
-AC_DEFUN([AM_PATH_WXRC],
-[
-  AC_ARG_VAR([WXRC], [Path to wxWidget's wxrc resource compiler])
-    
-  if test "x$WX_CONFIG_NAME" = x; then
-    AC_MSG_ERROR([The wxrc tests must run after wxWidgets test.])
-  else
-    
-    AC_MSG_CHECKING([for wxrc])
-    
-    if test "x$WXRC" = x ; then
-      dnl wx-config --utility is a new addition to wxWidgets:
-      _WX_PRIVATE_CHECK_VERSION(2,5,3)
-      if test -n "$wx_ver_ok"; then
-        WXRC=`$WX_CONFIG_WITH_ARGS --utility=wxrc`
-      fi
-    fi
-
-    if test "x$WXRC" = x ; then
-      AC_MSG_RESULT([not found])
-      ifelse([$2], , :, [$2])
-    else
-      AC_MSG_RESULT([$WXRC])
-      ifelse([$1], , :, [$1])
-    fi
-    
-    AC_SUBST(WXRC)
-  fi
-])
 
 # Copyright (C) 2002, 2003, 2005, 2006, 2007, 2008  Free Software Foundation, Inc.
 #
@@ -720,7 +192,7 @@ AC_DEFUN([AM_AUTOMAKE_VERSION],
 [am__api_version='1.11'
 dnl Some users find AM_AUTOMAKE_VERSION and mistake it for a way to
 dnl require some minimum version.  Point them to the right macro.
-m4_if([$1], [1.11], [],
+m4_if([$1], [1.11.1], [],
       [AC_FATAL([Do not call $0, use AM_INIT_AUTOMAKE([$1]).])])dnl
 ])
 
@@ -736,7 +208,7 @@ m4_define([_AM_AUTOCONF_VERSION], [])
 # Call AM_AUTOMAKE_VERSION and AM_AUTOMAKE_VERSION so they can be traced.
 # This function is AC_REQUIREd by AM_INIT_AUTOMAKE.
 AC_DEFUN([AM_SET_CURRENT_AUTOMAKE_VERSION],
-[AM_AUTOMAKE_VERSION([1.11])dnl
+[AM_AUTOMAKE_VERSION([1.11.1])dnl
 m4_ifndef([AC_AUTOCONF_VERSION],
   [m4_copy([m4_PACKAGE_VERSION], [AC_AUTOCONF_VERSION])])dnl
 _AM_AUTOCONF_VERSION(m4_defn([AC_AUTOCONF_VERSION]))])
@@ -1647,4 +1119,6 @@ AC_SUBST([am__tar])
 AC_SUBST([am__untar])
 ]) # _AM_PROG_TAR
 
+m4_include([m4/gsl.m4])
+m4_include([m4/wxwin.m4])
 m4_include([acinclude.m4])

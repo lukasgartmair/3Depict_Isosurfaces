@@ -15,7 +15,7 @@ class ClusterAnalysisFilter : public Filter
 		//Core-linkage "core" classification distance
 		float coreDist;
 		//Coring kNN maximum
-		int coreKNN;
+		unsigned int coreKNN;
 		//Link distance for core
 		float linkDist;
 		//Link distance for bulk
@@ -100,7 +100,7 @@ class ClusterAnalysisFilter : public Filter
 					std::vector<const FilterStreamData *> &getOut, 
 					ProgressData &progress, bool (*callback)(void));
 		//!Get the type string  for this fitler
-		virtual std::string typeString() const { return std::string("Cluster Analysis");};
+		virtual std::string typeString() const { return std::string(TRANS("Cluster Analysis"));};
 
 		std::string getErrString(unsigned int i) const;
 

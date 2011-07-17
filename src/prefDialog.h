@@ -18,6 +18,11 @@
 // begin wxGlade: ::extracode
 // end wxGlade
 
+//As a courtesy, we do not allow online update checking under linux
+//its pointless, as linux systems usually have proper package management
+#ifdef __linux__
+	#define DISABLE_ONLINE_UPDATE
+#endif
 
 class PrefDialog: public wxDialog 
 {
@@ -47,33 +52,37 @@ private:
 	//!Percentile speeds for mouse zoom and move 
 	unsigned int mouseZoomRatePercent,mouseMoveRatePercent;
 protected:
-	// begin wxGlade: PrefDialog::attributes
-	wxStaticBox* sizerCamSpeed_staticbox;
-	wxStaticBox* sizer_2_staticbox;
-	wxStaticBox* filterPropSizer_staticbox;
-	wxStaticText* lblFilters;
-	wxListBox* listFilters;
-	wxPropertyGrid* filterGridProperties;
-	wxButton* filterBtnResetAllFilters;
-	wxButton* filterResetDefaultFilter;
-	wxPanel* panelFilters;
-	wxComboBox* comboPanelStartMode;
-	wxCheckBox* chkControl;
-	wxCheckBox* chkRawData;
-	wxCheckBox* chkPlotlist;
-	wxPanel* panelStartup;
-	wxStaticText* lblMoveSpeed;
-	wxNotebook* notePrefPanels;
-	wxButton* btnOK;
-	wxButton* btnCancel;
-	wxSlider* sliderCamMoveRate;
-	wxStaticText* labelFastCamMoveRate;
-	wxStaticText* labelSlowCamMoveRate;
-	wxStaticText* lblZoomSpeed;
-	wxStaticText* labelSlowCamZoomRate;
-	wxSlider* sliderCamZoomRate;
-	wxStaticText* labelSlowFastZoomRate;
-	wxPanel* notePrefPanels_pane_3;
+    // begin wxGlade: PrefDialog::attributes
+    wxStaticBox* sizerCamSpeed_staticbox;
+    wxStaticBox* updateSizer_staticbox;
+    wxStaticBox* sizer_2_staticbox;
+    wxStaticBox* filterPropSizer_staticbox;
+    wxStaticText* lblFilters;
+    wxListBox* listFilters;
+    wxPropertyGrid* filterGridProperties;
+    wxButton* filterBtnResetAllFilters;
+    wxButton* filterResetDefaultFilter;
+    wxPanel* panelFilters;
+    wxComboBox* comboPanelStartMode;
+    wxCheckBox* chkControl;
+    wxCheckBox* chkRawData;
+    wxCheckBox* chkPlotlist;
+#ifndef DISABLE_ONLINE_UPDATE
+    wxCheckBox* checkAllowOnlineUpdate;
+#endif
+    wxPanel* panelStartup;
+    wxStaticText* lblMoveSpeed;
+    wxNotebook* notePrefPanels;
+    wxButton* btnOK;
+    wxButton* btnCancel;
+    wxSlider* sliderCamMoveRate;
+    wxStaticText* labelFastCamMoveRate;
+    wxStaticText* labelSlowCamMoveRate;
+    wxStaticText* lblZoomSpeed;
+    wxStaticText* labelSlowCamZoomRate;
+    wxSlider* sliderCamZoomRate;
+    wxStaticText* labelSlowFastZoomRate;
+    wxPanel* notePrefPanels_pane_3;
     // end wxGlade
 
 	DECLARE_EVENT_TABLE();
@@ -86,7 +95,6 @@ public:
 	virtual void OnFilterListClick(wxCommandEvent &event); // wxGlade: <event_handler>
 	virtual void OnFilterCellChange(wxGridEvent &event); // wxGlade: <event_handler>
 	virtual void OnFilterGridCellEditorShow(wxGridEvent &event); // wxGlade: <event_handler>
-
 	virtual void OnResetFilterButton(wxCommandEvent &event); // wxGlade: <event_handler>
 	virtual void OnResetFilterAllButton(wxCommandEvent &event); // wxGlade: <event_handler>
 
@@ -100,7 +108,10 @@ public:
 	void getPanelDefaults(unsigned int &panelMode, bool &panelControl,
 					bool &panelRaw,bool &panelPlotlist) const;
 
-
+#ifndef DISABLE_ONLINE_UPDATE
+	bool getAllowOnlineUpdate() const { return checkAllowOnlineUpdate->IsChecked();};
+	void setAllowOnlineUpdate(bool allowed) { checkAllowOnlineUpdate->SetValue(allowed);};
+#endif
 	void setMouseZoomRate(unsigned int rate) { mouseZoomRatePercent=rate;};
 	void setMouseMoveRate(unsigned int rate) { mouseMoveRatePercent=rate;};
 

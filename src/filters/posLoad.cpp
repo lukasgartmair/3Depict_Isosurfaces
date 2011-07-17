@@ -3,6 +3,7 @@
 #include "../xmlHelper.h"
 #include "../basics.h"
 
+#include "../translation.h"
 
 //Default number of ions to load
 const size_t MAX_IONS_LOAD_DEFAULT=5*1024*1024/(4*sizeof(float)); //5 MB worth.
@@ -25,7 +26,7 @@ enum
 	KEY_SELECTED_COLUMN1,
 	KEY_SELECTED_COLUMN2,
 	KEY_SELECTED_COLUMN3,
-	KEY_NUMBER_OF_COLUMNS,
+	KEY_NUMBER_OF_COLUMNS
 };
 
 //Supported data types
@@ -36,8 +37,8 @@ enum
 	FILEDATA_TYPE_ENUM_END, // Not a data type, just end of enum
 };
 
-const char *AVAILABLE_FILEDATA_TYPES[] = { 	"POS Data",
-					"Text Data",
+const char *AVAILABLE_FILEDATA_TYPES[] = { 	NTRANS("POS Data"),
+					NTRANS("Text Data"),
 					};
 
 // == Pos load filter ==
@@ -57,7 +58,7 @@ DataLoadFilter::DataLoadFilter()
 	ionSize=2.0;
 
 	numColumns = 4;
-	for (int i  = 0; i < numColumns; i++) {
+	for (unsigned int i  = 0; i < numColumns; i++) {
 		index[i] = i;
 	}
 }
@@ -145,7 +146,7 @@ size_t DataLoadFilter::numBytesForCache(size_t nObjects) const
 
 string DataLoadFilter::getValueLabel()
 {
-	return std::string("Mass-to-Charge (amu/e)");
+	return std::string(TRANS("Mass-to-Charge (amu/e)"));
 }
 
 unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
@@ -173,7 +174,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	}
 
 	IonStreamData *ionData = new IonStreamData;
-
+	ionData->parent=this;	
 
 	unsigned int uiErr;	
 	switch(fileType)
@@ -186,7 +187,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 				if((uiErr = LimitLoadPosFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
 									maxIons,progress.filterProgress,callback,strongRandom)))
 				{
-					consoleOutput.push_back(string("Error loading file: ") + ionFilename);
+					consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
 					delete ionData;
 					return uiErr;
 				}
@@ -196,7 +197,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 				if((uiErr = GenericLoadFloatFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
 									progress.filterProgress,callback)))
 				{
-					consoleOutput.push_back(string("Error loading file: ") + ionFilename);
+					consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
 					delete ionData;
 					return uiErr;
 				}
@@ -212,7 +213,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 			if((uiErr = limitLoadTextFile(INDEX_LENGTH,index,ionData->data, ionFilename.c_str(),TEXT_DELIMINATORS,
 								maxIons,progress.filterProgress,callback,strongRandom)))
 			{
-				consoleOutput.push_back(string("Error loading file: ") + ionFilename);
+				consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
 				delete ionData;
 				return uiErr;
 			}
@@ -238,7 +239,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 
 	string s;
 	stream_cast(s,ionData->data.size());
-	consoleOutput.push_back( string("Loaded ") + s + " Ions" );
+	consoleOutput.push_back( string(TRANS("Loaded ") + s + TRANS(" Points")) );
 	if(cache)
 	{
 		ionData->cached=1;
@@ -255,7 +256,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	getOut.push_back(ionData);
 
 	return 0;
-};
+}
 
 void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 {
@@ -268,7 +269,7 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 
 	//Set up the  file  name and type data
 	// ------
-	s.push_back(std::make_pair("File", ionFilename));
+	s.push_back(std::make_pair(TRANS("File"), ionFilename));
 	type.push_back(PROPERTY_TYPE_STRING);
 	keys.push_back(KEY_FILE);
 
@@ -279,7 +280,7 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 		choices.push_back(make_pair(ui,AVAILABLE_FILEDATA_TYPES[ui]));	
 					
 	strChoice=choiceString(choices,fileType);
-	s.push_back(std::make_pair("File type",strChoice));
+	s.push_back(std::make_pair(TRANS("File type"),strChoice));
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	keys.push_back(KEY_FILETYPE);
 
@@ -295,7 +296,7 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 		case FILEDATA_TYPE_POS:
 		{
 			stream_cast(colStr,numColumns);
-			s.push_back(std::make_pair("Number of columns", colStr));
+			s.push_back(std::make_pair(TRANS("Number of columns"), colStr));
 			keys.push_back(KEY_NUMBER_OF_COLUMNS);
 			type.push_back(PROPERTY_TYPE_INTEGER);
 			break;
@@ -332,13 +333,13 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
 	colStr= choiceString(choices,index[3]);
-	s.push_back(std::make_pair("value", colStr));
+	s.push_back(std::make_pair(TRANS("value"), colStr));
 	keys.push_back(KEY_SELECTED_COLUMN3);
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
 	string tmpStr;
 	stream_cast(tmpStr,enabled);
-	s.push_back(std::make_pair("Enabled", tmpStr));
+	s.push_back(std::make_pair(TRANS("Enabled"), tmpStr));
 	keys.push_back(KEY_ENABLED);
 	type.push_back(PROPERTY_TYPE_BOOL);
 
@@ -346,7 +347,7 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 	{
 		std::string tmpStr;
 		stream_cast(tmpStr,maxIons*sizeof(float)*4/(1024*1024));
-		s.push_back(std::make_pair("Load Limit (MB)",tmpStr));
+		s.push_back(std::make_pair(TRANS("Load Limit (MB)"),tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
 		keys.push_back(KEY_SIZE);
 		
@@ -355,12 +356,12 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 		genColString((unsigned char)(r*255),(unsigned char)(g*255),
 				(unsigned char)(b*255),(unsigned char)(a*255),thisCol);
 
-		s.push_back(make_pair(string("Default colour "),thisCol)); 
+		s.push_back(make_pair(string(TRANS("Default colour ")),thisCol)); 
 		type.push_back(PROPERTY_TYPE_COLOUR);
 		keys.push_back(KEY_COLOUR);
 
 		stream_cast(tmpStr,ionSize);
-		s.push_back(make_pair(string("Draw Size"),tmpStr)); 
+		s.push_back(make_pair(string(TRANS("Draw Size")),tmpStr)); 
 		type.push_back(PROPERTY_TYPE_REAL);
 		keys.push_back(KEY_IONSIZE);
 	}
@@ -379,8 +380,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 	{
 		case KEY_FILETYPE:
 		{
-			std::string tmp;
-			int ltmp;
+			unsigned int ltmp;
 			ltmp=(unsigned int)-1;
 			
 			for(unsigned int ui=0;ui<FILEDATA_TYPE_ENUM_END; ui++)
@@ -438,7 +438,6 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 		}
 		case KEY_SIZE:
 		{
-			std::string tmp;
 			size_t ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
@@ -493,7 +492,6 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 		}
 		case KEY_IONSIZE:
 		{
-			std::string tmp;
 			float ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
@@ -523,8 +521,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 		}
 		case KEY_SELECTED_COLUMN0:
 		{
-			std::string tmp;
-			int ltmp;
+			unsigned int ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
 			
@@ -539,8 +536,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 		}
 		case KEY_SELECTED_COLUMN1:
 		{
-			std::string tmp;
-			int ltmp;
+			unsigned int ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
 			
@@ -555,12 +551,11 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 		}
 		case KEY_SELECTED_COLUMN2:
 		{
-			std::string tmp;
-			int ltmp;
+			unsigned int ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
 			
-			if(ltmp < 0 || ltmp >= numColumns)
+			if(ltmp >= numColumns)
 				return false;
 			
 			index[2]=ltmp;
@@ -571,12 +566,11 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 		}
 		case KEY_SELECTED_COLUMN3:
 		{
-			std::string tmp;
 			unsigned int ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
 			
-			if(ltmp < 0 || ltmp >= numColumns)
+			if(ltmp >= numColumns)
 				return false;
 			
 			index[3]=ltmp;
@@ -587,12 +581,11 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 		}
 		case KEY_NUMBER_OF_COLUMNS:
 		{
-			std::string tmp;
-			int ltmp;
+			unsigned int ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
 			
-			if(ltmp <=0 || ltmp >= MAX_NUM_FILE_COLS)
+			if(ltmp >= MAX_NUM_FILE_COLS)
 				return false;
 			
 			numColumns=ltmp;
@@ -683,7 +676,6 @@ bool DataLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 		return false;
 	//--
 	
-	std::string tmpStr;
 	//Retrieve colour
 	//====
 	if(XMLHelpFwdToElem(nodePtr,"colour"))

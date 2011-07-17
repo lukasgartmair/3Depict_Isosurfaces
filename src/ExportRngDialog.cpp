@@ -18,6 +18,8 @@
 
 #include "ExportRngDialog.h"
 
+#include "translation.h"
+
 #include <fstream>
 // begin wxGlade: ::extracode
 
@@ -29,12 +31,12 @@ enum
 };
 
 ExportRngDialog::ExportRngDialog(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
-    wxDialog(parent, id, title, pos, size, wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER|wxTHICK_FRAME)
+    wxDialog(parent, id, title, pos, size, wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER)
 {
     // begin wxGlade: ExportRngDialog::ExportRngDialog
-    lblRanges = new wxStaticText(this, wxID_ANY, wxT("Range Sources"));
+    lblRanges = new wxStaticText(this, wxID_ANY, wxTRANS("Range Sources"));
     listRanges = new wxListCtrl(this, ID_LIST_ACTIVATE, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxSUNKEN_BORDER);
-    label_3 = new wxStaticText(this, wxID_ANY, wxT("Details"));
+    label_3 = new wxStaticText(this, wxID_ANY, wxTRANS("Details"));
     gridDetails = new wxGrid(this, wxID_ANY);
     btnOK = new wxButton(this, wxID_SAVE, wxEmptyString);
     btnCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
@@ -45,9 +47,9 @@ ExportRngDialog::ExportRngDialog(wxWindow* parent, int id, const wxString& title
     // end wxGlade
 
     //Add columns to report listviews
-    listRanges->InsertColumn(0,_("Source Filter"));
-    listRanges->InsertColumn(1,_("Ions"));
-    listRanges->InsertColumn(2,_("Ranges"));
+    listRanges->InsertColumn(0,wxTRANS("Source Filter"));
+    listRanges->InsertColumn(1,wxTRANS("Ions"));
+    listRanges->InsertColumn(2,wxTRANS("Ranges"));
 
 }
 
@@ -78,17 +80,17 @@ void ExportRngDialog::updateGrid(unsigned int index)
 	gridDetails->DeleteRows(0,gridDetails->GetNumberRows());
 
 	gridDetails->AppendCols(3);
-	gridDetails->SetColLabelValue(0,wxT("Param"));
-	gridDetails->SetColLabelValue(1,wxT("Value"));
-	gridDetails->SetColLabelValue(2,wxT("Value2"));
+	gridDetails->SetColLabelValue(0,wxTRANS("Param"));
+	gridDetails->SetColLabelValue(1,wxTRANS("Value"));
+	gridDetails->SetColLabelValue(2,wxTRANS("Value2"));
 
 	unsigned int nRows;
 	nRows=rangeData->rng.getNumIons()+rangeData->rng.getNumRanges() + 4;
 	gridDetails->AppendRows(nRows);
 
 
-	gridDetails->SetCellValue(0,0,_("Ion Name"));
-	gridDetails->SetCellValue(0,1,_("Num Ranges"));
+	gridDetails->SetCellValue(0,0,wxTRANS("Ion Name"));
+	gridDetails->SetCellValue(0,1,wxTRANS("Num Ranges"));
 	unsigned int row=1;
 	std::string tmpStr;
 
@@ -104,9 +106,9 @@ void ExportRngDialog::updateGrid(unsigned int index)
 	}
 
 	row++;	
-	gridDetails->SetCellValue(row,0,_("Ion"));
-	gridDetails->SetCellValue(row,1,_("Range Start"));
-	gridDetails->SetCellValue(row,2,_("Range end"));
+	gridDetails->SetCellValue(row,0,wxTRANS("Ion"));
+	gridDetails->SetCellValue(row,1,wxTRANS("Range Start"));
+	gridDetails->SetCellValue(row,2,wxTRANS("Range end"));
 	row++;	
 
 	for(unsigned int ui=0;ui<rangeData->rng.getNumRanges(); ui++)
@@ -138,8 +140,8 @@ void ExportRngDialog::OnSave(wxCommandEvent &event)
 		EndModal(wxID_CANCEL);
 
 	//create a file chooser for later.
-	wxFileDialog *wxF = new wxFileDialog(this,wxT("Save pos..."), wxT(""),
-		wxT(""),wxT("ORNL format RNG (*.rng)|*.rng|All Files (*)|*"),wxSAVE);
+	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Save pos..."), wxT(""),
+		wxT(""),wxTRANS("ORNL format RNG (*.rng)|*.rng|All Files (*)|*"),wxFD_SAVE);
 	//Show, then check for user cancelling export dialog
 	if(wxF->ShowModal() == wxID_CANCEL)
 	{
@@ -153,7 +155,7 @@ void ExportRngDialog::OnSave(wxCommandEvent &event)
 	if(((RangeFileFilter *)(rngFilters[selectedRange]))->rng.write(dataFile.c_str()))
 	{
 		std::string errString;
-		errString="Unable to save. Check output destination can be written to.";
+		errString=TRANS("Unable to save. Check output destination can be written to.");
 		
 		wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
 						,wxT("Save error"),wxOK|wxICON_ERROR);
@@ -222,14 +224,14 @@ void ExportRngDialog::updateRangeList()
 void ExportRngDialog::set_properties()
 {
     // begin wxGlade: ExportRngDialog::set_properties
-    SetTitle(wxT("Export Range"));
+    SetTitle(wxTRANS("Export Range"));
     gridDetails->CreateGrid(0, 0);
 	gridDetails->SetRowLabelSize(0);
 	gridDetails->SetColLabelSize(0);
 
-    listRanges->SetToolTip(wxT("List of rangefiles in filter tree"));
+    listRanges->SetToolTip(wxTRANS("List of rangefiles in filter tree"));
     gridDetails->EnableEditing(false);
-    gridDetails->SetToolTip(wxT("Detailed view of selected range"));
+    gridDetails->SetToolTip(wxTRANS("Detailed view of selected range"));
     // end wxGlade
 }
 

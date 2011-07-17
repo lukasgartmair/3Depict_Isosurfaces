@@ -23,6 +23,7 @@
 #include "colourmap.h"
 #include <limits>
 
+#include "translation.h"
 
 void jetColorMap(unsigned char *rgb,float value,float min,float max)
 {
@@ -230,14 +231,14 @@ void colourMapWrap(unsigned int mapID,unsigned char *rgb, float v, float min, fl
 std::string getColourMapName(unsigned int mapID)
 {
 
-	const char *mapNames[] = { "Jet",
-				"Hot",
-				"Cold",
-				"Grey",
-				"Cyclic",
-				"General",
-				"Blue",
-				"Pseudo-Random"};
+	const char *mapNames[] = { NTRANS("Jet"),
+				NTRANS("Hot"),
+				NTRANS("Cold"),
+				NTRANS("Grey"),
+				NTRANS("Cyclic"),
+				NTRANS("General"),
+				NTRANS("Blue"),
+				NTRANS("Pseudo-Random")};
 
 	return mapNames[mapID];
 }

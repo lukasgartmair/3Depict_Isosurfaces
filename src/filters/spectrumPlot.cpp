@@ -3,6 +3,8 @@
 #include "../xmlHelper.h"
 #include "../plot.h"
 
+#include "../translation.h"
+
 //!Error codes
 enum 
 {
@@ -83,7 +85,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 	{
 		progress.maxStep=2;
 		progress.step=1;
-		progress.stepName="Extrema";
+		progress.stepName=TRANS("Extrema");
 	
 		size_t n=0;
 		minPlot = std::numeric_limits<float>::max();
@@ -132,7 +134,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 
 		//Time to move to phase 2	
 		progress.step=2;
-		progress.stepName="count";
+		progress.stepName=TRANS("count");
 	}
 
 
@@ -185,7 +187,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 	d->index=0;
 	d->parent=this;
 	d->dataLabel = getUserString();
-	d->yLabel= "Count";
+	d->yLabel= TRANS("Count");
 
 	//Check all the incoming ion data's type name
 	//and if it is all the same, use it for the plot X-axis
@@ -204,7 +206,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 				{
 					if(ionD->valueType != valueName)
 					{
-						valueName="Mixed data";
+						valueName=TRANS("Mixed data");
 						break;
 					}
 				}
@@ -239,7 +241,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 						d->regionID.push_back(uj);
 						d->parent=this;
 						//FIXME: Const correctness
-						d->regionParent=(Filter*)rangeD->parentFilter;
+						d->regionParent=(Filter*)rangeD->parent;
 
 						RGBf colour;
 						//Use the ionID to set the range colouring
@@ -341,7 +343,7 @@ void SpectrumPlotFilter::getProperties(FilterProperties &propertyList) const
 
 	stream_cast(str,binWidth);
 	keys.push_back(KEY_SPECTRUM_BINWIDTH);
-	s.push_back(make_pair("bin width", str));
+	s.push_back(make_pair(TRANS("bin width"), str));
 	type.push_back(PROPERTY_TYPE_REAL);
 
 	if(autoExtrema)
@@ -350,17 +352,17 @@ void SpectrumPlotFilter::getProperties(FilterProperties &propertyList) const
 		str = "0";
 
 	keys.push_back(KEY_SPECTRUM_AUTOEXTREMA);
-	s.push_back(make_pair("Auto Min/max", str));
+	s.push_back(make_pair(TRANS("Auto Min/max"), str));
 	type.push_back(PROPERTY_TYPE_BOOL);
 
 	stream_cast(str,minPlot);
 	keys.push_back(KEY_SPECTRUM_MIN);
-	s.push_back(make_pair("Min", str));
+	s.push_back(make_pair(TRANS("Min"), str));
 	type.push_back(PROPERTY_TYPE_REAL);
 
 	stream_cast(str,maxPlot);
 	keys.push_back(KEY_SPECTRUM_MAX);
-	s.push_back(make_pair("Max", str));
+	s.push_back(make_pair(TRANS("Max"), str));
 	type.push_back(PROPERTY_TYPE_REAL);
 	
 	if(logarithmic)
@@ -368,7 +370,7 @@ void SpectrumPlotFilter::getProperties(FilterProperties &propertyList) const
 	else
 		str = "0";
 	keys.push_back(KEY_SPECTRUM_LOGARITHMIC);
-	s.push_back(make_pair("Logarithmic", str));
+	s.push_back(make_pair(TRANS("Logarithmic"), str));
 	type.push_back(PROPERTY_TYPE_BOOL);
 
 
@@ -378,18 +380,18 @@ void SpectrumPlotFilter::getProperties(FilterProperties &propertyList) const
 
 
 	string tmpStr;
-	tmpStr=plotString(PLOT_TYPE_LINES);
-	choices.push_back(make_pair((unsigned int) PLOT_TYPE_LINES,tmpStr));
-	tmpStr=plotString(PLOT_TYPE_BARS);
-	choices.push_back(make_pair((unsigned int)PLOT_TYPE_BARS,tmpStr));
-	tmpStr=plotString(PLOT_TYPE_STEPS);
-	choices.push_back(make_pair((unsigned int)PLOT_TYPE_STEPS,tmpStr));
-	tmpStr=plotString(PLOT_TYPE_STEM);
-	choices.push_back(make_pair((unsigned int)PLOT_TYPE_STEM,tmpStr));
+	tmpStr=plotString(PLOT_TRACE_LINES);
+	choices.push_back(make_pair((unsigned int) PLOT_TRACE_LINES,tmpStr));
+	tmpStr=plotString(PLOT_TRACE_BARS);
+	choices.push_back(make_pair((unsigned int)PLOT_TRACE_BARS,tmpStr));
+	tmpStr=plotString(PLOT_TRACE_STEPS);
+	choices.push_back(make_pair((unsigned int)PLOT_TRACE_STEPS,tmpStr));
+	tmpStr=plotString(PLOT_TRACE_STEM);
+	choices.push_back(make_pair((unsigned int)PLOT_TRACE_STEM,tmpStr));
 
 
 	tmpStr= choiceString(choices,plotType);
-	s.push_back(make_pair(string("Plot Type"),tmpStr));
+	s.push_back(make_pair(string(TRANS("Plot Type")),tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	keys.push_back(KEY_SPECTRUM_PLOTTYPE);
 
@@ -399,7 +401,7 @@ void SpectrumPlotFilter::getProperties(FilterProperties &propertyList) const
 	genColString((unsigned char)(r*255.0),(unsigned char)(g*255.0),
 		(unsigned char)(b*255.0),(unsigned char)(a*255.0),thisCol);
 
-	s.push_back(make_pair(string("colour"),thisCol)); 
+	s.push_back(make_pair(string(TRANS("colour")),thisCol)); 
 	type.push_back(PROPERTY_TYPE_COLOUR);
 	keys.push_back(KEY_SPECTRUM_COLOUR);
 
@@ -534,7 +536,7 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 
 			tmpPlotType=plotID(value);
 
-			if(tmpPlotType >= PLOT_TYPE_ENDOFENUM)
+			if(tmpPlotType >= PLOT_TRACE_ENDOFENUM)
 				return false;
 
 			plotType = tmpPlotType;
@@ -567,14 +569,25 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 	return true;
 }
 
+void SpectrumPlotFilter::setUserString(const std::string &s)
+{
+	if(userString !=s)
+	{
+		userString=s;
+		clearCache();
+		cacheOK=false;
+	}
+}
+
+
 std::string  SpectrumPlotFilter::getErrString(unsigned int code) const
 {
 	switch(code)
 	{
 		case SPECTRUM_BAD_ALLOC:
-			return string("Insufficient memory for spectrum fitler.");
+			return string(TRANS("Insufficient memory for spectrum filter."));
 		case SPECTRUM_BAD_BINCOUNT:
-			return string("Bad bincount value in spectrum filter.");
+			return string(TRANS("Bad bincount value in spectrum filter."));
 	}
 	return std::string("BUG: (SpectrumPlotFilter::getErrString) Shouldn't see this!");
 }
@@ -713,7 +726,7 @@ bool SpectrumPlotFilter::readState(xmlNodePtr &nodePtr, const std::string &state
 	//====
 	if(!XMLGetNextElemAttrib(nodePtr,plotType,"plottype","value"))
 		return false;
-	if(plotType >= PLOT_TYPE_ENDOFENUM)
+	if(plotType >= PLOT_TRACE_ENDOFENUM)
 	       return false;	
 	//====
 

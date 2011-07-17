@@ -1,6 +1,7 @@
 #include "spatialAnalysis.h"
 #include "../xmlHelper.h"
 
+#include "../translation.h"
 enum
 {
 	KEY_STOPMODE,
@@ -214,7 +215,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		size_t n=0;
 
 		progress.step=1;
-		progress.stepName="Collate";
+		progress.stepName=TRANS("Collate");
 		progress.maxStep=3;
 		(*callback)();
 
@@ -268,7 +269,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		//Update progress stuff
 		n=0;
 		progress.step=3;
-		progress.stepName="Analyse";
+		progress.stepName=TRANS("Analyse");
 		if(!(*callback)())
 			return ABORT_ERR;
 
@@ -285,6 +286,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 					const IonStreamData *d;
 					d=((const IonStreamData *)dataIn[ui]);
 					IonStreamData *newD = new IonStreamData;
+					newD->parent=this;
 
 					//Adjust this number to provide more update thanusual, because we
 					//are not doing an o(1) task between updates; yes, it is  hack
@@ -454,7 +456,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 					newD->a=d->a;
 					newD->ionSize=d->ionSize;
 					newD->representationType=d->representationType;
-					newD->valueType="Number Density (\\#/Vol^3)";
+					newD->valueType=TRANS("Number Density (\\#/Vol^3)");
 
 					//Cache result as needed
 					if(cache)
@@ -481,8 +483,8 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		{
 			std::string sizeStr;
 			stream_cast(sizeStr,badPts.size());
-			consoleOutput.push_back(std::string("Warning,") + sizeStr + 
-					" points were un-analysable. These have been dropped");
+			consoleOutput.push_back(std::string(TRANS("Warning,")) + sizeStr + 
+					TRANS(" points were un-analysable. These have been dropped"));
 
 			//Print out a list of points if we can
 
@@ -504,7 +506,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 
 			if(badPts.size() > 200)
 			{
-				consoleOutput.push_back("And so on...");
+				consoleOutput.push_back(TRANS("And so on..."));
 			}
 
 
@@ -513,7 +515,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 	else if (algorithm == ALGORITHM_RDF)
 	{
 		progress.step=1;
-		progress.stepName="Collate";
+		progress.stepName=TRANS("Collate");
 		if(excludeSurface)
 			progress.maxStep=4;
 		else
@@ -615,7 +617,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 			//---
 
 			progress.step=2;
-			progress.stepName="Build";
+			progress.stepName=TRANS("Build");
 
 			//Build the tree using the target ions
 			//(its roughly nlogn timing, but worst case n^2)
@@ -627,7 +629,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 			{
 				ASSERT(reductionDistance > 0);
 				progress.step++;
-				progress.stepName="Surface";
+				progress.stepName=TRANS("Surface");
 
 
 				//Take the input points, then use them
@@ -674,7 +676,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 			//---
 
 			progress.step=2;
-			progress.stepName="Build";
+			progress.stepName=TRANS("Build");
 			BoundCube treeDomain;
 			treeDomain.setBounds(p);
 
@@ -686,7 +688,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 			{
 				ASSERT(reductionDistance > 0);
 				progress.step++;
-				progress.stepName="Surface";
+				progress.stepName=TRANS("Surface");
 
 
 				//Take the input points, then use them
@@ -705,7 +707,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 
 		//Let us perform the desired analysis
 		progress.step++;
-		progress.stepName="Analyse";
+		progress.stepName=TRANS("Analyse");
 
 		//If there is no data, there is nothing to do.
 		if(!p.size() || !kdTree.nodeCount())
@@ -759,11 +761,11 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 				plotData[ui] = new PlotStreamData;
 				plotData[ui]->index=ui;
 				plotData[ui]->parent=this;
-				plotData[ui]->xLabel="Radial Distance";
-				plotData[ui]->yLabel="Count";
+				plotData[ui]->xLabel=TRANS("Radial Distance");
+				plotData[ui]->yLabel=TRANS("Count");
 				std::string tmpStr;
 				stream_cast(tmpStr,ui+1);
-				plotData[ui]->dataLabel=getUserString() + string(" " ) +tmpStr + "NN Freq.";
+				plotData[ui]->dataLabel=getUserString() + string(" ") +tmpStr + TRANS("NN Freq.");
 
 				//Red plot.
 				plotData[ui]->r=r;
@@ -822,8 +824,8 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 				string sizeStr;
 				stream_cast(sizeStr,warnBiasCount);
 			
-				consoleOutput.push_back(std::string("Warning, ")
-						+ sizeStr + " points were unable to find neighbour points that exceeded the search radius, and thus terminated prematurely");
+				consoleOutput.push_back(std::string(TRANS("Warning, "))
+						+ sizeStr + TRANS(" points were unable to find neighbour points that exceeded the search radius, and thus terminated prematurely"));
 			}
 
 			PlotStreamData *plotData = new PlotStreamData;
@@ -831,9 +833,9 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 			plotData = new PlotStreamData;
 			plotData->index=0;
 			plotData->parent=this;
-			plotData->xLabel="Radial Distance";
-			plotData->yLabel="Count";
-			plotData->dataLabel=getUserString() + " RDF";
+			plotData->xLabel=TRANS("Radial Distance");
+			plotData->yLabel=TRANS("Count");
+			plotData->dataLabel=getUserString() + TRANS(" RDF");
 
 			//Red plot.
 			plotData->r=r;
@@ -895,13 +897,13 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	string tmpStr;
 	vector<pair<unsigned int,string> > choices;
 	
-	tmpStr="Local Density";
+	tmpStr=TRANS("Local Density");
 	choices.push_back(make_pair((unsigned int)ALGORITHM_DENSITY,tmpStr));
-	tmpStr="Radial Distribution";
+	tmpStr=TRANS("Radial Distribution");
 	choices.push_back(make_pair((unsigned int)ALGORITHM_RDF,tmpStr));
 
 	tmpStr= choiceString(choices,algorithm);
-	s.push_back(make_pair(string("Algorithm"),tmpStr));
+	s.push_back(make_pair(string(TRANS("Algorithm")),tmpStr));
 	choices.clear();
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	keys.push_back(KEY_ALGORITHM);
@@ -918,27 +920,27 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	if(algorithm ==  ALGORITHM_RDF
 		||  algorithm == ALGORITHM_DENSITY)
 	{
-		tmpStr="Fixed Neighbour Count";
+		tmpStr=TRANS("Fixed Neighbour Count");
 
 		choices.push_back(make_pair((unsigned int)SPATIAL_DENSITY_NEIGHBOUR,tmpStr));
-		tmpStr="Fixed Radius";
+		tmpStr=TRANS("Fixed Radius");
 		choices.push_back(make_pair((unsigned int)SPATIAL_DENSITY_RADIUS,tmpStr));
 		tmpStr= choiceString(choices,stopMode);
-		s.push_back(make_pair(string("Stop Mode"),tmpStr));
+		s.push_back(make_pair(string(TRANS("Stop Mode")),tmpStr));
 		type.push_back(PROPERTY_TYPE_CHOICE);
 		keys.push_back(KEY_STOPMODE);
 
 		if(stopMode == SPATIAL_DENSITY_NEIGHBOUR)
 		{
 			stream_cast(tmpStr,nnMax);
-			s.push_back(make_pair(string("NN Max"),tmpStr));
+			s.push_back(make_pair(string(TRANS("NN Max")),tmpStr));
 			type.push_back(PROPERTY_TYPE_INTEGER);
 			keys.push_back(KEY_NNMAX);
 		}
 		else
 		{
 			stream_cast(tmpStr,distMax);
-			s.push_back(make_pair(string("Dist Max"),tmpStr));
+			s.push_back(make_pair(string(TRANS("Dist Max")),tmpStr));
 			type.push_back(PROPERTY_TYPE_REAL);
 			keys.push_back(KEY_DISTMAX);
 		}
@@ -947,7 +949,7 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		if(algorithm == ALGORITHM_RDF)
 		{
 			stream_cast(tmpStr,numBins);
-			s.push_back(make_pair(string("Num Bins"),tmpStr));
+			s.push_back(make_pair(string(TRANS("Num Bins")),tmpStr));
 			type.push_back(PROPERTY_TYPE_INTEGER);
 			keys.push_back(KEY_NUMBINS);
 
@@ -956,14 +958,14 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 			else
 				tmpStr="0";
 
-			s.push_back(make_pair(string("Surface Remove"),tmpStr));
+			s.push_back(make_pair(string(TRANS("Surface Remove")),tmpStr));
 			type.push_back(PROPERTY_TYPE_BOOL);
 			keys.push_back(KEY_REMOVAL);
 			
 			if(excludeSurface)
 			{
 				stream_cast(tmpStr,reductionDistance);
-				s.push_back(make_pair(string("Remove Dist"),tmpStr));
+				s.push_back(make_pair(string(TRANS("Remove Dist")),tmpStr));
 				type.push_back(PROPERTY_TYPE_REAL);
 				keys.push_back(KEY_REDUCTIONDIST);
 
@@ -974,7 +976,7 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 			genColString((unsigned char)(r*255),(unsigned char)(g*255),
 					(unsigned char)(b*255),(unsigned char)(a*255),thisCol);
 
-			s.push_back(make_pair(string("Plot colour "),thisCol)); 
+			s.push_back(make_pair(string(TRANS("Plot colour ")),thisCol)); 
 			type.push_back(PROPERTY_TYPE_COLOUR);
 			keys.push_back(KEY_COLOUR);
 
@@ -998,7 +1000,7 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 				else
 					sTmp="0";
 
-				s.push_back(make_pair("Source",sTmp));
+				s.push_back(make_pair(TRANS("Source"),sTmp));
 				type.push_back(PROPERTY_TYPE_BOOL);
 				keys.push_back(KEY_ENABLE_SOURCE);
 
@@ -1028,7 +1030,7 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 				else
 					sTmp="0";
 				
-				s.push_back(make_pair("Target",sTmp));
+				s.push_back(make_pair(TRANS("Target"),sTmp));
 				type.push_back(PROPERTY_TYPE_BOOL);
 				keys.push_back(KEY_ENABLE_TARGET);
 				
@@ -1066,10 +1068,9 @@ bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
 		{
 			size_t ltmp=ALGORITHM_ENUM_END;
 
-			std::string tmp;
-			if(value == "Local Density")
+			if(value == TRANS("Local Density"))
 				ltmp=ALGORITHM_DENSITY;
-			else if( value == "Radial Distribution")
+			else if( value == TRANS("Radial Distribution"))
 				ltmp=ALGORITHM_RDF;
 			
 			if(ltmp>=ALGORITHM_ENUM_END)
@@ -1090,10 +1091,9 @@ bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
 				{
 					size_t ltmp=SPATIAL_DENSITY_ENUM_END;
 
-					std::string tmp;
-					if(value == "Fixed Radius")
+					if(value == TRANS("Fixed Radius"))
 						ltmp=SPATIAL_DENSITY_RADIUS;
-					else if (value == "Fixed Neighbour Count")
+					else if (value == TRANS("Fixed Neighbour Count"))
 						ltmp=SPATIAL_DENSITY_NEIGHBOUR;
 					
 					if(ltmp>=SPATIAL_DENSITY_ENUM_END)
@@ -1115,7 +1115,6 @@ bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
 		}	
 		case KEY_DISTMAX:
 		{
-			std::string tmp;
 			float ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
@@ -1131,7 +1130,6 @@ bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
 		}	
 		case KEY_NNMAX:
 		{
-			std::string tmp;
 			unsigned int ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
@@ -1147,7 +1145,6 @@ bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
 		}	
 		case KEY_NUMBINS:
 		{
-			std::string tmp;
 			unsigned int ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
@@ -1163,7 +1160,6 @@ bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
 		}
 		case KEY_REDUCTIONDIST:
 		{
-			std::string tmp;
 			float ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
@@ -1346,9 +1342,9 @@ std::string  SpatialAnalysisFilter::getErrString(unsigned int code) const
 	switch(code)
 	{
 		case ABORT_ERR:
-			return std::string("Spatial analysis aborted by user");
+			return std::string(TRANS("Spatial analysis aborted by user"));
 		case INSUFFICIENT_SIZE_ERR:
-			return std::string("Insufficient data to complete analysis.");
+			return std::string(TRANS("Insufficient data to complete analysis."));
 		default:
 			ASSERT(false);
 

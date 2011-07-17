@@ -28,6 +28,8 @@
 #else
 	#include <GL/glu.h>
 #endif
+#include "translation.h"
+
 #include <limits>
 #include <vector>
 #include <utility>
@@ -46,7 +48,7 @@ enum
 	KEY_LOOKAT_UPDIRECTION,
 	KEY_LOOKAT_FOV,
 	KEY_LOOKAT_PROJECTIONMODE,
-	KEY_LOOKAT_ORTHOSCALE,
+	KEY_LOOKAT_ORTHOSCALE
 };
 
 
@@ -676,26 +678,26 @@ void CameraLookAt::getProperties(CameraProperties &p) const
 	vector<unsigned int> type,keys;
 
 	if(lock)
-		s.push_back(std::make_pair("Lock","1"));
+		s.push_back(std::make_pair(TRANS("Lock"),"1"));
 	else
-		s.push_back(std::make_pair("Lock","0"));
+		s.push_back(std::make_pair(TRANS("Lock"),"0"));
 
 	type.push_back(PROPERTY_TYPE_BOOL);
 	keys.push_back(KEY_LOOKAT_LOCK);
 
 	string ptStr;
 	stream_cast(ptStr,origin);
-	s.push_back(std::make_pair("Origin", ptStr));
+	s.push_back(std::make_pair(TRANS("Origin"), ptStr));
 	type.push_back(PROPERTY_TYPE_POINT3D);
 	keys.push_back(KEY_LOOKAT_ORIGIN);
 	
 	stream_cast(ptStr,target);
-	s.push_back(std::make_pair("Target", ptStr));
+	s.push_back(std::make_pair(TRANS("Target"), ptStr));
 	type.push_back(PROPERTY_TYPE_POINT3D);
 	keys.push_back(KEY_LOOKAT_TARGET);
 	
 	stream_cast(ptStr,upDirection);
-	s.push_back(std::make_pair("Up Dir.", ptStr));
+	s.push_back(std::make_pair(TRANS("Up Dir."), ptStr));
 	type.push_back(PROPERTY_TYPE_POINT3D);
 	keys.push_back(KEY_LOOKAT_UPDIRECTION);
 
@@ -703,9 +705,9 @@ void CameraLookAt::getProperties(CameraProperties &p) const
 	string tmp;
 	
 
-	tmp="Perspective";
+	tmp=TRANS("Perspective");
 	choices.push_back(make_pair((unsigned int)PROJECTION_MODE_PERSPECTIVE,tmp));
-	tmp="Orthogonal";
+	tmp=TRANS("Orthogonal");
 	choices.push_back(make_pair((unsigned int)PROJECTION_MODE_ORTHOGONAL,tmp));
 	tmp= choiceString(choices,projectionMode);
 	
@@ -717,13 +719,13 @@ void CameraLookAt::getProperties(CameraProperties &p) const
 	{
 		case PROJECTION_MODE_PERSPECTIVE:
 			stream_cast(tmp,fovAngle);
-			s.push_back(std::make_pair("Field of View (deg)", tmp));
+			s.push_back(std::make_pair(TRANS("Field of View (deg)"), tmp));
 			type.push_back(PROPERTY_TYPE_REAL);
 			keys.push_back(KEY_LOOKAT_FOV);
 			break;
 		case PROJECTION_MODE_ORTHOGONAL:
 			stream_cast(tmp,orthoScale);
-			s.push_back(std::make_pair("View size", tmp));
+			s.push_back(std::make_pair(TRANS("View size"), tmp));
 			type.push_back(PROPERTY_TYPE_REAL);
 			keys.push_back(KEY_LOOKAT_ORTHOSCALE);
 			break;
@@ -806,11 +808,10 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 		}
 		case KEY_LOOKAT_PROJECTIONMODE:
 		{
-			std::string tmp;
 			size_t ltmp;
-			if(value == "Perspective")
+			if(value == TRANS("Perspective"))
 				ltmp=PROJECTION_MODE_PERSPECTIVE;
-			else if( value == "Orthogonal")
+			else if( value == TRANS("Orthogonal"))
 			{
 				if(projectionMode!=PROJECTION_MODE_ORTHOGONAL)
 				{
@@ -855,30 +856,38 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 bool CameraLookAt::writeState(std::ostream &f, unsigned int format,
 	       					unsigned int nTabs) const
 {
-	using std::endl;
+	switch(format)
+	{
+		case STATE_FORMAT_XML:
+		{
+			using std::endl;
 
-	f << tabs(nTabs) << "<persplookat>" << endl;
-	ASSERT(userString.size());
-	f << tabs(nTabs+1) << "<userstring value=\"" << userString << "\"/>" << endl;
-	f << tabs(nTabs+1) << "<projectionmode value=\""<< projectionMode << "\"/>" << endl;
-	f << tabs(nTabs+1) << "<orthoscale value=\""<< orthoScale << "\"/>" << endl;
-	
-	if(lock)	
-		f<< tabs(nTabs+1) <<  "<lock value=\"1\"/>" << endl;
-	else
-		f<< tabs(nTabs+1) <<  "<lock value=\"0\"/>" << endl;
-	f << tabs(nTabs+1) << "<origin x=\"" << origin[0] << "\" y=\"" << origin[1] <<
-	       	"\" z=\"" << origin[2] << "\"/>" << endl;
-	f << tabs(nTabs+1) << "<target x=\"" << target[0] << "\" y=\"" << target[1] <<
-	       	"\" z=\"" << target[2] << "\"/>" << endl;
-	f << tabs(nTabs+1) << "<updirection x=\"" << upDirection[0] << "\" y=\"" << upDirection[1] <<
-	       	"\" z=\"" << upDirection[2] << "\"/>" << endl;
+			f << tabs(nTabs) << "<persplookat>" << endl;
+			ASSERT(userString.size());
+			f << tabs(nTabs+1) << "<userstring value=\"" << userString << "\"/>" << endl;
+			f << tabs(nTabs+1) << "<projectionmode value=\""<< projectionMode << "\"/>" << endl;
+			f << tabs(nTabs+1) << "<orthoscale value=\""<< orthoScale << "\"/>" << endl;
+			
+			if(lock)	
+				f<< tabs(nTabs+1) <<  "<lock value=\"1\"/>" << endl;
+			else
+				f<< tabs(nTabs+1) <<  "<lock value=\"0\"/>" << endl;
+			f << tabs(nTabs+1) << "<origin x=\"" << origin[0] << "\" y=\"" << origin[1] <<
+				"\" z=\"" << origin[2] << "\"/>" << endl;
+			f << tabs(nTabs+1) << "<target x=\"" << target[0] << "\" y=\"" << target[1] <<
+				"\" z=\"" << target[2] << "\"/>" << endl;
+			f << tabs(nTabs+1) << "<updirection x=\"" << upDirection[0] << "\" y=\"" << upDirection[1] <<
+				"\" z=\"" << upDirection[2] << "\"/>" << endl;
 
-	f<< tabs(nTabs+1) <<  "<fovangle value=\"" << fovAngle << "\"/>" << endl;
-	f<< tabs(nTabs+1) <<  "<nearplane value=\"" << nearPlane << "\"/>" << endl;
-	f << tabs(nTabs) << "</persplookat>" << endl;
+			f<< tabs(nTabs+1) <<  "<fovangle value=\"" << fovAngle << "\"/>" << endl;
+			f<< tabs(nTabs+1) <<  "<nearplane value=\"" << nearPlane << "\"/>" << endl;
+			f << tabs(nTabs) << "</persplookat>" << endl;
 
-	return true;
+			return true;
+		}
+		default:
+			ASSERT(false);
+	}
 }
 		
 bool CameraLookAt::readState(xmlNodePtr nodePtr)

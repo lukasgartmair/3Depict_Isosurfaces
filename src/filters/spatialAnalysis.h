@@ -60,7 +60,7 @@ class SpatialAnalysisFilter : public Filter
 					std::vector<const FilterStreamData *> &getOut, 
 					ProgressData &progress, bool (*callback)(void));
 		//!Get the type string  for this fitler
-		virtual std::string typeString() const { return std::string("Spat. Analysis");};
+		virtual std::string typeString() const { return std::string(TRANS("Spat. Analysis"));};
 
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
 		void getProperties(FilterProperties &propertyList) const;

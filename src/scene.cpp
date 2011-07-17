@@ -132,9 +132,7 @@ void Scene::draw()
 		camToUse=cameras[activeCam];
 	}
 	//Inform text about current camera, so it can billboard if needed
-	DrawGLText::setCurCamera(camToUse);
-	DrawField3D::setCurCamera(camToUse);
-	
+	DrawableObj::setCurCamera(camToUse);
 	Effect::setCurCam(camToUse);
 
 
@@ -182,74 +180,25 @@ void Scene::draw()
 			if(useLighting)
 				glDisable(GL_LIGHTING);
 		}
-		//Draw the referenced objects
-		for(unsigned int ui=0; ui<refObjects.size(); ui++)
-		{
-			//overlays need to be drawn later
-			if(refObjects[ui]->isOverlay())
-				continue;
-
-			if(useLighting)
-			{
-				if(!refObjects[ui]->wantsLight && lightsOn)
-				{
-					lightsOn=false;
-					glDisable(GL_LIGHTING);
-				}
-				else if (refObjects[ui]->wantsLight && !lightsOn)
-				{
-					glEnable(GL_LIGHTING);
-					lightsOn=true;
-				}
-			}
-
-			refObjects[ui]->draw();	
-		}
-
-		//Set up the objects
-		for(unsigned int ui=0; ui<objects.size(); ui++)
-		{
-			//overlays need to be drawn later
-			if(objects[ui]->isOverlay())
-				continue;
-			if(useLighting)
-			{	
-				if(!objects[ui]->wantsLight && lightsOn )
-				{
-					//Object prefers doing its thing in the dark
-					glDisable(GL_LIGHTING);
-					lightsOn=false;
-				}
-				else if (objects[ui]->wantsLight && !lightsOn)
-				{
-					glEnable(GL_LIGHTING);
-					lightsOn=true;
-				}
-			}
-
-			//If we are in selection mode, draw the bounding box
-			//if the object is selected.
-			if(ui == lastSelected && selectionMode)
-			{
-				//May be required for selection box drawing
-				BoundCube bObject;
-				DrawRectPrism p;
-				//Get the bounding box for the object & draw it
-				objects[ui]->getBoundingBox(bObject);
-				p.setAxisAligned(bObject);
-				p.setColour(0,0.2,1,0.5); //blue-greenish
-				if(lightsOn)
-					glDisable(GL_LIGHTING);
-				p.draw();
-				if(lightsOn)
-					glEnable(GL_LIGHTING);
-
-			}
-
-			objects[ui]->draw();
-		}
 		
-
+	
+		//First sub-pass with opaque objects
+		//-----------	
+		//Draw the referenced objects
+		drawObjectVector(refObjects,lightsOn,true);
+		//Draw normal objects
+		drawObjectVector(objects,lightsOn,true);
+		//-----------	
+		
+		//Second pass with transparent objects
+		//-----------	
+		//Draw the referenced objects
+		drawObjectVector(refObjects,lightsOn,false);
+		//Draw normal objects
+		drawObjectVector(objects,lightsOn,false);
+		//-----------	
+		
+		
 		glFlush();
 		passNumber++;
 	}
@@ -265,7 +214,6 @@ void Scene::draw()
 			ui--;
 			effects[ui]->disable();
 		}
-		//glPopMatrix();
 	}
 
 
@@ -276,6 +224,67 @@ void Scene::draw()
 		drawHoverOverlay();
 	drawOverlays();
 
+}
+
+void Scene::drawObjectVector(const vector<const DrawableObj*> &drawObjs, bool &lightsOn, bool drawOpaques) const
+{
+	for(unsigned int ui=0; ui<drawObjs.size(); ui++)
+	{
+		//FIXME: Use logical operator to simplify this.
+		// its late, and i'm tired and can't think. Its very easy
+		// when you can think. 
+		if(drawOpaques)
+		{
+			//Don't draw opaque drawObjs in this pass
+			 if(drawObjs[ui]->needsDepthSorting())
+				continue;
+		}
+		else
+		{
+			//Do draw opaque drawObjs in this pass
+			 if(!drawObjs[ui]->needsDepthSorting())
+				continue;
+		}
+	
+		//overlays need to be drawn later
+		if(drawObjs[ui]->isOverlay())
+			continue;
+		if(useLighting)
+		{	
+			if(!drawObjs[ui]->wantsLight && lightsOn )
+			{
+				//Object prefers doing its thing in the dark
+				glDisable(GL_LIGHTING);
+				lightsOn=false;
+			}
+			else if (drawObjs[ui]->wantsLight && !lightsOn)
+			{
+				glEnable(GL_LIGHTING);
+				lightsOn=true;
+			}
+		}
+		
+		//If we are in selection mode, draw the bounding box
+		//if the object is selected.
+		if(ui == lastSelected && selectionMode)
+		{
+			//May be required for selection box drawing
+			BoundCube bObject;
+			DrawRectPrism p;
+			//Get the bounding box for the object & draw it
+			drawObjs[ui]->getBoundingBox(bObject);
+			p.setAxisAligned(bObject);
+			p.setColour(0,0.2,1,0.5); //blue-greenish
+			if(lightsOn)
+				glDisable(GL_LIGHTING);
+			p.draw();
+			if(lightsOn)
+				glEnable(GL_LIGHTING);
+
+		}
+		
+		drawObjs[ui]->draw();
+	}
 }
 
 void Scene::drawOverlays() const
@@ -305,6 +314,7 @@ void Scene::drawOverlays() const
 	glLoadIdentity();
 
 	glDisable(GL_DEPTH_TEST);
+
 
 	for(unsigned int ui=0;ui<refObjects.size();ui++)
 	{
@@ -472,6 +482,7 @@ void Scene::drawHoverOverlay()
 	glEnable(GL_DEPTH_TEST);
 }
 
+
 void Scene::commitTempCam()
 {
 	ASSERT(tempCam);
@@ -502,13 +513,8 @@ void Scene::addDrawable(DrawableObj const *obj )
 	BoundCube bc;
 	obj->getBoundingBox(bc);
 
-	if(bc.isValid());
+	if(bc.isValid())
 		boundCube.expand(bc);
-}
-
-void Scene::addLight(Light const *light)
-{
-	lights.push_back(light);
 }
 
 void Scene::addRefDrawable(const DrawableObj *obj)
@@ -528,7 +534,6 @@ void Scene::clearAll()
 
 	clearObjs();
 	clearRefObjs();
-	clearLights();
 	clearBindings();	
 	clearCams();
 }
@@ -547,12 +552,6 @@ void Scene::clearBindings()
 	selectionDevices.clear();
 }
 
-void Scene::clearLights()
-{
-	for(unsigned int ui=0; ui<lights.size(); ui++)
-		delete lights[ui];
-	lights.clear();
-}
 
 void Scene::clearCams()
 {

@@ -35,7 +35,7 @@ class ExternalProgramFilter : public Filter
 					std::vector<const FilterStreamData *> &getOut, 
 					ProgressData &progress, bool (*callback)(void));
 		
-		virtual std::string typeString() const { return std::string("Ext. Program");};
+		virtual std::string typeString() const { return std::string(TRANS("Ext. Program"));};
 
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
 		void getProperties(FilterProperties &propertyList) const;

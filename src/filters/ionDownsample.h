@@ -47,7 +47,7 @@ class IonDownsampleFilter : public Filter
 				 ProgressData &progress, bool (*callback)(void));
 
 		//!return string naming the human readable type of this class
-		virtual std::string typeString() const { return std::string("Ion Sampler");}
+		virtual std::string typeString() const { return std::string(TRANS("Ion Sampler"));}
 		
 		
 		//!Get the properties of the filter, in key-value form. First vector is for each output.

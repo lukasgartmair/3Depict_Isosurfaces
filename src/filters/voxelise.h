@@ -29,6 +29,18 @@ private:
 	
 	float r,g,b,a;
 
+	//!Filter mode to apply to data before output
+	unsigned int filterMode;
+
+	//!How do we treat boundaries when applying filters
+	unsigned int filterBoundaryMode;
+
+	//!Filter size
+	unsigned int filterBins;
+
+	//!Gaussian filter standard deviation
+	float gaussDev;
+
 	//!3D Point Representation size
 	float splatSize;
 
@@ -55,12 +67,16 @@ public:
 						 std::vector<const FilterStreamData *> &getOut, 
 						 ProgressData &progress, bool (*callback)(void));
 	
-	virtual std::string typeString() const { return std::string("Voxelisation");};
+	virtual std::string typeString() const { return std::string(TRANS("Voxelisation"));};
 
 	//!Get the human-readable options for the normalisation, based upon enum 
 	std::string getNormaliseTypeString(int type) const;
+	//!Get the human-readable options for filtering, based upon enum 
+	std::string getFilterTypeString(int type) const;
 	//!Get the human-readable options for the visual representation (enum)
 	std::string getRepresentTypeString(int type) const;
+	//!Get the human-readable options for boundary behaviour during filtering, based upon enum 
+	std::string getFilterBoundTypeString(int type) const;
 	
 	//!Get the properties of the filter, in key-value form. First vector is for each output.
 	void getProperties(FilterProperties &propertyList) const;

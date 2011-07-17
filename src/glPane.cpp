@@ -16,10 +16,13 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
+#include <wx/wx.h>
 #include <wx/sizer.h>
 #include <wx/glcanvas.h>
 #include <wx/progdlg.h>
 #include <wx/defs.h>
+
 #include "glPane.h"
 
 // include OpenGL
@@ -32,6 +35,8 @@
 #include <GL/gl.h>
 
 #endif
+
+#include "translation.h"
 
 
 //Unclear why, but windows does not allow GL_BGR, 
@@ -500,9 +505,9 @@ void BasicGLPane::keyPressed(wxKeyEvent& event)
 				visibleDir=3;
 			currentScene.ensureVisible(visibleDir);
 #ifdef wxMAC
-			parentStatusBar->SetStatusText(_("Use shift/⌘-space to alter reset axis"));
+			parentStatusBar->SetStatusText(wxTRANS("Use shift/⌘-space to alter reset axis"));
 #else
-			parentStatusBar->SetStatusText(_("Use shift/ctrl-space to alter reset axis"));
+			parentStatusBar->SetStatusText(wxTRANS("Use shift/ctrl-space to alter reset axis"));
 #endif
 			parentStatusBar->SetBackgroundColour(*wxCYAN)
 				;
@@ -755,8 +760,8 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 		wxProgressDialog *wxD=0;	
 		if(showProgress)
 		{
-			wxD = new wxProgressDialog(wxT("Image progress"), 
-						wxT("Rendering tiles..."), numTilesX*numTilesY);
+			wxD = new wxProgressDialog(wxTRANS("Image progress"), 
+						wxTRANS("Rendering tiles..."), numTilesX*numTilesY);
 
 			wxD->Show();
 		}
@@ -771,7 +776,8 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 			{
 				thisTileNum++;
 				stream_cast(tmpStr,thisTileNum);
-				tmpStr = std::string("Tile ") + tmpStr + std::string(" of ") + tmpStrTwo + "...";
+				//tell user which image tile we are making from the total image
+				tmpStr = std::string(TRANS("Tile ")) + tmpStr + std::string(TRANS(" of ")) + tmpStrTwo + "...";
 				//Update progress bar, if required
 				if(showProgress)
 					wxD->Update(thisTileNum,wxStr(tmpStr));
@@ -894,8 +900,8 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 	ASSERT(!currentScene.haveTempCam());
 	std::string outFile;
 	Camera *c;
-	wxProgressDialog *wxD = new wxProgressDialog(wxT("Animation progress"), 
-					wxT("Rendering sequence..."), nFrames,this,wxPD_CAN_ABORT );
+	wxProgressDialog *wxD = new wxProgressDialog(wxTRANS("Animation progress"), 
+					wxTRANS("Rendering sequence..."), nFrames,this,wxPD_CAN_ABORT );
 
 	wxD->Show();
 	std::string tmpStr,tmpStrTwo;
@@ -926,7 +932,8 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 
 		//Update the progress bar
 		stream_cast(tmpStr,ui+1);
-		tmpStr = std::string("Saving Image ") + tmpStr + std::string(" of ") + tmpStrTwo + "...";
+		//Tell user which image from the animation we are saving
+		tmpStr = std::string(TRANS("Saving Image ")) + tmpStr + std::string(TRANS(" of ")) + tmpStrTwo + "...";
 		if(!wxD->Update(ui,wxStr(tmpStr)))
 			break;
 

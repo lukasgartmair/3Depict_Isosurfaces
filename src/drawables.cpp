@@ -51,18 +51,18 @@
 #define glError()
 #endif
 
+const float DEPTH_SORT_REORDER_EPSILON = 1e-2;
+
 //Static class variables
 //====
-const Camera *DrawGLText::curCamera = 0;
-const Camera *DrawField3D::curCam = 0;
+const Camera *DrawableObj::curCamera = 0;
 //==
 
 
 using std::vector;
 
-DrawableObj::DrawableObj() : active(true), wantsLight(false)
+DrawableObj::DrawableObj() : active(true), haveChanged(true), canSelect(false), wantsLight(false)
 {
-	canSelect=false;
 }
 
 DrawableObj::~DrawableObj()
@@ -474,6 +474,14 @@ void DrawManyPoints::getBoundingBox(BoundCube &b) const
 	return;
 }
 
+void DrawManyPoints::explode(vector<DrawableObj *> &simpleObjects)
+{
+	simpleObjects.resize(pts.size());
+
+	for(size_t ui=0;ui<simpleObjects.size();ui++)
+	{
+	}
+}
 
 void DrawManyPoints::clear()
 {
@@ -567,7 +575,10 @@ bool DrawDispList::startList(bool execute)
 
 	if(listNum)
 	{
-		glNewList(listNum,GL_COMPILE);
+		if(execute)
+			glNewList(listNum,GL_COMPILE_AND_EXECUTE);
+		else
+			glNewList(listNum,GL_COMPILE);
 		listActive=true;
 	}
 	return (listNum!=0);
@@ -852,11 +863,6 @@ void DrawGLText::setAlignment(unsigned int newMode)
 {
 	ASSERT(newMode < DRAWTEXT_ALIGN_ENUM_END);
 	alignMode=newMode;
-}
-
-void DrawGLText::setCurCamera(const Camera *p)
-{
-	curCamera=p;
 }
 
 
@@ -1249,7 +1255,7 @@ void DrawColourBarOverlay::getBoundingBox(BoundCube &b) const
 
 DrawField3D::DrawField3D() : alphaVal(0.2f), pointSize(1.0f), drawBoundBox(true),volumeGrid(false), volumeRenderMode(0), field(0) 
 {
-	boxColour.r = boxColour.g = boxColour.b = boxColour.a = 1.0f;
+	boxColourR = boxColourG = boxColourB = boxColourA = 1.0f;
 	ptsCacheOK=false;
 }
 
@@ -1288,6 +1294,8 @@ void DrawField3D::setColourMinMax()
 			
 void DrawField3D::draw() const
 {
+	if(alphaVal < sqrt(std::numeric_limits<float>::epsilon()))
+		return;
 
 	ASSERT(field);
 
@@ -1301,12 +1309,9 @@ void DrawField3D::draw() const
 
 			field->getSize(fieldSizeX,fieldSizeY, fieldSizeZ);
 
-			//We need to generate some points, then sort them by distance
-			//from eye (back to front), otherwise they will not blend properly
-			std::vector<std::pair<float,unsigned int >  > eyeDists;
-
-			Point3D camOrigin = curCam->getOrigin();
-
+			Point3D delta;
+			delta = field->getPitch();
+			delta*=0.5;
 			if(!ptsCacheOK)
 			{
 				ptsCache.clear();
@@ -1326,7 +1331,7 @@ void DrawField3D::draw() const
 										field->getData(uiX,uiY,uiZ), 
 										colourMapBound[0],colourMapBound[1]);
 								
-								ptsCache.push_back(make_pair(field->getPoint(uiX,uiY,uiZ),rgb));
+								ptsCache.push_back(make_pair(field->getPoint(uiX,uiY,uiZ)+delta,rgb));
 							}
 						}
 					}
@@ -1335,35 +1340,59 @@ void DrawField3D::draw() const
 
 				ptsCacheOK=true;
 			}
-			eyeDists.resize(ptsCache.size());
-			
-			//Set up an original index for the eye distances
-			#pragma omp parallel for
-			for(unsigned int ui=0;ui<ptsCache.size();ui++)
-			{
-				eyeDists[ui].first=ptsCache[ui].first.sqrDist(camOrigin);
-				eyeDists[ui].second=ui;
-			}
 
-			ComparePairFirstReverse cmp;
-			std::sort(eyeDists.begin(),eyeDists.end(),cmp);	
-
-			//render each element in the field as a point
-			//the colour of the point is determined by its scalar value
-			glPointSize(pointSize);
-			glBegin(GL_POINTS);
-			for(unsigned int ui=0;ui<ptsCache.size();ui++)
+			if(alphaVal < 1.0f)
 			{
-				unsigned int idx;
-				idx=eyeDists[ui].second;
-				//Tell openGL about it
-				glColor4f(((float)(ptsCache[idx].second.v[0]))/255.0f, 
-						((float)(ptsCache[idx].second.v[1]))/255.0f,
-						((float)(ptsCache[idx].second.v[2]))/255.0f, 
-						alphaVal);
-				glVertex3f(ptsCache[idx].first[0],ptsCache[idx].first[1],ptsCache[idx].first[2]);
+				//We need to generate some points, then sort them by distance
+				//from eye (back to front), otherwise they will not blend properly
+				std::vector<std::pair<float,unsigned int >  > eyeDists;
+
+				Point3D camOrigin = curCamera->getOrigin();
+
+				eyeDists.resize(ptsCache.size());
+				
+				//Set up an original index for the eye distances
+				#pragma omp parallel for
+				for(unsigned int ui=0;ui<ptsCache.size();ui++)
+				{
+					eyeDists[ui].first=ptsCache[ui].first.sqrDist(camOrigin);
+					eyeDists[ui].second=ui;
+				}
+
+				ComparePairFirstReverse cmp;
+				std::sort(eyeDists.begin(),eyeDists.end(),cmp);	
+
+				//render each element in the field as a point
+				//the colour of the point is determined by its scalar value
+				glDepthMask(GL_FALSE);
+				glPointSize(pointSize);
+				glBegin(GL_POINTS);
+				for(unsigned int ui=0;ui<ptsCache.size();ui++)
+				{
+					unsigned int idx;
+					idx=eyeDists[ui].second;
+					//Tell openGL about it
+					glColor4f(((float)(ptsCache[idx].second.v[0]))/255.0f, 
+							((float)(ptsCache[idx].second.v[1]))/255.0f,
+							((float)(ptsCache[idx].second.v[2]))/255.0f, 
+							alphaVal);
+					glVertex3f(ptsCache[idx].first[0],ptsCache[idx].first[1],ptsCache[idx].first[2]);
+				}
+				glEnd();
+				glDepthMask(GL_TRUE);
 			}
-			glEnd();
+			else
+			{
+				for(unsigned int ui=0;ui<ptsCache.size();ui++)
+				{
+					//Tell openGL about it
+					glColor4f(((float)(ptsCache[ui].second.v[0]))/255.0f, 
+							((float)(ptsCache[ui].second.v[1]))/255.0f,
+							((float)(ptsCache[ui].second.v[2]))/255.0f, 
+							1.0f);
+					glVertex3f(ptsCache[ui].first[0],ptsCache[ui].first[1],ptsCache[ui].first[2]);
+				}
+			}
 			break;
 		}
 
@@ -1380,7 +1409,7 @@ void DrawField3D::draw() const
 		pMax=field->getMaxBounds();
 	
 
-		glColor4f(boxColour.r, boxColour.g,boxColour.b,boxColour.a);
+		glColor4f(boxColourR, boxColourG,boxColourB,boxColourA);
 		//Draw lines between field min and max
 		glBegin(GL_LINES);
 			//Bottom corner out
@@ -1444,10 +1473,10 @@ void DrawField3D::setMapColours(unsigned int mapID)
 
 void DrawField3D::setBoxColours(float rNew, float gNew, float bNew, float aNew)
 {
-	boxColour.r = rNew;
-	boxColour.g = gNew;
-	boxColour.b = bNew;
-	boxColour.a = aNew;
+	boxColourR = rNew;
+	boxColourG = gNew;
+	boxColourB = bNew;
+	boxColourA = aNew;
 
 }
 
@@ -1469,6 +1498,12 @@ DrawIsoSurface::~DrawIsoSurface()
 {
 	if(voxels)
 		delete voxels;
+}
+
+
+bool DrawIsoSurface::needsDepthSorting()  const
+{
+	return a< 1 && a > std::numeric_limits<float>::epsilon();
 }
 
 void DrawIsoSurface::swapVoxels(Voxels<float> *f)
@@ -1500,8 +1535,11 @@ void DrawIsoSurface::getBoundingBox(BoundCube &b) const
 		b.setInverseLimits();
 }
 
+
 void DrawIsoSurface::draw() const
 {
+	if(a< sqrt(std::numeric_limits<float>::epsilon()))
+		return;
 
 	if(!cacheOK)
 	{
@@ -1510,23 +1548,75 @@ void DrawIsoSurface::draw() const
 		updateMesh();
 	}
 
+
 	//This could be optimised by using triangle strips
 	//rather than direct triangles.
-	glColor4f(r,g,b,a);
-	glPushAttrib(GL_CULL_FACE);
-	glDisable(GL_CULL_FACE);	
-	glBegin(GL_TRIANGLES);	
-	for(unsigned int ui=0;ui<mesh.size();ui++)
+	if(a < 1.0f)
 	{
-		glNormal3fv(mesh[ui].normal[0].getValueArr());
-		glVertex3fv(mesh[ui].p[0].getValueArr());
-		glNormal3fv(mesh[ui].normal[1].getValueArr());
-		glVertex3fv(mesh[ui].p[1].getValueArr()),
-		glNormal3fv(mesh[ui].normal[2].getValueArr());
-		glVertex3fv(mesh[ui].p[2].getValueArr());
+		//We need to sort them by distance
+		//from eye (back to front), otherwise they will not blend properly
+		std::vector<std::pair<float,unsigned int >  > eyeDists;
+
+		Point3D camOrigin = curCamera->getOrigin();
+		eyeDists.resize(mesh.size());
+		
+		//Set up an original index for the eye distances
+		#pragma omp parallel for shared(camOrigin)
+		for(unsigned int ui=0;ui<mesh.size();ui++)
+		{
+			Point3D centroid;
+			mesh[ui].getCentroid(centroid);
+
+			eyeDists[ui].first=centroid.sqrDist(camOrigin);
+			eyeDists[ui].second=ui;
+		}
+
+		ComparePairFirstReverse cmp;
+		std::sort(eyeDists.begin(),eyeDists.end(),cmp);	
+					
+
+		glDepthMask(GL_FALSE);
+		glColor4f(r,g,b,a);
+		glPushAttrib(GL_CULL_FACE);
+		glDisable(GL_CULL_FACE);
+
+		glBegin(GL_TRIANGLES);	
+		for(unsigned int ui=0;ui<mesh.size();ui++)
+		{
+			unsigned int idx;
+			idx=eyeDists[ui].second;
+			glNormal3fv(mesh[idx].normal[0].getValueArr());
+			glVertex3fv(mesh[idx].p[0].getValueArr());
+			glNormal3fv(mesh[idx].normal[1].getValueArr());
+			glVertex3fv(mesh[idx].p[1].getValueArr()),
+			glNormal3fv(mesh[idx].normal[2].getValueArr());
+			glVertex3fv(mesh[idx].p[2].getValueArr());
+		}
+		glEnd();
+
+
+		glPopAttrib();
+		glDepthMask(GL_TRUE);
+
 	}
-	glEnd();
-	glPopAttrib();
+	else
+	{
+		glColor4f(r,g,b,a);
+		glPushAttrib(GL_CULL_FACE);
+		glDisable(GL_CULL_FACE);	
+		glBegin(GL_TRIANGLES);	
+		for(unsigned int ui=0;ui<mesh.size();ui++)
+		{
+			glNormal3fv(mesh[ui].normal[0].getValueArr());
+			glVertex3fv(mesh[ui].p[0].getValueArr());
+			glNormal3fv(mesh[ui].normal[1].getValueArr());
+			glVertex3fv(mesh[ui].p[1].getValueArr()),
+			glNormal3fv(mesh[ui].normal[2].getValueArr());
+			glVertex3fv(mesh[ui].p[2].getValueArr());
+		}
+		glEnd();
+		glPopAttrib();
+	}
 }
 
 
@@ -1955,4 +2045,98 @@ void DrawAxis::getBoundingBox(BoundCube &b) const
 {
 	b.setInvalid();
 }
+
+
+void DrawDepthSorted::draw()  const
+{
+	bool needResort;
+	//Check to see if we need to re-sort the data
+	needResort=(!haveLastDist ||
+		       	lastCamLoc.sqrDist(curCamera->getOrigin()) >DEPTH_SORT_REORDER_EPSILON);
+
+	if(needResort)
+	{
+		//Rebuild the depthJump key data
+		std::vector<pair<std::pair<size_t,size_t> , float> > dists;
+
+		size_t size;
+		size=0;
+		for(size_t ui=0;ui<depthObjects.size(); ui++)
+			size+=dists.size();
+
+		dists.resize(size);
+		depthJumpKeys.resize(size);
+
+		//Generate the to-camera distances (negative because we want
+		//further away objects to be first)
+		#pragma omp parallel for
+		for(size_t ui=0;ui<depthObjects.size(); ui++)
+		{
+			Point3D centroid;
+			for(size_t uj=0; uj<depthObjects[ui].second.size(); uj++)
+			{
+				centroid=depthObjects[ui].second[uj]->getCentroid();
+				dists[ui+uj]=std::make_pair(std::make_pair(ui,uj),-centroid.sqrDist(curCamera->getOrigin()));
+			}
+		}
+
+		//Now we have the distance data, sort it
+		ComparePairSecond cmp;
+		std::sort(dists.begin(),dists.end(),cmp);	
+
+		//Now set the depth Jump Keys using the sorted distances
+		#pragma omp parallel for
+		for(size_t ui=0;ui<dists.size();ui++)
+			depthJumpKeys[ui]=dists[ui].first;
+
+		lastCamLoc=curCamera->getOrigin();
+	}
+
+
+	//OK, so we have to now draw our objects from back->front order
+	//as set by depthJumpKeys
+	for(size_t ui=0;ui<depthObjects.size();ui++)
+	{
+		const DrawableObj *d;
+		d=(depthObjects[depthJumpKeys[ui].first].second[depthJumpKeys[ui].second]);
+		d->draw();
+	}
+}
+
+
+void DrawDepthSorted::addObjectsAsNeeded(const DrawableObj *obj) 
+{
+	size_t off=std::numeric_limits<size_t>::max();
+	for(size_t ui=0;ui<depthObjects.size();ui++)
+	{
+		if(depthObjects[ui].first == obj)
+		{
+			if(depthObjects[ui].first->hasChanged())
+				off=ui;
+			else 
+				off=depthObjects.size();
+			
+			break;
+		}
+	}
+
+
+	if(off==depthObjects.size())
+		return; // Object exists and is up to date.
+	else if(off==std::numeric_limits<size_t>::max())
+	{
+		//Ok, so we have no object, and we need
+		//to create a new set of data
+	
+	}
+	else
+	{
+		ASSERT(off < depthObjects.size());
+		//we need to update the object
+	}
+
+
+}
+
+
 

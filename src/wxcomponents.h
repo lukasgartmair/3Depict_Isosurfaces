@@ -107,7 +107,8 @@ class PropGridHandler: public wxEvtHandler
 		void OnMouseMovement(wxMouseEvent& evt);
 		wxPropertyGrid* m_Grid;
 		unsigned int eventGrace;
-		DECLARE_EVENT_TABLE();
+
+		DECLARE_EVENT_TABLE()
 };
 
 
@@ -207,7 +208,7 @@ enum
 {
 	TTFFINDER_FONT_SANS,
 	TTFFINDER_FONT_SERIF,
-	TTFFINDER_FONT_MONO,
+	TTFFINDER_FONT_MONO
 };
 
 //A class to determine ttf file locations, in a best effort fashion

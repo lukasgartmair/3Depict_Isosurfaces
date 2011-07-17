@@ -19,6 +19,10 @@
 #ifndef VISCONTROL_H
 #define VISCONTROL_H
 
+#include "wxcomponents.h"
+#include <wx/treectrl.h>
+#include <wx/grid.h>
+
 #include <string>
 #include <vector>
 #include <utility>
@@ -26,13 +30,9 @@
 #include <stack>
 #include <deque>
 
-#include <wx/wx.h>
-#include <wx/treectrl.h>
-#include <wx/grid.h>
 
 #include "tree.hh"
 
-#include "wxcomponents.h"
 
 class VisController;
 
@@ -65,8 +65,8 @@ class VisController
 		unsigned long long nextID;
 		//!Target scene
 		Scene *targetScene;
-		//!targetPlot
-		Multiplot *targetPlots;
+		//!Target Plot wrapper system
+		PlotWrapper *targetPlots;
 		//!Target raw grid
 		wxGrid *targetRawGrid;
 
@@ -104,6 +104,9 @@ class VisController
 
 		//!Caching stragegy
 		unsigned int cacheStrategy;
+
+		//!Have we implicitly used relative references when saving data files?
+		unsigned int useRelativePathsForSave;
 
 		//!Current progress
 		ProgressData curProg;
@@ -146,6 +149,14 @@ class VisController
 		//!Get the filter refresh seed points in tree, by examination of tree caches, block/emit of filters
 		//and tree topology
 		void getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propStarts) const;
+
+#ifdef DEBUG
+		//!Check that the output of filter refresh functions
+		void checkRefreshValidity(const vector< const FilterStreamData *> curData, 
+					const Filter *refreshFilter) const;
+#endif
+
+
 	public:
 		VisController();
 		~VisController();
@@ -160,7 +171,7 @@ class VisController
 		//!Set the backend scene
 		void setScene(Scene *theScene);
 		//!Set the backend plot
-		void setPlot(Multiplot *thePlots){targetPlots=thePlots;};
+		void setPlotWrapper(PlotWrapper *thePlots){targetPlots=thePlots;};
 		//!Set the listbox for plot selection
 		void setPlotList(wxListBox *box){plotSelList=box;};
 		
@@ -233,8 +244,8 @@ class VisController
 		//!Set the properties using a key-value result (as obtaed from updatewxPropertyGrid)
 		/*! The return code tells whether to reject or accept the change. 
 		 */
-		bool setCamProperties(unsigned long long camUniqueID, unsigned int set,
-					unsigned int key, const std::string &value);
+		bool setCamProperties(unsigned long long camUniqueID, 
+				unsigned int key, const std::string &value);
 
 		//!Set the filter user text
 		bool setFilterString(unsigned long long id , const std::string &s);
@@ -264,6 +275,12 @@ class VisController
 
 		//!Load the viscontrol state.	
 		bool loadState(const char *filename, std::ostream &f,bool merge=false);	
+
+		//!Are we currently using relative paths due to a previous load?
+		bool usingRelPaths() const { return useRelativePathsForSave;};
+
+		//!Set whether to use relative paths when saving
+		void setUseRelPaths(bool useRelPaths){ useRelativePathsForSave=useRelPaths;};
 
 		//!Get the camera ID-pair data TODO: this is kinda a halfway house between
 		//updating the camera data internally and passing in the dialog box and not
@@ -306,6 +323,9 @@ class VisController
 
 		//!Retreive a given stash tree by ID
 		void getStashTree(unsigned int stashId, tree<Filter *> &t) const;
+
+		//!Get the number of stashes
+		unsigned int getNumStashes() const { return stashedFilters.size();}
 
 		//!Write out the filters into a wxtreecontrol.
 		void updateWxTreeCtrlFromStash(wxTreeCtrl *t, unsigned int stashId) const ;
@@ -351,5 +371,9 @@ class VisController
 
 		//!Set whether to use effects or not
 		void setEffects(bool enable); 
+
+		//!Returns true if any of the filters (incl. stash)
+		//return a state override (i.e. refer to external entities, such as files)
+		bool hasStateOverrides() const ;
 };
 #endif

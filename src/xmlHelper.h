@@ -37,8 +37,6 @@ using std::string;
 unsigned int XMLHelpNextType(xmlNodePtr &node,int);
 //Scroll forwards until we reach an element of a given node. return nonzero on error
 unsigned int XMLHelpFwdToElem(xmlNodePtr &node,  const char *nodeName);
-//scroll forwards until we reach an element that is NOT of a given type. return nonzero on error.
-unsigned int XMLHelpFwdNotElem(xmlNodePtr &node,const char *nodeName);
 
 
 //!Jump to the next element of the given name and retreive the value for the specified attrip
@@ -70,6 +68,7 @@ bool XMLGetNextElemAttrib(xmlNodePtr &nodePtr, T &v, const char *nodeName, const
 }
 
 
+//Returns false on failure 
 template<class T>
 bool XMLGetAttrib(xmlNodePtr &nodePtr, T&v, const char *attrib)
 {

@@ -39,16 +39,4 @@ unsigned int XMLHelpFwdToElem(xmlNodePtr &node, const char *nodeName)
 	return (!node);
 }
 
-unsigned int XMLHelpFwdNotElem(xmlNodePtr &node,const char *nodeName)
-{
-	do
-	{
-		node=node->next;
-	}while(node !=NULL && node->type != XML_ELEMENT_NODE && 
-		!xmlStrcmp(node->name,(const xmlChar *)nodeName));
-	
-	return !node;
-}
-
-
 

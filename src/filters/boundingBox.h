@@ -39,7 +39,7 @@ class BoundingBoxFilter : public Filter
 					ProgressData &progress, bool (*callback)(void));
 		//!Force a re-read of the rangefile Return value is range file reading error code
 		unsigned int updateRng();
-		virtual std::string typeString() const { return std::string("Bound box");};
+		virtual std::string typeString() const { return std::string(TRANS("Bound box"));};
 
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
 		void getProperties(FilterProperties &propertyList) const;

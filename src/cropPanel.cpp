@@ -56,6 +56,7 @@ CropPanel::CropPanel(wxWindow * parent, wxWindowID id,
 	const wxPoint & pos,const wxSize & size,long style) 
 		: wxPanel(parent, id, pos, size, style)
 {
+	SetBackgroundStyle(wxBG_STYLE_CUSTOM);
 	programmaticEvent=false;
 	crop[0]=crop[1]=crop[2]=crop[3]=0.2;
 	selMode=SELECT_MODE_NONE;
@@ -72,7 +73,6 @@ void CropPanel::OnEraseBackground(wxEraseEvent &event)
 
 void CropPanel::mouseMove(wxMouseEvent &event)
 {
-	//set the snap position using a bitmask
 	int w,h;
 	w=0;h=0;
 
@@ -82,7 +82,7 @@ void CropPanel::mouseMove(wxMouseEvent &event)
 		return;
 
 	//Do our calculations in reduced coordinates (0->1);
-	float xMouse,yMouse,x,y;
+	float xMouse,yMouse;
 	wxPoint mousePos =event.GetPosition();
 	//Add a 1px border around control
 	xMouse=(float)(mousePos.x+1)/(float)(w-2);
@@ -90,119 +90,12 @@ void CropPanel::mouseMove(wxMouseEvent &event)
 	
 	if(!dragging)
 	{
+		unsigned int index;
+		selMode=getBestCropWidget(xMouse,yMouse,index);
 
-
-		float meanPx = 1.0/(1.0/(w-2) + 1.0/(h-2));
-		unsigned int minIndex;
-		float minDist,tmpDist;
-
-		//work our way clockwise around the corners
-		//finding the minimum distance
-		for(unsigned int ui=0;ui<4;ui++)
-		{
-			//Check this corner
-			switch(ui)
-			{
-				case 0:
-					//Top left corner
-					x=crop[CROP_LEFT];
-					y=crop[CROP_TOP];
-					break;
-				case 1:
-					//Top right corner
-					x=1.0-crop[CROP_RIGHT];
-					y=crop[CROP_TOP];
-					break;
-
-				case 2:
-					//Bottom right corner
-					x=1.0-crop[CROP_RIGHT];
-					y=1.0-crop[CROP_BOTTOM];
-					break;
-				case 3:
-					//Bottom left corner
-					x=crop[CROP_LEFT];
-					y=1.0-crop[CROP_BOTTOM];
-					break;
-			}
-
-			tmpDist=(xMouse-x)*(xMouse-x) + (yMouse-y)*(yMouse-y);
-			if(!ui || tmpDist < minDist) //first pass - no data
-			{
-				minIndex=ui;
-				minDist=tmpDist;
-			}
-		}
-
-		minDist=sqrtf(minDist);
-		bool haveCorner;
-
-		const float MIN_CUTOFF_DISTANCE= 3;
-
-		//Do we have a corner minimum?
-		haveCorner= ((int)(minDist*meanPx) < MIN_CUTOFF_DISTANCE);
-
-		bool haveCentre;
-		float meanX = (float)(crop[0] + (1.0-crop[2]))*0.5;
-		float meanY = (float)(crop[1] + (1.0-crop[3]))*0.5;
-		
-		float centreDist;
-		centreDist=sqrtf((xMouse-meanX)*(xMouse-meanX)
-				+ (yMouse-meanY)*(yMouse-meanY));
-		//Check the centre, which is allowed to trump the corners
-		if(haveCorner)
-			haveCentre=(centreDist< minDist);
-		else
-			haveCentre=(meanPx*centreDist) < MIN_CUTOFF_DISTANCE;
-
-		
-
-		unsigned int sideIndex;
-
-		bool haveSide=false;
-		//OK, well, we are allowed to have a side match, check that.
-		if(fabs(crop[CROP_LEFT] - xMouse)*meanPx < MIN_CUTOFF_DISTANCE)
-		{
-			haveSide=true;
-			sideIndex=CROP_LEFT;
-		}
-		//OK, well, we are allowed to have a side match, check that.
-		else if(fabs((1.0-crop[CROP_RIGHT]) - xMouse)*meanPx < MIN_CUTOFF_DISTANCE)
-		{
-			haveSide=true;
-			sideIndex=CROP_RIGHT;
-		}
-		else if(fabs(crop[CROP_TOP] - yMouse)*meanPx < MIN_CUTOFF_DISTANCE)
-		{
-			haveSide=true;
-			sideIndex=CROP_TOP;
-		}
-		else if(fabs((1.0- crop[CROP_BOTTOM]) - yMouse)*meanPx < MIN_CUTOFF_DISTANCE)
-		{
-			haveSide=true;
-			sideIndex=CROP_BOTTOM;
-		}
-
-
-		//!Prioritise selection mode
-		if(haveCentre)
-		{
-			selMode=SELECT_MODE_CENTRE;
-		}
-		else if(haveCorner)
-		{
-			selMode=SELECT_MODE_CORNER;
-			selIndex=minIndex;
-		}
-		else if(haveSide)
-		{
-			selMode=SELECT_MODE_SIDE;
-			selIndex=sideIndex;
-		}
-		else
-		{
-			selMode=SELECT_MODE_NONE;
-		}
+		//Update the currently selected index as needed
+		if(selMode == SELECT_MODE_SIDE || selMode == SELECT_MODE_CORNER)
+			selIndex=index;
 	}
 	else
 	{
@@ -313,10 +206,176 @@ void CropPanel::mouseMove(wxMouseEvent &event)
 	Refresh();
 }
 
+unsigned int CropPanel::getBestCropWidget(float xMouse, float yMouse,unsigned int &index) const
+{
+	unsigned int bestSelMode=SELECT_MODE_NONE;
+	
+	int w,h;
+	w=0;h=0;
+	GetClientSize(&w,&h);
+
+	if(!w || !h)
+		return bestSelMode;
+	
+	float meanPx = 1.0/(1.0/(w-2) + 1.0/(h-2));
+	unsigned int minIndex;
+	float minDist,tmpDist,x,y;
+	//work our way clockwise around the corners
+	//finding the minimum distance
+	for(unsigned int ui=0;ui<4;ui++)
+	{
+		//Check this corner
+		switch(ui)
+		{
+			case 0:
+				//Top left corner
+				x=crop[CROP_LEFT];
+				y=crop[CROP_TOP];
+				break;
+			case 1:
+				//Top right corner
+				x=1.0-crop[CROP_RIGHT];
+				y=crop[CROP_TOP];
+				break;
+
+			case 2:
+				//Bottom right corner
+				x=1.0-crop[CROP_RIGHT];
+				y=1.0-crop[CROP_BOTTOM];
+				break;
+			case 3:
+				//Bottom left corner
+				x=crop[CROP_LEFT];
+				y=1.0-crop[CROP_BOTTOM];
+				break;
+		}
+
+		tmpDist=(xMouse-x)*(xMouse-x) + (yMouse-y)*(yMouse-y);
+		if(!ui || tmpDist < minDist) //first pass - no data
+		{
+			minIndex=ui;
+			minDist=tmpDist;
+		}
+	}
+
+	minDist=sqrtf(minDist);
+	bool haveCorner;
+
+	const float MIN_CUTOFF_DISTANCE= 3;
+
+	//Do we have a corner minimum?
+	haveCorner= ((int)(minDist*meanPx) < MIN_CUTOFF_DISTANCE);
+
+	bool haveCentre;
+	float meanX = (float)(crop[0] + (1.0-crop[2]))*0.5;
+	float meanY = (float)(crop[1] + (1.0-crop[3]))*0.5;
+	
+	float centreDist;
+	centreDist=sqrtf((xMouse-meanX)*(xMouse-meanX)
+			+ (yMouse-meanY)*(yMouse-meanY));
+	//Check the centre, which is allowed to trump the corners
+	if(haveCorner)
+		haveCentre=(centreDist< minDist);
+	else
+		haveCentre=(meanPx*centreDist) < MIN_CUTOFF_DISTANCE;
+	unsigned int sideIndex;
+
+	bool haveSide=false;
+	//OK, well, we are allowed to have a side match, check that.
+	if(fabs(crop[CROP_LEFT] - xMouse)*meanPx < MIN_CUTOFF_DISTANCE)
+	{
+		haveSide=true;
+		sideIndex=CROP_LEFT;
+	}
+	//OK, well, we are allowed to have a side match, check that.
+	else if(fabs((1.0-crop[CROP_RIGHT]) - xMouse)*meanPx < MIN_CUTOFF_DISTANCE)
+	{
+		haveSide=true;
+		sideIndex=CROP_RIGHT;
+	}
+	else if(fabs(crop[CROP_TOP] - yMouse)*meanPx < MIN_CUTOFF_DISTANCE)
+	{
+		haveSide=true;
+		sideIndex=CROP_TOP;
+	}
+	else if(fabs((1.0- crop[CROP_BOTTOM]) - yMouse)*meanPx < MIN_CUTOFF_DISTANCE)
+	{
+		haveSide=true;
+		sideIndex=CROP_BOTTOM;
+	}
+
+
+	//!Prioritise selection mode
+	if(haveCentre)
+	{
+		bestSelMode=SELECT_MODE_CENTRE;
+	}
+	else if(haveCorner)
+	{
+		bestSelMode=SELECT_MODE_CORNER;
+		index=minIndex;
+	}
+	else if(haveSide)
+	{
+		bestSelMode=SELECT_MODE_SIDE;
+		index=sideIndex;
+	}
+	else
+	{
+		bestSelMode=SELECT_MODE_NONE;
+	}
+
+	return bestSelMode;
+}
+
 void CropPanel::mouseDoubleLeftClick(wxMouseEvent& event)
 {
-	for(unsigned int ui=0;ui<4;ui++)
-		crop[ui]=0;
+	//set the snap position using a bitmask
+	int w,h;
+	w=0;h=0;
+
+	GetClientSize(&w,&h);
+
+	if(!w || !h)
+		return;
+
+
+	unsigned int index;
+
+	float xMouse,yMouse;
+	wxPoint mousePos =event.GetPosition();
+	//Add a 1px border around control
+	xMouse=(float)(mousePos.x+1)/(float)(w-2);
+	yMouse=(float)(mousePos.y+1)/(float)(h-2);
+	
+	
+	switch(getBestCropWidget(xMouse,yMouse,index))
+	{
+		//Just reset the crop values
+		//if we are at the centre or side
+		case SELECT_MODE_NONE:
+		case SELECT_MODE_CENTRE:
+		{
+			for(unsigned int ui=0;ui<4;ui++)
+				crop[ui]=0;
+			break;
+		}
+		case SELECT_MODE_SIDE:
+		{
+			//Ok, lets reset just this side
+			crop[index]=0;
+			break;
+		}
+		case SELECT_MODE_CORNER:
+		{
+			crop[index]=0;
+			crop[(index+1)%4]=0;
+			break;
+		}
+		default:
+			ASSERT(false);
+	}
+
 
 	Refresh();
 	if(linkedPanel)
@@ -534,6 +593,9 @@ void CropPanel::draw()
 
 	delete dc;
 
+	delete highPen;
+	delete normalPen;
+
 }
 
 
@@ -612,7 +674,29 @@ void CropPanel::setCropValue(unsigned int index, float v)
 	crop[index]=v;
 }
 
+void CropPanel::makeCropValuesValid()
+{
+	for(size_t ui=0;ui<4;ui++)
+	{
+		crop[ui]=std::max(crop[ui],0.0f);
+		crop[ui]=std::min(crop[ui],1.0f);
+	}
+
+	if(crop[CROP_LEFT] + crop[CROP_RIGHT] >1)
+		crop[CROP_LEFT]=crop[CROP_RIGHT]=0.2f;	
+
+	if(crop[CROP_TOP] + crop[CROP_BOTTOM] >1)
+		crop[CROP_TOP]=crop[CROP_BOTTOM]=0.2f;
+}
+
 void CropPanel::onResize(wxSizeEvent &evt)
 {
+#ifndef __WXMAC__
+	wxPaintEvent paintEvt;
+	wxPostEvent(this,paintEvt);
+#else
+	//FIXME: This is not allowable in wx, but seems to be required
+	// for wxMac??
 	draw();
+#endif
 }

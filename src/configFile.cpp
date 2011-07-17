@@ -21,6 +21,8 @@
 
 #include "filters/allFilter.h"
 
+#include "translation.h"
+
 const char *CONFIG_FILENAME="config.xml";
 
 const unsigned int MAX_RECENT=9;
@@ -39,6 +41,16 @@ const unsigned int MAX_MOUSE_PERCENT= 400;
 
 using std::endl;
 using std::string;
+
+
+ConfigFile::ConfigFile()
+{ 
+	panelMode=CONFIG_PANELMODE_REMEMBER;
+	mouseZoomRatePercent=mouseMoveRatePercent=100;
+	allowOnline=false;
+	allowOnlineVerCheck=false;
+	haveIntialAppSize=false;
+}
 
 unsigned int ConfigFile::getMaxHistory() const
 {
@@ -84,6 +96,26 @@ void ConfigFile::setFilterDefaults(const vector<Filter *>  &defs)
 		filterDefaults[ui]=defs[ui];
 		ASSERT(!(filterDefaults[ui]->canBeHazardous()));
 	}
+}
+
+
+
+bool ConfigFile::getInitialAppSize(unsigned int &x, unsigned int &y) const
+{
+	if(haveIntialAppSize)
+	{
+		x=initialSizeX;
+		y=initialSizeY;
+	}
+	
+	return haveIntialAppSize;
+}
+
+void ConfigFile::setInitialAppSize(unsigned int x, unsigned int y)
+{
+	haveIntialAppSize=true;
+	initialSizeX=x;
+	initialSizeY=y;
 }
 
 Filter *ConfigFile::getDefaultFilter(unsigned int type) const
@@ -151,12 +183,29 @@ unsigned int ConfigFile::read()
 		//This *should* be an threeDepict state file
 		if(xmlStrcmp(nodePtr->name, (const xmlChar *)"threeDepictconfig"))
 		{
-			errMessage="Config file present, but is not valid (root node test)";
+			errMessage=TRANS("Config file present, but is not valid (root node test)");
 			throw 1;
 		}
 
+		//push root node
 		nodeStack.push(nodePtr);
 		nodePtr=nodePtr->xmlChildrenNode;	
+		
+		//push not quite root tag	
+		nodeStack.push(nodePtr);
+		if(!XMLHelpFwdToElem(nodePtr,"initialwinsize"))
+		{
+			if(XMLGetAttrib(nodePtr, initialSizeX, "width") &&
+				XMLGetAttrib(nodePtr,initialSizeY,"height"))
+			{
+				if( initialSizeX >0 && initialSizeY > 0)
+					haveIntialAppSize=true;
+			}
+		}
+		nodePtr=nodeStack.top();
+		nodeStack.pop();
+
+
 		//Clean up current configuration
 		recentFiles.clear();
 		
@@ -175,12 +224,15 @@ unsigned int ConfigFile::read()
 				xmlString=xmlGetProp(nodePtr,(const xmlChar *)"name");
 				if(!xmlString)
 				{
-					errMessage="Unable to interpret recent file entry";
+					errMessage=TRANS("Unable to interpret recent file entry");
+					xmlFree(xmlString);
 					throw 1;
 				}
 				thisName=(char *)xmlString;
 
 				recentFiles.push_back(thisName);
+
+				xmlFree(xmlString);
 			}
 		}
 
@@ -213,7 +265,7 @@ unsigned int ConfigFile::read()
 
 					if(!f)
 					{
-						errMessage="Unable to determine filter type in defaults listing.";
+						errMessage=TRANS("Unable to determine filter type in defaults listing.");
 						throw 1;
 					}
 			
@@ -260,6 +312,8 @@ unsigned int ConfigFile::read()
 			
 				if(panelMode >=CONFIG_PANELMODE_END_ENUM)	
 					panelMode=CONFIG_PANELMODE_NONE;
+
+				xmlFree(xmlString);
 			}
 
 			if(panelMode)
@@ -273,6 +327,8 @@ unsigned int ConfigFile::read()
 						startupPanelView[CONFIG_STARTUPPANEL_RAWDATA]=true;
 					else
 						startupPanelView[CONFIG_STARTUPPANEL_RAWDATA]=false;
+				
+					xmlFree(xmlString);
 				}
 				
 				xmlString=xmlGetProp(nodePtr,(xmlChar*)"control");
@@ -284,6 +340,7 @@ unsigned int ConfigFile::read()
 						startupPanelView[CONFIG_STARTUPPANEL_CONTROL]=true;
 					else
 						startupPanelView[CONFIG_STARTUPPANEL_CONTROL]=false;
+					xmlFree(xmlString);
 				}
 
 				xmlString=xmlGetProp(nodePtr,(xmlChar*)"plotlist");
@@ -295,6 +352,7 @@ unsigned int ConfigFile::read()
 						startupPanelView[CONFIG_STARTUPPANEL_PLOTLIST]=true;
 					else
 						startupPanelView[CONFIG_STARTUPPANEL_PLOTLIST]=false;
+					xmlFree(xmlString);
 				}
 		
 			}
@@ -330,6 +388,49 @@ unsigned int ConfigFile::read()
 			}
 		}
 
+		nodePtr=nodePtr->next;
+		nodeStack.push(nodePtr);
+		if(!XMLHelpFwdToElem(nodePtr,"netaccess"))
+		{
+			std::string tmpStr;
+			xmlChar *xmlString;
+			
+			xmlString=xmlGetProp(nodePtr,(xmlChar*)"enabled");
+			if(xmlString)
+			{
+				tmpStr=(char *)xmlString;
+				if(tmpStr == "1")
+					allowOnline=true;
+				else
+					allowOnline=false;
+				xmlFree(xmlString);
+			}
+			
+			if(nodePtr->xmlChildrenNode)
+			{
+				nodePtr=nodePtr->xmlChildrenNode;
+
+				if(!XMLHelpFwdToElem(nodePtr,"versioncheck"))
+				{
+					xmlChar *xmlString;
+					
+					xmlString=xmlGetProp(nodePtr,(xmlChar*)"enabled");
+					if(xmlString)
+					{
+						tmpStr=(char *)xmlString;
+						if(tmpStr == "1")
+							allowOnlineVerCheck=true;
+						else
+							allowOnlineVerCheck=false;
+
+						xmlFree(xmlString);
+					}
+
+				}
+			}
+		}
+		nodePtr=nodeStack.top();
+		nodeStack.pop();
 nodeptrEndJump:
 		;
 
@@ -369,6 +470,12 @@ bool ConfigFile::write()
 	f<< "<threeDepictconfig>" << endl;
 	f<<tabs(1)<< "<writer version=\"" << PROGRAM_VERSION << "\"/>" << endl;
 
+	if(haveIntialAppSize)	
+	{
+		f<<tabs(1)<< "<initialwinsize width=\"" << initialSizeX << "\" height=\"" <<
+				initialSizeY << "\"/>" << endl;
+	}
+
 	f<<tabs(1) << "<recent>" << endl;
 
 	for(unsigned int ui=0;ui<recentFiles.size();ui++)
@@ -396,6 +503,18 @@ bool ConfigFile::write()
 	f << tabs(2) <<  "<speed zoom=\"" << mouseZoomRatePercent << "\" move=\"" << 
 	       		mouseMoveRatePercent << "\"/>" << endl;
 	f << tabs(1) <<  "</mousedefaults> " << endl;
+
+
+#if (!defined(APPLE) && !defined(WIN32))
+	f << tabs(1) << TRANS("<!-- Online access for non win32/apple platforms is intentionally disabled, ") <<
+		TRANS("regardless of the settings you use here. Use your package manager to keep up-to-date -->") << endl;
+#endif
+	f << tabs(1) <<  "<netaccess enabled=\"" << allowOnline <<  "\"> " << endl;
+
+	f << tabs(2) <<  "<versioncheck enabled=\"" << boolStrEnc(allowOnlineVerCheck) << "\"/> " << endl;
+	
+	f << tabs(1) <<  "</netaccess>" << endl;
+
 
 	f << "</threeDepictconfig>" << endl;
 
@@ -452,4 +571,35 @@ unsigned int ConfigFile::getStartupPanelMode() const
 }
 
 
+bool ConfigFile::getAllowOnlineVersionCheck() const
+{
+	#if defined( APPLE) || defined(WIN32)
+		//Apple and windows don't have good package
+		//management systems as yet, so we check,
+		//iff the user opts in
+		return allowOnlineVerCheck;
+	#else
+		//Linux and friends should NEVER look online.
+		//as they have package management systems to do this.
+		return false;
+	#endif
+}
 
+void ConfigFile::setAllowOnline(bool v)
+{
+	//Do not allow this setting to
+	//be modified from the default for non-apple-non windows 
+	//platforms
+	#if defined( APPLE) || defined(WIN32)
+		allowOnline=v;
+	#endif
+}
+void ConfigFile::setAllowOnlineVersionCheck(bool v)
+{
+	//Do not allow this setting to
+	//be modified from the default for non-apple-non windows 
+	//platforms
+	#if defined( APPLE) || defined(WIN32)
+		allowOnlineVerCheck=v;
+	#endif
+}

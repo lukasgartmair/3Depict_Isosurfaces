@@ -67,7 +67,7 @@ class CompositionProfileFilter : public Filter
 						std::vector<const FilterStreamData *> &getOut, 
 						ProgressData &progress, bool (*callback)(void));
 		
-		virtual std::string typeString() const { return std::string("Comp. Prof.");};
+		virtual std::string typeString() const { return std::string(TRANS("Comp. Prof."));};
 
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
 		void getProperties(FilterProperties &propertyList) const;
@@ -92,7 +92,7 @@ class CompositionProfileFilter : public Filter
 		//!Set internal property value using a selection binding  
 		void setPropFromBinding(const SelectionBinding &b) ;
 
-		bool setUserString(const std::string &s); 
+		void setUserString(const std::string &s); 
 };
 
 #endif

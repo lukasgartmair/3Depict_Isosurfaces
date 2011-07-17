@@ -67,7 +67,7 @@ enum
 	ERR_FILE_INPUT_OPEN_FAIL=1,
 	ERR_FILE_OPEN_FAIL,
 	ERR_FILE_OUT_FAIL,
-	ERR_FILE_FORMAT_FAIL,
+	ERR_FILE_FORMAT_FAIL
 };
 
 
@@ -88,6 +88,8 @@ std::string convertFileStringToNative(const std::string &s);
 //!Convert a path format into a unix path from native format
 std::string convertFileStringToCanonical(const std::string &s);
 
+//!Convert a normal string to a latex one, using charachter replacement
+std::wstring convertToLaTeX(const std::wstring& toConv); 
 
 //!A routine for loading numeric data from a text file
 unsigned int loadTextData(const char *cpFilename, 
@@ -133,6 +135,22 @@ std::string getActiveChoice(std::string choiceString);
 
 //!Convert a choiceString() into something that a wxGridCellChoiceEditor will accept
 std::string wxChoiceParamString(std::string choiceString);
+
+
+inline std::string stlWStrToStlStr(const std::wstring& s)
+{
+	std::string temp(s.length(),' ');
+	std::copy(s.begin(), s.end(), temp.begin());
+	return temp; 
+}
+
+inline std::wstring stlStrToStlWStr(const std::string& s)
+{
+	std::wstring temp(s.length(),L' ');
+	std::copy(s.begin(), s.end(), temp.begin());
+	return temp;
+}
+
 //performs a string stream cast
 //Returns true on failure
 template<class T1, class T2> bool stream_cast(T1 &result,const T1 &obj);
@@ -142,6 +160,15 @@ template<class T1, class T2> bool stream_cast(T1 &result,const T1 &obj);
 template<class T1, class T2> bool stream_cast(T1 &result, const T2 &obj)
 {
     std::stringstream ss;
+    ss << obj;
+    ss >> result;
+    return ss.fail();
+}
+
+template<class T1, class T2> bool stream_cast_noskip(T1 &result, const T2 &obj)
+{
+    std::stringstream ss;
+    ss >> std::noskipws;
     ss << obj;
     ss >> result;
     return ss.fail();
@@ -164,6 +191,22 @@ inline unsigned int getBitNum(unsigned int u)
 	return j;
 }
 
+
+inline bool isVersionNumberString(const std::string &s)
+{
+	for(unsigned int ui=0;ui<s.size();ui++)
+	{
+		if(!isdigit(s[ui]) )
+		{
+
+			if(s[ui] !='.' || ui ==0 || ui ==s.size())
+				return false;
+		}
+	}
+
+	return true;
+}
+
 //Strip whitespace from a string
 std::string stripWhite(const std::string &str);
 
@@ -181,6 +224,9 @@ void genColString(unsigned char r, unsigned char g,
 			unsigned char b, unsigned char a, std::string &s);
 void genColString(unsigned char r, unsigned char g, 
 			unsigned char b, std::string &s);
+
+//!Retrieve the maximum version string from a list of version strings
+std::string getMaxVerStr(const std::vector<std::string> &verStrings);
 
 //!Strip whitespace
 std::string stripWhite(const std::string &str);
@@ -234,7 +280,16 @@ inline std::string tabs(unsigned int nTabs)
 	return s;
 }
 
-//Pair functor
+class ComparePairFirst
+{
+	public:
+	template<class T1, class T2>
+	bool operator()(const std::pair<  T1, T2 > &p1, const std::pair<T1,T2> &p2)
+	{
+		return p1.first< p2.first;
+	}
+};
+
 class ComparePairSecond
 {
 	public:
@@ -245,15 +300,6 @@ class ComparePairSecond
 	}
 };
 
-class ComparePairFirst
-{
-	public:
-	template<class T1, class T2>
-	bool operator()(const std::pair<  T1, T2 > &p1, const std::pair<T1,T2> &p2)
-	{
-		return p1.first< p2.first;
-	}
-};
 
 class ComparePairFirstReverse
 {
@@ -361,6 +407,8 @@ public:
     void expand(const BoundCube &b);
     //!Expand such that point is contained in this volume. Existing volume must be valid
     void expand(const Point3D &p);
+    //!Expand by a specified thickness 
+    void expand(float v);
 
 
     friend  std::ostream &operator<<(std::ostream &stream, const BoundCube& b);
@@ -371,25 +419,6 @@ public:
 };
 
 
-//!A colour data storage structure 
-class Colour
-{
-	public:
-		//!colours, range [0,1.0f]
-		float r,g,b,a;
-		std::string asString() const; 
-		bool fromString(const std::string &str);
-};
-
-//return the luminence value
-inline float getLum(float r, float g, float b)
-{
-	using std::max; 
-	using std::min;
-
-
-	return 0.5*(max(max(r,g),b) + min(r,min(g,b)));
-}
 
 //!Return only the filename component
 std::string onlyFilename( const std::string& path );

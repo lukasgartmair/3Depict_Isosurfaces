@@ -19,6 +19,7 @@
 
 #include "ExportPos.h"
 
+#include "translation.h"
 // begin wxGlade: ::extracode
 
 // end wxGlade
@@ -41,23 +42,23 @@ enum
 
 
 ExportPosDialog::ExportPosDialog(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
-    wxDialog(parent, id, title, pos, size, wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER|wxTHICK_FRAME)
+    wxDialog(parent, id, title, pos, size, wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER)
 
 {
 	haveRefreshed=false;
 	exportVisible=true;
 	// begin wxGlade: ExportPosDialog::ExportPosDialog
-	lblExport = new wxStaticText(this, wxID_ANY, wxT("Export:"));
-	radioVisible = new wxRadioButton(this,ID_RADIO_VISIBLE , wxT("Visible"));
-	radioSelection = new wxRadioButton(this,ID_RADIO_SELECTION , wxT("Selected Data"));
+	lblExport = new wxStaticText(this, wxID_ANY, wxTRANS("Export:"));
+	radioVisible = new wxRadioButton(this,ID_RADIO_VISIBLE , wxTRANS("Visible"));
+	radioSelection = new wxRadioButton(this,ID_RADIO_SELECTION , wxTRANS("Selected Data"));
 	treeData = new wxTreeCtrl(this, ID_TREE_FILTERS, wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_HIDE_ROOT|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER);
-	lblAvailableData = new wxStaticText(this, wxID_ANY, wxT("Available Data"));
+	lblAvailableData = new wxStaticText(this, wxID_ANY, wxTRANS("Available Data"));
 	listAvailable = new wxListCtrl(this, ID_LIST_AVAILABLE, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxSUNKEN_BORDER|wxLC_VRULES);
 	btnAddData = new wxButton(this, ID_BTN_ADDDATA, wxT(">"));
 	btnAddNode = new wxButton(this,ID_BTN_ADDNODE, wxT(">>"));
 	btnAddAll = new wxButton(this, ID_BTN_ADDALL, wxT(">>>"));
 	panel_2 = new wxPanel(this, wxID_ANY);
-	label_4 = new wxStaticText(this, wxID_ANY, wxT("Selection"));
+	label_4 = new wxStaticText(this, wxID_ANY, wxTRANS("Selection"));
 	listSelected = new wxListCtrl(this, ID_LIST_SELECTED, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxSUNKEN_BORDER);
 	btnSave = new wxButton(this, wxID_SAVE, wxEmptyString);
 	btnCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
@@ -73,11 +74,11 @@ ExportPosDialog::ExportPosDialog(wxWindow* parent, int id, const wxString& title
 
 
 	//Add columns to report listviews
-	listSelected->InsertColumn(0,_("Index"));
-	listSelected->InsertColumn(1,_("Count"));
+	listSelected->InsertColumn(0,wxTRANS("Index"));
+	listSelected->InsertColumn(1,wxTRANS("Count"));
 	
-	listAvailable->InsertColumn(0,_("Index"));
-	listAvailable->InsertColumn(1,_("Count"));
+	listAvailable->InsertColumn(0,wxTRANS("Index"));
+	listAvailable->InsertColumn(1,wxTRANS("Count"));
 }
 
 void ExportPosDialog::cleanup(VisController *v)
@@ -425,7 +426,7 @@ void ExportPosDialog::getExportVec(std::vector<const FilterStreamData * > &v) co
 void ExportPosDialog::set_properties()
 {
     // begin wxGlade: ExportPosDialog::set_properties
-    SetTitle(wxT("Export Pos Data"));
+    SetTitle(wxTRANS("Export Pos Data"));
     // end wxGlade
 }
 

@@ -29,7 +29,7 @@ enum
 {
 	SELECT_BUTTON_LEFT=1,
 	SELECT_BUTTON_MIDDLE=2,
-	SELECT_BUTTON_RIGHT=4,
+	SELECT_BUTTON_RIGHT=4
 };
 
 //!Keyboard keydown flags

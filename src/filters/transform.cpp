@@ -2,6 +2,8 @@
 
 #include "../xmlHelper.h"
 
+#include "../translation.h"
+
 #include <algorithm>
 
 enum
@@ -14,7 +16,7 @@ enum
 	KEY_NOISELEVEL,
 	KEY_NOISETYPE,
 	KEY_ROTATE_ANGLE,
-	KEY_ROTATE_AXIS,
+	KEY_ROTATE_AXIS
 };
 
 //Possible transform modes (scaling, rotation etc)
@@ -104,6 +106,7 @@ DrawStreamData* TransformFilter::makeMarkerSphere(SelectionDevice<Filter>* &s) c
 {
 	//construct a new primitive, do not cache
 	DrawStreamData *drawData=new DrawStreamData;
+	drawData->parent=this;
 	//Add drawable components
 	DrawSphere *dS = new DrawSphere;
 	dS->setOrigin(vectorParams[0]);
@@ -287,6 +290,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 						{
 							//Set up scaling output ion stream 
 							IonStreamData *d=new IonStreamData;
+							d->parent=this;
 							const IonStreamData *src = (const IonStreamData *)dataIn[ui];
 
 							try
@@ -406,6 +410,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 						{
 							//Set up scaling output ion stream 
 							IonStreamData *d=new IonStreamData;
+							d->parent=this;
 
 							const IonStreamData *src = (const IonStreamData *)dataIn[ui];
 							try
@@ -520,6 +525,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							const IonStreamData *src = (const IonStreamData *)dataIn[ui];
 							//Set up output ion stream 
 							IonStreamData *d=new IonStreamData;
+							d->parent=this;
 							try
 							{
 								d->data.resize(src->data.size());
@@ -619,6 +625,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 						{
 							//Set up scaling output ion stream 
 							IonStreamData *d=new IonStreamData;
+							d->parent=this;
 
 							const IonStreamData *src = (const IonStreamData *)dataIn[ui];
 							try
@@ -743,7 +750,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 	{
 		progress.step=1;
 		progress.filterProgress=0;
-		progress.stepName="Collate";
+		progress.stepName=TRANS("Collate");
 		progress.maxStep=3;
 		//we have to cross the streams (I thought that was bad?) 
 		//  - Each dataset is no longer independant, and needs to
@@ -751,6 +758,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		
 		//Set up output ion stream 
 		IonStreamData *d=new IonStreamData;
+		d->parent=this;
 		
 		//TODO: Better output colouring/size
 		//Set up ion metadata
@@ -759,7 +767,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		d->b = 0.5;
 		d->a = 0.5;
 		d->ionSize = 2.0;
-		d->valueType="Mass-to-Charge";
+		d->valueType=TRANS("Mass-to-Charge");
 
 		size_t n=0;
 		size_t curPos=0;
@@ -822,7 +830,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 	
 		progress.step=1;
 		progress.filterProgress=0;
-		progress.stepName="Shuffle";
+		progress.stepName=TRANS("Shuffle");
 		if(!(*callback)())
 		{
 			delete d;
@@ -838,7 +846,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 
 		progress.step=2;
 		progress.filterProgress=0;
-		progress.stepName="Shuffle";
+		progress.stepName=TRANS("Splice");
 		if(!(*callback)())
 		{
 			delete d;
@@ -896,23 +904,23 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 
 	string tmpStr;
 	vector<pair<unsigned int,string> > choices;
-	choices.push_back(make_pair((unsigned int) MODE_TRANSLATE,"Translate"));
-	choices.push_back(make_pair((unsigned int)MODE_SCALE,"Scale"));
-	choices.push_back(make_pair((unsigned int)MODE_ROTATE,"Rotate"));
-	choices.push_back(make_pair((unsigned int)MODE_VALUE_SHUFFLE,"Value Shuffle"));
-	choices.push_back(make_pair((unsigned int)MODE_SPATIAL_NOISE,"Spatial Noise"));
+	choices.push_back(make_pair((unsigned int) MODE_TRANSLATE,TRANS("Translate")));
+	choices.push_back(make_pair((unsigned int)MODE_SCALE,TRANS("Scale")));
+	choices.push_back(make_pair((unsigned int)MODE_ROTATE,TRANS("Rotate")));
+	choices.push_back(make_pair((unsigned int)MODE_VALUE_SHUFFLE,TRANS("Value Shuffle")));
+	choices.push_back(make_pair((unsigned int)MODE_SPATIAL_NOISE,TRANS("Spatial Noise")));
 	
 	tmpStr= choiceString(choices,transformMode);
 	choices.clear();
 	
-	s.push_back(make_pair(string("Mode"),tmpStr));
+	s.push_back(make_pair(string(TRANS("Mode")),tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	keys.push_back(KEY_MODE);
 	
 	propertyList.data.push_back(s);
 	propertyList.types.push_back(type);
 	propertyList.keys.push_back(keys);
-	propertyList.keyNames.push_back("Type");
+	propertyList.keyNames.push_back(TRANS("Type"));
 	s.clear();type.clear();keys.clear();
 	
 	//non-translation transforms require a user to select an origin	
@@ -924,12 +932,12 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 		
 		tmpStr= choiceString(choices,originMode);
 
-		s.push_back(make_pair(string("Origin mode"),tmpStr));
+		s.push_back(make_pair(string(TRANS("Origin mode")),tmpStr));
 		type.push_back(PROPERTY_TYPE_CHOICE);
 		keys.push_back(KEY_ORIGINMODE);
 	
 		stream_cast(tmpStr,showOrigin);	
-		s.push_back(make_pair(string("Show marker"),tmpStr));
+		s.push_back(make_pair(string(TRANS("Show marker")),tmpStr));
 		type.push_back(PROPERTY_TYPE_BOOL);
 		keys.push_back(KEY_TRANSFORM_SHOWORIGIN);
 	}
@@ -945,7 +953,7 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 			
 			stream_cast(tmpStr,vectorParams[0]);
 			keys.push_back(KEY_ORIGIN);
-			s.push_back(make_pair("Translation", tmpStr));
+			s.push_back(make_pair(TRANS("Translation"), tmpStr));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			break;
 		}
@@ -959,13 +967,13 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 			{
 				stream_cast(tmpStr,vectorParams[0]);
 				keys.push_back(KEY_ORIGIN);
-				s.push_back(make_pair("Origin", tmpStr));
+				s.push_back(make_pair(TRANS("Origin"), tmpStr));
 				type.push_back(PROPERTY_TYPE_POINT3D);
 			}
 
 			stream_cast(tmpStr,scalarParams[0]);
 			keys.push_back(KEY_SCALEFACTOR);
-			s.push_back(make_pair("Scale Fact.", tmpStr));
+			s.push_back(make_pair(TRANS("Scale Fact."), tmpStr));
 			type.push_back(PROPERTY_TYPE_REAL);
 			break;
 		}
@@ -977,17 +985,17 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 			{
 				stream_cast(tmpStr,vectorParams[0]);
 				keys.push_back(KEY_ORIGIN);
-				s.push_back(make_pair("Origin", tmpStr));
+				s.push_back(make_pair(TRANS("Origin"), tmpStr));
 				type.push_back(PROPERTY_TYPE_POINT3D);
 			}
 			stream_cast(tmpStr,vectorParams[1]);
 			keys.push_back(KEY_ROTATE_AXIS);
-			s.push_back(make_pair("Axis", tmpStr));
+			s.push_back(make_pair(TRANS("Axis"), tmpStr));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 
 			stream_cast(tmpStr,scalarParams[0]);
 			keys.push_back(KEY_ROTATE_ANGLE);
-			s.push_back(make_pair("Angle (deg)", tmpStr));
+			s.push_back(make_pair(TRANS("Angle (deg)"), tmpStr));
 			type.push_back(PROPERTY_TYPE_REAL);
 			break;
 		}
@@ -1003,7 +1011,7 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 			tmpStr= choiceString(choices,noiseType);
 			choices.clear();
 			
-			s.push_back(make_pair(string("Noise Type"),tmpStr));
+			s.push_back(make_pair(string(TRANS("Noise Type")),tmpStr));
 			type.push_back(PROPERTY_TYPE_CHOICE);
 			keys.push_back(KEY_NOISETYPE);
 
@@ -1011,9 +1019,9 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 			stream_cast(tmpStr,scalarParams[0]);
 			keys.push_back(KEY_NOISELEVEL);
 			if(noiseType == NOISETYPE_WHITE)
-				s.push_back(make_pair("Noise level", tmpStr));
+				s.push_back(make_pair(TRANS("Noise level"), tmpStr));
 			else if(noiseType == NOISETYPE_GAUSSIAN)
-				s.push_back(make_pair("Standard dev.", tmpStr));
+				s.push_back(make_pair(TRANS("Standard dev."), tmpStr));
 			else
 			{
 				ASSERT(false);
@@ -1035,7 +1043,7 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 		propertyList.data.push_back(s);
 		propertyList.types.push_back(type);
 		propertyList.keys.push_back(keys);
-		propertyList.keyNames.push_back("Transform Params");
+		propertyList.keyNames.push_back(TRANS("Transform Params"));
 	}
 
 }
@@ -1053,15 +1061,15 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 			//TODO: Mkove these into an array,
 			//so they are synced with ::getProperties 
 			// (it wont work if these are not synced)
-			if(value == "Translate")
+			if(value == TRANS("Translate"))
 				transformMode= MODE_TRANSLATE;
-			else if ( value == "Scale" )
+			else if ( value == TRANS("Scale") )
 				transformMode= MODE_SCALE;
-			else if ( value == "Rotate")
+			else if ( value == TRANS("Rotate"))
 				transformMode= MODE_ROTATE;
-			else if ( value == "Value Shuffle")
+			else if ( value == TRANS("Value Shuffle"))
 				transformMode= MODE_VALUE_SHUFFLE;
-			else if ( value == "Spatial Noise")
+			else if ( value == TRANS("Spatial Noise"))
 				transformMode= MODE_SPATIAL_NOISE;
 			else
 				return false;
@@ -1213,10 +1221,10 @@ std::string  TransformFilter::getErrString(unsigned int code) const
 	{
 		//User aborted in a callback
 		case ERR_CALLBACK_FAIL:
-			return std::string("Aborted");
+			return std::string(TRANS("Aborted"));
 		//Caught a memory issue
 		case ERR_NOMEM:
-			return std::string("Unable to allocate memory");
+			return std::string(TRANS("Unable to allocate memory"));
 	}
 }
 

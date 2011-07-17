@@ -2,19 +2,21 @@
 #include "../xmlHelper.h"
 #include "../commonConstants.h"
 
+#include "../translation.h"
+
 enum
 {
 	KEY_RANGE_ACTIVE=1,
 	KEY_RANGE_IONID,
 	KEY_RANGE_START,
-	KEY_RANGE_END,
+	KEY_RANGE_END
 };
 
 //!Error codes
 enum
 {
 	RANGEFILE_ABORT_FAIL=1,
-	RANGEFILE_BAD_ALLOC,
+	RANGEFILE_BAD_ALLOC
 };
 //== Range File Filter == 
 
@@ -61,7 +63,7 @@ void RangeFileFilter::initFilter(const std::vector<const FilterStreamData *> &da
 	if(rng.getNumIons() && rng.getNumRanges())
 	{
 		RangeStreamData *rngData=new RangeStreamData;
-		rngData->parentFilter=this;
+		rngData->parent=this;
 		rngData->rangeFile=&rng;	
 		rngData->enabledRanges.resize(enabledRanges.size());	
 		std::copy(enabledRanges.begin(),enabledRanges.end(),rngData->enabledRanges.begin());
@@ -104,9 +106,13 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 
 	//Generate output filter streams. 
 	for(unsigned int ui=0;ui<d.size(); ui++)
+	{
 		d[ui] = new IonStreamData;
+		d[ui]->parent=this;
+	}
 
 	bool haveDefIonColour=false;
+	//GCC complains about this, but this is protected by haveDefIonColour.
 	RGBf defIonColour;
 
 	//Try to maintain ion size if possible
@@ -401,7 +407,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 
 	//Put out rangeData
 	RangeStreamData *rngData=new RangeStreamData;
-	rngData->parentFilter=this;
+	rngData->parent=this;
 	rngData->rangeFile=&rng;	
 	
 	rngData->enabledRanges.resize(enabledRanges.size());	
@@ -482,7 +488,7 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 	vector<unsigned int> types,keys;
 
 	//SET 0
-	strVec.push_back(make_pair("File",rngName));
+	strVec.push_back(make_pair(TRANS("File"),rngName));
 	types.push_back(PROPERTY_TYPE_STRING);
 	keys.push_back(0);
 
@@ -492,7 +498,7 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 	else
 		tmpStr="0";
 
-	strVec.push_back(make_pair("Drop unranged",tmpStr));
+	strVec.push_back(make_pair(TRANS("Drop unranged"),tmpStr));
 	types.push_back(PROPERTY_TYPE_BOOL);
 	keys.push_back(1);
 
@@ -509,7 +515,7 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 	{
 		//Get the ion ID
 		stream_cast(suffix,ui);
-		strVec.push_back(make_pair(string("IonID " +suffix),rng.getName(ui)));
+		strVec.push_back(make_pair(string(TRANS("IonID ") +suffix),rng.getName(ui)));
 		types.push_back(PROPERTY_TYPE_STRING);
 		keys.push_back(3*ui);
 
@@ -519,7 +525,7 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 			str="1";
 		else
 			str="0";
-		strVec.push_back(make_pair(string("Active Ion ")
+		strVec.push_back(make_pair(string(TRANS("Active Ion "))
 						+ suffix,str));
 		types.push_back(PROPERTY_TYPE_BOOL);
 		keys.push_back(3*ui+1);
@@ -532,7 +538,7 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 		genColString((unsigned char)(col.red*255),(unsigned char)(col.green*255),
 				(unsigned char)(col.blue*255),255,thisCol);
 
-		strVec.push_back(make_pair(string("colour ") + suffix,thisCol)); 
+		strVec.push_back(make_pair(string(TRANS("colour ")) + suffix,thisCol)); 
 		types.push_back(PROPERTY_TYPE_COLOUR);
 		keys.push_back(3*ui+2);
 
@@ -558,12 +564,12 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 		else
 			str="0";
 
-		strVec.push_back(make_pair(string("Active Rng ")
+		strVec.push_back(make_pair(string(TRANS("Active Rng "))
 						+ suffix,str));
 		types.push_back(PROPERTY_TYPE_BOOL);
 		keys.push_back(KEY_RANGE_ACTIVE);
 
-		strVec.push_back(make_pair(string("Ion ") + suffix, 
+		strVec.push_back(make_pair(string(TRANS("Ion ")) + suffix, 
 					rng.getName(rng.getIonID(ui))));
 		types.push_back(PROPERTY_TYPE_STRING);
 		keys.push_back(KEY_RANGE_IONID);
@@ -574,12 +580,12 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 
 		string mass;
 		stream_cast(mass,thisRange.first);
-		strVec.push_back(make_pair(string("Start rng ")+suffix,mass));
+		strVec.push_back(make_pair(string(TRANS("Start rng "))+suffix,mass));
 		types.push_back(PROPERTY_TYPE_REAL);
 		keys.push_back(KEY_RANGE_START);
 		
 		stream_cast(mass,thisRange.second);
-		strVec.push_back(make_pair(string("End rng ")+suffix,mass));
+		strVec.push_back(make_pair(string(TRANS("End rng "))+suffix,mass));
 		types.push_back(PROPERTY_TYPE_REAL);
 		keys.push_back(KEY_RANGE_END);
 
@@ -833,9 +839,9 @@ std::string  RangeFileFilter::getErrString(unsigned int code) const
 	switch(code)
 	{
 		case RANGEFILE_ABORT_FAIL:
-			return std::string("Ranging aborted by user");
+			return std::string(TRANS("Ranging aborted by user"));
 		case RANGEFILE_BAD_ALLOC:
-			return std::string("Insufficient memory for range");
+			return std::string(TRANS("Insufficient memory for range"));
 	}
 
 	return std::string("BUG(range file filter): Shouldn't see this!");
@@ -1111,10 +1117,10 @@ void RangeFileFilter::setPropFromRegion(unsigned int method, unsigned int region
 
 	switch(method)
 	{
-		case REGION_LEFT_EXTEND:
+		case REGION_MOVE_EXTEND_XMINUS:
 			rng.moveRange(rangeID,false, newPos);
 			break;
-		case REGION_MOVE:
+		case REGION_MOVE_TRANSLATE_X:
 		{
 			std::pair<float,float> limits;
 			limits=rng.getRange(rangeID);
@@ -1123,7 +1129,7 @@ void RangeFileFilter::setPropFromRegion(unsigned int method, unsigned int region
 			rng.moveBothRanges(rangeID,newPos-delta,newPos+delta);
 			break;
 		}
-		case REGION_RIGHT_EXTEND:
+		case REGION_MOVE_EXTEND_XPLUS:
 			rng.moveRange(rangeID,true, newPos);
 			break;
 		default:

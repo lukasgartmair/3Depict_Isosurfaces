@@ -17,9 +17,6 @@
 */
 
 
-#include <wx/wx.h>
-#include <wx/image.h>
-
 #include "plot.h"
 
 #include <mgl/mgl_zb.h>
@@ -61,7 +58,7 @@ private:
 	float origPanMinX, origPanMaxX;
 
 	//!region used at mouse down
-	unsigned int startMouseRegion,regionMoveType;
+	unsigned int startMouseRegion,startMousePlot,regionMoveType;
 
 	//!Do we have region updates?
 	bool haveUpdates;
@@ -71,7 +68,7 @@ private:
 	bool limitInteract;
 
 	//!Pointer to the plot data holding class
-	Multiplot *thePlot;
+	PlotWrapper *thePlot;
 	//!Pointer to the listbox that is used for plot selection
 	wxListBox *plotSelList;
 	//!Pointer to the mathgl renderer
@@ -81,13 +78,18 @@ private:
 
 	//!Update the mouse cursor style, based upon mouse position
 	void updateMouseCursor();
+
+	//!Compute the "aspect" for a given region; ie which grab handle type
+	// does this position correspond to
+	unsigned int computeRegionMoveType(float dataX,float dataY, const PlotRegion &r) const;
+	
 public:
 
 	MathGLPane(wxWindow* parent, int id);
 	virtual ~MathGLPane();
 
 	//Set the plot pointer for this class to manipulate
-	void setPlot(Multiplot *plot);
+	void setPlotWrapper(PlotWrapper *plots);
 	//!Set the plot listbox for this class to use
 	void setPlotList(wxListBox *box){plotSelList=box;};
 
@@ -103,8 +105,7 @@ public:
 
 	//!Get the region under the cursor. Returns region num [0->...) or
 	//numeric_limits<unsigned int>::max() if nothing.
-	unsigned int getRegionUnderCursor(const wxPoint &mousePos,
-				unsigned int &rangeSide) const;
+	bool getRegionUnderCursor(const wxPoint &mousePos, unsigned int &plotId, unsigned int &regionId) const;
 
 	//!Do we have updates?
 	bool hasUpdates() const { return haveUpdates;}

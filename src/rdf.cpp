@@ -15,6 +15,7 @@
  */
 
 #include "rdf.h"
+#include "mathfuncs.h"
 #include "voxels.h"
 
 //QHull library
@@ -29,58 +30,6 @@ enum PointDir{ 	POINTDIR_TOGETHER =0,
                 POINTDIR_IN_COMMON,
                 POINTDIR_APART
              };
-
-//!Inline func for calculating a(dot)b
-inline float dotProduct(float a1, float a2, float a3, 
-			float b1, float b2, float b3)
-{
-	return a1*b1 + a2*b2 + a3* b3;
-}
-
-//A bigger MAX_NN_DISTS is better because you will attempt to grab more ram
-//however there is a chance that memory allocation can fail, which currently i do not grab safely
-const unsigned int MAX_NN_DISTS = 0x8000000; //96 MB samples at a time 
-
-double det3by3(const double *ptArray)
-{
-	return (ptArray[0]*(ptArray[4]*ptArray[8]
-			      	- ptArray[7]*ptArray[5]) 
-		- ptArray[1]*(ptArray[3]*ptArray[8]
-		       		- ptArray[6]*ptArray[5]) 
-		+ ptArray[2]*(ptArray[3]*ptArray[7] 
-				- ptArray[4]*ptArray[6]));
-}
-
-//Determines the volume of a quadrilateral pyramid
-//input points "planarpts" must be adjacent (connected) by 
-//0 <-> 1 <-> 2 <-> 0, all points connected to apex
-double pyramidVol(const Point3D *planarPts, const Point3D &apex)
-{
-
-	//Array for 3D simplex volumed determination
-	//		| (a_x - b_x)   (b_x - c_x)   (c_x - d_x) |
-	//v_simplex =1/6| (a_y - b_y)   (b_y - c_y)   (c_y - d_y) |
-	//		| (a_z - b_z)   (b_z - c_z)   (c_z - d_z) |
-	double simplexA[9];
-
-	//simplex A (a,b,c,apex) is as follows
-	//a=planarPts[0] b=planarPts[1] c=planarPts[2]
-	
-	simplexA[0] = (double)( (planarPts[0])[0] - (planarPts[1])[0] );
-	simplexA[1] = (double)( (planarPts[1])[0] - (planarPts[2])[0] );
-	simplexA[2] = (double)( (planarPts[2])[0] - (apex)[0] );
-	
-	simplexA[3] = (double)( (planarPts[0])[1] - (planarPts[1])[1] );
-	simplexA[4] = (double)( (planarPts[1])[1] - (planarPts[2])[1] );
-	simplexA[5] = (double)( (planarPts[2])[1] - (apex)[1] );
-	
-	simplexA[6] = (double)( (planarPts[0])[2] - (planarPts[1])[2] );
-	simplexA[7] = (double)( (planarPts[1])[2] - (planarPts[2])[2] );
-	simplexA[8] = (double)( (planarPts[2])[2] - (apex)[2] );
-	
-	return 1.0/6.0 * (fabs(det3by3(simplexA)));	
-}
-
 //!Check which way vectors attached to two 3D points "point", 
 /*! Two vectors may point "together", /__\ "apart" \__/  or 
  *  "In common" /__/ or \__\
@@ -146,6 +95,7 @@ float distanceToSegment(const Point3D &fA, const Point3D &fB, const Point3D &p)
 	return sqrtf( std::min(fB.sqrDist(p), fA.sqrDist(p)) );
 }
 
+
 //!Find the distance between a point, and a triangular facet -- may be positive or negative
 /* The inputs are the facet points (ABC) and the point P.
  * distance is shortest using standard plane version 
@@ -199,6 +149,13 @@ float distanceToFacet(const Point3D &fA, const Point3D &fB,
 	//Point lies above/below facet, use plane formula
 	return temp; 
 }
+
+
+//A bigger MAX_NN_DISTS is better because you will attempt to grab more ram
+//however there is a chance that memory allocation can fail, which currently i do not grab safely
+const unsigned int MAX_NN_DISTS = 0x8000000; //96 MB samples at a time 
+
+
 
 //obtains all the input points from ions that lie inside the convex hull after
 //it has been shrunk such that the closest distance from the hull to the original data

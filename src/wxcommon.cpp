@@ -1,10 +1,29 @@
 
 #include "wxcommon.h"
 
+#include "basics.h"
+
+#include <wx/xml/xml.h>
+#include <wx/url.h>
+#include <wx/event.h>
+#include <vector>
+#include <string>
+
 #if defined(WIN32) || defined(WIN64)
-#include <wx/wx.h>
 #include <wx/msw/registry.h>
 #endif
+
+//Auto update checking RSS URL
+const char *RSS_FEED_LOCATION="http://threedepict.sourceforge.net/rss.xml";
+
+//Auto update event for posting back to main thread upon completion
+wxEventType RemoteUpdateAvailEvent = wxNewEventType(); // You get to choose the name yourself
+		
+
+//Maximum amount of content in RSS header is 1MB.
+const unsigned int MAX_RSS_CONTENT_SIZE=1024*1024;
+
+std::string inputString;
 
 std::string locateDataFile(const char *name)
 {
@@ -56,4 +75,122 @@ std::string locateDataFile(const char *name)
 #endif
 }
 
+void *VersionCheckThread::Entry()
+{
+  	wxCommandEvent event( RemoteUpdateAvailEvent);
+	ASSERT(targetWindow);
+
+	wxInputStream* inputStream;
+	versionStr.clear();
+
+	//Try to download RSS feed
+	wxURL url(wxCStr(RSS_FEED_LOCATION));
+
+	//If the URL could not be downloaded, tough.
+	if (url.GetError() != wxURL_NOERR)
+	{
+		retrieveOK=false;
+		complete=true;
+		wxPostEvent(targetWindow,event);
+		return 0;
+	}	
+
+	inputStream = url.GetInputStream();
+
+	wxXmlDocument *doc= new wxXmlDocument;
+	if(!doc->Load(*inputStream))
+	{
+		delete doc;
+		retrieveOK=false;
+		complete=true;
+		wxPostEvent(targetWindow,event);
+		return 0;
+	}
+	
+
+	//Check we grabbed an RSS feed
+	if(doc->GetRoot()->GetName() != wxT("rss"))
+	{
+		delete doc;
+		retrieveOK=false;
+		complete=true;
+		wxPostEvent(targetWindow,event);
+		return 0;
+	}
+
+	//Find first channel
+	wxXmlNode *child = doc->GetRoot()->GetChildren();
+
+	bool foundChannel=false;
+	while(child)
+	{
+		if(child->GetName() == wxT("channel"))
+		{
+			foundChannel=true;
+			break;
+		}
+	    child = child->GetNext();
+	}
+
+	if(!foundChannel)
+	{
+		delete doc;
+		retrieveOK=false;
+		complete=true;
+		wxPostEvent(targetWindow,event);
+		return 0;
+	}
+	
+	std::vector<std::string> itemStrs;
+
+	//Spin through all the <item> nodes in the first <channel></channel>
+	wxXmlNode *itemNode=child->GetChildren();
+	while(itemNode)
+	{
+		//OK, we have an item node,lets check its children
+		if(itemNode->GetName() == wxT("item"))
+		{
+			child=itemNode->GetChildren();
+
+			while(child)
+			{
+				//OK, we found a child node; 
+				if(child->GetName() == wxT("title"))
+				{
+					std::string stlContent;
+					wxString content = child->GetNodeContent();
+
+					stlContent=stlStr(content);
+					if(stlContent.size() < MAX_RSS_CONTENT_SIZE &&
+						isVersionNumberString(stlContent))
+						itemStrs.push_back(stlContent);
+					break;
+				}
+	    
+				child = child->GetNext();
+			}
+
+		}
+	    
+		itemNode = itemNode->GetNext();
+	}
+	delete doc;
+
+	if(!itemStrs.size())
+	{
+		//hmm. thats odd. no items. guess we failed :(
+		retrieveOK=false;
+		complete=true;
+		wxPostEvent(targetWindow,event);
+		return 0;
+	}
+
+	//Find the greatest version number
+	versionStr=getMaxVerStr(itemStrs);
+	retrieveOK=true;
+	complete=true;
+	wxPostEvent(targetWindow,event);
+
+	return 0;
+}
 

@@ -2,6 +2,8 @@
 #include "../xmlHelper.h"
 #include "../plot.h"
 
+#include "../translation.h"
+
 enum
 {
 	KEY_COMPPROFILE_BINWIDTH=1,
@@ -17,7 +19,7 @@ enum
 	KEY_COMPPROFILE_COLOUR,
 	KEY_COMPPROFILE_ERRMODE,
 	KEY_COMPPROFILE_AVGWINSIZE,
-	KEY_COMPPROFILE_LOCKAXISMAG,
+	KEY_COMPPROFILE_LOCKAXISMAG
 };
 
 //!Possible primitive types for composition profiles
@@ -32,7 +34,7 @@ enum
 {
 	COMPPROFILE_ERR_NUMBINS=1,
 	COMPPROFILE_ERR_MEMALLOC,
-	COMPPROFILE_ERR_ABORT,
+	COMPPROFILE_ERR_ABORT
 };
 
 CompositionProfileFilter::CompositionProfileFilter()
@@ -149,6 +151,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 	{
 		//construct a new primitive, do not cache
 		DrawStreamData *drawData=new DrawStreamData;
+		drawData->parent=this;
 		switch(primitiveType)
 		{
 			case COMPPROFILE_PRIMITIVE_CYLINDER:
@@ -497,7 +500,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 
 		plotData[ui]->index=ui;
 		plotData[ui]->parent=this;
-		plotData[ui]->xLabel= "Distance";
+		plotData[ui]->xLabel= TRANS("Distance");
 		plotData[ui]->errDat=errMode;
 		if(normalise)
 		{
@@ -505,14 +508,14 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 			//sum composition = 1 otherwise use volume of bin
 			//as normalisation factor
 			if(rngData)
-				plotData[ui]->yLabel= "Fraction";
+				plotData[ui]->yLabel= TRANS("Fraction");
 			else
-				plotData[ui]->yLabel= "Density (\\#.len^3)";
+				plotData[ui]->yLabel= TRANS("Density (\\#.len^3)");
 		}
 		else
-			plotData[ui]->yLabel= "Count";
+			plotData[ui]->yLabel= TRANS("Count");
 
-		//Give the plot a title like "Myplot:Mg" (if have range) or "MyPlot" (no range)
+		//Give the plot a title like TRANS("Myplot:Mg" (if have range) or "MyPlot") (no range)
 		if(rngData)
 		{
 			unsigned int thisIonID;
@@ -534,7 +537,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		{
 			//If it only has one component, then 
 			//it's not really a composition profile is it?
-			plotData[ui]->dataLabel= "Freq. Profile";
+			plotData[ui]->dataLabel= TRANS("Freq. Profile");
 			plotData[ui]->r = r;
 			plotData[ui]->g = g;
 			plotData[ui]->b = b;
@@ -603,11 +606,11 @@ std::string  CompositionProfileFilter::getErrString(unsigned int code) const
 	switch(code)
 	{
 		case COMPPROFILE_ERR_NUMBINS:
-			return std::string("Too many bins in comp. profile.");
+			return std::string(TRANS("Too many bins in comp. profile."));
 		case COMPPROFILE_ERR_MEMALLOC:
-			return std::string("Note enough memory for comp. profile.");
+			return std::string(TRANS("Not enough memory for comp. profile."));
 		case COMPPROFILE_ERR_ABORT:
-			return std::string("Aborted composition prof.");
+			return std::string(TRANS("Aborted composition prof."));
 	}
 	return std::string("BUG: (CompositionProfileFilter::getErrString) Shouldn't see this!");
 }
@@ -811,7 +814,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 
 			tmpPlotType=plotID(value);
 
-			if(tmpPlotType >= PLOT_TYPE_ENDOFENUM)
+			if(tmpPlotType >= PLOT_TRACE_ENDOFENUM)
 				return false;
 
 			plotType = tmpPlotType;
@@ -880,14 +883,14 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 	if(COMPPROFILE_PRIMITIVE_END > 1)
 	{
 		stream_cast(str,(int)COMPPROFILE_PRIMITIVE_END-1);
-		str =string("Primitive Type (0-") + str + ")";
+		str =string(TRANS("Primitive Type (0-") + str + ")");
 		stream_cast(tmpStr,primitiveType);
 		s.push_back(make_pair(str,tmpStr));
 		keys.push_back(KEY_COMPPROFILE_PRIMITIVETYPE);
 		type.push_back(PROPERTY_TYPE_INTEGER);
 	}
 
-	str = "Show primitive";	
+	str = TRANS("Show primitive");	
 	stream_cast(tmpStr,showPrimitive);
 	s.push_back(make_pair(str,tmpStr));
 	keys.push_back(KEY_COMPPROFILE_SHOWPRIMITIVE);
@@ -901,12 +904,12 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 			ASSERT(scalarParams.size() == 1);
 			stream_cast(str,vectorParams[0]);
 			keys.push_back(KEY_COMPPROFILE_ORIGIN);
-			s.push_back(make_pair("Origin", str));
+			s.push_back(make_pair(TRANS("Origin"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			
 			stream_cast(str,vectorParams[1]);
 			keys.push_back(KEY_COMPPROFILE_NORMAL);
-			s.push_back(make_pair("Axis", str));
+			s.push_back(make_pair(TRANS("Axis"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 
 			if(lockAxisMag)
@@ -914,12 +917,12 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 			else
 				str="0";
 			keys.push_back(KEY_COMPPROFILE_LOCKAXISMAG);
-			s.push_back(make_pair("Lock Axis Mag.", str));
+			s.push_back(make_pair(TRANS("Lock Axis Mag."), str));
 			type.push_back(PROPERTY_TYPE_BOOL);
 			
 			stream_cast(str,scalarParams[0]);
 			keys.push_back(KEY_COMPPROFILE_RADIUS);
-			s.push_back(make_pair("Radius", str));
+			s.push_back(make_pair(TRANS("Radius"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 
 
@@ -930,27 +933,27 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 
 	keys.push_back(KEY_COMPPROFILE_FIXEDBINS);
 	stream_cast(str,fixedBins);
-	s.push_back(make_pair("Fixed Bin Num", str));
+	s.push_back(make_pair(TRANS("Fixed Bin Num"), str));
 	type.push_back(PROPERTY_TYPE_BOOL);
 
 	if(fixedBins)
 	{
 		stream_cast(tmpStr,nBins);
-		str = "Num Bins";
+		str = TRANS("Num Bins");
 		s.push_back(make_pair(str,tmpStr));
 		keys.push_back(KEY_COMPPROFILE_NUMBINS);
 		type.push_back(PROPERTY_TYPE_INTEGER);
 	}
 	else
 	{
-		str = "Bin width";
+		str = TRANS("Bin width");
 		stream_cast(tmpStr,binWidth);
 		s.push_back(make_pair(str,tmpStr));
 		keys.push_back(KEY_COMPPROFILE_BINWIDTH);
 		type.push_back(PROPERTY_TYPE_REAL);
 	}
 
-	str = "Normalise";	
+	str = TRANS("Normalise");	
 	stream_cast(tmpStr,normalise);
 	s.push_back(make_pair(str,tmpStr));
 	keys.push_back(KEY_COMPPROFILE_NORMALISE);
@@ -972,17 +975,17 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 	vector<pair<unsigned int,string> > choices;
 
 
-	tmpStr=plotString(PLOT_TYPE_LINES);
-	choices.push_back(make_pair((unsigned int) PLOT_TYPE_LINES,tmpStr));
-	tmpStr=plotString(PLOT_TYPE_BARS);
-	choices.push_back(make_pair((unsigned int)PLOT_TYPE_BARS,tmpStr));
-	tmpStr=plotString(PLOT_TYPE_STEPS);
-	choices.push_back(make_pair((unsigned int)PLOT_TYPE_STEPS,tmpStr));
-	tmpStr=plotString(PLOT_TYPE_STEM);
-	choices.push_back(make_pair((unsigned int)PLOT_TYPE_STEM,tmpStr));
+	tmpStr=plotString(PLOT_TRACE_LINES);
+	choices.push_back(make_pair((unsigned int) PLOT_TRACE_LINES,tmpStr));
+	tmpStr=plotString(PLOT_TRACE_BARS);
+	choices.push_back(make_pair((unsigned int)PLOT_TRACE_BARS,tmpStr));
+	tmpStr=plotString(PLOT_TRACE_STEPS);
+	choices.push_back(make_pair((unsigned int)PLOT_TRACE_STEPS,tmpStr));
+	tmpStr=plotString(PLOT_TRACE_STEM);
+	choices.push_back(make_pair((unsigned int)PLOT_TRACE_STEM,tmpStr));
 
 	tmpStr= choiceString(choices,plotType);
-	s.push_back(make_pair(string("Plot Type"),tmpStr));
+	s.push_back(make_pair(string(TRANS("Plot Type")),tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	keys.push_back(KEY_COMPPROFILE_PLOTTYPE);
 	//Convert the colour to a hex string
@@ -992,7 +995,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 		genColString((unsigned char)(r*255.0),(unsigned char)(g*255.0),
 		(unsigned char)(b*255.0),(unsigned char)(a*255.0),thisCol);
 
-		s.push_back(make_pair(string("Colour"),thisCol)); 
+		s.push_back(make_pair(string(TRANS("Colour")),thisCol)); 
 		type.push_back(PROPERTY_TYPE_COLOUR);
 		keys.push_back(KEY_COMPPROFILE_COLOUR);
 	}
@@ -1013,7 +1016,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 	choices.push_back(make_pair((unsigned int) PLOT_ERROR_MOVING_AVERAGE,tmpStr));
 
 	tmpStr= choiceString(choices,errMode.mode);
-	s.push_back(make_pair(string("Err. Estimator"),tmpStr));
+	s.push_back(make_pair(string(TRANS("Err. Estimator")),tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	keys.push_back(KEY_COMPPROFILE_ERRMODE);
 
@@ -1021,7 +1024,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 	if(errMode.mode == PLOT_ERROR_MOVING_AVERAGE)
 	{
 		stream_cast(tmpStr,errMode.movingAverageNum);
-		s.push_back(make_pair(string("Avg. Window"), tmpStr));
+		s.push_back(make_pair(string(TRANS("Avg. Window")), tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
 		keys.push_back(KEY_COMPPROFILE_AVGWINSIZE);
 
@@ -1086,16 +1089,13 @@ bool CompositionProfileFilter::writeState(std::ofstream &f,unsigned int format, 
 }
 
 
-bool CompositionProfileFilter::setUserString(const std::string &str)
+void CompositionProfileFilter::setUserString(const std::string &str)
 {
 	if(userString != str)
 	{
 		userString=str;
 		clearCache();
-		return true;
 	}	
-	else
-		return false;
 }
 
 bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileDir)
@@ -1374,7 +1374,7 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	if(stream_cast(plotType,tmpStr))
 		return false;
 
-	if(plotType >= PLOT_TYPE_ENDOFENUM)
+	if(plotType >= PLOT_TRACE_ENDOFENUM)
 	       return false;	
 	xmlFree(xmlString);
 	//====

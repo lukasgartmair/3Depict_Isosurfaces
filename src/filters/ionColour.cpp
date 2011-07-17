@@ -3,6 +3,9 @@
 #include "../xmlHelper.h"
 
 #include "../colourmap.h"
+
+#include "../translation.h"
+
 const unsigned int MAX_NUM_COLOURS=256;
 enum
 {
@@ -106,6 +109,7 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 		if(filterOutputs.size() && showColourBar)
 		{
 			DrawStreamData *d = new DrawStreamData;
+			d->parent=this;
 			d->drawables.push_back(makeColourBar());
 			d->cached=0;
 			getOut.push_back(d);
@@ -121,6 +125,7 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 	for(unsigned int ui=0;ui<nColours; ui++)
 	{
 		d[ui]=new IonStreamData;
+		d[ui]->parent=this;
 		float value;
 		value = (float)ui*(mapBounds[1]-mapBounds[0])/(float)nColours + mapBounds[0];
 		//Pick the desired colour map
@@ -204,6 +209,7 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 	{
 		DrawStreamData *d = new DrawStreamData;
 		d->drawables.push_back(makeColourBar());
+		d->parent=this;
 		d->cached=0;
 		getOut.push_back(d);
 	}
@@ -265,7 +271,7 @@ void IonColourFilter::getProperties(FilterProperties &propertyList) const
 
 
 	stream_cast(str,NUM_COLOURMAPS);
-	str =string("ColourMap (0-") + str + ")";
+	str =string(TRANS("ColourMap (0-") + str + ")");
 	stream_cast(tmpStr,colourMap);
 
 	s.push_back(make_pair(str,tmpStr));
@@ -276,25 +282,25 @@ void IonColourFilter::getProperties(FilterProperties &propertyList) const
 		tmpStr="1";
 	else
 		tmpStr="0";
-	str =string("Show Bar");
+	str =string(TRANS("Show Bar"));
 	s.push_back(make_pair(str,tmpStr));
 	keys.push_back(KEY_IONCOLOURFILTER_SHOWBAR);
 	type.push_back(PROPERTY_TYPE_BOOL);
 
 
-	str = "Num Colours";	
+	str = TRANS("Num Colours");	
 	stream_cast(tmpStr,nColours);
 	s.push_back(make_pair(str,tmpStr));
 	keys.push_back(KEY_IONCOLOURFILTER_NCOLOURS);
 	type.push_back(PROPERTY_TYPE_INTEGER);
 
 	stream_cast(tmpStr,mapBounds[0]);
-	s.push_back(make_pair("Map start", tmpStr));
+	s.push_back(make_pair(TRANS("Map start"), tmpStr));
 	keys.push_back(KEY_IONCOLOURFILTER_MAPSTART);
 	type.push_back(PROPERTY_TYPE_REAL);
 
 	stream_cast(tmpStr,mapBounds[1]);
-	s.push_back(make_pair("Map end", tmpStr));
+	s.push_back(make_pair(TRANS("Map end"), tmpStr));
 	keys.push_back(KEY_IONCOLOURFILTER_MAPEND);
 	type.push_back(PROPERTY_TYPE_REAL);
 
@@ -392,7 +398,7 @@ bool IonColourFilter::setProperty( unsigned int set, unsigned int key,
 std::string  IonColourFilter::getErrString(unsigned int code) const
 {
 	//Currently the only error is aborting
-	return std::string("Aborted");
+	return std::string(TRANS("Aborted"));
 }
 
 
@@ -541,5 +547,5 @@ int IonColourFilter::getRefreshBlockMask() const
 
 int IonColourFilter::getRefreshEmitMask() const
 {
-	return  STREAM_TYPE_DRAW;
+	return  STREAM_TYPE_DRAW | STREAM_TYPE_IONS;
 }

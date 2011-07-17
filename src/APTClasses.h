@@ -38,7 +38,7 @@
 //!Allowable export ion formats
 enum
 {
-	IONFORMAT_POS=1,
+	IONFORMAT_POS=1
 };
 
 using std::vector;
@@ -289,7 +289,7 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 
 
 
-unsigned int limitLoadTextFile(int numColsTotal, unsigned int selectedCols[], 
+unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedCols[], 
 			vector<IonHit> &posIons,const char *posFile, const char *deliminator, const size_t limitCount,
 					       	unsigned int &progress, bool (*callback)(),bool strongRandom);
 

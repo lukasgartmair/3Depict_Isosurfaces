@@ -9,6 +9,8 @@
 
 \usepackage{wrapfig}
 
+
+
 \begin{document}
 \begin{titlepage}
 
@@ -38,7 +40,7 @@
 \begin{minipage}{0.3\textwidth}
 \begin{flushright} \large
 \emph{Version:} \\
- 0.0.6, May 2011\end{flushright}
+ 0.0.7, Jul 2011\end{flushright}
 \end{minipage}
 
 \vfill
@@ -56,7 +58,7 @@
 \section{Foreword}
 \subsection{Introduction}
 
-\emph{3Depict} is an open source computer program designed for the analysis of point clouds. The program is designed around interactive data analysis, with a view to combine rapid feedback, ease of use and flexibility in a single system.  
+\emph{3Depict} is an open source computer program designed for the analysis of point clouds with an associated scalar value. The program is designed around interactive data analysis, with a view to combine rapid feedback, ease of use and flexibility in a single system.  At time of writing, \emph{3Depict} is in the so-called ``alpha'' prototyping stage, and should be used where helpful, but may contain rough-edges.
 
 \emph{3Depict} is designed purely for post-processing of 3D point data, and was originally primarily targeted to users of Atom Probe Tomography. Other users may find the program useful, and are encouraged to seek assistance. 
  
@@ -88,7 +90,7 @@ Due to the design of the program, the program should run under Linux, Mac, BSD a
 
 The minimum requirements for running \emph{3Depict} are not known. The author wrote a substantial portion of the program on a machine with a 4 and 12~GB drives, and a 1.6~GHz processor, which normally runs at 800~MHz and has 1~GB of RAM. I see no reason that it would not run on even lower-spec machines. Whilst a higher spec machine may run the program faster, intelligent use of the programs ``filter'' system may allow for complex analyses even on low-end machines. 
 
-If you are experiencing 3D graphics problems, first ensure that other 3D programs do not experience the same problems. Otherwise, please contact the author for assistance -- there should be no requirement for vendor-specific hardware. Note however that the exact appearance of the 3D view is dependant upon your hardware, and may have small changes between different platforms. 
+If you are experiencing 3D graphics problems, first ensure that other 3D programs do not experience the same problems. Otherwise, please contact the authors for assistance -- there should be no requirement for vendor-specific hardware. Note however that the exact appearance of the 3D view is dependant upon your hardware, and may have small changes between different platforms. 
 
 \subsection{Platform specific notes}
 Note that whilst every effort is made to ensure that the program will run on a variety of systems, small system-specific quirks may be evident, particularly on platforms to which the authors do not use regularly (\emph{e.g.} windows). Secondly, due to slight differences between platforms some functions may be remapped to other mouse/key combinations.  
@@ -108,7 +110,7 @@ Windows:
 
 Assistance with this program may be freely obtained over the Internet at \url{http://threedepict.sourceforge.net}. Questions regarding use of the program, feature or bug reports will be attended to as soon as possible. Contact options include email, or an online forum.
 
-If the program crashes in a predictable manner (\emph{i.e.} you know how to trigger it), this is a bug and needs to be fixed. Please report the bug in this case, so we can fix it as quickly as possible. If the program crashes in an unpredictable fashion, please still report it as best you can, and we will try to fix it, if it is possible to isolate the problem from the description. For advanced users, we would appreciate backtraces, state files and any other relevant information in both of these cases.
+If the program crashes in a predictable manner (\emph{i.e.} you know how to trigger it), this is a bug and needs to be fixed. Please report the bug in this case, so we can fix it as quickly as possible. If the program crashes in an unpredictable fashion, please still report it as best you can, and we will try to fix it if we can isolate the problem from the description. For advanced users, we would appreciate backtraces, state files and any other relevant information in both of these cases.
 
 \subsection{Who wrote this program?}
 
@@ -129,7 +131,7 @@ We would always appreciate assistance with this work. You don't have to be able 
 \label{sec:licence} 
 This program is distributed under the GNU General Public Licence Version 3 (GPLV3+), an \textit{open-source} licence. Information on the copyright of this program is available under the \texttt{COPYING} file in the program directory, or online (\emph{e.g.} \url{http://www.gnu.org/licenses/gpl-3.0.txt} ).
 
-The basic premise is that you may copy the program, modify and distribute such modified versions or derivitive works only under the same licence. The licence forbids technical restrictions on users further redistributing the program.
+The basic premise is that you may copy the program, modify and distribute such modified versions or derivative works only under the same licence. The licence forbids technical restrictions on users further redistributing the program.
  
 \subsubsection{Installing the program}
 The installation method for the program depends upon your chosen operating system. The most up-to-date notes are available on the project website. It is highly recommended that, in general, you do not simply download random programs from the Internet and execute them if a version is available in a trusted software repository. 
@@ -308,7 +310,9 @@ Exporting Ion data can be done in several ways; you may export only the visible 
 
 Modified range files may be exported in whole. Currently the only supported export format is the oak-ridge``RRNG'' format
 
-Finally one can export the entire analysis state, including all required data using the export analysis package option. This will create  a folder which contains all the files needed to reproduce the current program state elsewhere. Note that this imports all referenced data files, so the package can become quite large.
+Simple animations of the 3D data can be constructed, where the current camera is orbited 360 degrees around its target location. The result is saved as an image sequence, which can be converted into an AVI using programs such as \emph{ImageJ}, or \emph{ffmpeg} to convert the constructed image sequence into a video file.
+
+Finally one can export the entire analysis state, including all required data using the export analysis package option. This will create  a folder which contains all the files needed to reproduce the current program state elsewhere. Note that this imports all referenced data files, so the package can become quite large, but should be fully portable to any other system by simply copying the created folder.
 
 \subsubsection{Autosave}
 The program will generate an autosave file periodically. If the program crashes, it will look for an autosave file and prompt you to restore it. Note that only the program settings are saved, not the intermediate data, so recomputation will be necessary.  
@@ -326,7 +330,7 @@ Plots can be passed between filters to allow for a 2D graphical representation o
 This is a special datatype which propagates information through the filter tree. The data represents non-overlapping regions of the value space which are to be tagged as belonging to a certain group. This data type has now actual output into the 3D scene, but can alter the manner in which ``downstream'' filters process incoming information. For example, if a profile filter is used after a range, it will split up its measurements into a per-tag ``range'' section. X data need not be sorted in an increasing fashion.
 
 \subsubsection{Voxels}
-Voxels is shorthand for "volume pixel" and is a rectilinear region of space, divided up into an equally spaced rectangular grid. Voxels can currently be represented by a point cloud, where each point has a given colour and transparency, or by a triangulated surface (an iso-surface) which represents the contouring surface for a given scalar value.
+Voxels is shorthand for ``volume pixel'' and is a rectilinear region of space, divided up into an equally spaced rectangular grid. Voxels can currently be represented by a point cloud, where each point has a given colour and transparency, or by a triangulated surface (an iso-surface) which represents the contouring surface for a given scalar value.
 
 \subsubsection{Drawables}
 3D primitives can be injected into the data stream to assist in the final representation of the scene. Items such as spheres, lines triangles or text can be placed in the final scene.
@@ -337,18 +341,18 @@ Voxels is shorthand for "volume pixel" and is a rectilinear region of space, div
  
 The pos load filter injects ion data into the analysis tree. Ions are loaded from a file by one of several different methods. By default, random data is selected from the file. This filter can be created using the ``load'' function from the file menu.  
 \begin{itemize}
-\item  ``Number of columns'': Number of floating point values in a single record. Defaults to 4.
-\item  ``x'': Position in record to use as X value. Defaults to 0.
-\item  ``y'': Position in record to use as Y value. Defaults to 1.
-\item  ``z'': Position in record to use as Z value. Defaults to 2.
-\item  ``value'': Position in record to use as associated scalar value. Defaults to 3.
-\item ``Enabled'' : Disable/enable the filter.
+\item  \textbf{Number of columns}: Number of floating point values in a single record. Defaults to 4.
+\item  \textbf{X}: Position in record to use as X value. Defaults to 0.
+\item  \textbf{Y}: Position in record to use as Y value. Defaults to 1.
+\item  \textbf{Z}: Position in record to use as Z value. Defaults to 2.
+\item  \textbf{Value}: Position in record to use as associated scalar value. Defaults to 3.
+\item Enabled : Disable/enable the filter.
 
 
-\item  ``Ion colour'': Colour of the ions from the 3D view.
-\item  ``ion size'' : Default size of points in 3D view.
-\item  ``filename'' : name of the file to load the data form.
-\item  ``Load limit'': The maximum quantity of data to load from the file. If set to 0, then the entire file is loaded. Otherwise a random sub-selection of the file is loaded. Note that random selection reduces memory cost, but if it is more than a few percent of the file size, may be slower to load.
+\item  \textbf{Ion colour}: Colour of the ions from the 3D view.
+\item  \textbf{Ion size} : Default size of points in 3D view.
+\item  \textbf{Filename} : name of the file to load the data form.
+\item  \textbf{Load limit}: The maximum quantity of data to load from the file. If set to 0, then the entire file is loaded. Otherwise a random sub-selection of the file is loaded. Note that random selection reduces memory cost, but if it is more than a few percent of the file size, may be slower to load.
 
 \end{itemize}
 
@@ -357,12 +361,31 @@ The pos load filter injects ion data into the analysis tree. Ions are loaded fro
 Randomly samples ions from the input stream. Can operate either to generate a fixed number at the output, or to take a fixed percentage of the input
 
 \begin{itemize}
-\item  ``Fraction'' : Approximate random fraction of the data to load. Must be between [0,1].
-\item  ``Max count'': The approximate number of ions to load.
-\item  ``By count'': Specifies whether to use a fixed count, or a fixed fraction
+\item  \textbf{Fraction} : Approximate random fraction of the data to load. Must be between [0,1].
+\item  \textbf{Max count}: The approximate number of ions to load.
+\item  \textbf{By count}: Specifies whether to use a fixed count, or a fixed fraction
 
 \end{itemize}
  
+
+\subsubsection{Ion Information}
+
+This filter allows for the computation of ion counts in any input streams, as well as volume estimation. If a range stream is present in its input, (\emph{i.e.} a Ranging is a parent of this filter) then the filter will perform per-species computation of the value.
+
+\begin{itemize}
+ \item \textbf{Compositions}: Enable computation of the number of numbers of different ions (if ranged), or total ions in the input streams.
+ \item \textbf{Normalise} : Normalise the composition values. This only has an effect if there is a range input stream.
+ \item \textbf{Volume} : Enable estimation of the volume of space occupied by the ion streams. There are several algorithms for doing this:
+    \begin{itemize}
+	\item \textbf{Rectilinear volume} : Computes the volume of the minimal axis aligned rectangular prism, or bounding box, that can hold all the points in the input stream. Except for truly spherical datasets, the reported value will be a function of the data orientation.
+	\item \textbf{Filled voxels} : Computes the volume by constructing an axis aligned rectangular prism, then approximately dividing it into the  specified (cube length value) number of bins. The computation is that the number of bins for a given axis is axis length divided by cube length, as an integer. Any bins that contain a point are considered to be contributing to the total volume. Any bins that do not contain any points are excluded.
+	\item \textbf{Convex hull} : Computes the volume of the minimal convex enclosing polygonal object, known as the convex hull. This is parameter free, but may cause gaps in the data to be estimated as part of the volume.
+    \end{itemize}
+    
+\end{itemize}
+
+
+
 \subsubsection{Ranging}
 
 This allows for the cropping and segregation of ions in 3D space by their scalar values.
@@ -370,17 +393,17 @@ This allows for the cropping and segregation of ions in 3D space by their scalar
 Each range loaded from the file may be enabled, either at the ion level (groups of ranges) or at the range level. The range values may be altered; however these may not overlap at any time. Note that these can be edited graphically if used in a mass spectrum.
 
 \begin{itemize}
-\item ``Filename'': This is the name of the file to use as the range source. So-called ORNL ``rng'' files, Cameca ``env'' files and Imago/Cameca ``RRNG'' files are accepted. For information on the accepted file formats, see the Appendix.
-\item ``Drop unranged'': This causes any ions not ranged to be silently dropped from the filter output. This is best enabled for 3D viewing, and best disabled for spectrum plotting
+\item \textbf{Filename}: This is the name of the file to use as the range source. So-called ORNL ``rng'' files, Cameca ``env'' files and Imago/Cameca ``RRNG'' files are accepted. For information on the accepted file formats, see the Appendix.
+\item \textbf{Drop unranged}: This causes any ions not ranged to be silently dropped from the filter output. This is best enabled for 3D viewing, and best disabled for spectrum plotting
 \end{itemize}
 
  
 \subsubsection{Clipping}
-This filter allows for the rejection of data that does not lie within some given boundary. Possible boundaries are plane, sphere and cylinder. For example, if the sphere mode is set, ions within the sphere will be kept and propagated. Ions outside the sphere boundary will be dropped. 
+This filter allows for the rejection of data that does not lie within some given boundary. Possible boundaries are plane, sphere and cylinder. For example, if the sphere mode is set, ions within the sphere will be kept and propagated. Ions outside the sphere boundary will be dropped.  The clipping object can be placed in 3D by dragging the in-scene object around. Note that holding down Ctrl and shift whilst dragging alter the plane of motion (in-screen, across screen etc).
 
 \begin{itemize}
-\item  Mode: Select the fundamental primitive used to divide the incoming ions into two groups (inside and outside). Sphere, Cylinder and Plane modes are available.
-\item  Invert clip: Reverse the action of the filter, \emph{i.e.} swap the definition of ``inside'' and ``outside''.
+\item  \textbf{Mode}: Select the fundamental primitive used to divide the incoming ions into two groups (inside and outside). Sphere, Cylinder and Plane modes are available.
+\item \textbf{Invert clip}: Reverse the action of the filter, \emph{i.e.} swap the definition of ``inside'' and ``outside''.
 \item  Various positioning parameters; These can be typed in manually, or set by manipulating the clipping object in the 3D view with the mouse.
 
 \end{itemize}
@@ -391,7 +414,7 @@ This filter allows for the rejection of data that does not lie within some given
  
 The profile filter conducts a density or ``compositional'' analysis of a given sub-region of 3D space. The action of the profile filter depends upon whether the incoming ions have been ``ranged''. If not, then the profile filter generates a density profile of the ions inside a cylindrical volume by count, which is visible in the 3D view. If the ions have been ranged, then the frequencies are on a per-species basis. \emph{Properties}
 \begin{itemize}
-\item  Normalise : The action of this option converts the density into a fractional one. For ranged ions, this is the local composition. For unranged ions this is the relative density.
+\item \textbf{Normalise} : The action of this option converts the density into a fractional one. For ranged ions, this is the local composition. For unranged ions this is the relative density.
 
 \end{itemize}
 \subsubsection{Spatial analysis}
@@ -402,7 +425,7 @@ The profile filter conducts a density or ``compositional'' analysis of a given s
  
 \item  Algorithms 
 \begin{itemize}
-\item Local Density: This computes the local density of the ions on either a nearest neighbour, or a fixed distance metric. The density is then assigned as the point value. Note that the number of points to be examined increases rapidly in the fixed distance metric, and may rapidly become untenable. Clipping the volume of data to reduce the time is an option, however surface effects can occur.
+\item \textbf{Local Density}: This computes the local density of the ions on either a nearest neighbour, or a fixed distance metric. The density is then assigned as the point value. Note that the number of points to be examined increases rapidly in the fixed distance metric, and may rapidly become untenable. Clipping the volume of data to reduce the time is an option, however surface effects can occur.
 \end{itemize}
 
 \end{itemize}
@@ -425,7 +448,7 @@ Parameter Description:
 
 Algorithm Description; each of these is conducted in sequence to generate the final clustered output.
 \begin{itemize}
- \item \textbf{Core Classification (Optional,\emph{Core Classify Dist} nonzero)}: Core classification; work only on core ions (bulk is ignored). Each "core" point has sphere of specified size placed around it, if point's kth-NN is within a given radius, then it is used as core, otherwise it is rejected to ``bulk''.
+ \item \textbf{Core Classification (Optional,\emph{Core Classify Dist} nonzero)}: Core classification; work only on core ions (bulk is ignored). Each ``core'' point has sphere of specified size placed around it, if point's kth-NN is within a given radius, then it is used as core, otherwise it is rejected to ``bulk''.
 
  \item \textbf{Cluster Construction}: A ``backbone'' is constructed using the core points (after classification). Each core point has a sphere placed around it of fixed size; if it  contacts another point, then these are considered as part of the same cluster.
  \item \textbf{Bulk Inclusion (Optional, \emph{Bulk Link Dist} nonzero)} : For each cluster, every point has a sphere placed around it. Bulk points that lie within this union of spheres are assigned to the cluster. This assignment is unambiguous \emph{iff} this radius is smaller than that for the cluster construction step
@@ -513,7 +536,7 @@ The filter tree is shown, with a pos load filter as the top level element, which
 
 My interpretation of the Oak-Ridge format for range files is given below. The original specification is available in the book \textit{Miller, Atom probe: Analysis at the atomic scale}, (Kluwer Academic/Plenum Publishers, ISBN 0306464152). Unfortunately, the specification given for the file is weakly stated, and is open to different interpretations. I have attempted to make\emph{3Depict} as resilient as possible to variations that I have encountered, however it may be that there are alternate interpretations with which I am not familiar, and the code is thus unable to interpret.
 
-A simple example file is given below, and is nominally in the ASCII 1 byte per character format. The original specification, to my knowledge, predates the UTF-8 and extended codepage support for non English languages. Thus non-English language support is not guaranteed,
+A simple example file is given below, and is nominally in the ASCII 1 byte per character format. The original specification, to my knowledge, predates the UTF-8 and extended codepage support for non English languages. Thus non-English languages are not part of the file format. 
 
 \begin{verbatim}
 1 2
@@ -531,7 +554,7 @@ This is repeated for each element pair, as specified by the first integer in the
 
 The next line can nominally be ignored, however it should contain the dash character from positions 1 to 13, followed by a space separated list (with leading space) of the short names, as specified above.
 
-Following this is a 2D table (space separated). The first column appears vestigial. The second and third columns contain the start and end "range" values for each ion. Note that these do not have to be in the same sequence as the original specification. These range values must be non-overlapping, and can be any 32 bit floating point number.
+Following this is a 2D table (space separated). The first column appears vestigial. The second and third columns contain the start and end ``range'' values for each ion. Note that these do not have to be in the same sequence as the original specification. These range values must be non-overlapping, and can be any 32 bit floating point number.
 
 The next columns are the range table, and specify which ions the range corresponds.
 
@@ -541,13 +564,13 @@ A more complex example is given below.
 
 \begin{verbatim}
 3 3
-Alumnium 
+Magnesium
 Mg 0.0 0.0 0.0
 Copper
 Cu 0.0 0.0 0.0
 Nickel
 Ni 0.0 0.0 0.0
-------------- Al Cu Ni
+------------- Mg Cu Ni
 . 25 27 1 0 0
 . 25 33 0 1 0
 . 55.6 59 0 0 1
@@ -563,7 +586,7 @@ This file is a four-field fixed width record file, with an integer number of ent
 \label{sec:textformat}
 The text files that are accepted by \emph{3Depict} must be ASCII formatted, and consist of at least four columns of data, separated by an acceptable delimiter. The accepted delimiters are currently tab, space and comma. The numeric format must be in the English locale, i.e. with a period used as the decimal separator, consisting of the digits 0--9 and the + and - symbols.
 
-Each file may have a contigous header that does not consist of this format, however if ANY portion of the header is interpretable as per the above, this will be considered to be the end of the header, and the remainder of the file is the file body. All lines in the file body must be intepretable as per the above.  
+Each file may have a contiguous header that does not consist of this format, however if ANY portion of the header is interpretable as per the above, this will be considered to be the end of the header, and the remainder of the file is the file body. All lines in the file body must be intepretable as per the above.  
 
 Note that due to the need to do multiple passes over the text file to interpret it, and the need to do string to binary conversions, this will be considerably slower than using a POS formatted file for large inputs.
 
@@ -571,7 +594,7 @@ Note that due to the need to do multiple passes over the text file to interpret 
 
 As \emph{3Depict} is an open source program, you are free to modify it, or to extract useful bits subject to the licence agreement (See Section~\ref{sec:licence}). You will need a knowledge of C++ in order to reasonably understand the components of the program itself. A knowledge of OpenGL and wxWidgets is desirable, but you could pick this up as you went along, and don't really need it for many parts of the program.
 
-This section of the manual is the hardest to write, and the most likely to not be applicable to your context, as it depends heavily on the computer system you are trying to use. Nevertheless, this section will attempt to explain how to get yourself set up to build. To modify the program, you must first be able to build the base version of the program from source code. This is by far easiest under a linux system, as packaging programs can allow you to auto-import all the needed components to build the program.
+This section of the manual is the hardest to write, and the most likely to not be applicable to your context, as it depends heavily on the computer system you are trying to use. Nevertheless, this section will attempt to explain how to get yourself set up to build. To modify the program, you must first be able to build the base version of the program from source code. This is by far easiest under a Linux system, as packaging programs can allow you to auto-import all the needed components to build the program.
 
 \subsection{Development tools}
 The program was primarily developed using C++ (gcc), and utilises autotools for the build scripts. Some custom Bourne-again shell (BASH) scripts are used to do side tasks, such as dependency retrieval and compilation and .app package building (for OSX, really). Mercurial is used for version control. The program is developed using a private repository, which I sync up to the Sourceforge repository periodically. My personal tools for development are the VIM editor and the command line.  This was primarily developed under a Debian squeeze (testing) system (EEE 901), with some development under OpenSuse. I actively maintain the programs' package for Debian, and this is periodically synchronised to Ubuntu's package database. The program is also available under the Fedora platform.
@@ -579,11 +602,11 @@ The program was primarily developed using C++ (gcc), and utilises autotools for 
 The main libraries used for the program are:
 
 \begin{itemize}
-\item wxWidgets
-\item mathgl
-\item ftgl
-\item libxml2
-\item qhull
+\item wxWidgets - \url{http://www.wxwidgets.org}
+\item mathgl - \url{http://www.mathgl.sourceforge.net}
+\item ftgl -  \url{http://www.ftgl.sourceforge.net}
+\item libxml2 -  \url{http://xmlsoft.org}
+\item qhull -  \url{http://www.qhull.org}
 \end{itemize}
 
 \subsection{Getting yourself set up}
@@ -596,9 +619,9 @@ Once this is done, you can download the latest source code from the website, unz
 \subsubsection{Changing stuff}
 All you have to do now is to modify the .cpp and .h files to do what you want, this is going to be specific to what you want to do, and thus it is impossible for a ``walkthrough'' to be reasonably written. This is only here as a guide. To get started, the easiest components to change are probably the filters. These have been written to be as independent of the user interface as possible, so you need to know very little about OpenGL or wxWidgets. 
 
-Each filter is an object derived from a base class. If you don't know what that means, you may need to revise your C. To implement a new filter, you have to derive a new class and implement the pure virtual functions to do what you want. To make it accessible from the user interface, you have to add a new entry in  \texttt{comboFilters\_choices} in the function \texttt{MainWindowFrame::MainWindowFrame($\ldots$)}, and in \texttt{MainWindowFrame::OnComboFilter($\ldots$)} in \texttt{3Depict.cpp}. You can probably just copy the relevant bits from a neighbouring filter.
+Each filter is an object derived from a base class. If you don't know what that means, you may need to revise your C++. To implement a new filter, you have to derive a new class and implement the pure virtual functions to do what you want. To make it accessible from the user interface, you have to add a new entry in  \texttt{comboFilters\_choices} in the function \texttt{MainWindowFrame::MainWindowFrame($\ldots$)}, and in \texttt{MainWindowFrame::OnComboFilter($\ldots$)} in \texttt{3Depict.cpp}. You can probably just copy the relevant bits from a neighbouring filter.
 
-The main trick to realise is that each filter takes in something, and spits out something. That is, each filter does all of its work in the \texttt{::refresh} functions. The easiest examples of this will probably be the ion downsampling and transform filters. They might look a bit daunting, but much of the code is simply there to keep things running as fast as it can, and to provide many options. Each filter can only work with its own properties, and that of the FilterStreamData pointers passed into the refresh function. It can really do anything it wants here.
+The main trick to realise is that each filter takes in something, and spits out something. That is, each filter does all of its work in the \texttt{::refresh} functions. The easiest examples of this will probably be the ion info and transform filters. They might look a bit daunting, but much of the code is simply there to keep things running as fast as it can, and to provide many options. Each filter can only work with its own properties, and that of the FilterStreamData pointers passed into the refresh function. It can really do anything it wants here.
 
 To have properties appear up in the left hand panel, you have to implement the \texttt{getProperties($\ldots$)} function -- try copying one that seems closest to your situation. To have these properties take effect, you need to implement the \texttt{setProperties($\ldots$)} function. If you wish to ``peek-ahead'' at the filters coming into the filter (this is a little advanced, but can sometimes be necessary), you have to implement the \texttt{initFilter($\ldots$)} function.
 

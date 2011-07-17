@@ -26,7 +26,7 @@
 
 <div id="left">
 <div class="box">
-<h2> Latest version: 0.0.3</h2>
+<h2> Latest version: 0.0.6</h2>
 <p><a href="download.html">Download</a> the latest version of 3Depict for your platform</p>
 </div>
 <div class="box">
@@ -60,28 +60,29 @@ News:
 </h3>
 
 <ul>
-	<li><i>29th Nov. 2010: </i> 3Depict 0.0.3 has been released, so why not <a href="download.html">download it</a>.  Note that state files are not compatible between the 0.0.x series.</li>
-	<li><i>21st Nov. 2010: </i> 3Depict 0.0.3 preview has been uploaded to the sourceforge mercurial repository. If you are keen, you can compile the new version from source to give it a test drive. If you find any bugs, please <a href="contact.html">report them</a></li>
-	<li><i> 25th Sep. 2010: </i>3Depict 0.0.2 has been released. You can <a href="download.html">download it</a> now! </li>
+	<li><i>21st May. 2011: </i> 3Depict 0.0.6 <a href="download.html">released</a>.</li>
+	<li><i>12th May. 2011: </i> Please note that the clustering filter in 0.0.5 (latest) should not be used for quantitative purposes, due to errors in implementation. These errors have been resolved in the source, but will only appear in 0.0.6. <a href="http://sourceforge.net/apps/phpbb/threedepict/viewtopic.php?f=1&t=6">Read more</a> </a></li>
+	<li><i>11th Apr. 2011: </i> 3Depict 0.0.5 Mac OSX build has been re-uploaded to fix <a href="http://sourceforge.net/apps/phpbb/threedepict/viewtopic.php?f=1&t=5&p=13">performance and installer bugs</a></li>
+	<li><i>27th Mar. 2011: </i> 3Depict 0.0.5 <a href="download.html">released</a>.</li>	
+
+	<li>Older news <a href="news.html">here</a>
 </ul>
 
 <h3>
-Changes in 0.0.3:
+Changes in 0.0.6:
 </h3>
 
 <ul>
-	<li>Added Radial Distribution Function &amp; Nearest neighbour analyses</li>
-	<li>Added on-plot range interaction </li>
-	<li>Add axis aligned box clip mode</li>
-	<li>Plot panning (hold shift key)</li>
-	<li>Add on-screen colourbar for ion colour</li>
-	<li>Add axis drawing</li>
-	<li>Show marker for transform in mass-centre &amp; boundbox mode. Allow user to show or hide marker.</li>
-	<li>Add drag and drop support for file opening</li>
-	<li>Added better error messages to XML file read</li>
-	<li>Add mode to lock cylinder magnitude during rotation</li>
-	<li>Improvements to manual</li>
+	<li>Text data file loading (experimental).</li>
+	<li>Rewritten refresh routines -- more advanced type-based topology analysis to determine minimum refresh set for significantly faster refreshes where caching is limited</li>
+	<li>Corrected cluster filter routines. Better scalability to large or dense cluster queries.</li>
+	<li>Noise transform</li>
+	<li>Camera locking</li>
+	<li>64 bit build for windows platform (currently pending)</li>
+
+	<li> and more. Full details in the <a href="changelog.txt">Changelog</a></li>
 </ul>
+
 
 
 

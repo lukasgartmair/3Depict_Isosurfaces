@@ -3,6 +3,8 @@
 
 #include "../xmlHelper.h"
 
+#include "../translation.h"
+
 #include <wx/process.h>
 #include <wx/filename.h>
 #include <wx/dir.h>
@@ -12,7 +14,7 @@ enum
 	KEY_EXTERNALPROGRAM_COMMAND,
 	KEY_EXTERNALPROGRAM_WORKDIR,
 	KEY_EXTERNALPROGRAM_ALWAYSCACHE,
-	KEY_EXTERNALPROGRAM_CLEANUPINPUT,
+	KEY_EXTERNALPROGRAM_CLEANUPINPUT
 };
 
 //!Error codes
@@ -90,9 +92,9 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 	string s;
 	wxString tempDir;
 	if(workingDir.size())
-		tempDir=(wxStr(workingDir) +_("/inputData"));
+		tempDir=(wxStr(workingDir) +wxT("/inputData"));
 	else
-		tempDir=(_("inputData"));
+		tempDir=(wxT("inputData"));
 
 
 	//Create a temporary dir
@@ -123,9 +125,9 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 				//Save the data to a file
 				wxString tmpStr;
 
-				tmpStr=wxFileName::CreateTempFileName(tempDir+ _("/pointdata"));
+				tmpStr=wxFileName::CreateTempFileName(tempDir+ wxT("/pointdata"));
 				//wxwidgets has no suffix option... annoying.
-				wxRemoveFile(wxStr(tmpStr));
+				wxRemoveFile(tmpStr);
 
 				s = stlStr(tmpStr);
 				s+=".pos";
@@ -148,9 +150,9 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 				//Save the data to a file
 				wxString tmpStr;
 
-				tmpStr=wxFileName::CreateTempFileName(tempDir + _("/plot"));
+				tmpStr=wxFileName::CreateTempFileName(tempDir + wxT("/plot"));
 				//wxwidgets has no suffix option... annoying.
-				wxRemoveFile(wxStr(tmpStr));
+				wxRemoveFile(tmpStr);
 				s = stlStr(tmpStr);
 			        s+= ".xy";
 				if(!writeTextFile(s.c_str(),i->xyData))
@@ -353,6 +355,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			sTmp = stlStr(wxTmpStr);
 			unsigned int dummy;
 			IonStreamData *d = new IonStreamData();
+			d->parent=this;
 			//TODO: some kind of secondary file for specification of
 			//ion attribs?
 			d->r = 1.0;
@@ -428,6 +431,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 				//TODO: some kind of secondary file for specification of
 				//plot attribs?
 				PlotStreamData *d = new PlotStreamData();
+				d->parent=this;
 				d->r = 0.0;
 				d->g=1.0;
 				d->b=0;
@@ -498,11 +502,11 @@ void ExternalProgramFilter::getProperties(FilterProperties &propertyList) const
 
 	std::string tmpStr;
 	
-	s.push_back(make_pair("Command", commandLine));
+	s.push_back(make_pair(TRANS("Command"), commandLine));
 	type.push_back(PROPERTY_TYPE_STRING);
 	keys.push_back(KEY_EXTERNALPROGRAM_COMMAND);		
 	
-	s.push_back(make_pair("Work Dir", workingDir));
+	s.push_back(make_pair(TRANS("Work Dir"), workingDir));
 	type.push_back(PROPERTY_TYPE_STRING);
 	keys.push_back(KEY_EXTERNALPROGRAM_WORKDIR);		
 	
@@ -517,7 +521,7 @@ void ExternalProgramFilter::getProperties(FilterProperties &propertyList) const
 	else
 		tmpStr="0";
 
-	s.push_back(make_pair("Cleanup input",tmpStr));
+	s.push_back(make_pair(TRANS("Cleanup input"),tmpStr));
 	type.push_back(PROPERTY_TYPE_BOOL);
 	keys.push_back(KEY_EXTERNALPROGRAM_CLEANUPINPUT);		
 	if(alwaysCache)
@@ -525,7 +529,7 @@ void ExternalProgramFilter::getProperties(FilterProperties &propertyList) const
 	else
 		tmpStr="0";
 	
-	s.push_back(make_pair("Cache",tmpStr));
+	s.push_back(make_pair(TRANS("Cache"),tmpStr));
 	type.push_back(PROPERTY_TYPE_BOOL);
 	keys.push_back(KEY_EXTERNALPROGRAM_ALWAYSCACHE);		
 
@@ -614,25 +618,25 @@ std::string  ExternalProgramFilter::getErrString(unsigned int code) const
 	switch(code)
 	{
 		case EXTERNALPROG_COMMANDLINE_FAIL:
-			return std::string("Error processing command line");
+			return std::string(TRANS("Error processing command line"));
 		case EXTERNALPROG_SETWORKDIR_FAIL:
-			return std::string("Unable to set working directory");
+			return std::string(TRANS("Unable to set working directory"));
 		case EXTERNALPROG_WRITEPOS_FAIL:
-			return std::string("Error saving posfile result for external progrma");
+			return std::string(TRANS("Error saving posfile result for external program"));
 		case EXTERNALPROG_WRITEPLOT_FAIL:
-			return std::string("Error saving plot result for externalprogrma");
+			return std::string(TRANS("Error saving plot result for externalprogram"));
 		case EXTERNALPROG_MAKEDIR_FAIL:
-			return std::string("Error creating temporary directory");
+			return std::string(TRANS("Error creating temporary directory"));
 		case EXTERNALPROG_PLOTCOLUMNS_FAIL:
-			return std::string("Detected unusable number of columns in plot");
+			return std::string(TRANS("Detected unusable number of columns in plot"));
 		case EXTERNALPROG_READPLOT_FAIL:
-			return std::string("Unable to parse plot result from external program");
+			return std::string(TRANS("Unable to parse plot result from external program"));
 		case EXTERNALPROG_READPOS_FAIL:
-			return std::string("Unable to load ions from external program"); 
+			return std::string(TRANS("Unable to load ions from external program")); 
 		case EXTERNALPROG_SUBSTITUTE_FAIL:
-			return std::string("Unable to perform commandline substitution");
+			return std::string(TRANS("Unable to perform commandline substitution"));
 		case EXTERNALPROG_COMMAND_FAIL: 
-			return std::string("Error executing external program");
+			return std::string(TRANS("Error executing external program"));
 		default:
 			//Currently the only error is aborting
 			return std::string("Bug: write me (externalProgramfilter).");

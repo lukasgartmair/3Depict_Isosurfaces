@@ -24,6 +24,7 @@
 #include <cassert>
 
 
+
 const int MBIG = std::numeric_limits<int>::max();
 
 void Point3D::copyValueArr(float *valArr) const
@@ -602,3 +603,45 @@ size_t LinearFeedbackShiftReg::clock()
 
 	return lfsr;
 }
+
+double det3by3(const double *ptArray)
+{
+	return (ptArray[0]*(ptArray[4]*ptArray[8]
+			      	- ptArray[7]*ptArray[5]) 
+		- ptArray[1]*(ptArray[3]*ptArray[8]
+		       		- ptArray[6]*ptArray[5]) 
+		+ ptArray[2]*(ptArray[3]*ptArray[7] 
+				- ptArray[4]*ptArray[6]));
+}
+
+//Determines the volume of a quadrilateral pyramid
+//input points "planarpts" must be adjacent (connected) by 
+//0 <-> 1 <-> 2 <-> 0, all points connected to apex
+double pyramidVol(const Point3D *planarPts, const Point3D &apex)
+{
+
+	//Array for 3D simplex volumed determination
+	//		| (a_x - b_x)   (b_x - c_x)   (c_x - d_x) |
+	//v_simplex =1/6| (a_y - b_y)   (b_y - c_y)   (c_y - d_y) |
+	//		| (a_z - b_z)   (b_z - c_z)   (c_z - d_z) |
+	double simplexA[9];
+
+	//simplex A (a,b,c,apex) is as follows
+	//a=planarPts[0] b=planarPts[1] c=planarPts[2]
+	
+	simplexA[0] = (double)( (planarPts[0])[0] - (planarPts[1])[0] );
+	simplexA[1] = (double)( (planarPts[1])[0] - (planarPts[2])[0] );
+	simplexA[2] = (double)( (planarPts[2])[0] - (apex)[0] );
+	
+	simplexA[3] = (double)( (planarPts[0])[1] - (planarPts[1])[1] );
+	simplexA[4] = (double)( (planarPts[1])[1] - (planarPts[2])[1] );
+	simplexA[5] = (double)( (planarPts[2])[1] - (apex)[1] );
+	
+	simplexA[6] = (double)( (planarPts[0])[2] - (planarPts[1])[2] );
+	simplexA[7] = (double)( (planarPts[1])[2] - (planarPts[2])[2] );
+	simplexA[8] = (double)( (planarPts[2])[2] - (apex)[2] );
+	
+	return 1.0/6.0 * (fabs(det3by3(simplexA)));	
+}
+
+

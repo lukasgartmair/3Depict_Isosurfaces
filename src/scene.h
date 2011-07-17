@@ -25,7 +25,6 @@ class Scene;
 
 //Custom includes
 #include "drawables.h"
-#include "lights.h"
 #include "select.h"
 #include "basics.h"
 #include "viscontrol.h"
@@ -74,14 +73,15 @@ class Scene
 		//!Objects used for drawing that will not be destroyed
 		std::vector<const DrawableObj * > refObjects;
 
+		//!Special object for holding multiple objects in order to be able to draw them
+		DrawDepthSorted depthSortDraw;
+
 		//!Bindings for interactive object properties
 		std::vector<SelectionDevice<Filter> *> selectionDevices;
 
 		//!Various OpenGL effects
 		std::vector<const Effect *> effects;
 
-		//!Lights for use when drawing
-		std::vector<Light const *> lights;
 		//!Vector of camera stats
 		std::vector<Camera *> cameras;
 
@@ -104,8 +104,6 @@ class Scene
 		//!Blank canvas colour
 		float r,g,b;
 
-		//!OpenGL Frustrum control active? (prevents far-clipping of data)
-		bool frustrumControl;
 
 		//!Camera id storage and handling
 		UniqueIDHandler camIDs;
@@ -158,7 +156,11 @@ class Scene
 		unsigned int initDraw();
 
 		void updateCam(const Camera *camToUse) const;
-		
+
+
+		//!Draw a specified vector of objects
+		void drawObjectVector(const std::vector<const DrawableObj*> &objects, bool &lightsOn, bool drawOpaques=true) const;
+				
 	public:
 		//!Constructor
 		Scene();
@@ -179,8 +181,6 @@ class Scene
 		void clearRefObjs();
 		//!Clear object bindings vector
 		void clearBindings();
-		//!Clear lights vector
-		void clearLights();
 		//!Clear camera vector
 		void clearCams();
 		//!Set the aspect ratio of the output window. Required.
@@ -200,13 +200,6 @@ class Scene
 		 */
 		void addRefDrawable(const DrawableObj *);
 		
-		//!Add a light 
-		/*!Pointer must be set to a valid (allocated) object.
-		 *!Scene will delete upon call to clearAll, clearLights or
-		 *!upon destruction
-		 */
-		void addLight(const Light *);
-
 
 		//!remove a drawable object
 		void removeDrawable(unsigned int);
@@ -256,9 +249,6 @@ class Scene
 
 		//!Get the number of cameras (excluding tmp cam)
 		unsigned int getNumCams() const { return cameras.size(); } ;
-
-		//!Enable/disable frustrum control (prevents objects leaving the frustrum by resizing them)
-		void setFrustrumControl(bool enabled=true) { frustrumControl=enabled;};
 
 		//!Get the camera properties for a given camera
 		void getCamProperties(unsigned int uniqueID, CameraProperties &p) const;

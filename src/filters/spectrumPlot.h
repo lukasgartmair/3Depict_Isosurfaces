@@ -12,7 +12,7 @@ enum
 	KEY_SPECTRUM_MAX,
 	KEY_SPECTRUM_LOGARITHMIC,
 	KEY_SPECTRUM_PLOTTYPE,
-	KEY_SPECTRUM_COLOUR,
+	KEY_SPECTRUM_COLOUR
 };
 
 //!Spectrum plot filter
@@ -44,7 +44,7 @@ class SpectrumPlotFilter : public Filter
 			std::vector<const FilterStreamData *> &getOut, 
 			ProgressData &progress, bool (*callback)(void));
 		
-		virtual std::string typeString() const { return std::string("Spectrum");};
+		virtual std::string typeString() const { return std::string(TRANS("Spectrum"));};
 
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
 		void getProperties(FilterProperties &propertyList) const;
@@ -54,7 +54,10 @@ class SpectrumPlotFilter : public Filter
 				const std::string &value, bool &needUpdate);
 		//!Get the human readable error string associated with a particular error code during refresh(...)
 		std::string getErrString(unsigned int code) const;
-		
+
+		//!Set the user string.
+		void setUserString(const std::string &s);
+
 		//!Dump state to output stream, using specified format
 		bool writeState(std::ofstream &f,unsigned int format, unsigned int depth=0) const;
 		

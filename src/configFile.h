@@ -45,11 +45,22 @@ class ConfigFile
 
 		//!Method for showing/hiding panel at startup
 		unsigned int panelMode;
-	
+
+		//!Initial application window size in pixels
+		unsigned int initialSizeX,initialSizeY;
+		//!Do we have a valid initial app size?
+		bool haveIntialAppSize;
+
 		//!Percentile speeds for mouse zoom and move 
 		unsigned int mouseZoomRatePercent,mouseMoveRatePercent;
+
+		//!Master allow the program to do stuff online check. This is AND-ed, so cannot override disabled items
+		bool allowOnline;
+
+		//!Should the program perform online version number checking?
+		bool allowOnlineVerCheck;	
 	public:
-		ConfigFile() { panelMode=CONFIG_PANELMODE_REMEMBER;mouseZoomRatePercent=mouseMoveRatePercent=100;};
+		ConfigFile(); 
 		void addRecentFile(const std::string &str);
 
 		void getRecentFiles(std::vector<std::string> &filenames) const; 
@@ -89,6 +100,16 @@ class ConfigFile
 		//!Return the current panelmode
 		unsigned int getStartupPanelMode() const;
 		void setStartupPanelMode(unsigned int panelM);
+
+		//!Returns true if we have a suggested initial window size; with x & y being the suggestion
+		bool getInitialAppSize(unsigned int &x, unsigned int &y) const;
+		//!Set the inital window suggested size
+		void setInitialAppSize(unsigned int x, unsigned int y);
+
+		bool getAllowOnlineVersionCheck() const;
+
+		void setAllowOnline(bool v);
+		void setAllowOnlineVersionCheck(bool v);
 };
 
 #endif

@@ -16,12 +16,16 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <wx/wx.h>
 #include <wx/sizer.h>
 #include <wx/dcbuffer.h>
 #include "mathglPane.h"
 #include "wxcomponents.h"
- 
+
+
 #include <mgl/mgl_eps.h>
+
+#include "translation.h"
 
 #include <fstream>
 #include <vector>
@@ -32,6 +36,8 @@
 
 //Panning speed modifier
 const float MGL_PAN_SPEED=0.8f;
+const float MGL_ZOOM_LIMIT=10.0f*sqrt(std::numeric_limits<float>::epsilon());
+
 
 using std::ifstream;
 using std::ios;
@@ -63,7 +69,9 @@ wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 	SetBackgroundStyle(wxBG_STYLE_CUSTOM);
 }
 
-void MathGLPane::setPlot(Multiplot *newPlot)
+
+
+void MathGLPane::setPlotWrapper(PlotWrapper *newPlot)
 {
 	if(thePlot)
 		delete thePlot;
@@ -119,7 +127,7 @@ void MathGLPane::render(wxPaintEvent &event)
 		GetClientSize(&clientW,&clientH);
 		
 		
-		wxString str=_("No plots selected.");
+		wxString str=wxTRANS("No plots selected.");
 		dc->GetMultiLineTextExtent(str,&w,&h);
 		dc->DrawText(str,(clientW-w)/2, (clientH-h)/2);
 
@@ -291,13 +299,17 @@ void MathGLPane::render(wxPaintEvent &event)
 
 		mglPoint mglCurMouse= gr->CalcXYZ(curMouse.x,curMouse.y);
 
+		ASSERT(thePlot->plotType(startMousePlot) == PLOT_TYPE_ONED);
+		float regionLimitX,regionLimitY;
+		regionLimitX=mglCurMouse.x;
+		regionLimitY=mglCurMouse.y;
 		//See where extending the region is allowed up to.
-		float regionTest=thePlot->moveRegionTest(startMouseRegion,
-						regionMoveType, mglCurMouse.x);
+		thePlot->moveRegionLimit(startMousePlot,startMouseRegion,
+						regionMoveType, regionLimitX,regionLimitY);
 		
 		int deltaDrag;
 		mglPoint testPoint;
-		testPoint.x=regionTest;
+		testPoint.x=regionLimitX;
 		testPoint.y=0;
 		int testX,testY;
 		gr->CalcScr(testPoint,&testX,&testY);
@@ -305,7 +317,7 @@ void MathGLPane::render(wxPaintEvent &event)
 
 		//Draw some text above the cursor to indicate the current position
 		std::string str;
-		stream_cast(str,regionTest);
+		stream_cast(str,regionLimitX);
 		wxString wxs;
 		wxs=wxStr(str);
 		wxCoord textW,textH;
@@ -343,42 +355,55 @@ void MathGLPane::render(wxPaintEvent &event)
 		}
 
 	
-		//Draw "ghost" limits markers for move
-		if(regionMoveType == REGION_MOVE)
+		switch(regionMoveType)
 		{
-			PlotRegion reg=thePlot->getRegion(startMouseRegion);
-		
-			mglPoint mglDragStart = gr->CalcXYZ(draggingStart.x,draggingStart.y);
+			case REGION_MOVE_EXTEND_XMINUS:
+			case REGION_MOVE_EXTEND_XPLUS:
+				//No extra markers; we are cool as is
+				break;
+			case REGION_MOVE_TRANSLATE_X:
+			{
+				//This needs to be extended to suppport more
+				//plot types.
+				ASSERT(thePlot->plotType(startMousePlot) == PLOT_TYPE_ONED);
+				
+				//Draw "ghost" limits markers for move,
+				//these appear as moving vertical bars to outline
+				//where the translation result will be for both
+				//upper and lower
+				PlotRegion reg;
+				thePlot->getRegion(startMousePlot,startMouseRegion,reg);
+				mglPoint mglDragStart = gr->CalcXYZ(draggingStart.x,draggingStart.y);
 
-			float newLower,newUpper;
+				float newLower,newUpper;
+				newLower = reg.bounds[0].first + (mglCurMouse.x-mglDragStart.x);
+				newUpper = reg.bounds[0].second + (mglCurMouse.x-mglDragStart.x);
 
-			newLower = reg.bounds.first + (mglCurMouse.x-mglDragStart.x);
-			newUpper = reg.bounds.second + (mglCurMouse.x-mglDragStart.x);
+				int newLowerX,newUpperX,dummy;
+				gr->CalcScr(mglPoint(newLower,0.0f),&newLowerX,&dummy);
+				gr->CalcScr(mglPoint(newUpper,0.0f),&newUpperX,&dummy);
 
-			int newLowerX,newUpperX,dummy;
-			gr->CalcScr(mglPoint(newLower,0.0f),&newLowerX,&dummy);
-			gr->CalcScr(mglPoint(newUpper,0.0f),&newUpperX,&dummy);
-
-			dc->DrawLine(newLowerX,h/2+2*ARROW_SIZE,newLowerX,h/2-2*ARROW_SIZE);
-			dc->DrawLine(newUpperX,h/2+2*ARROW_SIZE,newUpperX,h/2-2*ARROW_SIZE);
-
-
+				dc->DrawLine(newLowerX,h/2+2*ARROW_SIZE,newLowerX,h/2-2*ARROW_SIZE);
+				dc->DrawLine(newUpperX,h/2+2*ARROW_SIZE,newUpperX,h/2-2*ARROW_SIZE);
+				break;
+			}
+			default:
+				ASSERT(false);
+				break;
 		}	
 
 		delete arrowPen;
 				
-
 	}
 	else if(!leftWindow)
 	{
 		if(curMouse.y < axisY && curMouse.x > axisX ) //y axis inverted
 		{
-			unsigned int region,regionSide;
-			if((region=getRegionUnderCursor(curMouse,regionSide)) != 
-					std::numeric_limits<unsigned int>::max())
+			unsigned int regionId,plotId;
+			if(getRegionUnderCursor(curMouse,plotId,regionId))
 			{
 				PlotRegion r;
-				r=thePlot->getRegion(region);
+				thePlot->getRegion(plotId,regionId,r);
 				
 				wxPen *arrowPen;
 				if(limitInteract)
@@ -388,26 +413,31 @@ void MathGLPane::render(wxPaintEvent &event)
 				dc->SetPen(*arrowPen);
 
 				const int ARROW_SIZE=8;
-					
-				switch(regionSide)
+				
+
+				//Convert the mouse coordinates to data coordinates.
+				mglPoint pMouse= gr->CalcXYZ(curMouse.x,curMouse.y);
+				unsigned int regionMoveType=computeRegionMoveType(pMouse.x,pMouse.y,r);
+
+				switch(regionMoveType)
 				{
 					//Left hand side of region
-					case REGION_LEFT_EXTEND:
+					case REGION_MOVE_EXTEND_XMINUS:
 						dc->DrawLine(curMouse.x-ARROW_SIZE,h/2-ARROW_SIZE,
 							     curMouse.x-2*ARROW_SIZE, h/2);
 						dc->DrawLine(curMouse.x-2*ARROW_SIZE, h/2,
 							     curMouse.x-ARROW_SIZE,h/2+ARROW_SIZE);
 						break;
-						//right hand side of region
-					case REGION_RIGHT_EXTEND:
+					//right hand side of region
+					case REGION_MOVE_EXTEND_XPLUS:
 						dc->DrawLine(curMouse.x+ARROW_SIZE,h/2-ARROW_SIZE,
 							     curMouse.x+2*ARROW_SIZE, h/2);
 						dc->DrawLine(curMouse.x+2*ARROW_SIZE, h/2,
 							     curMouse.x+ARROW_SIZE,h/2+ARROW_SIZE);
 						break;
 
-						//centre of region
-					case REGION_MOVE:
+					//centre of region
+					case REGION_MOVE_TRANSLATE_X:
 						dc->DrawLine(curMouse.x-ARROW_SIZE,h/2-ARROW_SIZE,
 							     curMouse.x-2*ARROW_SIZE, h/2);
 						dc->DrawLine(curMouse.x-2*ARROW_SIZE, h/2,
@@ -417,6 +447,8 @@ void MathGLPane::render(wxPaintEvent &event)
 						dc->DrawLine(curMouse.x+2*ARROW_SIZE, h/2,
 							     curMouse.x+ARROW_SIZE,h/2+ARROW_SIZE);
 						break;
+					default:
+						ASSERT(false);
 
 				}
 
@@ -579,39 +611,19 @@ void MathGLPane::mouseDoubleLeftClick(wxMouseEvent& event)
 }
 
 
-unsigned int MathGLPane::getRegionUnderCursor(const wxPoint  &mousePos,
-						unsigned int &rangeSide) const
+bool MathGLPane::getRegionUnderCursor(const wxPoint  &mousePos, unsigned int &plotId,
+								unsigned int &regionId) const
 {
 	ASSERT(gr);
 
-	//pronounced "christmouse" (no, not really)
-	float xMouse;
-
+	//Convert the mouse coordinates to data coordinates.
 	mglPoint pMouse= gr->CalcXYZ(mousePos.x,mousePos.y);
-	xMouse=pMouse.x;
 
-	std::vector<PlotRegion> regions;
-	thePlot->getRegions(regions);
-
-	for(size_t ui=0;ui<regions.size();ui++)
-	{
-		if(regions[ui].bounds.first < xMouse &&
-				regions[ui].bounds.second > xMouse)
-		{
-			//we are in this region
-
-			//OK, so we are in the region, but wichich "third"
-			//are we in? (This MUST match REGION_* enum)
-			rangeSide= (unsigned int)(3.0f*((xMouse-regions[ui].bounds.first)/
-				(regions[ui].bounds.second- regions[ui].bounds.first))) + 1;
-
-			return regions[ui].uniqueID;
-		}
-	}
-
-
-	//No range...
-	return 	std::numeric_limits<unsigned int>::max();
+	//check if we actually have a region
+	if(!thePlot->getRegionIdAtPosition(pMouse.x,pMouse.y,plotId,regionId))
+		return false;
+	
+	return true;
 }
 
 
@@ -643,17 +655,23 @@ void MathGLPane::mouseDown(wxMouseEvent& event)
 		//Set the interaction mode
 		if(event.LeftDown() && !alternateDown )
 		{
-
 			//check to see if we have hit a region
-			unsigned int region,regionSide;
-			if(!limitInteract && (region=getRegionUnderCursor(curMouse,regionSide)) != 
-					std::numeric_limits<unsigned int>::max() && 
-					axisY > draggingStart.y)
+			unsigned int plotId,regionId;
+			if(!limitInteract && axisY > draggingStart.y 
+				&& getRegionUnderCursor(curMouse,plotId,regionId))
 			{
 				PlotRegion r;
-				startMouseRegion=region;
+				thePlot->getRegion(plotId,regionId,r);
+			
+				ASSERT(thePlot->plotType(plotId) == PLOT_TYPE_ONED);
 
-				regionMoveType=regionSide;
+				mglPoint mglDragStart = gr->CalcXYZ(draggingStart.x,draggingStart.y);
+				//Get the type of move, and the region
+				//that is being moved, as well as the plot that this
+				//region belongs to.
+				regionMoveType=computeRegionMoveType(mglDragStart.x,mglDragStart.y, r);
+				startMouseRegion=regionId;
+				startMousePlot=plotId;
 				regionDragging=true;
 			}
 			else
@@ -763,10 +781,25 @@ void MathGLPane::mouseReleased(wxMouseEvent& event)
 		
 		//now that we have the rectangle defined, 
 		//Allow for the plot to be zoomed
-		thePlot->setBounds(std::min(pStart.x,pEnd.x),std::max(pStart.x,pEnd.x),
-					std::min(pStart.y,pEnd.y),std::max(pStart.y,pEnd.y));
+		//
 
-		
+		float minXZoom,maxXZoom,minYZoom,maxYZoom;
+
+		minXZoom=std::min(pStart.x,pEnd.x);
+		maxXZoom=std::max(pStart.x,pEnd.x);
+
+		minYZoom=std::min(pStart.y,pEnd.y);
+		maxYZoom=std::max(pStart.y,pEnd.y);
+
+
+		//Enforce zoom limit to avoid FP aliasing
+		if(maxXZoom - minXZoom > MGL_ZOOM_LIMIT && 
+				maxYZoom - minYZoom > MGL_ZOOM_LIMIT)
+		{
+			thePlot->setBounds(minXZoom,maxXZoom,
+						minYZoom,maxYZoom);
+		}
+
 		dragging=false;
 		//Repaint
 		Refresh();
@@ -779,10 +812,11 @@ void MathGLPane::mouseReleased(wxMouseEvent& event)
 			//we need to tell viscontrol that we have done a region
 			//update
 			mglPoint mglCurMouse= gr->CalcXYZ(curMouse.x,curMouse.y);
-			
-			thePlot->moveRegion(startMouseRegion,regionMoveType,mglCurMouse.x);	
+		
+			//Send the movement to the parent filter
+			thePlot->moveRegion(startMousePlot,
+				startMouseRegion,regionMoveType,mglCurMouse.x,mglCurMouse.y);	
 			haveUpdates=true;	
-
 
 			regionDragging=false;
 		}
@@ -920,14 +954,33 @@ std::string MathGLPane::getErrString(unsigned int errCode)
 	switch(errCode)
 	{
 		case MGLPANE_ERR_BADALLOC:
-			return std::string("Unable to allocate requested memory.\n Try a lower resolution, or save as vector (SVG).");
+			return std::string(TRANS("Unable to allocate requested memory.\n Try a lower resolution, or save as vector (SVG)."));
 		case MGLPANE_ERR_MGLWARN:
-			return std::string("Plotting functions returned an error:\n")+ lastMglErr;
+			return std::string(TRANS("Plotting functions returned an error:\n"))+ lastMglErr;
 		case MGLPANE_FILE_REOPEN_FAIL:
-			return std::string("File readback check failed");
+			return std::string(TRANS("File readback check failed"));
 		case MGLPANE_FILE_UNSIZED_FAIL:
-			return std::string("Filesize during readback appears to be zero.");
+			return std::string(TRANS("Filesize during readback appears to be zero."));
 		default:
 			ASSERT(false);
 	}
+	ASSERT(false);
+}
+
+
+unsigned int MathGLPane::computeRegionMoveType(float dataX,float dataY,const PlotRegion &r) const
+{
+
+	switch(r.bounds.size())
+	{
+		case 1:
+			ASSERT(dataX >= r.bounds[0].first && dataX <=r.bounds[0].second);
+			//Can have 3 different aspects. Left, Centre and Right
+			return REGION_MOVE_EXTEND_XMINUS+(unsigned int)(3.0f*((dataX-r.bounds[0].first)/
+					(r.bounds[0].second- r.bounds[0].first)));
+		default:
+			ASSERT(false);
+	}
+
+	ASSERT(false);	
 }

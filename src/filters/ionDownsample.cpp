@@ -1,6 +1,8 @@
 #include "../APTClasses.h"
 #include "../xmlHelper.h"
 
+#include "../translation.h"
+
 #include "ionDownsample.h"
 
 enum
@@ -172,35 +174,27 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 	}
 
 
-
-	
-
-	size_t totalSize = numElements(dataIn);
+	size_t totalSize = numElements(dataIn,STREAM_TYPE_IONS);
 	if(!perSpecies)	
 	{
-		size_t numIons=0;
-		for(unsigned int ui=0;ui<dataIn.size() ;ui++)
-		{
-			if(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS)
-					numIons+=((const IonStreamData*)dataIn[ui])->data.size();
-		}
 		for(size_t ui=0;ui<dataIn.size() ;ui++)
 		{
 			switch(dataIn[ui]->getStreamType())
 			{
 				case STREAM_TYPE_IONS: 
 				{
-					if(!numIons)
+					if(!totalSize)
 						continue;
 
 					IonStreamData *d;
 					d=new IonStreamData;
+					d->parent=this;
 					try
 					{
 						if(fixedNumOut)
 						{
 							float frac;
-							frac = (float)(((const IonStreamData*)dataIn[ui])->data.size())/(float)numIons;
+							frac = (float)(((const IonStreamData*)dataIn[ui])->data.size())/(float)totalSize;
 
 							randomSelect(d->data,((const IonStreamData *)dataIn[ui])->data,
 										rng,maxAfterFilter*frac,progress.filterProgress,callback,strongRandom);
@@ -324,6 +318,7 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 
 					IonStreamData *d;
 					d=new IonStreamData;
+					d->parent=this;
 					try
 					{
 						if(fixedNumOut)
@@ -441,14 +436,14 @@ void IonDownsampleFilter::getProperties(FilterProperties &propertyList) const
 
 	string tmpStr;
 	stream_cast(tmpStr,fixedNumOut);
-	s.push_back(std::make_pair("By Count", tmpStr));
+	s.push_back(std::make_pair(TRANS("By Count"), tmpStr));
 	keys.push_back(KEY_IONDOWNSAMPLE_FIXEDOUT);
 	type.push_back(PROPERTY_TYPE_BOOL);
 
 	if(rsdIncoming)
 	{
 		stream_cast(tmpStr,perSpecies);
-		s.push_back(std::make_pair("Per Species", tmpStr));
+		s.push_back(std::make_pair(TRANS("Per Species"), tmpStr));
 		keys.push_back(KEY_IONDOWNSAMPLE_PERSPECIES);
 		type.push_back(PROPERTY_TYPE_BOOL);
 	}	
@@ -494,13 +489,13 @@ void IonDownsampleFilter::getProperties(FilterProperties &propertyList) const
 		{
 			stream_cast(tmpStr,maxAfterFilter);
 			keys.push_back(KEY_IONDOWNSAMPLE_COUNT);
-			s.push_back(make_pair("Output Count", tmpStr));
+			s.push_back(make_pair(TRANS("Output Count"), tmpStr));
 			type.push_back(PROPERTY_TYPE_INTEGER);
 		}
 		else
 		{
 			stream_cast(tmpStr,fraction);
-			s.push_back(make_pair("Out Fraction", tmpStr));
+			s.push_back(make_pair(TRANS("Out Fraction"), tmpStr));
 			keys.push_back(KEY_IONDOWNSAMPLE_FRACTION);
 			type.push_back(PROPERTY_TYPE_REAL);
 
@@ -644,9 +639,9 @@ std::string  IonDownsampleFilter::getErrString(unsigned int code) const
 	switch(code)
 	{
 		case IONDOWNSAMPLE_ABORT_ERR:
-			return std::string("Downsample Aborted");
+			return std::string(TRANS("Downsample Aborted"));
 		case IONDOWNSAMPLE_BAD_ALLOC:
-			return std::string("Insuffient memory for downsample");
+			return std::string(TRANS("Insuffient memory for downsample"));
 	}	
 
 	return std::string("BUG! Should not see this (IonDownsample)");

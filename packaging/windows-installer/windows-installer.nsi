@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "3Depict"
-!define PRODUCT_VERSION "0.0.5"
+!define PRODUCT_VERSION "0.0.6"
 !define PRODUCT_PUBLISHER "D. Haley, A. Ceguerra"
 !define PRODUCT_WEB_SITE "http://threedepict.sourceforge.net"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\3Depict.exe"
@@ -63,6 +63,7 @@ Section "3Depict program" SEC01
   File "src\libgsl-0.dll"
   File "src\libfreetype-6.dll"
   File "src\pthreadGC2.dll"
+  File "src\libgomp-1.dll"
   CreateDirectory "$SMPROGRAMS\3Depict"
   CreateDirectory "$SMPROGRAMS\3Depict\textures"
   CreateShortCut "$SMPROGRAMS\3Depict\3Depict.lnk" "$INSTDIR\3Depict.exe"
@@ -145,7 +146,8 @@ Section Uninstall
   Delete "$INSTDIR\libgsl-0.dll"
   Delete "$INSTDIR\libfreetype-6.dll"
   Delete "$INSTDIR\pthreadGC2.dll"
-  
+  Delete "$INSTDIR\libgomp-1.dll"
+
   Delete "$INSTDIR\uninst.exe"  
  
   Delete "$SMPROGRAMS\3Depict\Uninstall.lnk"

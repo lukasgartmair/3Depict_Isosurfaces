@@ -36,6 +36,9 @@ Filter *makeFilter(const std::string &s)
 		case FILTER_TYPE_IONCOLOURFILTER:
 			f=new IonColourFilter;
 			break;
+		case FILTER_TYPE_IONINFO:
+			f = new IonInfoFilter;
+			break;
 		case FILTER_TYPE_COMPOSITION:
 			f=new CompositionProfileFilter;
 			break;
@@ -96,6 +99,9 @@ Filter *makeFilter(unsigned int ui)
 			break;
 		case FILTER_TYPE_IONCOLOURFILTER:
 			f=new IonColourFilter;
+			break;
+		case FILTER_TYPE_IONINFO:
+			f=new IonInfoFilter;
 			break;
 		case FILTER_TYPE_COMPOSITION:
 			f=new CompositionProfileFilter;

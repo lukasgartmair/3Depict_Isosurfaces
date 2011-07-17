@@ -1,0 +1,52 @@
+#!/bin/bash
+
+#I wrote this because autoconf is confusing as bloody hell.
+#I just need to copy some files into a place where gettext will expect them
+#I Shouldn't need to create some mega ultimate makefile.am for that, then
+#follow some random poorly documented hierarchy and naming system. (Looking at you gettextize!)
+
+#extract program name from sources -- Now with added case sensitivity hack!
+PROGRAM_NAME=`cat ../src/basics.cpp | grep PROGRAM_NAME | awk -F= '{print $2}' | sed 's/;//g' | sed 's/\"//g' | sed 's/;//' | sed 's/^\s*//'`
+#Where do we want to install the translations? (if using this script).
+TRANSLATION_INSTALL="/usr/share/locale/"
+
+echo "Program name is $PROGRAM_NAME"
+
+
+
+if [ $# -eq 0 ] ; then
+
+
+	#Create binary versions of gettext translation files
+	for i in *.po
+	do
+		#Quick check to see if we have any "<span>" elements in the files
+		if  [ x`grep '<span' $i ` != x"" ] ; then
+			echo "WARNING: Detected \"span\" element in translation file. This is probably an error, due to encoding of special characters by transifex"
+		fi
+		msgfmt -c -v -o `echo $i | sed 's/po$/mo/'` $i
+	done
+	exit 0
+fi
+
+
+
+if [ $# -eq 1 ] ; then
+	if [ $1  == "install" ] ; then
+		for i in de_DE
+		do
+
+			if [ ! -f ${PROGRAM_NAME}_${i}.mo ] ; then
+				echo "WARNING: ${PROGRAM_NAME}-$i.mo is missing!!!"
+			else
+				cp ${PROGRAM_NAME}_$i.mo $TRANSLATION_INSTALL/$i/LC_MESSAGES/$PROGRAM_NAME.mo
+			fi
+		done
+	fi
+	
+	
+	if [ $1  == "update" ] ; then
+		echo "Saving new translations to update.pot"
+		xgettext --from-code=utf-8 -kTRANS -kwxTRANS -kNTRANS -kwxNTRANS `find ../src/ -name *.cpp` `find ../src/ -name *.h` -o update.pot
+	fi
+fi

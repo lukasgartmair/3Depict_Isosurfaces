@@ -3,8 +3,14 @@ AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CXX
 AC_PROG_CC
 AM_CONFIG_HEADER([config.h])
-AC_CONFIG_FILES([Makefile src/Makefile ])
+AC_CONFIG_FILES([Makefile src/Makefile])
+
+#Lets check if we have windres, and assume this only exists under
+#Windows.
 AM_CONDITIONAL(HAVE_WINDRES, which windres > /dev/null)
+
+#Ok, lets try using gcc style precompiled headers.
+AM_CONDITIONAL(USE_PRECOMPILED_HEADERS, 1)
 
 #Check sizeof
 AC_CHECK_SIZEOF(size_t)
@@ -16,7 +22,7 @@ dnl Test for wx-widgets
 dnl ----------
 AM_OPTIONS_WXCONFIG
 
-AM_PATH_WXCONFIG([2.5.3], [wxWin=1])
+AM_PATH_WXCONFIG(2.5.3, wxWin=1)
 
 if test "$wxWin" != 1; then
 AC_MSG_ERROR([
@@ -270,8 +276,8 @@ dnl -------
 
 AC_ARG_WITH(gsl-flags,
   [  --with-gsl-flags=PATH : specify compiler flags for gsl])
-AC_ARG_WITH(gsl-link,
-  [  --with-gsl-link=PATH : specify linker flag (library) for gsl])
+AC_ARG_WITH(gsl-libs,
+  [  --with-gsl-libs=PATH : specify linker flag (library) for gsl])
 
 if test x"$with_gsl_flags" != x"" ; then
     GSL_CFLAGS="$with_gsl_flags"
@@ -283,6 +289,43 @@ else
 fi
 
 dnl -----------
+
+#Check for libintl
+dnl -----------------
+
+AC_MSG_CHECKING( [ for libintl ] );
+
+AC_ARG_WITH(intl-libs,
+  [  --with-intl-libs=FLAGS: specify linker flags (library) for internationalisation libs])
+
+if test x"$with_intl_libs" != x"" ; then
+    GETTEXT_LIBS="$with_intl_libs"
+    AC_SUBST(GETTEXT_LIBS)
+    AC_MSG_RESULT( [ specified ]);
+else
+	case "${host_os}" in 
+		darwin*)
+			#Darwin requires explicit libintl
+			GETTEXT_LIBS="-lintl -liconv"
+			AC_SUBST(GETTEXT_LIBS)
+    			AC_MSG_RESULT( [ $GETTEXT_LIBS ]);
+		    ;;
+		mingw*|windows*|winnt)
+			GETTEXT_LIBS="-lintl"
+			AC_SUBST(GETTEXT_LIBS)
+    			AC_MSG_RESULT( [ $GETTEXT_LIBS ]);
+		    ;;
+
+		 *)
+			#elsewhere it appears to be part of libc. or something.
+			AC_MSG_RESULT( [ no ]);
+		   ;;
+	esac
+fi
+
+
+dnl -----------------
+
 
 # Check for hpmc isosurface shader library  enable
 #http://www.sintef.no/Projectweb/Heterogeneous-Computing/
@@ -325,3 +368,4 @@ AC_C_INLINE()
 
 AC_PROG_INSTALL
 AC_OUTPUT
+

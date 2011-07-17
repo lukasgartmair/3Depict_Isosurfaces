@@ -50,7 +50,7 @@ enum
 	TEXTURE_COMMAND, 
 	TEXTURE_ALT,
 	TEXTURE_TAB,
-	TEXTURE_SHIFT,
+	TEXTURE_SHIFT
 };
 
 //Paths to named textures

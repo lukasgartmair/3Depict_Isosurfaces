@@ -1,6 +1,8 @@
 #include "boundingBox.h"
 #include "../xmlHelper.h"
 
+#include "../translation.h"
+
 enum
 {
 	KEY_BOUNDINGBOX_VISIBLE=1,
@@ -201,6 +203,7 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 	if(bTotal.isValid() && isVisible)
 	{
 		DrawStreamData *d = new DrawStreamData;
+		d->parent=this;
 
 		//Add the rectangle drawable
 		DrawRectPrism *dP = new DrawRectPrism;
@@ -230,7 +233,7 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 			{
 				ASSERT(numTicks[ui]);
 				tmpTickSpacing[ui]= tickSpacing[ui];
-				tmpTickCount[ui]=(unsigned int)((tickEnd[ui] - tickOrigin[ui])/tickSpacing[ui]);
+				tmpTickCount[ui]=(unsigned int)((tickEnd[ui] - tickOrigin[ui])/tickSpacing[ui])+1;
 			}
 		}
 
@@ -336,14 +339,14 @@ void BoundingBoxFilter::getProperties(FilterProperties &propertyList) const
 
 	string tmpStr;
 	stream_cast(tmpStr,isVisible);
-	s.push_back(std::make_pair("Visible", tmpStr));
+	s.push_back(std::make_pair(TRANS("Visible"), tmpStr));
 	keys.push_back(KEY_BOUNDINGBOX_VISIBLE);
 	type.push_back(PROPERTY_TYPE_BOOL);
 
 	
 	//Properties are X Y and Z counts on ticks
 	stream_cast(tmpStr,fixedNumTicks);
-	s.push_back(std::make_pair("Fixed Tick Num", tmpStr));
+	s.push_back(std::make_pair(TRANS("Fixed Tick Num"), tmpStr));
 	keys.push_back(KEY_BOUNDINGBOX_FIXEDOUT);
 	type.push_back(PROPERTY_TYPE_BOOL);
 	if(fixedNumTicks)
@@ -351,33 +354,33 @@ void BoundingBoxFilter::getProperties(FilterProperties &propertyList) const
 		//Properties are X Y and Z counts on ticks
 		stream_cast(tmpStr,numTicks[0]);
 		keys.push_back(KEY_BOUNDINGBOX_COUNT_X);
-		s.push_back(make_pair("Num X", tmpStr));
+		s.push_back(make_pair(TRANS("Num X"), tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
 		
 		stream_cast(tmpStr,numTicks[1]);
 		keys.push_back(KEY_BOUNDINGBOX_COUNT_Y);
-		s.push_back(make_pair("Num Y", tmpStr));
+		s.push_back(make_pair(TRANS("Num Y"), tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
 		
 		stream_cast(tmpStr,numTicks[2]);
 		keys.push_back(KEY_BOUNDINGBOX_COUNT_Z);
-		s.push_back(make_pair("Num Z", tmpStr));
+		s.push_back(make_pair(TRANS("Num Z"), tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
 	}
 	else
 	{
 		stream_cast(tmpStr,tickSpacing[0]);
-		s.push_back(make_pair("Spacing X", tmpStr));
+		s.push_back(make_pair(TRANS("Spacing X"), tmpStr));
 		keys.push_back(KEY_BOUNDINGBOX_SPACING_X);
 		type.push_back(PROPERTY_TYPE_REAL);
 
 		stream_cast(tmpStr,tickSpacing[1]);
-		s.push_back(make_pair("Spacing Y", tmpStr));
+		s.push_back(make_pair(TRANS("Spacing Y"), tmpStr));
 		keys.push_back(KEY_BOUNDINGBOX_SPACING_Y);
 		type.push_back(PROPERTY_TYPE_REAL);
 
 		stream_cast(tmpStr,tickSpacing[2]);
-		s.push_back(make_pair("Spacing Z", tmpStr));
+		s.push_back(make_pair(TRANS("Spacing Z"), tmpStr));
 		keys.push_back(KEY_BOUNDINGBOX_SPACING_Z);
 		type.push_back(PROPERTY_TYPE_REAL);
 	}
@@ -394,7 +397,7 @@ void BoundingBoxFilter::getProperties(FilterProperties &propertyList) const
 	//Colour
 	genColString((unsigned char)(rLine*255.0),(unsigned char)(gLine*255.0),
 		(unsigned char)(bLine*255),(unsigned char)(aLine*255),tmpStr);
-	s.push_back(std::make_pair("Box Colour", tmpStr));
+	s.push_back(std::make_pair(TRANS("Box Colour"), tmpStr));
 	keys.push_back(KEY_BOUNDINGBOX_LINECOLOUR);
 	type.push_back(PROPERTY_TYPE_COLOUR);
 
@@ -402,14 +405,14 @@ void BoundingBoxFilter::getProperties(FilterProperties &propertyList) const
 	
 	//Line thickness
 	stream_cast(tmpStr,lineWidth);
-	s.push_back(std::make_pair("Line thickness", tmpStr));
+	s.push_back(std::make_pair(TRANS("Line thickness"), tmpStr));
 	keys.push_back(KEY_BOUNDINGBOX_LINEWIDTH);
 	type.push_back(PROPERTY_TYPE_REAL);
 
 	//Font size	
 	stream_cast(tmpStr,fontSize);
 	keys.push_back(KEY_BOUNDINGBOX_FONTSIZE);
-	s.push_back(make_pair("Font Size", tmpStr));
+	s.push_back(make_pair(TRANS("Font Size"), tmpStr));
 	type.push_back(PROPERTY_TYPE_INTEGER);
 
 
@@ -747,8 +750,6 @@ bool BoundingBoxFilter::readState(xmlNodePtr &nodePtr, const std::string &stateF
 	if(stream_cast(fontSize,tmpStr))
 		return false;
 
-	if(fontSize<  0)
-	       return false;	
 	xmlFree(xmlString);
 	//====
 

@@ -19,8 +19,8 @@
 #include "resDialog.h"
 #include "basics.h"
 #include "wxcommon.h"
-// begin wxGlade: ::extracode
-// end wxGlade
+
+#include "translation.h"
 
 
 BEGIN_EVENT_TABLE(ResDialog, wxDialog)
@@ -28,13 +28,14 @@ BEGIN_EVENT_TABLE(ResDialog, wxDialog)
     EVT_BUTTON(wxID_CANCEL,ResDialog::OnBtnCancel)
     EVT_KEY_DOWN(ResDialog::OnKeypress)
 END_EVENT_TABLE();
+
 ResDialog::ResDialog(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
-    wxDialog(parent, id, title, pos, size, wxDEFAULT_DIALOG_STYLE)
+    wxDialog(parent, id, title, pos, size, style)
 {
     // begin wxGlade: ResDialog::ResDialog
-    label_1 = new wxStaticText(this, wxID_ANY, wxT("Width"));
+    label_1 = new wxStaticText(this, wxID_ANY, wxTRANS("Width"));
     textWidth = new wxTextCtrl(this, wxID_ANY, _("1024"), wxDefaultPosition,wxDefaultSize,0,wxTextValidator(wxFILTER_NUMERIC));
-    label_2 = new wxStaticText(this, wxID_ANY, wxT("Height"));
+    label_2 = new wxStaticText(this, wxID_ANY, wxTRANS("Height"));
     textHeight = new wxTextCtrl(this, wxID_ANY,_("768"), wxDefaultPosition,wxDefaultSize,0,wxTextValidator(wxFILTER_NUMERIC));
     btnOK = new wxButton(this, wxID_OK, wxEmptyString);
     btnCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
@@ -107,7 +108,7 @@ void ResDialog::OnKeypress(wxKeyEvent &evt)
 void ResDialog::set_properties()
 {
     // begin wxGlade: ResDialog::set_properties
-    SetTitle(wxT("Enter Resolution"));
+    SetTitle(wxTRANS("Enter Resolution"));
     // end wxGlade
 }
 

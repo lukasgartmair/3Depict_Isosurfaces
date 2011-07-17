@@ -98,7 +98,7 @@ void TexturePool::closeAll()
 
 int pngTexture(texture* dest, const char* filename, GLenum type) {
   FILE *fp;
-  int x, y, z;
+  unsigned int x, y, z;
   png_uint_32 width, height;
   GLint curtex;
   png_bytep *texture_rows;

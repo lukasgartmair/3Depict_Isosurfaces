@@ -25,8 +25,8 @@
 //which complains bitterly about header orders.
 //#define HPMC_GPU_ISOSURFACE
 
-#include "cameras.h"
 #include "textures.h"
+#include "cameras.h"
 #include "voxels.h"
 #include "isoSurface.h"
 #include "basics.h"
@@ -82,13 +82,13 @@ enum
 	DRAW_WIREFRAME,
 	DRAW_FLAT,
 	DRAW_SMOOTH,
-	DRAW_END_ENUM, //Not a mode, just a marker to catch end-of-enum
+	DRAW_END_ENUM //Not a mode, just a marker to catch end-of-enum
 };
 
 //!Axis styles
 enum
 {
-	AXIS_IN_SPACE,	
+	AXIS_IN_SPACE
 };
 
 
@@ -105,7 +105,7 @@ enum
 	DRAW_CYLINDER_BIND_RADIUS,
 	DRAW_RECT_BIND_TRANSLATE,
 	DRAW_RECT_BIND_CORNER_MOVE,
-	DRAW_BIND_ENUM_END,
+	DRAW_BIND_ENUM_END
 };
 
 
@@ -116,6 +116,11 @@ class DrawableObj
 	protected:
 		//!Is the drawable active?
 		bool active;
+
+		//!Is the object changed since last set?
+		bool haveChanged;
+		//!Pointer to current scene camera
+		static const Camera *curCamera;	
 		
 	public: 
 		//!Can be selected from openGL viewport interactively?
@@ -129,7 +134,19 @@ class DrawableObj
 
 		//!Constructor
 		DrawableObj();
-		
+
+		//!Do we need to do element based depth sorting?
+		virtual bool needsDepthSorting() const { return false; } ;
+
+
+		//!Can we break this object down into constituent elements?
+		virtual bool isExplodable() const { return false;};
+
+		//!Break object down into simple elements
+		virtual void explode(std::vector<DrawableObj *> &simpleObjects){ ASSERT(isExplodable()); };
+
+		virtual bool hasChanged() const { return haveChanged; }
+
 
 		//!Set the active state of the object
 		void setActive(bool active);
@@ -145,6 +162,12 @@ class DrawableObj
 
 		//!If we offer any kind of external pointer interface; use this to do a recomputation as needed. This is needed for selection binding behaviour
 		virtual void recomputeParams(const vector<Point3D> &vecs, const vector<float> &scalars, unsigned int mode) {};
+		
+		//!Set the current camera
+		static void setCurCamera(const Camera *c){curCamera=c;};
+
+		//!Get the centre of the object. Only valid if object is simple
+		virtual Point3D getCentroid() const {ASSERT(!isExplodable());} ;
 };
 
 //A single point drawing class 
@@ -171,6 +194,8 @@ class DrawPoint : public DrawableObj
 		void setOrigin(const Point3D &);
 
 		void getBoundingBox(BoundCube &b) const { b.setInvalid();};
+
+		Point3D getCentroid() const{ return origin;}
 };
 
 //!A point drawing class - for many points of same size & colour
@@ -213,6 +238,12 @@ class DrawManyPoints : public DrawableObj
 		
 		//!return number of points
 		size_t getNumPts() { return pts.size();};
+
+		//!This object is explodable
+		bool isExplodable() { return true;}
+
+		//!Explode object into simple point drawables
+		void explode(vector<DrawableObj*> &simpleObjects);
 };
 
 //!Draw a vector
@@ -428,10 +459,33 @@ class DrawCylinder : public DrawableObj
 		void lockRadii(bool doLock=true) {radiiLocked=doLock;};
 };
 
+
+//FIXME: It seemed like a good idea at the time to make this a drawable. Now I don't know why.
+//!Special class for holding references to other objects, where we
+//need to depth sort them
+class DrawDepthSorted: public DrawableObj
+{
+	private:
+		bool haveLastDist;
+		//Objects that need to be depth sorted
+		std::vector<std::pair<const DrawableObj *,std::vector<DrawableObj *> > > depthObjects;
+
+		//Vector that tells us where in the depthObjects array to go to when displaying sorted elements
+		mutable vector<std::pair<size_t,size_t> > depthJumpKeys;
+		
+		//!camera location at last draw
+		mutable Point3D lastCamLoc;
+	public:
+		DrawDepthSorted() { haveLastDist=false;};
+		void addObjectsAsNeeded(const DrawableObj *);
+		void draw() const; 
+		void getBoundingBox(BoundCube &b) const { ASSERT(false);};
+};
+
 //!Drawing mode enumeration for scalar field
 enum
 {
-	VOLUME_POINTS=0,
+	VOLUME_POINTS=0
 };
 
 //!A display list generating class
@@ -489,8 +543,6 @@ class DrawGLText : public DrawableObj
 {
 
 	private:
-		//!pointer to current camera
-		static const Camera *curCamera;
 
 		//!FTGL font instance
 		FTFont *font;
@@ -548,9 +600,6 @@ class DrawGLText : public DrawableObj
 
 		//!Destructor
 		virtual ~DrawGLText();
-		
-		//!Set the camera used to draw scene
-		static void setCurCamera(const Camera *);
 
 		//!Set the size of the text (in points (which may be GL units,
 		//unsure))
@@ -744,8 +793,6 @@ class DrawField3D : public DrawableObj
 		mutable std::vector<std::pair<Point3D,RGBThis> > ptsCache;
 		mutable bool ptsCacheOK;
 	protected:
-		//CurCam
-		static const Camera *curCam;
 		//!Alpha transparancy of objects in field
 		float alphaVal;
 
@@ -757,7 +804,7 @@ class DrawField3D : public DrawableObj
 		bool drawBoundBox;
 
 		//!Colours for the bounding boxes
-		Colour boxColour;
+		float boxColourR,boxColourG,boxColourB,boxColourA;
 		
 		//!True if volume grid is enabled
 		bool volumeGrid;
@@ -811,14 +858,13 @@ class DrawField3D : public DrawableObj
 
 		//!Set the coour of the bounding box
 		void setBoxColours(float r, float g, float b, float a);
-		//!Set the current camera
-		static void setCurCamera(const Camera *c){curCam=c;};
 
 };
 
 class DrawIsoSurface: public DrawableObj
 {
 private:
+
 	mutable bool cacheOK;
 
 	//!should we draw the thing 
@@ -861,6 +907,9 @@ public:
 		
 	//!Sets the color of the point to be drawn
 	void setColour(float rP, float gP, float bP, float alpha) { r=rP;g=gP;b=bP;a=alpha;} ;
+	
+	//!Do we need depth sorting?
+	bool needsDepthSorting() const;
 };
 
 #ifdef HPMC_GPU_ISOSURFACE

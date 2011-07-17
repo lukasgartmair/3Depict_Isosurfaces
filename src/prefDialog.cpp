@@ -21,10 +21,13 @@
 #include "prefDialog.h"
 
 #include "filters/allFilter.h"
+#include "translation.h"
 
 #include <wx/colordlg.h>
 
 using std::vector;
+
+
 
 // begin wxGlade: ::extracode
 // end wxGlade
@@ -60,39 +63,45 @@ PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wx
     notePrefPanels_pane_3 = new wxPanel(notePrefPanels, wxID_ANY);
 	panelStartup = new wxPanel(notePrefPanels, wxID_ANY);
 	panelFilters = new wxPanel(notePrefPanels, wxID_ANY);
-	sizer_2_staticbox = new wxStaticBox(panelStartup, -1, _("Panel Display"));
-    sizerCamSpeed_staticbox = new wxStaticBox(notePrefPanels_pane_3, -1, _("Camera Speed"));
-	filterPropSizer_staticbox = new wxStaticBox(panelFilters, -1, _("Filter Defaults"));
-	lblFilters = new wxStaticText(panelFilters, wxID_ANY, _("Available Filters"));
+#ifndef DISABLE_ONLINE_UPDATE
+	updateSizer_staticbox = new wxStaticBox(panelStartup, -1, wxTRANS("Online Updates"));
+#endif
+	sizer_2_staticbox = new wxStaticBox(panelStartup, -1, wxTRANS("Panel Display"));
+    sizerCamSpeed_staticbox = new wxStaticBox(notePrefPanels_pane_3, -1, wxTRANS("Camera Speed"));
+	filterPropSizer_staticbox = new wxStaticBox(panelFilters, -1, wxTRANS("Filter Defaults"));
+	lblFilters = new wxStaticText(panelFilters, wxID_ANY, wxTRANS("Available Filters"));
 	const wxString *listFilters_choices = NULL;
 	listFilters = new wxListBox(panelFilters, ID_LIST_FILTERS, wxDefaultPosition, wxDefaultSize, 0, listFilters_choices, wxLB_SINGLE|wxLB_SORT);
 	filterGridProperties = new wxPropertyGrid(panelFilters, ID_GRID_PROPERTIES);
-	filterBtnResetAllFilters = new wxButton(panelFilters, ID_BTN_RESET_FILTER_ALL, _("Reset All"));
-	filterResetDefaultFilter = new wxButton(panelFilters, ID_BTN_RESET_FILTER, _("Reset"));
+	filterBtnResetAllFilters = new wxButton(panelFilters, ID_BTN_RESET_FILTER_ALL, wxTRANS("Reset All"));
+	filterResetDefaultFilter = new wxButton(panelFilters, ID_BTN_RESET_FILTER, wxTRANS("Reset"));
 	const wxString comboPanelStartMode_choices[] = {
-		_("Show all panels"),
-		_("Remember last"),
-		_("Show Selected")
+		wxNTRANS("Show all panels"),
+		wxNTRANS("Remember last"),
+		wxNTRANS("Show Selected")
 	};
 	comboPanelStartMode = new wxComboBox(panelStartup, ID_START_COMBO_PANEL, wxT(""), wxDefaultPosition, wxDefaultSize, 3, comboPanelStartMode_choices, wxCB_DROPDOWN|wxCB_SIMPLE|wxCB_DROPDOWN|wxCB_READONLY);
-	chkControl = new wxCheckBox(panelStartup, ID_START_CHECK_CONTROL, _("Control Pane"));
-	chkRawData = new wxCheckBox(panelStartup, ID_START_CHECK_RAWDATA, _("Raw Data Panel"));
-	chkPlotlist = new wxCheckBox(panelStartup, ID_START_CHECK_PLOTLIST, _("Plot List"));
-	lblMoveSpeed = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, _("Move Rate"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
-	labelSlowCamMoveRate = new wxStaticText(notePrefPanels_pane_3,wxID_ANY, _("(slow)"));
+	chkControl = new wxCheckBox(panelStartup, ID_START_CHECK_CONTROL, wxTRANS("Control Pane"));
+	chkRawData = new wxCheckBox(panelStartup, ID_START_CHECK_RAWDATA, wxTRANS("Raw Data Panel"));
+	chkPlotlist = new wxCheckBox(panelStartup, ID_START_CHECK_PLOTLIST, wxTRANS("Plot List"));
+#ifndef DISABLE_ONLINE_UPDATE
+	checkAllowOnlineUpdate = new wxCheckBox(panelStartup, wxID_ANY, _("Periodically notify about available updates"));
+#endif
+	lblMoveSpeed = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, wxTRANS("Move Rate"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
+	labelSlowCamMoveRate = new wxStaticText(notePrefPanels_pane_3,wxID_ANY, wxTRANS("(slow)"));
 	sliderCamMoveRate = new wxSlider(notePrefPanels_pane_3, ID_MOUSE_MOVE_SLIDER, 25, 1, 400,wxDefaultPosition,wxDefaultSize,wxSL_HORIZONTAL|wxSL_LABELS);
-	labelFastCamMoveRate = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, _("(fast)"));
-	lblZoomSpeed = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, _("Zoom Rate"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
-	labelSlowCamZoomRate = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, _("(slow)"));
+	labelFastCamMoveRate = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, wxTRANS("(fast)"));
+	lblZoomSpeed = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, wxTRANS("Zoom Rate"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
+	labelSlowCamZoomRate = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, wxTRANS("(slow)"));
 	sliderCamZoomRate = new wxSlider(notePrefPanels_pane_3, ID_MOUSE_ZOOM_SLIDER, 25, 1, 400,wxDefaultPosition,wxDefaultSize,wxSL_HORIZONTAL|wxSL_LABELS);
-	labelSlowFastZoomRate = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, _("(fast)"));
+	labelSlowFastZoomRate = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, wxTRANS("(fast)"));
 	btnOK = new wxButton(this, wxID_OK, wxEmptyString);
 	btnCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
 
 	filterGridProperties->CreateGrid(0, 2);
 	filterGridProperties->EnableDragRowSize(false);
-	filterGridProperties->SetColLabelValue(0, _("Param"));
-	filterGridProperties->SetColLabelValue(1, _("Value"));
+	filterGridProperties->SetColLabelValue(0, wxTRANS("Param"));
+	filterGridProperties->SetColLabelValue(1, wxTRANS("Value"));
 
 	bool enable=(comboPanelStartMode->GetSelection()  == STARTUP_COMBO_SELECT_SPECIFY);
 
@@ -144,10 +153,12 @@ void PrefDialog::createFilterListing()
 		//If we have a default, dont create a new filter entry
 		if(pos >=v.size() || v[pos] != ui)
 		{
+			//This is a bit of a hack, but it works.
 			Filter *t;
 			t=makeFilter(ui);
 			s = wxStr(t->typeString());
 			listFilters->Append(s);
+			delete t;
 		}
 		else
 			pos++;
@@ -425,10 +436,10 @@ void PrefDialog::updateFilterProp(const Filter *f)
 		filterGridProperties->AppendCols(1);
 		filterGridProperties->AutoSizeColumn(0,true);
 		filterGridProperties->SetColAttr(0,readOnlyColAttr);
-		filterGridProperties->SetColLabelValue(0,wxT("Notice"));
+		filterGridProperties->SetColLabelValue(0,wxTRANS("Notice"));
 
 		filterGridProperties->SetCellValue(0,0,
-			_("For security reasons, defaults are not modifable for this filter"));
+			wxTRANS("For security reasons, defaults are not modifiable for this filter"));
 
 		filterGridProperties->EndBatch();
 
@@ -458,17 +469,17 @@ void PrefDialog::setStartupCheckboxEnables(unsigned int value)
 	switch(value)
 	{
 		case STARTUP_COMBO_SELECT_SHOW_ALL:
-			comboPanelStartMode->SetToolTip(_("Show all panels when starting program"));
+			comboPanelStartMode->SetToolTip(wxTRANS("Show all panels when starting program"));
 			break;
 		case STARTUP_COMBO_SELECT_REMEMBER:
-			comboPanelStartMode->SetToolTip(_("Show panels visible at last shutdown when starting program"));
+			comboPanelStartMode->SetToolTip(wxTRANS("Show panels visible at last shutdown when starting program"));
 			
 			chkRawData->SetValue(true);
 			chkControl->SetValue(true);
 			chkPlotlist->SetValue(true);
 			break;
 		case STARTUP_COMBO_SELECT_SPECIFY:
-			comboPanelStartMode->SetToolTip(_("Show selected panels when starting program"));
+			comboPanelStartMode->SetToolTip(wxTRANS("Show selected panels when starting program"));
 			chkRawData->SetValue(true);
 			chkControl->SetValue(true);
 			chkPlotlist->SetValue(true);
@@ -500,6 +511,7 @@ void PrefDialog::getPanelDefaults(unsigned int &panelMode, bool &panelControl,
 	panelMode=comboPanelStartMode->GetSelection();
 }
 
+
 //-------------- End Startup panel page-----------------------
 
 
@@ -519,76 +531,86 @@ void PrefDialog::OnMouseMoveSlider(wxScrollEvent &event)
 void PrefDialog::set_properties()
 {
     // begin wxGlade: PrefDialog::set_properties
-    SetTitle(_("Preferences"));
+    SetTitle(wxTRANS("Preferences"));
     SetSize(wxSize(640, 487));
-    comboPanelStartMode->SetToolTip(_("Set the method of panel layout when starting the program"));
+    comboPanelStartMode->SetToolTip(wxTRANS("Set the method of panel layout when starting the program"));
     comboPanelStartMode->SetSelection(0);
-    sliderCamMoveRate->SetToolTip(_("Camera tanslation, orbit and swivel rates. "));
-    sliderCamZoomRate->SetToolTip(_("Camera zooming rate."));
+#ifndef DISABLE_ONLINE_UPDATE
+    checkAllowOnlineUpdate->SetToolTip(wxTRANS("Lets the program check the internet to see if updates to the program version are available, then notifies you about updates now and again."));
+#endif
+    sliderCamMoveRate->SetToolTip(wxTRANS("Camera translation, orbit and swivel rates. "));
+    sliderCamZoomRate->SetToolTip(wxTRANS("Camera zooming rate."));
     // end wxGlade
 }
 
 
 void PrefDialog::do_layout()
 {
-    // begin wxGlade: PrefDialog::do_layout
-    wxBoxSizer* panelSizer = new wxBoxSizer(wxVERTICAL);
-    wxBoxSizer* exitButtonSizer = new wxBoxSizer(wxHORIZONTAL);
-    wxStaticBoxSizer* sizerCamSpeed = new wxStaticBoxSizer(sizerCamSpeed_staticbox, wxVERTICAL);
-    wxBoxSizer* sizer_6_copy = new wxBoxSizer(wxHORIZONTAL);
-    wxBoxSizer* sizer_6 = new wxBoxSizer(wxHORIZONTAL);
-    wxBoxSizer* sizer_1 = new wxBoxSizer(wxHORIZONTAL);
-    wxStaticBoxSizer* sizer_2 = new wxStaticBoxSizer(sizer_2_staticbox, wxVERTICAL);
-    wxBoxSizer* sizer_3 = new wxBoxSizer(wxHORIZONTAL);
-    wxBoxSizer* sizer_4 = new wxBoxSizer(wxVERTICAL);
-    wxStaticBoxSizer* filterPropSizer = new wxStaticBoxSizer(filterPropSizer_staticbox, wxHORIZONTAL);
-    wxBoxSizer* filterRightSideSizer = new wxBoxSizer(wxVERTICAL);
-    wxBoxSizer* resetButtonSizer = new wxBoxSizer(wxHORIZONTAL);
-    wxBoxSizer* filterLeftSizer = new wxBoxSizer(wxVERTICAL);
-    filterLeftSizer->Add(lblFilters, 0, 0, 0);
-    filterLeftSizer->Add(listFilters, 1, wxEXPAND, 0);
-    filterPropSizer->Add(filterLeftSizer, 1, wxEXPAND, 0);
-    filterPropSizer->Add(20, 20, 0, 0, 0);
-    filterRightSideSizer->Add(filterGridProperties, 1, wxEXPAND, 0);
-    resetButtonSizer->Add(filterBtnResetAllFilters, 0, 0, 0);
-    resetButtonSizer->Add(filterResetDefaultFilter, 0, 0, 0);
-    resetButtonSizer->Add(20, 20, 1, 0, 0);
-    filterRightSideSizer->Add(resetButtonSizer, 0, wxEXPAND, 0);
-    filterPropSizer->Add(filterRightSideSizer, 2, wxEXPAND, 0);
-    panelFilters->SetSizer(filterPropSizer);
-    sizer_2->Add(comboPanelStartMode, 0, 0, 0);
-    sizer_3->Add(20, 20, 0, 0, 0);
-    sizer_4->Add(chkControl, 0, 0, 0);
-    sizer_4->Add(chkRawData, 0, 0, 0);
-    sizer_4->Add(chkPlotlist, 0, 0, 0);
-    sizer_3->Add(sizer_4, 1, wxEXPAND, 0);
-    sizer_2->Add(sizer_3, 1, wxEXPAND, 0);
-    sizer_1->Add(sizer_2, 1, wxALL|wxEXPAND, 5);
-    panelStartup->SetSizer(sizer_1);
-    sizer_6->Add(lblMoveSpeed, 0, wxALIGN_CENTER_VERTICAL, 0);
-    sizer_6->Add(20, 20, 0, 0, 0);
-    sizer_6->Add(labelSlowCamMoveRate, 0, wxALIGN_CENTER_VERTICAL, 0);
-    sizer_6->Add(sliderCamMoveRate, 1, wxEXPAND|wxALIGN_CENTER_VERTICAL, 0);
-    sizer_6->Add(labelFastCamMoveRate, 0, wxALIGN_CENTER_VERTICAL, 0);
-    sizerCamSpeed->Add(sizer_6, 1, wxEXPAND, 0);
-    sizer_6_copy->Add(lblZoomSpeed, 0, wxALIGN_CENTER_VERTICAL, 0);
-    sizer_6_copy->Add(20, 20, 0, 0, 0);
-    sizer_6_copy->Add(labelSlowCamZoomRate, 0, wxALIGN_CENTER_VERTICAL, 0);
-    sizer_6_copy->Add(sliderCamZoomRate, 1, wxEXPAND|wxALIGN_CENTER_VERTICAL, 0);
-    sizer_6_copy->Add(labelSlowFastZoomRate, 0, wxALIGN_CENTER_VERTICAL, 0);
-    sizerCamSpeed->Add(sizer_6_copy, 1, wxEXPAND, 0);
-    notePrefPanels_pane_3->SetSizer(sizerCamSpeed);
-    notePrefPanels->AddPage(panelFilters, _("Pref"));
-    notePrefPanels->AddPage(panelStartup, _("Startup"));
-    notePrefPanels->AddPage(notePrefPanels_pane_3, _("Camera"));
-    panelSizer->Add(notePrefPanels, 2, wxEXPAND, 0);
-    exitButtonSizer->Add(20, 20, 1, wxEXPAND, 0);
-    exitButtonSizer->Add(btnOK, 0, wxTOP, 8);
-    exitButtonSizer->Add(btnCancel, 0, wxLEFT|wxTOP|wxBOTTOM, 8);
-    exitButtonSizer->Add(10, 20, 0, 0, 0);
-    panelSizer->Add(exitButtonSizer, 0, wxEXPAND, 0);
-    SetSizer(panelSizer);
-    Layout();
-    // end wxGlade
+	// begin wxGlade: PrefDialog::do_layout
+	wxBoxSizer* panelSizer = new wxBoxSizer(wxVERTICAL);
+	wxBoxSizer* exitButtonSizer = new wxBoxSizer(wxHORIZONTAL);
+	wxStaticBoxSizer* sizerCamSpeed = new wxStaticBoxSizer(sizerCamSpeed_staticbox, wxVERTICAL);
+	wxBoxSizer* sizer_6_copy = new wxBoxSizer(wxHORIZONTAL);
+	wxBoxSizer* sizer_6 = new wxBoxSizer(wxHORIZONTAL);
+	wxBoxSizer* sizer_1 = new wxBoxSizer(wxVERTICAL);
+#ifndef DISABLE_ONLINE_UPDATE
+	wxStaticBoxSizer* updateSizer = new wxStaticBoxSizer(updateSizer_staticbox, wxVERTICAL);
+#endif
+	wxStaticBoxSizer* sizer_2 = new wxStaticBoxSizer(sizer_2_staticbox, wxVERTICAL);
+	wxBoxSizer* sizer_3 = new wxBoxSizer(wxHORIZONTAL);
+	wxBoxSizer* sizer_4 = new wxBoxSizer(wxVERTICAL);
+	wxStaticBoxSizer* filterPropSizer = new wxStaticBoxSizer(filterPropSizer_staticbox, wxHORIZONTAL);
+	wxBoxSizer* filterRightSideSizer = new wxBoxSizer(wxVERTICAL);
+	wxBoxSizer* resetButtonSizer = new wxBoxSizer(wxHORIZONTAL);
+	wxBoxSizer* filterLeftSizer = new wxBoxSizer(wxVERTICAL);
+	filterLeftSizer->Add(lblFilters, 0, 0, 0);
+	filterLeftSizer->Add(listFilters, 1, wxEXPAND, 0);
+	filterPropSizer->Add(filterLeftSizer, 1, wxEXPAND, 0);
+	filterPropSizer->Add(20, 20, 0, 0, 0);
+	filterRightSideSizer->Add(filterGridProperties, 1, wxEXPAND, 0);
+	resetButtonSizer->Add(filterBtnResetAllFilters, 0, 0, 0);
+	resetButtonSizer->Add(filterResetDefaultFilter, 0, 0, 0);
+	resetButtonSizer->Add(20, 20, 1, 0, 0);
+	filterRightSideSizer->Add(resetButtonSizer, 0, wxEXPAND, 0);
+	filterPropSizer->Add(filterRightSideSizer, 2, wxEXPAND, 0);
+	panelFilters->SetSizer(filterPropSizer);
+	sizer_2->Add(comboPanelStartMode, 0, 0, 0);
+	sizer_3->Add(20, 20, 0, 0, 0);
+	sizer_4->Add(chkControl, 0, 0, 0);
+	sizer_4->Add(chkRawData, 0, 0, 0);
+	sizer_4->Add(chkPlotlist, 0, 0, 0);
+	sizer_3->Add(sizer_4, 1, wxEXPAND, 0);
+	sizer_2->Add(sizer_3, 1, wxEXPAND, 0);
+	sizer_1->Add(sizer_2, 0, wxALL|wxEXPAND, 5);
+#ifndef DISABLE_ONLINE_UPDATE
+	updateSizer->Add(checkAllowOnlineUpdate, 0, 0, 0);
+	sizer_1->Add(updateSizer, 0, wxALL|wxEXPAND, 5);
+#endif
+	panelStartup->SetSizer(sizer_1);
+	sizer_6->Add(lblMoveSpeed, 0, wxALIGN_CENTER_VERTICAL, 0);
+	sizer_6->Add(20, 20, 0, 0, 0);
+	sizer_6->Add(labelSlowCamMoveRate, 0, wxALIGN_CENTER_VERTICAL, 0);
+	sizer_6->Add(sliderCamMoveRate, 1, wxEXPAND|wxALIGN_CENTER_VERTICAL, 0);
+	sizer_6->Add(labelFastCamMoveRate, 0, wxALIGN_CENTER_VERTICAL, 0);
+	sizerCamSpeed->Add(sizer_6, 1, wxEXPAND, 0);
+	sizer_6_copy->Add(lblZoomSpeed, 0, wxALIGN_CENTER_VERTICAL, 0);
+	sizer_6_copy->Add(20, 20, 0, 0, 0);
+	sizer_6_copy->Add(labelSlowCamZoomRate, 0, wxALIGN_CENTER_VERTICAL, 0);
+	sizer_6_copy->Add(sliderCamZoomRate, 1, wxEXPAND|wxALIGN_CENTER_VERTICAL, 0);
+	sizer_6_copy->Add(labelSlowFastZoomRate, 0, wxALIGN_CENTER_VERTICAL, 0);
+	sizerCamSpeed->Add(sizer_6_copy, 1, wxEXPAND, 0);
+	notePrefPanels_pane_3->SetSizer(sizerCamSpeed);
+	notePrefPanels->AddPage(panelFilters, wxTRANS("Pref"));
+	notePrefPanels->AddPage(panelStartup, wxTRANS("Startup"));
+	notePrefPanels->AddPage(notePrefPanels_pane_3, wxTRANS("Camera"));
+	panelSizer->Add(notePrefPanels, 2, wxEXPAND, 0);
+	exitButtonSizer->Add(20, 20, 1, wxEXPAND, 0);
+	exitButtonSizer->Add(btnOK, 0, wxTOP, 8);
+	exitButtonSizer->Add(btnCancel, 0, wxLEFT|wxTOP|wxBOTTOM, 8);
+	exitButtonSizer->Add(10, 20, 0, 0, 0);
+	panelSizer->Add(exitButtonSizer, 0, wxEXPAND, 0);
+	SetSizer(panelSizer);
+	Layout();
+	// end wxGlade
 }
 

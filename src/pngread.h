@@ -40,6 +40,6 @@ int read_png(FILE*, unsigned int, png_bytep**, png_uint_32*, png_uint_32*);
 
 
 #ifdef __cplusplus 
-	}; 
+	} 
 #endif
 #endif

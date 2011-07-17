@@ -18,6 +18,9 @@
 
 #include "StashDialog.h"
 
+
+#include "translation.h"
+
 #include <utility>
 #include <string>
 #include <stack>
@@ -37,7 +40,7 @@ enum
 };
 
 StashDialog::StashDialog(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
-    wxDialog(parent, id, title, pos, size, wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER|wxTHICK_FRAME)
+    wxDialog(parent, id, title, pos, size, style)
 {
     // begin wxGlade: StashDialog::StashDialog
     label_5 = new wxStaticText(this, wxID_ANY, wxT("Stashes"));
@@ -81,7 +84,7 @@ void StashDialog::setVisController(VisController *s)
 void StashDialog::set_properties()
 {
     // begin wxGlade: StashDialog::set_properties
-    SetTitle(wxT("Stashed Trees"));
+    SetTitle(wxTRANS("Stashed Trees"));
     SetSize(wxSize(600, 430));
     // end wxGlade
 }
@@ -146,8 +149,8 @@ void StashDialog::updateList()
 	string strTmp;
 	tree<Filter *> t;
 	//Add columns to report listviews
-	listStashes->InsertColumn(0,_("Stash Name"),3);
-	listStashes->InsertColumn(1,_("Filter Count"),1);
+	listStashes->InsertColumn(0,wxTRANS("Stash Name"),3);
+	listStashes->InsertColumn(1,wxTRANS("Filter Count"),1);
 	for (unsigned int ui=0; ui<stashes.size(); ui++)
 	{
 		//First item is the stash name

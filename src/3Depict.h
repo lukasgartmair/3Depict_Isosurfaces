@@ -56,6 +56,7 @@ public:
 
     void linkCropWidgets();
 
+    wxSize getNiceWindowSize() const ;
 
 private:
     // begin wxGlade: MainWindowFrame::methods
@@ -109,9 +110,19 @@ private:
 	//!Current fullscreen status
 	unsigned int fullscreenState;
 
+	//!Did the main frame's constructor complete OK?
 	bool initedOK;
 
+	//The type of status message last sent to user
 	unsigned int lastMessageType;
+
+	//Pointer to version check thread, occasionally initialised at startup to
+	// check online for new program updates
+	VersionCheckThread *verCheckThread;
+
+	//Map to convert filter drop down choices to IDs
+	map<std::string,size_t> filterMap;
+
 protected:
     wxTimer *statusTimer;
     wxTimer *progressTimer;
@@ -303,11 +314,21 @@ public:
     virtual void OnUpdateTimer(wxTimerEvent &evt);
     virtual void OnAutosaveTimer(wxTimerEvent &evt);
 
+    virtual void OnCheckUpdatesThread(wxCommandEvent &evt);
+
     virtual void SetCommandLineFiles(wxArrayString &files);
     virtual void updateLastRefreshBox();
 
 
     bool initOK() const {return initedOK;}
+
+    //This is isolated from the layout code, due to "bug" 4815 in wx. The splitter window
+    //does not know how to choose a good size until the window is shown
+    void fixSplitterWindow() { 
+	    filterSplitter->SplitHorizontally(filterTreePane,filterPropertyPane);
+	    splitTopBottom->SplitHorizontally(panelTop, noteDataView);
+	    splitTopBottom->SetSashPosition(GetSize().GetHeight()/10*7);
+	   	};
 
 }; // wxGlade: end class
 

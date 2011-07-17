@@ -1,10 +1,11 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html><head>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
 
+<meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"/>
+<link rel="stylesheet" href="style.css" type="text/css"/>
 
-
-<meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
-<link rel="stylesheet" href="style.css" type="text/css" meda="screen"><title>compiling.html</title></head><body>
+<title>compiling.html</title></head><body>
 <div id="header">
 <h1>3Depict - Valued point cloud visualisation and analysis</h1>
 <ul id="nav">
@@ -19,8 +20,10 @@
 
 <div id="left">
 <div class="box">
-<h2> Latest version: 0.0.3</h2>
+<h2> Latest version: 0.0.6</h2>
 <p> <a href="https://sourceforge.net/projects/threedepict/files/">Download</a> the source code for the latest version of 3Depict for your platform</p>
+</div>
+<div class="box">
 <h3>Stuck on how to compile?</h3>
 Try asking for help on the <a href="https://sourceforge.net/apps/phpbb/threedepict/">forums</a>
 <p></p>
@@ -40,13 +43,13 @@ is fraught with <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Command_
 you have been warned. If you are not familiar with the concept of
 source compilation, or software development in general, this procedure
 may prove very difficult. Some help is available on the forums, but
-this is a limited and typically slow method of communication.<br>
+this is a limited and typically slow method of communication.<br/>
 
-<br>
+<br/>
 
-Looking for an easier install? <a href="download.html">Check</a> to see if your platform is supported. If it is not supported, you can <a href="contact.html">contact the author</a> for other options.<br><br>
-<hr>
-<h2>Getting started<br>
+Looking for an easier install? <a href="download.html">Check</a> to see if your platform is supported. If it is not supported, you can <a href="contact.html">contact the author</a> for other options.<br/><br/>
+<hr/>
+<h2>Getting started<br/>
 
 
 </h2>
@@ -54,21 +57,21 @@ Looking for an easier install? <a href="download.html">Check</a> to see if your 
 This project uses <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Autotools">autotools</a> to manage system configuration and program
 dependency information, so if you know what that means and you are
 running Linux, just do as per normal after installing dependencies
-(.<span style="font-family: monospace;">/configure &amp;&amp; make &amp;&amp; make install</span>). <br>
-<br>
+(.<span style="font-family: monospace;">/configure &amp;&amp; make &amp;&amp; make install</span>). <br/>
+<br/>
 Due to a missing build environment, building under
-windows is highly complicated, and more throughly documented <a href="#windows">below</a>.<br>
-<br>
+windows is highly complicated, and more thoroughly documented <a href="#windows">below</a>.<br/>
+<br/>
 
 
-Direct <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Software_library">Dependencies</a>: <br>
+Direct <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Software_library">Dependencies</a>: <br/>
 
 <ul>
 <li>ftgl</li><li>freetype2</li><li>libxml2</li><li>mathgl</li><li>wxwidgets</li>
 </ul>
 
 
-There are two main stages to compiling, <br>
+There are two main stages to compiling, <br/>
 
 
 <ul>
@@ -77,31 +80,34 @@ There are two main stages to compiling, <br>
 
 
 
-In the following instructions, <span style="text-decoration: underline; font-family: monospace;">$</span> and <span style="text-decoration: underline; font-family: monospace;">#</span> indicate to enter command at a command prompt, as either a normal user or as an <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Root_user">administrator</a>. Do not type the <span style="font-family: monospace;">$</span> or <span style="font-family: monospace;">#</span> when entering the commands. Commands to enter into thes command line are listed in a <span style="font-family: monospace;">fixed width font</span><br>
-<br>
+In the following instructions, <span style="text-decoration: underline; font-family: monospace;">$</span> and <span style="text-decoration: underline; font-family: monospace;">#</span> indicate to enter command at a command prompt, as either a normal user or as an <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Root_user">administrator</a>. Do not type the <span style="font-family: monospace;">$</span> or <span style="font-family: monospace;">#</span> when entering the commands. Commands to enter into the command line, or code snippets, are listed in a <span style="font-family: monospace;">fixed width font</span><br/>
+<br/>
 
-If there are any problems or flaws with the instructions, please <a href="contact.html">contact the author</a><br><br>
+If there are any problems or flaws with the instructions, please <a href="contact.html">contact the author</a><br/><br/>
 
-<h2>Setting up</h2>Either <a href="https://sourceforge.net/projects/threedepict/files/">Download</a> the source code, or grab the <a href="http://mercurial.selenic.com">mercurial</a> respository using this clone command, or by opening the URL in your graphical mercurial client (the URL is the bit at the right)
-<br>
-<br>
+<h2>Get the code</h2>
+Either <a href="https://sourceforge.net/projects/threedepict/files/">Download</a> the source code (<a href="https://secure.wikimedia.org/wikipedia/en/wiki/Tar.gz">.tar.gz</a> file ), or grab the <a href="http://mercurial.selenic.com">mercurial</a> repository using this clone command, or by opening the URL in your graphical mercurial client (the URL is the bit at the right)
+<br/>
+<br/>
 <span style="font-family: monospace;">$ hg clone http://threedepict.hg.sourceforge.net:8000/hgroot/threedepict/threedepict</span>
-<br>
-<br>
-You should then install the following packages (this requires administrative rights to your machine).:<br>
-<br>
-<h3>Debian/Ubuntu:</h3>
+<br/>
+<br/>
+You should then install the following packages (this requires administrative rights to your machine).:<br/>
+<br/>
 
+
+<h2>Setting up</h2>
+<h3>Debian/Ubuntu:</h3>
 <ul>
 <li>build-essential</li><li>libwxgtk2.8-dev</li><li>libmgl-dev</li><li>libxml2-dev</li><li>libftgl-dev</li>
 </ul>
 
 
-This can be done through the command line (below), or using the gui (synaptic package manager)<br>
+This can be done through the command line (below), or using the gui (synaptic package manager)<br/>
 
-<br>
+<br/>
 
-<span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> sudo aptitude install build-essential libwxgtk2.8-dev libmgl-dev libxml2-dev libftgl-dev) </span><br>
+<span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> sudo aptitude install build-essential libwxgtk2.8-dev libmgl-dev libxml2-dev libftgl-dev) </span><br/>
 
 
 <h3>Fedora/RedHat:</h3>
@@ -111,15 +117,15 @@ This can be done through the command line (below), or using the gui (synaptic pa
 </ul>
 
 
-This can be done through either the command line, or through the GUI <br>
+This can be done through either the command line, or through the GUI <br/>
 
-<br>
+<br/>
 
 
-<span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> yum groupinstall "Development Tools"</span><br style="font-family: monospace;">
+<span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> yum groupinstall "Development Tools"</span><br/>
 
-<span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> yum install mathgl-devel libxml2-devel ftgl-devel wxgtk-devel</span><br>
-<br>
+<span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> yum install mathgl-devel libxml2-devel ftgl-devel wxgtk-devel</span><br/>
+<br/>
 
 <h3>OpenSuse:</h3>
 
@@ -129,20 +135,20 @@ This can be done through either the command line, or through the GUI <br>
 
 
 
-This can be done either through the graphical interface (YaST) or at the command line.<br>
+This can be done either through the graphical interface (YaST) or at the command line.<br/>
 
-<br>
+<br/>
 
 
-<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; $ zypper install -t devel_C_C++</span><br style="font-family: monospace;">
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; $ zypper install -t devel_C_C++</span><br/>
 
-<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; $ zypper install wxGTK-devel libxml2-devel ftgl-devel</span><br>
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; $ zypper install wxGTK-devel libxml2-devel ftgl-devel</span><br/>
 
-&nbsp;&nbsp;&nbsp; <br>
+&nbsp;&nbsp;&nbsp; <br/>
 
 Unfortunately, mathgl is not available as a pre-built package for Suse.
 You must therefore download and install it manually from the mathgl
-website:<br>
+website:<br/>
 
 <ul>
 <li><a href="http://mathgl.sourceforge.net/">http://mathgl.sourceforge.net/</a></li>
@@ -151,92 +157,91 @@ website:<br>
 
 <h3>Mac OS X</h3>
 
-Mac OS does not have a proper package management system. You need XCode installed (<a href="http://developer.apple.com/mac/library/documentation/Xcode/Conceptual/XcodeCoexistence/Contents/Resources/en.lproj/Basics/Basics.html">here</a>).
-Note that at time of writing the wxWidgets version provided with XCode
-are several years out of date and cannot be guaranteed function
-correctly (though it may). There are some <a href="#Extra_notes_for_Mac_OSX">post-compile notes</a>, which <span style="font-weight: bold; font-style: italic;">must</span>&nbsp; be followed to build a usable program.<br>
+Mac OS does not have a proper package management system. You need XCode installed (<a href="http://developer.apple.com/mac/library/documentation/Xcode/Conceptual/XcodeCoexistence/Contents/Resources/en.lproj/Basics/Basics.html">here</a>). For the latest version of Snow Leopard for some reason this is not free, and you now have to pay to download this or build gcc yourself (somehow) it appears. Considering GCC (the bit we need) is completely free, it is unclear what the deal is here.
+Note that at time of writing the wxWidgets version provided with XCode are several years out of date and cannot be guaranteed function correctly (though it may). There are some <a href="#Extra_notes_for_Mac_OSX">post-compile notes</a>, which <span style="font-weight: bold; font-style: italic;">must</span>&nbsp; be followed to build a usable program.<br/>
 
-<br>
+<br/>
 
 There is an automatic dependency grabbing script in the 3Depict source
 code under the "deps" folder. Run that (ensure you are connected to the
-internet) to automatically download, build and install all the software
-dependencies. If it does not work, this is a bug, so let me know. <br>
-<br>
-To run the script, simply type:<br>
-<br>
-<span style="font-family: monospace;">$ ./getDeps</span><br>
+Internet) to automatically download, build and install all the software
+dependencies. If it does not work, this is a bug, so let me know. <br/>
+<br/>
+To run the script, simply open terminal.app, navigate to the correct folder containing "getDeps", then type:<br/>
+<br/>
+<span style="font-family: monospace;">$ ./getDeps</span><br/>
 
-<br>
-From the getDeps folder after extracting the source code<br>
-<br>
+<br/>
+This will check your system for a compiler, and then will proceed to download and install the needed components in an automatic fashion.<br/>
+<br/>
 
 
 <h3><a name="From_Source_setup"></a>From Source (All&nbsp; other platforms)</h3>
 For platforms not listed above (including windows), dependency source
-compiling is the way to go if you don't have prebuilt versions
+compiling is the way to go if you don't have pre-built versions
 available. Compiling from source is tricky, can fail due to version
 mismatch, can break your current computer install, and is only
-recommended for advanced users with a programming background. <br>
+recommended for advanced users with a programming background. <br/>
 
-<br>
+<br/>
 
 You must first install GCC for your platform, and be able to compile a
 basic "hello world" program. Other compilers might work, but I cannot
 tell you how to do this. If you don't know what that means, you may
 need to seek assistance from someone who does. Ask your local computer-y
-person.<br>
+person.<br/>
 
-<br>
+<br/>
 
 If your platform provides any of the following libraries in an easy to
 install fashion, use that, but don't forget to install the development
 components, if you choose this route. Otherwise,&nbsp; just follow the
-below instructions.<br>
+below instructions.<br/>
 
-<br>
+<br/>
 
 Install the development headers for your platform.&nbsp; Windows needs
-MinGW/MSYS (unless you know better), some instructions are <a href="http://wiki.wxwindows.org/HowTo:_Install_MSYS_and_MinGW_for_use_with_Eclipse_CDT#MSYS_installation">here</a>, and my notes are below.  Otherwise, you are largely <a href="https://www.google.com/">on your own</a>. Cygwin is <span style="font-style: italic;">not</span> recommended, as OpenGL may not work in the final program (without X11).&nbsp; Feel free to <a href="contact.html">ask for help</a>.<br>
+MinGW/MSYS or TDM-GCC/MSYS (unless you know better), some instructions are <a href="http://wiki.wxwindows.org/HowTo:_Install_MSYS_and_MinGW_for_use_with_Eclipse_CDT#MSYS_installation">here</a>, and my notes are below.  Otherwise, you are largely <a href="https://www.google.com/">on your own</a>. Cygwin is <span style="font-style: italic;">not</span> recommended, as OpenGL may not work in the final program (without X11).&nbsp; Feel free to <a href="contact.html">ask for help</a>.<br/>
 
 
 
-<br>
+<br/>
 
-<h4>wxWidgets<br>
+<h4>wxWidgets<br/>
 </h4>
 
 <ul>
-<li>Download the latest wxWidgets source code from <a href="http://www.wxwidgets.org/">http://www.wxwidgets.org/</a></li><li>Then extract the tarball/zip/whatever</li><li>Compile this with the following console command:</li><ul><li><span style="font-family: monospace;"><span style="text-decoration: underline;">$</span> ./configure --with-opengl --enable-unicode</span></li><li><span style="font-family: monospace;"><span style="text-decoration: underline;">$</span> make</span></li></ul><li>&nbsp;Install&nbsp; (as administrator)</li><ul><li><span style="font-family: monospace;"><span style="text-decoration: underline;">#</span> make install</span></li></ul>
+	<li>Download the latest wxWidgets source code from <a href="http://www.wxwidgets.org/">http://www.wxwidgets.org/</a></li><li>Then extract the tarball/zip/whatever</li><li>Compile this with the following console command:<ul><li><span style="font-family: monospace;"><span style="text-decoration: underline;">$</span> ./configure --with-opengl --enable-unicode</span></li><li><span style="font-family: monospace;"><span style="text-decoration: underline;">$</span> make</span></li></ul></li><li>&nbsp;Install&nbsp; (as administrator)</li><ul><li><span style="font-family: monospace;"><span style="text-decoration: underline;">#</span> make install</span></li></ul>
 </ul>
 
 
-<h4>LibPNG <br>
+<h4>LibPNG <br/>
 </h4>
 
 <ul>
-<li>Download the latest libPNG (Unless running mac) <a href="http://www.libpng.org/pub/png/libpng.html">http://www.libpng.org/pub/png/libpng.html</a></li><ul><li>Copy the correct makefile to the base directory</li><li>Mac OSX : move scripts/makefile.darwin&nbsp; to the libpng dir, and rename it makefile</li><li>Windows: Not sure. I had to do a lot of fiddling to get this to
+<li>Download the latest libPNG (Unless running mac) <a href="http://www.libpng.org/pub/png/libpng.html">http://www.libpng.org/pub/png/libpng.html</a><ul><li>Copy the correct makefile to the base directory</li><li>Mac OSX : move scripts/makefile.darwin&nbsp; to the libpng dir, and rename it makefile</li><li>Windows: Not sure. I had to do a lot of fiddling to get this to
 work. Essentially I pulled a makefile from the msysPORT code, and then
 converted it from patch format to a usable makefile. I suggest looking
-on the interwebs for instructions.</li></ul><li>Other platforms: move scripts/makefile.gcc to the libpng dir and rename it makefile</li><ul><li>&nbsp;Compile it with<span style="font-family: monospace;"> <span style="text-decoration: underline;">$</span> make</span></li><li>&nbsp;Install it with<span style="font-family: monospace;"> <span style="text-decoration: underline;">#</span> make install&nbsp;&nbsp;&nbsp; </span><br>
+on the interwebs for instructions.</li></ul></li><li>Other platforms: move scripts/makefile.gcc to the libpng dir and rename it makefile</li><ul><li>&nbsp;Compile it with<span style="font-family: monospace;"> <span style="text-decoration: underline;">$</span> make</span></li><li>&nbsp;Install it with<span style="font-family: monospace;"> <span style="text-decoration: underline;">#</span> make install&nbsp;&nbsp;&nbsp; </span><br/>
 
 
-    </li></ul>
+    </ul>
+    </li>
 </ul>
 
 <h4>&nbsp;Freetype</h4>
 
 <ul>
-<li>Download the latest freetype source code: <a href="http://www.freetype.org/">http://www.freetype.org/</a></li><li>Compile with</li><ul><li><span style="font-family: monospace;"><span style="text-decoration: underline;">$</span> ./configure<br>
+<li>Download the latest freetype source code: <a href="http://www.freetype.org/">http://www.freetype.org/</a></li><li>Compile with</li><ul><li><span style="font-family: monospace;"><span style="text-decoration: underline;">$</span> ./configure<br/>
       </span></li><li><span style="font-family: monospace;"><span style="text-decoration: underline;">$</span> make</span></li></ul><li>&nbsp;Install&nbsp; (as administrator)</li><ul><li><span style="font-family: monospace;"><span style="text-decoration: underline;">#</span> make install</span></li></ul>
 </ul>
 
 
-<h4>&nbsp;FTGL<br>
+<h4>&nbsp;FTGL<br/>
 </h4>
 
 <ul>
-<li>Download the latest FTGL source code from <a href="http://sourceforge.net/projects/ftgl/">http://sourceforge.net/projects/ftgl/</a></li><li>Compile with</li><ul><li><span style="font-family: monospace;"><span style="text-decoration: underline;">$</span> ./configure <br>
+<li>Download the latest FTGL source code from <a href="http://sourceforge.net/projects/ftgl/">http://sourceforge.net/projects/ftgl/</a></li><li>Compile with</li><ul><li><span style="font-family: monospace;"><span style="text-decoration: underline;">$</span> ./configure <br/>
       </span></li><li><span style="font-family: monospace;"><span style="text-decoration: underline;">$</span> make</span></li></ul><li>&nbsp;Install&nbsp; (as administrator)</li><ul><li><span style="font-family: monospace;"><span style="text-decoration: underline;">#</span> make install</span></li></ul>
 </ul>
 
@@ -245,7 +250,7 @@ on the interwebs for instructions.</li></ul><li>Other platforms: move scripts/ma
 <h4>libxml2</h4>
 
 <ul>
-<li>Download the latest libxml2 <a href="http://www.xmlsoft.org/">http://www.xmlsoft.org/</a></li><li>Compile with</li><ul><li><span style="font-family: monospace;"><span style="text-decoration: underline;">$</span> ./configure <br>
+<li>Download the latest libxml2 <a href="http://www.xmlsoft.org/">http://www.xmlsoft.org/</a></li><li>Compile with</li><ul><li><span style="font-family: monospace;"><span style="text-decoration: underline;">$</span> ./configure <br/>
 </span></li><li><span style="font-family: monospace;"><span style="text-decoration: underline;">$</span> make</span></li></ul><li>&nbsp;Install&nbsp; (as administrator)</li><ul><li><span style="font-family: monospace;"><span style="text-decoration: underline;">#</span> make install</span></li></ul>
 </ul>
 
@@ -262,78 +267,78 @@ on the interwebs for instructions.</li></ul><li>Other platforms: move scripts/ma
 <h2><a name="3Depict_Compilation"></a>3Depict Compilation</h2>
 
 
-Run the "configure" script (as a normal user) with:<br>
+Run the "configure" script (as a normal user) with:<br/>
 
 
-<br style="font-family: monospace;">
+<br/>
 
-<span style="font-family: monospace;">$ ./configure</span><br>
+<span style="font-family: monospace;">$ ./configure</span><br/>
 
-<br>
+<br/>
 
 This script works out some of the specifics of your system. If it
 fails, saying that it cannot locate ftgl, and you know you have the
 headers and libraries installed, simply pass the directory for ftgl
 with --with-ftgl-prefix=(wherever, for example /usr/ if ftgl is
 installed in /usr/include and /usr/libs). A full list of possible
-options (there are many) is available with:<br>
-<br>
+options (there are many) is available with:<br/>
+<br/>
 
 <span style="font-family: monospace;">$ ./configure --help</span>
 
-<br>
-<br>
+<br/>
+<br/>
 
 
-build the project (again normal user) with:<br>
+build the project (again normal user) with:<br/>
 
 
-<br>
+<br/>
 
-<span style="font-family: monospace;">$ make</span><br>
+<span style="font-family: monospace;">$ make</span><br/>
 
-<br>
+<br/>
 
-to run the program:<br>
+to run the program:<br/>
 
 
-<br>
+<br/>
 
-<span style="font-family: monospace;">$ ./src/3Depict</span><br>
+<span style="font-family: monospace;">$ ./src/3Depict</span><br/>
 
-<br>
+<br/>
 
-you can optionally install it (Excluding mac OS) with:<br>
+you can optionally install it (Excluding mac OS) with:<br/>
 
-<br style="font-family: monospace;">
+<br/>
 
-<span style="font-family: monospace;"># make install</span><br>
+<span style="font-family: monospace;"># make install</span><br/>
 
-<h3><a name="Extra_notes_for_Mac_OSX"></a>Extra notes for Mac OSX<br>
+<h3><a name="Extra_notes_for_Mac_OSX"></a>Extra notes for Mac OSX<br/>
 
 </h3>
 
-To build a .app package (required to interact with the program), you need to run <br>
+To build a .app package (required to interact with the program), you need to run <br/>
 
-<br>
+<br/>
 
-<span style="font-family: monospace;">$ makeMacOSXPackage</span><br>
+<span style="font-family: monospace;">$ makeMacOSXPackage</span><br/>
 
 
-<br>
+<br/>
 
-You can even move this ".app" package to other computers (with the same OSX version), and it should work there. <br>
-<br>
+You can even move this ".app" package to other computers (with the same OSX version), and it should work there. <br/>
+<br/>
 
 <h2><a href="windows"></a> Compile notes for windows </h2>
 <p>
-Before I post the full notes, this is very, very detailed and technical. But it means I have this working, and down to a fine art. So buckle your seatbelt Dorothy.</p>
+Before I post the full notes, this is very, very detailed and technical. But it means I have this working, and down to a fine art. Its a rough ride.</p>
 <p>
-You will need the 7zip file manager program or winrar to be able to open tar/gz files, as windows does not support this filetype, nor recognises it in the "web search" facility. (Its a standard gzip + archive file, see <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Tgz">wikipedia on tar-gz</a>)</p>
+You will need the 7zip file manager program or winrar to be able to open tar/gz files, as windows does not support this filetype, nor recognises it in the "web search" facility. (Its a standard gzip + archive file, note to windows devs : see <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Tgz">wikipedia on tar-gz</a>)</p>
 <p>
-This worked under windows 7.
+This worked under windows 7. It probably works elsewhere too. Maybe. I *really* recommend using ubuntu or something; then you don't have to go through all these hoops.
 </p>
-<br>
+<br/>
 Files required to set up dependencies:
 <ul>
 <li>MSYS-1.0.11.exe</li>
@@ -348,7 +353,7 @@ Files required to set up dependencies:
 <li>wxMSW-2.8.11.zip</li>
 </ul>
 
-<br>
+<br/>
 <h3>Setting up dependencies</h3>
 <ul>
 <li>
@@ -443,21 +448,27 @@ ran <span style="font-family: monospace;">make</span>. This will take a long tim
  Ran make
 </li>
 <li>
-- Failed on testThreads.c line 110:
-    tid[i]= (pthread_t)-1;
-	should be
-	    tid[i].p= NULL;
-		tid[i].x=-1;
+- Failed on testThreads.c. In that file, on line 110:
+<span style="font-family: monospace;">  tid[i]= (pthread_t)-1; </span> should be
+<span style="font-family: monospace;">
+<pre>
+	tid[i].p= NULL;
+	tid[i].x=-1;
+</pre>
+</span>
 	
-	as pthread_t is a struct under windows ( see http://sourceware.org/pthreads-win32/faq.html, Q11)
+	as pthread_t is a struct under windows ( see <a href="http://sourceware.org/pthreads-win32/faq.html">Pthreads faq</a>, Q11)
 	looking in pthread.h:
+<span style="font-family: monospace;">
+<pre>
 	typedef struct {
-    void  p;                   / Pointer to actual object /
-    unsigned int x;             / Extra information - reuse count etc /
+	    void  p;                   /* Pointer to actual object */
+	    unsigned int x;             /* Extra information - reuse count etc */
 	} ptw32_handle_t;
+</pre>
 	</li>
 <li>
- Ran<span style="font-family: monospace;">make install</span>
+ Ran <span style="font-family: monospace;">make install</span>
 </li>
 </ul>
 <h4>libfreetype</h4>
@@ -484,7 +495,7 @@ ran <span style="font-family: monospace;">make</span>. This will take a long tim
 	-- found "-lGLU" replaced with "-lGLU32"
 	</li>
 	<li>
-	--openGL and GLU tests are broken. in "configure" replace char glBegin() with #include &lt;GL/gl.h&gt; and char gluNewTess (); with #include &lt;GL/glu.h&gt;, then remove the "return" specification from the function call. This will allow the GL and GLU tests to succeed
+	--openGL and GLU tests are broken. in "configure" replace char glBegin() with #include &lt;GL/gl.h&gt; and char gluNewTess (); with #include &lt;GL/glu.h&gt;, then remove the "return" specification from the function call. This will allow the GL and GLU tests to succeed.
 		</li>
 	</ul>
 </li>
@@ -513,28 +524,29 @@ ran <span style="font-family: monospace;">make</span>. This will take a long tim
   Ran Make
 	<ul>
 	<li>
-	-- This failed in the utils dir. libpng is unable to see libz for whatever reason. Does not bode well,  but it was  in the utils sectio, which I don't need, so I ignored it.
+	-- This failed in the utils dir. libpng is unable to see libz for whatever reason. Does not bode well,  but it was  in the utils section, which I don't need, so I ignored it.
 		</li>
 	</ul>
 </li>
 <li>
- Entered the "mgl" directory & ran <span style="font-family: monospace;">make install</span>
+ Entered the "mgl" directory &amp; ran <span style="font-family: monospace;">make install</span>
 </li>
 <li>
- Entered the "include" directory & ran <span style="font-family: monospace;">make install</span>
+ Entered the "include" directory &amp; ran <span style="font-family: monospace;">make install</span>
 </li>
 </ul>
 <h4>3Depict</h4>
 <ul>
 <li>
- Had to override glu (gluSphere) check (this appears to be broken?)
+ Had to override glu (gluSphere) check (this appears to be broken? (Note to self: Is this fixed now?) )
 </li>
 <li>
- Ran <span style="font-family: monospace;">export CFLAGS="-I/c/msys/1.0/local/include" && LDFLAGS="-I/c/msys/1.0/local/lib" && ./configure</span>
+ Ran <span style="font-family: monospace;">export CFLAGS="-I/c/msys/1.0/local/include" &amp;&amp; LDFLAGS="-L/c/msys/1.0/local/lib" &amp;&amp; ./configure </span>
 	<ul>
 	<li>
-		-- For an explanation for why this is needed, see <a href="http://www.mingw.org/wiki/IncludePathHOWTO">this mingw faq</a>. I can only describe this decision as "insane", and "guaranteed to annoy everyone who attempts to use the system by simply not doing what it is supposed to do"; I am sure there must be a good reason for this seemingly crazy decision, but damned if I know what it is.
-	
+		-- For an explanation for why this "export" businessis needed, see <a href="http://www.mingw.org/wiki/IncludePathHOWTO">this mingw faq</a>.	</li><li>
+		-- This wont build with parallelism; you have to add <span style="font-family: monospace;">--enable-openmp-parallel </span> , however some versions of GCC do not like this, so I left it off by default.  If you get errors about <span style="font-family: monospace;">undefined __sync_compare_and_swap_4  </span>(or similar) you can either 1) Alter your optimisation level 2) rebuild with -march=i686 3) modify the files it complains from, and build only those files without paralellism (modify cflags and remove -D_GLIBCXX... and -fopenmp , or 4) just build the whole thing without parallelism (the default).</li><li>
+		-- This will enable slow debug checking. To turn off debug checking add  <span style="font-family: monospace;">--enable-no-debug-checks</span> after configure, as in <span style="font-family: monospace;">./configure --enable-no-debug-checks</span>. Full information is available in <span style="font-family: monospace;">./configure --help</span>.
 	</li>
 	</ul>
 </li>
@@ -548,27 +560,9 @@ ran <span style="font-family: monospace;">make</span>. This will take a long tim
  Modified c:\msys\1.0\include\mgl\mgl_data.h to add #undef NO_GSL immediately before #ifndef NO_GSL
 </li>
 <li>
- Re-ran <span style="font-family: monospace;">make</span>
-	<ul>
-	<li>
-	--windres failed due to include directory error
-	</li>
-	<li>
-	-- Manually ran windres, after locating wx RC file
-	</li>
-	</ul>
+ Re-ran <span style="font-family: monospace;">make</span> -- this generates the "exe" file.
 </li>
-<li>
- re-ran <span style="font-family: monospace;">make</span>
-	<ul>
-	<li>
-	--Failed during link "undefined reference" errors
-	</li>
-	</ul>
-</li>
-<li>
- Used faulty link output and re-ordered libs by hand: <span style="font-family: monospace;">g++ -I/c/msys/1.0/local/include -I/usr/local/include/freetype2 -I/usr/local/include  -I/usr/local/lib/wx/include/msw-unicode-release-2.8 -I/usr/local/include/wx-2.8 -DWXUSINGDLL -D__WXMSW__   -I/usr/local/include/libxml2  -DDEBUG  -I/c/msys/1.0/local/include -L/c/msys/1.0/local/lib -L/C/MinGW32/lib/  -o 3Depict.exe 3Depict-quat.o 3Depict-pngread.o 3Depict-glPane.o 3Depict-basics.o 3Depict-cameras.o 3Depict-drawables.o 3Depict-lights.o 3Depict-3Depict.o 3Depict-scene.o 3Depict-mathglPane.o 3Depict-plot.o 3Depict-APTClasses.o 3Depict-filter.o 3Depict-viscontrol.o 3Depict-mathfuncs.o 3Depict-wxcomponents.o 3Depict-colourmap.o 3Depict-select.o 3Depict-common.o 3Depict-XMLHelper.o 3Depict-ResDialog.o 3Depict-ExportPos.o 3Depict-ExportRngDialog.o 3Depict-StashDialog.o 3Depict-textures.o 3Depict-configFile.o 3Depict-K3DTree.o 3Depict-effect.o 3Depict-mesh.o 3Depict-IsoSurface.o 3Depict-winconsole.o 3Depict.o -L/usr/local/lib  -mthreads  -Wl,--subsystem,windows -mwindows -lwx_mswu_richtext-2.8 -lwx_mswu_aui-2.8 -lwx_mswu_xrc-2.8 -lwx_mswu_qa-2.8 -lwx_mswu_html-2.8 -lwx_mswu_adv-2.8 -lwx_mswu_core-2.8 -lwx_baseu_xml-2.8 -lwx_baseu_net-2.8 -lwx_baseu-2.8  -lwx_mswu_gl-2.8 -L/usr/local/lib -lxml2 -lpthread -lws2_32  -lmgl `gsl-config --libs` -lftgl -lfreetype -lglu32 -lopengl32 -lxml2 -lpng -lz</span>
-</li>
+
 <li>
 Double clicked program
 

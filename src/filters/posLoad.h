@@ -61,7 +61,7 @@ class DataLoadFilter:public Filter
 
 		void updatePosData();
 
-		virtual std::string typeString() const { return std::string("Pos Data");}
+		virtual std::string typeString() const { return std::string(TRANS("Pos Data"));}
 		
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
 		void getProperties(FilterProperties &propertyList) const;

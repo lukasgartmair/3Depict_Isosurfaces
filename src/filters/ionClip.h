@@ -44,7 +44,7 @@ class IonClipFilter :  public Filter
 			ProgressData &progress, bool (*callback)(void));
 	
 		//!Return human readable name for filter	
-		virtual std::string typeString() const { return std::string("Clipping");};
+		virtual std::string typeString() const { return std::string(TRANS("Clipping"));};
 
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
 		void getProperties(FilterProperties &propertyList) const;

@@ -16,15 +16,17 @@ if [ $1 = '--update-config=yes' ]; then
 		DISABLE_DEBUG="--enable-no-debug-checks"
 	fi
 
-	PNG_DIR="/usr/local"
 	./configure --with-freetype=/usr/local \
-		--with-wx-prefix=/usr/local \
-		--with-xml-config=/opt/local/bin/xml2-config \
-		--with-libpng-flags="-I$PNG_DIR/include" \
-		--with-libpng-link="-L$PNG_DIR/lib -lpng14" \
+		--with-gsl-flags=-I`gsl-config --prefix`/include \
+		--with-gsl-libs="-L`gsl-config --prefix`/lib -lgsl" \
+		--with-wx-prefix=`wx-config --prefix` \
+		--with-xml-config=`which xml2-config` \
+		--with-libpng-flags=-I`libpng14-config --prefix`/include \
+		--with-libpng-link="-L`libpng14-config --prefix`/lib -lpng14" \
+		--with-intl-libs="-L/opt/local/lib -lintlcopy " \
 		$SHOULD_PARALLEL \
 		$DISABLE_DEBUG \
-		LDFLAGS="-lqhull -headerpad_max_install_names"
+		LDFLAGS=" -headerpad_max_install_names"
 
 	if [ $? -ne 0 ]; then
 		echo "Configure unsuccessful - exiting"
@@ -33,6 +35,12 @@ if [ $1 = '--update-config=yes' ]; then
 
 
 	make clean
+fi
+
+g++ --version |grep "g++ (GCC) 4.6."
+if [ $? -ne 0 ]; then
+	echo "g++ version - expected 4.6.x"
+	exit
 fi
 
 make -j2
@@ -44,12 +52,27 @@ fi
 
 echo "Updating .app bundle..."
 mkdir -p ./main.app/Contents/MacOS/
-cp ./src/3Depict ./main.app/Contents/MacOS/main
+cp ./src/3Depict ./main.app/Contents/MacOS/3Depict
 cp src/tex-source/3Depict-icon.icns ./main.app/Contents/Resources/wxmac.icns
 touch ./main.app/Contents/PkgInfo
 touch ./main.app/Contents/info.plist
 #copy textures
 cp -R ./src/textures ./main.app/Contents/Resources
+
+
+#Update gettext translation
+#----
+echo "Updating translation files..."
+
+for i in `ls ./translations/3Depict_*.mo`
+do
+	j=`echo $i | sed 's/.\/translations\/3Depict_//' | sed 's/.mo//'`
+	mkdir -p ./main.app/Contents/Resources/$j/LC_MESSAGES/
+	cp $i ./main.app/Contents/Resources/$j/LC_MESSAGES/3Depict.mo
+	echo "$i $j"
+done
+#----
+
 
 # relabel libraries for packaging
 if [ x`which dylibbundler` == x"" ] ; then
@@ -57,9 +80,8 @@ if [ x`which dylibbundler` == x"" ] ; then
 	exit 1
 fi
 
-dylibbundler -od -b -x ./main.app/Contents/MacOS/main -d ./main.app/Contents/libs -i /usr/lib
+dylibbundler -od -b -x ./main.app/Contents/MacOS/3Depict -d ./main.app/Contents/libs -i /usr/lib
 install_name_tool -change /opt/local/lib/libfreetype.6.dylib @executable_path/../libs/libfreetype.6.dylib ./main.app/Contents/libs/libftgl.2.1.3.dylib
-
 
 echo "Done"
 

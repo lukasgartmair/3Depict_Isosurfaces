@@ -13,6 +13,7 @@
 #include "spectrumPlot.h"
 #include "transform.h"
 #include "voxelise.h"
+#include "ionInfo.h"
 
 //!Create a "true default" filter from its true name string
 Filter *makeFilter(const string  &s) ;

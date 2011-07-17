@@ -22,6 +22,8 @@ class FilterStreamData;
 class ProgressData;
 class RangeFileFilter;
 
+#include "translation.h"
+
 #include <list>
 #include <vector>
 #include <string>
@@ -66,6 +68,7 @@ enum
 	FILTER_TYPE_SPATIAL_ANALYSIS,
 	FILTER_TYPE_CLUSTER_ANALYSIS,
 	FILTER_TYPE_VOXELS,
+	FILTER_TYPE_IONINFO,
 	FILTER_TYPE_ENUM_END // not a filter. just end of enum
 };
 
@@ -79,7 +82,7 @@ enum
 	IONCLIP_PRIMITIVE_CYLINDER,
 	IONCLIP_PRIMITIVE_AAB, //Axis aligned box
 
-	IONCLIP_PRIMITIVE_END, //Not actually a primitive, just end of enum
+	IONCLIP_PRIMITIVE_END //Not actually a primitive, just end of enum
 };
 
 
@@ -95,7 +98,7 @@ enum
 	STREAM_TYPE_PLOT=2,
 	STREAM_TYPE_DRAW=4,
 	STREAM_TYPE_RANGE=8,
-	STREAM_TYPE_VOXEL=16,
+	STREAM_TYPE_VOXEL=16
 };
 
 
@@ -110,7 +113,7 @@ enum
 	BINDING_CYLINDER_DIRECTION,
 	BINDING_PLANE_DIRECTION,
 	BINDING_RECT_TRANSLATE,
-	BINDING_RECT_CORNER_MOVE,
+	BINDING_RECT_CORNER_MOVE
 };
 
 //Possible primitive types (eg cylinder,sphere etc)
@@ -119,7 +122,7 @@ enum
 	PRIMITIVE_SPHERE,
 	PRIMITIVE_PLANE,
 	PRIMITIVE_CYLINDER,
-	PRIMITIVE_AAB,
+	PRIMITIVE_AAB
 };
 extern const char *STREAM_NAMES[];
 
@@ -127,7 +130,7 @@ extern const char *STREAM_NAMES[];
 enum 
 {
 	//IonStreamData
-	ION_REPRESENT_POINTS,
+	ION_REPRESENT_POINTS
 	
 };
 
@@ -137,8 +140,7 @@ enum
 	//VoxelStreamData
 	VOXEL_REPRESENT_POINTCLOUD,
 	VOXEL_REPRESENT_ISOSURF,
-	VOXEL_REPRESENT_END,
-	
+	VOXEL_REPRESENT_END
 };
 
 //Error codes for each of the filters. 
@@ -150,7 +152,7 @@ enum
 {
 	FILE_TYPE_NULL,
 	FILE_TYPE_XML,
-	FILE_TYPE_POS,
+	FILE_TYPE_POS
 };
 
 //---
@@ -160,7 +162,7 @@ enum
 class FilterStreamData;
 
 //!Return the number of elements in a vector of filter data
-size_t numElements(const vector<const FilterStreamData *> &v);
+size_t numElements(const vector<const FilterStreamData *> &vm, int mask=STREAMTYPE_MASK_ALL);
 
 bool parseXMLColour(xmlNodePtr &nodePtr, float &r, float&g, float&b, float&a);
 
@@ -173,12 +175,15 @@ class FilterStreamData
 	protected:
 		unsigned int streamType;
 	public:
+		//!Parent filter pointer
+		const Filter *parent;
+
 		//!Tells us if the filter has cacehd this data for later use. 
 		//this is a boolean value, but not declared as such, as there 
 		//are debug traps to tell us if this is not set by looking for non-boolean values.
 		unsigned int cached;
 
-		FilterStreamData() { cached=(unsigned int) -1; }
+		FilterStreamData() { cached=(unsigned int) -1; parent=0;}
 		virtual ~FilterStreamData() {}; 
 		virtual size_t GetNumBasicObjects() const =0;
 		//!Returns an integer unique to the clas to identify type (yes rttid...)
@@ -250,8 +255,8 @@ class PlotStreamData : public FilterStreamData
 {
 	public:
 		PlotStreamData(){ streamType=STREAM_TYPE_PLOT;
-				plotType=PLOT_TYPE_LINES;errDat.mode=PLOT_ERROR_NONE;
-				r=1.0,g=0.0,b=0.0,a=1.0;logarithmic=false; parent=0; index=(unsigned int)-1;};
+				plotType=PLOT_TRACE_LINES;errDat.mode=PLOT_ERROR_NONE;
+				r=1.0,g=0.0,b=0.0,a=1.0;logarithmic=false; index=(unsigned int)-1;};
 		void clear() {xyData.clear();};
 		size_t GetNumBasicObjects() const { return xyData.size();};
 		float r,g,b,a;
@@ -273,8 +278,6 @@ class PlotStreamData : public FilterStreamData
 		//!Region indicies
 		vector<unsigned int> regionID;
 
-		//!Parent filter pointer, used for inter-refresh matching.
-		const Filter *parent;
 		//!Region parent filter pointer, used for matching interaction with region to parent property
 		Filter *regionParent;
 		//!Parent filter index
@@ -311,10 +314,6 @@ class RangeStreamData :  public FilterStreamData
 		vector<char> enabledRanges;
 		//Enabled ions from source filter 
 		vector<char> enabledIons;
-
-		//!parent filter that spawned this range file. use with EXTREME caution.
-		RangeFileFilter *parentFilter;
-		
 
 		//!constructor
 		RangeStreamData(){ rangeFile=0;streamType=STREAM_TYPE_RANGE;};
@@ -382,6 +381,9 @@ class Filter
 
 		//!Set the properties for the nth filter, 
 		//!needUpdate tells us if filter output changes due to property set
+		//NOte that if you modify a result without clearing the cache,
+		//then any downstream decision based upon that may not be noted in an update
+		//Take care.
 		virtual bool setProperty(unsigned int set, unsigned int key,
 			       		const std::string &value, bool &needUpdate) = 0;
 
@@ -410,7 +412,7 @@ class Filter
 
 		//====
 	
-		//!Return the unique name for a given filter	
+		//!Return the unique name for a given filter -- DO NOT TRANSLATE	
 		string trueName() const { return FILTER_NAMES[getType()];};
 
 
@@ -434,8 +436,8 @@ class Filter
 
 		//!Return a user-specified string, or just the typestring if user set string not active
 		virtual std::string getUserString() const ;
-		//!Set a user-specified string
-		virtual bool setUserString(const std::string &str) { userString=str; return false;}; 
+		//!Set a user-specified string return value is 
+		virtual void setUserString(const std::string &str) { userString=str;}; 
 		
 
 		//!Modified version of writeState for packaging. By default simply calls writeState.

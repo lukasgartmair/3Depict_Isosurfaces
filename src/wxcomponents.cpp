@@ -20,6 +20,7 @@
 #include "wxcommon.h"
 #include "basics.h"
 
+#include "translation.h"
 
 #include <wx/clipbrd.h>
 #include <wx/filefn.h>
@@ -283,8 +284,8 @@ void wxPropertyGrid::propertyLayout()
 	this->DeleteRows(0,this->GetNumberRows());
 
 	this->AppendCols(2);
-	this->SetColLabelValue(0,wxT("Param"));
-	this->SetColLabelValue(1,wxT("Value"));
+	this->SetColLabelValue(0,wxTRANS("Param"));
+	this->SetColLabelValue(1,wxTRANS("Value"));
 
 	vector<int> sepRows;
 	sepRows.resize(propertyKeys.size());
@@ -501,8 +502,8 @@ void CopyGrid::selectData()
 
 void CopyGrid::saveData()
 {
-	wxFileDialog *wxF = new wxFileDialog(this,wxT("Save Data..."), wxT(""),
-		wxT(""),wxT("Text File (*.txt)|*.txt|All Files (*)|*"),wxSAVE);
+	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Save Data..."), wxT(""),
+		wxT(""),wxTRANS("Text File (*.txt)|*.txt|All Files (*)|*"),wxFD_SAVE);
 
 	if( (wxF->ShowModal() == wxID_CANCEL))
 		return;
@@ -514,7 +515,7 @@ void CopyGrid::saveData()
 	if(!f)
 	{
 		wxMessageDialog *wxD  =new wxMessageDialog(this,
-			wxT("Error saving file. Check output dir is writable."),wxT("Save error"),wxOK|wxICON_ERROR);
+			wxTRANS("Error saving file. Check output dir is writable."),wxTRANS("Save error"),wxOK|wxICON_ERROR);
 
 		wxD->ShowModal();
 		wxD->Destroy();

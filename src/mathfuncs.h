@@ -34,12 +34,12 @@
 class Point3D
 {
         private:
-				//!Value data
+		//!Value data
                 float value[3];
         public:
-				//!Constructor
+		//!Constructor
                 inline Point3D() {};
-				//!Constructor with initialising values
+		//!Constructor with initialising values
                 inline Point3D(float x,float y,float z) 
 					{ value[0] = x, value[1] = y, value[2] = z;}
                 //!Set by value (ith dim 0, 1 2)
@@ -75,11 +75,11 @@ class Point3D
                 const Point3D &operator+=(const Point3D &pt);
 
 		const Point3D operator+(float f) const;
-		//!multiplication= operator
+		//!multiplication operator
                 const Point3D &operator*=(const float scale);
 		//!Addition operator
                 const Point3D operator+(const Point3D &pt) const;
-		//!multiplication
+		//!elemental multiplication
                 const Point3D operator*(float scale) const;
 		//!multiplication
 		const Point3D operator*(const Point3D &pt) const;
@@ -227,5 +227,17 @@ class LinearFeedbackShiftReg
 		bool verifyTable();
 };
 
+
+//Determines the volume of a quadrilateral pyramid
+//input points "planarpts" must be adjacent (connected) by 
+//0 <-> 1 <-> 2 <-> 0, all points connected to apex
+double pyramidVol(const Point3D *planarPts, const Point3D &apex);
+
+//!Inline func for calculating a(dot)b
+inline float dotProduct(float a1, float a2, float a3, 
+			float b1, float b2, float b3)
+{
+	return a1*b1 + a2*b2 + a3* b3;
+}
 
 #endif

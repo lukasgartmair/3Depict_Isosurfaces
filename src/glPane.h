@@ -15,10 +15,9 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef _glpane_
-#define _glpane_
+#ifndef GLPANE_H
+#define GLPANE_H
  
-#include <wx/wx.h>
 #include <wx/glcanvas.h>
 
 //Local includes

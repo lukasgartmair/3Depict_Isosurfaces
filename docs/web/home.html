@@ -1,0 +1,159 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta content="text/html; charset=utf-8" http-equiv="content-type" />
+	<meta name="description" content="Point cloud visualisation and analysis. Useful for atom probe, lidar, and more sciencey/data-ey things"/>
+
+	<title>3Depict Home</title> 
+
+	<link rel="stylesheet" href="style.css" type="text/css"/>
+
+</head>
+
+<body>
+<div id="header">
+<h1>3Depict - Valued point cloud visualisation and analysis</h1>
+<ul id="nav">
+	<li><a href="index.html">Home</a></li>
+	<li><a href="download.html">Download</a></li>
+	<li><a href="questions.html">Questions</a></li>
+	<li><a href="documentation.html">Documentation</a></li>
+	<li><a href="contact.html">Contact</a></li>
+	<li><a href="about.html">About</a></li>
+</ul>
+</div>
+
+<div id="left">
+<div class="box">
+<h2> Latest version: 0.0.3</h2>
+<p><a href="download.html">Download</a> the latest version of 3Depict for your platform</p>
+</div>
+<div class="box">
+
+<b>Questions?</b> Ask on the <a href="http://sourceforge.net/apps/phpbb/threedepict/">forum</a> 
+<br/>
+</div>
+<center>
+	<a href="http://sourceforge.net"><img src="http://sflogo.sourceforge.net/sflogo.php?group_id=341003&amp;type=2" alt="SourceForge.net Logo" border="0" height="37" width="125" align="middle"/></a><br/>
+	<small><a href="http://sourceforge.net/projects/threedepict/">SF project page</a></small>
+</center>
+</div>
+
+
+<div id="content">
+<div id="right">
+<h1><img src="images/3Depict-icon.png" width="44" height="44" align="middle" alt="program icon"/> 3Depict - Fast and Free</h1>
+<p>
+This software was developed to allow for analysis of scientific
+datasets commonly encountered in <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Atom_probe">atom probe tomography</a>. You can manipulate,
+interact with and analyse point based datasets. <br/>
+</p>
+
+<a href="images/Screenshot.png"><img style="margin: 1em; width: 300px; height: 200px;" alt="Program screenshot" src="images/Screenshot-thumb.png" align="right"/></a>
+
+
+<p></p>
+
+<h3>
+News:
+</h3>
+
+<ul>
+	<li><i>29th Nov. 2010: </i> 3Depict 0.0.3 has been released, so why not <a href="download.html">download it</a>.  Note that state files are not compatible between the 0.0.x series.</li>
+	<li><i>21st Nov. 2010: </i> 3Depict 0.0.3 preview has been uploaded to the sourceforge mercurial repository. If you are keen, you can compile the new version from source to give it a test drive. If you find any bugs, please <a href="contact.html">report them</a></li>
+	<li><i> 25th Sep. 2010: </i>3Depict 0.0.2 has been released. You can <a href="download.html">download it</a> now! </li>
+</ul>
+
+<h3>
+Changes in 0.0.3:
+</h3>
+
+<ul>
+	<li>Added Radial Distribution Function &amp; Nearest neighbour analyses</li>
+	<li>Added on-plot range interaction </li>
+	<li>Add axis aligned box clip mode</li>
+	<li>Plot panning (hold shift key)</li>
+	<li>Add on-screen colourbar for ion colour</li>
+	<li>Add axis drawing</li>
+	<li>Show marker for transform in mass-centre &amp; boundbox mode. Allow user to show or hide marker.</li>
+	<li>Add drag and drop support for file opening</li>
+	<li>Added better error messages to XML file read</li>
+	<li>Add mode to lock cylinder magnitude during rotation</li>
+	<li>Improvements to manual</li>
+</ul>
+
+
+
+<h3>
+Features:
+</h3>
+<ul><li>Graphical interface
+  <ul>
+    <li>Graphical interaction for intuitive and happy analysis.</li>
+  </ul></li>
+<li>Flexible
+  <ul>
+    <li>Customise your analyses using the flexible filtering system.</li>
+  </ul></li>
+<li>Cross platform 
+  <ul>
+    <li>Run anywhere, anytime! No special hardware
+required.</li>
+  </ul></li>
+<li>Free &amp; <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Open_source_software">Open
+Source</a> 
+
+  <ul>
+    <li>No cost to distribute or modify, licensed under the <a href="http://www.gnu.org/licenses/gpl-3.0-standalone.html">GNU GPL 3</a>.
+
+  </li>
+  </ul></li>
+<li>Customisable 
+  <ul>
+    <li>Design your own on-the-fly analysis tools by connecting to external programs.</li>
+  </ul></li>
+</ul>
+
+
+<h3>
+Minimum Requirements:<br/>
+
+</h3>
+<ul><li>Who knows! Every computer I ran this on was fine.</li>
+	<li>I ran this on an <a href="https://secure.wikimedia.org/wikipedia/en/wiki/EEEPC#Eee_900_series">EEEPC
+901</a>(~US$500, 2008) with 2GB RAM running at 800Mhz ("power save" mode). it didn't have any problems.&nbsp;&nbsp;</li>
+  <li>I even managed to make it work with <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Software_rendering">software
+rendering</a> under a virtual machine</li>
+  <li>Can you run it on anything
+less? Let me know! <br/></li>
+
+</ul>
+<h3>Limitations:</h3>
+
+<ul>
+  <li>General: Currently you can load approximately 2/3 of your system
+RAM's worth of data at any time; 
+
+  <ul>
+    <li>You can load files larger than this, just not all of it at once (subsets or samplings).</li>
+  </ul>
+</li>
+<li>32 bit versions: <br/>
+	<ul>
+		<li>General: You can only access files up to 4GB in size.<br/></li>
+		<li>Windows:&nbsp; You can only access up to 4GB of system RAM in
+the application, <a href="http://msdn.microsoft.com/en-us/library/aa366778%28VS.85%29.aspx">regardless
+of how much you have </a><br/> 
+		</li>
+	</ul>
+
+  </li>
+</ul>
+
+</div>
+</div>
+
+</body>
+
+</html>

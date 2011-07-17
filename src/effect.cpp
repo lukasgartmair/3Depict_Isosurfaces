@@ -18,8 +18,7 @@ BoundCube Effect::bc;
 float MIN_CROP_FRACTION=0.0001;
 
 unsigned int NUM_EFFECTS=2;
-const char *EFFECT_NAMES[] = { "",
-				"boxcrop",
+const char *EFFECT_NAMES[] = { "boxcrop",
 				"anaglyph"
 				};
 
@@ -80,6 +79,11 @@ float halfMatrix[]={	0.299f, 0.587f,	0.114f,	0,
 				0.0f,	0.0f,	0.0f,	0,
 				0,   	0,   	0,   	1};
 
+std::string Effect::getName() const
+{
+	return EFFECT_NAMES[this->getType()];
+}
+
 void BoxCropEffect::enable(unsigned int pass) const
 {
 
@@ -87,27 +91,24 @@ void BoxCropEffect::enable(unsigned int pass) const
 	if(pass)
 		return;
 	//Compute the bounding box that is the clipped boundary
-	Point3f pBox[8];
 	Point3D pAAB[2]; //Axis aligned box
 	bc.getBounds(pAAB[0],pAAB[1]);
 
 	Point3D pCentre;
 	pCentre = (pAAB[0] + pAAB[1])*0.5f;
-
-	for(unsigned int ui=0;ui<8;ui++)
-	{
-		//Counting in binary to generate box corner vertices.
-		pBox[ui].fx = pAAB[(ui>>2) &1][0];
-		pBox[ui].fy = pAAB[(ui>>1) &1][1];
-		pBox[ui].fz = pAAB[ui&1][2];
-	}
-
-
-
-
+		
 	unsigned int glOffset=openGLIdStart;
+
 	if(useCamCoordinates)
 	{
+		Point3f pBox[8];
+		for(unsigned int ui=0;ui<8;ui++)
+		{
+			//Counting in binary to generate box corner vertices.
+			pBox[ui].fx = pAAB[(ui>>2) &1][0];
+			pBox[ui].fy = pAAB[(ui>>1) &1][1];
+			pBox[ui].fz = pAAB[ui&1][2];
+		}
 		//Translate to rotate around the box centre 
 		for(unsigned int ui=0;ui<8;ui++)
 		{
@@ -121,6 +122,13 @@ void BoxCropEffect::enable(unsigned int pass) const
 		z= curCam->getUpDirection();
 		y= curCam->getViewDirection();
 
+		//We need to first do a "passive" coordinate transformation on the box coordinates
+		//to determine the box coordinates in camera basis vectors (after translation such tat
+		//centre of box is in centre of world).
+
+		//Active transformations are v'=Tv_orig. Passive transformation is that v_prime = T^-1 v_orig
+		//
+
 		z.normalise(); //Not needed, I think.. but can't hurt
 		y.normalise();
 		x= z.crossProd(y);
@@ -128,13 +136,24 @@ void BoxCropEffect::enable(unsigned int pass) const
 		float angle;
 		angle=z.angle(Point3D(0,0,1));
 
+
+
 		//If needed, perform a rotation to align the box up
 		//vector with the camera up vector
 		Point3f r;
+		Point3D yTmpRot;
 		if(fabs(angle) > sqrtf(std::numeric_limits<float>::epsilon()))
 		{
 			Point3D rotateAxis;
-			rotateAxis = z.crossProd(Point3D(0,0,1));
+
+
+			//Check for numerical stability problem when camera 
+			//& world z axes point exactly apart			
+			if( fabs(angle-M_PI) <sqrtf(std::numeric_limits<float>::epsilon()))
+				rotateAxis=Point3D(1,0,0); //Pick *any* vector in X-Y plane.
+			else
+				rotateAxis = z.crossProd(Point3D(0,0,1));
+			rotateAxis.normalise();
 
 			r.fx=rotateAxis[0];
 			r.fy=rotateAxis[1];
@@ -143,13 +162,23 @@ void BoxCropEffect::enable(unsigned int pass) const
 			for(unsigned int ui=0;ui<8;ui++)
 				quat_rot(&(pBox[ui]),&r,angle);
 
+
+			Point3f yRot;
+			yRot.fx=0;
+			yRot.fy=1;
+			yRot.fz=0;
+			quat_rot(&yRot,&r,angle);
+
+			yTmpRot=Point3D(yRot.fx,yRot.fy,yRot.fy);
+
+
 		}
 
 		//Rotating around the z axis to set "spin"
 		r.fx=z[0];
 		r.fy=z[1];
 		r.fz=z[2];
-		angle=y.angle(Point3D(0,1,0));
+		angle=y.angle(yTmpRot);
 
 		//Spin the box around to match the final coordinate system
 		for(unsigned int ui=0;ui<8;ui++)
@@ -210,7 +239,6 @@ void BoxCropEffect::enable(unsigned int pass) const
 				+y*dotValue[1]*dC[3]+z*dotValue[2]*dC[5];
 
 
-		unsigned int glOffset=openGLIdStart;
 		//Draw crop iff crop fractiosn are +ve
 
 		//X
@@ -378,10 +406,11 @@ bool BoxCropEffect::writeState(std::ofstream &f, unsigned int format, unsigned i
 }
 
 
-bool BoxCropEffect::readState(xmlNodePtr &nodePtr)
+bool BoxCropEffect::readState(xmlNodePtr nodePtr)
 {
 	using std::string;
 
+	nodePtr=nodePtr->xmlChildrenNode;
 	xmlNodePtr scalars;
 	if(XMLHelpFwdToElem(nodePtr,"cropvalues"))
 		return false;
@@ -593,7 +622,7 @@ bool AnaglyphEffect::writeState(std::ofstream &f, unsigned int format,unsigned i
 }
 
 
-bool AnaglyphEffect::readState(xmlNodePtr &nodePtr)
+bool AnaglyphEffect::readState(xmlNodePtr nodePtr)
 {
 	using std::string;
 

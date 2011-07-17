@@ -24,6 +24,8 @@
 #include "mathfuncs.h"
 #include "rdf.h"
 
+#include "translation.h"
+
 #include <limits>
 #include <fstream>
 #include <algorithm>
@@ -44,11 +46,11 @@ using std::make_pair;
 
 bool Filter::strongRandom= false;
 
-const char *STREAM_NAMES[] = { "Ion",
-				"Plot",
-				"Draw",
-				"Range",
-				"Voxel"};
+const char *STREAM_NAMES[] = { NTRANS("Ion"),
+				NTRANS("Plot"),
+				NTRANS("Draw"),
+				NTRANS("Range"),
+				NTRANS("Voxel")};
 
 const char *FILTER_NAMES[] = { "posload",
 				"iondownsample",
@@ -62,7 +64,8 @@ const char *FILTER_NAMES[] = { "posload",
 				"externalprog",
 				"spatialanalysis",
 				"clusteranalysis",
-				"voxelise"
+				"voxelise",
+				"ioninfo"
 				};
 
 void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f)
@@ -111,6 +114,8 @@ bool parseXMLColour(xmlNodePtr &nodePtr, float &r,float&g,float&b,float&a)
 	//disallow negative or values gt 1.
 	if(r < 0.0f || r > 1.0f)
 		return false;
+	xmlFree(xmlString);
+
 
 	//--green--
 	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"g");
@@ -120,7 +125,12 @@ bool parseXMLColour(xmlNodePtr &nodePtr, float &r,float&g,float&b,float&a)
 
 	//convert from string to digit
 	if(stream_cast(g,tmpStr))
+	{
+		xmlFree(xmlString);
 		return false;
+	}
+	
+	xmlFree(xmlString);
 
 	//disallow negative or values gt 1.
 	if(g < 0.0f || g > 1.0f)
@@ -134,8 +144,12 @@ bool parseXMLColour(xmlNodePtr &nodePtr, float &r,float&g,float&b,float&a)
 
 	//convert from string to digit
 	if(stream_cast(b,tmpStr))
+	{
+		xmlFree(xmlString);
 		return false;
-
+	}
+	xmlFree(xmlString);
+	
 	//disallow negative or values gt 1.
 	if(b < 0.0f || b > 1.0f)
 		return false;
@@ -148,7 +162,11 @@ bool parseXMLColour(xmlNodePtr &nodePtr, float &r,float&g,float&b,float&a)
 
 	//convert from string to digit
 	if(stream_cast(a,tmpStr))
+	{
+		xmlFree(xmlString);
 		return false;
+	}
+	xmlFree(xmlString);
 
 	//disallow negative or values gt 1.
 	if(a < 0.0f || a > 1.0f)
@@ -157,11 +175,14 @@ bool parseXMLColour(xmlNodePtr &nodePtr, float &r,float&g,float&b,float&a)
 	return true;
 }
 
-size_t numElements(const vector<const FilterStreamData *> &v)
+size_t numElements(const vector<const FilterStreamData *> &v, int mask)
 {
 	size_t nE=0;
 	for(unsigned int ui=0;ui<v.size();ui++)
-		nE+=v[ui]->GetNumBasicObjects();
+	{
+		if((v[ui]->getStreamType() & mask))
+			nE+=v[ui]->GetNumBasicObjects();
+	}
 
 	return nE;
 }

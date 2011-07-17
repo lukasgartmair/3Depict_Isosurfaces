@@ -73,9 +73,13 @@ class CropPanel : public wxPanel
 		
 		bool validCoords() const;
 		
-		void updateLinked();
 	
 		void draw() ;
+
+		//!Get the "best" crop widget as defined by coordinates (in 0->1 space)
+		//returns the index of the selected item as parameter
+		unsigned int getBestCropWidget(float xMouse,float yMouse, unsigned int &idx) const;
+
 
 		DECLARE_EVENT_TABLE();
 	public:
@@ -92,7 +96,7 @@ class CropPanel : public wxPanel
 		//!Directly set the crop value, (0->1), index can be 0->3
 		void setCropValue(unsigned int index, float v);
 
-		void makeCropValuesValid() {ASSERT(false); }
+		void makeCropValuesValid(); 
 
 		//!Link this panel's updates to another. Use CROP_LINK_NONE to disable
 		void link(CropPanel *otherPanel,unsigned int mode);
@@ -106,6 +110,8 @@ class CropPanel : public wxPanel
 		void mouseDoubleLeftClick(wxMouseEvent& event);
 		void onPaint(wxPaintEvent& evt);
 		void onResize(wxSizeEvent& evt);
+		
+		void updateLinked();
 		~CropPanel() {};
 };
 #endif

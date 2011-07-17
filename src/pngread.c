@@ -224,7 +224,7 @@ int read_png(FILE *fp, unsigned int sig_read, png_bytep **row_pointers,
    if (!(*row_pointers = (png_byte**)malloc(*height * sizeof(png_bytep)))) {
      return (-1);
    }
-   int row;
+   unsigned int row;
 
    for (row = 0; row < *height; row++)
    {

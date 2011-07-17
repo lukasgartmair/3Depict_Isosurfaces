@@ -45,11 +45,18 @@ enum{
 };
 
 
+enum
+{
+	PLOT_TYPE_ONED,
+	PLOT_TYPE_ENUM_END //not a plot, just end of enum
+};
+
+
 #include "filter.h"
 
 
 //!Return a human readable string for a given plot type
-std::string plotString(unsigned int plotType);
+std::string plotString(unsigned int traceType);
 
 //!Return a human readable string for the plot error mode
 std::string plotErrmodeString(unsigned int errMode);
@@ -59,22 +66,46 @@ unsigned int plotID(const std::string &plotString);
 
 //!Return the error mode type, given the human readable string
 unsigned int plotErrmodeID(const std::string &s);
+		
+//!Nasty hack to get nearest mathgl named colour from a given RGB
+//R,G,B in [0,1]
+char getNearestMathglColour(float r, float g, float b);
 
-class PlotData
+//!Data class  for holding info about non-overlapping 
+// interactive rectilinear "zones" overlaid on plots 
+class PlotRegion
 {
 	public:
+		//Axis along which bounds are set. Each entry is unique
+		vector<int> boundAxis;
+		//Bounding limits for axial bind
+		vector<std::pair<float,float> > bounds;
+
+		//Bounding region colour
+		float r,g,b;
+		//The parent filter, so region can tell who the parent is
+		Filter *parentFilter;
+		//The ID value for this region, used when interacting with parent filter
+		unsigned int id;
+		//!Unique ID for region across entire multiplot
+		unsigned int uniqueID;
+};
+
+//!Base class for data plotting
+class PlotBase
+{
+	public:
+		//The type of plot (ie what class is it?)	
+		unsigned int plotType;
+		
 		//!Bounding box for data
 		float minX,maxX,minY,maxY;
-		//!Data
-		std::vector<float> xValues,yValues,errBars;
 		//!Colour of trace
 		float r,g,b;
 		//!Is trace visible?
 		bool visible;
-		//!Should plot logarithm (+1) of data? Be careful of -ve values.
-		bool logarithmic;
 		//!Type of plot (lines, bars, sticks, etc)
-		unsigned int plotType;
+		unsigned int traceType;
 		//!xaxis label
 		std::wstring xLabel;
 		//!y axis label
@@ -83,45 +114,155 @@ class PlotData
 		std::wstring title;
 		//!Pointer to some constant object that generated this plot
 		const void *parentObject;
+
+		//!Interactive, or otherwise marked plot regions
+		vector<PlotRegion> regions;
+		//ID handler for regions
+		UniqueIDHandler regionIDHandler;
+
 		//!integer to show which of the n plots that the parent generated
 		//that this data is represented by
 		unsigned int parentPlotIndex;
+		
+		//Draw the plot onto a given MGL graph
+		virtual void drawPlot(mglGraph *graph) const=0;
 
+		//!Scan for the data bounds.
+		virtual void getBounds(float &xMin,float &xMax,
+					float &yMin,float &yMax) const = 0;
+
+		//Retrieve the raw data associated with this plot.
+		virtual void getRawData(vector<vector<float> > &f,
+				std::vector<std::wstring> &labels) const=0;
+
+		//!Retrieve the ID of the non-overlapping region in X-Y space
+		virtual bool getRegionIdAtPosition(float x, float y, unsigned int &id) const=0;
+		//!Retrieve a region using its unique ID
+		virtual void getRegion(unsigned int id, PlotRegion &r) const=0;
+		
+		//!Pass the region movement information to the parent filter object
+		virtual void moveRegion(unsigned int regionId, unsigned int method, 
+							float newX, float newY) const=0;
+
+		//!Obtain limit of motion for a given region movement type
+		virtual void moveRegionLimit(unsigned int regionId,
+				unsigned int movementType, float &maxX, float &maxY) const=0;
 };
 
-class PlotRegion
+//1D Plot with ranges
+class Plot1D : public PlotBase
 {
+	private: 	
+
+		//!Should plot logarithm (+1) of data? Be careful of -ve values.
+		bool logarithmic;
+		//!Data
+		std::vector<float> xValues,yValues,errBars;
+		
+		void getBounds(float &xMin,float &xMax,float &yMin,float &yMax) const;
+		
 	public:
-		std::pair<float,float> bounds;
-		float r,g,b;
-		//The ID value for this region, used when interacting with parent filter
-		unsigned int id;
-		//!Unique ID for region across entire multiplot
-		unsigned int uniqueID;
-		//ID value for owner plot in multiplot to recognise this region
-		unsigned int ownerPlot;
-		//The parent filter, so region can tell who the parent is
-		Filter *parentFilter;
+		Plot1D();
+
+		//!Set the plot data from a pair and symmetric Y error
+		void setData(const vector<std::pair<float,float> > &v);
+		void setData(const vector<std::pair<float,float> > &v,const vector<float> &symYErr);
+		//!Set the plot data from two vectors and symmetric Y error
+		void setData(const vector<float> &vX, const vector<float> &vY);
+		void setData(const vector<float> &vX, const vector<float> &vY,
+							const vector<float> &symYErr);
+
+		//!Append a region to the plot
+		void addRegion(unsigned int parentPlot, unsigned int regionId,
+			       		float start, float end,	float r,float g, 
+						float b, Filter *parentFilter);
+		
+		//!Try to move a region from its current position to a new position
+		//return the test coord. valid methods are 0 (left extend), 1 (slide), 2 (right extend)
+		float moveRegionTest(unsigned int region, unsigned int method, float newPos) const;
+
+		//!Move a region to a new location. MUST call moveRegionTest first.
+		void moveRegion(unsigned int region, unsigned int method, float newPos);
+
+		void clear(bool preserveVisibility);
+		
+		
+		//Draw the plot onto a given MGL graph
+		virtual void drawPlot(mglGraph *graph) const;
+
+		//Draw the associated regions		
+		void drawRegions(mglGraph *graph, const mglPoint &min, const mglPoint &max) const;
+
+
+		//!Retrieve the raw data associated with the currently visible plots. 
+		//note that this is the FULL data not the zoomed data for the current user bounds
+		void getRawData(std::vector<std::vector<float> >  &rawData,
+				std::vector<std::wstring> &labels) const;
+		
+		//!Retrieve the ID of the non-overlapping region in X-Y space
+		bool getRegionIdAtPosition(float x, float y, unsigned int &id) const;
+
+		//!Retrieve a region using its unique ID
+		void getRegion(unsigned int id, PlotRegion &r) const;
+	
+		//!Pass the region movement information to the parent filter object
+		void moveRegion(unsigned int regionId, unsigned int method, float newX, float newY) const;
+
+		//Get the region motion limits, to ensure that the selected region does not 
+		//overlap after a move operation. Note that the output variables will only
+		//be set for the appropriate motion direction. Eg, an X only move will not
+		//set limitY.
+		void moveRegionLimit(unsigned int regionId,
+				unsigned int movementType, float &limitX, float &limitY) const;
+
+		bool wantLogPlot() const { return logarithmic;};
+		void setLogarithmic(bool p){logarithmic=p;};
 };
 
-class Multiplot
+class Plot2D : public PlotBase
 {
-	private:
-		UniqueIDHandler plotIDHandler;
-		UniqueIDHandler regionIDHandler;
+	private: 	
+		//!Data
+		std::vector<float> xValues,yValues,xErrBars,yErrBars;
+		
+		void getBounds(float &xMin,float &xMax,float &yMin,float &yMax) const;
+
+	public:
+		//Draw the plot onto a given MGL graph
+		virtual void drawPlot(mglGraph *graph) const;
+
+		//Retrieve the raw data associated with this plot.
+		virtual void getRawData(vector<vector<float> > &f,
+				std::vector<std::wstring> &labels) const;
+
+		//!Retrieve the ID of the non-overlapping region in X-Y space
+		virtual bool getRegionIdAtPosition(float x, float y, unsigned int &id) const;
+		//!Retrieve a region using its unique ID
+		virtual void getRegion(unsigned int id, PlotRegion &r) const;
+		
+		//!Pass the region movement information to the parent filter object
+		virtual void moveRegion(unsigned int regionId, unsigned int method, 
+							float newX, float newY) const;
+
+		//!Obtain limit of motion for a given region movement type
+		virtual void moveRegionLimit(unsigned int regionId,
+				unsigned int movementType, float &maxX, float &maxY) const;
+	
+};
+
+//Base class for plot functionality
+class PlotWrapper
+{
+	protected:
 		//!Has the plot changed since we last rendered it?
 		bool plotChanged;
-
-		void scanBounds(float &xMin,float &xMax,float &yMin,float &yMax) const;
-	protected:
 		//!Elements of the plot
-		std::vector<PlotData> plottingData;
+		std::vector<PlotBase *> plottingData;
 
 		//!which plots were last visible?
 		std::vector<std::pair< const void *, unsigned int> > lastVisiblePlots;
-
-		//!Regions on plot (coloured drawing objects)
-		std::vector<PlotRegion> regions;
+		
+		UniqueIDHandler plotIDHandler;
 
 		//!Use user-specified bounding values?
 		bool applyUserBounds;
@@ -133,15 +274,12 @@ class Multiplot
 		//!Swtich to enable or disable drawing of the plot legend
 		bool drawLegend;	
 
-		//!Nasty hack to get nearest mathgl named colour from a given RGB
-		//R,G,B in [0,1]
-		char getNearestMathglColour(float r, float g, float b) const;
+
+		bool areVisiblePlotsMismatched() const;
 	public:
 		//!Constructor
-		Multiplot(){applyUserBounds=false;plotChanged=true;drawLegend=true;};
+		PlotWrapper(){applyUserBounds=false;plotChanged=true;drawLegend=true;};
 
-		//Is the plot logarithmic when displayed?
-		bool isLogarithmic() const;
 
 		//!Has the contents of the plot changed since the last call to resetChange?
 		bool hasChanged() const { return plotChanged;};
@@ -157,17 +295,11 @@ class Multiplot
 		//!Set the visibilty of a plot, based upon its uniqueID
 		void setVisible(unsigned int uniqueID, bool isVisible=true);
 
+		//!Get the bounds for the plot
+		void scanBounds(float &xMin,float &xMax,float &yMin,float &yMax) const;
 		//Draw the plot onto a given MGL graph
 		void drawPlot(mglGraph *graph) const;
 
-		//!Add a plot to the multiplot, with the given XY data. 
-		unsigned int addPlot(const std::vector<float> &vX, const std::vector<float> &vY,
-					const PLOT_ERROR &errMode, bool logarithmic=false);
-		unsigned int addPlot(const std::vector<std::pair<float, float> > &data, const PLOT_ERROR &p,
-				bool logarithmic=false);
-		//!Re-set the plot datya for a given plot
-		void setPlotData(unsigned int plotUniqueID,
-				const std::vector<float> &vX, const std::vector<float> &vY);
 		//!Set the X Y and title strings
 		void setStrings(unsigned int plotID,
 				const char *x, const char *y, const char *t);
@@ -176,10 +308,10 @@ class Multiplot
 		//!Set the parent information for a given plot
 		void setParentData(unsigned int plotID,
 				const void *parentObj, unsigned int plotIndex);
-		//!Set the X Y and title strings using std::strings
-
+		
 		//!Set the plotting mode.
-		void setType(unsigned int plotID,unsigned int mode);
+		void setTraceStyle(unsigned int plotID,unsigned int mode);
+
 		//!Set the plot colours
 		void setColours(unsigned int plotID, float rN,float gN,float bN);
 		//!Set the bounds on the plot 
@@ -191,10 +323,6 @@ class Multiplot
 		//!Automatically use the data limits to compute bounds
 		void resetBounds();
 
-		//!Append a region to the plot
-		void addRegion(unsigned int parentPlot, unsigned int regionId,
-			       		float start, float end,	float r,float g, 
-						float b, Filter *parentFilter);
 
 		//!Get the number of visible plots
 		unsigned int getNumVisible() const;
@@ -213,26 +341,37 @@ class Multiplot
 		//Note that this will erase the last stored visibility data when complete.
 		void bestEffortRestoreVisibility();
 
-		//!Retrieve the raw data associated with the currently visible plots. 
-		//note that this is the FULL data not the zoomed data for the current user bounds
-		void getRawData(std::vector<std::vector<std::vector<float> > > &rawData,
-				std::vector<std::vector<std::wstring> > &labels) const;
 
 		//!Set whether to enable the legend or not
 		void setLegendVisible(bool vis) { drawLegend=vis;plotChanged=true;};
 
-		//!Get the currently visible regions
-		void getRegions(std::vector<PlotRegion> &copyRegions) const;
+		//!Add a plot to the list of available plots. Control of the pointer becomes
+		//transferred to this class, so do *NOT* delete it after calling this function
+		unsigned int addPlot(PlotBase *plot);
 
-		//!Get a particular region
-		PlotRegion getRegion(unsigned int region) const { return regions[region];};
+		//!Get the ID (return value) and the contents of the plot region at the given position. 
+		// Returns false if no region can be found, and true if valid region found
+		bool getRegionIdAtPosition(float px, float py, 
+			unsigned int &plotId, unsigned int &regionID ) const;
 
-		//!Try to move a region from its current position to a new position
-		//return the test coord. valid methods are 0 (left extend), 1 (slide), 2 (right extend)
-		float moveRegionTest(unsigned int region, unsigned int method, float newPos) const;
 
-		//!Move a region to a new location. MUST call moveRegionTest first.
-		void moveRegion(unsigned int region, unsigned int method, float newPos);
+		//Return the region data for the given regionID/plotID combo
+		void getRegion(unsigned int plotId, unsigned int regionId, PlotRegion &r) const;
+
+		//!Retrieve the raw data associated with the selected plots.
+		// FIXME: No data should be returned in the case of mismatched plots
+		void getRawData(vector<vector<vector<float> > >  &data, std::vector<std::vector<std::wstring> >  &labels) const;
+
+		//!obtain the type of a plot, given the plot's uniqueID
+		unsigned int plotType(unsigned int plotId) const;
+
+		//!Obtain limit of motion for a given region movement type
+		void moveRegionLimit(unsigned int plotId, unsigned int regionId,
+				unsigned int movementType, float &maxX, float &maxY) const;
+
+		//!Pass the region movement information to the parent filter object
+		void moveRegion(unsigned int plotID, unsigned int regionId, unsigned int movementType, 
+							float newX, float newY) const;
 };
 
 #endif

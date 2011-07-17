@@ -29,7 +29,7 @@
 enum CAM_ENUM
 {
 	CAM_FREE=1,
-	CAM_LOOKAT,
+	CAM_LOOKAT
 };
 
 enum 
@@ -124,7 +124,7 @@ class Camera
 		virtual void pivot(float rollAroundAcross, float rollaroundUp);
 
 		//!Roll around the view direction
-		virtual void roll(float roll) {} ;
+		virtual void roll(float roll) =0;
 		//!Applies the camera settings to openGL. Ensures the far planes
 		//is set to make the whole scene visible
 		virtual void apply(float outputRatio,const BoundCube &b,bool loadIdentity=true) const=0;

@@ -20,7 +20,10 @@
 #define EFFECT_H
 
 #include <string>
+
+#undef ATTRIBUTE_PRINTF
 #include <libxml/xmlreader.h>
+#undef ATTRIBUTE_PRINTF
 
 //OpenGL includes
 //MacOS is "special" and puts it elsewhere
@@ -69,13 +72,14 @@ class Effect
 	public:
 		virtual void enable(unsigned int pass=0) const =0;
 		virtual void disable() const=0;
+		std::string getName() const;
 
 
 		//Write the effect's state information to file
 		virtual bool writeState(std::ofstream &f, 
 				unsigned int format, unsigned int depth) const=0;
 		//read the effects state information from an XML file
-		virtual bool readState(xmlNodePtr &n)=0;
+		virtual bool readState(xmlNodePtr n)=0;
 
 		virtual bool needCamUpdate() const { return false;}
 
@@ -122,7 +126,7 @@ class BoxCropEffect : public Effect
 		bool writeState(std::ofstream &f, unsigned int format,
 				unsigned int depth) const;
 		//read the effects state information from an XML file
-		bool readState(xmlNodePtr &n);
+		bool readState(xmlNodePtr n);
 
 		//!Returns true if the effect has any influence on the output
 		bool willDoSomething() const;
@@ -165,7 +169,7 @@ class AnaglyphEffect : public Effect
 		bool writeState(std::ofstream &f, unsigned int format,
 				unsigned int depth) const;
 		//read the effects state information from an XML file
-		bool readState(xmlNodePtr &n);
+		bool readState(xmlNodePtr n);
 		
 		//!Whether we should be flipping the lens from its hard-coded left-right
 		void setFlip(bool shouldFlip) {eyeFlip=shouldFlip;};
