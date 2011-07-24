@@ -79,38 +79,39 @@ msgstr "Blau"
 msgid "Pseudo-Random"
 msgstr "Pseudo-Random"
 
-#: ../src/cameras.cpp:681 ../src/cameras.cpp:683
+#: ../src/cameras.cpp:693 ../src/cameras.cpp:695
 msgid "Lock"
 msgstr "Lock"
 
-#: ../src/cameras.cpp:690 ../src/filters/ionClip.cpp:669
-#: ../src/filters/ionClip.cpp:685 ../src/filters/ionClip.cpp:701
-#: ../src/filters/ionClip.cpp:729 ../src/filters/compositionProfile.cpp:907
-#: ../src/filters/transform.cpp:970 ../src/filters/transform.cpp:988
+#: ../src/cameras.cpp:702 ../src/filters/ionClip.cpp:670
+#: ../src/filters/ionClip.cpp:686 ../src/filters/ionClip.cpp:702
+#: ../src/filters/ionClip.cpp:730 ../src/filters/compositionProfile.cpp:925
+#: ../src/filters/transform.cpp:1091 ../src/filters/transform.cpp:1106
+#: ../src/filters/transform.cpp:1124
 msgid "Origin"
 msgstr "Quelle"
 
-#: ../src/cameras.cpp:695 ../src/filters/spatialAnalysis.cpp:1033
+#: ../src/cameras.cpp:707 ../src/filters/spatialAnalysis.cpp:1033
 msgid "Target"
 msgstr "Ziel"
 
-#: ../src/cameras.cpp:700
+#: ../src/cameras.cpp:712
 msgid "Up Dir."
 msgstr "Up Dir."
 
-#: ../src/cameras.cpp:708 ../src/cameras.cpp:812
+#: ../src/cameras.cpp:720 ../src/cameras.cpp:824
 msgid "Perspective"
 msgstr "Perspektive"
 
-#: ../src/cameras.cpp:710 ../src/cameras.cpp:814
+#: ../src/cameras.cpp:722 ../src/cameras.cpp:826
 msgid "Orthogonal"
 msgstr "Orthogonal"
 
-#: ../src/cameras.cpp:722
+#: ../src/cameras.cpp:734
 msgid "Field of View (deg)"
 msgstr "Bildausschnitt"
 
-#: ../src/cameras.cpp:728
+#: ../src/cameras.cpp:740
 msgid "View size"
 msgstr "Anzeigegröße"
 
@@ -1701,131 +1702,131 @@ msgstr "Linienbreite"
 msgid "Font Size"
 msgstr "Schriftgröße"
 
-#: ../src/filters/voxelise.cpp:493
+#: ../src/filters/voxelise.cpp:494
 msgid "Voxel Limits (min,max): ("
 msgstr "Voxel Grenzen (min,max): ("
 
-#: ../src/filters/voxelise.cpp:515
+#: ../src/filters/voxelise.cpp:516
 msgid "None (Raw count)"
 msgstr "Keine (Roh count)"
 
-#: ../src/filters/voxelise.cpp:517
+#: ../src/filters/voxelise.cpp:518
 msgid "Volume (Density)"
 msgstr "Volumen (Dichte)"
 
-#: ../src/filters/voxelise.cpp:519
+#: ../src/filters/voxelise.cpp:520
 msgid "Ratio (Num/Denom)"
 msgstr "Verhältnis (Zähler/Nenner)"
 
-#: ../src/filters/voxelise.cpp:521
+#: ../src/filters/voxelise.cpp:522
 msgid "All Ions (conc)"
 msgstr "Alle Ionen (conc)"
 
-#: ../src/filters/voxelise.cpp:530
+#: ../src/filters/voxelise.cpp:531
 msgid "Point Cloud"
 msgstr "Punktwolke"
 
-#: ../src/filters/voxelise.cpp:532
+#: ../src/filters/voxelise.cpp:533
 msgid "Isosurface"
 msgstr "Isosurface"
 
-#: ../src/filters/voxelise.cpp:543 ../src/plot.cpp:43
+#: ../src/filters/voxelise.cpp:544 ../src/plot.cpp:43
 msgid "None"
 msgstr "Keiner"
 
-#: ../src/filters/voxelise.cpp:545
+#: ../src/filters/voxelise.cpp:546
 msgid "Gaussian (2𝜎)"
 msgstr "Gauss (2𝜎)"
 
-#: ../src/filters/voxelise.cpp:557
+#: ../src/filters/voxelise.cpp:558
 msgid "Zero"
 msgstr "Null"
 
-#: ../src/filters/voxelise.cpp:559
+#: ../src/filters/voxelise.cpp:560
 msgid "Bounce"
 msgstr "Bounce"
 
-#: ../src/filters/voxelise.cpp:576
+#: ../src/filters/voxelise.cpp:577
 msgid "Fixed width"
 msgstr "Fixe Breite"
 
-#: ../src/filters/voxelise.cpp:584
+#: ../src/filters/voxelise.cpp:585
 msgid "Bin width x"
 msgstr "Bin-Breite x"
 
-#: ../src/filters/voxelise.cpp:589
+#: ../src/filters/voxelise.cpp:590
 msgid "Bin width y"
 msgstr "Bin-Breite y"
 
-#: ../src/filters/voxelise.cpp:594
+#: ../src/filters/voxelise.cpp:595
 msgid "Bin width z"
 msgstr "Bin-Breite Z"
 
-#: ../src/filters/voxelise.cpp:601
+#: ../src/filters/voxelise.cpp:602
 msgid "Num bins x"
 msgstr "Anzahl Bins x"
 
-#: ../src/filters/voxelise.cpp:606
+#: ../src/filters/voxelise.cpp:607
 msgid "Num bins y"
 msgstr "Anzahl Bins y"
 
-#: ../src/filters/voxelise.cpp:611
+#: ../src/filters/voxelise.cpp:612
 msgid "Num bins z"
 msgstr "Anzahl Bins z"
 
-#: ../src/filters/voxelise.cpp:632
+#: ../src/filters/voxelise.cpp:633
 msgid "Normalise by"
 msgstr "Normalisieren mit"
 
-#: ../src/filters/voxelise.cpp:649
+#: ../src/filters/voxelise.cpp:650
 msgid "Numerator"
 msgstr "Zähler"
 
-#: ../src/filters/voxelise.cpp:682
+#: ../src/filters/voxelise.cpp:683
 msgid "Denominator"
 msgstr "Nenner"
 
-#: ../src/filters/voxelise.cpp:723
+#: ../src/filters/voxelise.cpp:724
 msgid "Filtering"
 msgstr "Filtern"
 
-#: ../src/filters/voxelise.cpp:732
+#: ../src/filters/voxelise.cpp:733
 msgid "Kernel Bins"
 msgstr "Kernel Bins"
 
-#: ../src/filters/voxelise.cpp:745
+#: ../src/filters/voxelise.cpp:746
 msgid "Exterior values"
 msgstr "Exterior values"
 
-#: ../src/filters/voxelise.cpp:772
+#: ../src/filters/voxelise.cpp:773
 msgid "Representation"
 msgstr "Representation"
 
-#: ../src/filters/voxelise.cpp:781
+#: ../src/filters/voxelise.cpp:782
 msgid "Spot size"
 msgstr "Spot size"
 
-#: ../src/filters/voxelise.cpp:786 ../src/filters/voxelise.cpp:808
+#: ../src/filters/voxelise.cpp:787 ../src/filters/voxelise.cpp:809
 msgid "Transparency"
 msgstr "Transparenz"
 
-#: ../src/filters/voxelise.cpp:794
+#: ../src/filters/voxelise.cpp:795
 msgid "Isovalue"
 msgstr "Isovalue"
 
-#: ../src/filters/voxelise.cpp:1219
+#: ../src/filters/voxelise.cpp:1220
 msgid "Voxelisation aborted"
 msgstr "Voxelisation abgebrochen"
 
-#: ../src/filters/voxelise.cpp:1221
+#: ../src/filters/voxelise.cpp:1222
 msgid "Out of memory"
 msgstr "Zu wenig Speicher"
 
-#: ../src/filters/voxelise.cpp:1223
+#: ../src/filters/voxelise.cpp:1224
 msgid "Unable to perform filter convolution"
 msgstr "Kann Filter convolution nicht durchführen"
 
-#: ../src/filters/voxelise.cpp:1225
+#: ../src/filters/voxelise.cpp:1226
 msgid "Voxelisation bounds are invalid"
 msgstr "Voxelisation Grenzen sin ungültig"
 
@@ -1902,7 +1903,7 @@ msgstr "Map start"
 msgid "Map end"
 msgstr "Map end"
 
-#: ../src/filters/ionColour.cpp:401 ../src/filters/transform.cpp:1224
+#: ../src/filters/ionColour.cpp:401 ../src/filters/transform.cpp:1366
 #: ../src/filters/ionInfo.cpp:694
 msgid "Aborted"
 msgstr "Abgebrochen"
@@ -1963,84 +1964,88 @@ msgstr "Unable to perform commandline substitution"
 msgid "Error executing external program"
 msgstr "Fehler beim Ausführen von externem Programm"
 
-#: ../src/filters/transform.cpp:753 ../src/filters/spatialAnalysis.cpp:218
+#: ../src/filters/transform.cpp:873 ../src/filters/spatialAnalysis.cpp:218
 #: ../src/filters/spatialAnalysis.cpp:518
 msgid "Collate"
 msgstr "Abgleichen"
 
-#: ../src/filters/transform.cpp:770
+#: ../src/filters/transform.cpp:890
 msgid "Mass-to-Charge"
 msgstr "Masse-zu-Ladung"
 
-#: ../src/filters/transform.cpp:833
+#: ../src/filters/transform.cpp:953
 msgid "Shuffle"
 msgstr "Shuffle"
 
-#: ../src/filters/transform.cpp:849
+#: ../src/filters/transform.cpp:969
 msgid "Splice"
 msgstr "Splice"
 
-#: ../src/filters/transform.cpp:907 ../src/filters/transform.cpp:1064
+#: ../src/filters/transform.cpp:1027 ../src/filters/transform.cpp:1200
 msgid "Translate"
 msgstr "Translate"
 
-#: ../src/filters/transform.cpp:908 ../src/filters/transform.cpp:1066
+#: ../src/filters/transform.cpp:1028 ../src/filters/transform.cpp:1204
 msgid "Scale"
 msgstr "Skaliere"
 
-#: ../src/filters/transform.cpp:909 ../src/filters/transform.cpp:1068
+#: ../src/filters/transform.cpp:1029 ../src/filters/transform.cpp:1206
 msgid "Rotate"
 msgstr "Rotieren"
 
-#: ../src/filters/transform.cpp:910 ../src/filters/transform.cpp:1070
+#: ../src/filters/transform.cpp:1030 ../src/filters/transform.cpp:1208
 msgid "Value Shuffle"
 msgstr "Value Shuffle"
 
-#: ../src/filters/transform.cpp:911 ../src/filters/transform.cpp:1072
+#: ../src/filters/transform.cpp:1031 ../src/filters/transform.cpp:1210
 msgid "Spatial Noise"
 msgstr "Spatial Noise"
 
-#: ../src/filters/transform.cpp:916
-msgid "Mode"
-msgstr "Mode"
+#: ../src/filters/transform.cpp:1032 ../src/filters/transform.cpp:1202
+msgid "Translate Value"
+msgstr ""
 
-#: ../src/filters/transform.cpp:935
+#: ../src/filters/transform.cpp:1037
+msgid "Mode"
+msgstr ""
+
+#: ../src/filters/transform.cpp:1056
 msgid "Origin mode"
 msgstr "Origin mode"
 
-#: ../src/filters/transform.cpp:940
+#: ../src/filters/transform.cpp:1061
 msgid "Show marker"
 msgstr "Show marker"
 
-#: ../src/filters/transform.cpp:956
+#: ../src/filters/transform.cpp:1077
 msgid "Translation"
 msgstr "Translation"
 
-#: ../src/filters/transform.cpp:976
+#: ../src/filters/transform.cpp:1112
 msgid "Scale Fact."
 msgstr "Skalierungsfaktor"
 
-#: ../src/filters/transform.cpp:998
+#: ../src/filters/transform.cpp:1134
 msgid "Angle (deg)"
 msgstr "Winkel (deg)"
 
-#: ../src/filters/transform.cpp:1014
+#: ../src/filters/transform.cpp:1150
 msgid "Noise Type"
 msgstr "Noise Type"
 
-#: ../src/filters/transform.cpp:1022
+#: ../src/filters/transform.cpp:1158
 msgid "Noise level"
 msgstr "Noise level"
 
-#: ../src/filters/transform.cpp:1024
+#: ../src/filters/transform.cpp:1160
 msgid "Standard dev."
 msgstr "Standardabweichung"
 
-#: ../src/filters/transform.cpp:1046
+#: ../src/filters/transform.cpp:1182
 msgid "Transform Params"
 msgstr "Transformationsparameter"
 
-#: ../src/filters/transform.cpp:1227
+#: ../src/filters/transform.cpp:1369
 msgid "Unable to allocate memory"
 msgstr "Kann Speicher nicht zuweisen"
 
@@ -2744,10 +2749,12 @@ msgid "Ion Sampler"
 msgstr ""
 
 #: ../src/filters/spectrumPlot.h:47
+#, fuzzy
 msgid "Spectrum"
 msgstr "Massenspektrum"
 
 #: ../src/filters/boundingBox.h:42
+#, fuzzy
 msgid "Bound box"
 msgstr "Rahmen"
 
