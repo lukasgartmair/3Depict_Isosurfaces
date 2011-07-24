@@ -38,6 +38,10 @@ using std::string;
 using std::vector;
 using std::pair;
 
+//TODO: FIXME: Orthogonal camera zooming is very slow, compared to 
+// perspective camera dolly. Check equations of motion for equivalence
+const float ORTHO_SPEED_HACK=1.05;
+
 
 //!Key types for property setting and getting via property grids
 enum
@@ -426,7 +430,15 @@ void CameraLookAt::forwardsDolly(float moveRate)
 
 		Point3D virtualOrigin;
 		virtualOrigin = origin+viewDirection*moveRate;
-		orthoScale*=virtualOrigin.sqrDist(target)/deltaSqr;
+
+		float factor;
+		factor = virtualOrigin.sqrDist(target)/deltaSqr;
+		if( factor > 1.0)
+			factor*=ORTHO_SPEED_HACK;
+		else
+			factor/=ORTHO_SPEED_HACK;
+
+		orthoScale*=factor;
 	}
 }
 

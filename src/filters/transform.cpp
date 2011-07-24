@@ -16,7 +16,8 @@ enum
 	KEY_NOISELEVEL,
 	KEY_NOISETYPE,
 	KEY_ROTATE_ANGLE,
-	KEY_ROTATE_AXIS
+	KEY_ROTATE_AXIS,
+	KEY_ORIGIN_VALUE
 };
 
 //Possible transform modes (scaling, rotation etc)
@@ -27,6 +28,7 @@ enum
 	MODE_ROTATE,
 	MODE_VALUE_SHUFFLE,
 	MODE_SPATIAL_NOISE,
+	MODE_TRANSLATE_VALUE,
 	MODE_ENUM_END
 };
 
@@ -411,7 +413,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							//Set up scaling output ion stream 
 							IonStreamData *d=new IonStreamData;
 							d->parent=this;
-
+							
 							const IonStreamData *src = (const IonStreamData *)dataIn[ui];
 							try
 							{
@@ -428,36 +430,36 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							d->a = src->a;
 							d->ionSize = src->ionSize;
 							d->valueType=src->valueType;
-
+							
 							ASSERT(src->data.size() <= totalSize);
 							unsigned int curProg=NUM_CALLBACK;
 #ifdef _OPENMP
 							//Parallel version
 							bool spin=false;
-							#pragma omp parallel for shared(spin)
+#pragma omp parallel for shared(spin)
 							for(unsigned int ui=0;ui<src->data.size();ui++)
 							{
 								unsigned int thisT=omp_get_thread_num();
 								if(spin)
 									continue;
-
+								
 								if(!curProg--)
 								{
-									#pragma omp critical
+#pragma omp critical
 									{
-									n+=NUM_CALLBACK;
-									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
+										n+=NUM_CALLBACK;
+										progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 									}
-
-
+									
+									
 									if(thisT == 0)
 									{
 										if(!(*callback)())
 											spin=true;
 									}
 								}
-
-
+								
+								
 								//set the position for the given ion
 								d->data[ui].setPos((src->data[ui].getPosRef() - origin));
 								d->data[ui].setMassToCharge(src->data[ui].getMassToCharge());
@@ -467,17 +469,135 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 								delete d;
 								return ERR_CALLBACK_FAIL;
 							}
-
+							
 #else
 							//Single threaded version
 							size_t pos=0;
 							//Copy across the ions into the target
 							for(vector<IonHit>::const_iterator it=src->data.begin();
-								       it!=src->data.end(); ++it)
+								it!=src->data.end(); ++it)
 							{
 								//set the position for the given ion
 								d->data[pos].setPos((it->getPosRef() - origin));
 								d->data[pos].setMassToCharge(it->getMassToCharge());
+								//update progress every CALLBACK ions
+								if(!curProg--)
+								{
+									n+=NUM_CALLBACK;
+									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
+									if(!(*callback)())
+									{
+										delete d;
+										return ERR_CALLBACK_FAIL;
+									}
+									curProg=NUM_CALLBACK;
+								}
+								pos++;
+							}
+							ASSERT(pos == d->data.size());
+#endif
+							ASSERT(d->data.size() == src->data.size());
+							if(cache)
+							{
+								d->cached=1;
+								filterOutputs.push_back(d);
+								cacheOK=true;
+							}
+							else
+								d->cached=0;
+							
+							getOut.push_back(d);
+							break;
+						}
+						default:
+							//Just copy across the ptr, if we are unfamiliar with this type
+							getOut.push_back(dataIn[ui]);	
+							break;
+					}
+					break;
+				}
+				case MODE_TRANSLATE_VALUE:
+				{
+					//We are going to scale the incoming point data
+					//around the specified origin.
+					ASSERT(vectorParams.size() == 0);
+					ASSERT(scalarParams.size() == 1);
+					float origin =scalarParams[0];
+					size_t n=0;
+					switch(dataIn[ui]->getStreamType())
+					{
+						case STREAM_TYPE_IONS:
+						{
+							//Set up scaling output ion stream 
+							IonStreamData *d=new IonStreamData;
+							d->parent=this;
+							
+							const IonStreamData *src = (const IonStreamData *)dataIn[ui];
+							try
+							{
+								d->data.resize(src->data.size());
+							}
+							catch(std::bad_alloc)
+							{
+								delete d;
+								return ERR_NOMEM;
+							}
+							d->r = src->r;
+							d->g = src->g;
+							d->b = src->b;
+							d->a = src->a;
+							d->ionSize = src->ionSize;
+							d->valueType=src->valueType;
+							
+							ASSERT(src->data.size() <= totalSize);
+							unsigned int curProg=NUM_CALLBACK;
+#ifdef _OPENMP
+							//Parallel version
+							bool spin=false;
+#pragma omp parallel for shared(spin)
+							for(unsigned int ui=0;ui<src->data.size();ui++)
+							{
+								unsigned int thisT=omp_get_thread_num();
+								if(spin)
+									continue;
+								
+								if(!curProg--)
+								{
+#pragma omp critical
+									{
+										n+=NUM_CALLBACK;
+										progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
+									}
+									
+									
+									if(thisT == 0)
+									{
+										if(!(*callback)())
+											spin=true;
+									}
+								}
+								
+								
+								//set the position for the given ion
+								d->data[ui].setPos((src->data[ui].getPosRef()));
+								d->data[ui].setMassToCharge(src->data[ui].getMassToCharge()+origin);
+							}
+							if(spin)
+							{			
+								delete d;
+								return ERR_CALLBACK_FAIL;
+							}
+							
+#else
+							//Single threaded version
+							size_t pos=0;
+							//Copy across the ions into the target
+							for(vector<IonHit>::const_iterator it=src->data.begin();
+								it!=src->data.end(); ++it)
+							{
+								//set the position for the given ion
+								d->data[pos].setPos((it->getPosRef()));
+								d->data[pos].setMassToCharge(it->getMassToCharge() + origin);
 								//update progress every CALLBACK ions
 								if(!curProg--)
 								{
@@ -909,6 +1029,7 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 	choices.push_back(make_pair((unsigned int)MODE_ROTATE,TRANS("Rotate")));
 	choices.push_back(make_pair((unsigned int)MODE_VALUE_SHUFFLE,TRANS("Value Shuffle")));
 	choices.push_back(make_pair((unsigned int)MODE_SPATIAL_NOISE,TRANS("Spatial Noise")));
+	choices.push_back(make_pair((unsigned int) MODE_TRANSLATE_VALUE,TRANS("Translate Value")));
 	
 	tmpStr= choiceString(choices,transformMode);
 	choices.clear();
@@ -957,12 +1078,27 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			break;
 		}
+		case MODE_TRANSLATE_VALUE:
+		{
+			ASSERT(vectorParams.size() == 0);
+			ASSERT(scalarParams.size() == 1);
+			
+			
+			if(originMode == ORIGINMODE_SELECT)
+			{
+				stream_cast(tmpStr,scalarParams[0]);
+				keys.push_back(KEY_ORIGIN_VALUE);
+				s.push_back(make_pair(TRANS("Origin"), tmpStr));
+				type.push_back(PROPERTY_TYPE_REAL);
+			}
+			break;
+		}
 		case MODE_SCALE:
 		{
 			ASSERT(vectorParams.size() == 1);
 			ASSERT(scalarParams.size() == 1);
 			
-
+			
 			if(originMode == ORIGINMODE_SELECT)
 			{
 				stream_cast(tmpStr,vectorParams[0]);
@@ -970,7 +1106,7 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 				s.push_back(make_pair(TRANS("Origin"), tmpStr));
 				type.push_back(PROPERTY_TYPE_POINT3D);
 			}
-
+			
 			stream_cast(tmpStr,scalarParams[0]);
 			keys.push_back(KEY_SCALEFACTOR);
 			s.push_back(make_pair(TRANS("Scale Fact."), tmpStr));
@@ -1063,6 +1199,8 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 			// (it wont work if these are not synced)
 			if(value == TRANS("Translate"))
 				transformMode= MODE_TRANSLATE;
+			else if ( value == TRANS("Translate Value") )
+				transformMode= MODE_TRANSLATE_VALUE;
 			else if ( value == TRANS("Scale") )
 				transformMode= MODE_SCALE;
 			else if ( value == TRANS("Rotate"))
@@ -1084,6 +1222,9 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 					break;
 				case MODE_TRANSLATE:
 					vectorParams.push_back(Point3D(0,0,0));
+					break;
+				case MODE_TRANSLATE_VALUE:
+					scalarParams.push_back(100.0f);
 					break;
 				case MODE_ROTATE:
 					vectorParams.push_back(Point3D(0,0,0));
@@ -1108,6 +1249,7 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 		case KEY_ROTATE_ANGLE:
 		case KEY_SCALEFACTOR:
 		case KEY_NOISELEVEL:
+		case KEY_ORIGIN_VALUE:
 		{
 			float newScale;
 			if(stream_cast(newScale,value))
@@ -1407,6 +1549,10 @@ bool TransformFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 			break;
 		case MODE_ROTATE:
 			if(vectorParams.size() != 2 || scalarParams.size() !=1)
+				return false;
+			break;
+		case MODE_TRANSLATE_VALUE:
+			if(vectorParams.size() != 0 || scalarParams.size() !=1)
 				return false;
 			break;
 		case MODE_VALUE_SHUFFLE:

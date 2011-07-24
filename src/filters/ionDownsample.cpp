@@ -316,6 +316,12 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 					if(!input->data.size())
 						continue;
 
+					//FIXME: Allow processing of unranged data
+					//Don't process streams that are not ranged, as we cannot get their desired fractions
+					//at this time
+					if(ionIDVec[idPos]==(unsigned int)-1)
+						continue;
+
 					IonStreamData *d;
 					d=new IonStreamData;
 					d->parent=this;

@@ -215,6 +215,7 @@ std::string lowercase(std::string s);
 
 void stripZeroEntries(std::vector<std::string> &s);
 
+//Convert a point string from its "C" language respresentation to a point vlaue
 bool parsePointStr(const std::string &str,Point3D &pt);
 
 bool parseColString(const std::string &str,

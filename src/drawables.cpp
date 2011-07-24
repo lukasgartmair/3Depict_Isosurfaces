@@ -295,6 +295,11 @@ DrawCylinder::DrawCylinder() : radius(1.0f),
 	radiiLocked=false;
 }
 
+bool DrawCylinder::needsDepthSorting()  const
+{
+	return a< 1 && a > std::numeric_limits<float>::epsilon();
+}
+
 DrawCylinder::~DrawCylinder()
 {
 	gluDeleteQuadric(q);
@@ -327,11 +332,16 @@ void DrawCylinder::draw() const
 	Point3D dirNormal(direction);
 	dirNormal.normalise();
 
-	float angle = dir.angle(dirNormal);
-	dir = dir.crossProd(dirNormal);
 	float length=sqrtf(direction.sqrMag());
+	float angle = dir.angle(dirNormal);
+	if(angle < M_PI - sqrt(std::numeric_limits<float>::epsilon()) &&
+		angle > sqrt(std::numeric_limits<float>::epsilon()))
+	{
+		//we need to rotate
+		dir = dir.crossProd(dirNormal);
 
-	glRotatef(angle*180.0f/M_PI,dir[0],dir[1],dir[2]);
+		glRotatef(angle*180.0f/M_PI,dir[0],dir[1],dir[2]);
+	}
 
 	//OpenGL defined cylinder starting at 0 and going to lenght. I want it starting at 0 and going to+-l/2
 	glTranslatef(0,0,-length/2.0f);

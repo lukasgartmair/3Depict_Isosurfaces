@@ -440,6 +440,7 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 
 			needUpdate=true;
 			binWidth=newWidth;
+			clearCache();
 
 			break;
 		}
@@ -466,6 +467,8 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 			else
 				return false;		
 	
+			clearCache();
+	
 			break;
 
 		}
@@ -485,6 +488,7 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 			needUpdate=true;
 			minPlot=newMin;
 
+			clearCache();
 			break;
 		}
 		//Plot max
@@ -501,6 +505,7 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 
 			needUpdate=true;
 			maxPlot=newMax;
+			clearCache();
 
 			break;
 		}
@@ -525,6 +530,23 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 			}
 			else
 				return false;		
+			
+			if(cacheOK)
+			{
+				//Change the output of the plot streams that
+				//we cached, in order to avoid recomputation
+				for(size_t ui=0;ui<filterOutputs.size();ui++)
+				{
+					if(filterOutputs[ui]->getStreamType() == STREAM_TYPE_PLOT)
+					{
+						PlotStreamData *p;
+						p =(PlotStreamData*)filterOutputs[ui];
+
+						p->logarithmic=logarithmic;
+					}
+				}
+
+			}
 	
 			break;
 
@@ -541,6 +563,25 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 
 			plotType = tmpPlotType;
 			needUpdate=true;	
+
+
+			//Perform introspection on 
+			//cache
+			if(cacheOK)
+			{
+				for(size_t ui=0;ui<filterOutputs.size();ui++)
+				{
+					if(filterOutputs[ui]->getStreamType() == STREAM_TYPE_PLOT)
+					{
+						PlotStreamData *p;
+						p =(PlotStreamData*)filterOutputs[ui];
+
+						p->plotType=plotType;
+					}
+				}
+
+			}
+
 			break;
 		}
 		case KEY_SPECTRUM_COLOUR:
@@ -556,6 +597,22 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 			g=newG/255.0;
 			b=newB/255.0;
 			a=newA/255.0;
+			if(cacheOK)
+			{
+				for(size_t ui=0;ui<filterOutputs.size();ui++)
+				{
+					if(filterOutputs[ui]->getStreamType() == STREAM_TYPE_PLOT)
+					{
+						PlotStreamData *p;
+						p =(PlotStreamData*)filterOutputs[ui];
+
+						p->r=r;
+						p->g=g;
+						p->b=b;
+					}
+				}
+
+			}
 			break;
 		}
 		default:
@@ -565,7 +622,6 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 	}
 
 	
-	clearCache();
 	return true;
 }
 

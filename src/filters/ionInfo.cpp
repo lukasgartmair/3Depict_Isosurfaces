@@ -380,7 +380,7 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 
 				consoleOutput.push_back(str);
 			}
-			str=std::string(TRANS("----------") );
+			str=std::string("----------");
 			consoleOutput.push_back(str);
 			
 		}

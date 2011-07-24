@@ -157,6 +157,7 @@ Filter *VoxeliseFilter::cloneUncached() const
 	p->representation=representation;
 	p->splatSize=splatSize;
 
+	p->normaliseType=normaliseType;
 	p->numeratorAll=numeratorAll;
 	p->denominatorAll=denominatorAll;
 

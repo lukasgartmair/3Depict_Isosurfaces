@@ -4473,7 +4473,7 @@ void MainWindowFrame::do_layout()
     noteDataView->AddPage(splitterSpectra, wxTRANS("Spec."));
     noteDataView->AddPage(noteRaw, wxTRANS("Raw"));
     noteDataView->AddPage(noteDataViewConsole, wxTRANS("Cons."));
-//    splitTopBottom->SplitHorizontally(panelTop, noteDataView);
+    splitTopBottom->SplitHorizontally(panelTop, noteDataView);
     rightPanelSizer->Add(splitTopBottom, 1, wxEXPAND, 0);
     panelRight->SetSizer(rightPanelSizer);
     splitLeftRight->SplitVertically(panelLeft, panelRight);

@@ -6,7 +6,7 @@
 	- Ion Info filter : volume and composition estimation.
 
 	User Visible Bugfixes/Changes:
-	- Periodic update checks (OSX, windows only).
+	- Periodic update checks (Unmanaged systems only, ie OSX, windows).
 	- Improved window positioning on startup.
 	- Fix voxel state saving - now restores range selections.
 	- Fix cropping with camera coordinates incorrect behaviour 
@@ -14,6 +14,7 @@
 	- Fix range file reading under locales with non-english decimal
 	  separators.
 	- Better handling of relative paths in analysis packages.
+	- Ion transform filter now has "value transform" mode
 	- Faster voxel computations (caching + cache introspection)
 	- Improved crop controls  -- better reset behaviour.
 	- Fix pointcloud representation off-by-1/2 voxel pitch.
@@ -29,8 +30,10 @@
 	- Improved checking of filter stream outut.
 		- Checking of block masks against emit.
 		- Other misc. checking.
-	- Depth sorting framework.
+	- Depth sorting framework for improved transparency rendering.
 	- Removed many small memory leaks in parsing & UI.
+	- Improved numerical stability in some rotation operations
+
 
 * May 16, 2011  : 0.0.6
 	Features:

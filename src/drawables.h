@@ -455,6 +455,10 @@ class DrawCylinder : public DrawableObj
 		//!Recompute the internal parameters using the input vector information
 		void recomputeParams(const vector<Point3D> &vecs, const vector<float> &scalars, unsigned int mode);
 
+		virtual bool needsDepthSorting() const;
+
+
+
 		//!Lock (or unlock) the radius to the start radius (i.e. synch the two)
 		void lockRadii(bool doLock=true) {radiiLocked=doLock;};
 };

@@ -390,8 +390,17 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 						//when cylinder axis is too close to (or is) z-axis
 						if(angle > sqrt(std::numeric_limits<float>::epsilon()))
 						{
-							dir = dir.crossProd(direction);
-							dir.normalise();
+							if(angle < M_PI-sqrt(std::numeric_limits<float>::epsilon()))
+							{
+								dir = dir.crossProd(direction);
+								dir.normalise();
+							}
+							else
+							{
+								//Any old nomral in XY will do, due to rotational symmetry
+								dir=Point3D(1,0,0);
+
+							}
 
 							rotVec.fx=dir[0];
 							rotVec.fy=dir[1];
@@ -664,6 +673,15 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			if(!parsePointStr(value,newPt))
 				return false;
 
+			if(primitiveType == COMPPROFILE_PRIMITIVE_CYLINDER)
+			{
+				if(lockAxisMag && 
+					newPt.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()))
+				{
+					newPt.normalise();
+					newPt*=sqrt(vectorParams[1].sqrMag());
+				}
+			}
 			if(!(vectorParams[1] == newPt ))
 			{
 				vectorParams[1] = newPt;

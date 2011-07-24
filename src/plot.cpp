@@ -884,7 +884,7 @@ void Plot1D::drawPlot(mglGraph *gr) const
 	colourCode[0]= getNearestMathglColour(r,g, b);
 
 	//Plot the appropriate form	
-	switch(plotType)
+	switch(traceType)
 	{
 		case PLOT_TRACE_LINES:
 			//Unfortunately, when using line plots, mathgl moves the data points to the plot boundary,
@@ -1256,7 +1256,7 @@ void Plot2D::drawPlot(mglGraph *gr) const
 	colourCode[0]= getNearestMathglColour(r,g, b);
 	
 	//Plot the appropriate form	
-	switch(plotType)
+	switch(traceType)
 	{
 		case PLOT_TRACE_LINES:
 			//Unfortunately, when using line plots, mathgl moves the data points to the plot boundary,

@@ -454,7 +454,8 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 						float sqrRad=scalarParams[0]*scalarParams[0];
 						//Check that we actually need to rotate, to avoid numerical singularity 
 						//when cylinder axis is too close to (or is) z-axis
-						if(angle > sqrt(std::numeric_limits<float>::epsilon()))
+						if(angle > sqrt(std::numeric_limits<float>::epsilon()) 
+							&& angle < M_PI/2.0f - sqrt(std::numeric_limits<float>::epsilon()))
 						{
 							dir = dir.crossProd(direction);
 							dir.normalise();

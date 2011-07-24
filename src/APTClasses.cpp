@@ -426,7 +426,7 @@ unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int output
 		curBufferSize2 = curBufferSize2 >> 1;
 	}		
 	
-	//Technically this is dependant upon the buffer size.
+	//Technically this is dependent upon the buffer size.
 	unsigned int curProg = 10000;	
 	size_t ionP=0;
 	int maxCols = inputnumcols * sizeof(float);
@@ -1499,7 +1499,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				case BLOCK_RANGES:
 				{
 
-					//Altough it looks like the blocks are independant.
+					//Altough it looks like the blocks are independent.
 					//it is more complicated to juggle a parser with them
 					//out of dependency order, as  a second pass would
 					//need to be done.
