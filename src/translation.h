@@ -3,7 +3,8 @@
 
 #include <locale>
 
-#ifdef __APPLE__
+
+#if defined(__APPLE__) || defined(__WIN32__) || defined(__WIN64__)
 #include <libintl.h>
 #endif
 

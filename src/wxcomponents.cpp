@@ -31,7 +31,7 @@
 using std::ofstream;
 using std::vector;
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__WIN32__) || defined(__WIN64__)
 const float FONT_HEADING_SCALEFACTOR=1.0f;
 #else
 const float FONT_HEADING_SCALEFACTOR=0.75f;

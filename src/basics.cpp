@@ -187,7 +187,7 @@ std::wstring convertToLaTeX(const std::wstring& toConv)
  
                 if(it != mapEnd) { // The character must be replaced
                         result.replace(i, 1, it->second);
-                        uint len = (it->second).length();
+                        unsigned int len = (it->second).length();
                         if(1 < len) {
                                 i += len - 1;
                                 sSize += len - 1;

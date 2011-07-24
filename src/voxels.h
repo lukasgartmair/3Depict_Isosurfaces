@@ -35,8 +35,7 @@ const unsigned int MAX_CALLBACK=500;
 
 using namespace std;
 
-#include <gsl/gsl_linalg.h>
-#include <gsl/gsl_eigen.h>
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -2057,96 +2056,6 @@ void Voxels<T>::makeSphericalKernel(size_t sideLen, float bound, const T &val, u
 		}
 	}
 	
-}
-
-template<class T>
-void Voxels<T>::moravecHarrisFeatures(Voxels<float> &eigA, Voxels<float> &eigB,Voxels<float> &eigC) const
-{
-	//3D implementation of the moravec plessy edge detector
-	eigA.resize(binCount[0]-2,binCount[1]-2,
-			binCount[2]-2,getMinBounds(), getMaxBounds());
-	eigB.resize(binCount[0]-2,binCount[1]-2,
-			binCount[2]-2,getMinBounds(), getMaxBounds());
-	eigC.resize(binCount[0]-2,binCount[1]-2,
-			binCount[2]-2,getMinBounds(), getMaxBounds());
-
-	float xPitch,yPitch,zPitch;
-
-	xPitch=(maxBound[0]-minBound[0])/binCount[0];
-	yPitch=(maxBound[1]-minBound[1])/binCount[1];
-	zPitch=(maxBound[2]-minBound[2])/binCount[2];
-
-	//Moravec derivative matrix
-	gsl_matrix *M ;
-	//Workspace for computing eigenvalues
-	gsl_eigen_symm_workspace *w;
-	//Vector for storing the eigenvalues
-	gsl_vector *v;
-	
-	M=gsl_matrix_alloc(3,3);
-	v=gsl_vector_alloc(3);
-	w= gsl_eigen_symm_alloc(3);
-
-
-	//NOTE: I have trouble using openmp to parallelise this
-	//as the M,v and w variables need ot have their own storage
-	//allocated. Could use arrays of M[],v[] and w[]  but I will worry about it another day
-	
-	//Calculate the directional derivatives
-	float deriv[3];
-	//Work out boundary
-	for(size_t ui=1; ui<binCount[0]-1; ui++)
-	{
-		for(size_t uj=1; uj<binCount[1]-1; uj++)
-		{
-			for(size_t uk=1; uk<binCount[2]-1; uk++)
-			{
-				
-				//dx by first order central difference
-				deriv[0]=T((getData(ui+1,uj,uk) + getData(ui-1,uj,uk))/(xPitch));
-				
-				//dy
-				deriv[1]=T((getData(ui,uj+1,uk) + getData(ui,uj-1,uk))/(yPitch));
-				
-				//dz
-				deriv[2]=T((getData(ui,uj,uk+1) + getData(ui,uj,uk-1))/(zPitch));
-
-				//NOTE: Harris' paper 
-				//(Harris, C. & Stephens, M. A combined corner and 
-				//edge detector Alvey vision conference, 1998, 15, 50 )
-				//suggests a way to not compute the eigenvalues 
-				//and still have a reasonable detector. This is not implemented here, but could
-				//be done for a speedup
-
-				//Construct the matrix
-				//Note that the matrix is symmetric,
-				//so really we only construct the lower triangluar component
-				gsl_matrix_set(M,0,0,(float)(deriv[0]*deriv[0]));
-				gsl_matrix_set(M,1,0,(float)(deriv[1]*deriv[0]));
-				gsl_matrix_set(M,1,1,(float)(deriv[1]*deriv[1]));
-				gsl_matrix_set(M,2,0,(float)(deriv[2]*deriv[0]));
-				gsl_matrix_set(M,2,1,(float)(deriv[2]*deriv[1]));
-				gsl_matrix_set(M,2,2,(float)(deriv[2]*deriv[2]));
-				
-
-				//Find the eigenvalues
-				//GSL reference manual: 
-				//The diagonal and lower triangular part of A 
-				//are destroyed during the computation, but the strict 
-				//upper triangular part is not referenced.
-				gsl_eigen_symm(M, v, w);
-				
-				eigA.setData(ui-1,uj-1,uk-1,gsl_vector_get(v,0));
-				eigB.setData(ui-1,uj-1,uk-1,gsl_vector_get(v,1));
-				eigC.setData(ui-1,uj-1,uk-1,gsl_vector_get(v,2));
-
-			}
-		}
-	}
-
-	gsl_eigen_symm_free(w);
-	gsl_vector_free(v);
-	gsl_matrix_free(M);
 }
 
 template<class T>

@@ -298,6 +298,9 @@ void initLanguageSupport()
 #if defined(__WXMAC__)
 		wxStandardPaths* paths = (wxStandardPaths*) &wxStandardPaths::Get();
 		usrLocale->AddCatalogLookupPathPrefix(paths->GetResourcesDir());
+#elif defined(__WIN32__)
+		wxStandardPaths* paths = (wxStandardPaths*) &wxStandardPaths::Get();
+		usrLocale->AddCatalogLookupPathPrefix(paths->GetResourcesDir());
 #endif
 		usrLocale->AddCatalog(wxCStr(PROGRAM_NAME));
 		usrLocale->AddCatalog(wxT("wxstd"));
@@ -316,8 +319,26 @@ void initLanguageSupport()
 			setlocale (LC_ALL, "");
 #ifdef __WXMAC__
 			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
-#elif defined(WIN32) || defined(WIN64)
+#elif defined(__WIN32__) || defined(__WIN64__)
+			cerr << "Binding text domain" << endl;
 			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
+			//The names for the codesets are in confg.charset in gettext-runtime/intl in
+			// the gettext package. Tell gettext what codepage windows is using.
+			unsigned int curPage;
+			curPage=GetACP();
+			switch(curPage)
+			{
+				case 1252:
+					bind_textdomain_codeset(PROGRAM_NAME, "CP1252");
+					break;
+				case 65001:
+					bind_textdomain_codeset(PROGRAM_NAME, "UTF-8");
+					break;
+				default:
+					cerr << "Unknown codepage " << curPage << endl;
+					break;
+			}
+			
 #else
 			bindtextdomain( PROGRAM_NAME, "/usr/share/locale" );
 			bind_textdomain_codeset(PROGRAM_NAME, "utf-8");
