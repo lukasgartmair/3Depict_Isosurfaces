@@ -57,25 +57,17 @@ popd
 
 pushd 3Depict-$VER/translations/
 
-#Try to locate the corresponding wxMO file, then install it
+#Move the .mo file to the correct subdir
 for i in `ls *.mo`
 do
 	LOCALEVAL=`basename $i | sed 's/\.mo//' | sed 's/3Depict_//'`
-	WXMO=`find /usr/share/locale/$LOCALEVAL -name wxstd.mo`
-		
-	mkdir -p LC_MESSAGES/$LOCALEVAL
-	mv $i LC_MESSAGES/$LOCALEVAL/3Depict.mo
 
-	#Did we find a wxstd.mo for this locale?
-	if [ x"$WXMO" == x"" ] ; then
-		echo "WARNING: No wxstd.mo found for locale: $LOCALEVAL "
-	else
-		echo  cp $WXMO LC_MESSAGES/$LOCALEVAL/
-	fi
+	mkdir -p locales/$LOCALEVAL/LC_MESSAGES
+	mv $i locales/$LOCALEVAL/LC_MESSAGES/3Depict.mo
 done
 
-if [ -d LC_MESSAGES ] ; then
-	mv LC_MESSAGES ../
+if [ -d locales ] ; then
+	mv locales ../
 else
 	echo "ERROR: No Locales built.. Aborting"
 	exit 1

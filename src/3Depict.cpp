@@ -19,10 +19,10 @@
 //DEBUG NaN and INF
 #ifdef DEBUG
 #ifdef __linux__
-#include <fenv.h>
-#include <sys/cdefs.h>
+//#include <fenv.h>
+//#include <sys/cdefs.h>
 void trapfpe () {
-  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
+//  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
 }
 #endif
 #endif
@@ -2195,10 +2195,11 @@ void MainWindowFrame::OnHelpAbout(wxCommandEvent &event)
 
 	info.AddArtist(_T("Thanks go to all who have developed the libraries that I use, which make this program possible.\n This includes the wxWidgets team, Alexy Balakin (MathGL), the FTGL and freetype people, the GNU Scientific Library contributors, the tree.h guy (Kasper Peeters)  and more."));
 
+	info.AddArtist(wxString(wxTRANS("Compiled with wx Version: " )) + 
+			wxString(wxSTRINGIZE_T(wxVERSION_STRING)));
 
 	wxArrayString s;
-	s.Add(wxString(wxTRANS("Compiled with wx Version: " )) + 
-			wxString(wxSTRINGIZE_T(wxVERSION_STRING)));
+	s.Add(_T("Deutsch (German) : Erich (de)"));
 	info.SetTranslators(s);
 
 	wxAboutBox(info);
@@ -4608,17 +4609,17 @@ bool threeDepictApp::OnCmdLineParsed(wxCmdLineParser& parser)
 //Mac OSX drag/drop file support
 void threeDepictApp::MacOpenFile(const wxString &filename)
 {
-	ASSERT(mainFrame);
+	ASSERT(MainFrame);
 	wxArrayString array;
 	array.Add(filename);
 
-	mainFrame->OnDropFiles(filename);
+	mainFrame->OnDropFiles(array);
 }
 
 void threeDepictApp::MacReopenFile(const wxString &filename)
 {
-	ASSERT(mainFrame);
-	mainFrame->Raise();
+	ASSERT(MainFrame);
+	MainFrame->Raise();
 
 	MacOpenFile(filename);
 }

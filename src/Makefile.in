@@ -57,11 +57,11 @@ am__3Depict_SOURCES_DIST = mathglPane.cpp plot.cpp prefDialog.cpp \
 	mathfuncs.cpp wxcomponents.cpp wxcommon.cpp mathglPane.h \
 	plot.h prefDialog.h configFile.h filter.h APTClasses.h \
 	resDialog.h select.h drawables.h effect.h textures.h rdf.h \
-	cameras.h isoSurface.h K3DTree.h K3DTree-mk2.h basics.h \
-	xmlHelper.h cropPanel.h colourmap.h pngread.h mathfuncs.h \
-	wxcomponents.h wxcommon.h voxels.h endianTest.h assertion.h \
-	commonConstants.h art.h tree.hh 3Depict.xpm \
-	filters/allFilter.cpp filters/posLoad.cpp \
+	translation.h winconsole.h cameras.h isoSurface.h K3DTree.h \
+	K3DTree-mk2.h basics.h xmlHelper.h cropPanel.h colourmap.h \
+	pngread.h mathfuncs.h wxcomponents.h wxcommon.h voxels.h \
+	endianTest.h assertion.h commonConstants.h art.h tree.hh \
+	3Depict.xpm filters/allFilter.cpp filters/posLoad.cpp \
 	filters/ionDownsample.cpp filters/rangeFile.cpp \
 	filters/voxelise.cpp filters/spectrumPlot.cpp \
 	filters/transform.cpp filters/externalProgram.cpp \
@@ -305,7 +305,7 @@ BASE_SOURCE_FILES = mathglPane.cpp plot.cpp prefDialog.cpp configFile.cpp filter
 
 BASE_HEADER_FILES = mathglPane.h plot.h prefDialog.h configFile.h filter.h \
 		     APTClasses.h resDialog.h select.h \
-		     drawables.h effect.h textures.h rdf.h \
+		     drawables.h effect.h textures.h rdf.h translation.h winconsole.h \
 		     cameras.h isoSurface.h K3DTree.h K3DTree-mk2.h\
 			basics.h xmlHelper.h cropPanel.h colourmap.h \
 			pngread.h mathfuncs.h wxcomponents.h wxcommon.h voxels.h \
@@ -322,7 +322,7 @@ SOURCE_FILES = $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(FILTER_FILES) $(FILTE
 @HAVE_WINDRES_TRUE@3Depict_SOURCES = $(SOURCE_FILES)  winconsole.cpp 3Depict.rc
 
 #Tarball options
-EXTRA_DIST = textures tex-source glade-skeleton
+EXTRA_DIST = textures tex-source glade-skeleton myAppIcon.ico
 
 #Precompiled headers
 @USE_PRECOMPILED_HEADERS_TRUE@BUILT_SOURCES = mathglPane.h.gch plot.h.gch prefDialog.h.gch configFile.h.gch filter.h.gch \

@@ -78,7 +78,6 @@ TODO List - worlds simplest bugtracking system
 		* Clipping should be parallelised
 		* Clustering could be paralellised, but is complex. Split & weld along KD tree lines using 
 		  cluster BB interactions.
-		* Spectrum plot always clears cache when properties change -- this is not neccesary for many cases.
 	
 	Misc:
 

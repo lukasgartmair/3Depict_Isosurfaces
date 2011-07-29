@@ -1,0 +1,4 @@
+version=3
+http://sf.net/threedepict/3Depict-(\d+[0-9\-\.r]+)\.tar.gz \
+  debian
+

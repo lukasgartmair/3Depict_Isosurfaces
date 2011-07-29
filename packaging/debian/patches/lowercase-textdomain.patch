@@ -1,0 +1,24 @@
+Index: 3depict-0.0.7/src/3Depict.cpp
+===================================================================
+--- 3depict-0.0.7.orig/src/3Depict.cpp	2011-07-29 00:02:09.000000000 +0100
++++ 3depict-0.0.7/src/3Depict.cpp	2011-07-29 00:03:29.000000000 +0100
+@@ -315,7 +315,7 @@
+ 		else
+ 		{
+ 			//Set the gettext language
+-			textdomain( PROGRAM_NAME );
++			textdomain( "3depict");
+ 			setlocale (LC_ALL, "");
+ #ifdef __WXMAC__
+ 			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
+@@ -340,8 +340,8 @@
+ 			}
+ 			
+ #else
+-			bindtextdomain( PROGRAM_NAME, "/usr/share/locale" );
+-			bind_textdomain_codeset(PROGRAM_NAME, "utf-8");
++			bindtextdomain( "3depict", "/usr/share/locale" );
++			bind_textdomain_codeset("3depict", "utf-8");
+ #endif
+ 		}
+ 	}

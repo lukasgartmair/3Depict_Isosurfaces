@@ -37,12 +37,6 @@ if [ $1 = '--update-config=yes' ]; then
 	make clean
 fi
 
-g++ --version |grep "g++ (GCC) 4.6."
-if [ $? -ne 0 ]; then
-	echo "g++ version - expected 4.6.x"
-	exit
-fi
-
 make -j2
 
 if [ $? -ne 0 ]; then
@@ -51,26 +45,20 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Updating .app bundle..."
-mkdir -p ./main.app/Contents/MacOS/
-cp ./src/3Depict ./main.app/Contents/MacOS/3Depict
-cp src/tex-source/3Depict-icon.icns ./main.app/Contents/Resources/wxmac.icns
-touch ./main.app/Contents/PkgInfo
-touch ./main.app/Contents/info.plist
+mkdir -p ./3Depict.app/Contents/MacOS/
+cp ./src/3Depict ./3Depict.app/Contents/MacOS/3Depict
+cp src/tex-source/3Depict-icon.icns ./3Depict.app/Contents/Resources/wxmac.icns
+touch ./3Depict.app/Contents/PkgInfo
+touch ./3Depict.app/Contents/info.plist
 #copy textures
-cp -R ./src/textures ./main.app/Contents/Resources
+cp -R ./src/textures ./3Depict.app/Contents/Resources
 
 
 #Update gettext translation
 #----
 echo "Updating translation files..."
+cp -Rp locales/* ./3Depict.app/Contents/Resources/
 
-for i in `ls ./translations/3Depict_*.mo`
-do
-	j=`echo $i | sed 's/.\/translations\/3Depict_//' | sed 's/.mo//'`
-	mkdir -p ./main.app/Contents/Resources/$j/LC_MESSAGES/
-	cp $i ./main.app/Contents/Resources/$j/LC_MESSAGES/3Depict.mo
-	echo "$i $j"
-done
 #----
 
 
@@ -80,8 +68,8 @@ if [ x`which dylibbundler` == x"" ] ; then
 	exit 1
 fi
 
-dylibbundler -od -b -x ./main.app/Contents/MacOS/3Depict -d ./main.app/Contents/libs -i /usr/lib
-install_name_tool -change /opt/local/lib/libfreetype.6.dylib @executable_path/../libs/libfreetype.6.dylib ./main.app/Contents/libs/libftgl.2.1.3.dylib
+dylibbundler -od -b -x ./3Depict.app/Contents/MacOS/3Depict -d ./3Depict.app/Contents/libs -i /usr/lib
+install_name_tool -change /opt/local/lib/libfreetype.6.dylib @executable_path/../libs/libfreetype.6.dylib ./3Depict.app/Contents/libs/libftgl.2.1.3.dylib
 
 echo "Done"
 

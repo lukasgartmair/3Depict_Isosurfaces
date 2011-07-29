@@ -45,7 +45,7 @@ BASE_SOURCE_FILES=  mathglPane.cpp plot.cpp prefDialog.cpp configFile.cpp filter
 
 BASE_HEADER_FILES=   mathglPane.h plot.h prefDialog.h configFile.h filter.h \
 		     APTClasses.h resDialog.h select.h \
-		     drawables.h effect.h textures.h rdf.h \
+		     drawables.h effect.h textures.h rdf.h translation.h winconsole.h \
 		     cameras.h isoSurface.h K3DTree.h K3DTree-mk2.h\
 			basics.h xmlHelper.h cropPanel.h colourmap.h \
 			pngread.h mathfuncs.h wxcomponents.h wxcommon.h voxels.h \
@@ -69,8 +69,8 @@ else
 endif
 
 #Tarball options
-EXTRA_DIST = textures tex-source glade-skeleton
-
+EXTRA_DIST = textures tex-source glade-skeleton myAppIcon.ico
+ 
 
 if USE_PRECOMPILED_HEADERS
 

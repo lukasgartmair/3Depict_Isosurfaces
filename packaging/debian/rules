@@ -32,7 +32,13 @@ ifneq "$(wildcard /usr/share/misc/config.guess)" ""
 	cp -f /usr/share/misc/config.guess config.guess
 endif
 	#Note the PNG_CFLAGS are required to shut pkg-config macro up
-	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --enable-openmp-parallel 
+	#Also, we cant use --enable-openmp-parallel, as this enables
+	#
+	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --disable-debug-checks --with-libpng-link="-lpng" --with-libpng-flags="-L/lib" LDFLAGS="-Wl,-z,defs" CFLAGS="-fopenmp"
+
+	# Do latex's multi-pass build system on the manual
+	sh -c "cd docs/manual-latex && pdflatex manual.tex && bibtex *.aux && pdflatex manual.tex && pdflatex manual.tex"
+
 
 
 build: build-stamp
@@ -53,7 +59,9 @@ clean: unpatch
 
 	# Add here commands to clean up after the build process.
 	[ ! -f Makefile ] || $(MAKE) distclean
-	rm -f config.sub config.guess
+	rm -f config.sub config.guess config.status config.cache
+	#cleanup after manually built documentation
+	rm -f docs/manual-latex/*{log,aux,bbl,pdf,toc,out,blg}
 
 	dh_clean 
 
@@ -73,13 +81,27 @@ install: build
 	mv $(CURDIR)/debian/3depict/usr/bin/3Depict $(CURDIR)/debian/3depict/usr/bin/3depict
 
 	mkdir -p $(CURDIR)/debian/3depict/usr/share/doc/3depict/
-	echo "Copyright 2010 D Haley <mycae@yahoo.com>" > $(CURDIR)/debian/3depict/usr/share/doc/3depict/copyright
+	echo "Copyright 2011 D Haley <mycae@yahoo.com>" > $(CURDIR)/debian/3depict/usr/share/doc/3depict/copyright
 	echo "See /usr/share/common-licenses/GPL-1 for copyright info" >> $(CURDIR)/debian/3depict/usr/share/doc/3depict/copyright
 
 	#Install .desktop file (for XFCE)
 	install -Dp -m 644 $(CURDIR)/packaging/3Depict.desktop $(CURDIR)/debian/3depict/usr/share/applications/3depict.desktop
 	#install icon into pixmaps
 	install -Dp -m 644 $(CURDIR)/src/3Depict.xpm $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.xpm
+	
+	#Install the pre-built locale files that are shipped with the tarball.
+	#translation sources (.po) files are in the translations/ folder.
+	
+	#remap a few locale names
+	sh -c "mv locales/de_DE/ locales/de/"
+	mkdir -p $(CURDIR)/debian/3depict/usr/share/locale/
+	cp -R locales/* $(CURDIR)/debian/3depict/usr/share/locale/
+	#undo locale renaming
+	sh -c "mv locales/de/ locales/de_DE/"
+	
+	# convert installed 3Depict.mo files to lowercase	
+	find $(CURDIR)/debian/3depict/usr/share/locale/ -name 3Depict.mo | xargs rename 's/3Depict.mo/3depict.mo/'
+
 
 	#delete some dirs that are generated.
 	rmdir $(CURDIR)/debian/3depict/usr/sbin
