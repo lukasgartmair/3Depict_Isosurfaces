@@ -1,7 +1,7 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
-#
+# 
 #   <erich_s@gmx.de>, 2011.
 # epix1234 <erich_s@gmx.de>, 2011.
 msgid ""
@@ -9,20 +9,14 @@ msgstr ""
 "Project-Id-Version: 3Depict\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2011-07-18 21:29+0100\n"
-"PO-Revision-Date: 2011-07-16 03:44+0000\n"
+"PO-Revision-Date: 2011-07-29 22:39+0000\n"
 "Last-Translator: epix1234 <erich_s@gmx.de>\n"
-"Language-Team: German (Germany) (http://www.transifex.net/projects/p/3depict/"
-"team/de_DE/)\n"
+"Language-Team: German (Germany) (http://www.transifex.net/projects/p/3depict/team/de_DE/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Language: de_DE\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
-"X-Poedit-Basepath: .\n"
-"X-Poedit-Country: \n"
-"X-Poedit-Language: English\n"
-"X-Poedit-SearchPath-0: src\n"
-"X-Poedit-SourceCharset: utf-8\n"
 
 #: ../src/configFile.cpp:186
 msgid "Config file present, but is not valid (root node test)"
@@ -40,12 +34,15 @@ msgstr "Unable to determine filter type in defaults listing."
 msgid ""
 "<!-- Online access for non win32/apple platforms is intentionally disabled, "
 msgstr ""
+"<!-- Onlinezugang für nicht win32/apple Systeme ist absichtlich deaktiviert,"
 
 #: ../src/configFile.cpp:510
 msgid ""
-"regardless of the settings you use here. Use your package manager to keep up-"
-"to-date -->"
+"regardless of the settings you use here. Use your package manager to keep "
+"up-to-date -->"
 msgstr ""
+"Verwenden Sie, unabhängig von den hier verwendeten Einstellungen, Ihren "
+"Paketmanager um up-to-date zu bleiben. -->"
 
 #: ../src/colourmap.cpp:234
 msgid "Jet"
@@ -246,7 +243,7 @@ msgstr "Ionenfarbe"
 
 #: ../src/3Depict.cpp:153
 msgid "Ion Info"
-msgstr ""
+msgstr "Ion Info"
 
 #: ../src/3Depict.cpp:154
 msgid "Ion Transform"
@@ -273,8 +270,8 @@ msgid ""
 "Unable to initialise the openGL (3D) panel. Program cannot start. Please "
 "check your video drivers."
 msgstr ""
-"Kann OpenGL-Panel (3D-Panel) nicht initialisieren. Das Programm kann nicht gestartet "
-"werden. Bitte überprüfen Sie Ihre Video-Treiber."
+"Kann das OpenGL (3D)-Panel nicht initialisieren. Das Programm kann nicht "
+"gestartet werden. Bitte überprüfen Sie Ihren Video-Treiber."
 
 #: ../src/3Depict.cpp:398
 msgid "OpenGL Failed"
@@ -733,11 +730,11 @@ msgstr "Plot speichern..."
 
 #: ../src/3Depict.cpp:1256
 msgid ""
-"By Extension (svg,png)|*.svg;*.png|Scalable Vector Graphics File (*.svg)|*."
-"svg|PNG File (*.png)|*.png|All Files (*)|*"
+"By Extension (svg,png)|*.svg;*.png|Scalable Vector Graphics File "
+"(*.svg)|*.svg|PNG File (*.png)|*.png|All Files (*)|*"
 msgstr ""
-"Dateierweiterung (svg,png)|*.svg;*.png|Skalierbare Vektorgrafik (*.svg)|*."
-"svg|PNG Datei (*.png)|*.png|Alle Dateien (*)|*"
+"Dateierweiterung (svg,png)|*.svg;*.png|Skalierbare Vektorgrafik "
+"(*.svg)|*.svg|PNG Datei (*.png)|*.png|Alle Dateien (*)|*"
 
 #: ../src/3Depict.cpp:1285 ../src/3Depict.cpp:1338 ../src/3Depict.cpp:1395
 msgid "Choose resolution"
@@ -757,14 +754,14 @@ msgstr "PNG Datei (*.png)|*.png|Alle Dateien (*)|*"
 
 #: ../src/3Depict.cpp:1353
 msgid ""
-"Limitation on the screenshot dimension; please ensure that both width and "
-"height exceed the initial values,\n"
+"Limitation on the screenshot dimension; please ensure that both width and height exceed the initial values,\n"
 " or that they are smaller than the initial values.\n"
 " If this bothers you, please submit a bug."
 msgstr ""
-"Einschränkung bei den Screenshotdimensionen; bitte stellen Sie sicher, dass "
-"sowohl Höhe als auch Breite grösser als die Anfangswerte sind oder, dass "
-"diese kleiner als die Anfangswerte sind."
+"Beschränkung der Screenshot Dimensionen; stellen Sie bitte sicher, dass "
+"Breite und Höhe die ursprünglichen Werte überschreiten, oder dass diese "
+"kleiner als die ursprünglichen Werte sind. Sollte Sie dies stören, melden "
+"Sie bitte einen Bug."
 
 #: ../src/3Depict.cpp:1354 ../src/3Depict.cpp:1414
 msgid "Program limitation"
@@ -772,14 +769,14 @@ msgstr "Programmeinschränkung"
 
 #: ../src/3Depict.cpp:1413
 msgid ""
-"Limitation on the screenshot dimension; please ensure that both width and "
-"height exceed the initial values,\n"
+"Limitation on the screenshot dimension; please ensure that both width and height exceed the initial values,\n"
 " or that they are smaller than the initial values.\n"
 " If this bothers, please submit a bug."
 msgstr ""
-"Einschränkung bei den Screenshotdimensionen; bitte stellen Sie sicher, dass "
-"sowohl Höhe als auch Breite grösser als die Anfangswerte sind oder, dass "
-"diese kleiner als die Anfangswerte sind."
+"Beschränkung der Screenshot Dimensionen; stellen Sie bitte sicher, dass "
+"Breite und Höhe die ursprünglichen Werte überschreiten, oder dass diese "
+"kleiner als die ursprünglichen Werte sind. Sollte Sie dies stören, melden "
+"Sie bitte einen Bug."
 
 #: ../src/3Depict.cpp:1436
 msgid "Number of frames"
@@ -872,7 +869,8 @@ msgstr "Überschreiben?"
 #: ../src/3Depict.cpp:1742
 msgid "Files have been referred to using relative paths. Keep relative paths?"
 msgstr ""
-"Auf Dateien wurde mit relativen Pfaden verwiesen. Relative Pfade beibehalten?"
+"Auf Dateien wurde mit relativen Pfaden verwiesen. Relative Pfade "
+"beibehalten?"
 
 #: ../src/3Depict.cpp:1777
 msgid "Saved state: "
@@ -956,11 +954,13 @@ msgstr "RNG Datei auswählen..."
 
 #: ../src/3Depict.cpp:2860
 msgid ""
-"Range Files (*rng; *env; *rrng)|*rng;*env;*rrng|RNG File (*.rng)|*.rng|"
-"Environment File (*.env)|*.env|RRNG Files (*.rrng)|*.rrng|All Files (*)|*"
+"Range Files (*rng; *env; *rrng)|*rng;*env;*rrng|RNG File "
+"(*.rng)|*.rng|Environment File (*.env)|*.env|RRNG Files (*.rrng)|*.rrng|All "
+"Files (*)|*"
 msgstr ""
-"Rangedatei (*rng; *env; *rrng)|*rng;*env;*rrng|RNG File (*.rng)|*.rng|"
-"Environment Datei (*.env)|*.env|RRNG Files (*.rrng)|*.rrng|Alle Dateien (*)|*"
+"Rangedatei (*rng; *env; *rrng)|*rng;*env;*rrng|RNG File "
+"(*.rng)|*.rng|Environment Datei (*.env)|*.env|RRNG Files "
+"(*.rrng)|*.rrng|Alle Dateien (*)|*"
 
 #: ../src/3Depict.cpp:2891
 msgid "Unknown file extension"
@@ -969,8 +969,8 @@ msgstr "Unbekannte Dateierweiterung"
 #: ../src/3Depict.cpp:2909
 msgid "Failed reading range file, may not readable or may be invalid: "
 msgstr ""
-"Fehler beim lesen der Rangedatei, Möglicherweise ist diese nicht lesbar oder "
-"ungültig: "
+"Fehler beim lesen der Rangedatei, Möglicherweise ist diese nicht lesbar oder"
+" ungültig: "
 
 #: ../src/3Depict.cpp:2919
 msgid "Error loading file"
@@ -1016,15 +1016,15 @@ msgstr "\\% Done"
 
 #: ../src/3Depict.cpp:3557 ../src/3Depict.cpp:3564
 msgid "Next Fullscreen mode: none"
-msgstr ""
+msgstr "Nächster Vollbildmodus: keiner"
 
 #: ../src/3Depict.cpp:3560
 msgid "Next Fullscreen mode: complete"
-msgstr ""
+msgstr "Nächster Vollbildmodus: vollständig"
 
 #: ../src/3Depict.cpp:3568
 msgid "Next Fullscreen mode: with toolbars"
-msgstr ""
+msgstr "Nächster Vollbildmodus: mit Werkzeugleisten"
 
 #: ../src/3Depict.cpp:3614
 msgid "Use shift-click to force full refresh"
@@ -1082,8 +1082,8 @@ msgstr "Tree of data filters"
 msgid ""
 "Enable/Disable automatic updates of data when filter change takes effect"
 msgstr ""
-"Ein/Ausschalten vom automatischen Aktualisieren der Daten wenn Änderungen am "
-"Filter wirksam werden"
+"Ein/Ausschalten vom automatischen Aktualisieren der Daten wenn Änderungen am"
+" Filter wirksam werden"
 
 #: ../src/3Depict.cpp:4278
 msgid ""
@@ -1093,9 +1093,9 @@ msgid ""
 "more blocky"
 msgstr ""
 "Ein/Ausschalten des \"Alpha blending\" (Transparenz) im Rendersystem. Diese "
-"wird verwendet um ebeneObjekte (vermeidet Artefakte bekannt als jaggies) und "
-"transparente Oberflächen zu generieren. Ausschalten des Rendering führt aber "
-"zu blockigerer Darstellung."
+"wird verwendet um ebeneObjekte (vermeidet Artefakte bekannt als jaggies) und"
+" transparente Oberflächen zu generieren. Ausschalten des Rendering führt "
+"aber zu blockigerer Darstellung."
 
 #: ../src/3Depict.cpp:4279
 msgid ""
@@ -1114,10 +1114,10 @@ msgid ""
 "provides better protection against inadvertent correlations, and is "
 "recommended for final analyses"
 msgstr ""
-"Ein/Ausschalten des schwaches Randomisierens (Galois linear feedback shift "
-"register). Starkes Randomisieren verwendet zwar eine viel langsamere Methode "
-"bietet aber einen besseren Schutz gegen ungewollte korrelationen. Diese "
-"Methode wird für die endgültige Analyse empfohlen."
+"Ein/Ausschalten der schwachen Randomisierung (Galois linear feedback shift "
+"register). Starke Randomisierung verwendet einen viel langsamere "
+"Auswahlmethode bietet dafür aber einen besseren Schutz gegen unbeabsichtigte"
+" Korrelationen und wird für die endgültige Analyse empfohlen."
 
 #: ../src/3Depict.cpp:4281
 msgid ""
@@ -1126,9 +1126,9 @@ msgid ""
 "the entire filter tree to be recomputed, greatly slowing computations"
 msgstr ""
 "Ein/Ausschalten des Zwischenspeicherns von Ergebnissen während "
-"Filteraktualisierungen. Dies verbraucht weniger RAM, führt jedoch dazu, dass "
-"bei Änderungen der Filterparameter der ganze Filterbaum neu berechnet wird. "
-"Dies erhöht den Rechenaufwand deutlich."
+"Filteraktualisierungen. Dies verbraucht weniger RAM, führt jedoch dazu, dass"
+" bei Änderungen der Filterparameter der ganze Filterbaum neu berechnet wird."
+" Dies erhöht den Rechenaufwand deutlich."
 
 #: ../src/3Depict.cpp:4285 ../src/3Depict.cpp:4290
 msgid "Property"
@@ -1467,7 +1467,7 @@ msgstr "Farbe"
 
 #: ../src/filters/spectrumPlot.cpp:588
 msgid "Insufficient memory for spectrum filter."
-msgstr "Zu wenig Speicher für Spektrumfilter"
+msgstr "Nicht genügend Speicher für Spektrumfilter"
 
 #: ../src/filters/spectrumPlot.cpp:590
 msgid "Bad bincount value in spectrum filter."
@@ -1487,15 +1487,13 @@ msgid "No range data. Can't cluster."
 msgstr "Keine Rangedaten. Clusteranalyse nicht möglich."
 
 #: ../src/filters/clusterAnalysis.cpp:386
-msgid ""
-"No ranges selected for cluster \"core\". Cannot continue with clustering."
+msgid "No ranges selected for cluster \"core\". Cannot continue with clustering."
 msgstr ""
 "Kein Range für cluster \"core\" ausgewählt. Kann mit Clusteranalyse nicht "
 "weitermachen."
 
 #: ../src/filters/clusterAnalysis.cpp:395
-msgid ""
-"No ranges selected for cluster \"bulk\". Cannot continue with clustering."
+msgid "No ranges selected for cluster \"bulk\". Cannot continue with clustering."
 msgstr ""
 "Kein Range für \"bulk\" ausgewählt. Kann mit Clusteranalyse nicht "
 "weitermachen."
@@ -1619,8 +1617,8 @@ msgid ""
 "You can do this; thats OK, but the output is no longer independent of the "
 "computational process;"
 msgstr ""
-"Sie koennen das machen; das ist in Ordnung, jedoch ist das Ergebnis nicht "
-"mehr unabhaengig vom Rechenprozess;"
+"Sie könne das machen, das ist in Ordnung, aber die Ausgabe ist nicht länger "
+"unabhängig vom Berechnungsprozess"
 
 #: ../src/filters/clusterAnalysis.cpp:1519
 msgid ""
@@ -1632,11 +1630,11 @@ msgstr ""
 
 #: ../src/filters/clusterAnalysis.cpp:1520
 msgid ""
-" If your inter-cluster distance is sufficiently large (larger than your bulk "
-"linking distance), then you can get away with this."
+" If your inter-cluster distance is sufficiently large (larger than your bulk"
+" linking distance), then you can get away with this."
 msgstr ""
-" If your inter-cluster distance is sufficiently large (larger than your bulk "
-"linking distance), then you can get away with this."
+" If your inter-cluster distance is sufficiently large (larger than your bulk"
+" linking distance), then you can get away with this."
 
 #: ../src/filters/clusterAnalysis.cpp:1521
 msgid ""
@@ -1655,8 +1653,10 @@ msgstr ""
 "this in yourself."
 
 #: ../src/filters/clusterAnalysis.cpp:1523
-msgid "---------------------------------------------------------------------- "
-msgstr "---------------------------------------------------------------------- "
+msgid ""
+"---------------------------------------------------------------------- "
+msgstr ""
+"---------------------------------------------------------------------- "
 
 #: ../src/filters/boundingBox.cpp:342 ../src/ExportPos.cpp:52
 msgid "Visible"
@@ -1918,7 +1918,7 @@ msgstr "Arbeitsverzeichnis"
 
 #: ../src/filters/externalProgram.cpp:524
 msgid "Cleanup input"
-msgstr "Cleanup input"
+msgstr "Bereinige Eingabe"
 
 #: ../src/filters/externalProgram.cpp:532
 msgid "Cache"
@@ -2003,11 +2003,11 @@ msgstr "Spatial Noise"
 
 #: ../src/filters/transform.cpp:1032 ../src/filters/transform.cpp:1202
 msgid "Translate Value"
-msgstr ""
+msgstr "Translate Wert"
 
 #: ../src/filters/transform.cpp:1037
 msgid "Mode"
-msgstr ""
+msgstr "Mode"
 
 #: ../src/filters/transform.cpp:1056
 msgid "Origin mode"
@@ -2135,7 +2135,7 @@ msgstr "NN Max"
 
 #: ../src/filters/spatialAnalysis.cpp:943
 msgid "Dist Max"
-msgstr "Abstand Max."
+msgstr "Abst. Max."
 
 #: ../src/filters/spatialAnalysis.cpp:961
 msgid "Surface Remove"
@@ -2163,56 +2163,55 @@ msgstr "Ungenügend Daten zum Fertigstellen der Analyse."
 
 #: ../src/filters/ionInfo.cpp:35
 msgid "Rectilinear"
-msgstr ""
+msgstr "Geradlinig"
 
 #: ../src/filters/ionInfo.cpp:36
 msgid "Filled Voxels"
-msgstr ""
+msgstr "Gefüllte Voxel"
 
 #: ../src/filters/ionInfo.cpp:37
 msgid "Convex hull"
-msgstr ""
+msgstr "Konvexe Hülle"
 
 #: ../src/filters/ionInfo.cpp:342
 msgid "--Counts--"
-msgstr "--Anzahl--"
+msgstr "- Anzahl -"
 
 #: ../src/filters/ionInfo.cpp:354
 msgid "Total Ranged\t"
-msgstr ""
+msgstr "Gesamt ranged\t"
 
 #: ../src/filters/ionInfo.cpp:359
 msgid "Total (incl. unranged)\t"
-msgstr ""
+msgstr "Total (inkl. nicht geranged)"
 
 #: ../src/filters/ionInfo.cpp:378
 msgid "Unranged"
-msgstr ""
+msgstr "Nicht Geranged"
 
 #: ../src/filters/ionInfo.cpp:391
 msgid "Number of points : "
-msgstr "Anzahl der Spalten :"
+msgstr "Anzahl der Punkte: "
 
 #: ../src/filters/ionInfo.cpp:416
 msgid "Rectilinear Bounds : "
-msgstr ""
+msgstr "Geradlinige Grenzen:"
 
 #: ../src/filters/ionInfo.cpp:420 ../src/filters/ionInfo.cpp:498
-#, fuzzy
 msgid "Volume (len^3): "
-msgstr "Volumen (Dichte)"
+msgstr "Volumen (Läng.^3)"
 
 #: ../src/filters/ionInfo.cpp:437
 msgid "Convex Volume (len^3): "
-msgstr ""
+msgstr "Konvexes Volumen (Läng.^3)"
 
 #: ../src/filters/ionInfo.cpp:439
 msgid "Unable to compute volume"
-msgstr ""
+msgstr "Kann Volumen nicht berechnen"
 
 #: ../src/filters/ionInfo.cpp:447
 msgid "Bounds"
-msgstr ""
+msgstr "Grenzen"
 
 #: ../src/filters/ionInfo.cpp:528
 msgid "Counts"
@@ -2220,23 +2219,23 @@ msgstr "Anzahl"
 
 #: ../src/filters/ionInfo.cpp:530
 msgid "Compositions"
-msgstr ""
+msgstr "Zusammensetzungen"
 
 #: ../src/filters/ionInfo.cpp:557
 msgid "Volume"
-msgstr ""
+msgstr "Volumen"
 
 #: ../src/filters/ionInfo.cpp:581
 msgid "Cube length"
-msgstr ""
+msgstr "Cube Länge"
 
 #: ../src/filters/ionInfo.cpp:692
 msgid "Insufficient memory for operation"
-msgstr "Nicht genug Speicher für programme"
+msgstr "Nicht genügend Speicher für Operation"
 
 #: ../src/filters/ionInfo.cpp:696
 msgid "Bug? Problem with qhull library, cannot run convex hull."
-msgstr ""
+msgstr "Bug? Problem mit qhull Bibliothek. Kann convex hull nicht ausführen."
 
 #: ../src/filter.cpp:50
 msgid "Plot"
@@ -2272,17 +2271,19 @@ msgstr "Base state node missing. Is this really a state XML file??"
 
 #: ../src/viscontrol.cpp:2309
 msgid "State was created by a newer version of this program.. "
-msgstr ""
+msgstr "Status wurde von einer neueren Version dieses Programmes erstellt.. "
 
 #: ../src/viscontrol.cpp:2310
 msgid "file reading will continue, but may fail."
-msgstr ""
+msgstr "Datei wird weiter eingelesen kann aber unter Umständen fehlschlagen."
 
 #: ../src/viscontrol.cpp:2315
 msgid ""
 "Warning, unparseable version number in state file. File reading will "
 "continue, but may fail"
 msgstr ""
+"Warnung: Nicht lesbare Versionsnummer in Statusdatei. Datei wird weiter "
+"eingelesen kann aber unter Umständen fehlschlagen."
 
 #: ../src/viscontrol.cpp:2321
 msgid "Unable to find the \"writer\" node"
@@ -2370,7 +2371,7 @@ msgstr " cannot use."
 
 #: ../src/viscontrol.cpp:2555
 msgid "Error reading effect : "
-msgstr ""
+msgstr "Fehler beim Lesen:"
 
 #: ../src/viscontrol.cpp:2661
 msgid ""
@@ -2506,8 +2507,8 @@ msgid ""
 "Error reading file, unexpected format, are you sure it is a proper range "
 "file?"
 msgstr ""
-"Fehler beim Lesen der Datei: Unerwartetes Format, sind Sie sicher, dass dies "
-"eine korrekte Rangedatei ist?"
+"Fehler beim Lesen der Datei: Unerwartetes Format, sind Sie sicher, dass dies"
+" eine korrekte Rangedatei ist?"
 
 #: ../src/APTClasses.cpp:2049
 msgid ""
@@ -2521,8 +2522,8 @@ msgid ""
 "Range file appears to contain malformed data, check things like start and "
 "ends of m/c are not flipped"
 msgstr ""
-"Rangedatei scheint falsch formatierte Daten zu enthalten:  check things like "
-"start and ends of m/c are not flipped"
+"Rangedatei scheint falsch formatierte Daten zu enthalten:  check things like"
+" start and ends of m/c are not flipped"
 
 #: ../src/APTClasses.cpp:2056
 msgid "Unknown error! -- possible bug"
@@ -2680,11 +2681,11 @@ msgstr "Set the method of panel layout when starting the program"
 
 #: ../src/prefDialog.cpp:539
 msgid ""
-"Lets the program check the internet to see if updates to the program version "
-"are available, then notifies you about updates now and again."
+"Lets the program check the internet to see if updates to the program version"
+" are available, then notifies you about updates now and again."
 msgstr ""
-"Lässt da Programm im Internet überprüfen ob Updates für dies Programmversion "
-"verfügbar sind und danach informiert es über neue Updates."
+"Lässt das Programm via Internet überprüfen ob Updates für diese "
+"Programmversion verfügbar sind. Danach informiert es über die neuen Updates."
 
 #: ../src/prefDialog.cpp:541
 msgid "Camera translation, orbit and swivel rates. "
@@ -2722,42 +2723,42 @@ msgstr ""
 
 #: ../src/filters/externalProgram.h:38
 msgid "Ext. Program"
-msgstr ""
+msgstr "Ext. Programm"
 
 #: ../src/filters/rangeFile.h:55
 msgid "Ranging"
-msgstr ""
+msgstr "Ranging"
 
 #: ../src/filters/transform.h:53
 msgid "Ion. Transform"
-msgstr "Ionentransform."
+msgstr "Ion. Transformieren"
 
 #: ../src/filters/compositionProfile.h:70
 msgid "Comp. Prof."
-msgstr "Konzentrationsprofil"
+msgstr "Konz. Prof."
 
 #: ../src/filters/posLoad.h:64
 msgid "Pos Data"
-msgstr "Pos-Daten"
+msgstr "POS-Daten"
 
 #: ../src/filters/ionInfo.h:62
 msgid "Ion info"
-msgstr ""
+msgstr "Ionen info"
 
 #: ../src/filters/ionDownsample.h:50
 msgid "Ion Sampler"
-msgstr ""
+msgstr "Ion Sampler"
 
 #: ../src/filters/spectrumPlot.h:47
-#, fuzzy
 msgid "Spectrum"
-msgstr "Massenspektrum"
+msgstr "Spektrum"
 
 #: ../src/filters/boundingBox.h:42
-#, fuzzy
 msgid "Bound box"
-msgstr "Rahmen"
+msgstr "Begrenzungs-Box"
 
 #: ../src/filters/ionColour.h:42
 msgid "Spectral Colour"
-msgstr ""
+msgstr "Spectral Farbe"
+
+
