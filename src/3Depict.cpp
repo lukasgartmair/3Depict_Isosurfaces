@@ -22,7 +22,7 @@
 //#include <fenv.h>
 //#include <sys/cdefs.h>
 void trapfpe () {
-//  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
+  //feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
 }
 #endif
 #endif
@@ -319,6 +319,7 @@ void initLanguageSupport()
 			setlocale (LC_ALL, "");
 #ifdef __WXMAC__
 			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
+#elif defined(WIN32) || defined(WIN64)
 #elif defined(__WIN32__) || defined(__WIN64__)
 			cerr << "Binding text domain" << endl;
 			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
