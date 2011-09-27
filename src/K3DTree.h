@@ -1,5 +1,6 @@
-/* rdf-kd : Calculates radial distribution functions
- * Copyright (C) 2008  D. Haley
+/* 
+ * K3DTree.h - limited precision KD tree implementation
+ * Copyright (C) 2011  D. Haley
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

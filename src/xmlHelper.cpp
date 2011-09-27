@@ -1,5 +1,6 @@
-/* XmlHelper.cpp : libXML2 wrapper code
- * Copyright (C) 2010  D Haley
+/* 
+ * XmlHelper.cpp : libXML2 wrapper code
+ * Copyright (C) 2011  D Haley
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

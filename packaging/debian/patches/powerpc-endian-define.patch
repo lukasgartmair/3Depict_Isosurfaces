@@ -1,0 +1,46 @@
+Index: 3depict-0.0.7/src/rdf.cpp
+===================================================================
+--- 3depict-0.0.7.orig/src/rdf.cpp	2011-09-04 21:53:38.000000000 +0100
++++ 3depict-0.0.7/src/rdf.cpp	2011-09-04 23:27:04.000000000 +0100
+@@ -19,10 +19,19 @@
+ #include "voxels.h"
+ 
+ //QHull library
++//Build fix for qhull ; wx defines powerpc without
++//assigning a value, causing build fail on powerpc
++#ifdef __POWERPC__
++	#pragma push_macro("__POWERPC__")
++	#define __POWERPC__ 1
++#endif
+ extern "C"
+ {
+ 	#include <qhull/qhull_a.h>
+ }
++#ifdef __POWERPC__
++	#pragma pop_macro("__POWERPC__")
++#endif
+ 
+ const unsigned int CALLBACK_REDUCE=5000;
+ 
+Index: 3depict-0.0.7/src/filters/ionInfo.cpp
+===================================================================
+--- 3depict-0.0.7.orig/src/filters/ionInfo.cpp	2011-09-04 23:27:25.000000000 +0100
++++ 3depict-0.0.7/src/filters/ionInfo.cpp	2011-09-04 23:29:47.000000000 +0100
+@@ -5,10 +5,17 @@
+ #include "../voxels.h"
+ 
+ //QHull library
++#ifdef __POWERPC__
++	#pragma push_macro("__POWERPC__")
++	#define __POWERPC__ 1
++#endif
+ extern "C"
+ {
+ 	#include <qhull/qhull_a.h>
+ }
++#ifdef __POWERPC__
++	#pragma pop_macro("__POWERPC__")
++#endif
+ 
+ //grab size when doing convex hull calculations
+ const unsigned int HULL_GRAB_SIZE=4096;

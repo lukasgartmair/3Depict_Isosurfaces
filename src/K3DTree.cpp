@@ -1,5 +1,6 @@
-/* K3DTree.cpp : 3D Point KD tree 
- * Copyright (C) 2008  D. Haley
+/* 
+ * K3DTree.cpp : 3D Point KD tree 
+ * Copyright (C) 2011  D. Haley
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

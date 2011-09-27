@@ -22,16 +22,18 @@ make dist
 #Check version
 VER=`ls 3depict-*gz | sed 's/^3depict-\([0-9\.]*\).tar.gz$/\1/' `
 echo "Version is apparently :" $VER
-if [ x`grep $VER .hgtags` == x""  ] ; then
+if [ x`grep $VER .hgtags | awk '{print $1}'` == x""  ] ; then
 	echo " NOTICE: version number not seen in HG file..."
+	sleep 1
 else
-	echo " NOTICE: Version number exists in HG"
+	echo " NOTICE (OK): Version number exists in HG"
 fi
 
 #Check version number in basics.cpp is set concomitantly.
 
 if [ x"`grep PROGRAM_VERSION src/basics.cpp | grep $VER`" == x"" ] ; then
 	echo " WARNING: Program version not set to match between configure.ac. and basics.cpp"
+	sleep 1;
 fi
 
 
@@ -82,4 +84,18 @@ popd
 #make the final source tarball
 tar -cz 3Depict-$VER > 3Depict-$VER.tar.gz
 
+#Download the RSS file, and check to see what we have
+wget http://threedepict.sourceforge.net/rss.xml 
+
+if [ $? -ne 0 ] ; then
+	echo "Tarball OK, but unable to verify RSS Feed updated"
+	exit 1
+fi
+
+RSS_GREP=`cat rss.xml | grep $VER`
+
+if [ x$RSS_GREP == x"" ] ; then
+	echo "NOTICE : RSS does not appear to contain version string!"
+	sleep 2
+fi
 

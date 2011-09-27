@@ -1,8 +1,9 @@
-Index: 3depict-0.0.7/src/wxcomponents.cpp
+Upstream assumes different font directories than debian.
+Index: 3depict-0.0.8/src/wxcomponents.cpp
 ===================================================================
---- 3depict-0.0.7.orig/src/wxcomponents.cpp	2011-07-28 22:17:28.000000000 +0100
-+++ 3depict-0.0.7/src/wxcomponents.cpp	2011-07-28 22:17:30.000000000 +0100
-@@ -660,8 +660,15 @@
+--- 3depict-0.0.8.orig/src/wxcomponents.cpp	2011-09-22 17:04:03.000000000 +1000
++++ 3depict-0.0.8/src/wxcomponents.cpp	2011-09-27 17:46:18.913674141 +1000
+@@ -665,8 +665,15 @@
  {
  	//This is a list of possible target dirs to search
  	//(Oh look Ma, I'm autoconf!)

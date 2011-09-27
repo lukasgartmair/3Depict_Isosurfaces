@@ -1,0 +1,19 @@
+Documentation directory change for debian
+Index: 3depict-0.0.8/src/3Depict.cpp
+===================================================================
+--- 3depict-0.0.8.orig/src/3Depict.cpp	2011-09-23 10:44:55.000000000 +1000
++++ 3depict-0.0.8/src/3Depict.cpp	2011-09-27 17:45:05.493309499 +1000
+@@ -2140,11 +2140,11 @@
+ {
+ 	//First attempt to locate the local copy of the manual.
+ 	string s;
+-	s=locateDataFile("3Depict-manual.pdf");
++	s=locateDataFile("manual.pdf");
+ 
+ 	//Also Debian makes us use the lowercase "D", so check there too.
+ 	if(!s.size())
+-		s=locateDataFile("3depict-manual.pdf");
++		s=std::string("/usr/share/3depict/manual.pdf");
+ 
+ 
+ 	//If we found it, use the default program associated with that data file

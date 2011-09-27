@@ -1,7 +1,7 @@
 /*
  *	colourmap.cpp  - contiuum colourmap header
  *	Copyright (C) 2010, ViewerGTKQt project
- *	Modifed by D Haley 2010
+ *	Modifed by D Haley 2011
 
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by

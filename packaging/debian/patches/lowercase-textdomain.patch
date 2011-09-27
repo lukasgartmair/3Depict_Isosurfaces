@@ -1,8 +1,9 @@
-Index: 3depict-0.0.7/src/3Depict.cpp
+Debian uses different text domain for the lang files
+Index: 3depict-0.0.8/src/3Depict.cpp
 ===================================================================
---- 3depict-0.0.7.orig/src/3Depict.cpp	2011-07-29 00:02:09.000000000 +0100
-+++ 3depict-0.0.7/src/3Depict.cpp	2011-07-29 00:03:29.000000000 +0100
-@@ -315,7 +315,7 @@
+--- 3depict-0.0.8.orig/src/3Depict.cpp	2011-09-27 17:45:05.493309499 +1000
++++ 3depict-0.0.8/src/3Depict.cpp	2011-09-27 17:46:25.729707941 +1000
+@@ -347,7 +347,7 @@
  		else
  		{
  			//Set the gettext language
@@ -11,7 +12,7 @@ Index: 3depict-0.0.7/src/3Depict.cpp
  			setlocale (LC_ALL, "");
  #ifdef __WXMAC__
  			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
-@@ -340,8 +340,8 @@
+@@ -371,8 +371,8 @@
  			}
  			
  #else

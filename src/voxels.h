@@ -1,4 +1,6 @@
- /* Copyright (C) 2008  D. Haley
+ /*
+ * voxels.h - Voxelised data manipulation class
+ * Copyright (C) 2011  D. Haley
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

@@ -1,4 +1,5 @@
-texture-path.patch
+powerpc-endian-define.patch
+3depict-docdir.patch
 debian-desktop-naming.patch
 font-path-changed.patch
 lowercase-textdomain.patch

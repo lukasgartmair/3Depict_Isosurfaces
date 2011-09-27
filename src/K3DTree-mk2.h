@@ -1,6 +1,5 @@
-#ifndef K3DTREEMK2_H
-#define K3DTREEMK2_H
-/* K3DTreeMk2-2.h : Calculates radial distribution functions
+/* 
+ * K3DTreeMk2.h  - Precise KD tree implementation
  * Copyright (C) 2008  D. Haley
  * 
  * This program is free software: you can redistribute it and/or modify
@@ -16,6 +15,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+#ifndef K3DTREEMK2_H
+#define K3DTREEMK2_H
 
 //This is the second revision of my KD tree implementation
 //The goals here are, as compared to the first

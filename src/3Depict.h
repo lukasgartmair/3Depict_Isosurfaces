@@ -1,6 +1,6 @@
 /*
- * 	threeDepict.h - main program header
- * 	Copyright (C) 2010 D Haley
+ * 	3Depict.h - main program header
+ * 	Copyright (C) 2011 D Haley
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
