@@ -52,6 +52,7 @@ const char *STREAM_NAMES[] = { NTRANS("Ion"),
 				NTRANS("Range"),
 				NTRANS("Voxel")};
 
+//Internal names for each filter
 const char *FILTER_NAMES[] = { "posload",
 				"iondownsample",
 				"rangefile",
@@ -65,7 +66,8 @@ const char *FILTER_NAMES[] = { "posload",
 				"spatialanalysis",
 				"clusteranalysis",
 				"voxelise",
-				"ioninfo"
+				"ioninfo",
+				"annotation"
 				};
 
 void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f)

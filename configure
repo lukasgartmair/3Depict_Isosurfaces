@@ -615,6 +615,8 @@ MGL_LIBS
 GL_LIBS
 PNG_LIBS
 PNG_CFLAGS
+PKG_CONFIG_LIBDIR
+PKG_CONFIG_PATH
 PKG_CONFIG
 QHULL_LIBS
 QHULL_CFLAGS
@@ -749,6 +751,8 @@ with_libqhull_flags
 with_libqhull_link
 with_libpng_flags
 with_libpng_link
+with_mgl_flags
+with_mgl_libs
 with_gsl_flags
 with_gsl_libs
 with_gsl_prefix
@@ -771,6 +775,8 @@ CC
 CFLAGS
 CPP
 PKG_CONFIG
+PKG_CONFIG_PATH
+PKG_CONFIG_LIBDIR
 PNG_CFLAGS
 PNG_LIBS'
 
@@ -1413,6 +1419,8 @@ Optional Packages:
   --with-libqhull-link=PATH : specify linker flag (library) for libqhull
   --with-libpng-flags=PATH : specify compiler flags for libpng
   --with-libpng-link=PATH : specify linker flag (library) for libpng
+  --with-mgl-flags=PATH : specify compiler flags for mathgl
+  --with-mgl-libs=PATH : specify linker flag (library) for mathgl
   --with-gsl-flags=PATH : specify compiler flags for gsl
   --with-gsl-libs=PATH : specify linker flag (library) for gsl
   --with-gsl-prefix=PFX   Prefix where GSL is installed (optional)
@@ -1431,6 +1439,10 @@ Some influential environment variables:
   CFLAGS      C compiler flags
   CPP         C preprocessor
   PKG_CONFIG  path to pkg-config utility
+  PKG_CONFIG_PATH
+              directories to add to pkg-config's search path
+  PKG_CONFIG_LIBDIR
+              path overriding pkg-config's built-in search path
   PNG_CFLAGS  C compiler flags for PNG, overriding pkg-config
   PNG_LIBS    linker flags for PNG, overriding pkg-config
 
@@ -4996,7 +5008,7 @@ fi
   if test "$WX_CONFIG_PATH" != "no" ; then
     WX_VERSION=""
 
-    min_wx_version=2.5.3
+    min_wx_version=2.6.0
     if test -z "" ; then
       { $as_echo "$as_me:${as_lineno-$LINENO}: checking for wxWidgets version >= $min_wx_version" >&5
 $as_echo_n "checking for wxWidgets version >= $min_wx_version... " >&6; }
@@ -5162,7 +5174,7 @@ as_fn_error $? "
 		Please check that wx-config is in path, the directory
 		where wxWidgets libraries are installed (returned by
 		'wx-config --libs' command) is in LD_LIBRARY_PATH or
-		equivalent variable and wxWidgets version is 2.3.4 or above.
+		equivalent variable and wxWidgets version is 2.6.0 or above.
 " "$LINENO" 5
 fi
 
@@ -5581,6 +5593,11 @@ then
 else
 
 
+
+
+
+
+
 if test "x$ac_cv_env_PKG_CONFIG_set" != "xset"; then
 	if test -n "$ac_tool_prefix"; then
   # Extract the first word of "${ac_tool_prefix}pkg-config", so it can be a program name with args.
@@ -5693,7 +5710,6 @@ $as_echo "yes" >&6; }
 $as_echo "no" >&6; }
 		PKG_CONFIG=""
 	fi
-
 fi
 
 pkg_failed=no
@@ -5710,6 +5726,7 @@ if test -n "$PNG_CFLAGS"; then
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
   pkg_cv_PNG_CFLAGS=`$PKG_CONFIG --cflags "libpng >= 1.2" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
 fi
@@ -5726,6 +5743,7 @@ if test -n "$PNG_LIBS"; then
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
   pkg_cv_PNG_LIBS=`$PKG_CONFIG --libs "libpng >= 1.2" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
 fi
@@ -5736,6 +5754,8 @@ fi
 
 
 if test $pkg_failed = yes; then
+   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 
 if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
         _pkg_short_errors_supported=yes
@@ -5743,9 +5763,9 @@ else
         _pkg_short_errors_supported=no
 fi
         if test $_pkg_short_errors_supported = yes; then
-	        PNG_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors "libpng >= 1.2" 2>&1`
+	        PNG_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libpng >= 1.2" 2>&1`
         else
-	        PNG_PKG_ERRORS=`$PKG_CONFIG --print-errors "libpng >= 1.2" 2>&1`
+	        PNG_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libpng >= 1.2" 2>&1`
         fi
 	# Put the nasty error message in config.log where it belongs
 	echo "$PNG_PKG_ERRORS" >&5
@@ -5759,9 +5779,10 @@ installed software in a non-standard prefix.
 
 Alternatively, you may set the environment variables PNG_CFLAGS
 and PNG_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details.
-" "$LINENO" 5
+See the pkg-config man page for more details." "$LINENO" 5
 elif test $pkg_failed = untried; then
+     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
@@ -5779,7 +5800,7 @@ else
 	PNG_LIBS=$pkg_cv_PNG_LIBS
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-	:
+
 fi
 fi
 
@@ -5804,6 +5825,7 @@ if test -n "$PNG_CFLAGS"; then
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
   pkg_cv_PNG_CFLAGS=`$PKG_CONFIG --cflags "libpng >= 1.2" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
 fi
@@ -5820,6 +5842,7 @@ if test -n "$PNG_LIBS"; then
   $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
   test $ac_status = 0; }; then
   pkg_cv_PNG_LIBS=`$PKG_CONFIG --libs "libpng >= 1.2" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
 else
   pkg_failed=yes
 fi
@@ -5830,6 +5853,8 @@ fi
 
 
 if test $pkg_failed = yes; then
+   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 
 if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
         _pkg_short_errors_supported=yes
@@ -5837,9 +5862,9 @@ else
         _pkg_short_errors_supported=no
 fi
         if test $_pkg_short_errors_supported = yes; then
-	        PNG_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors "libpng >= 1.2" 2>&1`
+	        PNG_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libpng >= 1.2" 2>&1`
         else
-	        PNG_PKG_ERRORS=`$PKG_CONFIG --print-errors "libpng >= 1.2" 2>&1`
+	        PNG_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libpng >= 1.2" 2>&1`
         fi
 	# Put the nasty error message in config.log where it belongs
 	echo "$PNG_PKG_ERRORS" >&5
@@ -5853,9 +5878,10 @@ installed software in a non-standard prefix.
 
 Alternatively, you may set the environment variables PNG_CFLAGS
 and PNG_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details.
-" "$LINENO" 5
+See the pkg-config man page for more details." "$LINENO" 5
 elif test $pkg_failed = untried; then
+     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
 $as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
 as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
@@ -5873,7 +5899,7 @@ else
 	PNG_LIBS=$pkg_cv_PNG_LIBS
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
-	:
+
 fi
 fi
 
@@ -5947,8 +5973,6 @@ LIBS="$LIBS_ORIG"
 #Check for opengl
 #------------
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for GLU library" >&5
-$as_echo_n "checking for GLU library... " >&6; }
 
 #Try linking against gluSphere windows usese -lglu32; mac?? ; linux -lGLU
 case "${host_os}" in
@@ -6014,7 +6038,28 @@ esac
 #------------
 
 #Check for Mathgl
-ac_fn_c_check_header_mongrel "$LINENO" "mgl/mgl_c.h" "ac_cv_header_mgl_mgl_c_h" "$ac_includes_default"
+
+
+# Check whether --with-mgl-flags was given.
+if test "${with_mgl_flags+set}" = set; then :
+  withval=$with_mgl_flags;
+fi
+
+if test x"$with_mgl_flags" != x"" ; then
+	MGL_LIBS="$with_mgl_flags"
+fi
+
+
+# Check whether --with-mgl-libs was given.
+if test "${with_mgl_libs+set}" = set; then :
+  withval=$with_mgl_libs;
+fi
+
+if test x"$with_mgl_libs" != x"" ; then
+	MGL_LIBS="$with_mgl_libs"
+
+else
+	ac_fn_c_check_header_mongrel "$LINENO" "mgl/mgl_c.h" "ac_cv_header_mgl_mgl_c_h" "$ac_includes_default"
 if test "x$ac_cv_header_mgl_mgl_c_h" = xyes; then :
 
 $as_echo "#define HAVE_MGL_H /**/" >>confdefs.h
@@ -6025,8 +6070,9 @@ fi
 
 
 
-MGL_LIBS=-lmgl
+	MGL_LIBS=-lmgl
 
+fi
 
 
 #Check for gsl

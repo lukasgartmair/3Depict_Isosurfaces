@@ -558,7 +558,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 		string s;
 		curPos = CFile.tellg();
 		getline(CFile,s);
-		
+
 		if(!CFile.good())
 			return POS_READ_FAIL;
 
@@ -570,6 +570,20 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 		if(subStrs.size() <maxCol)
 			continue;
 
+		bool enoughSubStrs;
+		enoughSubStrs=true;
+		for(unsigned int ui=0;ui<numColsTotal; ui++)
+		{
+			if(selectedCols[ui] >=subStrs.size())
+			{
+				enoughSubStrs=false;
+				break;	
+			}
+		}
+
+		if(!enoughSubStrs)
+			continue;
+
 		//Unable to stream
 		bool unStreamable;
 		unStreamable=false;
@@ -577,10 +591,14 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 		{
 			float f;
 			if(stream_cast(f,subStrs[selectedCols[ui]]))
+			{
 				unStreamable=true;
+				break;
+			}
 
 		}
 
+		//well, we can stream this, so it assume it is not the header.
 		if(!unStreamable)
 			break;	
 	}	
@@ -659,7 +677,8 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 
 		vector<vector<float> > data;
 		vector<string> header;
-		//FIXME: Allow delimiters other than tab.
+	
+		//Just use the non-sampling method to load.	
 		if(loadTextData(textFile,data,header,delim))
 			return POS_READ_FAIL;
 

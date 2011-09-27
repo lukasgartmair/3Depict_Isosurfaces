@@ -69,6 +69,7 @@ enum
 	FILTER_TYPE_CLUSTER_ANALYSIS,
 	FILTER_TYPE_VOXELS,
 	FILTER_TYPE_IONINFO,
+	FILTER_TYPE_ANNOTATION,
 	FILTER_TYPE_ENUM_END // not a filter. just end of enum
 };
 
@@ -339,6 +340,8 @@ class Filter
 		bool cache, cacheOK;
 		static bool strongRandom;
 
+		bool wantMonitor;
+
 		//!Array of the number of streams propagated on last refresh
 		//THis is initialised to -1, which is considered invalid
 		unsigned int numStreamsLastRefresh[NUM_STREAM_TYPES];
@@ -454,6 +457,7 @@ class Filter
 		 */
 		void getSelectionDevices(vector<SelectionDevice<Filter> *> &devices);
 
+
 		//!Update the output informaiton for this filter
 		void updateOutputInfo(const std::vector<const FilterStreamData *> &dataOut);
 
@@ -474,6 +478,9 @@ class Filter
 
 		//!Should filters use strong randomisation (where applicable) or not?
 		static void setStrongRandom(bool strongRand) {strongRandom=strongRand;}; 
+
+		//Check to see if the filter needs to be refreshed 
+		virtual bool monitorNeedsRefresh() const { return false;};
 
 
 };

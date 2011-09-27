@@ -1429,7 +1429,7 @@ bool SpatialAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 	//====== 
 	if(!XMLGetNextElemAttrib(nodePtr,nnMax,"nnmax","value"))
 		return false;
-	if(nnMax <=0)
+	if(!nnMax)
 		return false;
 	//===
 	

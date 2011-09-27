@@ -13,6 +13,11 @@ enum
 	SPECTRUM_ABORT_FAIL,
 };
 
+//Limit user to one :million: bins
+const unsigned int SPECTRUM_MAX_BINS=1000000;
+
+const unsigned int SPECTRUM_AUTO_MAX_BINS=25000;
+
 SpectrumPlotFilter::SpectrumPlotFilter()
 {
 	minPlot=0;
@@ -156,13 +161,19 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 
 	//Estimate number of bins in floating point, and check for potential overflow .
 	float tmpNBins = (float)((maxPlot-minPlot)/binWidth);
-	if(tmpNBins > SPECTRUM_MAX_BINS)
-		tmpNBins=SPECTRUM_MAX_BINS;
+
+	//If using autoextrema, use a lower limit for max bins,
+	//as we may just hit a nasty data point
+	if(autoExtrema)
+		tmpNBins = std::min(SPECTRUM_AUTO_MAX_BINS,(unsigned int)tmpNBins);
+	else
+		tmpNBins = std::min(SPECTRUM_MAX_BINS,(unsigned int)tmpNBins);
+	
 	unsigned int nBins = (unsigned int)tmpNBins;
 
 	if (!nBins)
 	{
-		tmpNBins = 10;
+		nBins = 10;
 		binWidth = (maxPlot-minPlot)/nBins;
 	}
 

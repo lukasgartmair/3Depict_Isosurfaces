@@ -508,13 +508,13 @@ void CameraLookAt::ensureVisible(const BoundCube &boundCube, unsigned int face)
 	if(lock)
 		return;
 	//Face is defined by the following net
-	//	1
-	//  2   3   4
+	//	0
+	//  1   2   3
+	//  	4
 	//  	5
-	//  	6
-	//3 is the face directed to the +ve x axis,
+	//2 is the face directed to the +ve x axis,
 	//with the "up"" vector on the 3 aligned to z,
-	//so "1" is parallel to the Z axis and is "visible"
+	//so "0" is parallel to the Z axis and is "visible"
 	//from the top +ve side of the z axis (at sufficient distance)
 	
 	//To make the camera visible, we must place the camera

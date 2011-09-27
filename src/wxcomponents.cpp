@@ -226,8 +226,10 @@ void wxPropertyGrid::clear()
 {
 	this->BeginBatch();
 	//Empty the grid
-	this->DeleteCols(0,this->GetNumberCols());
-	this->DeleteRows(0,this->GetNumberRows());
+	if(this->GetNumberCols())
+		this->DeleteCols(0,this->GetNumberCols());
+	if(this->GetNumberRows())
+		this->DeleteRows(0,this->GetNumberRows());
 	
 	
 	propertyKeys.clear();
@@ -279,9 +281,12 @@ void wxPropertyGrid::addKey(const std::string &name, unsigned int set,
 void wxPropertyGrid::propertyLayout()
 {
 	this->BeginBatch();
-//Empty the grid
-	this->DeleteCols(0,this->GetNumberCols());
-	this->DeleteRows(0,this->GetNumberRows());
+
+	//Empty the grid
+	if(this->GetNumberCols())
+		this->DeleteCols(0,this->GetNumberCols());
+	if(this->GetNumberRows())
+		this->DeleteRows(0,this->GetNumberRows());
 
 	this->AppendCols(2);
 	this->SetColLabelValue(0,wxTRANS("Param"));

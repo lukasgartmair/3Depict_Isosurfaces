@@ -198,18 +198,38 @@ template<class T>
 bool SelectionDevice<T>::getBinding(const DrawableObj *d,unsigned int mouseFlags, 
 					unsigned int keyFlags,SelectionBinding* &b)
 {
+
+	unsigned int keyMask=0;
+
+
+	bool found=false;
+
 	for(unsigned int ui=0;ui<bindingVec.size();ui++)
 	{
 		if(bindingVec[ui].matchesDrawable(d,mouseFlags,keyFlags))
 		{
-			b=&(bindingVec[ui]);
-			return true;
+			if(!found)
+			{
+				//we found one.
+				found=true;
+				b=&(bindingVec[ui]);
+				continue;
+			}
+
+			//OK, we already have one, but we can be "trumped"
+			//by a more complex keymask.
+			if( (keyMask & b->getKeyFlags() )== keyMask)
+			{
+				keyMask=b->getKeyFlags();
+				b=&(bindingVec[ui]);
+			}
 		}
 	}
 
+
 	//This selection device does not match
 	//the targeted object.
-	return false;
+	return found;
 }
 
 template<class T>

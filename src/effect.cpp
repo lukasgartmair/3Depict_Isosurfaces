@@ -169,20 +169,28 @@ void BoxCropEffect::enable(unsigned int pass) const
 			yRot.fz=0;
 			quat_rot(&yRot,&r,angle);
 
-			yTmpRot=Point3D(yRot.fx,yRot.fy,yRot.fy);
+			yTmpRot=Point3D(yRot.fx,yRot.fy,yRot.fz);
 
+			ASSERT(yTmpRot.sqrMag() > sqrtf(std::numeric_limits<float>::epsilon()));
 
 		}
+		else
+			yTmpRot=Point3D(0,1,0);
 
 		//Rotating around the z axis to set "spin"
 		r.fx=z[0];
 		r.fy=z[1];
 		r.fz=z[2];
+
 		angle=y.angle(yTmpRot);
 
-		//Spin the box around to match the final coordinate system
-		for(unsigned int ui=0;ui<8;ui++)
-			quat_rot(&(pBox[ui]),&r,angle);
+
+		if( fabs(angle) > sqrtf(std::numeric_limits<float>::epsilon()))
+		{
+			//Spin the box around to match the final coordinate system
+			for(unsigned int ui=0;ui<8;ui++)
+				quat_rot(&(pBox[ui]),&r,angle);
+		}
 
 
 		//Now compute the box coordinates, then break their position

@@ -218,13 +218,13 @@ class CameraLookAt : public Camera
 		
 		//!Ensure that the box is visible
 		/*! Face is set by cube net
-					1
-		 	 	    2   3   4
+					0
+		 	 	    1   2   3
+				  	4
 				  	5
-				  	6
-		3 is the face directed to the +ve x axis,
+		2 is the face directed to the +ve x axis,
 		with the "up"" vector on the 3 aligned to z,
-		so "1" is perpendicular to the Z axis and is "visible"
+		so "0" is perpendicular to the Z axis and is "visible"
 		 */
 		virtual void ensureVisible(const BoundCube &b, unsigned int face=3);
 		

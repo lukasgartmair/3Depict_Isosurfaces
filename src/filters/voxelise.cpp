@@ -471,7 +471,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 				return VOXELISE_MEMORY_ERR; 
 
 			//Gaussian kernel is separable (rank 1)
-			if(vs->data.separableConvolve(kernel,res,false,modeMap[filterBoundaryMode]))
+			if(vs->data.separableConvolve(kernel,res,modeMap[filterBoundaryMode]))
 				return VOXELISE_CONVOLVE_ERR;
 
 			vs->data.swap(res);
@@ -852,7 +852,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			 unsigned int i;
 			if(stream_cast(i,value))
 				return false;
-			if(i <= 0)
+			if(!i)
 				return false;
 
 			needUpdate=true;
@@ -873,7 +873,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			 unsigned int i;
 			if(stream_cast(i,value))
 				return false;
-			if(i <= 0)
+			if(!i)
 				return false;
 			needUpdate=true;
 			//if the result is different, the
@@ -892,7 +892,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			 unsigned int i;
 			if(stream_cast(i,value))
 				return false;
-			if(i <= 0)
+			if(!i)
 				return false;
 			
 			//if the result is different, the
@@ -958,8 +958,8 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 		}
 		case KEY_VOXELISE_NORMALISE_TYPE:
 		{
-			 unsigned int i;
-			for (i = 0; i < VOXELISE_NORMALISETYPE_MAX; i++)
+			unsigned int i;
+			for(i = 0; i < VOXELISE_NORMALISETYPE_MAX; i++)
 				if (value == getNormaliseTypeString(i)) break;
 			if (i == VOXELISE_NORMALISETYPE_MAX)
 				return false;

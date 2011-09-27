@@ -1,5 +1,8 @@
 #include "posLoad.h"
 
+//Needed for modification time
+#include <wx/filefn.h>
+
 #include "../xmlHelper.h"
 #include "../basics.h"
 
@@ -26,7 +29,8 @@ enum
 	KEY_SELECTED_COLUMN1,
 	KEY_SELECTED_COLUMN2,
 	KEY_SELECTED_COLUMN3,
-	KEY_NUMBER_OF_COLUMNS
+	KEY_NUMBER_OF_COLUMNS,
+	KEY_MONITOR
 };
 
 //Supported data types
@@ -61,6 +65,9 @@ DataLoadFilter::DataLoadFilter()
 	for (unsigned int i  = 0; i < numColumns; i++) {
 		index[i] = i;
 	}
+
+	monitorTimestamp=-1;
+	wantMonitor=false;
 }
 
 Filter *DataLoadFilter::cloneUncached() const
@@ -76,11 +83,11 @@ Filter *DataLoadFilter::cloneUncached() const
 	p->g=g;	
 	p->b=b;	
 	p->a=a;	
+	p->fileType=fileType;
 	//Bounding volume
 	p->bound.setBounds(bound);
 	p->volumeRestrict=volumeRestrict;
 	p->numColumns=numColumns;
-	p->fileType=fileType;
 	p->enabled=enabled;
 
 	for(size_t ui=0;ui<INDEX_LENGTH;ui++)
@@ -93,12 +100,30 @@ Filter *DataLoadFilter::cloneUncached() const
 	p->enabled=enabled;
 	p->userString=userString;
 
+	p->wantMonitor=wantMonitor;
 	// this is for a pos file
 	memcpy(p->index, index, sizeof(int) * 4);
 	p->numColumns=numColumns;
 
 	return p;
 }
+
+
+void DataLoadFilter::setFileMode(unsigned int fileMode)
+{
+	switch(fileMode)
+	{
+		case DATALOAD_TEXT_FILE:
+			fileType=FILEDATA_TYPE_TEXT;
+			break;
+		case DATALOAD_FLOAT_FILE:
+			fileType=FILEDATA_TYPE_POS;
+			break;
+		default:
+			ASSERT(false);
+	}
+}
+
 
 void DataLoadFilter::setFilename(const char *name)
 {
@@ -155,14 +180,34 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	//use the cached copy if we have it.
 	if(cacheOK)
 	{
-		ASSERT(filterOutputs.size());
-		for(unsigned int ui=0;ui<dataIn.size();ui++)
-			getOut.push_back(dataIn[ui]);
+		bool doUseCache=true;
+		//If we are monitoring the file,
+		//the cache is only valid if we have 
+		//the same timestamp as on the file.
+		if(wantMonitor)
+		{
+			//How can we have a valid cache if we don't
+			//have a valid load time?
+			ASSERT(monitorTimestamp!=-1);
 
-		for(unsigned int ui=0;ui<filterOutputs.size();ui++)
-			getOut.push_back(filterOutputs[ui]);
+			if(wxFileModificationTime(wxStr(ionFilename)) ==monitorTimestamp)
+			{
+				doUseCache=false;
+				clearCache();
+			}
+		}
 
-		return 0;
+		if(doUseCache)
+		{
+			ASSERT(filterOutputs.size());
+			for(unsigned int ui=0;ui<dataIn.size();ui++)
+				getOut.push_back(dataIn[ui]);
+
+			for(unsigned int ui=0;ui<filterOutputs.size();ui++)
+				getOut.push_back(filterOutputs[ui]);
+		
+			return 0;
+		}
 	}
 
 	if(!enabled)
@@ -191,7 +236,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 					delete ionData;
 					return uiErr;
 				}
-			}
+			}	
 			else
 			{
 				if((uiErr = GenericLoadFloatFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
@@ -226,6 +271,10 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 		default:
 			ASSERT(false);
 	}
+
+	//Update the monitoring timestamp such that we know
+	//when the file was last loaded
+	monitorTimestamp = wxFileModificationTime(wxStr(ionFilename));
 
 	ionData->r = r;
 	ionData->g = g;
@@ -350,6 +399,11 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 		s.push_back(std::make_pair(TRANS("Load Limit (MB)"),tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
 		keys.push_back(KEY_SIZE);
+	
+		stream_cast(tmpStr,wantMonitor);
+		s.push_back(std::make_pair(TRANS("Monitor"), tmpStr));
+		keys.push_back(KEY_MONITOR);
+		type.push_back(PROPERTY_TYPE_BOOL);
 		
 		string thisCol;
 		//Convert the ion colour to a hex string	
@@ -431,6 +485,27 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 			//if the result is different, the
 			//cache should be invalidated
 			if(lastVal!=enabled)
+				needUpdate=true;
+			
+			clearCache();
+			break;
+		}
+		case KEY_MONITOR:
+		{
+			string stripped=stripWhite(value);
+
+			if(!(stripped == "1"|| stripped == "0"))
+				return false;
+
+			bool lastVal=wantMonitor;
+			if(stripped=="1")
+				wantMonitor=true;
+			else
+				wantMonitor=false;
+
+			//if the result is different, the
+			//cache should be invalidated
+			if(lastVal!=wantMonitor)
 				needUpdate=true;
 			
 			clearCache();
@@ -628,6 +703,23 @@ bool DataLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	ionFilename=(char *)xmlString;
 	xmlFree(xmlString);
 
+	//retrieve file type (text,pos etc), if needed; default to pos.
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"type");
+	if(xmlString)
+	{
+		int type;
+		if(stream_cast(type,xmlString))
+			return false;
+		
+		if(fileType >=FILEDATA_TYPE_ENUM_END)
+			return false;
+		fileType=type;
+		xmlFree(xmlString);
+	}
+	else
+		fileType=FILEDATA_TYPE_POS;
+
+
 	//Override the string, as needed
 	if( (stateFileDir.size()) &&
 		(ionFilename.size() > 2 && ionFilename.substr(0,2) == "./") )
@@ -662,12 +754,19 @@ bool DataLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	}
 	xmlFree(xmlString);
 	
-	//Retreive enabled/disabled
+	//Retrieve enabled/disabled
 	//--
 	unsigned int tmpVal;
 	if(!XMLGetNextElemAttrib(nodePtr,tmpVal,"enabled","value"))
 		return false;
 	enabled=tmpVal;
+	//--
+	
+	//Retrieve monitor mode 
+	//--
+	if(!XMLGetNextElemAttrib(nodePtr,tmpVal,"monitor","value"))
+		return false;
+	wantMonitor=tmpVal;
 	//--
 
 	//Get max Ions
@@ -724,10 +823,11 @@ bool DataLoadFilter::writeState(std::ofstream &f,unsigned int format, unsigned i
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
 
 			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
-			f << tabs(depth+1) << "<file name=\"" << convertFileStringToCanonical(ionFilename) << "\"/>" << endl;
+			f << tabs(depth+1) << "<file name=\"" << convertFileStringToCanonical(ionFilename) << "\" type=\"" << fileType << "\"/>" << endl;
 			f << tabs(depth+1) << "<columns value=\"" << numColumns << "\"/>" << endl;
 			f << tabs(depth+1) << "<xyzm values=\"" << index[0] << "," << index[1] << "," << index[2] << "," << index[3] << "\"/>" << endl;
 			f << tabs(depth+1) << "<enabled value=\"" << enabled<< "\"/>" << endl;
+			f << tabs(depth+1) << "<monitor value=\"" << wantMonitor<< "\"/>"<< endl; 
 			f << tabs(depth+1) << "<maxions value=\"" << maxIons << "\"/>" << endl;
 
 			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
@@ -768,4 +868,17 @@ bool DataLoadFilter::writePackageState(std::ofstream &f, unsigned int format,
 void DataLoadFilter::getStateOverrides(std::vector<string> &externalAttribs) const 
 {
 	externalAttribs.push_back(ionFilename);
+
+}
+
+bool DataLoadFilter::monitorNeedsRefresh() const
+{
+	if(wantMonitor)
+	{
+		return( wxFileModificationTime(wxStr(ionFilename))
+						!=monitorTimestamp);
+	}
+
+
+	return false;
 }

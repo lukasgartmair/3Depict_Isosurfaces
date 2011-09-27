@@ -5,7 +5,7 @@ MSYS_PATH=/c/msys/1.0/local/include/
 %.o : %.rc
 	 $(WX_RESCOMP) $^ -o $@
 
-3Depict_LDFLAGS=$(LDFLAGS) $(FT_LDFLAGS)
+3Depict_LDFLAGS=$(LDFLAGS) $(FT_LDFLAGS) $(MGL_LIBS)
 
 3Depict_CXXFLAGS=$(CXXFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) $(WX_CPPFLAGS) \
 	$(GL_FLAGS) $(MGL_CFLAGS) $(XML_CFLAGS) $(PNG_CFLAGS)  \
@@ -26,14 +26,16 @@ FILTER_FILES = filters/allFilter.cpp filters/posLoad.cpp filters/ionDownsample.c
 	       	filters/transform.cpp filters/externalProgram.cpp filters/ionClip.cpp \
 		filters/ionColour.cpp filters/boundingBox.cpp  \
 		filters/compositionProfile.cpp filters/spatialAnalysis.cpp \
-		filters/clusterAnalysis.cpp filters/ionInfo.cpp
+		filters/clusterAnalysis.cpp filters/ionInfo.cpp \
+		filters/annotation.cpp
 
 FILTER_HEADER_FILES = filters/allFilter.h filters/posLoad.h filters/ionDownsample.h \
 		filters/rangeFile.h filters/voxelise.h filters/spectrumPlot.h \
 	       	filters/transform.h filters/externalProgram.h filters/ionClip.h \
 		filters/ionColour.h filters/boundingBox.h  \
 		filters/compositionProfile.h filters/spatialAnalysis.h \
-		filters/clusterAnalysis.h filters/ionInfo.h
+		filters/clusterAnalysis.h filters/ionInfo.h \
+		filters/annotation.h
 
 #These source files should have heirachical couplings only; no cross-coupling
 BASE_SOURCE_FILES=  mathglPane.cpp plot.cpp prefDialog.cpp configFile.cpp filter.cpp \

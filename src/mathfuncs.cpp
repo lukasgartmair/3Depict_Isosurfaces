@@ -216,6 +216,22 @@ float Point3D::angle(const Point3D &pt) const
 	return acos(dotProd(pt)/(sqrtf(sqrMag()*pt.sqrMag())));
 }
 
+bool Point3D::orthogonalise(const Point3D &pt)
+{
+	Point3D crossp;
+	crossp=this->crossProd(pt);
+
+	//They are co-linear, or near-enough to be not resolvable.
+	if(crossp.sqrMag()  < sqrt(std::numeric_limits<float>::epsilon()))
+		return false;
+	crossp.normalise();
+
+	crossp=crossp.crossProd(pt);
+	*this=crossp.normalise()*sqrt(this->sqrMag());	
+
+	return true;
+}
+
 #ifdef __LITTLE_ENDIAN__
 
 void Point3D::switchEndian()

@@ -1330,8 +1330,9 @@ bool ClusterAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &pa
 				return false;
 			if(!XMLGetNextElemAttrib(nodePtr,coreKNN,"coringknn","value"))
 				return false;
-			if(coreKNN<=0)
+			if(!coreKNN)
 				return false;
+
 			if(!XMLGetNextElemAttrib(nodePtr,linkDist,"linkdist","value"))
 				return false;
 			if(linkDist<=0)

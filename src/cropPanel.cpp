@@ -459,7 +459,9 @@ void CropPanel::draw()
 	ASSERT(validCoords());
 
 	wxAutoBufferedPaintDC   *dc=new wxAutoBufferedPaintDC(this);
-	dc->SetBackground(*wxWHITE_BRUSH);
+	
+	wxBrush *b = new wxBrush;
+	b->SetColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BACKGROUND));
 	dc->Clear();
 
 	int w,h;
@@ -497,7 +499,8 @@ void CropPanel::draw()
 	//--
 	wxPen *noPen;
 	noPen = new wxPen(*wxBLACK,1,wxTRANSPARENT);
-	dc->SetBrush(*wxLIGHT_GREY);
+	b->SetColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BACKGROUND));
+	dc->SetBrush(*b);
 	dc->SetPen(*noPen);
 
 	dc->DrawRectangle(0,0,lineX[0],h);
@@ -505,6 +508,7 @@ void CropPanel::draw()
 	dc->DrawRectangle(0,lineY[6],w,h-lineY[6]);
 	dc->DrawRectangle(lineX[4],0,w-lineX[4],h);
 	delete noPen;
+	delete b;
 	//--
 	
 	

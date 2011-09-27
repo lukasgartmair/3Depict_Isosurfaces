@@ -270,13 +270,18 @@ void IonColourFilter::getProperties(FilterProperties &propertyList) const
 	string str,tmpStr;
 
 
-	stream_cast(str,NUM_COLOURMAPS);
-	str =string(TRANS("ColourMap (0-") + str + ")");
-	stream_cast(tmpStr,colourMap);
+	vector<pair<unsigned int, string> > choices;
+
+	for(unsigned int ui=0;ui<NUM_COLOURMAPS; ui++)
+		choices.push_back(make_pair(ui,getColourMapName(ui)));
+
+	tmpStr=choiceString(choices,colourMap);
+	
+	str =string(TRANS("Colour Map")); 
 
 	s.push_back(make_pair(str,tmpStr));
 	keys.push_back(KEY_IONCOLOURFILTER_COLOURMAP);
-	type.push_back(PROPERTY_TYPE_INTEGER);
+	type.push_back(PROPERTY_TYPE_CHOICE);
 
 	if(showColourBar)
 		tmpStr="1";
@@ -321,9 +326,17 @@ bool IonColourFilter::setProperty( unsigned int set, unsigned int key,
 		case KEY_IONCOLOURFILTER_COLOURMAP:
 		{
 			unsigned int tmpMap;
-			stream_cast(tmpMap,value);
+			tmpMap=(unsigned int)-1;
+			for(unsigned int ui=0;ui<NUM_COLOURMAPS;ui++)
+			{
+				if(value== getColourMapName(ui))
+				{
+					tmpMap=ui;
+					break;
+				}
+			}
 
-			if(tmpMap > NUM_COLOURMAPS || tmpMap ==colourMap)
+			if(tmpMap >=NUM_COLOURMAPS || tmpMap ==colourMap)
 				return false;
 
 			clearCache();

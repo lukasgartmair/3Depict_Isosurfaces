@@ -18,18 +18,8 @@
 #ifdef __cplusplus 
 	extern "C" { 
 #endif
-		
+        
 #include "pngread.h"
-
-//Unavailable definitions under mac & windows (not sure why)
-#if defined(__APPLE__) || defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
-#ifndef png_infopp_NULL
-#define png_infopp_NULL (png_infopp)NULL
-#endif
-#ifndef int_p_NULL
-#define int_p_NULL (int*)NULL
-#endif
-#endif
 
 int check_if_png(const char *file_name, FILE **fp, unsigned int bytes_to_check)
 {
@@ -83,7 +73,7 @@ int read_png(FILE *fp, unsigned int sig_read, png_bytep **row_pointers,
    if (info_ptr == NULL)
    {
       fclose(fp);
-      png_destroy_read_struct(&png_ptr, png_infopp_NULL, png_infopp_NULL);
+      png_destroy_read_struct(&png_ptr, NULL, NULL);
       return (-1);
    }
 
@@ -95,7 +85,7 @@ int read_png(FILE *fp, unsigned int sig_read, png_bytep **row_pointers,
    if (setjmp(png_jmpbuf(png_ptr)))
    {
       /* Free all of the memory associated with the png_ptr and info_ptr */
-      png_destroy_read_struct(&png_ptr, &info_ptr, png_infopp_NULL);
+      png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
       fclose(fp);
       /* If we get here, we had a problem reading the file */
       return (-1);
@@ -117,7 +107,7 @@ int read_png(FILE *fp, unsigned int sig_read, png_bytep **row_pointers,
 
    /* png_get_IHDR pulls useful data out of info_ptr. */
    png_get_IHDR(png_ptr, info_ptr, width, height, &bit_depth, &color_type,
-       &interlace_type, int_p_NULL, int_p_NULL);
+       &interlace_type, NULL, NULL);
 
 /* Set up the data transformations you want.  Note that these are all
  * optional.  Only call them if you want/need them.  Many of the
@@ -240,7 +230,7 @@ int read_png(FILE *fp, unsigned int sig_read, png_bytep **row_pointers,
    /* At this point you have read the entire image */
 
    /* clean up after the read, and free any memory allocated - REQUIRED */
-   png_destroy_read_struct(&png_ptr, &info_ptr, png_infopp_NULL);
+   png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
 
    /* close the file */
    fclose(fp);

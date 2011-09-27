@@ -1,8 +1,6 @@
 #ifndef SPECTRUMPLOT_H
 #define SPECTRUMPLOT_H
 #include "../filter.h"
-//Limit user to one :million: bins
-const unsigned int SPECTRUM_MAX_BINS=1000000;
 
 enum
 {

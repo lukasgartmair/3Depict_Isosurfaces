@@ -320,6 +320,9 @@ public:
     virtual void updateLastRefreshBox();
 
 
+    //Check to see if we need to reload an autosave file (and reload it, as needed)
+    void checkReloadAutosave();
+
     bool initOK() const {return initedOK;}
 
     //This is isolated from the layout code, due to "bug" 4815 in wx. The splitter window

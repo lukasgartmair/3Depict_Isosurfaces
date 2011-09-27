@@ -181,7 +181,9 @@ class VisController
 	
 	
 		//!Load the ion set - returns nonzero on fail TODO: Remove me?
-		unsigned int LoadIonSet(const std::string &name);
+		//1st Filter MUST BE a dataload filter, 2nd Downsample. Function takes
+		//control of both pointers.
+		unsigned int LoadIonSet(const std::string &name,Filter *fPos,Filter *down);
 		//!Write out the filters into a wxtreecontrol.
 		void updateWxTreeCtrl(wxTreeCtrl *t,const Filter *visibleFilter=0);
 		//!Update a wxtGrid with the properties for a given filter
@@ -304,7 +306,7 @@ class VisController
 		void setUpdates() { pendingUpdates=true;};
 
 		//!Returns true if the scene has updates that need to be processed
-		bool hasUpdates() const {return pendingUpdates;} ;
+		bool hasUpdates() const; 
 
 		//!Force a wipe of all caches in the filter tree
 		void purgeFilterCache();

@@ -22,7 +22,7 @@ dnl Test for wx-widgets
 dnl ----------
 AM_OPTIONS_WXCONFIG
 
-AM_PATH_WXCONFIG(2.5.3, wxWin=1)
+AM_PATH_WXCONFIG(2.6.0, wxWin=1)
 
 if test "$wxWin" != 1; then
 AC_MSG_ERROR([
@@ -32,7 +32,7 @@ AC_MSG_ERROR([
 		Please check that wx-config is in path, the directory
 		where wxWidgets libraries are installed (returned by
 		'wx-config --libs' command) is in LD_LIBRARY_PATH or
-		equivalent variable and wxWidgets version is 2.3.4 or above.
+		equivalent variable and wxWidgets version is 2.6.0 or above.
 ])
 fi
 
@@ -238,7 +238,6 @@ dnl--------------
 #Check for opengl
 #------------
 
-AC_MSG_CHECKING([for GLU library])
 
 #Try linking against gluSphere windows usese -lglu32; mac?? ; linux -lGLU
 case "${host_os}" in 
@@ -264,10 +263,24 @@ esac
 
 #Check for Mathgl
 dnl ----------
-AC_CHECK_HEADER([mgl/mgl_c.h],[AC_DEFINE(HAVE_MGL_H,[],[Have got mathgl headers])],
-	[AC_MSG_ERROR([Required MathGL headers not found (looking for mgl/mg_c.h])])
 
-AC_SUBST(MGL_LIBS,[-lmgl])
+AC_ARG_WITH(mgl-flags,
+  [  --with-mgl-flags=PATH : specify compiler flags for mathgl])
+if test x"$with_mgl_flags" != x"" ; then
+	MGL_LIBS="$with_mgl_flags"
+fi
+
+AC_ARG_WITH(mgl-libs,
+  [  --with-mgl-libs=PATH : specify linker flag (library) for mathgl])
+if test x"$with_mgl_libs" != x"" ; then
+	MGL_LIBS="$with_mgl_libs"
+	AC_SUBST(MGL_LIBS)
+else
+	AC_CHECK_HEADER([mgl/mgl_c.h],[AC_DEFINE(HAVE_MGL_H,[],[Have got mathgl headers])],
+		[AC_MSG_ERROR([Required MathGL headers not found (looking for mgl/mg_c.h])])
+
+	AC_SUBST(MGL_LIBS,[-lmgl])
+fi
 
 dnl -------
 

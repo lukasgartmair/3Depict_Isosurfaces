@@ -3,6 +3,12 @@
 
 #include "../filter.h"
 
+enum
+{
+	DATALOAD_FLOAT_FILE,
+	DATALOAD_TEXT_FILE
+};
+
 class DataLoadFilter:public Filter
 {
 	protected:
@@ -40,6 +46,12 @@ class DataLoadFilter:public Filter
 		//!volume restriction bounds, not sorted
 		BoundCube bound;
 
+		//Epoch timestamp for the mointored file. -1 if invalid
+		time_t monitorTimestamp;
+
+		//Do we want to be monitoring
+		//the timestamp of the file
+		bool wantMonitor;
 	public:
 		DataLoadFilter();
 		//!Duplicate filter contents, excluding cache.
@@ -48,6 +60,11 @@ class DataLoadFilter:public Filter
 		void setFilename(const char *name);
 		void setFilename(const std::string &name);
 		void guessNumColumns();
+
+		//!Set the filter to either use text or pos as requested,
+		// this does not require exposing the file parameter key
+		void setFileMode(unsigned int mode);
+
 		//!Get filter type (returns FILTER_TYPE_POSLOAD)
 		unsigned int getType() const { return FILTER_TYPE_POSLOAD;};
 
@@ -84,9 +101,9 @@ class DataLoadFilter:public Filter
 		bool readState(xmlNodePtr &node, const std::string &packDir);
 		
 		//!Get the block mask for this filter (bitmaks of streams blocked from propagation during ::refresh)
-		int getRefreshBlockMask() const; 
+		virtual int getRefreshBlockMask() const; 
 		//!Get the refresh mask for this filter (bitmaks of streams emitted during ::refresh)
-		int getRefreshEmitMask() const; 
+		virtual int getRefreshEmitMask() const; 
 	
 		//!Pos filter has state overrides	
 		virtual void getStateOverrides(std::vector<string> &overrides) const; 
@@ -95,7 +112,10 @@ class DataLoadFilter:public Filter
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
 	
 		//!Get the label for the chosen value column
-	std::string getValueLabel();
+		std::string getValueLabel();
+
+		//!Return if we need monitoring or not
+		virtual bool monitorNeedsRefresh() const;
 };
 
 #endif

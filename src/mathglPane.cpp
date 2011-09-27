@@ -121,7 +121,14 @@ void MathGLPane::render(wxPaintEvent &event)
 
 	if(!nItems)
 	{
+#ifdef __WXGTK__
+		wxBrush *b = new wxBrush;
+		b->SetColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BACKGROUND));
+		dc->SetBackground(*b);
+
+		dc->SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 		dc->Clear();
+#endif
 
 		int clientW,clientH;
 		GetClientSize(&clientW,&clientH);
@@ -131,6 +138,9 @@ void MathGLPane::render(wxPaintEvent &event)
 		dc->GetMultiLineTextExtent(str,&w,&h);
 		dc->DrawText(str,(clientW-w)/2, (clientH-h)/2);
 
+#ifdef __WXGTK__
+		delete b;
+#endif
 		delete dc;
 
 		return;

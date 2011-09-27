@@ -89,8 +89,11 @@ std::string convertFileStringToNative(const std::string &s);
 std::string convertFileStringToCanonical(const std::string &s);
 
 //!Convert a normal string to a latex one, using charachter replacement
-std::wstring convertToLaTeX(const std::wstring& toConv); 
+void tickSpacingsFromInterspace(float start, float end, 
+		float interSpacing, std::vector<float> &spacings);
 
+void tickSpacingsFromFixedNum(float start, float end, 
+		unsigned int nTicks, std::vector<float> &spacings);
 //!A routine for loading numeric data from a text file
 unsigned int loadTextData(const char *cpFilename, 
 		std::vector<std::vector<float> > &dataVec,
@@ -150,10 +153,6 @@ inline std::wstring stlStrToStlWStr(const std::string& s)
 	std::copy(s.begin(), s.end(), temp.begin());
 	return temp;
 }
-
-//performs a string stream cast
-//Returns true on failure
-template<class T1, class T2> bool stream_cast(T1 &result,const T1 &obj);
 
 //!Template function to cast and object to another by the stringstream
 //IO operator

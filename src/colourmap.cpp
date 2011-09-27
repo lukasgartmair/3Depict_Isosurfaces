@@ -240,7 +240,7 @@ std::string getColourMapName(unsigned int mapID)
 				NTRANS("Blue"),
 				NTRANS("Pseudo-Random")};
 
-	return mapNames[mapID];
+	return TRANS(mapNames[mapID]);
 }
 
 

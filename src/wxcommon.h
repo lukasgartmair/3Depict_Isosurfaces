@@ -32,6 +32,11 @@ std::string locateDataFile(const char *name);
 
 extern wxEventType RemoteUpdateAvailEvent; 
 
+
+//Return true IFF process ID and process name match running process
+bool processMatchesName(size_t processID, const std::string &procName);
+
+
 class VersionCheckThread : public wxThread
 {
 	private:

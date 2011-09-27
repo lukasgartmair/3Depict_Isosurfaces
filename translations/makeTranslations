@@ -10,6 +10,9 @@ PROGRAM_NAME=`cat ../src/basics.cpp | grep PROGRAM_NAME | awk -F= '{print $2}' |
 #Where do we want to install the translations? (if using this script).
 TRANSLATION_INSTALL="/usr/share/locale/"
 
+#Space separated list of maintained locales
+MAINTAINED_LOCALES="de_DE"
+
 echo "Program name is $PROGRAM_NAME"
 
 
@@ -33,7 +36,7 @@ fi
 
 if [ $# -eq 1 ] ; then
 	if [ $1  == "install" ] ; then
-		for i in de_DE
+		for i in $MAINTAINED_LOCALES
 		do
 
 			if [ ! -f ${PROGRAM_NAME}_${i}.mo ] ; then
@@ -46,7 +49,19 @@ if [ $# -eq 1 ] ; then
 	
 	
 	if [ $1  == "update" ] ; then
-		echo "Saving new translations to update.pot"
 		xgettext --from-code=utf-8 -kTRANS -kwxTRANS -kNTRANS -kwxNTRANS `find ../src/ -name *.cpp` `find ../src/ -name *.h` -o update.pot
+
+		echo "Merging with maintained locales"
+		for i in $MAINTAINED_LOCALES
+		do
+			msgmerge -N ${PROGRAM_NAME}_${i}.po update.pot > tmp.pot
+			mv tmp.pot ${PROGRAM_NAME}_${i}.po
+
+		done
+		
+		echo "Replacing base template"
+		msgmerge -N ${PROGRAM_NAME}_base.pot update.pot > tmp.pot
+		mv tmp.pot ${PROGRAM_NAME}_base.pot
+		rm update.pot
 	fi
 fi

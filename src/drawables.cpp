@@ -163,8 +163,22 @@ void DrawVector::recomputeParams(const std::vector<Point3D> &vecs,
 			vector=vecs[0];
 			break;
 		case DRAW_VECTOR_BIND_ORIGIN:
-			ASSERT(scalars.size() == 1 && vecs.size()==0);
+			ASSERT(vecs.size() == 1 && scalars.size()==0);
 			origin=vecs[0];
+			break;
+		case DRAW_VECTOR_BIND_ORIGIN_ONLY:
+		{
+			ASSERT(vecs.size() == 1 && scalars.size()==0);
+
+			Point3D dv;
+			dv=vector-origin;
+			origin=vecs[0];
+			vector=origin+dv;
+			break;
+		}
+		case DRAW_VECTOR_BIND_TARGET:
+			ASSERT(vecs.size() == 1 && scalars.size()==0);
+			vector=vecs[0]-origin;
 			break;
 		default:
 			ASSERT(false);
@@ -685,7 +699,16 @@ void DrawGLText::draw() const
 
 	//Translate the drawing position to the origin
 	Point3D offsetVec=textDir;
-	float advance=font->Advance(strText.c_str());
+	float advance;
+	float halfHeight;
+	
+	FTBBox box;
+	box=font->BBox(strText.c_str());
+	advance=box.Upper().X()-box.Lower().X();
+	
+	halfHeight=box.Upper().Y()-box.Lower().Y();
+	halfHeight/=2.0f;
+
 	switch(alignMode)
 	{
 		case DRAWTEXT_ALIGN_LEFT:
@@ -703,6 +726,10 @@ void DrawGLText::draw() const
 
 	glPushMatrix();
 
+
+	glPushAttrib(GL_CULL_FACE);
+
+	glDisable(GL_CULL_FACE);
 	if(curFontMode !=FTGL_BITMAP)
 	{
 		offsetVec=origin-offsetVec;
@@ -736,7 +763,7 @@ void DrawGLText::draw() const
 
 
 			glRotatef(angle*180/M_PI,rotateAxis[0],rotateAxis[1],rotateAxis[2]);
-			quat_rot(&tmp,&axis,angle*180/M_PI);
+			quat_rot(&tmp,&axis,angle); //angle is in radiians
 
 			newUp[0]=tmp.fx;
 			newUp[1]=tmp.fy;
@@ -745,7 +772,8 @@ void DrawGLText::draw() const
 
 		//rotate new up direction into y around x axis
 		angle = newUp.angle(Point3D(0,1,0));
-		if(angle > sqrtf(std::numeric_limits<float>::epsilon()))
+		if(angle > sqrtf(std::numeric_limits<float>::epsilon()) &&
+			fabs(angle - M_PI) > sqrtf(std::numeric_limits<float>::epsilon())) 
 		{
 			rotateAxis = newUp.crossProd(Point3D(0,-1,0));
 			rotateAxis.normalise();
@@ -767,35 +795,43 @@ void DrawGLText::draw() const
 			textNormal.normalise();
 
 			camVec = origin - curCamera->getOrigin();
-		
-			camVec.normalise();
 
-			if(camVec.dotProd(textNormal) < 0)
+			//ensure the camera is not sitting on top of the text.			
+			if(camVec.sqrMag() > std::numeric_limits<float>::epsilon())
 			{
-				//move halfway along text, noting that 
-				//the text direction is now the x-axis
-				glTranslatef(advance/2.0f,0,0);
-				//spin text around its up direction 180 degrees
-				glRotatef(180,0,1,0);
-				//restore back to original position
-				glTranslatef(-advance/2.0f,0,0);
+
+				camVec.normalise();
+
+				if(camVec.dotProd(textNormal) < 0)
+				{
+					//move halfway along text, noting that 
+					//the text direction is now the x-axis
+					glTranslatef(advance/2.0f,halfHeight,0);
+					//spin text around its up direction 180 degrees
+					glRotatef(180,0,1,0);
+					//restore back to original position
+					glTranslatef(-advance/2.0f,-halfHeight,0);
+				}
+			
+				camVec=curCamera->getUpDirection();	
+				if(camVec.dotProd(up) < 0)
+				{
+					//move halfway along text, noting that 
+					//the text direction is now the x-axis
+					glTranslatef(advance/2.0f,halfHeight,0);
+					//spin text around its front direction 180 degrees
+					//no need to trnaslate as text sits at its baseline
+					glRotatef(180,0,0,1);
+					//move halfway along text, noting that 
+					//the text direction is now the x-axis
+					glTranslatef(-advance/2.0f,-halfHeight,0);
+				}
+
 			}
-		
-			camVec=curCamera->getUpDirection();	
-			if(camVec.dotProd(up) < 0)
-			{
-				//move halfway along text, noting that 
-				//the text direction is now the x-axis
-				glTranslatef(advance/2.0f,0,0);
-				//spin text around its front direction 180 degrees
-				//no need to trnaslate as text sits at its baseline
-				glRotatef(180,0,0,1);
-				//move halfway along text, noting that 
-				//the text direction is now the x-axis
-				glTranslatef(-advance/2.0f,0,0);
-			}
+
 
 		}
+
 	}
 	else
 	{
@@ -823,6 +859,9 @@ void DrawGLText::draw() const
 	}
 	//---
 
+
+	glColor4f(r,g,b,a);
+
 	//Draw text
 	if(curFontMode == FTGL_TEXTURE)
 	{
@@ -835,6 +874,7 @@ void DrawGLText::draw() const
 	else
 		font->Render(strText.c_str());
 
+	glPopAttrib();
 	
 	glPopMatrix();
 }
@@ -875,6 +915,19 @@ void DrawGLText::setAlignment(unsigned int newMode)
 	alignMode=newMode;
 }
 
+void DrawGLText::recomputeParams(const vector<Point3D> &vecs, 
+			const vector<float> &scalars, unsigned int mode)
+{
+	switch(mode)
+	{
+		case DRAW_TEXT_BIND_ORIGIN:
+			ASSERT(vecs.size() ==1 && scalars.size() ==0);
+			origin=vecs[0];
+			break;
+		default:
+			ASSERT(false);
+	}
+}
 
 DrawRectPrism::DrawRectPrism()
 {

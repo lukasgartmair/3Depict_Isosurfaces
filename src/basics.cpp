@@ -696,7 +696,50 @@ void splitStrsRef(const char *cpStr, const char *delim,std::vector<string> &v )
 		
 }
 
+//Compute the number of ticks require to achieve the 
+void tickSpacingsFromInterspace(float start, float end, 
+		float interSpacing, std::vector<float> &spacings)
+{
+	ASSERT(interSpacing > sqrt(std::numeric_limits<float>::epsilon()));
+	unsigned int nTicks;
+
+	if(end < start)
+		std::swap(end,start);
+
+	nTicks=(end-start)/interSpacing;
+	if(!nTicks)
+	{
+		ASSERT(!spacings.size());
+		return;
+	}
+
+	spacings.resize(nTicks);
+	for(unsigned int ui=0;ui<nTicks;ui++)
+		spacings[ui]=ui*interSpacing+start;
+
+}
+
+void tickSpacingsFromFixedNum(float start, float end, 
+		unsigned int nTicks, std::vector<float> &spacings)
+{
+	if(!nTicks)
+	{
+		ASSERT(!spacings.size());
+		return;
+	}
+
+	spacings.resize(nTicks+1);
+
+	float delta;
+	delta= (end-start)/nTicks;
+	for(unsigned int ui=0;ui<nTicks;ui++)
+		spacings[ui]=ui*delta+start;
+}
+
+//
 //========
+
+
 
 void BoundCube::setBounds(const std::vector<Point3D> &points)
 {

@@ -186,24 +186,29 @@ void VisController::setYieldWindow(wxWindow *newYield)
 	yieldWindow=newYield;
 }
 
-unsigned int VisController::LoadIonSet(const std::string &filename)
+unsigned int VisController::LoadIonSet(const std::string &filename, Filter *filtPos,Filter *down)
 {
 
 	//Test to see if we can open the file
 	ifstream f(filename.c_str());
 
 	if(!f)
+	{
+		delete filtPos;
+		delete down;
 		return POS_OPEN_FAIL;
+	}
 
 	f.close();
 
+	ASSERT(filtPos->getType() == FILTER_TYPE_POSLOAD);
+	ASSERT(down->getType() == FILTER_TYPE_IONDOWNSAMPLE);
+	DataLoadFilter *p=(DataLoadFilter*)filtPos;
 	//Save current filter state to undo stack
 	pushUndoStack();
 
-
-	DataLoadFilter *p = new DataLoadFilter();
-
 	p->setFilename(filename);
+
 
 	tree<Filter *>::iterator it;
 	//From version 1.45 of ttree.h the top element should be added
@@ -213,8 +218,9 @@ unsigned int VisController::LoadIonSet(const std::string &filename)
 	else
 		it=filters.insert_after(filters.begin(),p);
 
+	IonDownsampleFilter *d=(IonDownsampleFilter*)down;
 	//Append a new filter to the filter tree
-	filters.append_child(it,new IonDownsampleFilter);
+	filters.append_child(it,d);
 
 	return 0;
 }
@@ -599,7 +605,6 @@ void VisController::initFilterTree() const
 	}
 }
 
-
 void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propStarts) const
 {
 
@@ -636,12 +641,10 @@ void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &pr
 			if(!filters.is_valid(it))
 				break;
 
-			ASSERT(filters.is_valid(it));
-			
 			size_t curEmit;
 			//Root node is special, does not combine with the 
 			//previous filter
-			if(!filters.depth(it)) //TODO: Checkme, 0 or 1?
+			if(!filters.depth(it)) 
 				curEmit=(*it)->getRefreshEmitMask();
 			else
 			{
@@ -659,6 +662,7 @@ void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &pr
 
 		//Build the accumulated block map;  this describes
 		//what types, if emitted, will NOT be propagated to the final output
+		//Nor affect any downstream filters
 		for(size_t ui=filters.max_depth()+1; ui; )
 		{
 			ui--;
@@ -670,15 +674,24 @@ void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &pr
 					continue;
 
 
-				int blockMask=0xFFFF;
+				//Initially assume that everything is passed through
+				//filter
+				int blockMask=0x0;
+
 
 				if((*it)->haveCache())
 				{
 					//Loop over the children of this filter, grab their block masks
 					for(tree<Filter *>::sibling_iterator itJ=it.begin(); itJ!=it.end();itJ++)
 					{
+
 						if((*itJ)->haveCache())
-							blockMask&=(*itJ)->getRefreshBlockMask();
+						{
+							int curBlockMask;
+							curBlockMask=(*itJ)->getRefreshBlockMask();
+							blockMask= (blockMask & curBlockMask);
+
+						}
 						else
 						{
 							blockMask&=0;
@@ -760,8 +773,13 @@ void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &pr
 			for(tree<Filter *>::sibling_iterator itJ=filters.begin(it); itJ!=filters.end(it);itJ++)
 				blockMask&=accumulatedBlockTypes[*itJ];
 
+
+			 
+
+
 			if( emitMask & ((~blockMask) & STREAMTYPE_MASK_ALL)) 
 			{
+
 				//Oh noes! we don't block, we will have to stop here,
 				// for this subtree. We cannot go further down.
 				seedFilts.push_back(it);
@@ -812,6 +830,29 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 		return 0;	
 	}
 
+	//Destroy any caches that belong to monitored filters that need
+	//refreshing. Failing to do this can lead to filters being skipped
+	//during the refresh 
+	for(tree<Filter *>::iterator filterIt=filters.begin();
+			filterIt!=filters.end();++filterIt)
+	{
+		//We need to clear the cache of *all* 
+		//downstream filters, as otherwise
+		//their cache's could block our update.
+		if((*filterIt)->monitorNeedsRefresh())
+		{
+			for(tree<Filter *>::pre_order_iterator it(filterIt);it!= filters.end(); ++it)
+			{
+				//Do not traverse siblings
+				if(filters.depth(filterIt) >= filters.depth(it) && it!=filterIt )
+					break;
+			
+				(*it)->clearCache();
+			}
+		}
+	}
+
+
 	// -- Build data streams --	
 	vector< const FilterStreamData *> curData;
 	stack<vector<const FilterStreamData * > > inDataStack;
@@ -844,7 +885,7 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 		{
 			//Depth-first search from root node, refreshing filters as we proceed.
 			for(tree<Filter * >::pre_order_iterator filtIt=baseTreeNodes[itPos];
-							filtIt!=filters.end(); filtIt++)
+							filtIt!=filters.end(); ++filtIt)
 			{
 				//Check to see if this node is a child of the base node.
 				//if not, move on.
@@ -1074,6 +1115,21 @@ unsigned int VisController::refreshFilterTree(list<std::pair<Filter *,vector<con
 
 	return 0;
 }
+
+bool VisController::hasUpdates() const
+{
+	if(pendingUpdates)
+		return true;
+
+	for(tree<Filter *>::iterator it=filters.begin();it!=filters.end();++it)
+	{
+		if((*it)->monitorNeedsRefresh())
+			return true;
+	}
+
+	return false;
+}
+
 
 void VisController::getFilterUpdates()
 {
@@ -2301,7 +2357,8 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 
 			vector<string> vecStrs;
 			vecStrs.push_back((char *)xmlString);
-			if(vecStrs[0].find_first_not_of("0123456789.")!= std::string::npos)
+			//Check to see if only contains 0-9 and period characters (valid version number)
+			if(vecStrs[0].find_first_not_of("0123456789.")== std::string::npos)
 			{
 				vecStrs.push_back(PROGRAM_VERSION);
 				if(getMaxVerStr(vecStrs)!=PROGRAM_VERSION)
@@ -3107,8 +3164,10 @@ void VisController::updateRawGrid() const
 	unsigned int startCol;
 
 	//Clear the grid
-	targetRawGrid->DeleteCols(0,targetRawGrid->GetNumberCols());
-	targetRawGrid->DeleteRows(0,targetRawGrid->GetNumberRows());
+	if(targetRawGrid->GetNumberCols())
+		targetRawGrid->DeleteCols(0,targetRawGrid->GetNumberCols());
+	if(targetRawGrid->GetNumberRows())
+		targetRawGrid->DeleteRows(0,targetRawGrid->GetNumberRows());
 	
 	for(unsigned int ui=0;ui<plotData.size(); ui++)
 	{

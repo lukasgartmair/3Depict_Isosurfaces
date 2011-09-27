@@ -60,7 +60,9 @@ Filter *makeFilter(const std::string &s)
 		case FILTER_TYPE_VOXELS:
 			f = new VoxeliseFilter;
 			break;
-		
+		case FILTER_TYPE_ANNOTATION:
+			f = new AnnotateFilter;
+			break;
 		default:
 			f=0;
 
@@ -124,7 +126,9 @@ Filter *makeFilter(unsigned int ui)
 		case FILTER_TYPE_VOXELS:
 			f = new VoxeliseFilter;
 			break;
-			
+		case FILTER_TYPE_ANNOTATION:
+			f = new AnnotateFilter;
+			break;	
 		default:
 			ASSERT(false);
 	}

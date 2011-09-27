@@ -131,6 +131,10 @@ class Point3D
 
 		//Perform a 3x3 matrix transformation. 
 		void transform3x3(const float *matrix);
+
+		//Perform a cross-product based orthogonalisation
+		//with the specified vector
+		bool orthogonalise(const Point3D &p);
 #ifdef __LITTLE_ENDIAN__
                 //!Flip the endian state for data stored in this point
                 void switchEndian();
@@ -197,9 +201,11 @@ typedef struct
 //IMPORTANT: rotVec must be normalised before passing to this function 
 //failure to do so will have wierd results
 //Note result is stored in  point passsed as argument
+//angle is in radians.
 void quat_rot(Point3f *point, Point3f *rotVec, float angle);
 
-//Retrieve the quaternion for repeated rotations. pass to the quat_rot_apply_quats
+//Retrieve the quaternion for repeated rotations. pass to the quat_rot_apply_quats.
+//angle is in radians
 void quat_get_rot_quat(Point3f *rotVec, float angle,  Quaternion *rotQuat);
 
 //Use previously generated quats from quat_get_rot_quats to rotate a point

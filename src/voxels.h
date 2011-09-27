@@ -299,7 +299,7 @@ template<class T> class Voxels
 		 * template type must have a  T(0.0) constructor that intialises it to some "zero"
 		 */
 		size_t convolve(const Voxels<T> &templateVec, Voxels<T> &result,
-							 bool showProgress=true,size_t boundMode=BOUND_CLIP) const; 
+							 size_t boundMode=BOUND_CLIP) const; 
 
 		
 		//!Similar to convolve, but faster -- only works with separable kernels.
@@ -309,7 +309,7 @@ template<class T> class Voxels
 		 * template type must have a  T(0.0) constructor that intialises it to some "zero"
 		 */
 		size_t separableConvolve(const Voxels<T> &templateVec, Voxels<T> &result,
-							 bool showProgress=true,size_t boundMode=BOUND_CLIP); 
+							 size_t boundMode=BOUND_CLIP); 
 		
 		//!Set this object to a normalised gaussian kernel, centered around the middle of the dataset
 		void setGaussianKernelCube(float stdDev, float bound, size_t sideLen);
@@ -1048,7 +1048,7 @@ size_t Voxels<T>::init(size_t nX, size_t nY,
 	typedef size_t ull;
 	ull binCountMax;
        
-	//TODO: need to check validity of boundcube
+	ASSERT(bound.isValid())
 	bound.getBounds(minBound, maxBound);
 	binCountMax= (ull)binCount[0]*(ull)binCount[1]*(ull)binCount[2];
 
@@ -1117,7 +1117,7 @@ size_t Voxels<T>::loadFile(const char *cpFilename, size_t nX, size_t nY, size_t 
 		while((size_t)CFile.tellg() <= fileSize-curBufferSize)
 		{
 			//Update progress bar
-			if(!silent & ((unsigned int)(((float)CFile.tellg()*100.0f)/(float)fileSize) > lastFrac))
+			if(!silent && ((unsigned int)(((float)CFile.tellg()*100.0f)/(float)fileSize) > lastFrac))
 			{
 				cerr << ".";
 				pts++;
@@ -1232,7 +1232,7 @@ void Voxels<T>::swap(Voxels<T> &kernel)
 }
 
 template<class T>
-size_t Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &result,  bool showProgress, size_t boundMode) const
+size_t Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &result,  size_t boundMode) const
 {
 	ASSERT(voxels.size());
 
@@ -1246,14 +1246,6 @@ size_t Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &result,  bool sho
 	//result voxels to the convolution of the template
 	//with the data 
 
-	if(showProgress)
-	{
-		cerr << std::endl <<  "|";
-		for(size_t ui=0; ui<100; ui++)
-			cerr << "." ; 
-		cerr << "|" << std::endl << "|";
-	}
-	
 
 	size_t progress=0;
 	size_t its=0;
@@ -1291,9 +1283,8 @@ size_t Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &result,  bool sho
 				{
 					its++;
 					//Update progress bar
-					if(showProgress && progress < (size_t) ((float)its/itsToDo*100) )
+					if(progress < (size_t) ((float)its/itsToDo*100) )
 					{
-						cerr <<  ".";
 						progress = (size_t) ((float)its/itsToDo*100);
 					}
 					if(!(*callback)())
@@ -1337,16 +1328,11 @@ size_t Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &result,  bool sho
 			return 2;
 	}
 
-	if(showProgress)
-	{
-		cerr << "|" << std::endl;
-	}
-	
 	return 0;
 }
 
 template<class T>
-size_t Voxels<T>::separableConvolve(const Voxels<T> &kernel, Voxels<T> &result,  bool showProgress, size_t boundMode) 
+size_t Voxels<T>::separableConvolve(const Voxels<T> &kernel, Voxels<T> &result,  size_t boundMode) 
 {
 	ASSERT(voxels.size());
 
@@ -1354,24 +1340,14 @@ size_t Voxels<T>::separableConvolve(const Voxels<T> &kernel, Voxels<T> &result, 
 	//result voxels to the convolution of the template
 	//with the data 
 
-	if(showProgress)
-	{
-		cerr << std::endl <<  "|";
-		for(size_t ui=0; ui<100; ui++)
-			cerr << "." ; 
-		cerr << "|" << std::endl << "|";
-	}
-	
 
-	size_t progress=0;
-	size_t its=0;
 	Point3D resultMinBound, resultMaxBound;
 	size_t x,y,z;
 	long long half;
 	kernel.getSize(x,y,z);
 	half=x/2;
 	//Kernel needs to be cubic
-	ASSERT(x==y && y == z && z%2);
+	ASSERT(x==y && y == z && !(z%2));
 
 	if(boundMode!=BOUND_CLIP)
 	{
@@ -1432,8 +1408,22 @@ size_t Voxels<T>::separableConvolve(const Voxels<T> &kernel, Voxels<T> &result, 
 		}
 		else
 		{
-			//FIXME: IMPLEMENT ME!!
-			ASSERT(false);
+			for(size_t uj=0;uj<binCount[1];uj++)
+			{
+			for(size_t uk=0;uk<binCount[2];uk++)
+			{
+			//Kernel is bigger than dataset
+			for(unsigned long long ui=0;ui<binCount[0]; ui++)
+			{
+				tally=T(0.0);
+				for(unsigned long long ul=-half;ul<half; ul++)
+					tally+=(getPaddedData(ui+ul,uj,uk,boundMode))*
+							kernel.getData(ul+half,half,half);
+
+				result.setData(ui,uj,uk,tally);
+			}
+			}
+			}
 		}
 		
 		swap(result);
@@ -1479,9 +1469,23 @@ size_t Voxels<T>::separableConvolve(const Voxels<T> &kernel, Voxels<T> &result, 
 		}
 		else
 		{
-			//FIXME: IMPLEMENT ME!!
-			ASSERT(false);
-		}	
+			for(size_t ui=0;ui<binCount[0];ui++)
+			{
+			for(size_t uk=0;uk<binCount[2];uk++)
+			{
+			//Kernel is bigger than dataset
+			for(unsigned long long uj=0;uj<binCount[1]; uj++)
+			{
+				tally=T(0.0);
+				for(unsigned long long ul=-half;ul<half; ul++)
+					tally+=(getPaddedData(ui,uj+ul,uk,boundMode))*
+							kernel.getData(half,half+ul,half);
+
+				result.setData(ui,uj,uk,tally);
+			}
+			}
+			}
+		}
 	
 		swap(result);
 		
@@ -1526,8 +1530,22 @@ size_t Voxels<T>::separableConvolve(const Voxels<T> &kernel, Voxels<T> &result, 
 		}
 		else
 		{
-			//FIXME: IMPLEMENT ME!!
-			ASSERT(false);
+			for(size_t ui=0;ui<binCount[0];ui++)
+			{
+			for(size_t uj=0;uj<binCount[1];uj++)
+			{
+			//Kernel is bigger than dataset
+			for(unsigned long long uk=0;uk<binCount[2]; uk++)
+			{
+				tally=T(0.0);
+				for(unsigned long long ul=-half;ul<half; ul++)
+					tally+=(getPaddedData(ui,uj,uk+ul,boundMode))*
+							kernel.getData(half,half,half+ul);
+
+				result.setData(ui,uj,uk,tally);
+			}
+			}
+			}
 		}	
 	}
 	else
@@ -1544,14 +1562,6 @@ size_t Voxels<T>::separableConvolve(const Voxels<T> &kernel, Voxels<T> &result, 
 		ASSERT(false);
 	}
 
-
-
-
-	if(showProgress)
-	{
-		cerr << "|" << std::endl;
-	}
-	
 	return 0;
 }
 

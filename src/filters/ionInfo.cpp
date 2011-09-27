@@ -19,21 +19,18 @@ enum
 	KEY_NORMALISE,
 	KEY_VOLUME,
 	KEY_VOLUME_ALGORITHM,
-	KEY_CUBELEN,
 };
 
 
 enum
 {
 	VOLUME_MODE_RECTILINEAR=0,
-	VOLUME_MODE_FILLED_CUBES,
 	VOLUME_MODE_CONVEX,
 	VOLUME_MODE_END
 };
 
 const char *volumeModeString[] = {
        	NTRANS("Rectilinear"),
-	NTRANS("Filled Voxels"),
 	NTRANS("Convex hull")
 	};
 				
@@ -441,63 +438,6 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 
 				break;
 			}
-			case VOLUME_MODE_FILLED_CUBES:
-			{
-				progress.maxStep=2;
-				progress.stepName=TRANS("Bounds");
-				progress.step=1;
-
-				BoundCube bound;
-				//Find the rectilinear bounds of the dataset
-				if(!getRectilinearBounds(dataIn,bound,&(progress.filterProgress),
-					numTotalPoints,callback))
-					return ERR_USER_ABORT;
-
-				if(!bound.isValid())
-					break;
-				
-				progress.stepName=TRANS("Count");
-				progress.step=2;
-				//set the volume to match
-				Voxels<size_t> rectVol;
-				size_t nx,ny,nz;
-				nx = max((size_t)(bound.getSize(0)/cubeSideLen),(size_t)1);
-				ny = max((size_t)(bound.getSize(1)/cubeSideLen),(size_t)1);
-				nz = max((size_t)(bound.getSize(2)/cubeSideLen),(size_t)1);
-
-				Point3D minP,maxP;
-				bound.getBounds(minP,maxP);
-				if(rectVol.resize(nx,ny,nz,minP,maxP))
-					return ERR_NO_MEM;
-
-				rectVol.setCallbackMethod(callback);
-
-				rectVol.fill(0);
-				for(size_t ui=0;ui<dataIn.size(); ui++)
-				{
-					if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
-						continue;
-
-					const IonStreamData* ions;
-					ions=(const IonStreamData *)dataIn[ui];
-					//Count the number of points in each bin
-					if(countPoints(rectVol,ions->data,false,callback))
-						return ERR_USER_ABORT;
-				}
-
-				(*callback)();
-				//Count the number of bins
-				size_t numNonEmpty=rectVol.count(1);
-				(*callback)();
-
-				float volume;
-				std::string s;
-				volume=rectVol.getBinVolume()*numNonEmpty;
-
-				stream_cast(s,volume);
-				consoleOutput.push_back(string(TRANS("Volume (len^3): ")) + s);
-				break;
-			}
 		}
 	
 	}
@@ -525,13 +465,13 @@ void IonInfoFilter::getProperties(FilterProperties &propertyList) const
 	stream_cast(str,wantIonCounts);
 	keys.push_back(KEY_TOTALS);
 	if(range)
-		s.push_back(make_pair(TRANS("Counts"), str));
-	else
 		s.push_back(make_pair(TRANS("Compositions"), str));
+	else
+		s.push_back(make_pair(TRANS("Counts"), str));
 
 	type.push_back(PROPERTY_TYPE_BOOL);
 
-	if(wantIonCounts)
+	if(wantIonCounts && range)
 	{
 		stream_cast(str,wantNormalise);
 		s.push_back(make_pair(TRANS("Normalise"),str));
@@ -543,7 +483,8 @@ void IonInfoFilter::getProperties(FilterProperties &propertyList) const
 		propertyList.types.push_back(type);
 		s.clear(); keys.clear(); type.clear();
 	} 
-	else if(wantVolume) 	//Create a separate block if we want do want volume, as needed
+	
+	if(wantVolume) 	
 	{
 		propertyList.data.push_back(s);
 		propertyList.keys.push_back(keys);
@@ -575,12 +516,6 @@ void IonInfoFilter::getProperties(FilterProperties &propertyList) const
 		{
 			case VOLUME_MODE_RECTILINEAR:
 			case VOLUME_MODE_CONVEX:
-				break;
-			case VOLUME_MODE_FILLED_CUBES:
-				stream_cast(tmpStr,cubeSideLen);
-				s.push_back(make_pair(string(TRANS("Cube length")),tmpStr));
-				keys.push_back(KEY_CUBELEN);
-				type.push_back(PROPERTY_TYPE_REAL);
 				break;
 		}
 	
@@ -661,22 +596,6 @@ bool IonInfoFilter::setProperty( unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;	
 		}
-		case KEY_CUBELEN:
-		{
-			float  newVal;
-			if(stream_cast(newVal,value))
-				return false;
-
-			if(newVal == cubeSideLen)
-				return false;
-
-			if(newVal <= sqrt(std::numeric_limits<float>::epsilon()))
-				return false;
-			cubeSideLen=newVal;	
-			needUpdate=true;
-			break;
-		}
-
 		default:
 			ASSERT(false);
 	}

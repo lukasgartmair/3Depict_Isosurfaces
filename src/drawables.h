@@ -99,12 +99,17 @@ enum
 	DRAW_SPHERE_BIND_ORIGIN,
 	DRAW_SPHERE_BIND_RADIUS,
 	DRAW_VECTOR_BIND_ORIENTATION,
+	DRAW_VECTOR_BIND_ORIGIN_ONLY,
 	DRAW_VECTOR_BIND_ORIGIN,
+	DRAW_VECTOR_BIND_TARGET,
 	DRAW_CYLINDER_BIND_ORIGIN,
 	DRAW_CYLINDER_BIND_DIRECTION,
 	DRAW_CYLINDER_BIND_RADIUS,
 	DRAW_RECT_BIND_TRANSLATE,
 	DRAW_RECT_BIND_CORNER_MOVE,
+	DRAW_TEXT_BIND_ORIGIN,
+	//DRAW_TEXT_BIND_TEXTDIR, //FIXME: Implement me for annotation todo.
+	//DRAW_TEXT_BIND_UPDIR,
 	DRAW_BIND_ENUM_END
 };
 
@@ -277,10 +282,18 @@ class DrawVector: public DrawableObj
 		void setOrigin(const Point3D &);
 		//!Sets the location of the poitns
 		void setVector(const Point3D &);
-		//!Gets the cylinder axis direction
+		//!Gets the arrow axis direction
 		Point3D getVector(){ return vector;};
 
+		//!Gets the arrow axis direction
+		Point3D getOrigin(){ return origin;};
+
+		//!Set the arrowhead size
+		void setArrowSize(float size) { arrowSize=size;}
+
 		void getBoundingBox(BoundCube &b) const; 
+
+
 		//!Recompute the internal parameters using the input vector information
 		void recomputeParams(const std::vector<Point3D> &vecs, 
 					const std::vector<float> &scalars, unsigned int mode);
@@ -393,7 +406,9 @@ class DrawSphere : public DrawableObj
 		void getBoundingBox(BoundCube &b) const ;
 
 		//!Recompute the internal parameters using the input vector information
-		void recomputeParams(const vector<Point3D> &vecs, const vector<float> &scalars, unsigned int mode);
+		// i.e. this is used for (eg) mouse interaction
+		void recomputeParams(const vector<Point3D> &vecs, 
+				const vector<float> &scalars, unsigned int mode);
 
 };
 
@@ -617,7 +632,7 @@ class DrawGLText : public DrawableObj
 			{return isOK;};
 
 		//!Set the text string to be displayed
-		inline void setString(std::string str)
+		inline void setString(const std::string &str)
 			{strText=str;};
 
 		//!Render the text string
@@ -662,6 +677,10 @@ class DrawGLText : public DrawableObj
 
 		//!Set the text alignment (default is left)
 		void setAlignment(unsigned int mode);
+		
+		//Binding parameter recomputation
+		void recomputeParams(const vector<Point3D> &vecs, 
+				const vector<float> &scalars, unsigned int mode);
 };
 
 

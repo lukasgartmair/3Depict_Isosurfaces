@@ -46,6 +46,14 @@
 #endif
 
 
+enum
+{
+	ID_KEYPRESS_TIMER=wxID_ANY+1,
+};
+
+//Double tap delay (ms), for axis reversal
+const unsigned int DOUBLE_TAP_DELAY=500; 
+
 BEGIN_EVENT_TABLE(BasicGLPane, wxGLCanvas)
 EVT_MOTION(BasicGLPane::mouseMoved)
 EVT_ERASE_BACKGROUND(BasicGLPane::OnEraseBackground)
@@ -62,6 +70,7 @@ EVT_CHAR(BasicGLPane::charEvent)
 EVT_KEY_UP(BasicGLPane::keyReleased)
 EVT_MOUSEWHEEL(BasicGLPane::mouseWheelMoved)
 EVT_PAINT(BasicGLPane::render)
+EVT_TIMER(ID_KEYPRESS_TIMER,BasicGLPane::OnAxisTapTimer)
 END_EVENT_TABLE()
 
 //Controls camera pan/translate/pivot speed; Radii per pixel or distance/pixel
@@ -84,10 +93,26 @@ wxGLCanvas(parent, wxID_ANY,  wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas
 	applyingDevice=false;
 	paneInitialised=false;
 
+	keyDoubleTapTimer=new wxTimer(this,ID_KEYPRESS_TIMER);
+	lastKeyDoubleTap=(unsigned int)-1;
+
 	mouseMoveFactor=mouseZoomFactor=1.0f;	
 	dragging=false;
 	lastMoveShiftDown=false;
 	selectionMode=false;
+}
+
+bool BasicGLPane::displaySupported() const
+{
+#if wxCHECK_VERSION(2,9,0)
+	return IsDisplaySupported(attribList);
+#else
+	ASSERT(false);
+	//Lets hope so. If its not, then its just going to fai anyway. 
+	//If it is, then returning false would simply create a roadblock.
+	//Either way, you shouldn't get here.
+	return true; 
+#endif
 }
 
 unsigned int  BasicGLPane::selectionTest(wxPoint &p,bool &shouldRedraw)
@@ -450,7 +475,10 @@ void BasicGLPane::mouseReleased(wxMouseEvent& event)
 	
 }
 
-void BasicGLPane::rightClick(wxMouseEvent& event) {}
+void BasicGLPane::rightClick(wxMouseEvent& event) 
+{
+}
+
 void BasicGLPane::mouseLeftWindow(wxMouseEvent& event) 
 {
 	if(selectionMode)
@@ -491,29 +519,88 @@ void BasicGLPane::mouseLeftWindow(wxMouseEvent& event)
 
 void BasicGLPane::keyPressed(wxKeyEvent& event) 
 {
+	
 	switch(event.GetKeyCode())
 	{
 		case WXK_SPACE:
 		{
 			unsigned int visibleDir;
+	
 			//Use modifier keys to alter the direction of visiblity
-			if(event.CmdDown())
-				visibleDir= 0;
-			else if (event.ShiftDown())
-				visibleDir=2;
-			else
-				visibleDir=3;
-			currentScene.ensureVisible(visibleDir);
+			//First compute the part of the keymask that does not
+			//reflect the double tap
+			unsigned int keyMask;
+			keyMask = (event.CmdDown() ? 1 : 0);
+			keyMask |= (event.ShiftDown() ?  2 : 0);
+
+			//Now determine if we are the same mask as last time
+			bool isKeyDoubleTap=(lastKeyDoubleTap==keyMask);
+			//double tapping allows for selection of reverse direction
+			keyMask |= ( isKeyDoubleTap ?  4 : 0);
+			
+			visibleDir=-1;
+
+			//Hardwire key combo->Mapping
+			switch(keyMask)
+			{
+				//Space only
+				case 0: 
+					visibleDir=3; 
+					break;
+				//Command down +space 
+				case 1:
+					visibleDir=0;
+					break;
+				//Shift +space 
+				case 2:
+					visibleDir=2;
+					break;
+				//NO CASE 3	
+				//Double+space
+				case 4:
+					visibleDir=5; 
+					break;
+				//Doublespace+Cmd
+				case 5:
+					visibleDir=4;
+					break;
+
+				//Space+Double+shift
+				case 6:
+					visibleDir=1;
+					break;
+				default:
+					;
+			}
+
+			if(visibleDir!=(unsigned int)-1)
+			{
+
+				if(isKeyDoubleTap)
+				{
+					//It was a double tap. Reset the tapping and stop the timer
+					lastKeyDoubleTap=(unsigned int)-1;
+					keyDoubleTapTimer->Stop();
+				}
+				else
+				{
+					lastKeyDoubleTap=keyMask & (~(0x04));
+					keyDoubleTapTimer->Start(DOUBLE_TAP_DELAY,wxTIMER_ONE_SHOT);
+				}
+
+				
+				currentScene.ensureVisible(visibleDir);
 #ifdef wxMAC
-			parentStatusBar->SetStatusText(wxTRANS("Use shift/⌘-space to alter reset axis"));
+				parentStatusBar->SetStatusText(wxTRANS("Use shift/⌘-space or double tap to alter reset axis"));
 #else
-			parentStatusBar->SetStatusText(wxTRANS("Use shift/ctrl-space to alter reset axis"));
+				parentStatusBar->SetStatusText(wxTRANS("Use shift/ctrl-space or double tap to alter reset axis"));
 #endif
-			parentStatusBar->SetBackgroundColour(*wxCYAN)
-				;
-			parentStatusTimer->Start(statusDelay,wxTIMER_ONE_SHOT);
-			Refresh();
-			haveCameraUpdates=true;
+				parentStatusBar->SetBackgroundColour(*wxCYAN)
+					;
+				parentStatusTimer->Start(statusDelay,wxTIMER_ONE_SHOT);
+				Refresh();
+				haveCameraUpdates=true;
+			}
 		}
 		break;
 	}
@@ -576,6 +663,7 @@ void BasicGLPane::keyReleased(wxKeyEvent& event)
 	Refresh();
 	event.Skip();
 }
+
 void BasicGLPane::charEvent(wxKeyEvent& event) 
 {
 
@@ -887,6 +975,11 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	delete image;
 
 	return isOK;
+}
+
+void BasicGLPane::OnAxisTapTimer(wxTimerEvent &evt)
+{
+	lastKeyDoubleTap=(unsigned int)-1;
 }
 
 

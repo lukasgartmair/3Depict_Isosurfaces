@@ -383,7 +383,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 
 						float angle = dir.angle(direction);
 
-						float halfLen=sqrt(vectorParams[1].sqrMag())/2.0f;
+						float halfLen=sqrt(vectorParams[1].sqrMag());
 						float sqrRad=scalarParams[0]*scalarParams[0];
 				
 						//Check that we actually need to rotate, to avoid numerical singularity 
@@ -554,6 +554,17 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		}
 
 		plotData[ui]->xyData.resize(ionFrequencies[ui].size());
+	
+		//Density profiles (non-ranged plots) have a fixed normalisation factor
+		if(!rngData && normalise)
+		{
+			if(fixedBins)
+				normFactor = 1.0/(M_PI*scalarParams[0]*scalarParams[0]*(length/(float)numBins));
+			else
+				normFactor = 1.0/(M_PI*scalarParams[0]*scalarParams[0]*binWidth);
+		}	
+
+		//Go through each bin, then perform the appropriate normalisation
 		for(unsigned int uj=0;uj<ionFrequencies[ui].size(); uj++)
 		{
 			float xPos;
@@ -579,15 +590,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 			}
 			else
 			{
-				if(normalise)
-				{
-					//This is a frequency profile. Normalising across bins would lead to every value
-					//being equal to 1. Let us instead normalise by cylinder section volume)
-					normFactor = 1.0/(M_PI*scalarParams[0]*scalarParams[0]*binWidth);
-
-
-				}
-				//Normalise Y value against volume of bin
+				//This is a frequency profile (factor ==1), or density profile (factor computed above).
 				plotData[ui]->xyData[uj] = std::make_pair(
 					xPos,normFactor*(float)ionFrequencies[ui][uj]);
 

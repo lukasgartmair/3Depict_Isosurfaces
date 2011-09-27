@@ -290,15 +290,16 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 						dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_BITMAP);
 					float f;
 					f = tmpTickSpacing[ui]*uj;
-					snprintf(buffer,128,"%2.0f",f);
+					snprintf(buffer,127,"%2.0f",f);
 					dT->setString(buffer);
 					dT->setSize(fontSize);
 					
-					dT->setColour(1.0f,1.0f,1.0f,1.0f);
+					dT->setColour(rLine,gLine,bLine,aLine);
 					dT->setOrigin(tickPosition + tickVector*2);	
 					dT->setUp(Point3D(0,0,1));	
 					dT->setTextDir(textVector);
 					dT->setAlignment(DRAWTEXT_ALIGN_RIGHT);
+
 					d->drawables.push_back(dT);
 				}
 			}
@@ -313,7 +314,7 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 		//Handle "0" text value
 		dT->setString("0");
 		
-		dT->setColour(1.0f,1.0f,1.0f,1.0f);
+		dT->setColour(rLine,gLine,bLine,aLine);
 		dT->setSize(fontSize);
 		dT->setOrigin(tickOrigin+ Point3D(-1,-1,-1));
 		dT->setAlignment(DRAWTEXT_ALIGN_RIGHT);

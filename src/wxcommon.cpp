@@ -66,7 +66,27 @@ std::string locateDataFile(const char *name)
 
 #ifdef __linux__
 
-	return std::string("/usr/share/3Depict/") + std::string(name);
+	//POssible search paths. Must have trailing slash. will
+	//be searched in sequence.
+	const unsigned int NUM_SEARCH_DIRS=4;
+	const char *possibleDirs[] = { "./",
+					"/usr/local/share/3Depict/",
+					"/usr/share/3Depict/",
+					"/usr/share/3depict/", //Under debian, we have to use lowercase according to the debian guidelines, so handle this case.
+					"",
+					};
+
+	std::string s;
+	for(unsigned int ui=0; ui<NUM_SEARCH_DIRS; ui++)
+	{
+		s=std::string(possibleDirs[ui]) + name;
+
+		if(wxFileExists(wxStr(s)))
+				return s;
+	}
+
+	//Give up and force cur working dir.
+	return std::string(name);
 #else
 
 	//E.g. Mac
@@ -193,4 +213,42 @@ void *VersionCheckThread::Entry()
 
 	return 0;
 }
+
+
+//Does a process with a given ID both (1) exist, and (2) match the process name?
+bool processMatchesName(size_t processID, const std::string &procName)
+{
+
+//Really, any system with a working "ps" command (i.e. posix compliant)
+#if defined(__LINUX__) || defined(__BSD__)
+	//Execute the ps process, then filter the output by processID
+	
+	wxArrayString stdOut;
+	long res;
+	res=wxExecute(wxT("ps ax"),stdOut,wxEXEC_SYNC);
+
+	if(res !=0 )
+		return false;
+
+	std::string pidStr;
+	stream_cast(pidStr,processID);
+	//Parse stdout..
+	for(size_t ui=0;ui<stdOut.GetCount();ui++)
+	{
+		std::string s;
+		s=stlStr(stdOut[ui]);
+
+		//FIXME: This is a little lax. finding the proc name should
+		//check the position of the found string more heavily
+		if(s.find(pidStr) == 0 && s.find(procName) != std::string::npos)
+			return true;
+	}
+
+#else
+	#error __FUNCTION__ not implemented.
+#endif
+
+	return false;
+}
+
 

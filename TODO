@@ -6,24 +6,29 @@ TODO List - worlds simplest bugtracking system
 	Fix Needs testing:
 	To Implement:
 		== Next version ==
-		* Warning on overwrite file when exporting ions
+		* Camera animation control (slerp?)
+		* Support for XY scatter plots
+		* Front-to back alpha blending ordering support for
+		 scene drawing of non-pointcloud objects
+		* Voxelisation filter needs progress
+		* Better progress during cluster ranging
+		* Clipping should be parallelised
+		* Billboard text
+		* Voxel export dialog 
+
 	
 		== Eventually == 
-		* Support for XY scatter plots
-		* Billboard text
+		* Binomial? (MM edition)
 		* Improved resolution dialog (Easy fix, but needs time/thought)
 		* Stream information filter (Easy fix, but needs time/thought)
-		* Binomial?
 		* Polynomial error estimator in graph
 		* Shear-warp volume render mode for voxels
 			- This can be broken into two useful stages
 				(1) transfer function editor, could be tested with point cloud mode
 				(2) Volume render code (check out SMVIS, Author gave perm. under GPLv3+)
 		* Ion exchange/explode filter
-		* Front-to back alpha blending ordering support for
-		 scene drawing of non-pointcloud objects
 		* DTD (Document type descriptor) for state files, to
-		  specify a consisted statefile structure
+		  specify a consistant statefile structure
 			- How to ensure version compatibility in future
 			state files?
 		* VTK/xyzm output
@@ -31,21 +36,29 @@ TODO List - worlds simplest bugtracking system
 		* Option to warn on file overwrite with save after merge (default off)
 		* Theora video?
 		* Multiple selection in filter tree for many to one stash/unstash operations
-		* Camera animation
-		* Annotation filter
-		* voxelisation filter needs progress
-		* Better progress during cluster ranging
+		* We are using too many timers. There are limits to max. timers (win32?).
+		* Voxel export
 
 	Outstanding bugs:
 		== Next release==
-		* Scroll wheel on text area for camera drop down does not scroll cameras; only on button (wxGTK only??)
-		* Switching between fixed width and num bins in voxel repeatedly causes "drift" of values -- aliasing errors?
-
+		* Select an X-Y crop, camera coords, on a dataset,
+		  then view   target  (-9.14237,-0.995174,83.2904) origin
+		  (188.23,-0.995174,83.2904). Now press ctrl+space. Note
+		  dataset disappears until mouse motion. This is due to
+		  camera up vector not being updated, I suspect.
+		* Bar plots do not work (under windows?) for composition profiles
+		* Text bounding boxes are wrong.
+		
 		== Eventually==
-		* Loading a full pos file directly onto the video card cannot be aborted.
+		* If errors are encountered in Filter::readState, then
+		 the object will be in a half-read state, due to the
+		 in-place data loading.
+		* Scroll wheel on text area for camera drop down does
+		  not scroll cameras; only on button (wxGTK only??)
+		* Switching between fixed width and num bins in voxel
+		  repeatedly causes "drift" of values -- aliasing errors?
 		* Colour bar drawing broken when tiling an output image
-		* Spatial analysis filter does not update its output graph strings.
-		* Data files when failing to load, do remove, but are put back at next program load	
+		* Loading a full pos file directly onto the video card cannot be aborted.
 		* Error bar masking for graph (mathgl draws error bars outside plot boundary)
 		* Pos load add could always add to bottom of filter list,
 		 rather than default value
@@ -59,6 +72,7 @@ TODO List - worlds simplest bugtracking system
 
 		== Needs reproducing ==
 		* Invalid range file being opened cause Package export to crash
+		* Data files when failing to load, do remove, but are put back at next program load	
 		* was able to get assertion (excomponents.cpp:399) when selecting orthogonal camera.
 		* Windows appears to have weird front-back drawing behaviour for point clouds.
 		* Debian user reports unconditional segfault in libmgl during STIX font parse. 
@@ -68,6 +82,7 @@ TODO List - worlds simplest bugtracking system
 	Auditing:
 		== Next release ==
 		* Check each filter is actually reporting the required cache memory
+		* Update licence headers
 
 	Performance:
 		* Scene is sometimes continuously refreshed during post effects, causing CPU usage
@@ -76,10 +91,8 @@ TODO List - worlds simplest bugtracking system
 		* Pos limit loader could alter its behaviour when
 		 sampling rates some percentage to be determined (load
 		 file, skip buffer).
-		* Clipping should be parallelised
 		* Clustering could be paralellised, but is complex. Split & weld along KD tree lines using 
 		  cluster BB interactions.
-		* Spectrum plot always clears cache when properties change -- this is not neccesary for many cases.
 	
 	Misc:
 

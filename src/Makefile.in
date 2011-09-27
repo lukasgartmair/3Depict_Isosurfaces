@@ -68,17 +68,18 @@ am__3Depict_SOURCES_DIST = mathglPane.cpp plot.cpp prefDialog.cpp \
 	filters/ionClip.cpp filters/ionColour.cpp \
 	filters/boundingBox.cpp filters/compositionProfile.cpp \
 	filters/spatialAnalysis.cpp filters/clusterAnalysis.cpp \
-	filters/ionInfo.cpp filters/allFilter.h filters/posLoad.h \
-	filters/ionDownsample.h filters/rangeFile.h filters/voxelise.h \
-	filters/spectrumPlot.h filters/transform.h \
+	filters/ionInfo.cpp filters/annotation.cpp filters/allFilter.h \
+	filters/posLoad.h filters/ionDownsample.h filters/rangeFile.h \
+	filters/voxelise.h filters/spectrumPlot.h filters/transform.h \
 	filters/externalProgram.h filters/ionClip.h \
 	filters/ionColour.h filters/boundingBox.h \
 	filters/compositionProfile.h filters/spatialAnalysis.h \
-	filters/clusterAnalysis.h filters/ionInfo.h 3Depict.cpp \
-	ExportPos.cpp ExportRngDialog.cpp glPane.cpp scene.cpp \
-	StashDialog.cpp viscontrol.cpp 3Depict.h ExportPos.h \
-	ExportRngDialog.h glPane.h scene.h StashDialog.h viscontrol.h \
-	winconsole.cpp 3Depict.rc
+	filters/clusterAnalysis.h filters/ionInfo.h \
+	filters/annotation.h 3Depict.cpp ExportPos.cpp \
+	ExportRngDialog.cpp glPane.cpp scene.cpp StashDialog.cpp \
+	viscontrol.cpp 3Depict.h ExportPos.h ExportRngDialog.h \
+	glPane.h scene.h StashDialog.h viscontrol.h winconsole.cpp \
+	3Depict.rc
 am__objects_1 = 3Depict-mathglPane.$(OBJEXT) 3Depict-plot.$(OBJEXT) \
 	3Depict-prefDialog.$(OBJEXT) 3Depict-configFile.$(OBJEXT) \
 	3Depict-filter.$(OBJEXT) 3Depict-APTClasses.$(OBJEXT) \
@@ -100,7 +101,8 @@ am__objects_3 = 3Depict-allFilter.$(OBJEXT) 3Depict-posLoad.$(OBJEXT) \
 	3Depict-boundingBox.$(OBJEXT) \
 	3Depict-compositionProfile.$(OBJEXT) \
 	3Depict-spatialAnalysis.$(OBJEXT) \
-	3Depict-clusterAnalysis.$(OBJEXT) 3Depict-ionInfo.$(OBJEXT)
+	3Depict-clusterAnalysis.$(OBJEXT) 3Depict-ionInfo.$(OBJEXT) \
+	3Depict-annotation.$(OBJEXT)
 am__objects_4 = 3Depict-3Depict.$(OBJEXT) 3Depict-ExportPos.$(OBJEXT) \
 	3Depict-ExportRngDialog.$(OBJEXT) 3Depict-glPane.$(OBJEXT) \
 	3Depict-scene.$(OBJEXT) 3Depict-StashDialog.$(OBJEXT) \
@@ -195,6 +197,8 @@ PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKG_CONFIG = @PKG_CONFIG@
+PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
+PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PNG_CFLAGS = @PNG_CFLAGS@
 PNG_LIBS = @PNG_LIBS@
 QHULL_CFLAGS = @QHULL_CFLAGS@
@@ -268,7 +272,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 MSYS_PATH = /c/msys/1.0/local/include/
-3Depict_LDFLAGS = $(LDFLAGS) $(FT_LDFLAGS)
+3Depict_LDFLAGS = $(LDFLAGS) $(FT_LDFLAGS) $(MGL_LIBS)
 3Depict_CXXFLAGS = $(CXXFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) $(WX_CPPFLAGS) \
 	$(GL_FLAGS) $(MGL_CFLAGS) $(XML_CFLAGS) $(PNG_CFLAGS)  \
 	$(OPENMP_FLAGS) $(DEBUG_FLAGS)
@@ -285,14 +289,16 @@ FILTER_FILES = filters/allFilter.cpp filters/posLoad.cpp filters/ionDownsample.c
 	       	filters/transform.cpp filters/externalProgram.cpp filters/ionClip.cpp \
 		filters/ionColour.cpp filters/boundingBox.cpp  \
 		filters/compositionProfile.cpp filters/spatialAnalysis.cpp \
-		filters/clusterAnalysis.cpp filters/ionInfo.cpp
+		filters/clusterAnalysis.cpp filters/ionInfo.cpp \
+		filters/annotation.cpp
 
 FILTER_HEADER_FILES = filters/allFilter.h filters/posLoad.h filters/ionDownsample.h \
 		filters/rangeFile.h filters/voxelise.h filters/spectrumPlot.h \
 	       	filters/transform.h filters/externalProgram.h filters/ionClip.h \
 		filters/ionColour.h filters/boundingBox.h  \
 		filters/compositionProfile.h filters/spatialAnalysis.h \
-		filters/clusterAnalysis.h filters/ionInfo.h
+		filters/clusterAnalysis.h filters/ionInfo.h \
+		filters/annotation.h
 
 
 #These source files should have heirachical couplings only; no cross-coupling
@@ -423,6 +429,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-K3DTree.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-StashDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-allFilter.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-annotation.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-basics.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-boundingBox.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-cameras.Po@am__quote@
@@ -1036,6 +1043,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/ionInfo.cpp' object='3Depict-ionInfo.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ionInfo.obj `if test -f 'filters/ionInfo.cpp'; then $(CYGPATH_W) 'filters/ionInfo.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/ionInfo.cpp'; fi`
+
+3Depict-annotation.o: filters/annotation.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-annotation.o -MD -MP -MF $(DEPDIR)/3Depict-annotation.Tpo -c -o 3Depict-annotation.o `test -f 'filters/annotation.cpp' || echo '$(srcdir)/'`filters/annotation.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-annotation.Tpo $(DEPDIR)/3Depict-annotation.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/annotation.cpp' object='3Depict-annotation.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-annotation.o `test -f 'filters/annotation.cpp' || echo '$(srcdir)/'`filters/annotation.cpp
+
+3Depict-annotation.obj: filters/annotation.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-annotation.obj -MD -MP -MF $(DEPDIR)/3Depict-annotation.Tpo -c -o 3Depict-annotation.obj `if test -f 'filters/annotation.cpp'; then $(CYGPATH_W) 'filters/annotation.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/annotation.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-annotation.Tpo $(DEPDIR)/3Depict-annotation.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/annotation.cpp' object='3Depict-annotation.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-annotation.obj `if test -f 'filters/annotation.cpp'; then $(CYGPATH_W) 'filters/annotation.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/annotation.cpp'; fi`
 
 3Depict-3Depict.o: 3Depict.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-3Depict.o -MD -MP -MF $(DEPDIR)/3Depict-3Depict.Tpo -c -o 3Depict-3Depict.o `test -f '3Depict.cpp' || echo '$(srcdir)/'`3Depict.cpp

@@ -337,9 +337,9 @@ Voxels is shorthand for ``volume pixel'' and is a rectilinear region of space, d
  
 \subsection{Available Filters}
 \label{sec:filter} 
-\subsubsection{Pos load}
+\subsubsection{Data load}
  
-The pos load filter injects ion data into the analysis tree. Ions are loaded from a file by one of several different methods. By default, random data is selected from the file. This filter can be created using the ``load'' function from the file menu.  
+The data load filter injects 3D point+value data into the analysis tree. Points are loaded from a file by one of several different methods. By default, random data is selected from the file. This filter can be created using the ``load'' function from the file menu. Note that the default settings will only load a random subset of the data in order to speed analysis. If you require all data to be loaded, then you will need to alter the filter settings. 
 \begin{itemize}
 \item  \textbf{Number of columns}: Number of floating point values in a single record. Defaults to 4.
 \item  \textbf{X}: Position in record to use as X value. Defaults to 0.
@@ -352,7 +352,7 @@ The pos load filter injects ion data into the analysis tree. Ions are loaded fro
 \item  \textbf{Ion colour}: Colour of the ions from the 3D view.
 \item  \textbf{Ion size} : Default size of points in 3D view.
 \item  \textbf{Filename} : name of the file to load the data form.
-\item  \textbf{Load limit}: The maximum quantity of data to load from the file. If set to 0, then the entire file is loaded. Otherwise a random sub-selection of the file is loaded. Note that random selection reduces memory cost, but if it is more than a few percent of the file size, may be slower to load.
+\item  \textbf{Load limit}: The maximum quantity of data to load from the file. If set to 0, then the entire file is loaded. Otherwise a random sub-selection of the file is loaded. Note that random selection reduces memory cost, but if it is more than a few percent of the file size, may be slower to load. 
 
 \end{itemize}
 
@@ -475,9 +475,36 @@ At this point, the target command will be run. \emph{3Depict} will halt at this 
 
 \paragraph{After program execution:} Once the program is run, any .pos files (\emph{i.e.} any files matching `*.pos') in the working directory will be loaded back as ion streams. Similarly any `*.xy' files will also be loaded. .xy files should be ASCII files, and should have a multiple of 2 columns (one for x, one for y) separated by a valid delimiter. The x and y column lengths must also match for each x-y pair. Valid delimiters are tab, comma and space. At time of writing, there is currently no way to specify the plot colour or style. The x-y values will, by default be connected with line, thus a single value will not be clearly visible
 
+\subsection{Annotation}
+The annotation filter allows for insertion of 3D annotations into the 3D scene. The annotations that are allowable include linear and angular measurements, as well as textual markers and text+line pointing markers. Each annotation mode has an associated colour which is specifiable. 
+
+\subsubsection{Text}
+Displays a 3D textual marker in the 3D scene, using a fixed font.
+\begin{itemize}
+\item \textbf{Annotation} : The text to display
+\item \textbf{Origin} : The position of the lower left hand corner of the text bounding box.in 3D space
+\item \textbf{Up Direction} : The vector that is associated with the up direction of the text glyphs. Note that altering this may cause the across direction to change, due to the orthogonality requirement.
+\item \textbf{Across Dir} : The across direction for the text, which corresponds to the left-to-right reading direction. Similarly to the up-direction altering this may cause the up direction to change to maintain orthogonality.
+\item \textbf{Text Size} : The size of the text glyphs, in world units.
+\end{itemize}
+
+\subsubsection{Arrow, Arrow with Text}
+Displays an arrow from one position to the other. This can be directly interacted with in the 3D scene. The Arrow+Text mode allows for a specifiable arrow and associated text point in 3D space in one. 
+
+\subsubsection{Angle Measurement}
+Displays a 3D widget which can be used to mark angular relations in 3D space. 
+\begin{itemize}
+\item \textbf{Up dir} Controls the up direction for the text glyphs. Note that altering this value may cause the across direction to change in order to maintain orthogonality.
+\item \textbf{Across dir} Controls the across direction for the text. Note that altering this value may cause the up direction to change, to maintain orthogonality.
+\item \textbf{Reflexive} If selected, the reflexive (exterior) angle will be displayed, rather than the interior angle for the angular measurement.
+\item \textbf{Show Angle} Will display the angle measured by the marker in the 3D scene, if selected. 
+\item \textbf{Text Size} Controls the text size for the angle measurement, if the angle is shown. 
+\item \textbf{Digit format} Controls the number of significant digits to use, such as '##.##', which will show (for example), 10.78 as the degree value. Use #, or 0-9 as placeholders to specify the format.Allowable decimal separators are period (.) and comma (,).
+
+\item \textbf{Sphere size} Sets the size of the sphere widgets which are used to maniupulate and draw the angular measurement positions.
+\end{itemize}
 \section{Attributions}
 
-\begin{itemize}
 \item The source code image is  a derivative work of \url{http://commons.wikimedia.org/wiki/File:User_icon_2.svg} and  \url{http://commons.wikimedia.org/wiki/C_cplusplus_compilation_process.svg}.
 
 \item The camera image is a derivative work of \url{http://commons.wikimedia.org/wiki/File:Icon_Camera.svg}.

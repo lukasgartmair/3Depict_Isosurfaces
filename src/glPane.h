@@ -61,11 +61,15 @@ private:
 	//!Are we currently applying a device in the scene?
 	bool applyingDevice;
 
-
 	//Parameters for modifying mouse speed
 	float mouseZoomFactor,mouseMoveFactor;
 
+	unsigned int lastKeyDoubleTap;
+
+	wxTimer *keyDoubleTapTimer;
 public:
+	bool displaySupported() const;
+
 	//!The scene object, holds all info about 3D drawable components
 	Scene currentScene;
 
@@ -118,9 +122,10 @@ public:
 	void keyReleased(wxKeyEvent& event);
 	void charEvent(wxKeyEvent& event);
 	void OnEraseBackground(wxEraseEvent &);
+	void OnAxisTapTimer(wxTimerEvent &);
 	bool setFullscreen(bool fullscreen);
 	bool setMouseVisible(bool visible);
-   
+	   
 	
 	DECLARE_EVENT_TABLE()
 };

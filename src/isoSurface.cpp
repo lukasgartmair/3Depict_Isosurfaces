@@ -472,21 +472,6 @@ int edgeRemap[12]  ={ 0,6,1,4,
 		      8,10,11,9};
 
 
-
-
-//fGetOffset finds the approximate point of intersection of the surface
-// between two points with the values fValue1 and fValue2
-float interpLinear(float fValue1, float fValue2, float fValueDesired)
-{
-        double fDelta = fValue2 - fValue1;
-
-	//Prevent numerical instabilities
-        if(fDelta <sqrtf( std::numeric_limits<float>::epsilon()))
-                return 0.5;
-        return (fValueDesired - fValue1)/fDelta;
-}
-
-
 //vMarchingCubes iterates over the entire dataset, calling vMarchCube on each cube
 void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVertexNorm> &tVec)
 {
@@ -631,7 +616,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 		it!=edgeTriMap.end(); ++it)
 	{
 		Point3D low,high,voxelFrameIntersection; 
-		float lowF,highF,alpha;
+		float lowF,highF;
 
 		if(pointMap.find((it->first>>2)<<2) != pointMap.end())
 			continue;
@@ -653,6 +638,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 		else
 		{
 			//interpolate
+			float alpha;
 			alpha= (isoValue- lowF) / (highF- lowF);
 			voxelFrameIntersection=low + (high-low)*alpha;
 		}

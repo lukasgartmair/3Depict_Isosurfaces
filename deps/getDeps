@@ -4,6 +4,7 @@
 #	getDeps- The dependency handler you're using when your not using
 #	a dependency handler. (Downloads dependencies for 3Depict)
 #	Copyright (C) 2010, D Haley 
+#	Modified by AV Ceguerra, August 2011
 #
 #	This program is free software: you can redistribute it and/or modify
 #	it under the terms of the GNU General Public License as published by
@@ -23,9 +24,27 @@ PNG_DIR="/usr/local"
 #Dependency ID, URL and name
 DEPIDS=( 0 1 2 3 4 5 6)
 DEPNAMES=( libpng freetype ftgl wxwidgets mathgl dylibbundler qhull)
-DEPURLS=(http://downloads.sourceforge.net/project/libpng/01-libpng-master/1.4.3/libpng-1.4.3.tar.gz http://downloads.sourceforge.net/project/freetype/freetype2/2.4.1/freetype-2.4.1.tar.gz http://downloads.sourceforge.net/project/ftgl/FTGL%20Source/2.1.3%7Erc5/ftgl-2.1.3-rc5.tar.gz http://downloads.sourceforge.net/project/wxwindows/2.8.11/wxWidgets-2.8.11.tar.gz http://downloads.sourceforge.net/project/mathgl/mathgl/mathgl%201.10.2.1/mathgl-1.10.2.1.tgz http://downloads.sourceforge.net/project/macdylibbundler/macdylibbundler/0.3.1/dylibbundler0.3.1.zip http://www.qhull.org/download/qhull-2010.1-src.tgz)
-DEPFILENAMES=(libpng-1.4.3.tar.gz freetype-2.4.1.tar.gz ftgl-2.1.3-rc5.tar.gz  wxWidgets-2.8.11.tar.gz mathgl-1.10.2.1.tgz dylibbundler0.3.1.zip qhull-2010.1-src.tgz)
-DEPMDSUM=(df3521f61a1b8b69489d297c0ca8c1f8 2c4f33ee9242be7ec5e876952ae99755 fcf4d0567b7de9875d4e99a9f7423633 ce80389e1b70d6a518c80b7b715b763e 4122428797fd0c25a096c377b9ffe44a 8feedad7224e6b928a9c65dc939a48bb e64138470acdeb18f752a0bc2a11ceb4)
+DEPURLS=(https://sourceforge.net/projects/libpng/files/libpng15/1.5.4/libpng-1.5.4.tar.gz \
+		 https://sourceforge.net/projects/freetype/files/freetype2/2.4.6/freetype-2.4.6.tar.gz \
+		 http://downloads.sourceforge.net/project/ftgl/FTGL%20Source/2.1.3%7Erc5/ftgl-2.1.3-rc5.tar.gz \
+		 http://sourceforge.net/projects/wxwindows/files/2.8.12/wxMac-2.8.12.tar.gz/download \
+		 http://sourceforge.net/projects/mathgl/files/mathgl/mathgl%201.11.2/mathgl-1.11.2.tar.gz/download \
+		 http://downloads.sourceforge.net/project/macdylibbundler/macdylibbundler/0.3.1/dylibbundler0.3.1.zip \
+		 http://www.qhull.org/download/qhull-2011.1-src.tgz)
+DEPFILENAMES=(libpng-1.5.4.tar.gz \
+			freetype-2.4.6.tar.gz \
+			ftgl-2.1.3-rc5.tar.gz  \
+			wxMac-2.8.12.tar.gz \
+			mathgl-1.11.2.tar.gz \
+			dylibbundler0.3.1.zip \
+			qhull-2011.1-src.tgz)
+DEPMDSUM=(dea4d1fd671160424923e92ff0cdda78 \
+		  1dc4af24a86e2f78a49ac6b520a81ec5 \
+		  fcf4d0567b7de9875d4e99a9f7423633 \
+		  462d3c646a7bb021dc868cbd7e214eea \
+		  acd33e68911d9506f60d769dce23f95e \
+		  8feedad7224e6b928a9c65dc939a48bb \
+		  a65061cf2a6e6581182f4df0f3667a8e)
 
 OS_NAME=`uname`
 
@@ -70,7 +89,7 @@ if [ $# -ne 2 ] ; then
 		if [ x"$OS_NAME" == x"Darwin" ] ; then
 			#Not sure this works.
 			##Are we using mac? Try to get the proxy automagically
-			PROXY=`system_profiler SPNetworkDataType|grep "HTTP Proxy Server"|awk {'sub(/^.*:[ \t]*/, "", $0); print $0;'}`
+			PROXY=`system_profiler |grep "Auto Configure URL"|awk {'sub(/^.*:[ \t]*/, "", $0); print $0;'}`
 			echo "using proxy as : $PROXY ; hope this works"
 
 			http_proxy=$PROXY
@@ -199,15 +218,15 @@ echo "So it looks like we have downloaded all the files."
 echo "I'm just going to check the integrity of these files first."
 echo 
 
-echo "Count down!"
-COUNTDOWN=7
-while [ $COUNTDOWN -gt 0 ] ; 
-do 
+#echo "Count down!"
+#COUNTDOWN=7
+#while [ $COUNTDOWN -gt 0 ] ; 
+#do 
 
-	echo "$COUNTDOWN  ..."
-	sleep 1
-	COUNTDOWN=`expr $COUNTDOWN - 1`
-done
+#	echo "$COUNTDOWN  ..."
+#	sleep 1
+#	COUNTDOWN=`expr $COUNTDOWN - 1`
+#done
 
 for i in ${DEPIDS[*]}
 do
@@ -223,7 +242,7 @@ do
 		sleep 20
 	else
 		echo " $j looks OK. Good -- moving on"
-		sleep 1
+#		sleep 1
 	fi
 done
 ########
@@ -261,6 +280,8 @@ do
 	echo "Extracting $j"
 	if [ x"`echo $j | grep \.tar\.gz`" != x"" ] ; then
 		tar -zxf ../sources/$j 
+	elif [ x"`echo $j | grep \.tar\.bz2`" != x"" ] ; then
+		tar -jxf ../sources/$j 
 	elif [  x"`echo $j | grep \.tgz`" != x"" ] ; then
 		tar -zxf ../sources/$j 
 	elif [ x"`echo $j | grep \.zip`" != x"" ] ; then
@@ -297,8 +318,9 @@ mv "dylibbundler" "dylibbundler0.3.1"
 echo "------------------------------"
 echo "          Compilation"
 
-
-
+ACTIVE_GCC_PORT=`port select --list gcc|grep \(active\)`
+ACTIVE_GCC_PORT=${ACTIVE_GCC_PORT% \(active\)}
+echo "ACTIVE_GCC_PORT = $ACTIVE_GCC_PORT."
 ########
 for i in ${DEPIDS[*]}
 do
@@ -307,6 +329,8 @@ do
 	#Strip the extention from the filename
 	if [ x"`echo $j | grep \.tar\.gz`" != x"" ] ; then
 		foldername=${j%.tar.gz}
+	elif [ x"`echo $j | grep \.tar\.bz2`" != x"" ] ; then
+		foldername=${j%.tar.bz2}
 	elif [  x"`echo $j | grep \.tgz`" != x"" ] ; then
 		foldername=${j%.tgz}
 	elif [ x"`echo $j | grep \.zip`" != x"" ] ; then
@@ -317,6 +341,9 @@ do
 	fi
 		
 	pushd $foldername
+
+	echo "selecting latest & greatest gcc45 from macports"
+	sudo port select --set gcc gcc45
 
 	echo "Attempting to compile ${DEPNAMES[$i]}"
 	case "${DEPNAMES[$i]}" in
@@ -342,7 +369,7 @@ do
 
 			echo "I want to install ${DEPNAMES[$i]} to the system:"
 			#install
-			sudo make install
+			sudo make install  -f scripts/makefile.darwin
 			if [ $? -ne 0 ] ; then
 				echo "Damn. unable to install. aborting"
 				exit 1
@@ -351,6 +378,7 @@ do
 			;;
 		wxwidgets)
 			# Configure wxwidgets; to let it find this bits its wants
+			sudo port select --set gcc gcc42
 			./configure --enable-unicode --with-opengl
 
 			if [ $? -ne 0 ] ; then
@@ -407,7 +435,7 @@ do
 
 		ftgl)
 			# Configure ftgl
-			./configure 
+			./configure CXXFLAGS="-fpermissive"
 
 			if [ $? -ne 0 ] ; then
 				echo "Damn. unable to configure. aborting"
@@ -519,6 +547,7 @@ do
 	popd
 done
 
+sudo port select --set gcc $ACTIVE_GCC_PORT
 
 	
 ########

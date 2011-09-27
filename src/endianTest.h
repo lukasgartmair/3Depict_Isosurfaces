@@ -29,11 +29,17 @@
 #ifdef __BYTE_ORDER
 //if both are not defined it is TRUE!
 #if __BYTE_ORDER == __BIG_ENDIAN
+#ifndef __BIG_ENDIAN__
 #define __BIG_ENDIAN__
+#endif
 #elif __BYTE_ORDER == __LITTLE_ENDIAN
+#ifndef __LITTLE_ENDIAN__
 #define __LITTLE_ENDIAN__
+#endif
 #elif __BYTE_ORDER == __PDP_ENDIAN
+#ifndef __ARM_ENDIAN__
 #define __ARM_ENDIAN__
+#endif
 #else
 #error "Endian determination failed"
 #endif
