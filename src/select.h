@@ -212,6 +212,7 @@ bool SelectionDevice<T>::getBinding(const DrawableObj *d,unsigned int mouseFlags
 			{
 				//we found one.
 				found=true;
+				keyMask=b->getKeyFlags();
 				b=&(bindingVec[ui]);
 				continue;
 			}

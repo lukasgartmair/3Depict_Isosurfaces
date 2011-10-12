@@ -1,3 +1,32 @@
+
+* Sep 30, 2011  : 0.0.8
+	Features:
+	- Data files can now be monitored for changes, prompting
+	  auto-reloading of filter tree if file changes.
+	- Multiple autosave files (per running program copy) are now
+	 supported
+	- Annotation filter, including angle measurement, text annotation,
+	  and linear measurement.
+	
+	User Visible Bugfixes/Changes:
+	- Voxel smoothing option now works if smoothing kernel is larger
+	 than dataset (i.e. small bin numbers or large sigma values).
+	- Fix bug in density scaling (this was prev. included in some builds)
+	- Fix bug in refreshing code which would not cause tree to be
+	  loaded correctly in some filter combination cases (such as pos
+	  Load->pos Load)
+	- Fix preferences not respected when loading data files
+	- Fix text files not selectable by default from load menu
+	- Minor changes to ion info filter
+	- Fix segfault if loading text data files with too few columns
+
+	Technical Bugfixes/Features:
+	- wxWidgets 2.9 support (incl. source build now supported under OSX 10.7, in theory)
+	- Minor correctness improvements to configure script
+	- wxWidgets correctness fixes (assertion failures etc).
+	- Fix build for libpng 1.4 (infopp_NULL -> NULL)
+	- Respect user choice of system background in plot area
+
 * Jul 30, 2011  : 0.0.7
 	Features:
 	- Improved isosurface computation, incl. data filtering.

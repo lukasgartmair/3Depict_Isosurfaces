@@ -93,7 +93,8 @@ public:
 	void setMouseMoveFactor(float f) { mouseMoveFactor=f;};
 	void setMouseZoomFactor(float f) { mouseZoomFactor=f;};
 
-
+	//!Is the window initialied?
+	bool isInited() { return paneInitialised;}
        	
 	//!Set the background colour (openGL clear colour)
 	void setGlClearColour(float r,float g,float b);	

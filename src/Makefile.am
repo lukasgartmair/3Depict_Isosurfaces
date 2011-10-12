@@ -71,7 +71,7 @@ else
 endif
 
 #Tarball options
-EXTRA_DIST = textures tex-source glade-skeleton myAppIcon.ico
+EXTRA_DIST = textures/ tex-source/ glade-skeleton/ myAppIcon.ico
  
 
 if USE_PRECOMPILED_HEADERS

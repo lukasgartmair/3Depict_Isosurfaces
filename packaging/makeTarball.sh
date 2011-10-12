@@ -21,6 +21,7 @@ make dist
 
 #Check version
 VER=`ls 3depict-*gz | sed 's/^3depict-\([0-9\.]*\).tar.gz$/\1/' `
+
 echo "Version is apparently :" $VER
 if [ x`grep $VER .hgtags | awk '{print $1}'` == x""  ] ; then
 	echo " NOTICE: version number not seen in HG file..."
@@ -31,10 +32,13 @@ fi
 
 #Check version number in basics.cpp is set concomitantly.
 
-if [ x"`grep PROGRAM_VERSION src/basics.cpp | grep $VER`" == x"" ] ; then
-	echo " WARNING: Program version not set to match between configure.ac. and basics.cpp"
-	sleep 1;
-fi
+for i in src/basics.cpp ChangeLog
+do
+	if [ x"`grep PROGRAM_VERSION src/basics.cpp | grep $VER`" == x"" ] ; then
+		echo " WARNING: Program version not set to match between configure.ac. and $i" 
+		sleep 1;
+	fi
+done
 
 
 rm -rf tarball

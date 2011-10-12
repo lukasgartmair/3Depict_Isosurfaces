@@ -38,9 +38,8 @@ bin_PROGRAMS = 3Depict$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/gsl.m4 \
-	$(top_srcdir)/m4/wxwin.m4 $(top_srcdir)/acinclude.m4 \
-	$(top_srcdir)/configure.ac
+am__aclocal_m4_deps = $(top_srcdir)/m4/wxwin.m4 \
+	$(top_srcdir)/acinclude.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -119,8 +118,7 @@ am__DEPENDENCIES_1 =
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 3Depict_LINK = $(CXXLD) $(3Depict_CXXFLAGS) $(CXXFLAGS) \
 	$(3Depict_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
@@ -171,9 +169,6 @@ FT_LIBS = @FT_LIBS@
 GETTEXT_LIBS = @GETTEXT_LIBS@
 GL_LIBS = @GL_LIBS@
 GREP = @GREP@
-GSL_CFLAGS = @GSL_CFLAGS@
-GSL_CONFIG = @GSL_CONFIG@
-GSL_LIBS = @GSL_LIBS@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -328,7 +323,7 @@ SOURCE_FILES = $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(FILTER_FILES) $(FILTE
 @HAVE_WINDRES_TRUE@3Depict_SOURCES = $(SOURCE_FILES)  winconsole.cpp 3Depict.rc
 
 #Tarball options
-EXTRA_DIST = textures tex-source glade-skeleton myAppIcon.ico
+EXTRA_DIST = textures/ tex-source/ glade-skeleton/ myAppIcon.ico
 
 #Precompiled headers
 @USE_PRECOMPILED_HEADERS_TRUE@BUILT_SOURCES = mathglPane.h.gch plot.h.gch prefDialog.h.gch configFile.h.gch filter.h.gch \

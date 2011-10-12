@@ -790,6 +790,8 @@ void BasicGLPane::updateClearColour()
 {
 	float rClear,gClear,bClear;
 	currentScene.getBackgroundColour(rClear,gClear,bClear);
+	//Can't set the opengl window without a proper context
+	ASSERT(paneInitialised);
 	setGlClearColour(rClear,gClear,bClear);
 	//Let openGL know that we have changed the colour.
 	glClearColor( rClear, gClear, 

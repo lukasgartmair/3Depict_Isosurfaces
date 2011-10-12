@@ -60,35 +60,35 @@
 
 \emph{3Depict} is an open source computer program designed for the analysis of point clouds with an associated scalar value. The program is designed around interactive data analysis, with a view to combine rapid feedback, ease of use and flexibility in a single system.  At time of writing, \emph{3Depict} is in the so-called ``alpha'' prototyping stage, and should be used where helpful, but may contain rough-edges.
 
-\emph{3Depict} is designed purely for post-processing of 3D point data, and was originally primarily targeted to users of Atom Probe Tomography. Other users may find the program useful, and are encouraged to seek assistance. 
+\emph{3Depict} is designed purely for post-processing of 3D point data, and was originally primarily targeted to users of Atom Probe Tomography. Other users may find the program useful, and are encouraged to seek assistance from the developers for their end-use, such as generating ideas for new features. 
  
 \subsubsection{Background}
 
-\emph{3Depict} attempts to fill a perceived need for freely available flexible point data visualisation. This program is designed to manipulate and modify point data in a way which the author has otherwise not found a suitable program to do.  
+\emph{3Depict} attempts to fill a perceived need for freely available flexible point data visualisation. This program is designed to manipulate and modify point data in a way which the author has otherwise not found a suitable program to perform such tasks.  
  
-With this program, point data can be visualised using a fully implemented camera system, edited with directly interactive objects, and subjected to various analysis algorithms. A real-time plotting system is also provided to generate analyses of your data on the fly. External programs can be engaged as part of the system to create new analyses that ``clip into'' the analysis. 
+With this program, point data can be visualised using a fully implemented camera system, edited with directly interactive 3D objects, and subjected to various analysis algorithms. A real-time plotting system is also provided to generate analyses of your data on the fly. External programs can be engaged as part of the system to create new workflows that ``clip into'' the analysis chain. 
  
 \subsubsection{What is Open Source?}
 \begin{wrapfigure}{r}{0.7\textwidth}
  \includegraphics[width=0.7 \textwidth,keepaspectratio=true]{./figures/compilation.pdf}
  % camera.pdf: 578x382 pixel, 72dpi, 20.39x13.48 cm, bb=0 0 578 382
- \caption{Closed-source programs only provide the final application, are neither human readable nor modifiable, and will only work on a specific platform. By contrast open source programs distribute the source-code as well as the application. The source code is the core logic which can be made to work on many platforms due to the invariance of the program logic.}
+ \caption{Closed-source programs only provide the final application, are neither human readable nor readily modifiable, and will only work on a specific platform. By contrast open source programs distribute the source-code as well as the application. The source code is the core logic which can be made to work on many platforms due to the invariance of the program logic.}
  \label{fig:compilation}
 \end{wrapfigure}
-Open source programs are programs which distribute not only the executable code, which is understood by the computer (so called machine code), but also provides the version of the program as it was written by humans as well. This provides external users with the possibility of modification of the program behaviour or appearance, either by themselves, or by engaging a third party. With the source code one can verify the correctness of the system, alter behaviour or otherwise modify the program, or even reuse sub-sections of the program elsewhere. 
+Open source programs are programs which distribute not only the executable code, which is understood by the computer (so called machine code), but also provides the version of the program as it was written by humans as well. This provides external users with the possibility of modification of the program behaviour or appearance, either by themselves, or by engaging a proficient third party. With the source code one can verify the correctness of the system, alter behaviour or otherwise modify the program, or even reuse sub-sections of the program elsewhere. 
 
 Modifications to the program itself may include migrating the program to newer or older systems, adding new functionality, or correcting errors in the program implementation.  
  
-To provide the user with these capabilities, the program is distributed with a so-called \textit{libre} copyright licence. The program is distributed at no cost to the end user, and the copyright attached to the program explicitly allows modification and re-distribution (copying) of the program to other parties, without requiring the author's consent.  
+To provide the user with these capabilities, the program is distributed with a so-called \textit{libre} copyright licence. The program is distributed at no cost to the end user, and the copyright attached to the program explicitly allows modification and re-distribution (copying) of the program to other parties, without requiring the author's explicit consent.  
 
-Note that there are restrictions on what may be done with the program, for example it is in violation of the licence to claim ownership of the program, or to use technical measures to prevent access to the program, or modification thereof. The licence used in the program is a generic one shared by many free (as in freedom) software programs  
+Note that there are restrictions on what may be done with the program, for example it is in violation of the licence to claim ownership of the program, or to use technical measures to prevent access to the program, or modification thereof. The licence used in the program is a generic one shared by many free (as in freedom) software programs. 
 
 If you have been charged for this program, it is suggested that you request a refund and obtain a free copy from the main website. If you wish to have the full licence details (GNU General Public Licence Version 3 (or any later version)), please see the \texttt{COPYING} file distributed with this program. If this is not available, please see the project website, or perform an Internet search for the licence name.
  
 \subsection{Requirements}
 Due to the design of the program, the program should run under Linux, Mac, BSD and Windows machines. The program does not rely on CPU specific features, and thus should be able to be run under x86, x86-64, arm, or whatever. Basically, it should run just about anywhere. Every effort is expended by the author to ensure that the program can be run on as many devices as possible; if your platform is not supported, it may be possible for either you, or the author to generate executables for your system. See the section ``Getting Help'' for contact details.  
 
-The minimum requirements for running \emph{3Depict} are not known. The author wrote a substantial portion of the program on a machine with a 4 and 12~GB drives, and a 1.6~GHz processor, which normally runs at 800~MHz and has 1~GB of RAM. I see no reason that it would not run on even lower-spec machines. Whilst a higher spec machine may run the program faster, intelligent use of the programs ``filter'' system may allow for complex analyses even on low-end machines. 
+The minimum requirements for running \emph{3Depict} are not known. The author wrote a substantial portion of the program on a machine with a 4 and 12~GB drives, and a 1.6~GHz processor, which normally runs at 800~MHz and has 1~GB of RAM. I see no reason that it would not run on even lower spec machines. Whilst a higher spec machine may run the program faster, intelligent use of the programs ``filter'' system may allow for complex analyses even on low-end machines. 
 
 If you are experiencing 3D graphics problems, first ensure that other 3D programs do not experience the same problems. Otherwise, please contact the authors for assistance -- there should be no requirement for vendor-specific hardware. Note however that the exact appearance of the 3D view is dependant upon your hardware, and may have small changes between different platforms. 
 
@@ -114,7 +114,7 @@ If the program crashes in a predictable manner (\emph{i.e.} you know how to trig
 
 \subsection{Who wrote this program?}
 
-This program was written by D. Haley, in his spare time. A. Ceguerra provided development from Version 0.0.2 and provided assistance with debugging and fixing the Macintosh version, and providing executable versions of the program for OSX in 0.0.1. 
+This program was written by D. Haley, in his spare time. A. Ceguerra provided development from Version 0.0.2 and provided assistance with debugging and fixing the Macintosh version, and providing executable versions of the program for OSX in 0.0.1 onwards. 
 
 \subsection{Alternate documentation}
 For the more visually inclined, screencasts of the program have been created, and are available on the project website. These videos exhibit basic use of the program for various simple analyses. At time of writing, the only literature available for the program is this document, and the online screencasts. If you have questions, please contact us through the website, where we will reply as soon as possible. 
@@ -153,7 +153,7 @@ At the very bottom of the program, a status bar is shown -- here messages are sh
  \label{fig:interfaceLayout}
 \end{figure}
 
-The 3D view is used to show the three-dimensional objects generated during a data analysis, and provides a direct method of interaction with the 3D Scene. Through the use of the mouse (or other pointing device), the 3D view can be manipulated to change the view position and orientations. Some objects in the 3D view are interactive, and will be indicated by an overlay in the top right of the window when the pointer is on top of such an object. 
+The 3D view is used to show the three-dimensional objects generated during a data analysis, and provides a direct method of interaction with the 3D scene. Through the use of the mouse (or other pointing device), the 3D view can be manipulated to change the view position and orientations. Some objects in the 3D view are interactive, and will be indicated by an overlay in the top right of the window when the pointer is on top of such an object. 
 
 \subsubsection{Plot area}
 The available plots are listed on the right hand side of the plot view panel. You can select the active plot from the list. The items in the list take their name from the filter from which they originates name (there are exceptions to this rule, i.e. composition profiles). Several plots may be drawn at once by holding down the \texttt{Ctrl} key when selecting the plot to draw from the plot list box. 

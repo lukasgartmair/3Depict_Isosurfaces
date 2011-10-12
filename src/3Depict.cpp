@@ -1107,7 +1107,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 		}
 
 		//Update the background colour
-		if(initedOK)
+		if(panelTop->isInited())
 			panelTop->updateClearColour();
 
 		checkViewWorldAxis->Check(visControl.getAxisVisible());

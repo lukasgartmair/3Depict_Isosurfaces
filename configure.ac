@@ -287,19 +287,19 @@ dnl -------
 #Check for gsl
 dnl -------
 
-AC_ARG_WITH(gsl-flags,
-  [  --with-gsl-flags=PATH : specify compiler flags for gsl])
-AC_ARG_WITH(gsl-libs,
-  [  --with-gsl-libs=PATH : specify linker flag (library) for gsl])
+#AC_ARG_WITH(gsl-flags,
+#  [  --with-gsl-flags=PATH : specify compiler flags for gsl])
+#AC_ARG_WITH(gsl-libs,
+#  [  --with-gsl-libs=PATH : specify linker flag (library) for gsl])
 
-if test x"$with_gsl_flags" != x"" ; then
-    GSL_CFLAGS="$with_gsl_flags"
-fi
-if test x"$with_gsl_libs" != x"" ; then
-    GSL_LIBS="$with_gsl_libs"
-else
-	AX_PATH_GSL( GSL_VERSION, [],[AC_MSG_WARN(["Could not find GNU Scientific Library.. You should install this, as it is needed by mathgl. Otherwise, you can override it with --with-gsl-link and --with-gsl-flags. For example you might use the gsl-config program to spit out the needed libs."])])
-fi
+#if test x"$with_gsl_flags" != x"" ; then
+#    GSL_CFLAGS="$with_gsl_flags"
+#fi
+#if test x"$with_gsl_libs" != x"" ; then
+#    GSL_LIBS="$with_gsl_libs"
+#else
+#	AX_PATH_GSL( GSL_VERSION, [1.1],[AC_MSG_WARN(["Could not find GNU Scientific Library.. You should install this, as it is needed by mathgl. Otherwise, you can override it with --with-gsl-link and --with-gsl-flags. For example you might use the gsl-config program to spit out the needed libs."])])
+#fi
 
 dnl -----------
 
