@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-11-14 20:18+0000\n"
+"POT-Creation-Date: 2011-11-14 20:43+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -125,35 +125,35 @@ msgid "Inconsistent number of columns found"
 msgstr ""
 
 #: ../src/basics.cpp:708
-msgid "Not sure: future?"
+msgid "in the future?"
 msgstr ""
 
 #: ../src/basics.cpp:762
-msgid "A century ago"
+msgid "a century ago"
 msgstr ""
 
 #: ../src/basics.cpp:763
-msgid "A decade ago"
+msgid "a decade ago"
 msgstr ""
 
 #: ../src/basics.cpp:764
-msgid "A year ago"
+msgid "a year ago"
 msgstr ""
 
 #: ../src/basics.cpp:765
-msgid "A month ago"
+msgid "a month ago"
 msgstr ""
 
 #: ../src/basics.cpp:766
-msgid "A week ago"
+msgid "a week ago"
 msgstr ""
 
 #: ../src/basics.cpp:767
-msgid "A day ago"
+msgid "a day ago"
 msgstr ""
 
 #: ../src/basics.cpp:768
-msgid "An Hour ago"
+msgid "an hour ago"
 msgstr ""
 
 #: ../src/basics.cpp:769
@@ -181,7 +181,7 @@ msgid "5 minutes ago"
 msgstr ""
 
 #: ../src/basics.cpp:775
-msgid "A minute ago"
+msgid "a minute ago"
 msgstr ""
 
 #: ../src/basics.cpp:776
@@ -193,47 +193,47 @@ msgid "10 seconds ago"
 msgstr ""
 
 #: ../src/basics.cpp:778
-msgid "A second ago"
+msgid "a second ago"
 msgstr ""
 
 #: ../src/basics.cpp:783
-msgid "centuries ago"
+msgid "a few centuries ago"
 msgstr ""
 
 #: ../src/basics.cpp:784
-msgid "decades ago"
+msgid "a few decades ago"
 msgstr ""
 
 #: ../src/basics.cpp:785
-msgid "years ago"
+msgid "a few years ago"
 msgstr ""
 
 #: ../src/basics.cpp:786
-msgid "months ago"
+msgid "a few months ago"
 msgstr ""
 
 #: ../src/basics.cpp:787
-msgid "weeks ago"
+msgid "a few weeks ago"
 msgstr ""
 
 #: ../src/basics.cpp:788
-msgid "days ago"
+msgid "a few days ago"
 msgstr ""
 
 #: ../src/basics.cpp:789
-msgid "hours ago"
+msgid "a few hours ago"
 msgstr ""
 
 #: ../src/basics.cpp:796
-msgid "minutes ago"
+msgid "a few minutes ago"
 msgstr ""
 
 #: ../src/basics.cpp:799
-msgid "seconds ago"
+msgid "a few seconds ago"
 msgstr ""
 
 #: ../src/basics.cpp:819
-msgid "Moments ago"
+msgid "moments ago"
 msgstr ""
 
 #: ../src/ExportRngDialog.cpp:37
