@@ -1,0 +1,16 @@
+diff -r 634db475333f src/3Depict.cpp
+--- src/3Depict.cpp	Sun Oct 23 17:43:37 2011 +0100
++++ src/3Depict.cpp	Sun Oct 23 17:44:33 2011 +0100
+@@ -2142,9 +2142,9 @@
+ 	string s;
+ 	s=locateDataFile("3Depict-manual.pdf");
+ 
+-	//Also Debian makes us use the lowercase "D", so check there too.
+-	if(!s.size())
+-		s=locateDataFile("3depict-manual.pdf");
++	//Also Fedora has diff dir
++	if(!wxFileExists(wxStr(s)))
++		s="/usr/share/doc/3Depict-0.0.8/3Depict-0.0.8-manual.pdf";
+ 
+ 
+ 	//If we found it, use the default program associated with that data file

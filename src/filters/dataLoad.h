@@ -49,9 +49,15 @@ class DataLoadFilter:public Filter
 		//Epoch timestamp for the mointored file. -1 if invalid
 		time_t monitorTimestamp;
 
+		//File size for monitored file
+		size_t monitorSize;
+
 		//Do we want to be monitoring
 		//the timestamp of the file
 		bool wantMonitor;
+
+		//!string to use in error situation, set during ::refresh
+		std::string errStr;
 	public:
 		DataLoadFilter();
 		//!Duplicate filter contents, excluding cache.
@@ -101,9 +107,9 @@ class DataLoadFilter:public Filter
 		bool readState(xmlNodePtr &node, const std::string &packDir);
 		
 		//!Get the block mask for this filter (bitmaks of streams blocked from propagation during ::refresh)
-		virtual int getRefreshBlockMask() const; 
+		virtual unsigned int getRefreshBlockMask() const; 
 		//!Get the refresh mask for this filter (bitmaks of streams emitted during ::refresh)
-		virtual int getRefreshEmitMask() const; 
+		virtual unsigned int getRefreshEmitMask() const; 
 	
 		//!Pos filter has state overrides	
 		virtual void getStateOverrides(std::vector<string> &overrides) const; 
@@ -116,6 +122,10 @@ class DataLoadFilter:public Filter
 
 		//!Return if we need monitoring or not
 		virtual bool monitorNeedsRefresh() const;
+
+#ifdef DEBUG
+		bool runUnitTests();
+#endif
 };
 
 #endif

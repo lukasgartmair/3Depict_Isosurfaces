@@ -1,0 +1,11 @@
+diff -r dfc04b8b14b2 src/wxcomponents.cpp
+--- src/wxcomponents.cpp	Fri May 20 22:26:38 2011 +0100
++++ src/wxcomponents.cpp	Fri May 20 22:27:00 2011 +0100
+@@ -666,6 +666,7 @@
+ 	//This is a list of possible target dirs to search
+ 	//(Oh look Ma, I'm autoconf!)
+ 	const char *dirs[] = {	".",
++				"/usr/share/fonts/dejavu", //Fedora
+ 				"/usr/share/fonts/truetype",
+ 				"/usr/local/share/fonts/truetype",
+ 				"/usr/X11R6/lib/X11/fonts/truetype",

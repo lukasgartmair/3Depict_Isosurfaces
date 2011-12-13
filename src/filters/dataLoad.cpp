@@ -1,7 +1,9 @@
-#include "posLoad.h"
+#include "dataLoad.h"
 
 //Needed for modification time
 #include <wx/filefn.h>
+#include <wx/file.h>
+#include <wx/filename.h>
 
 #include "../xmlHelper.h"
 #include "../basics.h"
@@ -67,6 +69,7 @@ DataLoadFilter::DataLoadFilter()
 	}
 
 	monitorTimestamp=-1;
+	monitorSize=(size_t)-1;
 	wantMonitor=false;
 }
 
@@ -177,6 +180,7 @@ string DataLoadFilter::getValueLabel()
 unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
 {
+	errStr="";
 	//use the cached copy if we have it.
 	if(cacheOK)
 	{
@@ -186,17 +190,33 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 		//the same timestamp as on the file.
 		if(wantMonitor)
 		{
-			//How can we have a valid cache if we don't
-			//have a valid load time?
-			ASSERT(monitorTimestamp!=-1);
-
-			if(wxFileModificationTime(wxStr(ionFilename)) ==monitorTimestamp)
+			if(!wxFile::Exists(wxStr(ionFilename)))
 			{
+				monitorTimestamp=-1;
+				monitorSize=-1;
 				doUseCache=false;
 				clearCache();
 			}
+			else
+			{
+				//How can we have a valid cache if we don't
+				//have a valid load time?
+				ASSERT(monitorTimestamp!=-1 && monitorSize!=(size_t)-1);
+
+
+				size_t fileSizeVal;
+				getFilesize(ionFilename.c_str(),fileSizeVal);
+				if(wxFileModificationTime(wxStr(ionFilename)) ==monitorTimestamp
+					||  fileSizeVal!= monitorSize)
+				{
+					doUseCache=false;
+					clearCache();
+				}
+			}
 		}
 
+		//Use the cache if it is still OK, otherwise use
+		//the full function
 		if(doUseCache)
 		{
 			ASSERT(filterOutputs.size());
@@ -210,13 +230,33 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 		}
 	}
 
-	if(!enabled)
+	//If theres no file, then there is not a lot we can do..
+	if(!wxFile::Exists(wxStr(ionFilename)))
 	{
+		wxFileName f(wxStr(ionFilename));
+		
+		errStr= stlStr(f.GetFullName())  + TRANS(" does not exist");
+		return ERR_FILE_OPEN;
+	}
+	
+	//If we have disable the filter, or we are are monitoring and 
+	//there is no file
+	if(!enabled ||(wantMonitor && !wxFile::Exists(wxStr(ionFilename))) )
+	{
+		monitorTimestamp=-1;
+		monitorSize=-1;
 		for(unsigned int ui=0;ui<dataIn.size();ui++)
 			getOut.push_back(dataIn[ui]);
 
 		return 0;
 	}
+
+	//Update the monitoring timestamp such that we know
+	//when the file was last loaded
+	monitorTimestamp = wxFileModificationTime(wxStr(ionFilename));
+	size_t tmp;
+	if(getFilesize(ionFilename.c_str(),tmp))
+		monitorSize=tmp;
 
 	IonStreamData *ionData = new IonStreamData;
 	ionData->parent=this;	
@@ -234,6 +274,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 				{
 					consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
 					delete ionData;
+					errStr=POS_ERR_STRINGS[uiErr];
 					return uiErr;
 				}
 			}	
@@ -244,6 +285,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 				{
 					consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
 					delete ionData;
+					errStr=POS_ERR_STRINGS[uiErr];
 					return uiErr;
 				}
 			}	
@@ -252,17 +294,60 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 		case FILEDATA_TYPE_TEXT:
 		{
 
-			
-
-			//Load the data from a text file
-			if((uiErr = limitLoadTextFile(INDEX_LENGTH,index,ionData->data, ionFilename.c_str(),TEXT_DELIMINATORS,
-								maxIons,progress.filterProgress,callback,strongRandom)))
+		
+			if(maxIons)
 			{
-				consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
-				delete ionData;
-				return uiErr;
+				//TODO: Migrate to using a generic text data loading routine
+				//	rather than an IonHit specific one, to avoid need for separate error strings
+				//Load the data from a text file
+				if((uiErr = limitLoadTextFile(INDEX_LENGTH,index,ionData->data, ionFilename.c_str(),TEXT_DELIMINATORS,
+									maxIons,progress.filterProgress,callback,strongRandom)))
+				{
+					consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
+					delete ionData;
+					errStr=ION_TEXT_ERR_STRINGS[uiErr];
+					return uiErr;
+				}
 			}
+			else
+			{
+				vector<vector<float> > outDat;
+				vector<std::string> headerData;
+				if((uiErr=loadTextData(ionFilename.c_str(),outDat,headerData,TEXT_DELIMINATORS)))
+				{
+					consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
+					delete ionData;
+					errStr=TEXT_LOAD_ERR_STRINGS[uiErr];
+					return uiErr;
+				}
+		
+					
+				ionData->data.resize(outDat.size());
+
+				if(outDat.size() !=4)
+				{
+					std::string sizeStr;
+					stream_cast(sizeStr,outDat.size());
+
+					consoleOutput.push_back(
+						string(TRANS("Data file contained incorrect number of columns -- should be 4, was ")) + sizeStr );
+
+					errStr=TEXT_LOAD_ERR_STRINGS[ERR_FILE_FORMAT];
+					return ERR_FILE_FORMAT;
+				}
 			
+			
+				ASSERT(outDat[0].size() == outDat[1].size() && 
+					outDat[1].size() == outDat[2].size()
+					&& outDat[2].size() == outDat[3].size());
+				#pragma omp parallel for
+				for(unsigned int ui=0;ui<outDat[0].size(); ui++)
+				{
+					//Convert vector to ionhits.	
+					ionData->data[ui].setPos(outDat[0][ui],outDat[1][ui],outDat[2][ui]);
+					ionData->data[ui].setMassToCharge(outDat[3][ui]);
+				}
+			}	
 
 			
 			break;
@@ -272,9 +357,6 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 			ASSERT(false);
 	}
 
-	//Update the monitoring timestamp such that we know
-	//when the file was last loaded
-	monitorTimestamp = wxFileModificationTime(wxStr(ionFilename));
 
 	ionData->r = r;
 	ionData->g = g;
@@ -283,8 +365,16 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	ionData->ionSize=ionSize;
 	ionData->valueType=getValueLabel();
 	
-	random_shuffle(ionData->data.begin(),ionData->data.end());
+	BoundCube dataCube;
+	dataCube = getIonDataLimits(ionData->data);
 
+	if(dataCube.isNumericallyBig())
+	{
+		consoleOutput.push_back(
+			TRANS("Warning:One or more bounds of the loaded data approaches "
+			       "the limits of numerical stability for the internal data type"
+			       "(magnitude too large). Consider rescaling data before loading"));
+	}
 
 	string s;
 	stream_cast(s,ionData->data.size());
@@ -300,6 +390,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 
 	for(unsigned int ui=0;ui<dataIn.size();ui++)
 		getOut.push_back(dataIn[ui]);
+
 
 	//Append the ion data 
 	getOut.push_back(ionData);
@@ -360,7 +451,7 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 	}
 
 	choices.clear();
-	for (int i = 0; i < numColumns; i++) {
+	for (unsigned int i = 0; i < numColumns; i++) {
 		string tmp;
 		stream_cast(tmp,i);
 		choices.push_back(make_pair(i,tmp));
@@ -600,7 +691,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 			if(stream_cast(ltmp,value))
 				return false;
 			
-			if(ltmp < 0 || ltmp >= numColumns)
+			if(ltmp >= numColumns)
 				return false;
 			
 			index[0]=ltmp;
@@ -615,7 +706,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 			if(stream_cast(ltmp,value))
 				return false;
 			
-			if(ltmp < 0 || ltmp >= numColumns)
+			if(ltmp >= numColumns)
 				return false;
 			
 			index[1]=ltmp;
@@ -664,7 +755,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 				return false;
 			
 			numColumns=ltmp;
-			for (int i = 0; i < INDEX_LENGTH; i++) {
+			for (unsigned int i = 0; i < INDEX_LENGTH; i++) {
 				index[i] = (index[i] < numColumns? index[i]: numColumns - 1);
 			}
 			needUpdate=true;
@@ -733,7 +824,7 @@ bool DataLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	//Retrieve number of columns	
 	if(!XMLGetNextElemAttrib(nodePtr,numColumns,"columns","value"))
 		return false;
-	if(numColumns <=0 || numColumns >= MAX_NUM_FILE_COLS)
+	if(numColumns >= MAX_NUM_FILE_COLS)
 		return false;
 	
 	//Retrieve index	
@@ -764,9 +855,17 @@ bool DataLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	
 	//Retrieve monitor mode 
 	//--
-	if(!XMLGetNextElemAttrib(nodePtr,tmpVal,"monitor","value"))
-		return false;
-	wantMonitor=tmpVal;
+	xmlNodePtr nodeTmp;
+	nodeTmp=nodePtr;
+	if(XMLGetNextElemAttrib(nodePtr,tmpVal,"monitor","value"))
+	{
+		wantMonitor=tmpVal;
+	}
+	else
+	{
+		nodePtr=nodeTmp;
+		wantMonitor=false;
+	}
 	//--
 
 	//Get max Ions
@@ -797,20 +896,20 @@ bool DataLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	return true;
 }
 
-int DataLoadFilter::getRefreshBlockMask() const
+unsigned int DataLoadFilter::getRefreshBlockMask() const
 {
 	return 0;
 }
 
-int DataLoadFilter::getRefreshEmitMask() const
+unsigned int DataLoadFilter::getRefreshEmitMask() const
 {
 	return STREAM_TYPE_IONS;
 }
 
 std::string  DataLoadFilter::getErrString(unsigned int code) const
 {
-	ASSERT(code < POS_ERR_FINAL);
-	return posErrStrings[code];
+	ASSERT(errStr.size());
+	return errStr;
 }
 
 bool DataLoadFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
@@ -875,10 +974,107 @@ bool DataLoadFilter::monitorNeedsRefresh() const
 {
 	if(wantMonitor)
 	{
+		//Prevent call to ionFilename
+		if(!wxFile::Exists(wxStr(ionFilename)))
+			return cacheOK;
+
+
+		size_t sizeVal;
+		getFilesize(ionFilename.c_str(),sizeVal);
+		if(sizeVal != monitorSize)
+			return true;
+
 		return( wxFileModificationTime(wxStr(ionFilename))
 						!=monitorTimestamp);
+		
+		
 	}
 
 
 	return false;
 }
+
+
+#ifdef DEBUG
+
+bool posFileTest();
+
+bool DataLoadFilter::runUnitTests()
+{
+	if(!posFileTest())
+		return false;
+	return true;
+}
+
+bool posFileTest()
+{
+	//Synthesise data, then *save* it.
+
+	const unsigned int NUM_PTS=133;
+	vector<IonHit> hits;
+	hits.resize(NUM_PTS);
+	for(unsigned int ui=0; ui<NUM_PTS; ui++)
+	{
+		hits[ui].setPos(Point3D(ui,ui,ui));
+		hits[ui].setMassToCharge(ui);
+	}
+
+	//TODO: Make more robust
+	const char *posName="testAFNEUEA1754.pos";
+	std::ifstream file(posName,std::ios::binary);
+
+	if(file)
+	{
+		std::string s;
+		s="Unwilling to execute file test, will not overwrite file :";
+		s+=posName;
+		s+=". Test is indeterminate";
+		WARN(false,s.c_str());
+
+		return true;
+	}
+
+	if(IonVectorToPos(hits,posName))
+	{
+		WARN(false,"Unable to create test output file. Unit test was indeterminate. Requires write access to excution path");
+		return true;
+	}
+
+	//-----------
+
+	//Create the data load filter, load it, then check we loaded the same data
+	//---------
+	DataLoadFilter *d = new DataLoadFilter;
+	d->setCaching(false);
+
+	bool needUp;
+	d->setProperty(0,KEY_FILE,posName,needUp);
+	d->setProperty(0,KEY_SIZE,"0",needUp);
+	//---------
+
+	vector<const FilterStreamData*> streamIn,streamOut;
+	ProgressData prog;
+	d->refresh(streamIn,streamOut,prog,dummyCallback);
+
+
+	TEST(streamOut.size() == 1, "Stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS, "Stream type");
+
+	TEST(streamOut[0]->getNumBasicObjects() == hits.size(), "Stream count");
+	
+	
+	WARN(false,"Implement unit tests for text dataload!");
+
+#if defined(__LINUX__) || defined(__APPLE__)
+	//Hackish mathod to delete file
+	std::string s;
+	s=string("rm -f ") + string(posName);
+	system(s.c_str());
+#endif
+
+	delete d;
+	delete streamOut[0];
+	return true;
+}
+
+#endif

@@ -318,9 +318,6 @@ mv "dylibbundler" "dylibbundler0.3.1"
 echo "------------------------------"
 echo "          Compilation"
 
-ACTIVE_GCC_PORT=`port select --list gcc|grep \(active\)`
-ACTIVE_GCC_PORT=${ACTIVE_GCC_PORT% \(active\)}
-echo "ACTIVE_GCC_PORT = $ACTIVE_GCC_PORT."
 ########
 for i in ${DEPIDS[*]}
 do
@@ -341,9 +338,6 @@ do
 	fi
 		
 	pushd $foldername
-
-	echo "selecting latest & greatest gcc45 from macports"
-	sudo port select --set gcc gcc45
 
 	echo "Attempting to compile ${DEPNAMES[$i]}"
 	case "${DEPNAMES[$i]}" in
@@ -378,7 +372,6 @@ do
 			;;
 		wxwidgets)
 			# Configure wxwidgets; to let it find this bits its wants
-			sudo port select --set gcc gcc42
 			./configure --enable-unicode --with-opengl
 
 			if [ $? -ne 0 ] ; then
@@ -547,7 +540,6 @@ do
 	popd
 done
 
-sudo port select --set gcc $ACTIVE_GCC_PORT
 
 	
 ########
