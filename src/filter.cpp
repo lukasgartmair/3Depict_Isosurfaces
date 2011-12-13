@@ -177,13 +177,13 @@ bool parseXMLColour(xmlNodePtr &nodePtr, float &r,float&g,float&b,float&a)
 	return true;
 }
 
-size_t numElements(const vector<const FilterStreamData *> &v, int mask)
+size_t numElements(const vector<const FilterStreamData *> &v, unsigned int mask)
 {
 	size_t nE=0;
 	for(unsigned int ui=0;ui<v.size();ui++)
 	{
 		if((v[ui]->getStreamType() & mask))
-			nE+=v[ui]->GetNumBasicObjects();
+			nE+=v[ui]->getNumBasicObjects();
 	}
 
 	return nE;
@@ -203,7 +203,7 @@ const RangeFile *getRangeFile(const std::vector<const FilterStreamData*> &dataIn
 
 unsigned int getIonstreamIonID(const IonStreamData *d, const RangeFile *r)
 {
-	if(!d->data.size())
+	if(d->data.empty())
 		return (unsigned int)-1;
 
 	unsigned int tentativeRange;
@@ -319,6 +319,19 @@ DrawStreamData::~DrawStreamData()
 	clear();
 }
 
+PlotStreamData::PlotStreamData()
+{
+	streamType=STREAM_TYPE_PLOT;
+	plotType=PLOT_TRACE_LINES;
+	errDat.mode=PLOT_ERROR_NONE;
+	r=1.0,g=0.0,b=0.0,a=1.0;
+	logarithmic=false;
+	index=(unsigned int)-1;
+
+	hardMinX=hardMinY=-std::numeric_limits<float>::max();
+	hardMaxX=hardMaxY=std::numeric_limits<float>::max();
+}
+
 Filter::Filter()
 {
 	cacheOK=false;
@@ -405,5 +418,6 @@ void Filter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
 	dataOut.resize(dataIn.size());
 	std::copy(dataIn.begin(),dataIn.end(),dataOut.begin());
 }
+
 
 

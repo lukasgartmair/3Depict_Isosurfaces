@@ -56,6 +56,22 @@ enum
 	ERR_NOMEM
 };
 
+const char *TRANSFORM_MODE_STRING[] = { NTRANS("Translate"),
+					NTRANS("Scale"),
+					NTRANS("Rotate"),
+					NTRANS("Value Shuffle"),
+					NTRANS("Spatial Noise"),
+					NTRANS("Translate Value")
+					};
+
+const char *TRANSFORM_ORIGIN_STRING[]={ 
+					NTRANS("Specify"),
+					NTRANS("Boundbox Centre"),
+					NTRANS("Mass Centre")
+					};
+					
+	
+	
 //=== Transform filter === 
 TransformFilter::TransformFilter()
 {
@@ -1024,12 +1040,8 @@ void TransformFilter::getProperties(FilterProperties &propertyList) const
 
 	string tmpStr;
 	vector<pair<unsigned int,string> > choices;
-	choices.push_back(make_pair((unsigned int) MODE_TRANSLATE,TRANS("Translate")));
-	choices.push_back(make_pair((unsigned int)MODE_SCALE,TRANS("Scale")));
-	choices.push_back(make_pair((unsigned int)MODE_ROTATE,TRANS("Rotate")));
-	choices.push_back(make_pair((unsigned int)MODE_VALUE_SHUFFLE,TRANS("Value Shuffle")));
-	choices.push_back(make_pair((unsigned int)MODE_SPATIAL_NOISE,TRANS("Spatial Noise")));
-	choices.push_back(make_pair((unsigned int) MODE_TRANSLATE_VALUE,TRANS("Translate Value")));
+	for(unsigned int ui=0;ui<MODE_ENUM_END; ui++)
+		choices.push_back(make_pair(ui,TRANS(TRANSFORM_MODE_STRING[ui])));
 	
 	tmpStr= choiceString(choices,transformMode);
 	choices.clear();
@@ -1368,6 +1380,7 @@ std::string  TransformFilter::getErrString(unsigned int code) const
 		case ERR_NOMEM:
 			return std::string(TRANS("Unable to allocate memory"));
 	}
+	ASSERT(false);
 }
 
 bool TransformFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
@@ -1566,18 +1579,18 @@ bool TransformFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 }
 
 
-int TransformFilter::getRefreshBlockMask() const
+unsigned int TransformFilter::getRefreshBlockMask() const
 {
 	//Only ions cannot go through this filter.
 	return STREAM_TYPE_IONS;
 }
 
-int TransformFilter::getRefreshEmitMask() const
+unsigned int TransformFilter::getRefreshEmitMask() const
 {
 	if(showPrimitive)
-		return STREAM_TYPE_IONS;
-	else
 		return STREAM_TYPE_IONS | STREAM_TYPE_DRAW;
+	else
+		return STREAM_TYPE_IONS;
 }
 
 
@@ -1596,16 +1609,8 @@ void TransformFilter::setPropFromBinding(const SelectionBinding &b)
 
 std::string TransformFilter::getOriginTypeString(unsigned int i) const
 {
-	switch(i)
-	{
-		case ORIGINMODE_SELECT:
-			return std::string("Specify");
-		case ORIGINMODE_CENTREBOUND:
-			return std::string("Boundbox Centre");
-		case ORIGINMODE_MASSCENTRE:
-			return std::string("Mass Centre");
-	}
-	ASSERT(false);
+	ASSERT(i<ORIGINMODE_END);
+	return TRANSFORM_ORIGIN_STRING[i];
 }
 
 std::string TransformFilter::getNoiseTypeString(unsigned int i) const
@@ -1619,3 +1624,296 @@ std::string TransformFilter::getNoiseTypeString(unsigned int i) const
 	}
 	ASSERT(false);
 }
+
+
+#ifdef DEBUG
+
+//Generate some synthetic data points, that lie within 0->span.
+//span must be  a 3-wide array, and numPts will be generated.
+//each entry in the array should be coprime for optimal results.
+//filter pointer must be deleted.
+IonStreamData *synthDataPoints(unsigned int span[],unsigned int numPts);
+bool rotateTest();
+bool translateTest();
+bool scaleTest();
+
+bool TransformFilter::runUnitTests()
+{
+	if(!rotateTest())
+		return false;
+	if(!translateTest())
+		return false;
+
+	if(!scaleTest())
+		return false;
+	
+	return true;
+}
+
+IonStreamData *synthDataPoints(unsigned int span[], unsigned int numPts)
+{
+	IonStreamData *d = new IonStreamData;
+	
+	for(unsigned int ui=0;ui<numPts;ui++)
+	{
+		IonHit h;
+		h.setPos(Point3D(ui%span[0],
+			ui%span[1],ui%span[2]));
+		h.setMassToCharge(ui);
+		d->data.push_back(h);
+	}
+
+	return d;
+}
+
+bool rotateTest()
+{
+	//Simulate some data to send to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	IonStreamData *d= new IonStreamData;
+
+	RandNumGen rng;
+	rng.initTimer();
+
+	const unsigned int NUM_PTS=10000;
+
+	
+	//Build a  sphere of data points
+	//by rejection method
+	d->data.reserve(NUM_PTS/2.0);	
+	for(unsigned int ui=0;ui<NUM_PTS;ui++)
+	{
+		Point3D tmp;
+		tmp=Point3D(rng.genUniformDev()-0.5f,
+				rng.genUniformDev()-0.5f,
+				rng.genUniformDev()-0.5f);
+
+		if(tmp.sqrMag() < 1.0f)
+		{
+			IonHit h;
+			h.setPos(tmp);
+			h.setMassToCharge(1);
+			d->data.push_back(h);
+		}
+	}
+		
+	streamIn.push_back(d);
+
+	//Set up the filter itself
+	//---
+	TransformFilter *f=new TransformFilter;
+	f->setCaching(false);
+
+
+	bool needUp;
+	string s;
+	f->setProperty(0,KEY_MODE,TRANSFORM_MODE_STRING[MODE_ROTATE],needUp);
+	float tmpVal;
+	tmpVal=rng.genUniformDev()*M_PI*2.0;
+	stream_cast(s,tmpVal);
+	f->setProperty(0,KEY_ROTATE_ANGLE,s,needUp);
+	Point3D tmpPt;
+
+	//NOTE: Technically there is a nonzero chance of this failing.
+	tmpPt=Point3D(rng.genUniformDev()-0.5f,
+			rng.genUniformDev()-0.5f,
+			rng.genUniformDev()-0.5f);
+	stream_cast(s,tmpPt);
+	f->setProperty(0,KEY_ROTATE_AXIS,s,needUp);
+	
+	f->setProperty(0,KEY_ORIGINMODE,TRANSFORM_ORIGIN_STRING[ORIGINMODE_MASSCENTRE],needUp);
+	f->setProperty(0,KEY_TRANSFORM_SHOWORIGIN,"0",needUp);
+	//---
+
+
+	//OK, so now do the rotation
+	//Do the refresh
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+	delete f;
+
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+	TEST(streamOut[0]->getNumBasicObjects() == d->data.size(),"Ion count invariance");
+
+	const IonStreamData *outData=(IonStreamData*)streamOut[0];
+
+	Point3D massCentre[2];
+	massCentre[0]=massCentre[1]=Point3D(0,0,0);
+	//Now check that the mass centre has not moved
+	for(unsigned int ui=0;ui<d->data.size();ui++)
+		massCentre[0]+=d->data[ui].getPos();
+
+	for(unsigned int ui=0;ui<outData->data.size();ui++)
+		massCentre[1]+=d->data[ui].getPos();
+
+
+	TEST((massCentre[0]-massCentre[1]).sqrMag() < 
+			2.0*sqrt(std::numeric_limits<float>::epsilon()),"mass centre invariance");
+
+	//Rotating a sphere around its centre of mass
+	// should not massively change the bounding box
+	// however we don't quite have  a sphere, so we could have (at the most extreme,
+	// a cube)
+	BoundCube bc[2];
+	bc[0]=getIonDataLimits(d->data);
+	bc[1]=getIonDataLimits(outData->data);
+
+	float volumeRat;
+	volumeRat = bc[0].volume()/bc[1].volume();
+
+	TEST(volumeRat > 0.5f && volumeRat < 2.0f, "volume ratio test");
+
+	delete streamOut[0];
+	delete d;
+	return true;
+}
+
+bool translateTest()
+{
+	RandNumGen rng;
+	rng.initTimer();
+	
+	//Simulate some data to send to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	IonStreamData *d;
+	const unsigned int NUM_PTS=10000;
+
+	unsigned int span[]={ 
+			5, 7, 9
+			};	
+	d=synthDataPoints(span,NUM_PTS);
+	streamIn.push_back(d);
+
+	Point3D offsetPt;
+
+	//Set up the filter itself
+	//---
+	TransformFilter *f=new TransformFilter;
+
+	bool needUp;
+	string s;
+	f->setProperty(0,KEY_MODE,TRANSFORM_MODE_STRING[MODE_TRANSLATE],needUp);
+
+	//NOTE: Technically there is a nonzero chance of this failing.
+	offsetPt=Point3D(rng.genUniformDev()-0.5f,
+			rng.genUniformDev()-0.5f,
+			rng.genUniformDev()-0.5f);
+	offsetPt[0]*=span[0];
+	offsetPt[1]*=span[1];
+	offsetPt[2]*=span[2];
+
+	stream_cast(s,offsetPt);
+	f->setProperty(0,KEY_ORIGIN,s,needUp);
+	f->setProperty(0,KEY_TRANSFORM_SHOWORIGIN,"0",needUp);
+	//---
+	
+	//Do the refresh
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+	delete f;
+	
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+	TEST(streamOut[0]->getNumBasicObjects() == d->data.size(),"Ion count invariance");
+
+	const IonStreamData *outData=(IonStreamData*)streamOut[0];
+
+	//Bound cube should move exactly as per the translation
+	BoundCube bc[2];
+	bc[0]=getIonDataLimits(d->data);
+	bc[1]=getIonDataLimits(outData->data);
+
+	for(unsigned int ui=0;ui<3;ui++)
+	{
+		for(unsigned int uj=0;uj<2;uj++)
+		{
+			float f;
+			f=bc[0].getBound(ui,uj) -bc[1].getBound(ui,uj);
+			TEST(fabs(f-offsetPt[ui]) < sqrt(std::numeric_limits<float>::epsilon()), "bound translation");
+		}
+	}
+
+	delete d;
+	delete streamOut[0];
+
+	return true;
+}
+
+
+bool scaleTest() 
+{
+	//Simulate some data to send to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	IonStreamData *d;
+
+	RandNumGen rng;
+	rng.initTimer();
+
+	const unsigned int NUM_PTS=10000;
+
+	unsigned int span[]={ 
+			5, 7, 9
+			};	
+	d=synthDataPoints(span,NUM_PTS);
+	streamIn.push_back(d);
+
+	//Set up the filter itself
+	//---
+	TransformFilter *f=new TransformFilter;
+
+	bool needUp;
+	string s;
+	//Switch to scale mode
+	f->setProperty(0,KEY_MODE,TRANSFORM_MODE_STRING[MODE_SCALE],needUp);
+
+
+	//Switch to mass-centre origin
+	f->setProperty(0,KEY_ORIGINMODE,TRANSFORM_ORIGIN_STRING[ORIGINMODE_MASSCENTRE],needUp);
+
+	float scaleFact;
+	//Pick some scale, both positive and negative.
+	if(rng.genUniformDev() > 0.5)
+		scaleFact=rng.genUniformDev()*10;
+	else
+		scaleFact=0.1f/(0.1f+rng.genUniformDev());
+
+	stream_cast(s,scaleFact);
+
+	f->setProperty(0,KEY_SCALEFACTOR,s,needUp);
+	//Don't show origin marker
+	f->setProperty(0,KEY_TRANSFORM_SHOWORIGIN,"0",needUp);
+	//---
+
+
+	//OK, so now do the rotation
+	//Do the refresh
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+	delete f;
+
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+	TEST(streamOut[0]->getNumBasicObjects() == d->data.size(),"Ion count invariance");
+
+	const IonStreamData *outData=(IonStreamData*)streamOut[0];
+
+	//Scaling around its centre of mass
+	// should scale the bounding box by the cube of the scale factor
+	BoundCube bc[2];
+	bc[0]=getIonDataLimits(d->data);
+	bc[1]=getIonDataLimits(outData->data);
+
+	float cubeOfScale=scaleFact*scaleFact*scaleFact;
+
+	float volumeDelta;
+	volumeDelta=fabs(bc[1].volume()/cubeOfScale - bc[0].volume() );
+
+	TEST(volumeDelta < 100.0f*sqrt(std::numeric_limits<float>::epsilon()), "scaled volume test");
+
+	delete streamOut[0];
+	delete d;
+	return true;
+}
+
+#endif

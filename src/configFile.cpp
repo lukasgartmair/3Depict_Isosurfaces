@@ -50,6 +50,16 @@ ConfigFile::ConfigFile()
 	allowOnline=false;
 	allowOnlineVerCheck=false;
 	haveIntialAppSize=false;
+	configLoadOK=false;
+
+	leftRightSashPos=topBottomSashPos=plotListSashPos=filterSashPos=0;
+}
+
+
+ConfigFile::~ConfigFile()
+{
+	for(unsigned int ui=0;ui<filterDefaults.size();ui++)
+		delete filterDefaults[ui];
 }
 
 unsigned int ConfigFile::getMaxHistory() const
@@ -225,7 +235,6 @@ unsigned int ConfigFile::read()
 				if(!xmlString)
 				{
 					errMessage=TRANS("Unable to interpret recent file entry");
-					xmlFree(xmlString);
 					throw 1;
 				}
 				thisName=(char *)xmlString;
@@ -431,6 +440,37 @@ unsigned int ConfigFile::read()
 		}
 		nodePtr=nodeStack.top();
 		nodeStack.pop();
+
+
+		nodeStack.push(nodePtr);
+		if(!XMLHelpFwdToElem(nodePtr,"sashposition"))
+		{
+			if(nodePtr->xmlChildrenNode)
+			{
+				nodePtr=nodePtr->xmlChildrenNode;
+
+				while(!XMLHelpFwdToElem(nodePtr,"pos"))
+				{
+
+					string name;
+					if(XMLGetAttrib(nodePtr, name,"name"))
+					{
+						if(name == "topbottom")
+							XMLGetAttrib(nodePtr,topBottomSashPos,"value");
+						if(name == "leftright")
+							XMLGetAttrib(nodePtr,leftRightSashPos,"value");
+						if(name == "filter")
+							XMLGetAttrib(nodePtr,filterSashPos,"value");
+						if(name == "plotlist")
+							XMLGetAttrib(nodePtr,plotListSashPos,"value");
+					}
+
+					nodePtr=nodePtr->next;
+				}
+			}
+		}
+		nodePtr=nodeStack.top();
+		nodeStack.pop();
 nodeptrEndJump:
 		;
 
@@ -447,6 +487,7 @@ nodeptrEndJump:
 	delete paths;
 	xmlFreeDoc(doc);
 
+	configLoadOK=true;
 	return 0;
 
 }
@@ -456,7 +497,22 @@ bool ConfigFile::write()
 	string filename;
 	wxStandardPaths *paths = new wxStandardPaths;
 
+
 	wxString filePath = paths->GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);
+
+	//Create the folder if it does not exist
+	if(!wxDirExists(filePath))
+	{
+		if(!wxMkdir(filePath))
+			return false;
+
+#if defined(__WIN32) || defined(__WIN64)
+		string s;
+		s=stlStr(filePath);
+		SetFileAttributes(s.c_str(),FILE_ATTRIBUTE_HIDDEN);
+#endif
+	}
+
 	filePath+=wxCStr("/") + wxCStr(CONFIG_FILENAME);
 	filename = stlStr(filePath);
 	
@@ -504,10 +560,10 @@ bool ConfigFile::write()
 	       		mouseMoveRatePercent << "\"/>" << endl;
 	f << tabs(1) <<  "</mousedefaults> " << endl;
 
-
+	//Online access settings
 #if (!defined(APPLE) && !defined(WIN32))
-	f << tabs(1) << TRANS("<!-- Online access for non win32/apple platforms is intentionally disabled, ") <<
-		TRANS("regardless of the settings you use here. Use your package manager to keep up-to-date -->") << endl;
+	f << tabs(1) <<"<!--" << TRANS("Online access for non win32/apple platforms is intentionally disabled, ") <<
+		TRANS("regardless of the settings you use here. Use your package manager to keep up-to-date") << "-->" << endl;
 #endif
 	f << tabs(1) <<  "<netaccess enabled=\"" << allowOnline <<  "\"> " << endl;
 
@@ -516,8 +572,21 @@ bool ConfigFile::write()
 	f << tabs(1) <<  "</netaccess>" << endl;
 
 
+	//Online access settings
+	f << tabs(1) << "<sashposition>" << endl;
+		if(topBottomSashPos)
+			f << tabs(2) << "<pos name=\"topbottom\" value=\"" << topBottomSashPos << "\"/>" << endl;
+		if(leftRightSashPos)
+			f << tabs(2) << "<pos name=\"leftright\" value=\"" << leftRightSashPos<< "\"/>" << endl;
+		if(filterSashPos)
+			f << tabs(2) << "<pos name=\"filter\" value=\"" <<  filterSashPos<< "\"/>" << endl;
+		if(plotListSashPos)
+			f << tabs(2) << "<pos name=\"plotlist\" value=\"" << plotListSashPos<< "\"/>" << endl;
+	f << tabs(1) << "</sashposition>" << endl;
+
 	f << "</threeDepictconfig>" << endl;
 
+	ASSERT(isValidXML(filename.c_str()));
 
 	delete paths;
 	return true;
@@ -550,7 +619,7 @@ void ConfigFile::setPanelEnabled(unsigned int panelID, bool enabled, bool perman
 	ASSERT(panelID < CONFIG_STARTUPPANEL_END_ENUM);
 	
 	//Create the vector as neeeded, filling with default of "enbaled"
-	if(!startupPanelView.size())
+	if(startupPanelView.empty())
 		startupPanelView.resize(CONFIG_STARTUPPANEL_END_ENUM,true);
 
 	ASSERT(startupPanelView.size() == CONFIG_STARTUPPANEL_END_ENUM);
@@ -603,3 +672,32 @@ void ConfigFile::setAllowOnlineVersionCheck(bool v)
 		allowOnlineVerCheck=v;
 	#endif
 }
+
+
+void ConfigFile::setLeftRightSashPos(float fraction) 
+{
+	ASSERT(fraction <= 1.0f && fraction >=0.0f);
+	leftRightSashPos=fraction;
+}
+
+void ConfigFile::setTopBottomSashPos(float fraction)
+{
+	ASSERT(fraction <= 1.0f && fraction >=0.0f);
+	topBottomSashPos=fraction;
+}
+
+
+void ConfigFile::setFilterSashPos(float fraction)
+{
+	ASSERT(fraction <= 1.0f && fraction >=0.0f);
+	filterSashPos=fraction;
+}
+
+
+void ConfigFile::setPlotListSashPos(float fraction)
+{
+	ASSERT(fraction <= 1.0f && fraction >=0.0f);
+	plotListSashPos=fraction;
+}
+
+

@@ -1345,11 +1345,11 @@ size_t Voxels<T>::separableConvolve(const Voxels<T> &kernel, Voxels<T> &result, 
 
 	Point3D resultMinBound, resultMaxBound;
 	size_t x,y,z;
-	long long half;
+	unsigned long long half;
 	kernel.getSize(x,y,z);
 	half=x/2;
 	//Kernel needs to be cubic
-	ASSERT(x==y && y == z && !(z%2));
+	ASSERT(x==y && y == z && (z%2));
 
 	if(boundMode!=BOUND_CLIP)
 	{
@@ -1586,7 +1586,7 @@ T Voxels<T>::getData(size_t x, size_t y, size_t z) const
 template<class T>
 T Voxels<T>::getPaddedData(long long x, long long y, long long z, unsigned int padMode) const
 {
-	if(x >=0 && x<binCount[0] && y>=0 && y<binCount[1] && z>=0 && z <binCount[2])
+	if(x >=0 && x<(long long)binCount[0] && y>=0 && y<(long long)binCount[1] && z>=0 && z <(long long)binCount[2])
 	{
 		return getData(x,y,z);
 	}
@@ -2288,8 +2288,7 @@ int Voxels<T>::countPoints( const std::vector<Point3D> &points, bool noWrap, boo
 		getIndex(x,y,z,points[ui]);
 
 		//Ensure it lies within the dataset	
-		if(x < binCount[0] && y < binCount[1] && z< binCount[2]
-			&& x >= 0 && y >= 0 && z >= 0)
+		if(x < binCount[0] && y < binCount[1] && z< binCount[2])
 		{
 			{
 				value=getData(x,y,z)+T(1);

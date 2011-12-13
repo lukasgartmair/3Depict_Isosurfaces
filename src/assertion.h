@@ -40,13 +40,13 @@
 		std::cerr << "Filename: " << filename << std::endl;
 		std::cerr << "Line number: " << lineNumber << std::endl;
 
-/*		std::cerr << "Do you wish to continue?(y/n)";
+		std::cerr << "Do you wish to continue?(y/n)";
 		char y = 'a';
 		while (y != 'n' && y != 'y')
 			std::cin >> y;
 
 		if (y != 'y')
-			exit(1);*/
+			exit(1);
 	}
 
 	inline void dh_warn(const char * const filename, const unsigned int lineNumber,const char *message) 
@@ -71,6 +71,9 @@
 		#define glError()
 	#endif
 
+	#ifndef TEST
+	#define TEST(f,g) if(!(f)) { cerr << "Test fail :" << __FILE__ << ":" << __LINE__ << "\t"<< g << endl;return false;}
+	#endif
 
 #else
 	#define ASSERT(f)

@@ -2,7 +2,7 @@
 .\" First parameter, NAME, should be all caps
 .\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
 .\" other parameters are allowed: see man(7), man(1)
-.TH 3DEPICT "July 24, 2010"
+.TH 3DEPICT "1" "July 24, 2011"
 .\" Please adjust this date whenever revising the manpage.
 .SH NAME
 3Depict \- 3D scalar point cloud visualization and analysis
@@ -17,11 +17,30 @@ This manual page documents briefly the
 .\" TeX users may be more comfortable with the \fB<whatever>\fP and
 .\" \fI<whatever>\fP escape sequences to invode bold face and italics,
 .\" respectively.
-\fB3Depict\fP is a program that allows for visualisation and analysis of point datasets with associated spectral data.
+\fB3depict\fP is a program that allows for visualisation and analysis of
+point datasets with associated spectral data. Specifically, the program
+was written to handle the data associated with atom probe tomography,
+but is applicable to other areas, such as astronomy, laser scanning and
+any point-based data source.
+.PP
+Note that the program is a best-effort system. It is by no means
+guaranteed that the algorithms in this program are free from errors in
+implementation, or follow conventions for any specific user-application.
 .SH OPTIONS
-This program has no command line options, other than a sequence of files to open, or an XML file containg the previous program state (this may be generated from within the program's graphical interface). Currently the program can read "POS" (position) formatted files, which are simply uncompressed sequences of 4-byte floats (IEEE 597) in (x,y,z,value) form. All other work is done through the graphical interface.
+This program has no command line options, other than a sequence of
+data or XML files to open, the XML files being containing a previous
+program state (this may be generated from within the program's graphical
+interface). Currently the program can read "POS" (position) formatted
+files, which are simply uncompressed sequences of 4-byte floats (IEEE
+597) in (x,y,z,value) form. All other work is done through the graphical
+interface.
+.PP
+As a further note, the XML file format has not been stabilised for the
+0.0.x series; and may change between revisions.
 .SH AUTHOR
-3Depict was written by D. Haley in 2010 
+3Depict was written by D. Haley & A. Ceguerra in 2011 
+.SH HOMEPAGE
+3Depict Project Home : http://threedepict.sourceforge.net
 .PP
 This manual page was written by D Haley <mycae@yahoo.com>,
 for the Debian project (and may be used by others).

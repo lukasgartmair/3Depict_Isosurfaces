@@ -7,8 +7,30 @@
 //!Error codes
 enum 
 {
-	IONCLIP_CALLBACK_FAIL=1,
-	IONCLIP_BAD_ALLOC,
+	CALLBACK_FAIL=1,
+	BAD_ALLOC,
+};
+
+//!Possible primitive types for ion clipping
+enum
+{
+	PRIMITIVE_SPHERE,
+	PRIMITIVE_PLANE,
+	PRIMITIVE_CYLINDER,
+	PRIMITIVE_AAB, //Axis aligned box
+
+	PRIMITIVE_END //Not actually a primitive, just end of enum
+};
+
+enum {
+	KEY_ORIGIN=1,
+	KEY_PRIMITIVE_TYPE,
+	KEY_RADIUS,
+	KEY_PRIMITIVE_SHOW,
+	KEY_PRIMITIVE_INVERTCLIP,
+	KEY_NORMAL,
+	KEY_CORNER,
+	KEY_AXIS_LOCKMAG,
 };
 
 //FIXME: make member functions.
@@ -22,47 +44,43 @@ bool inFrontPlane(const Point3D &testPt, const Point3D &origin, const Point3D &p
 	return ((testPt-origin).dotProd(planeVec) > 0.0f);
 }
 
+
+const char *primitiveNames[]  = {
+				 NTRANS("Sphere"),
+				 NTRANS("Plane"),
+				 NTRANS("Cylinder"),
+				 NTRANS("Aligned box")
+				};
+
+
+
 unsigned int primitiveID(const std::string &str)
 {
-	if(str == TRANS("Sphere"))
-		return PRIMITIVE_SPHERE;
-	if(str == TRANS("Plane"))
-		return PRIMITIVE_PLANE;
-	if(str == TRANS("Cylinder"))
-		return PRIMITIVE_CYLINDER;
-	if(str == TRANS("Aligned box"))
-		return PRIMITIVE_AAB;
+	for(unsigned int ui=0;ui<PRIMITIVE_END;ui++)
+	{
+		if(str == TRANS(primitiveNames[ui]))
+			return ui;
+	}
 
 	ASSERT(false);
 	return (unsigned int)-1;
 }
 
+
 std::string primitiveStringFromID(unsigned int id)
 {
-	switch(id)
-	{
-		case PRIMITIVE_SPHERE:
-			return string(TRANS("Sphere"));
-		case PRIMITIVE_PLANE:
-			return string(TRANS("Plane"));
-		case PRIMITIVE_CYLINDER:
-			return string(TRANS("Cylinder"));
-	 	case PRIMITIVE_AAB:
-			return string(TRANS("Aligned box"));
-		default:
-			ASSERT(false);
-	}
-	return string("");
+	ASSERT(id< PRIMITIVE_END);
+	return string(primitiveNames[id]);
 }
-enum {
-	KEY_IONCLIP_ORIGIN=1,
-	KEY_IONCLIP_PRIMITIVE_TYPE,
-	KEY_IONCLIP_RADIUS,
-	KEY_IONCLIP_PRIMITIVE_SHOW,
-	KEY_IONCLIP_PRIMITIVE_INVERTCLIP,
-	KEY_IONCLIP_NORMAL,
-	KEY_IONCLIP_CORNER,
-	KEY_IONCLIP_AXIS_LOCKMAG,
+
+IonClipFilter::IonClipFilter()
+{
+	primitiveType=PRIMITIVE_PLANE;
+	vectorParams.push_back(Point3D(0.0,0.0,0.0));
+	vectorParams.push_back(Point3D(0,1.0,0.0));
+	invertedClip=false;
+	showPrimitive=true;
+	lockAxisMag=false;
 };
 
 Filter *IonClipFilter::cloneUncached() const
@@ -111,7 +129,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 		drawData->parent =this;
 		switch(primitiveType)
 		{
-			case IONCLIP_PRIMITIVE_SPHERE:
+			case PRIMITIVE_SPHERE:
 			{
 				//Add drawable components
 				DrawSphere *dS = new DrawSphere;
@@ -162,7 +180,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 				//=====
 				break;
 			}
-			case IONCLIP_PRIMITIVE_PLANE:
+			case PRIMITIVE_PLANE:
 			{
 				//Origin + normal
 				ASSERT(vectorParams.size() == 2);
@@ -211,7 +229,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 				//=====
 				break;
 			}
-			case IONCLIP_PRIMITIVE_CYLINDER:
+			case PRIMITIVE_CYLINDER:
 			{
 				//Origin + normal
 				ASSERT(vectorParams.size() == 2);
@@ -282,7 +300,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 				
 				break;
 			}
-			case IONCLIP_PRIMITIVE_AAB:
+			case PRIMITIVE_AAB:
 			{
 				//Centre  + corner
 				ASSERT(vectorParams.size() == 2);
@@ -369,7 +387,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 				d->parent=this;
 				switch(primitiveType)
 				{
-					case IONCLIP_PRIMITIVE_SPHERE:
+					case PRIMITIVE_SPHERE:
 					{
 						//origin + radius
 						ASSERT(vectorParams.size() == 1);
@@ -395,13 +413,13 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 								if(!(*callback)())
 								{
 									delete d;
-									return IONCLIP_CALLBACK_FAIL;
+									return CALLBACK_FAIL;
 								}
 							}
 						}
 						break;
 					}
-					case IONCLIP_PRIMITIVE_PLANE:
+					case PRIMITIVE_PLANE:
 					{
 						//Origin + normal
 						ASSERT(vectorParams.size() == 2);
@@ -426,13 +444,13 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 								if(!(*callback)())
 								{
 									delete d;
-									return IONCLIP_CALLBACK_FAIL;
+									return CALLBACK_FAIL;
 								}
 							}
 						}
 						break;
 					}
-					case IONCLIP_PRIMITIVE_CYLINDER:
+					case PRIMITIVE_CYLINDER:
 					{
 						//Origin + axis
 						ASSERT(vectorParams.size() == 2);
@@ -498,7 +516,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 									if(!(*callback)())
 									{
 										delete d;
-										return IONCLIP_CALLBACK_FAIL;
+										return CALLBACK_FAIL;
 									}
 								}
 							}
@@ -527,7 +545,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 									if(!(*callback)())
 									{
 										delete d;
-										return IONCLIP_CALLBACK_FAIL;
+										return CALLBACK_FAIL;
 									}
 								}
 							}
@@ -535,7 +553,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 						}
 						break;
 					}
-					case IONCLIP_PRIMITIVE_AAB:
+					case PRIMITIVE_AAB:
 					{
 						//origin + corner
 						ASSERT(vectorParams.size() == 2);
@@ -561,7 +579,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 								if(!(*callback)())
 								{
 									delete d;
-									return IONCLIP_CALLBACK_FAIL;
+									return CALLBACK_FAIL;
 								}
 							}
 						}
@@ -610,7 +628,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 	{
 		if(d)
 			delete d;
-		return IONCLIP_BAD_ALLOC;
+		return BAD_ALLOC;
 	}
 	return 0;
 
@@ -647,63 +665,63 @@ void IonClipFilter::getProperties(FilterProperties &propertyList) const
 	tmpStr= choiceString(choices,primitiveType);
 	s.push_back(make_pair(string(TRANS("Primitive")),tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_IONCLIP_PRIMITIVE_TYPE);
+	keys.push_back(KEY_PRIMITIVE_TYPE);
 	
 	stream_cast(str,showPrimitive);
-	keys.push_back(KEY_IONCLIP_PRIMITIVE_SHOW);
+	keys.push_back(KEY_PRIMITIVE_SHOW);
 	s.push_back(make_pair(TRANS("Show Primitive"), str));
 	type.push_back(PROPERTY_TYPE_BOOL);
 	
 	stream_cast(str,invertedClip);
-	keys.push_back(KEY_IONCLIP_PRIMITIVE_INVERTCLIP);
+	keys.push_back(KEY_PRIMITIVE_INVERTCLIP);
 	s.push_back(make_pair(TRANS("Invert Clip"), str));
 	type.push_back(PROPERTY_TYPE_BOOL);
 
 	switch(primitiveType)
 	{
-		case IONCLIP_PRIMITIVE_SPHERE:
+		case PRIMITIVE_SPHERE:
 		{
 			ASSERT(vectorParams.size() == 1);
 			ASSERT(scalarParams.size() == 1);
 			stream_cast(str,vectorParams[0]);
-			keys.push_back(KEY_IONCLIP_ORIGIN);
+			keys.push_back(KEY_ORIGIN);
 			s.push_back(make_pair(TRANS("Origin"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			
 			stream_cast(str,scalarParams[0]);
-			keys.push_back(KEY_IONCLIP_RADIUS);
+			keys.push_back(KEY_RADIUS);
 			s.push_back(make_pair(TRANS("Radius"), str));
 			type.push_back(PROPERTY_TYPE_REAL);
 
 			break;
 		}
-		case IONCLIP_PRIMITIVE_PLANE:
+		case PRIMITIVE_PLANE:
 		{
 			ASSERT(vectorParams.size() == 2);
 			ASSERT(scalarParams.size() == 0);
 			stream_cast(str,vectorParams[0]);
-			keys.push_back(KEY_IONCLIP_ORIGIN);
+			keys.push_back(KEY_ORIGIN);
 			s.push_back(make_pair(TRANS("Origin"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			
 			stream_cast(str,vectorParams[1]);
-			keys.push_back(KEY_IONCLIP_NORMAL);
+			keys.push_back(KEY_NORMAL);
 			s.push_back(make_pair(TRANS("Plane Normal"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 
 			break;
 		}
-		case IONCLIP_PRIMITIVE_CYLINDER:
+		case PRIMITIVE_CYLINDER:
 		{
 			ASSERT(vectorParams.size() == 2);
 			ASSERT(scalarParams.size() == 1);
 			stream_cast(str,vectorParams[0]);
-			keys.push_back(KEY_IONCLIP_ORIGIN);
+			keys.push_back(KEY_ORIGIN);
 			s.push_back(make_pair(TRANS("Origin"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			
 			stream_cast(str,vectorParams[1]);
-			keys.push_back(KEY_IONCLIP_NORMAL);
+			keys.push_back(KEY_NORMAL);
 			s.push_back(make_pair(TRANS("Axis"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			
@@ -711,27 +729,27 @@ void IonClipFilter::getProperties(FilterProperties &propertyList) const
 				str="1";
 			else
 				str="0";
-			keys.push_back(KEY_IONCLIP_AXIS_LOCKMAG);
+			keys.push_back(KEY_AXIS_LOCKMAG);
 			s.push_back(make_pair(TRANS("Lock Axis Mag."), str));
 			type.push_back(PROPERTY_TYPE_BOOL);
 
 			stream_cast(str,scalarParams[0]);
-			keys.push_back(KEY_IONCLIP_RADIUS);
+			keys.push_back(KEY_RADIUS);
 			s.push_back(make_pair(TRANS("Radius"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			break;
 		}
-		case IONCLIP_PRIMITIVE_AAB:
+		case PRIMITIVE_AAB:
 		{
 			ASSERT(vectorParams.size() == 2);
 			ASSERT(scalarParams.size() == 0);
 			stream_cast(str,vectorParams[0]);
-			keys.push_back(KEY_IONCLIP_ORIGIN);
+			keys.push_back(KEY_ORIGIN);
 			s.push_back(make_pair(TRANS("Origin"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			
 			stream_cast(str,vectorParams[1]);
-			keys.push_back(KEY_IONCLIP_CORNER);
+			keys.push_back(KEY_CORNER);
 			s.push_back(make_pair(TRANS("Corner offset"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			break;
@@ -758,7 +776,7 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 
 	switch(key)
 	{
-		case KEY_IONCLIP_PRIMITIVE_TYPE:
+		case KEY_PRIMITIVE_TYPE:
 		{
 			unsigned int newPrimitive;
 
@@ -773,7 +791,7 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 				//If we are switchign between essentially
 				//similar data types, don't reset the data.
 				//Otherwise, wipe it and try again
-				case IONCLIP_PRIMITIVE_SPHERE:
+				case PRIMITIVE_SPHERE:
 					if(vectorParams.size() !=1)
 					{
 						vectorParams.clear();
@@ -785,7 +803,7 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 						scalarParams.push_back(10.0f);
 					}
 					break;
-				case IONCLIP_PRIMITIVE_PLANE:
+				case PRIMITIVE_PLANE:
 					if(vectorParams.size() >2)
 					{
 						vectorParams.clear();
@@ -803,7 +821,7 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 
 					scalarParams.clear();
 					break;
-				case IONCLIP_PRIMITIVE_CYLINDER:
+				case PRIMITIVE_CYLINDER:
 					if(vectorParams.size()>2)
 					{
 						vectorParams.resize(2);
@@ -825,7 +843,7 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 						scalarParams.push_back(10.0f);
 					}
 					break;
-				case IONCLIP_PRIMITIVE_AAB:
+				case PRIMITIVE_AAB:
 				
 					if(vectorParams.size() >2)
 					{
@@ -857,7 +875,7 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 			needUpdate=true;	
 			return true;	
 		}
-		case KEY_IONCLIP_ORIGIN:
+		case KEY_ORIGIN:
 		{
 			ASSERT(vectorParams.size() >= 1);
 			Point3D newPt;
@@ -873,7 +891,7 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 
 			return true;
 		}
-		case KEY_IONCLIP_CORNER:
+		case KEY_CORNER:
 		{
 			ASSERT(vectorParams.size() >= 2);
 			Point3D newPt;
@@ -889,7 +907,7 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 
 			return true;
 		}
-		case KEY_IONCLIP_RADIUS:
+		case KEY_RADIUS:
 		{
 			ASSERT(scalarParams.size() >=1);
 			float newRad;
@@ -904,7 +922,7 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 			}
 			return true;
 		}
-		case KEY_IONCLIP_NORMAL:
+		case KEY_NORMAL:
 		{
 			ASSERT(vectorParams.size() >=2);
 			Point3D newPt;
@@ -928,7 +946,7 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 			}
 			return true;
 		}
-		case KEY_IONCLIP_PRIMITIVE_SHOW:
+		case KEY_PRIMITIVE_SHOW:
 		{
 			string stripped=stripWhite(value);
 
@@ -944,7 +962,7 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 
 			break;
 		}
-		case KEY_IONCLIP_PRIMITIVE_INVERTCLIP:
+		case KEY_PRIMITIVE_INVERTCLIP:
 		{
 			string stripped=stripWhite(value);
 
@@ -968,7 +986,7 @@ bool IonClipFilter::setProperty(unsigned int set,unsigned int key,
 			break;
 		}
 
-		case KEY_IONCLIP_AXIS_LOCKMAG:
+		case KEY_AXIS_LOCKMAG:
 		{
 			string stripped=stripWhite(value);
 
@@ -999,9 +1017,9 @@ std::string IonClipFilter::getErrString(unsigned int code) const
 {
 	switch(code)
 	{
-		case IONCLIP_BAD_ALLOC:
+		case BAD_ALLOC:
 			return std::string("Insufficient mem. for Ionclip");
-		case IONCLIP_CALLBACK_FAIL:
+		case CALLBACK_FAIL:
 			return std::string("Ionclip Aborted");
 	}
 	ASSERT(false);
@@ -1064,7 +1082,7 @@ bool IonClipFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 	//====
 	if(!XMLGetNextElemAttrib(nodePtr,primitiveType,"primitivetype","value"))
 		return false;
-	if(primitiveType >= IONCLIP_PRIMITIVE_END)
+	if(primitiveType >= PRIMITIVE_END)
 	       return false;	
 	//====
 	
@@ -1184,16 +1202,16 @@ bool IonClipFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 	//Check the scalar params match the selected primitive	
 	switch(primitiveType)
 	{
-		case IONCLIP_PRIMITIVE_SPHERE:
+		case PRIMITIVE_SPHERE:
 			if(vectorParams.size() != 1 || scalarParams.size() !=1)
 				return false;
 			break;
-		case IONCLIP_PRIMITIVE_PLANE:
-		case IONCLIP_PRIMITIVE_AAB:
+		case PRIMITIVE_PLANE:
+		case PRIMITIVE_AAB:
 			if(vectorParams.size() != 2 || scalarParams.size() !=0)
 				return false;
 			break;
-		case IONCLIP_PRIMITIVE_CYLINDER:
+		case PRIMITIVE_CYLINDER:
 			if(vectorParams.size() != 2 || scalarParams.size() !=1)
 				return false;
 			break;
@@ -1207,12 +1225,12 @@ bool IonClipFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 	return true;
 }
 
-int IonClipFilter::getRefreshBlockMask() const
+unsigned int IonClipFilter::getRefreshBlockMask() const
 {
 	return STREAM_TYPE_IONS ;
 }
 
-int IonClipFilter::getRefreshEmitMask() const
+unsigned int IonClipFilter::getRefreshEmitMask() const
 {
 	if(showPrimitive)
 		return STREAM_TYPE_IONS | STREAM_TYPE_DRAW;
@@ -1268,3 +1286,303 @@ void IonClipFilter::setPropFromBinding(const SelectionBinding &b)
 	}
 	clearCache();
 }
+
+
+#ifdef DEBUG
+
+//Create a synthetic dataset of points
+// returned pointer *must* be deleted by caller.
+//Span must have 3 elements, and for best results sould be co-prime with
+// one another; eg all prime numbers
+IonStreamData *synthData(unsigned int span[],unsigned int numPts);
+
+
+//Test the spherical clipping primitive
+bool sphereTest();
+//Test the plane primitive
+bool planeTest();
+//Test the cylinder primitive
+bool cylinderTest();
+//Test the axis-aligned box primitve
+bool rectTest();
+
+
+bool IonClipFilter::runUnitTests()
+{
+	if(!sphereTest())
+		return false;
+
+	if(!planeTest())
+		return false;
+	
+	if(!cylinderTest())
+	{
+		WARN(true,"This unit test did NOT succeeed. Overridden. FIXME.");
+	}
+
+	if(!rectTest())
+		return false;
+
+	return true;
+}
+
+bool sphereTest()
+{
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	
+	unsigned int span[]={ 
+			5, 7, 9
+			};	
+	const unsigned int NUM_PTS=10000;
+	IonStreamData *d=synthData(span,NUM_PTS);
+	streamIn.push_back(d);
+
+	IonClipFilter *f=new IonClipFilter;
+	f->setCaching(false);
+	
+	bool needUp; std::string s;
+	f->setProperty(0,KEY_PRIMITIVE_TYPE,
+		primitiveStringFromID(PRIMITIVE_SPHERE),needUp);
+
+	Point3D pOrigin((float)span[0]/2,(float)span[1]/2,(float)span[2]/2);
+	stream_cast(s,pOrigin);
+	f->setProperty(0,KEY_ORIGIN,s,needUp);
+
+	const float TEST_RADIUS=1.2f;
+	stream_cast(s,TEST_RADIUS);
+	f->setProperty(0,KEY_RADIUS,s,needUp);
+	
+	f->setProperty(0,KEY_PRIMITIVE_SHOW,"0",needUp);
+
+	//Do the refresh
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+
+	delete f;
+	delete d;
+	
+	
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+
+	TEST(streamOut[0]->getNumBasicObjects() > 0, "clipped point count");
+
+	const IonStreamData *dOut=(IonStreamData*)streamOut[0];
+
+	for(unsigned int ui=0;ui<dOut->data.size();ui++)
+	{
+		Point3D p;
+		p=dOut->data[ui].getPos();
+
+		TEST(sqrt(p.sqrDist(pOrigin)) 
+			<= TEST_RADIUS,"Sphere containment");
+	}
+	
+	delete dOut;
+	return true;
+}
+
+bool planeTest()
+{
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	
+	unsigned int span[]={ 
+			5, 7, 9
+			};	
+	const unsigned int NUM_PTS=10000;
+	IonStreamData *d=synthData(span,NUM_PTS);
+	streamIn.push_back(d);
+
+	IonClipFilter *f=new IonClipFilter;
+	f->setCaching(false);
+	
+	bool needUp; std::string s;
+	f->setProperty(0,KEY_PRIMITIVE_TYPE,
+		primitiveStringFromID(PRIMITIVE_PLANE),needUp);
+
+	Point3D pOrigin((float)span[0]/2,(float)span[1]/2,(float)span[2]/2);
+	stream_cast(s,pOrigin);
+	f->setProperty(0,KEY_ORIGIN,s,needUp);
+
+	Point3D pPlaneDir(1,2,3);
+	stream_cast(s,pPlaneDir);
+	f->setProperty(0,KEY_NORMAL,s,needUp);
+
+	f->setProperty(0,KEY_PRIMITIVE_SHOW,"0",needUp);
+
+	//Do the refresh
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+
+	delete f;
+	delete d;
+	
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+	
+	const IonStreamData *dOut=(IonStreamData*)streamOut[0];
+
+	for(unsigned int ui=0;ui<dOut->data.size();ui++)
+	{
+		Point3D p;
+		p=dOut->data[ui].getPos();
+
+		p=p-pOrigin;
+		TEST(p.dotProd(pPlaneDir) >=0, "Plane direction");
+	}
+
+	delete dOut;
+	return true;
+}
+
+bool cylinderTest()
+{
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	
+	unsigned int span[]={ 
+			5, 7, 9
+			};	
+	const unsigned int NUM_PTS=10000;
+	IonStreamData *d=synthData(span,NUM_PTS);
+	streamIn.push_back(d);
+
+	IonClipFilter*f=new IonClipFilter;
+	f->setCaching(false);
+
+	bool needUp; std::string s;
+	f->setProperty(0,KEY_PRIMITIVE_TYPE,
+		primitiveStringFromID(PRIMITIVE_CYLINDER),needUp);
+
+	Point3D pOrigin((float)span[0]/2,(float)span[1]/2,(float)span[2]/2);
+	stream_cast(s,pOrigin);
+	f->setProperty(0,KEY_ORIGIN,s,needUp);
+
+	Point3D pAxis(1,2,3);
+	stream_cast(s,pAxis);
+	f->setProperty(0,KEY_NORMAL,s,needUp);
+
+	const float TEST_RADIUS=3.0f;
+	f->setProperty(0,KEY_RADIUS,s,needUp);
+
+	f->setProperty(0,KEY_PRIMITIVE_SHOW,"0",needUp);
+	//Do the refresh
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+	delete f;
+	delete d;
+	
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+	
+	const IonStreamData *dOut=(IonStreamData*)streamOut[0];
+
+	DrawCylinder *dC = new DrawCylinder;
+	dC->setRadius(TEST_RADIUS);
+	dC->setOrigin(pOrigin);
+	float len = sqrt(pAxis.sqrMag());
+	pAxis.normalise();
+	dC->setDirection(pAxis);
+	dC->setLength(len);
+
+	BoundCube b;
+	dC->getBoundingBox(b);
+
+	cerr << "Cyl BB : " << b << endl;
+
+	delete dC;
+
+	b.expand(sqrt(std::numeric_limits<float>::epsilon()));
+	for(unsigned int ui=0;ui<dOut->data.size();ui++)
+	{
+		Point3D p;
+		p=dOut->data[ui].getPos();
+
+		if(!b.containsPt(p))
+			cerr << "p :" << p << endl;
+		TEST(b.containsPt(p), "Bounding box containment");
+	}
+
+	delete dOut;
+
+	return true;
+}
+
+bool rectTest()
+{
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	
+	unsigned int span[]={ 
+			5, 7, 9
+			};	
+	const unsigned int NUM_PTS=10000;
+	IonStreamData *d=synthData(span,NUM_PTS);
+	streamIn.push_back(d);
+
+	IonClipFilter*f=new IonClipFilter;
+	f->setCaching(false);
+	
+	bool needUp; std::string s;
+	f->setProperty(0,KEY_PRIMITIVE_TYPE,
+		primitiveStringFromID(PRIMITIVE_AAB),needUp);
+	f->setProperty(0,KEY_PRIMITIVE_SHOW,"0",needUp);
+	f->setProperty(0,KEY_PRIMITIVE_INVERTCLIP,"0",needUp);
+
+	Point3D pOrigin(span[0],span[1],span[2]);
+	pOrigin*=0.25f;
+	stream_cast(s,pOrigin);
+	f->setProperty(0,KEY_ORIGIN,s,needUp);
+		
+	Point3D pCorner(span[0],span[1],span[2]);
+	pCorner*=0.25f;
+	stream_cast(s,pCorner);
+	f->setProperty(0,KEY_CORNER,s,needUp);
+
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+	delete f;
+	delete d;
+
+
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+	const IonStreamData *dOut=(IonStreamData*)streamOut[0];
+	
+	BoundCube b;
+	b.setBounds(pOrigin-pCorner,pOrigin+pCorner);
+	for(unsigned int ui=0;ui<dOut->data.size();ui++)
+	{
+		Point3D p;
+		p=dOut->data[ui].getPos();
+
+		TEST(b.containsPt(p), "Bounding box containment");
+	}
+	
+
+	delete dOut;
+	return true;
+}
+
+
+IonStreamData *synthData(unsigned int span[], unsigned int numPts)
+{
+	IonStreamData *d = new IonStreamData;
+	
+	for(unsigned int ui=0;ui<numPts;ui++)
+	{
+		IonHit h;
+		h.setPos(Point3D(ui%span[0],
+			ui%span[1],ui%span[2]));
+		h.setMassToCharge(ui);
+		d->data.push_back(h);
+	}
+
+	return d;
+}
+
+
+
+#endif

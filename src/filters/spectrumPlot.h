@@ -2,16 +2,6 @@
 #define SPECTRUMPLOT_H
 #include "../filter.h"
 
-enum
-{
-	KEY_SPECTRUM_BINWIDTH,
-	KEY_SPECTRUM_AUTOEXTREMA,
-	KEY_SPECTRUM_MIN,
-	KEY_SPECTRUM_MAX,
-	KEY_SPECTRUM_LOGARITHMIC,
-	KEY_SPECTRUM_PLOTTYPE,
-	KEY_SPECTRUM_COLOUR
-};
 
 //!Spectrum plot filter
 class SpectrumPlotFilter : public Filter
@@ -64,13 +54,18 @@ class SpectrumPlotFilter : public Filter
 		bool readState(xmlNodePtr &node, const std::string &packDir);
 	
 		//!Get the stream types that will be dropped during ::refresh	
-		int getRefreshBlockMask() const;
+		unsigned int getRefreshBlockMask() const;
 
 		//!Get the stream types that will be generated during ::refresh	
-		int getRefreshEmitMask() const;	
+		unsigned int getRefreshEmitMask() const;	
 
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
+
+#ifdef DEBUG
+		bool runUnitTests() ;
+
+#endif
 };
 
 #endif

@@ -5,14 +5,14 @@ MSYS_PATH=/c/msys/1.0/local/include/
 %.o : %.rc
 	 $(WX_RESCOMP) $^ -o $@
 
-3Depict_LDFLAGS=$(LDFLAGS) $(FT_LDFLAGS) $(MGL_LIBS)
+3Depict_LDFLAGS=$(LDFLAGS) $(FT_LDFLAGS) $(GSL_LIBS) $(MGL_LIBS)
 
 3Depict_CXXFLAGS=$(CXXFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) $(WX_CPPFLAGS) \
-	$(GL_FLAGS) $(MGL_CFLAGS) $(XML_CFLAGS) $(PNG_CFLAGS)  \
+	$(GL_FLAGS) $(GSL_CFLAGS) $(MGL_CFLAGS) $(XML_CFLAGS) $(PNG_CFLAGS)  \
 	$(OPENMP_FLAGS) $(DEBUG_FLAGS)
 
 3Depict_CFLAGS=$(CFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) \
-	       $(XML_CFLAGS)  $(MGL_CFLAGS) $(PNG_CFLAGS) $(QHULL_CFLAGS) \
+	       $(XML_CFLAGS) $(GSL_CFLAGS)  $(MGL_CFLAGS) $(PNG_CFLAGS) $(QHULL_CFLAGS) \
 	      $(OPENMP_FLAGS) $(DEBUG_FLAGS) 
 
 
@@ -21,7 +21,7 @@ MSYS_PATH=/c/msys/1.0/local/include/
 
 bin_PROGRAMS= 3Depict
 
-FILTER_FILES = filters/allFilter.cpp filters/posLoad.cpp filters/ionDownsample.cpp \
+FILTER_FILES = filters/allFilter.cpp filters/dataLoad.cpp filters/ionDownsample.cpp \
 		filters/rangeFile.cpp filters/voxelise.cpp filters/spectrumPlot.cpp \
 	       	filters/transform.cpp filters/externalProgram.cpp filters/ionClip.cpp \
 		filters/ionColour.cpp filters/boundingBox.cpp  \
@@ -29,7 +29,7 @@ FILTER_FILES = filters/allFilter.cpp filters/posLoad.cpp filters/ionDownsample.c
 		filters/clusterAnalysis.cpp filters/ionInfo.cpp \
 		filters/annotation.cpp
 
-FILTER_HEADER_FILES = filters/allFilter.h filters/posLoad.h filters/ionDownsample.h \
+FILTER_HEADER_FILES = filters/allFilter.h filters/dataLoad.h filters/ionDownsample.h \
 		filters/rangeFile.h filters/voxelise.h filters/spectrumPlot.h \
 	       	filters/transform.h filters/externalProgram.h filters/ionClip.h \
 		filters/ionColour.h filters/boundingBox.h  \

@@ -44,10 +44,138 @@ const char *errModeStrings[] = {
 				NTRANS("Moving avg.")
 				};
 
+const char *plotModeStrings[]= {
+	NTRANS("Lines"),
+	NTRANS("Bars"),
+	NTRANS("Steps"),
+	NTRANS("Stem"),
+	NTRANS("Points")
+				};
 
 using std::string;
 using std::pair;
 using std::vector;
+
+
+//Axis min/max bounding box is disallowed to be exactly zero on any given axis
+// perform a little "push off" by this fudge factor
+const float AXIS_MIN_TOLERANCE=10*sqrtf(std::numeric_limits<float>::epsilon());
+
+int MGLColourFixer::maxCols=-1;
+
+void MGLColourFixer::reset()
+{
+	rs.clear();
+	gs.clear();
+	bs.clear();
+}
+
+char MGLColourFixer::haveExactColour(float r, float g, float b) const
+{
+	ASSERT(rs.size() == gs.size())
+	ASSERT(gs.size() == bs.size())
+
+	ASSERT(rs.size() <=getMaxColours());
+
+	for(unsigned int ui=0; ui<rs.size(); ui++)
+	{
+		if( fabs(r-rs[ui]) <std::numeric_limits<float>::epsilon()
+			&& fabs(g-gs[ui]) <std::numeric_limits<float>::epsilon()
+			&& fabs(b-bs[ui]) <std::numeric_limits<float>::epsilon())
+			return mglColorIds[ui+1].id; //Add one to offset to avoid the reserved "k" 
+	}
+
+	return 0;
+}
+
+unsigned int MGLColourFixer::getMaxColours() const
+{
+	//Used cached value if available
+	if(maxCols!=-1)
+		return maxCols;
+
+	//The array is statically defined in
+	//mgl/mgl_main.cpp, and must end with an id of zero.
+	//
+	//this is not documented at all.
+	maxCols=0;
+	while(mglColorIds[maxCols].id)
+		maxCols++;
+
+	return maxCols;
+}
+
+char MGLColourFixer::getNextBestColour(float r, float g, float b) 
+{
+	ASSERT(rs.size() == gs.size());
+	ASSERT(gs.size() == bs.size());
+	
+
+	//As a special case, mgl has its own black
+	if(r == 0.0f && g == 0.0f && b == 0.0f)
+		return mglColorIds[0].id;
+
+
+	ASSERT(graph);
+	unsigned int best=0;
+	if(rs.size() == getMaxColours())
+	{
+		ASSERT(getMaxColours());
+		//Looks like we ran out of pallete colours.
+		//lets just give up and try to match this against our existing colours
+
+		//TODO: let this modify the existing pallette
+		// to find a better match.
+		float distanceSqr=std::numeric_limits<float>::max();
+		for(unsigned int ui=0; ui<rs.size(); ui++)
+		{
+			float distanceTmp;
+			if(r <= 0.5)
+			{
+				//3,4,2 weighted euclidean distance. Weights allow for closer human perception
+				distanceTmp= 3.0*(rs[ui] - r )*(rs[ui] - r ) +4.0*(gs[ui] - g )*(gs[ui] - g )
+					     + 2.0*(bs[ui] - b )*(bs[ui] - b );
+			}
+			else
+			{
+				//use alternate weighting for closer colour perception in "non-red" half of colour cube
+				distanceTmp= 2.0*(rs[ui] - r )*(rs[ui] - r ) +4.0*(gs[ui] - g )*(gs[ui] - g )
+					     + 3.0*(bs[ui] - b )*(bs[ui] - b );
+			}
+
+			if(distanceTmp < distanceSqr)
+			{
+				distanceSqr = (distanceTmp);
+				best=ui+1; //offset by 1 because mathgl colour 0 is special
+			}
+
+		}
+	}
+	else
+	{
+		char exactMatch;
+		//Check to see if we don't already have this
+		// no use wasting palette positions on existing
+		// colours
+		exactMatch=haveExactColour(r,g,b);
+
+		if(exactMatch)
+			return exactMatch;
+
+		//Offset zero is special, for black things, like axes
+		best=rs.size()+1;
+		graph->SetPalColor(best,r,g,b);
+		mglColorIds[best].col = mglColor(r,g,b);
+		
+		rs.push_back(r);
+		gs.push_back(g);
+		bs.push_back(b);
+	}
+
+	ASSERT(mglColorIds[best].id != 'k');
+	return mglColorIds[best].id;
+}
+
 
 //Nasty string conversion functions.
 std::wstring strToWStr(const std::string& s)
@@ -64,36 +192,26 @@ std::string wstrToStr(const std::wstring& s)
 	return temp;
 }
 
+
+//TODO: Refactor these functions to use a common string map
+//-----------
 string plotString(unsigned int traceType)
 {
-	switch(traceType)
-	{
-		case PLOT_TRACE_LINES:
-			return string(TRANS("Lines"));
-		case PLOT_TRACE_BARS:
-			return string(TRANS("Bars"));
-		case PLOT_TRACE_STEPS:
-			return string(TRANS("Steps"));
-		case PLOT_TRACE_STEM:
-			return string(TRANS("Stem"));
-		default:
-			ASSERT(false);
-			return string("bug:(plotString)");
-	}
+	ASSERT(traceType< PLOT_TRACE_ENDOFENUM);
+	return TRANS(plotModeStrings[traceType]); 
 }
 
 unsigned int plotID(const std::string &plotString)
 {
-	if(plotString == TRANS("Lines"))
-		return PLOT_TRACE_LINES;
-	if(plotString == TRANS("Bars"))
-		return PLOT_TRACE_BARS;
-	if(plotString == TRANS("Steps"))
-		return PLOT_TRACE_STEPS;
-	if(plotString == TRANS("Stem"))
-		return PLOT_TRACE_STEM;
+	for(unsigned int ui=0;ui<PLOT_TRACE_ENDOFENUM; ui++)
+	{
+		if(plotString==TRANS(plotModeStrings[ui]))
+			return ui;
+	}
+
 	ASSERT(false);
 }
+//-----------
 
 unsigned int plotErrmodeID(const std::string &s)
 {
@@ -110,58 +228,6 @@ string plotErrmodeString(unsigned int plotID)
 	return errModeStrings[plotID];
 }
 
-char getNearestMathglColour(float r, float g, float b) 
-{
-	//FIXME: nasty hack
-	//This is a nasty hack, but I hvae been completely
-	//unable to work out any reasonable method of
-	//setting the colour of a plot to any specific value without
-	//patching the MGL library.
-	//Even then, I currently only have a patch for a single plot.
-	//so multiple plots cannot have unique colours.
-	
-	//To complete the nasty hack, let us compute the minimum distance
-	//from the available named colours "rgbwk..." to the desired colour
-	float distanceSqr=std::numeric_limits<float>::max();
-	float distanceTmp;
-
-	//mathgl's "named" colours
-	const char *mglColourString="wkrgbcymhRGBCYMHWlenuqpLENUQP";
-	const unsigned int numColours= strlen(mglColourString);
-
-	ASSERT(numColours);	
-	mglColor c;
-	char val;
-
-	for(unsigned int ui=0;ui<numColours;ui++)
-	{
-		c.Set(mglColourString[ui]);
-
-		if(r > 0.5)
-		{
-			//use alternate weighting for closer colour perception in "non-red" half of colour cube 
-			distanceTmp= 2.0*(c.r - r )*(c.r - r ) +4.0*(c.g - g )*(c.g - g ) 
-								+ 3.0*(c.b - b )*(c.b - b );
-		}
-		else
-		{
-			//3,4,2 weighted euclidean distance. weights allow for closer human perception
-			distanceTmp= 3.0*(c.r - r )*(c.r - r ) +4.0*(c.g - g )*(c.g - g ) 
-								+ 2.0*(c.b - b )*(c.b - b );
-		}
-
-		
-		if(distanceSqr > distanceTmp)
-		{
-			distanceSqr = (distanceTmp);
-			val = mglColourString[ui];
-		}
-
-	}
-
-
-	return val;
-}
 
 void genErrBars(const std::vector<float> &x, const std::vector<float> &y, 
 			std::vector<float> &errBars, const PLOT_ERROR &errMode)
@@ -218,7 +284,7 @@ unsigned int PlotWrapper::addPlot(PlotBase *p)
 	plottingData.push_back(p);
 
 #ifdef DEBUG
-	p=0; //zero out poiner, we are in command now.
+	p=0; //zero out pointer, we are in command now.
 #endif
 
 	//assign a unique identifier to this plot, by which it can be referenced
@@ -305,6 +371,8 @@ void PlotWrapper::setBounds(float xMin, float xMax,
 	xUserMax=xMax;
 	yUserMax=yMax;
 
+
+
 	applyUserBounds=true;
 	plotChanged=true;
 }
@@ -324,7 +392,6 @@ void PlotWrapper::disableUserAxisBounds(bool xBound)
 		yUserMin=std::max(0.0f,yMin);
 		yUserMax=yMax;
 	}
-
 
 	//Check to see if we have zoomed all the bounds out anyway
 	if(fabs(xUserMin -xMin)<=std::numeric_limits<float>::epsilon() &&
@@ -354,8 +421,8 @@ void PlotWrapper::getBounds(float &xMin, float &xMax,
 
 void PlotWrapper::scanBounds(float &xMin,float &xMax,float &yMin,float &yMax) const
 {
-	//OK, we are going to have to scan for max/min
-	//from the 
+	//We are going to have to scan for max/min bounds
+	//from the shown plots 
 	xMin=std::numeric_limits<float>::max();
 	xMax=-std::numeric_limits<float>::max();
 	yMin=std::numeric_limits<float>::max();
@@ -363,9 +430,11 @@ void PlotWrapper::scanBounds(float &xMin,float &xMax,float &yMin,float &yMax) co
 
 	for(unsigned int uj=0;uj<plottingData.size(); uj++)
 	{
+		//only consider the bounding boxes from visible plots
 		if(!plottingData[uj]->visible)
 			continue;
 
+		//Expand our bounding box to encompass that of this visible plot
 		float tmpXMin,tmpXMax,tmpYMin,tmpYMax;
 		plottingData[uj]->getBounds(tmpXMin,tmpXMax,tmpYMin,tmpYMax);
 
@@ -375,6 +444,8 @@ void PlotWrapper::scanBounds(float &xMin,float &xMax,float &yMin,float &yMax) co
 		yMax=std::max(yMax,tmpYMax);
 
 	}
+
+	ASSERT(xMin < xMax && yMin <=yMax);
 }
 
 void PlotWrapper::bestEffortRestoreVisibility()
@@ -406,57 +477,95 @@ void PlotWrapper::bestEffortRestoreVisibility()
 void PlotWrapper::getRawData(vector<vector<vector<float> > > &data,
 				std::vector<std::vector<std::wstring> > &labels) const
 {
-	//Try to retrieve the raw data from the visible plots
-	for(unsigned int ui=0;ui<plottingData.size();ui++)
-	{
-		//FIXME: This needs logic to ensure that mixed
-		// data types are not selected by the end user
-		if(plottingData[ui]->visible)
-		{
-			vector<vector<float> > thisDat,dummy;
-			vector<std::wstring> thisLabel;
-			plottingData[ui]->getRawData(thisDat,thisLabel);
-			
-			//Data title size should hopefully be the same
-			//as the label size
-			ASSERT(thisLabel.size() == thisDat.size());
+	if(plottingData.empty())
+		return;
 
-			if(thisDat.size())
+	//Determine if we have multiple types of plot.
+	//if so, we cannot really return the raw data for this
+	//in a meaningful fashion
+	switch(getVisibleType())
+	{
+		case PLOT_TYPE_ONED:
+		{
+			//Try to retrieve the raw data from the visible plots
+			for(unsigned int ui=0;ui<plottingData.size();ui++)
 			{
-				data.push_back(dummy);
-				data.back().swap(thisDat);
-				
-				labels.push_back(thisLabel);	
+				if(plottingData[ui]->visible)
+				{
+					vector<vector<float> > thisDat,dummy;
+					vector<std::wstring> thisLabel;
+					plottingData[ui]->getRawData(thisDat,thisLabel);
+					
+					//Data title size should hopefully be the same
+					//as the label size
+					ASSERT(thisLabel.size() == thisDat.size());
+
+					if(thisDat.size())
+					{
+						data.push_back(dummy);
+						data.back().swap(thisDat);
+						
+						labels.push_back(thisLabel);	
+					}
+				}
+			}
+			break;
+		}
+		case PLOT_TYPE_TWOD:
+		{
+			//Try to retrieve the raw data from the visible plots
+			for(unsigned int ui=0;ui<plottingData.size();ui++)
+			{
+				if(plottingData[ui]->visible)
+				{
+					//FIXME: IMPLEMENT ME
+					ASSERT(false);
+				}
+			}
+			break;
+		}
+		case PLOT_TYPE_MIXED:
+		case PLOT_TYPE_ENUM_END:
+			return;
+		default:
+			ASSERT(false);
+	}
+}
+
+unsigned int PlotWrapper::getVisibleType() const
+{
+	unsigned int visibleType=PLOT_TYPE_ENUM_END;
+	for(unsigned int ui=0;ui<plottingData.size() ; ui++)
+	{
+		if(plottingData[ui]->visible &&
+			plottingData[ui]->plotType!= visibleType)
+		{
+			if(visibleType == PLOT_TYPE_ENUM_END)
+			{
+				visibleType=plottingData[ui]->plotType;
+				continue;
+			}
+			else
+			{
+				visibleType=PLOT_TYPE_MIXED;
+				break;
 			}
 		}
 	}
 
-}
-
-bool PlotWrapper::areVisiblePlotsMismatched() const
-{
-	unsigned int type;
-	type=(unsigned int)-1;
-	for(size_t ui=0;ui<plottingData.size(); ui++)
-	{
-		if( plottingData[ui]->plotType !=type)
-		{
-			if(type == (unsigned int)-1)
-				type=plottingData[ui]->plotType;
-			else
-				return true;
-		}
-
-	}
-
-	return false;
+	return visibleType;
 }
 
 void PlotWrapper::drawPlot(mglGraph *gr) const
 {
-	if(areVisiblePlotsMismatched() || !plottingData.size())
+	unsigned int visType = getVisibleType();
+	if(visType == PLOT_TYPE_ENUM_END || 
+		visType == PLOT_TYPE_MIXED)
 		return;
-	
+
+	//Un-fudger for mathgl plots
+	MGLColourFixer colourFixer;
+	colourFixer.setGraph(gr);
 
 	bool haveMultiTitles=false;
 	float minX,maxX,minY,maxY;
@@ -581,6 +690,9 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 			//tell mathgl about the bounding box	
 			gr->Axis(min,max,axisCross);
 
+			WARN((fabs(min.x-max.x) > sqrt(std::numeric_limits<float>::epsilon())), "WARNING: Mgl limits (X) too Close! Due to limitiations in MGL, This may inf. loop!");
+			WARN((fabs(min.y-max.y) > sqrt(std::numeric_limits<float>::epsilon())), "WARNING: Mgl limits (Y) too Close! Due to limitiations in MGL, This may inf. loop!");
+
 
 			//"Push" bounds around to prevent min == max
 			if(min.x == max.x)
@@ -608,18 +720,17 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 				if(!curPlot->visible)
 					continue;
 
-				curPlot->drawRegions(gr,min,max);
-				curPlot->drawPlot(gr);
-			
+
+				curPlot->drawRegions(gr,colourFixer,min,max);
+				curPlot->drawPlot(gr,colourFixer);
 				
 				if(drawLegend)
 				{
+					//Fake an mgl colour code
 					char colourCode[2];
+					colourCode[0]=colourFixer.getNextBestColour(
+							curPlot->r,curPlot->g,curPlot->b);
 					colourCode[1]='\0';
-					//Fake the colour by doing a lookup
-					colourCode[0]= getNearestMathglColour(curPlot->r,
-							curPlot->g, curPlot->b);
-
 					gr->AddLegend(curPlot->title.c_str(),colourCode);
 				}
 			}
@@ -657,6 +768,7 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 		//Legend at top right (0x3), in default font "rL" at specified size
 		gr->Legend(0x3,"rL",LEGEND_SIZE);
 	}
+
 }
 
 void PlotWrapper::hideAll()
@@ -735,6 +847,13 @@ void Plot1D::setData(const vector<float> &vX, const vector<float> &vY,
 
 	minX=minThis;
 	maxX=maxThis;
+
+	if(maxX - minX < AXIS_MIN_TOLERANCE)
+	{
+		minX-=AXIS_MIN_TOLERANCE;
+		maxX+=AXIS_MIN_TOLERANCE;
+	}
+
 	
 	maxThis=-std::numeric_limits<float>::max();
 	minThis=std::numeric_limits<float>::max();
@@ -745,6 +864,12 @@ void Plot1D::setData(const vector<float> &vX, const vector<float> &vY,
 	}
 	minY=minThis;
 	maxY=maxThis;
+
+	if(maxY - minY < AXIS_MIN_TOLERANCE)
+	{
+		minY-=AXIS_MIN_TOLERANCE;
+		maxY+=AXIS_MIN_TOLERANCE;
+	}
 }
 
 void Plot1D::setData(const vector<std::pair<float,float> > &v)
@@ -781,7 +906,12 @@ void Plot1D::setData(const vector<std::pair<float,float> > &v,const vector<float
 
 	minX=minThis;
 	maxX=maxThis;
-	
+	if(maxX - minX < AXIS_MIN_TOLERANCE)
+	{
+		minX-=AXIS_MIN_TOLERANCE;
+		maxX+=AXIS_MIN_TOLERANCE;
+	}
+
 	maxThis=-std::numeric_limits<float>::max();
 	minThis=std::numeric_limits<float>::max();
 	if(vErr.size())
@@ -804,6 +934,12 @@ void Plot1D::setData(const vector<std::pair<float,float> > &v,const vector<float
 	}
 	minY=minThis;
 	maxY=1.10f*maxThis; //The 1.10 is because mathgl chops off data
+	
+	if(maxY - minY < AXIS_MIN_TOLERANCE)
+	{
+		minY-=AXIS_MIN_TOLERANCE;
+		maxY+=AXIS_MIN_TOLERANCE;
+	}
 
 
 }
@@ -825,9 +961,8 @@ void Plot1D::getBounds(float &xMin,float &xMax,float &yMin,float &yMax) const
 	}
 }
 
-void Plot1D::drawPlot(mglGraph *gr) const
+void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 {
-	unsigned int plotNum=0;
 	bool showErrs;
 
 	mglData xDat,yDat,eDat;
@@ -877,11 +1012,10 @@ void Plot1D::drawPlot(mglGraph *gr) const
 
 	eDat.Set(bufferErr,errBars.size());
 
-	//Mathgl pallette colour name
 	char colourCode[2];
+	colourCode[0]=fixer.getNextBestColour(r,g,b);
 	colourCode[1]='\0';
-	//Fake the colour by doing a lookup
-	colourCode[0]= getNearestMathglColour(r,g, b);
+	//---
 
 	//Plot the appropriate form	
 	switch(traceType)
@@ -928,6 +1062,28 @@ void Plot1D::drawPlot(mglGraph *gr) const
 			gr->Stem(xDat,yDat);
 #endif
 			break;
+
+		case PLOT_TRACE_POINTS:
+		{
+			std::string s;
+			s = colourCode;
+			//Mathgl uses strings to manipulate line styles
+			s+=" "; 
+				//space means "no line"
+			s+="x"; //x shaped point markers
+
+#ifdef MGL_GTE_1_10
+			gr->SetCut(true);
+				
+			gr->Plot(xDat,yDat,s.c_str());
+			if(showErrs)
+				gr->Error(xDat,yDat,eDat,s.c_str());
+			gr->SetCut(false);
+#else
+			gr->Plot(xDat,yDat," x");
+#endif
+			break;
+		}
 		default:
 			ASSERT(false);
 			break;
@@ -938,7 +1094,6 @@ void Plot1D::drawPlot(mglGraph *gr) const
 	if(showErrs)
 		delete[]  bufferErr;
 
-	plotNum++;
 			
 	
 }
@@ -1144,7 +1299,8 @@ void Plot1D::moveRegion(unsigned int regionID, unsigned int method, float newPos
 }
 
 
-void Plot1D::drawRegions(mglGraph *gr,const mglPoint &min,const mglPoint &max) const
+void Plot1D::drawRegions(mglGraph *gr,MGLColourFixer &fixer,
+		const mglPoint &min,const mglPoint &max) const
 {
 	//Mathgl pallette colour name
 	char colourCode[2];
@@ -1162,7 +1318,9 @@ void Plot1D::drawRegions(mglGraph *gr,const mglPoint &min,const mglPoint &max) c
 		//Prevent drawing inverted regions
 		if(rMaxX > rMinX && rMaxY > rMinY)
 		{
-			colourCode[0] = getNearestMathglColour(regions[uj].r,regions[uj].g,regions[uj].b);
+			colourCode[0] = fixer.getNextBestColour(regions[uj].r,
+						regions[uj].g,regions[uj].b);
+			colourCode[1] = '\0';
 			gr->FaceZ(rMinX,rMinY,-1,rMaxX-rMinX,rMaxY-rMinY,
 					colourCode);
 					
@@ -1208,15 +1366,15 @@ void Plot1D::getRegion(unsigned int id, PlotRegion &r) const
 
 
 //Draw the plot onto a given MGL graph
-void Plot2D::drawPlot(mglGraph *gr) const
+void Plot2D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 {
-	unsigned int plotNum=0;
 	bool showErrs;
 	mglData xDat,yDat,exDat,eyDat;
 	
 	ASSERT(visible);
 	ASSERT(xValues.size() == yValues.size());
-		
+	
+	//Allocate buffers for XY data and error bars (as needed)
 	float *bufferX,*bufferY,*bufferErrX,*bufferErrY;
 	bufferX = new float[xValues.size()];
 	bufferY = new float[yValues.size()];
@@ -1227,6 +1385,7 @@ void Plot2D::drawPlot(mglGraph *gr) const
 	if(yErrBars.size())
 		bufferErrY = new float[yErrBars.size()];
 
+	//Copy data into buffers for mgl
 	for(unsigned int uj=0;uj<xValues.size(); uj++)
 	{
 		bufferX[uj] = xValues[uj];
@@ -1249,11 +1408,10 @@ void Plot2D::drawPlot(mglGraph *gr) const
 	xDat.Set(bufferX,xValues.size());
 	yDat.Set(bufferY,yValues.size());
 
-	//Mathgl pallette colour name
+	//Mathgl palette colour name
 	char colourCode[2];
+	colourCode[0]= fixer.getNextBestColour(r,g,b); 
 	colourCode[1]='\0';
-	//Fake the colour by doing a lookup
-	colourCode[0]= getNearestMathglColour(r,g, b);
 	
 	//Plot the appropriate form	
 	switch(traceType)
@@ -1274,6 +1432,7 @@ void Plot2D::drawPlot(mglGraph *gr) const
 			}
 			else if(yErrBars.size())
 			{
+				//FIXME: Implement me?
 				ASSERT(false);
 			}
 			
@@ -1282,6 +1441,8 @@ void Plot2D::drawPlot(mglGraph *gr) const
 			gr->Plot(xDat,yDat);
 #endif
 			break;
+		default:
+			ASSERT(false);
 	}
 }
 

@@ -54,7 +54,7 @@ void K3DTreeMk2::resetPts(std::vector<IonHit> &p, bool clear)
 	indexedPoints.resize(p.size());
 	nodes.resize(p.size());
 
-	if(!p.size())
+	if(p.empty())
 		return;
 	
 
@@ -91,7 +91,7 @@ bool K3DTreeMk2::build()
 	maxDepth=0;
 
 	//No indexedPoints? That was easy.
-	if(!indexedPoints.size())
+	if(indexedPoints.empty())
 		return true;
 
 	
@@ -364,7 +364,7 @@ size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
 	float bestDistSqr;
 	float tmpEdge;
 
-	if(!nodes.size())
+	if(nodes.empty())
 		return -1;
 
 	bestPoint=(size_t)-1; 
@@ -604,11 +604,10 @@ void K3DTreeMk2::getTreesInSphere(const Point3D &pt, float sqrDist, const BoundC
 	nodeQueue.push(treeRoot);
 	boundQueue.push(domainCube);
 	axisQueue.push(0);
-	limitQueue.push(make_pair(0,nodes.size()));	
+	limitQueue.push(make_pair(0,nodes.size()-1));	
 	do
 	{
 		BoundCube tmpCube;
-		size_t axis,curNode;
 		tmpCube=boundQueue.front();
 
 		ASSERT(nodeQueue.size() == boundQueue.size() &&
@@ -632,6 +631,7 @@ void K3DTreeMk2::getTreesInSphere(const Point3D &pt, float sqrDist, const BoundC
 		}
 		else if(tmpCube.intersects(pt,sqrDist))
 		{
+			size_t axis,curNode;
 			//Not wholly contained... but our kids might be!
 			axis=axisQueue.front();
 			curNode=nodeQueue.front();
@@ -677,7 +677,7 @@ void K3DTreeMk2::getTreesInSphere(const Point3D &pt, float sqrDist, const BoundC
 		boundQueue.pop();
 		nodeQueue.pop();	
 	}
-	while(nodeQueue.size());
+	while(!nodeQueue.empty());
 
 }
 

@@ -549,7 +549,7 @@ void CameraLookAt::ensureVisible(const BoundCube &boundCube, unsigned int face)
 		case 2:
 			faceOutVector = Point3D(0,1,0); 
 			boxToFrontDist=boundCube.getSize(1);
-			tmpUpVec = Point3D(0,0,1);
+			tmpUpVec =Point3D(1,0,0);
 			faceSize[0]=boundCube.getSize(0);
 			faceSize[1]=boundCube.getSize(2);
 			break;

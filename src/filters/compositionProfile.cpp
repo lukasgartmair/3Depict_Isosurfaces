@@ -105,7 +105,6 @@ Filter *CompositionProfileFilter::cloneUncached() const
 	std::copy(scalarParams.begin(),scalarParams.end(),p->scalarParams.begin());
 
 	p->normalise=normalise;	
-	p->stepMode=stepMode;	
 	p->fixedBins=fixedBins;
 	p->lockAxisMag=lockAxisMag;
 
@@ -741,7 +740,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			scalarParams.clear();
 			switch(primitiveType)
 			{
-				case IONCLIP_PRIMITIVE_CYLINDER:
+				case COMPPROFILE_PRIMITIVE_CYLINDER:
 					vectorParams.push_back(Point3D(0,0,0));
 					vectorParams.push_back(Point3D(0,20,0));
 					scalarParams.push_back(10.0f);
@@ -1090,7 +1089,6 @@ bool CompositionProfileFilter::writeState(std::ofstream &f,unsigned int format, 
 			
 			f << tabs(depth+1) << "</scalarparams>" << endl;
 			f << tabs(depth+1) << "<normalise value=\"" << normalise << "\"/>" << endl;
-			f << tabs(depth+1) << "<stepmode value=\"" << stepMode << "\"/>" << endl;
 			f << tabs(depth+1) << "<fixedbins value=\"" << (int)fixedBins << "\"/>" << endl;
 			f << tabs(depth+1) << "<nbins value=\"" << nBins << "\"/>" << endl;
 			f << tabs(depth+1) << "<binwidth value=\"" << binWidth << "\"/>" << endl;
@@ -1303,23 +1301,6 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	xmlFree(xmlString);
 	//====
 
-	//Retrieve step mode 
-	//====
-	if(XMLHelpFwdToElem(nodePtr,"stepmode"))
-		return false;
-
-	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
-	if(!xmlString)
-		return false;
-	tmpStr=(char *)xmlString;
-
-	if(stream_cast(stepMode,tmpStr))
-		return false;
-
-	xmlFree(xmlString);
-	//====
-
-
 	//Retrieve fixed bins on/off 
 	//====
 	if(XMLHelpFwdToElem(nodePtr,"fixedbins"))
@@ -1403,13 +1384,13 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	return true;
 }
 
-int CompositionProfileFilter::getRefreshBlockMask() const
+unsigned int CompositionProfileFilter::getRefreshBlockMask() const
 {
 	//Absolutely anything can go through this filter.
 	return 0;
 }
 
-int CompositionProfileFilter::getRefreshEmitMask() const
+unsigned int CompositionProfileFilter::getRefreshEmitMask() const
 {
 	if(showPrimitive)
 		return STREAM_TYPE_PLOT | STREAM_TYPE_DRAW;

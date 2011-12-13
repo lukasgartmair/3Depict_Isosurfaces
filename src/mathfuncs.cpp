@@ -421,6 +421,9 @@ void quat_pointmult(Point3f *result, Quaternion *q1, Quaternion *q2)
 //Note result is stored in returned point
 void quat_rot(Point3f *point, Point3f *rotVec, float angle)
 {
+	ASSERT(rotVec->fx*rotVec->fx + rotVec->fy*rotVec->fy + rotVec->fz*rotVec->fz - 1.0f < 
+			5.0f*sqrt(std::numeric_limits<float>::epsilon()));
+
 	double sinCoeff;
        	Quaternion rotQuat;
 	Quaternion pointQuat;
@@ -458,6 +461,8 @@ void quat_rot(Point3f *point, Point3f *rotVec, float angle)
 //Retrieve the quaternion for repeated rotation. pass to the quat_rot_apply_quats
 void quat_get_rot_quat(Point3f *rotVec, float angle,Quaternion *rotQuat) 
 {
+	ASSERT(rotVec->fx*rotVec->fx + rotVec->fy*rotVec->fy + rotVec->fz*rotVec->fz - 1.0f < 
+			5.0f*sqrt(std::numeric_limits<float>::epsilon()));
 	double sinCoeff;
 #ifdef _GNU_SOURCE
 	double cosCoeff;

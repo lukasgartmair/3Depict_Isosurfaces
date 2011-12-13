@@ -78,6 +78,8 @@ const float CAMERA_MOVE_RATE=0.05;
 
 // Controls zoom speed, in err, zoom units.. Ahem. 
 const float CAMERA_SCROLL_RATE=0.05;
+//Zoom speed for keyboard
+const float CAMERA_KEYBOARD_SCROLL_RATE=1;
 
 int attribList[] = {WX_GL_RGBA,
 			WX_GL_DEPTH_SIZE,
@@ -100,6 +102,12 @@ wxGLCanvas(parent, wxID_ANY,  wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas
 	dragging=false;
 	lastMoveShiftDown=false;
 	selectionMode=false;
+}
+
+BasicGLPane::~BasicGLPane()
+{
+	keyDoubleTapTimer->Stop();
+	delete keyDoubleTapTimer;
 }
 
 bool BasicGLPane::displaySupported() const
@@ -623,9 +631,8 @@ void BasicGLPane::setGlClearColour(float r, float g, float b)
 
 void BasicGLPane::keyReleased(wxKeyEvent& event) 
 {
-	const float CAMERA_SCROLL_RATE=1;
 
-	float cameraMoveRate=CAMERA_SCROLL_RATE;
+	float cameraMoveRate=CAMERA_KEYBOARD_SCROLL_RATE;
 
 	if(event.ShiftDown())
 		cameraMoveRate*=5;

@@ -45,6 +45,7 @@ inline std::string stlStr(const wxString& s){
 }
 
 #include <string>
+//locate the file we are looking for in OS specfic paths
 std::string locateDataFile(const char *name);
 
 extern wxEventType RemoteUpdateAvailEvent; 

@@ -107,11 +107,11 @@ class AnnotateFilter : public Filter
 		//!Get the bitmask encoded list of filterStreams that this filter blocks from propagation.
 		// i.e. if this filterstream is passed to refresh, it is not emitted.
 		// This MUST always be consistent with ::refresh for filters current state.
-		int getRefreshBlockMask() const;
+		unsigned int getRefreshBlockMask() const;
 
 		//!Get the bitmask encoded list of filterstreams that this filter emits from ::refresh.
 		// This MUST always be consistent with ::refresh for filters current state.
-		int getRefreshEmitMask() const;
+		unsigned int getRefreshEmitMask() const;
 };
 
 

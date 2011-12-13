@@ -11,25 +11,25 @@
 
 enum
 {
-	KEY_EXTERNALPROGRAM_COMMAND,
-	KEY_EXTERNALPROGRAM_WORKDIR,
-	KEY_EXTERNALPROGRAM_ALWAYSCACHE,
-	KEY_EXTERNALPROGRAM_CLEANUPINPUT
+	KEY_COMMAND,
+	KEY_WORKDIR,
+	KEY_ALWAYSCACHE,
+	KEY_CLEANUPINPUT
 };
 
 //!Error codes
 enum
 {
-	EXTERNALPROG_COMMANDLINE_FAIL=1,
-	EXTERNALPROG_SETWORKDIR_FAIL,
-	EXTERNALPROG_WRITEPOS_FAIL,
-	EXTERNALPROG_WRITEPLOT_FAIL,
-	EXTERNALPROG_MAKEDIR_FAIL,
-	EXTERNALPROG_PLOTCOLUMNS_FAIL,
-	EXTERNALPROG_READPLOT_FAIL,
-	EXTERNALPROG_READPOS_FAIL,
-	EXTERNALPROG_SUBSTITUTE_FAIL,
-	EXTERNALPROG_COMMAND_FAIL, 
+	COMMANDLINE_FAIL=1,
+	SETWORKDIR_FAIL,
+	WRITEPOS_FAIL,
+	WRITEPLOT_FAIL,
+	MAKEDIR_FAIL,
+	PLOTCOLUMNS_FAIL,
+	READPLOT_FAIL,
+	READPOS_FAIL,
+	SUBSTITUTE_FAIL,
+	COMMAND_FAIL, 
 };
 
 //=== External program filter === 
@@ -83,7 +83,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 
 	splitStrsRef(commandLine.c_str(),' ',commandLineSplit);
 	//Nothing to do
-	if(!commandLineSplit.size())
+	if(commandLineSplit.empty())
 		return 0;
 
 	vector<string> ionOutputNames,plotOutputNames;
@@ -107,7 +107,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 		wxMkdir(tempDir);
 
 		if(!wxDirExists(tempDir) )	
-			return EXTERNALPROG_MAKEDIR_FAIL;
+			return MAKEDIR_FAIL;
 
 	}
 	
@@ -120,7 +120,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 				const IonStreamData *i;
 				i = (const IonStreamData * )(dataIn[ui]);
 
-				if(!i->data.size())
+				if(i->data.empty())
 					break;
 				//Save the data to a file
 				wxString tmpStr;
@@ -134,7 +134,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 				if(IonVectorToPos(i->data,s))
 				{
 					//Uh-oh problem. Clean up and exit
-					return EXTERNALPROG_WRITEPOS_FAIL;
+					return WRITEPOS_FAIL;
 				}
 
 				ionOutputNames.push_back(s);
@@ -145,7 +145,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 				const PlotStreamData *i;
 				i = (const PlotStreamData * )(dataIn[ui]);
 
-				if(!i->xyData.size())
+				if(i->xyData.empty())
 					break;
 				//Save the data to a file
 				wxString tmpStr;
@@ -158,7 +158,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 				if(!writeTextFile(s.c_str(),i->xyData))
 				{
 					//Uh-oh problem. Clean up and exit
-					return EXTERNALPROG_WRITEPLOT_FAIL;
+					return WRITEPLOT_FAIL;
 				}
 
 				plotOutputNames.push_back(s);
@@ -200,7 +200,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 				
 				//% must be followed by something otherwise this is an error
 				if(pos == commandLineSplit[ui].size())
-					return EXTERNALPROG_COMMANDLINE_FAIL;
+					return COMMANDLINE_FAIL;
 
 				char code;
 				code = commandLineSplit[ui][pos+1];
@@ -218,7 +218,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 						if(ionOutputPos == ionOutputNames.size())
 						{
 							//User error; not enough pos files to fill.
-							return EXTERNALPROG_SUBSTITUTE_FAIL;
+							return SUBSTITUTE_FAIL;
 						}
 
 						thisCommandEntry+=ionOutputNames[ionOutputPos];
@@ -232,7 +232,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 						if(ionOutputPos == ionOutputNames.size())
 						{
 							//User error. not enough pos files to fill
-							return EXTERNALPROG_SUBSTITUTE_FAIL;
+							return SUBSTITUTE_FAIL;
 						}
 						for(unsigned int ui=ionOutputPos; ui<ionOutputNames.size();ui++)
 							thisCommandEntry+=ionOutputNames[ui] + " ";
@@ -247,7 +247,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 						if(plotOutputPos == plotOutputNames.size())
 						{
 							//User error. not enough pos files to fill
-							return EXTERNALPROG_SUBSTITUTE_FAIL;
+							return SUBSTITUTE_FAIL;
 						}
 						for(unsigned int ui=plotOutputPos; ui<plotOutputNames.size();ui++)
 							thisCommandEntry+=plotOutputNames[ui];
@@ -262,7 +262,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 						if(plotOutputPos == plotOutputNames.size())
 						{
 							//User error. not enough pos files to fill
-							return EXTERNALPROG_SUBSTITUTE_FAIL;
+							return SUBSTITUTE_FAIL;
 						}
 						for(unsigned int ui=plotOutputPos; ui<plotOutputNames.size();ui++)
 							thisCommandEntry+=plotOutputNames[ui]+ " ";
@@ -273,7 +273,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 					}
 					default:
 						//Invalid user input string. % must be escaped or recognised.
-						return EXTERNALPROG_SUBSTITUTE_FAIL;
+						return SUBSTITUTE_FAIL;
 				}
 
 
@@ -291,12 +291,12 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 	{
 		//Set the working directory before launching
 		if(!wxSetWorkingDirectory(wxStr(workingDir)))
-			return EXTERNALPROG_SETWORKDIR_FAIL;
+			return SETWORKDIR_FAIL;
 	}
 	else
 	{
 		if(!wxSetWorkingDirectory(_(".")))
-			return EXTERNALPROG_SETWORKDIR_FAIL;
+			return SETWORKDIR_FAIL;
 	}
 
 	bool result;
@@ -326,7 +326,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 	}
 	wxSetWorkingDirectory(origDir);	
 	if(!result)
-		return EXTERNALPROG_COMMAND_FAIL; 
+		return COMMAND_FAIL; 
 	
 	wxSetWorkingDirectory(origDir);	
 
@@ -368,7 +368,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 					0, 1, 2, 3
 					};
 			if(GenericLoadFloatFile(4, 4, index2, d->data,sTmp.c_str(),dummy,0))
-				return EXTERNALPROG_READPOS_FAIL;
+				return READPOS_FAIL;
 
 
 			if(alwaysCache)
@@ -410,14 +410,14 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			//try each in turn
 			const char *delimString ="\t, ";
 			if(!loadTextData(sTmp.c_str(),dataVec,header,delimString))
-				return EXTERNALPROG_READPLOT_FAIL;
+				return READPLOT_FAIL;
 
 			//Check that the input has the correct size
 			for(unsigned int uj=0;uj<dataVec.size()-1;uj+=2)
 			{
 				//well the columns don't match
 				if(dataVec[uj].size() != dataVec[uj+1].size())
-					return EXTERNALPROG_PLOTCOLUMNS_FAIL;
+					return PLOTCOLUMNS_FAIL;
 			}
 
 			//Check to see if the header might be able
@@ -504,11 +504,11 @@ void ExternalProgramFilter::getProperties(FilterProperties &propertyList) const
 	
 	s.push_back(make_pair(TRANS("Command"), commandLine));
 	type.push_back(PROPERTY_TYPE_STRING);
-	keys.push_back(KEY_EXTERNALPROGRAM_COMMAND);		
+	keys.push_back(KEY_COMMAND);		
 	
 	s.push_back(make_pair(TRANS("Work Dir"), workingDir));
 	type.push_back(PROPERTY_TYPE_STRING);
-	keys.push_back(KEY_EXTERNALPROGRAM_WORKDIR);		
+	keys.push_back(KEY_WORKDIR);		
 	
 	propertyList.types.push_back(type);
 	propertyList.data.push_back(s);
@@ -523,7 +523,7 @@ void ExternalProgramFilter::getProperties(FilterProperties &propertyList) const
 
 	s.push_back(make_pair(TRANS("Cleanup input"),tmpStr));
 	type.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(KEY_EXTERNALPROGRAM_CLEANUPINPUT);		
+	keys.push_back(KEY_CLEANUPINPUT);		
 	if(alwaysCache)
 		tmpStr="1";
 	else
@@ -531,7 +531,7 @@ void ExternalProgramFilter::getProperties(FilterProperties &propertyList) const
 	
 	s.push_back(make_pair(TRANS("Cache"),tmpStr));
 	type.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(KEY_EXTERNALPROGRAM_ALWAYSCACHE);		
+	keys.push_back(KEY_ALWAYSCACHE);		
 
 	propertyList.types.push_back(type);
 	propertyList.data.push_back(s);
@@ -544,7 +544,7 @@ bool ExternalProgramFilter::setProperty( unsigned int set, unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
-		case KEY_EXTERNALPROGRAM_COMMAND:
+		case KEY_COMMAND:
 		{
 			if(commandLine!=value)
 			{
@@ -554,7 +554,7 @@ bool ExternalProgramFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_EXTERNALPROGRAM_WORKDIR:
+		case KEY_WORKDIR:
 		{
 			if(workingDir!=value)
 			{
@@ -568,7 +568,7 @@ bool ExternalProgramFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_EXTERNALPROGRAM_ALWAYSCACHE:
+		case KEY_ALWAYSCACHE:
 		{
 			string stripped=stripWhite(value);
 
@@ -589,7 +589,7 @@ bool ExternalProgramFilter::setProperty( unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_EXTERNALPROGRAM_CLEANUPINPUT:
+		case KEY_CLEANUPINPUT:
 		{
 			string stripped=stripWhite(value);
 
@@ -617,25 +617,25 @@ std::string  ExternalProgramFilter::getErrString(unsigned int code) const
 
 	switch(code)
 	{
-		case EXTERNALPROG_COMMANDLINE_FAIL:
+		case COMMANDLINE_FAIL:
 			return std::string(TRANS("Error processing command line"));
-		case EXTERNALPROG_SETWORKDIR_FAIL:
+		case SETWORKDIR_FAIL:
 			return std::string(TRANS("Unable to set working directory"));
-		case EXTERNALPROG_WRITEPOS_FAIL:
+		case WRITEPOS_FAIL:
 			return std::string(TRANS("Error saving posfile result for external program"));
-		case EXTERNALPROG_WRITEPLOT_FAIL:
+		case WRITEPLOT_FAIL:
 			return std::string(TRANS("Error saving plot result for externalprogram"));
-		case EXTERNALPROG_MAKEDIR_FAIL:
+		case MAKEDIR_FAIL:
 			return std::string(TRANS("Error creating temporary directory"));
-		case EXTERNALPROG_PLOTCOLUMNS_FAIL:
+		case PLOTCOLUMNS_FAIL:
 			return std::string(TRANS("Detected unusable number of columns in plot"));
-		case EXTERNALPROG_READPLOT_FAIL:
+		case READPLOT_FAIL:
 			return std::string(TRANS("Unable to parse plot result from external program"));
-		case EXTERNALPROG_READPOS_FAIL:
+		case READPOS_FAIL:
 			return std::string(TRANS("Unable to load ions from external program")); 
-		case EXTERNALPROG_SUBSTITUTE_FAIL:
+		case SUBSTITUTE_FAIL:
 			return std::string(TRANS("Unable to perform commandline substitution"));
-		case EXTERNALPROG_COMMAND_FAIL: 
+		case COMMAND_FAIL: 
 			return std::string(TRANS("Error executing external program"));
 		default:
 			//Currently the only error is aborting
@@ -726,14 +726,156 @@ bool ExternalProgramFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 	return true;
 }
 
-int ExternalProgramFilter::getRefreshBlockMask() const
+unsigned int ExternalProgramFilter::getRefreshBlockMask() const
 {
 	//Absolutely nothing can go through this filter.
 	return 0;
 }
 
-int ExternalProgramFilter::getRefreshEmitMask() const
+unsigned int ExternalProgramFilter::getRefreshEmitMask() const
 {
 	//Can only generate ion streams and plot streams
 	return STREAM_TYPE_IONS | STREAM_TYPE_PLOT;
 }
+
+#ifdef DEBUG
+
+bool echoTest()
+{
+	ExternalProgramFilter* f = new ExternalProgramFilter;
+	f->setCaching(false);
+
+	int errCode;
+#if !defined(__WIN32__) && !defined(__WIN64__)
+	errCode=system("echo testing... > /dev/null");
+#else
+	errCode=system("echo testing..."):
+#endif
+	if(errCode)
+	{
+		WARN(false,"Unable to perform echo test on this system -- echo missing?");
+		return true;
+	}
+	
+	bool needUp;
+	string s;
+				
+	wxString tmpFilename;
+	tmpFilename=wxFileName::CreateTempFileName(wxT(""));
+	s = string(" echo test > ") + stlStr(tmpFilename);
+	f->setProperty(0,KEY_COMMAND,s,needUp);
+
+	//Simulate some data to send to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+
+
+	s=stlStr(tmpFilename);
+	ifstream file(s.c_str());
+	
+	TEST(file,"echo retrieval");
+
+
+	wxRemoveFile(tmpFilename);
+
+	delete f;
+
+	return true;
+}
+
+IonStreamData* createTestPosData(unsigned int numPts)
+{
+	IonStreamData* d= new IonStreamData;
+
+	d->data.resize(numPts);
+	for(unsigned int ui=0;ui<numPts;ui++)
+	{
+		d->data[ui].setPos(ui,ui,ui);
+		d->data[ui].setMassToCharge(ui);
+	}
+
+	return d;
+}
+
+bool posTest()
+{
+	const unsigned int NUM_PTS=100;
+	IonStreamData *someData;
+	someData=createTestPosData(NUM_PTS);
+
+	ExternalProgramFilter* f = new ExternalProgramFilter;
+	f->setCaching(false);
+
+	bool needUp;
+	string s;
+
+	wxString tmpFilename,tmpDir;
+	tmpDir=wxFileName::GetTempDir();
+
+
+#if defined(__WIN32__) || defined(__WIN64__)
+	tmpDir=tmpDir + wxT("\\3Depict\\");
+
+#else
+	tmpDir=tmpDir + wxT("/3Depict/");
+#endif
+	wxMkdir(tmpDir);
+
+	tmpFilename=wxFileName::CreateTempFileName(tmpDir+ wxT("unittest-"));
+	wxRemoveFile(tmpFilename);
+	tmpFilename+=wxT(".pos");
+	s ="mv \%i " + stlStr(tmpFilename);
+
+	ASSERT(tmpFilename.size());
+	
+	f->setProperty(0,KEY_COMMAND,s,needUp);
+	f->setProperty(0,KEY_WORKDIR,stlStr(tmpDir),needUp);
+	//Simulate some data to send to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	streamIn.push_back(someData);
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+
+	//Should have exactly one stream, which is an ion stream
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+
+	TEST(streamOut[0]->getNumBasicObjects() ==NUM_PTS,"Number of ions");
+	const IonStreamData* out =(IonStreamData*) streamOut[0]; 
+
+	for(unsigned int ui=0;ui<out->data.size();ui++)
+	{
+		TEST(out->data[ui].getPos() == someData->data[ui].getPos(),"position");
+		TEST(out->data[ui].getMassToCharge() == 
+			someData->data[ui].getMassToCharge(),"position");
+	}
+
+
+
+	wxRemoveFile(tmpFilename);
+	wxRmdir(tmpDir+wxT("inputData"));
+	wxRmdir(tmpDir);
+
+	delete streamOut[0];
+
+	delete someData;
+	delete f;
+
+	return true;
+}
+
+
+bool ExternalProgramFilter::runUnitTests() 
+{
+	if(!echoTest())
+		return false;
+	
+	if(!posTest())
+		return false;
+
+	return true;
+}
+
+
+#endif

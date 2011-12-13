@@ -5,11 +5,19 @@
 #include "../voxels.h"
 
 //QHull library
+#ifdef __POWERPC__
+	#pragma push_macro("__POWERPC__")
+	#define __POWERPC__ 1
+#endif
 extern "C"
 {
 	#include <qhull/qhull_a.h>
 }
+#ifdef __POWERPC__
+	#pragma pop_macro("__POWERPC__")
+#endif
 
+//TODO: Work out where the payoff for this is
 //grab size when doing convex hull calculations
 const unsigned int HULL_GRAB_SIZE=4096;
 
@@ -301,6 +309,7 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 
 	//Count the number of ions input
 	size_t numTotalPoints = numElements(dataIn,STREAM_TYPE_IONS);
+	size_t numRanged=0;
 
 	//Compute ion counts/composition as needed
 	if(wantIonCounts)
@@ -370,16 +379,18 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 					str=std::string(r->getName(ui)) + std::string("\t") + str;
 				else
 				{
-					//Only output unranged count if we are not normalising
-					if(!wantNormalise)
-						str=std::string(TRANS("Unranged")) + std::string("\t") + str;
+					//output unranged count 
+					str=std::string(TRANS("Unranged")) + std::string("\t") + str;
 				}
 
 				consoleOutput.push_back(str);
 			}
 			str=std::string("----------");
 			consoleOutput.push_back(str);
+	
 			
+			for(size_t ui=0;ui<numIons.size();ui++)
+				numRanged++;
 		}
 		else
 		{
@@ -390,6 +401,7 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 		}
 	}
 
+	float computedVol;
 	//Compute volume as needed
 	if(wantVolume)
 	{
@@ -407,13 +419,17 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 					Point3D low,hi;
 					string tmpLow,tmpHi,s;
 					bound.getBounds(low,hi);
+					computedVol=bound.volume();
+					
+					
 					stream_cast(tmpLow,low);
 					stream_cast(tmpHi,hi);
 					
 					s=TRANS("Rectilinear Bounds : ");
 					s+= tmpLow + " / "  + tmpHi;
 					consoleOutput.push_back(s);
-					stream_cast(s,bound.volume());
+					
+					stream_cast(s,computedVol);
 					consoleOutput.push_back(string(TRANS("Volume (len^3): ")) + s);
 				}
 
@@ -423,14 +439,13 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 			{
 				//OK, so here we need to do a convex hull estimation of the volume.
 				unsigned int err;
-				float curVol;
-				err=convexHullEstimateVol(dataIn,curVol,callback);
+				err=convexHullEstimateVol(dataIn,computedVol,callback);
 				if(err)
 					return err;
 
 				std::string s;
-				stream_cast(s,curVol);
-				if(curVol>0)
+				stream_cast(s,computedVol);
+				if(computedVol>0)
 					consoleOutput.push_back(string(TRANS("Convex Volume (len^3): ")) + s);
 				else
 					consoleOutput.push_back(string(TRANS("Unable to compute volume")));
@@ -438,11 +453,40 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 
 				break;
 			}
+			default:
+				ASSERT(false);
+
 		}
 	
+#ifdef DEBUG
+		lastVolume=computedVol;
+#endif
 	}
 
 
+	//"Pairwise events" - where we perform an action if both 
+	//These
+	if(wantIonCounts && wantVolume)
+	{
+		if(computedVol > sqrt(std::numeric_limits<float>::epsilon()))
+		{
+			float density;
+			std::string s;
+		
+			if(range)
+			{
+				density=(float)numRanged/computedVol;
+				stream_cast(s,density);
+				consoleOutput.push_back(string(TRANS("Ranged Density (pts/vol):")) + s );
+			}
+			
+			density=(float)numTotalPoints/computedVol;
+			stream_cast(s,density);
+			consoleOutput.push_back(string(TRANS("Total Density (pts/vol):")) + s );
+
+	
+		}
+	}
 
 	return 0;
 }
@@ -622,6 +666,7 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 	//OK, so heres the go. partition the input data
 	//into GRAB_SIZE lots before processing hull.
 
+	volume=0;
 	double *buffer=0;
 	double *tmp;
 	//Use malloc so we can re-alloc
@@ -634,8 +679,13 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 
 	vector<Point3D> curHull;
 
+	//Do the convex hull in steps for two reasons
+	// 1) qhull chokes on large data
+	// 2) we need to run the callback every now and again, so we have to 
+	//   work in batches.
 	Point3D midPoint;
 	float maxSqrDist=-1;
+	bool doneHull=false;
 	for(size_t ui=0;ui<data.size(); ui++)
 	{
 		if(data[ui]->getStreamType() != STREAM_TYPE_IONS)
@@ -679,9 +729,18 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 				}
 
 				unsigned int errCode=0;
+				if(doneHull)
+				{
+					//Free the last convex hull mem	
+					qh_freeqhull(!qh_ALL);
+					int curlong, totlong;
+					qh_memfreeshort(&curlong, &totlong);
+				}
 				errCode=doHull(bufferSize,buffer,curHull,midPoint);
 				if(errCode)
 					return errCode;
+
+				doneHull=true;
 
 				//Now compute the min sqr distance
 				//to the vertex, so we can fast-reject
@@ -706,7 +765,8 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 	}
 
 
-	if(bufferSize && (bufferSize + curHull.size() > 3))
+	//Need at least 3 objects to construct a sufficiently large buffer
+	if(bufferSize + curHull.size() > 3)
 	{
 		//Re-allocate the buffer to determine the last hull size
 		tmp=(double*)realloc(buffer,
@@ -728,13 +788,15 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 
 		unsigned int errCode=doHull(bufferSize+curHull.size(),buffer,curHull,midPoint);
 		if(errCode)
+		{
+			free(buffer);
 			return errCode;
+		}
 	}
 	else if(bufferSize)
 	{
 		//we don't have enough points to run the convex hull algorithm;
 		free(buffer);
-		volume=0;
 		return 0;
 	}
 
@@ -789,6 +851,12 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 
 		curFac=curFac->next;
 	}
+	
+
+	//Free the convex hull mem	
+	qh_freeqhull(!qh_ALL);
+	int curlong, totlong;
+	qh_memfreeshort(&curlong, &totlong);
 	free(buffer);
 
 	return 0;
@@ -895,12 +963,211 @@ bool IonInfoFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 	return true;
 }
 
-int IonInfoFilter::getRefreshBlockMask() const
+unsigned int IonInfoFilter::getRefreshBlockMask() const
 {
 	return STREAMTYPE_MASK_ALL;
 }
 
-int IonInfoFilter::getRefreshEmitMask() const
+unsigned int IonInfoFilter::getRefreshEmitMask() const
 {
 	return  0;
 }
+
+
+#ifdef DEBUG
+
+void makeBox(float boxSize,IonStreamData *d)
+{
+	d->data.clear();
+	for(unsigned int ui=0;ui<8;ui++)
+	{
+		IonHit h;
+		float x,y,z;
+
+		x= (float)(ui &1)*boxSize;
+		y= (float)((ui &2) >> 1)*boxSize;
+		z= (float)((ui &4) >> 2)*boxSize;
+
+		h.setPos(Point3D(x,y,z));
+		h.setMassToCharge(1);
+		d->data.push_back(h);
+	}
+}
+void makeSphereOutline(float radius, float angularStep,
+			IonStreamData *d)
+{
+	d->clear();
+	ASSERT(angularStep > 0.0f);
+	unsigned int numAngles= 180.0/angularStep;
+
+	for( unsigned int  ui=0; ui<numAngles; ui++)
+	{
+		float longit;
+		//-0.5->0.5
+		longit = (float)((int)ui-(int)(numAngles/2))/(float)(numAngles);
+		//longitude test
+		longit*=180.0f;
+
+		for( unsigned int  uj=0; uj<numAngles; uj++)
+		{
+			float latit;
+			//0->1
+			latit = (float)((int)uj)/(float)(numAngles);
+			latit*=180.0f;
+
+			float x,y,z;
+			x=radius*cos(longit)*sin(latit);
+			y=radius*sin(longit)*sin(latit);
+			z=radius*cos(latit);
+
+			IonHit h;
+			h.setPos(Point3D(x,y,z));
+			h.setMassToCharge(1);
+			d->data.push_back(h);
+		}
+	}
+}
+
+bool volumeBoxTest()
+{
+	//Construct a few boxes, then test each of their volumes
+	IonStreamData *d=new IonStreamData();
+
+	const float SOMEBOX=7.0f;
+	makeBox(7.0,d);
+
+
+	//Construct the filter, and then set up the options we need
+	IonInfoFilter *f  = new IonInfoFilter;	
+	f->setCaching(false);
+
+	//activate volume measurement
+	bool needUp;
+	f->setProperty(0,KEY_VOLUME,"1",needUp);
+	string s;
+	stream_cast(s,(int)VOLUME_MODE_RECTILINEAR);
+	f->setProperty(0,KEY_VOLUME_ALGORITHM, s,needUp);
+	
+	
+	vector<const FilterStreamData*> streamIn,streamOut;
+	streamIn.push_back(d);
+	
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+
+	//No ions come out of the info
+	TEST(streamOut.size() == 0,"stream size test");
+
+	vector<string> consoleStrings;
+	f->getConsoleStrings(consoleStrings); 
+	
+	//weak test for the console string size
+	TEST(consoleStrings.size(), "console strings existance test");
+
+
+	//Ensure that the rectilinear volume is the same as
+	// the theoretical value
+	float volMeasure,volReal;;
+	volMeasure=f->getLastVolume();
+	volReal =SOMEBOX*SOMEBOX*SOMEBOX; 
+
+	TEST(fabs(volMeasure -volReal) < 
+		10.0f*sqrt(std::numeric_limits<float>::epsilon()),
+					"volume estimation test (rect)");
+
+	
+	//Try again, but with convex hull
+	stream_cast(s,(int)VOLUME_MODE_CONVEX);
+	f->setProperty(0,KEY_VOLUME_ALGORITHM, s,needUp);
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+	volMeasure=f->getLastVolume();
+
+	TEST(fabs(volMeasure -volReal) < 
+		10.0f*sqrt(std::numeric_limits<float>::epsilon()),
+				"volume estimation test (convex)");
+	
+
+
+
+	delete d;
+	delete f;
+	return true;
+}
+
+bool volumeSphereTest()
+{
+	//Construct a few boxes, then test each of their volumes
+	IonStreamData *d=new IonStreamData();
+
+	const float OUTLINE_RADIUS=7.0f;
+	const float ANGULAR_STEP=2.0f;
+	makeSphereOutline(OUTLINE_RADIUS,ANGULAR_STEP,d);
+
+	//Construct the filter, and then set up the options we need
+	IonInfoFilter *f  = new IonInfoFilter;	
+	f->setCaching(false);
+
+	//activate volume measurement
+	bool needUp;
+	f->setProperty(0,KEY_VOLUME,"1",needUp);
+	
+	f->setProperty(0,KEY_VOLUME_ALGORITHM, 
+		volumeModeString[VOLUME_MODE_RECTILINEAR],needUp);
+	
+	
+	vector<const FilterStreamData*> streamIn,streamOut;
+	streamIn.push_back(d);
+	
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+
+	//No ions come out of the info
+	TEST(streamOut.size() == 0,"stream size test");
+
+	vector<string> consoleStrings;
+	f->getConsoleStrings(consoleStrings); 
+
+	//weak test for the console string size
+	TEST(consoleStrings.size(), "console strings existance test");
+
+
+	float volMeasure,volReal;
+	volMeasure=f->getLastVolume();
+	//Bounding box for sphere is diameter^3.
+	volReal =8.0f*OUTLINE_RADIUS*OUTLINE_RADIUS*OUTLINE_RADIUS;
+	TEST(fabs(volMeasure -volReal) < 0.05*volReal,"volume test (rect est of sphere)");
+
+	
+	//Try again, but with convex hull
+	f->setProperty(0,KEY_VOLUME_ALGORITHM,
+		volumeModeString[VOLUME_MODE_CONVEX],needUp);
+	
+	vector<string> dummy;
+	f->getConsoleStrings(dummy);
+
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+	volMeasure=f->getLastVolume();
+
+	//Convex volume of sphere
+	volReal =4.0f/3.0f*M_PI*OUTLINE_RADIUS*OUTLINE_RADIUS*OUTLINE_RADIUS;
+	TEST(fabs(volMeasure -volReal) < 0.05*volReal, "volume test, convex est. of sphere");
+	
+	TEST(consoleStrings.size(), "console strings existance test");
+
+	delete d;
+	delete f;
+	return true;
+}
+
+bool IonInfoFilter::runUnitTests()
+{
+	if(!volumeBoxTest())
+		return false;
+	
+	if(!volumeSphereTest())
+		return false;
+	
+	return true;
+}
+#endif
+

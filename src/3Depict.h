@@ -50,7 +50,7 @@ public:
     MainWindowFrame(wxWindow* parent, int id, const wxString& title, const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE);
     virtual ~MainWindowFrame();
 
-    void OnDropFiles(const wxArrayString &files);
+    void OnDropFiles(const wxArrayString &files, int x, int y);
 
     bool isCurrentlyUpdatingScene() const { return currentlyUpdatingScene;};
 
@@ -281,7 +281,9 @@ public:
     
     virtual void OnStatusBarTimer(wxTimerEvent &event); // 
     virtual void OnFilterGridCellEditorShow(wxGridEvent &event); // 
+    virtual void OnFilterGridCellEditorHide(wxGridEvent &event); // 
     virtual void OnCameraGridCellEditorShow(wxGridEvent &event); // 
+    virtual void OnCameraGridCellEditorHide(wxGridEvent &event); // 
     virtual void OnProgressTimer(wxTimerEvent &event);
     virtual void OnProgressAbort(wxCommandEvent &event);
     virtual void OnViewFullscreen(wxCommandEvent &event);
@@ -347,7 +349,7 @@ public:
 
 	virtual bool OnDropFiles(wxCoord x, wxCoord y, const wxArrayString& files)
 	{
-		frame->OnDropFiles(files);
+		frame->OnDropFiles(files, x, y);
 
 		return true;
 	};

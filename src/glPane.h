@@ -83,6 +83,7 @@ public:
 	void clearCameraUpdates() {haveCameraUpdates=false;};
 
 	BasicGLPane(wxWindow* parent);
+	~BasicGLPane();
     
 	void resized(wxSizeEvent& evt);
     

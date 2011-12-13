@@ -1,8 +1,8 @@
 Debian uses different text domain for the lang files
 Index: 3depict-0.0.8/src/3Depict.cpp
 ===================================================================
---- 3depict-0.0.8.orig/src/3Depict.cpp	2011-09-27 17:45:05.493309499 +1000
-+++ 3depict-0.0.8/src/3Depict.cpp	2011-09-27 17:46:25.729707941 +1000
+--- 3depict-0.0.8.orig/src/3Depict.cpp	2011-10-23 16:32:18.000000000 +0100
++++ 3depict-0.0.8/src/3Depict.cpp	2011-10-23 16:32:18.000000000 +0100
 @@ -347,7 +347,7 @@
  		else
  		{

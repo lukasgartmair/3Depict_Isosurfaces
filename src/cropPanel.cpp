@@ -248,6 +248,8 @@ unsigned int CropPanel::getBestCropWidget(float xMouse, float yMouse,unsigned in
 				x=crop[CROP_LEFT];
 				y=1.0-crop[CROP_BOTTOM];
 				break;
+			default:
+				ASSERT(false);
 		}
 
 		tmpDist=(xMouse-x)*(xMouse-x) + (yMouse-y)*(yMouse-y);
@@ -388,6 +390,8 @@ void CropPanel::mouseDoubleLeftClick(wxMouseEvent& event)
 
 void CropPanel::mouseLeftWindow(wxMouseEvent& event) 
 {
+	if(!dragging)
+		selMode=SELECT_MODE_NONE;
 }
 
 void CropPanel::mouseDown(wxMouseEvent &event)
@@ -570,6 +574,8 @@ void CropPanel::draw()
 				xC=crop[CROP_LEFT];
 				yC=1.0-crop[CROP_BOTTOM];
 				break;
+			default:
+				ASSERT(false);
 		}
 
 		xC=xC*(float)w;
@@ -698,9 +704,5 @@ void CropPanel::onResize(wxSizeEvent &evt)
 #ifndef __WXMAC__
 	wxPaintEvent paintEvt;
 	wxPostEvent(this,paintEvt);
-#else
-	//FIXME: This is not allowable in wx, but seems to be required
-	// for wxMac??
-	draw();
 #endif
 }

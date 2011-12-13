@@ -33,7 +33,11 @@ class ClusterAnalysisFilter : public Filter
 		
 		bool wantClusterSizeDist,logClusterSize;
 
+		//Do we want the composition data for the cluster
 		bool wantClusterComposition, normaliseComposition;
+
+		//Do we want a morphological analysis
+		bool wantClusterMorphology;
 
 		//!Do we have range data to use 
 		bool haveRangeParent;
@@ -78,6 +82,10 @@ class ClusterAnalysisFilter : public Filter
 				const vector<vector<IonHit> > &clusteredBulk, const RangeFile *rng,
 							vector<PlotStreamData *> &plots) const;
 
+
+		//COmpute the singular values that area associated with each cluster
+		void getSingularValues(const vector<vector<IonHit> > &clusteredCore,
+				const vector<vector<IonHit> > &clusteredBulk, vector<vector<float> > &singularValues);
 #ifdef DEBUG
 		bool paranoidDebugAssert(const std::vector<std::vector<IonHit > > &core, 
 				const std::vector<std::vector<IonHit> > &bulk) const;
@@ -119,10 +127,10 @@ class ClusterAnalysisFilter : public Filter
 		bool readState(xmlNodePtr &node, const std::string &packDir);
 		
 		//!Get the stream types that will be dropped during ::refresh	
-		int getRefreshBlockMask() const;
+		unsigned int getRefreshBlockMask() const;
 
 		//!Get the stream types that will be generated during ::refresh	
-		int getRefreshEmitMask() const;	
+		unsigned int getRefreshEmitMask() const;	
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
 };

@@ -16,16 +16,6 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//Do we have the HPMC Real-time on-gpu isosurface library?
-//Note, this define is repeated in the header
-//to avoid exposing glew.h, which complains bitterly about header orders.
-//#define HPMC_GPU_ISOSURFACE 
-
-#ifdef HPMC_GPU_ISOSURFACE
-	//HPC headers
-	#include <hpmc/hpmc.h>
-#endif
-
 #include "drawables.h"
 
 #include "colourmap.h"
@@ -227,7 +217,8 @@ DrawSphere::DrawSphere() : radius(1.0f), latSegments(8),longSegments(8)
 
 DrawSphere::~DrawSphere()
 {
-	gluDeleteQuadric(q);
+	if(q)
+		gluDeleteQuadric(q);
 }
 
 
@@ -271,6 +262,9 @@ void DrawSphere::setColour(float rnew, float gnew, float bnew, float anew)
 
 void DrawSphere::draw() const 
 {
+	if(!q)
+		return;
+
 	glPushMatrix();
 		glTranslatef(origin[0],origin[1],origin[2]);
 		glColor4f(r,g,b,a);
@@ -303,9 +297,11 @@ DrawCylinder::DrawCylinder() : radius(1.0f),
 {
 	q= gluNewQuadric();
 	qCap[0]= gluNewQuadric();
-	gluQuadricOrientation(qCap[0],GLU_INSIDE);	
+	if(qCap[0])
+		gluQuadricOrientation(qCap[0],GLU_INSIDE);	
 	qCap[1]= gluNewQuadric();
-	gluQuadricOrientation(qCap[1],GLU_OUTSIDE);	
+	if(qCap[1])
+		gluQuadricOrientation(qCap[1],GLU_OUTSIDE);	
 	radiiLocked=false;
 }
 
@@ -316,9 +312,12 @@ bool DrawCylinder::needsDepthSorting()  const
 
 DrawCylinder::~DrawCylinder()
 {
-	gluDeleteQuadric(q);
-	gluDeleteQuadric(qCap[0]);
-	gluDeleteQuadric(qCap[1]);
+	if(q)
+		gluDeleteQuadric(q);
+	if(qCap[0])
+		gluDeleteQuadric(qCap[0]);
+	if(qCap[1])
+		gluDeleteQuadric(qCap[1]);
 }
 
 
@@ -336,6 +335,9 @@ void DrawCylinder::setDirection(const Point3D &p)
 
 void DrawCylinder::draw() const
 {
+	if(!q || !qCap[0] || !qCap[1])
+		return;
+
 	//Cross product desired drection with default
 	//direction to produce rotation vector
 	Point3D dir(0.0f,0.0f,1.0f);
@@ -420,6 +422,7 @@ void DrawCylinder::recomputeParams(const vector<Point3D> &vecs,
 
 void DrawCylinder::setLength(float len)
 {
+	ASSERT(direction.sqrMag());
 	direction=direction.normalise()*len;
 }
 
@@ -1682,283 +1685,6 @@ void DrawIsoSurface::draw() const
 	}
 }
 
-
-#ifdef HPMC_GPU_ISOSURFACE
-
-//HPMC on GPU Isosurface code is GPL
-// See class definition for licence 
-
-
-DrawIsoSurfaceWithShader::DrawIsoSurfaceWithShader()
-{
-	dataset=0;
-	shadersOK=false;
-	wireframe=false;
-		
-	//TODO: Make this static, once-only?? Have some global drawinit code?
-	GLenum err = glewInit();
-	shadersOK= (GLEW_OK == err) &&(GLEW_ARB_vertex_program);
-	
-	//Create shaders
-	 shaded_vertex_shader =
-		"varying vec3 normal;\n"
-		"void\n"
-		"main()\n"
-		"{\n"
-		"    vec3 p, n;\n"
-		"    extractVertex( p, n );\n"
-		"    gl_Position = gl_ModelViewProjectionMatrix * vec4( p, 1.0 );\n"
-		"    normal = gl_NormalMatrix * n;\n"
-		"    gl_FrontColor = gl_Color;\n"
-		"}\n";
-	 shaded_fragment_shader =
-		"varying vec3 normal;\n"
-		"void\n"
-		"main()\n"
-		"{\n"
-		"    const vec3 v = vec3( 0.0, 0.0, 1.0 );\n"
-		"    vec3 l = normalize( vec3( 1.0, 1.0, 1.0 ) );\n"
-		"    vec3 h = normalize( v+l );\n"
-		"    vec3 n = normalize( normal );\n"
-		"    float diff = max( 0.1, dot( n, l ) );\n"
-		"    float spec = pow( max( 0.0, dot(n, h)), 20.0);\n"
-		"    gl_FragColor = diff * gl_Color +\n"
-		"                   spec * vec4(1.0);\n"
-		"}\n";
-
-	 flat_vertex_shader =
-		"void\n"
-		"main()\n"
-		"{\n"
-		"    vec3 p, n;\n"
-		"    extractVertex( p, n );\n"
-		"    gl_Position = gl_ModelViewProjectionMatrix * vec4( p, 1.0 );\n"
-		"    gl_FrontColor = gl_Color;\n"
-		"}\n";
-
-
-}
-
-
-DrawIsoSurfaceWithShader::~DrawIsoSurfaceWithShader()
-{
-	if(dataset)
-		delete[] dataset;
-}
-
-
-
-void DrawIsoSurfaceWithShader::getBoundingBox(BoundCube &b) const
-{
-	b=bounds;
-}
-
-void DrawIsoSurfaceWithShader::setScalarThresh(float thresh)
-{
-	threshold=(float)(thresh/trueMax*255.0f);
-}
-
-
-bool DrawIsoSurfaceWithShader::init(const Voxels<float> &f)
-{
-	if(!shadersOK)
-		return false;
-
-	unsigned long long nX,nY,nZ;
-
-	f.getSize(nX,nY,nZ);
-	try
-	{
-		dataset = new char[nX*nY*nZ];
-	}
-	catch(std::bad_alloc)
-	{
-		return false;
-	}
-
-	//This algorithm does not handle voxel fields with negative values
-	ASSERT(f.min() >= 0.0f);
-	trueMax=f.max();
-
-	bounds.setBounds(f.getMinBounds(),f.getMaxBounds());
-
-	for(unsigned int ui=0;ui<nX*nY*nZ; ui++)
-		dataset[ui]=(float)(f.getData(ui)/trueMax*255.0f);
-
-	volume_size_x=nX;
-	volume_size_y=nY;
-	volume_size_z=nZ;
-
-	// --- upload volume ------------------------------------------------------
-
-	GLint alignment;
-	glGetIntegerv( GL_UNPACK_ALIGNMENT, &alignment );
-	glPixelStorei( GL_UNPACK_ALIGNMENT, 1 );
-	glGenTextures( 1, &volume_tex );
-	glBindTexture( GL_TEXTURE_3D, volume_tex );
-	glTexImage3D( GL_TEXTURE_3D, 0, GL_ALPHA,
-		      volume_size_x, volume_size_y, volume_size_z, 0,
-		      GL_ALPHA, GL_UNSIGNED_BYTE, dataset );
-	glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
-	glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-	glTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-	glBindTexture( GL_TEXTURE_3D, 0 );
-	glPixelStorei( GL_UNPACK_ALIGNMENT, alignment );
-
-	// --- create HistoPyramid -------------------------------------------------
-	hpmc_c = HPMCcreateConstants();
-	hpmc_h = HPMCcreateHistoPyramid( hpmc_c );
-
-	HPMCsetLatticeSize( hpmc_h,
-			    volume_size_x,
-			    volume_size_y,
-			    volume_size_z );
-
-	HPMCsetGridSize( hpmc_h,
-			 volume_size_x-1,
-			 volume_size_y-1,
-			 volume_size_z-1 );
-
-	float max_size = std::max( volume_size_x, std::max( volume_size_y, volume_size_z ) );
-	HPMCsetGridExtent( hpmc_h,
-			   volume_size_x / max_size,
-			   volume_size_y / max_size,
-			   volume_size_z / max_size );
-
-	HPMCsetFieldTexture3D( hpmc_h,
-			       volume_tex,
-			       GL_FALSE );
-
-	// --- create traversal vertex shader --------------------------------------
-	hpmc_th_shaded = HPMCcreateTraversalHandle( hpmc_h );
-
-	char *traversal_code = HPMCgetTraversalShaderFunctions( hpmc_th_shaded );
-	const char* shaded_vsrc[2] =
-	{
-		traversal_code,
-		shaded_vertex_shader.c_str()
-	};
-	shaded_v = glCreateShader( GL_VERTEX_SHADER );
-	glShaderSource( shaded_v, 2, &shaded_vsrc[0], NULL );
-	compileShader( shaded_v, "shaded vertex shader" );
-	free( traversal_code );
-
-	const char* shaded_fsrc[1] =
-	{
-		shaded_fragment_shader.c_str()
-	};
-	shaded_f = glCreateShader( GL_FRAGMENT_SHADER );
-	glShaderSource( shaded_f, 1, &shaded_fsrc[0], NULL );
-	compileShader( shaded_f, "shaded fragment shader" );
-
-	// link program
-	shaded_p = glCreateProgram();
-	glAttachShader( shaded_p, shaded_v );
-	glAttachShader( shaded_p, shaded_f );
-	linkProgram( shaded_p, "shaded program" );
-
-	// associate program with traversal handle
-	HPMCsetTraversalHandleProgram( hpmc_th_shaded,
-				       shaded_p,
-				       0, 1, 2 );
-
-	hpmc_th_flat = HPMCcreateTraversalHandle( hpmc_h );
-
-	traversal_code = HPMCgetTraversalShaderFunctions( hpmc_th_flat );
-	const char* flat_src[2] =
-	{
-		traversal_code,
-		flat_vertex_shader.c_str()
-	};
-	flat_v = glCreateShader( GL_VERTEX_SHADER );
-	glShaderSource( flat_v, 2, &flat_src[0], NULL );
-	compileShader( flat_v, "flat vertex shader" );
-	free( traversal_code );
-
-	// link program
-	flat_p = glCreateProgram();
-	glAttachShader( flat_p, flat_v );
-	linkProgram( flat_p, "flat program" );
-
-	// associate program with traversal handle
-	HPMCsetTraversalHandleProgram( hpmc_th_flat,
-				       flat_p,
-				       0, 1, 2 );
-
-
-	glPolygonOffset( 1.0, 1.0 );
-	return true;
-}
-
-
-void DrawIsoSurfaceWithShader::linkProgram( GLuint program, const std::string& what )
-{
-	ASSERT(shadersOK);
-	glLinkProgram( program );
-
-	GLint linkstatus;
-	glGetProgramiv( program, GL_LINK_STATUS, &linkstatus );
-	if ( linkstatus != GL_TRUE ) {
-
-		GLint logsize;
-		glGetProgramiv( program, GL_INFO_LOG_LENGTH, &logsize );
-
-		if ( logsize > 0 ) {
-			GLchar *infolog = new char[ logsize+1 ];
-			glGetProgramInfoLog( program, logsize, NULL, infolog );
-		}
-		shadersOK=false;
-	}
-}
-
-
-void DrawIsoSurfaceWithShader::draw() const
-{
-	ASSERT(shadersOK);
-	HPMCbuildHistopyramid( hpmc_h, threshold );
-
-	//TODO: FIXME:  Does not work??! Go back to examples and look again
-		
-	// --- render surface ------------------------------------------------------
-	if ( !wireframe ) {
-		HPMCextractVertices( hpmc_th_shaded );
-	}
-	else {
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		glEnable( GL_POLYGON_OFFSET_FILL );
-		HPMCextractVertices( hpmc_th_flat );
-		glDisable( GL_POLYGON_OFFSET_FILL );
-
-		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE );
-		HPMCextractVertices( hpmc_th_flat );
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	}
-}
-
-void DrawIsoSurfaceWithShader::compileShader( GLuint shader, const std::string& what )
-{
-	ASSERT(shadersOK);
-	glCompileShader( shader );
-
-	GLint compile_status;
-	glGetShaderiv( shader, GL_COMPILE_STATUS, &compile_status );
-	if ( compile_status != GL_TRUE ) {
-
-		GLint logsize;
-		glGetShaderiv( shader, GL_INFO_LOG_LENGTH, &logsize );
-
-		if ( logsize > 0 ) {
-			GLchar *infolog = new char[ logsize+1 ];
-			glGetProgramInfoLog( shader, logsize, NULL, infolog );
-		}
-		else {
-		}
-		shadersOK=false;
-	}
-}
-#endif
 
 
 DrawAxis::DrawAxis()

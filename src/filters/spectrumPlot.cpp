@@ -13,6 +13,17 @@ enum
 	SPECTRUM_ABORT_FAIL,
 };
 
+enum
+{
+	KEY_SPECTRUM_BINWIDTH,
+	KEY_SPECTRUM_AUTOEXTREMA,
+	KEY_SPECTRUM_MIN,
+	KEY_SPECTRUM_MAX,
+	KEY_SPECTRUM_LOGARITHMIC,
+	KEY_SPECTRUM_PLOTTYPE,
+	KEY_SPECTRUM_COLOUR
+};
+
 //Limit user to one :million: bins
 const unsigned int SPECTRUM_MAX_BINS=1000000;
 
@@ -45,6 +56,7 @@ Filter *SpectrumPlotFilter::cloneUncached() const
 	p->b=b;	
 	p->a=a;	
 	p->plotType=plotType;
+	p->logarithmic = logarithmic;
 
 
 	//We are copying wether to cache or not,
@@ -82,100 +94,106 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 	}
 
 
+
 	size_t totalSize=numElements(dataIn);
 	
-
-	//Determine min and max of input
-	if(autoExtrema)
+	unsigned int nBins=2;
+	if(totalSize)
 	{
-		progress.maxStep=2;
-		progress.step=1;
-		progress.stepName=TRANS("Extrema");
-	
-		size_t n=0;
-		minPlot = std::numeric_limits<float>::max();
-		maxPlot =-std::numeric_limits<float>::max();
-		//Loop through each type of data
+
+		//Determine min and max of input
+		if(autoExtrema)
+		{
+			progress.maxStep=2;
+			progress.step=1;
+			progress.stepName=TRANS("Extrema");
 		
-		unsigned int curProg=NUM_CALLBACK;	
-		for(unsigned int ui=0;ui<dataIn.size() ;ui++)
-		{
-			//Only process stream_type_ions. Do not propagate anything,
-			//except for the spectrum
-			if(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS)
-			{
-				IonStreamData *ions;
-				ions = (IonStreamData *)dataIn[ui];
-				for(unsigned int uj=0;uj<ions->data.size(); uj++)
-				{
-					minPlot = std::min(minPlot,
-						ions->data[uj].getMassToCharge());
-					maxPlot = std::max(maxPlot,
-						ions->data[uj].getMassToCharge());
-
-
-					if(!curProg--)
-					{
-						n+=NUM_CALLBACK;
-						progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-						curProg=NUM_CALLBACK;
-						if(!(*callback)())
-							return SPECTRUM_ABORT_FAIL;
-					}
-				}
-	
-			}
+			size_t n=0;
+			minPlot = std::numeric_limits<float>::max();
+			maxPlot =-std::numeric_limits<float>::max();
+			//Loop through each type of data
 			
+			unsigned int curProg=NUM_CALLBACK;	
+			for(unsigned int ui=0;ui<dataIn.size() ;ui++)
+			{
+				//Only process stream_type_ions. Do not propagate anything,
+				//except for the spectrum
+				if(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS)
+				{
+					IonStreamData *ions;
+					ions = (IonStreamData *)dataIn[ui];
+					for(unsigned int uj=0;uj<ions->data.size(); uj++)
+					{
+						minPlot = std::min(minPlot,
+							ions->data[uj].getMassToCharge());
+						maxPlot = std::max(maxPlot,
+							ions->data[uj].getMassToCharge());
+
+
+						if(!curProg--)
+						{
+							n+=NUM_CALLBACK;
+							progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
+							curProg=NUM_CALLBACK;
+							if(!(*callback)())
+								return SPECTRUM_ABORT_FAIL;
+						}
+					}
+		
+				}
+				
+			}
+		
+			//Check that the plot values hvae been set (ie not same as initial values)
+			if(minPlot !=std::numeric_limits<float>::max() &&
+				maxPlot!=-std::numeric_limits<float>::max() )
+			{
+				//push them out a bit to make the edges visible
+				maxPlot=maxPlot+1;
+				minPlot=minPlot-1;
+			}
+
+			//Time to move to phase 2	
+			progress.step=2;
+			progress.stepName=TRANS("count");
 		}
-	
-		//Check that the plot values hvae been set (ie not same as initial values)
-		if(minPlot !=std::numeric_limits<float>::max() &&
-			maxPlot!=-std::numeric_limits<float>::max() )
+
+
+
+		double delta = ((double)maxPlot - (double)(minPlot))/(double)binWidth;
+
+
+		//Check that we have good plot limits.
+		if(minPlot ==std::numeric_limits<float>::max() || 
+			minPlot ==-std::numeric_limits<float>::max() || 
+			fabs(delta) >  std::numeric_limits<float>::max() || // Check for out-of-range
+			 binWidth < sqrt(std::numeric_limits<float>::epsilon())	)
 		{
-			//push them out a bit to make the edges visible
-			maxPlot=maxPlot+1;
-			minPlot=minPlot-1;
+			//If not, then simply set it to "1".
+			minPlot=0; maxPlot=1.0; binWidth=0.1;
 		}
 
-		//Time to move to phase 2	
-		progress.step=2;
-		progress.stepName=TRANS("count");
+
+
+		//Estimate number of bins in floating point, and check for potential overflow .
+		float tmpNBins = (float)((maxPlot-minPlot)/binWidth);
+
+		//If using autoextrema, use a lower limit for max bins,
+		//as we may just hit a nasty data point
+		if(autoExtrema)
+			tmpNBins = std::min(SPECTRUM_AUTO_MAX_BINS,(unsigned int)tmpNBins);
+		else
+			tmpNBins = std::min(SPECTRUM_MAX_BINS,(unsigned int)tmpNBins);
+		
+		nBins = (unsigned int)tmpNBins;
+
+		if (!nBins)
+		{
+			nBins = 10;
+			binWidth = (maxPlot-minPlot)/nBins;
+		}
 	}
 
-
-
-	double delta = ((double)maxPlot - (double)(minPlot))/(double)binWidth;
-
-
-	//Check that we have good plot limits.
-	if(minPlot ==std::numeric_limits<float>::max() || 
-		minPlot ==-std::numeric_limits<float>::max() || 
-		fabs(delta) >  std::numeric_limits<float>::max() || // Check for out-of-range
-		 binWidth < sqrt(std::numeric_limits<float>::epsilon())	)
-	{
-		//If not, then simply set it to "1".
-		minPlot=0; maxPlot=1.0; binWidth=0.1;
-	}
-
-
-
-	//Estimate number of bins in floating point, and check for potential overflow .
-	float tmpNBins = (float)((maxPlot-minPlot)/binWidth);
-
-	//If using autoextrema, use a lower limit for max bins,
-	//as we may just hit a nasty data point
-	if(autoExtrema)
-		tmpNBins = std::min(SPECTRUM_AUTO_MAX_BINS,(unsigned int)tmpNBins);
-	else
-		tmpNBins = std::min(SPECTRUM_MAX_BINS,(unsigned int)tmpNBins);
-	
-	unsigned int nBins = (unsigned int)tmpNBins;
-
-	if (!nBins)
-	{
-		nBins = 10;
-		binWidth = (maxPlot-minPlot)/nBins;
-	}
 
 	PlotStreamData *d;
 	d=new PlotStreamData;
@@ -718,6 +736,7 @@ bool SpectrumPlotFilter::readState(xmlNodePtr &nodePtr, const std::string &state
 	if(!xmlString)
 		return false;
 	tmpStr=(char *)xmlString;
+	xmlFree(xmlString);
 
 	//convert from string to digit
 	if(stream_cast(tmpMin,tmpStr))
@@ -727,12 +746,12 @@ bool SpectrumPlotFilter::readState(xmlNodePtr &nodePtr, const std::string &state
 	if(!xmlString)
 		return false;
 	tmpStr=(char *)xmlString;
-
+	xmlFree(xmlString);
+	
 	//convert from string to digit
 	if(stream_cast(tmpMax,tmpStr))
 		return false;
 
-	xmlFree(xmlString);
 
 	if(tmpMin >=tmpMax)
 		return false;
@@ -800,13 +819,101 @@ bool SpectrumPlotFilter::readState(xmlNodePtr &nodePtr, const std::string &state
 	return true;
 }
 
-int SpectrumPlotFilter::getRefreshBlockMask() const
+unsigned int SpectrumPlotFilter::getRefreshBlockMask() const
 {
 	//Absolutely nothing can go through this filter.
 	return STREAMTYPE_MASK_ALL;
 }
 
-int SpectrumPlotFilter::getRefreshEmitMask() const
+unsigned int SpectrumPlotFilter::getRefreshEmitMask() const
 {
 	return STREAM_TYPE_PLOT;
 }
+
+#ifdef DEBUG
+
+IonStreamData *synDataPoints(const unsigned int span[], unsigned int numPts)
+{
+	IonStreamData *d = new IonStreamData;
+	
+	for(unsigned int ui=0;ui<numPts;ui++)
+	{
+		IonHit h;
+		h.setPos(Point3D(ui%span[0],
+			ui%span[1],ui%span[2]));
+		h.setMassToCharge(ui);
+		d->data.push_back(h);
+	}
+
+	return d;
+}
+
+bool countTest()
+{
+	IonStreamData* d;
+	const unsigned int VOL[]={
+				10,10,10
+				};
+	const unsigned int NUMPTS=100;
+	d = synDataPoints(VOL,NUMPTS);
+
+	SpectrumPlotFilter *f;
+	f = new SpectrumPlotFilter;
+
+
+	bool needUp;
+	std::string s;
+	f->setProperty(0,KEY_SPECTRUM_LOGARITHMIC,"0",needUp);
+	
+	genColString(255,0,0,s);
+	f->setProperty(0,KEY_SPECTRUM_COLOUR,s,needUp);
+
+	vector<const FilterStreamData*> streamIn,streamOut;
+
+	streamIn.push_back(d);
+
+	//OK, so now do the rotation
+	//Do the refresh
+	ProgressData p;
+	f->setCaching(false);
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+	delete f;
+	
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_PLOT,"stream type");
+
+	PlotStreamData *plot;
+	plot = (PlotStreamData*)streamOut[0];
+
+	
+	//Check the plot colour is what we want.
+	TEST(fabs(plot->r -1.0f) < sqrt(std::numeric_limits<float>::epsilon()),"colour (r)");
+	TEST(plot->g< 
+		sqrt(std::numeric_limits<float>::epsilon()),"colour (g)");
+	TEST(plot->b < sqrt(std::numeric_limits<float>::epsilon()),"colour (b)");
+
+	//Count the number of ions in the plot, and check that it is equal to the number of ions we put in.
+	float sumV=0;
+	
+	for(unsigned int ui=0;ui<plot->xyData.size();ui++)
+		sumV+=plot->xyData[ui].second;
+
+	TEST(fabs(sumV - (float)NUMPTS) < 
+		std::numeric_limits<float>::epsilon(),"ion count");
+
+
+	delete plot;
+	delete d;
+	return true;
+}
+
+bool SpectrumPlotFilter::runUnitTests() 
+{
+	if(!countTest())
+		return false;
+
+	return true;
+}
+
+#endif
+

@@ -7,8 +7,12 @@
 enum
 {
 	KEY_RANGE_ACTIVE=1,
+	KEY_DROP_UNRANGED,
+	KEY_RANGE_FILENAME,
 	KEY_RANGE_IONID,
 	KEY_RANGE_START,
+	KEY_ENABLE_ALL_IONS,
+	KEY_ENABLE_ALL_RANGES,
 	KEY_RANGE_END
 };
 
@@ -284,12 +288,13 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 				for(vector<IonHit>::const_iterator it=((const IonStreamData *)dataIn[ui])->data.begin();
 					       it!=((const IonStreamData *)dataIn[ui])->data.end(); ++it)
 				{
-					unsigned int ionID, rangeID;
+					unsigned int rangeID;
 					rangeID=rng.getRangeID(it->getMassToCharge());
 
 					//If ion is unranged, then it will have a rangeID of -1
 					if(rangeID != (unsigned int)-1)
 					{
+						unsigned int ionID;
 						ionID=rng.getIonID(rangeID);
 
 						//Only retain the ion if the ionID and rangeID are enabled
@@ -427,21 +432,6 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 	return 0;
 }
 
-void RangeFileFilter::guessFormat(const std::string &s)
-{
-	vector<string> sVec;
-	splitStrsRef(s.c_str(),'.',sVec);
-
-	if(!sVec.size())
-		assumedFileFormat=RANGE_FORMAT_ORNL;
-	else if(lowercase(sVec[sVec.size()-1]) == "rrng")
-		assumedFileFormat=RANGE_FORMAT_RRNG;
-	else if(lowercase(sVec[sVec.size()-1]) == "env")
-		assumedFileFormat=RANGE_FORMAT_ENV;
-	else
-		assumedFileFormat=RANGE_FORMAT_ORNL;
-}
-
 unsigned int RangeFileFilter::updateRng()
 {
 	unsigned int uiErr;	
@@ -460,6 +450,22 @@ unsigned int RangeFileFilter::updateRng()
 		enabledIons[ui]=(char)1;
 
 	return 0;
+}
+
+void RangeFileFilter::setRangeData(const RangeFile &rngNew)
+{
+	rng=rngNew;		
+	
+	unsigned int nRng = rng.getNumRanges();
+	enabledRanges.resize(nRng);
+	unsigned int nIon = rng.getNumIons();
+	enabledIons.resize(nIon);
+	//Turn all ranges to "on" 
+	for(unsigned int ui=0;ui<enabledRanges.size(); ui++)
+		enabledRanges[ui]=(char)1;
+	//Turn all ions to "on" 
+	for(unsigned int ui=0;ui<enabledIons.size(); ui++)
+		enabledIons[ui]=(char)1;
 }
 
 size_t RangeFileFilter::numBytesForCache(size_t nObjects) const
@@ -490,7 +496,7 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 	//SET 0
 	strVec.push_back(make_pair(TRANS("File"),rngName));
 	types.push_back(PROPERTY_TYPE_STRING);
-	keys.push_back(0);
+	keys.push_back(KEY_RANGE_FILENAME);
 
 	std::string tmpStr;
 	if(dropUnranged)
@@ -500,7 +506,7 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 
 	strVec.push_back(make_pair(TRANS("Drop unranged"),tmpStr));
 	types.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(1);
+	keys.push_back(KEY_DROP_UNRANGED);
 
 	p.data.push_back(strVec);
 	p.types.push_back(types);
@@ -510,14 +516,34 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 	types.clear();
 	strVec.clear();
 
+
 	//SET 1
+	//---
+	//Option to disable/enable all ions
+	if(rng.getNumIons())
+	{
+		string str="1";	
+		for(unsigned int uj=0;uj<rng.getNumIons();uj++)
+		{
+			if(!enabledIons[uj])
+			{
+				str="0";
+				break;
+			}
+		}
+		strVec.push_back(make_pair(string(TRANS("All Ions")),str));
+		types.push_back(PROPERTY_TYPE_BOOL);
+		keys.push_back(KEY_ENABLE_ALL_IONS);
+	}
+
+	//Ions themselves
 	for(unsigned int ui=0;ui<rng.getNumIons(); ui++)
 	{
 		//Get the ion ID
 		stream_cast(suffix,ui);
 		strVec.push_back(make_pair(string(TRANS("IonID ") +suffix),rng.getName(ui)));
 		types.push_back(PROPERTY_TYPE_STRING);
-		keys.push_back(3*ui);
+		keys.push_back(3*ui+KEY_ENABLE_ALL_IONS);
 
 
 		string str;	
@@ -528,7 +554,7 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 		strVec.push_back(make_pair(string(TRANS("Active Ion "))
 						+ suffix,str));
 		types.push_back(PROPERTY_TYPE_BOOL);
-		keys.push_back(3*ui+1);
+		keys.push_back(3*ui+1+KEY_ENABLE_ALL_IONS);
 		
 		RGBf col;
 		string thisCol;
@@ -538,9 +564,9 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 		genColString((unsigned char)(col.red*255),(unsigned char)(col.green*255),
 				(unsigned char)(col.blue*255),255,thisCol);
 
-		strVec.push_back(make_pair(string(TRANS("colour ")) + suffix,thisCol)); 
+		strVec.push_back(make_pair(string(TRANS("Colour ")) + suffix,thisCol)); 
 		types.push_back(PROPERTY_TYPE_COLOUR);
-		keys.push_back(3*ui+2);
+		keys.push_back(3*ui+2+KEY_ENABLE_ALL_IONS);
 
 
 	}
@@ -548,8 +574,34 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 	p.data.push_back(strVec);
 	p.types.push_back(types);
 	p.keys.push_back(keys);
+	strVec.clear();types.clear();keys.clear();
+	//----
 
-	//SET 2->N
+	//Set 2
+	//----
+	if(rng.getNumRanges())
+	{
+		string str="1";	
+		for(unsigned int uj=0;uj<rng.getNumRanges();uj++)
+		{
+			if(!enabledRanges[uj])
+			{
+				str="0";
+				break;
+			}
+		}
+		strVec.push_back(make_pair(string(TRANS("All Ranges")),str));
+		types.push_back(PROPERTY_TYPE_BOOL);
+		keys.push_back(KEY_ENABLE_ALL_RANGES);
+		
+		p.data.push_back(strVec);
+		p.types.push_back(types);
+		p.keys.push_back(keys);
+	}
+	strVec.clear();types.clear();keys.clear();
+	//----
+	//SET 3->N
+	//----
 	for(unsigned  int ui=0; ui<rng.getNumRanges(); ui++)
 	{
 		strVec.clear();
@@ -593,7 +645,7 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 		p.data.push_back(strVec);
 		p.keys.push_back(keys);
 	}
-
+	//----
 }
 
 bool RangeFileFilter::setProperty(unsigned int set, unsigned int key, 
@@ -602,13 +654,14 @@ bool RangeFileFilter::setProperty(unsigned int set, unsigned int key,
 	using std::string;
 	needUpdate=false;
 
+
 	switch(set)
 	{
 		case 0:
 		{
 			switch(key)
 			{
-				case 0:
+				case KEY_RANGE_FILENAME:
 				{
 					//Check to see if the new file can actually be opened
 					RangeFile rngTwo;
@@ -630,7 +683,7 @@ bool RangeFileFilter::setProperty(unsigned int set, unsigned int key,
 
 					break;
 				}
-				case 1: //Enable/disable unranged dropping
+				case KEY_DROP_UNRANGED: //Enable/disable unranged dropping
 				{
 					unsigned int valueInt;
 					if(stream_cast(valueInt,value))
@@ -662,20 +715,46 @@ bool RangeFileFilter::setProperty(unsigned int set, unsigned int key,
 		}
 		case 1:
 		{
+			if(key== KEY_ENABLE_ALL_IONS)
+			{
+
+				bool allEnable;
+				if(value == "1")
+					allEnable=true;
+				else if ( value == "0")
+					allEnable=false;
+				else
+					return false;
+
+				//set them to the opposite of whatever we have now
+				//if any single one needs a change, then we need to
+				//update
+				for(unsigned int ui=0;ui<rng.getNumIons();ui++)
+				{
+					if(enabledIons[ui]!=allEnable)
+						needUpdate=true;
+				
+					enabledIons[ui]=allEnable;
+				}
+
+				if(needUpdate)
+					clearCache();
+				break;
+			}
+		
 			//Each property is stored in the same
 			//structured group, each with NUM_ROWS per grouping.
 			//The ion ID is simply the row number/NUM_ROWS.
 			//similarly the element is given by remainder 
 			const unsigned int NUM_ROWS=3;
-			unsigned int ionID=key/NUM_ROWS;
-			ASSERT(key < NUM_ROWS*rng.getNumIons());
-			unsigned int prop = key-ionID*NUM_ROWS;
+			unsigned int ionID=(key-KEY_ENABLE_ALL_IONS)/NUM_ROWS;
+			ASSERT(key < NUM_ROWS*rng.getNumIons()+KEY_ENABLE_ALL_IONS);
+			unsigned int prop = (key-KEY_ENABLE_ALL_IONS)-ionID*NUM_ROWS;
 
 			switch(prop)
 			{
 				case 0://Ion name
 				{
-					
 					//only allow english alphabet, upper and lowercase
 					for(unsigned int ui=0;ui<value.size();ui++)
 					{
@@ -733,9 +812,45 @@ bool RangeFileFilter::setProperty(unsigned int set, unsigned int key,
 				clearCache();
 			break;
 		}
+		case 2:
+		{
+			switch(key)
+			{
+				case KEY_ENABLE_ALL_RANGES:
+				{
+
+					bool allEnable;
+					if(value == "1")
+						allEnable=true;
+					else if ( value == "0")
+						allEnable=false;
+					else
+						return false;
+
+					//set them to the opposite of whatever we have now
+					//if any single one needs a change, then we need to
+					//update
+					for(unsigned int ui=0;ui<rng.getNumRanges();ui++)
+					{
+						if(enabledRanges[ui]!=allEnable)
+							needUpdate=true;
+					
+						enabledRanges[ui]=allEnable;
+					}
+					
+					if(needUpdate)
+						clearCache();
+
+					break;
+				}
+				default:
+					ASSERT(false);
+			}
+			break;
+		}
 		default:
 		{
-			unsigned int rangeId=set-2;
+			unsigned int rangeId=set-3;
 			switch(key)
 			{
 				//Range active
@@ -936,31 +1051,8 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	rngName=convertFileStringToNative(rngName);
 
 	//try using the extension name of the file to guess format
-	guessFormat(rngName);
-
-	//Load range file using guessed format
-	if(rng.open(rngName.c_str(),assumedFileFormat))
-	{
-		//If that failed, go to plan B-- Brute force.
-		//try all readers
-		bool openOK=false;
-
-		for(unsigned int ui=1;ui<RANGE_FORMAT_END_OF_ENUM; ui++)
-		{
-			if(!rng.open(rngName.c_str(),ui))
-			{
-				assumedFileFormat=ui;
-				openOK=true;
-				break;
-			}
-		}
-	
-		if(!openOK)
-			return false;
-	}
-	
-
-
+	if(!rng.openGuessFormat(rngName.c_str()))
+		return false;
 		
 	//==
 	
@@ -1099,12 +1191,12 @@ void RangeFileFilter::getStateOverrides(std::vector<string> &externalAttribs) co
 	externalAttribs.push_back(rngName);
 }
 
-int RangeFileFilter::getRefreshBlockMask() const
+unsigned int RangeFileFilter::getRefreshBlockMask() const
 {
 	return STREAM_TYPE_RANGE | STREAM_TYPE_IONS ;
 }
 
-int RangeFileFilter::getRefreshEmitMask() const
+unsigned int RangeFileFilter::getRefreshEmitMask() const
 {
 	return STREAM_TYPE_RANGE | STREAM_TYPE_IONS ;
 }
@@ -1157,3 +1249,109 @@ bool RangeFileFilter::writePackageState(std::ofstream &f, unsigned int format,
 	return result;
 }
 
+#ifdef DEBUG
+
+bool testRanged();
+//bool testRangeWithOnOffs();
+bool testUnranged();
+
+bool RangeFileFilter::runUnitTests()
+{
+	if(!testRanged())
+		return false;
+
+	return true;
+}
+
+bool testUnranged()
+{
+	return true;
+}
+
+bool testRanged()
+{
+	vector<const FilterStreamData*> streamIn,streamOut;
+	//Synthesise data
+	//-----
+	IonStreamData *d = new IonStreamData;
+	
+	IonHit h;
+	h.setPos(Point3D(1,1,1));
+
+	for(unsigned int ui=0;ui<100; ui++)
+	{
+		h.setMassToCharge(ui);
+		d->data.push_back(h);
+	}
+	
+	streamIn.push_back(d);
+
+	//Now build some range data
+	RangeFile rng;
+
+	//Insert *non overlapping* ranges.
+	const unsigned int NUM[]={10,14};
+	const unsigned int OFFSET[]={0,20};
+	string longName,shortName;
+	
+	RGBf col;
+	col.red=col.green=col.blue=1;
+	shortName="Bl"; longName="Blahium";
+	unsigned int ionID;
+	ionID=rng.addIon(shortName,longName,col);
+	rng.addRange((float)OFFSET[0],(float)(OFFSET[0]+NUM[0]-1),ionID);
+
+	shortName="Pl"; longName="Palatherum";
+	ionID=rng.addIon(shortName,longName,col);
+	rng.addRange((float)OFFSET[1],(float)(OFFSET[1]+NUM[1]-1),ionID);
+
+	//-----
+
+	//Run the range filter
+	//--
+	RangeFileFilter *r = new RangeFileFilter;
+	r->setCaching(false);
+	r->setRangeData(rng);
+
+	//Run the initialisation stage
+	ProgressData prog;
+	r->refresh(streamIn,streamOut,prog,dummyCallback);
+	//--
+	
+	//Run the tests
+	//---
+	vector<unsigned int> numIons;
+	for(unsigned int ui=0; ui<streamOut.size(); ui++)
+	{
+		if(streamOut[ui]->getStreamType() == STREAM_TYPE_IONS)
+		{
+			numIons.push_back(streamOut[ui]->getNumBasicObjects());
+			const IonStreamData *dI;
+			dI = (IonStreamData*)streamOut[ui];
+			for(unsigned int uj=0;uj<streamOut.size(); uj++)
+			{
+				TEST(rng.isRanged(dI->data[uj].getMassToCharge()),
+								"Range containment");
+			}
+		}
+	
+	}
+
+	//Ion stream output - ranges + unranged
+	TEST(numIons.size() == 2, "Ranged ionstream count");
+	TEST(std::find(numIons.begin(),numIons.end(),NUM[0]) 
+			!= numIons.end(), "ion count test (1)");
+	TEST(std::find(numIons.begin(),numIons.end(),NUM[1]) 
+			!= numIons.end(), "ion count test (2)");
+	
+	for(unsigned int uj=0;uj<streamOut.size(); uj++)
+		delete streamOut[uj];
+	
+	delete d;
+	delete r;
+
+	return true;
+}
+
+
+#endif

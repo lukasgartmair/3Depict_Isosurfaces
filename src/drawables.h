@@ -19,12 +19,6 @@
 #ifndef DRAWABLES_H
 #define DRAWABLES_H
 
-//Do we have the HPMC Real-time on-gpu isosurface library?
-//Note, this define is repeated in drawables.cpp
-//to avoid exposing glew.h in this header,
-//which complains bitterly about header orders.
-//#define HPMC_GPU_ISOSURFACE
-
 #include "textures.h"
 #include "cameras.h"
 #include "voxels.h"
@@ -91,6 +85,26 @@ enum
 	AXIS_IN_SPACE
 };
 
+//!Drawable types
+enum
+{
+	DRAW_TYPE_POINT,
+	DRAW_TYPE_MANYPOINT,
+	DRAW_TYPE_VECTOR,
+	DRAW_TYPE_TRIANGLE,
+	DRAW_TYPE_QUAD,
+	DRAW_TYPE_SPHERE,
+	DRAW_TYPE_CYLINDER,
+	DRAW_TYPE_DISPLAYLIST,
+	DRAW_TYPE_GLTEXT,
+	DRAW_TYPE_RECTPRISM,
+	DRAW_TYPE_COLOURBAR,
+	DRAW_TYPE_TEXTUREDOVERLAY,
+	DRAW_TYPE_FIELD3D,
+	DRAW_TYPE_ISOSURFACE,
+	DRAW_TYPE_AXIS,
+};
+
 
 //!Binding enums. Needed to bind drawable selection
 //to internal modification actions inside the drawable
@@ -126,7 +140,7 @@ class DrawableObj
 		bool haveChanged;
 		//!Pointer to current scene camera
 		static const Camera *curCamera;	
-		
+	
 	public: 
 		//!Can be selected from openGL viewport interactively?
 		bool canSelect;
@@ -140,6 +154,8 @@ class DrawableObj
 		//!Constructor
 		DrawableObj();
 
+		virtual unsigned int getType() const =0;	
+		
 		//!Do we need to do element based depth sorting?
 		virtual bool needsDepthSorting() const { return false; } ;
 
@@ -190,7 +206,7 @@ class DrawPoint : public DrawableObj
 		DrawPoint(float,float,float);
 		//!Destructor
 		virtual ~DrawPoint();
-	
+
 		//!Sets the color of the point to be drawn
 		void setColour(float r, float g, float b, float alpha);
 		//!Draws the points
@@ -221,6 +237,8 @@ class DrawManyPoints : public DrawableObj
 		DrawManyPoints();
 		//!Destructor
 		virtual ~DrawManyPoints();
+		
+		virtual unsigned int getType() const {return DRAW_TYPE_MANYPOINT;};	
 		//!Swap out the internal vector with an extenal one
 		void swap(std::vector<Point3D> &);
 		//!Remove all points
@@ -273,6 +291,7 @@ class DrawVector: public DrawableObj
 		//!Destructor
 		virtual ~DrawVector();
 	
+		virtual unsigned int getType() const {return DRAW_TYPE_VECTOR;};	
 		
 		//!Sets the color of the point to be drawn
 		void setColour(float r, float g, float b, float alpha);
@@ -315,6 +334,8 @@ class DrawTriangle : public DrawableObj
 		//!Destructor
 		virtual ~DrawTriangle();
 
+		virtual unsigned int getType() const {return DRAW_TYPE_TRIANGLE;};	
+		
 		//!Set one of three vertices (0-2) locations
 		void setVertex(unsigned int, const Point3D &);
 		//!Set the vertex normals
@@ -349,6 +370,8 @@ class DrawQuad : public DrawableObj
 		DrawQuad();
 		//!Destructor
 		virtual ~DrawQuad();
+		
+		virtual unsigned int getType() const {return DRAW_TYPE_QUAD;};	
 		//!sets the vertices to defautl colours (r g b and white ) for each vertex respectively
 		void colourVerticies();
 		//!Set vertex's location
@@ -386,6 +409,7 @@ class DrawSphere : public DrawableObj
 		//! Destructor
 		virtual ~DrawSphere();
 
+		virtual unsigned int getType() const {return DRAW_TYPE_SPHERE;};	
 		//!Sets the location of the sphere's origin
 		void setOrigin(const Point3D &p);
 		//!Gets the location of the sphere's origin
@@ -440,6 +464,7 @@ class DrawCylinder : public DrawableObj
 		//!Destructor
 		virtual ~DrawCylinder();
 
+		virtual unsigned int getType() const {return DRAW_TYPE_CYLINDER;};	
 		//!Set the location of the base of the cylinder
 		void setOrigin(const Point3D &pt);
 		//!Number of cuts perpendicular to axis - ie disks
@@ -496,6 +521,7 @@ class DrawDepthSorted: public DrawableObj
 		mutable Point3D lastCamLoc;
 	public:
 		DrawDepthSorted() { haveLastDist=false;};
+		virtual unsigned int getType() const {return -1; ASSERT(false);};	
 		void addObjectsAsNeeded(const DrawableObj *);
 		void draw() const; 
 		void getBoundingBox(BoundCube &b) const { ASSERT(false);};
@@ -527,6 +553,8 @@ class DrawDispList : public DrawableObj
 		DrawDispList();
 		//!Destructor
 		virtual ~DrawDispList();
+		
+		virtual unsigned int getType() const {return DRAW_TYPE_DISPLAYLIST;}
 
 		//!Execute the display list
 		void draw() const;		
@@ -620,6 +648,7 @@ class DrawGLText : public DrawableObj
 		//!Destructor
 		virtual ~DrawGLText();
 
+		virtual unsigned int getType() const {return DRAW_TYPE_GLTEXT;}
 		//!Set the size of the text (in points (which may be GL units,
 		//unsure))
 		inline void setSize(unsigned int size)
@@ -704,6 +733,8 @@ class DrawRectPrism  : public DrawableObj
 		DrawRectPrism();
 		~DrawRectPrism();
 
+		virtual unsigned int getType() const {return DRAW_TYPE_RECTPRISM;}
+		
 		//!Draw object
 		void draw() const;
 
@@ -749,6 +780,9 @@ class DrawColourBarOverlay : public DrawableObj
 	
 		DrawColourBarOverlay();
 		~DrawColourBarOverlay(){delete font;};
+		
+		virtual unsigned int getType() const {return DRAW_TYPE_COLOURBAR;}
+	
 		void getBoundingBox(BoundCube &b) const ;
 
 		//!This is an overlay
@@ -780,6 +814,8 @@ class DrawTexturedQuadOverlay : public DrawableObj
 	public:
 		DrawTexturedQuadOverlay();
 		~DrawTexturedQuadOverlay();
+		
+		virtual unsigned int getType() const {return DRAW_TYPE_TEXTUREDOVERLAY;}
 
 		//!This is an overlay
 		bool isOverlay() const {return true;};
@@ -851,6 +887,7 @@ class DrawField3D : public DrawableObj
 		//!Destructor
 		virtual ~DrawField3D();
 
+		virtual unsigned int getType() const {return DRAW_TYPE_FIELD3D;}
 
 		//!Get the bounding box for this object
 		void getBoundingBox(BoundCube &b) const;
@@ -914,6 +951,7 @@ public:
 	DrawIsoSurface();
 	~DrawIsoSurface();
 
+	virtual unsigned int getType() const {return DRAW_TYPE_ISOSURFACE;}
 	//!Transfer ownership of data pointer to class
 	void swapVoxels(Voxels<float> *v);
 
@@ -935,103 +973,6 @@ public:
 	bool needsDepthSorting() const;
 };
 
-#ifdef HPMC_GPU_ISOSURFACE
-//!A class to use GPU shaders to draw isosurfaces
-// **********************************************************************
-// Adapted from 
-// http://www.sintef.no/Projectweb/Heterogeneous-Computing/
-// Research-Topics/Marching-Cubes-using-Histogram-Pyramids/
-//
-// Used under the GPLv3 (or later) licence
-// Reference:
-//  High-speed Marching Cubes using Histogram Pyramids
-//  Christopher Dyken, Gernot Ziegler, Christian Theobalt and Hans-Peter Seidel
-//
-//
-// Original File: texture3d.cpp
-//
-// Authors: Christopher Dyken <christopher.dyken@sintef.no>
-//
-//Licence:
-// Copyright (C) 2009 by SINTEF.  All rights reserved.
-//   
-// This library is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// ("GPL") version 2 as published by the Free Software Foundation.
-// See the file LICENSE.GPL at the root directory of this source
-// distribution for additional information about the GNU GPL.
-// 
-// SINTEF, Pb 124 Blindern, N-0314 Oslo, Norway
-// http://www.sintef.no
-// ********************************************************************/
-class DrawIsoSurfaceWithShader: public DrawableObj
-{
-private:
-	//can we use shaders?
-	bool shadersOK;
-	//should we draw the thing in wireframe?
-	bool wireframe;
-	//Pointer to data
-	char *dataset;
-
-
-	struct HPMCConstants* hpmc_c;
-	struct HPMCHistoPyramid* hpmc_h;
-	struct HPMCTraversalHandle* hpmc_th_shaded;
-
-	//Shader handles
-	GLuint shaded_v;
-	GLuint shaded_f;
-	GLuint shaded_p;
-	//Texture handles
-	GLuint volume_tex;
-
-	//On-card volume size
-	int volume_size_x;
-	int volume_size_y;
-	int volume_size_z;
-
-	struct HPMCTraversalHandle* hpmc_th_flat;
-
-	//Shader functions, for dynamic compilation
-	std::string shaded_vertex_shader;
-	std::string shaded_fragment_shader;
-	std::string flat_vertex_shader;
-
-	GLuint flat_v;
-	GLuint flat_p;
-
-	//Isosurface scalar threshold (true value)
-	float threshold;
-
-	//true data maximum
-	float trueMax;
-
-	//Voxel data Bounding box
-	BoundCube bounds;
-	
-	//Compile shader for video card	
-	void compileShader( GLuint shader, const std::string& what );
-	//Link shader
-	void linkProgram( GLuint program, const std::string& what );
-public:
-
-	DrawIsoSurfaceWithShader();
-	~DrawIsoSurfaceWithShader();
-
-	//initialise dataset and shaders
-	bool init(const Voxels<float> &v);
-	//Draw
-	void draw() const;
-
-	//Can the shader run?
-	bool canRun() const{return shadersOK;};
-
-	void setScalarThresh(float thresh) ;
-
-	void getBoundingBox(BoundCube &b) const;
-};
-#endif
 
 class DrawAxis : public DrawableObj
 {
@@ -1044,6 +985,8 @@ class DrawAxis : public DrawableObj
 	public:
 		DrawAxis();
 		~DrawAxis();
+	
+		virtual unsigned int getType() const {return DRAW_TYPE_AXIS;}
 
 		//!Draw object
 		void draw() const;

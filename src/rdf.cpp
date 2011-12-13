@@ -21,10 +21,19 @@
 #include "voxels.h"
 
 //QHull library
+//Build fix for qhull ; wx defines powerpc without
+//assigning a value, causing build fail on powerpc
+#ifdef __POWERPC__
+	#pragma push_macro("__POWERPC__")
+	#define __POWERPC__ 1
+#endif
 extern "C"
 {
 	#include <qhull/qhull_a.h>
 }
+#ifdef __POWERPC__
+	#pragma pop_macro("__POWERPC__")
+#endif
 
 const unsigned int CALLBACK_REDUCE=5000;
 
@@ -439,9 +448,9 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 	cube.setBounds(pointList);
 
 	//Allocate and assign the initial max distances
-	float maxSqrDist[nnMax];
+	float *maxSqrDist= new float[nnMax];
 	for(unsigned int ui=0; ui<nnMax; ui++)
-		maxSqrDist[ui] = std::numeric_limits<float>::min();
+		maxSqrDist[ui] =0.0f; 
 	
 
 
@@ -495,7 +504,10 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 		{
 			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
 			if(!(*callback)())
+			{
+				delete[] maxSqrDist;
 				return RDF_ABORT_FAIL;
+			}
 			callbackReduce=CALLBACK_REDUCE;
 		}
 #endif
@@ -503,12 +515,15 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 	}
 #ifdef _OPENMP
 	if(spin)
+	{
+		delete[] maxSqrDist;
 		return RDF_ABORT_FAIL;
+	}
 #endif
 
 
-	float maxOfMaxDists=std::numeric_limits<float>::min();
-	float maxDist[nnMax];
+	float maxOfMaxDists=0;
+	float *maxDist=new float[nnMax];
 	for(unsigned int ui=0; ui<nnMax; ui++)
 	{
 		if(maxOfMaxDists < maxSqrDist[ui])
@@ -526,6 +541,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 	//distribution, allowing an extra 2% for the tail bin
 	for(unsigned int ui=0; ui<nnMax; ui++)
 		binWidth[ui]= 1.02f*maxDist[ui]/(float)numBins;
+	delete[] maxDist;
 	
 	//Generate histogram for what we have already
 	//zero out memory
@@ -591,14 +607,18 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 		{
 			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
 			if(!(*callback)())
+			{
+				delete[] maxSqrDist;
 				return RDF_ABORT_FAIL;
+			}
 			callbackReduce=CALLBACK_REDUCE;
 		}
 #endif
 	}
 
 
-       return 0;
+	delete[] maxSqrDist;	
+	return 0;
 }
 
 
@@ -611,7 +631,7 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 {
 
 
-	if(!pointList.size())
+	if(pointList.empty())
 		return 0;
 
 	BoundCube cube;

@@ -6,6 +6,8 @@
 #include <map>
 #include <queue>
 
+#include <gsl/gsl_linalg.h>
+
 enum
 {
 	KEY_CLUSTERANALYSIS_ALGORITHM,
@@ -18,6 +20,7 @@ enum
 	KEY_WANT_LOGSIZEDIST,
 	KEY_WANT_COMPOSITIONDIST,
 	KEY_NORMALISE_COMPOSITION,
+	KEY_WANT_MORPHOLOGYDIST,
 	KEY_CROP_SIZE,
 	KEY_SIZE_COUNT_BULK,
 	KEY_CROP_NMIN,
@@ -135,6 +138,53 @@ void makeCompositionTable(const IonStreamData *i ,const RangeFile *r,
 
 }
 
+//Compute the singular vlaues for a matrix of rows "numRows" and "cols"
+// numcols. Matrix to be stored as [curRow*numcols + curCol]
+//If the matrix is rank deficient, then resultValues will have fewer singular
+//values than the full rank matrix (ie < numCols).
+void computeSingularValues(float *data, size_t numRows, size_t numCols,
+				vector<float> &resultValues)
+{
+	gsl_matrix *m=gsl_matrix_alloc(numRows,numCols);
+	for(unsigned int ui=0;ui<numRows;ui++)
+	{
+		for(unsigned int uj=0;uj<numCols; uj++)
+			gsl_matrix_set(m,ui,uj,data[ui*numCols+uj]);
+	}
+
+	//Set up the output vector space, the singular result space and
+	//some scratch space for the program
+	gsl_vector *singularVals= gsl_vector_alloc(numCols);
+	gsl_vector *workspace = gsl_vector_alloc(numCols);
+	gsl_matrix *newSpace = gsl_matrix_alloc(numCols,numCols);
+
+	//Transformation space set to orthogonal cartesian
+	gsl_matrix_set_identity(newSpace);
+
+	//Decompose matrix. Note that input matrix is overwritten by gsl. 
+	gsl_linalg_SV_decomp(m,newSpace,
+			singularVals,workspace);
+
+	resultValues.clear();
+	for(size_t ui=0;ui<numCols;ui++)
+	{
+		float v;
+		v = gsl_vector_get(singularVals,ui);
+		if(v < sqrt(std::numeric_limits<float>::epsilon()))
+			break;
+
+		resultValues.push_back(v);
+	}
+
+	//Free storage space
+	gsl_vector_free(singularVals); 
+	gsl_vector_free(workspace);
+	
+	gsl_matrix_free(newSpace);
+	gsl_matrix_free(m);
+}
+
+
 void ClusterAnalysisFilter::checkIonEnabled(bool &core, bool &bulk) const
 {
 	bulk=core=false;
@@ -186,6 +236,8 @@ ClusterAnalysisFilter::ClusterAnalysisFilter()
 	wantCropSize=false;
 	wantClusterComposition=true;
 	normaliseComposition=true;
+	wantClusterMorphology=false;
+	haveRangeParent=false; //we set this to false, as required by ::initFilter
 
 	cacheOK=false;
 
@@ -215,6 +267,7 @@ Filter *ClusterAnalysisFilter::cloneUncached() const
 	
 	p->wantClusterComposition=wantClusterComposition;
 	p->normaliseComposition = normaliseComposition;
+	p->wantClusterMorphology=wantClusterMorphology;
 
 	p->haveRangeParent=false; //lets assume not, and this will be reset at ::initFilter time
 
@@ -511,6 +564,89 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	}
 
 
+	if(wantClusterMorphology)
+	{
+		//amplitudes for the singular values
+		vector<vector<float> > singularValueAmps;
+		//Build a 2D scatter plot of the cluster morphology
+		getSingularValues(clusteredCore,clusteredBulk,singularValueAmps);
+
+		PlotStreamData *p=new PlotStreamData;
+		p->parent=this;
+		p->index=0;
+		
+		p->plotType=PLOT_TRACE_POINTS;
+		p->logarithmic=false;
+		p->dataLabel=TRANS("Aspect ratio: S_1/S_2 - S_2/S_3");
+
+		p->xLabel="S_2/S_3";
+		p->yLabel="S_1/S_2";
+
+		//How many singular values are not full-rank?
+		size_t missingRankCount=0;
+
+		p->xyData.reserve(singularValueAmps.size());
+		for(size_t ui=0; ui<singularValueAmps.size(); ui++)
+		{
+			//all singular values non null
+			if(singularValueAmps[ui].size() ==3) 
+			{
+#ifdef DEBUG
+				//No, really, they should have a valid value.
+				for(unsigned int uk=0;uk<3;uk++)
+				{
+					ASSERT(singularValueAmps[ui][uk]  >
+						sqrt(std::numeric_limits<float>::epsilon()));
+				}
+#endif
+
+				//Set the aspect ratios as the plot output
+				p->xyData.push_back(make_pair(
+					singularValueAmps[ui][1]/singularValueAmps[ui][2],
+					singularValueAmps[ui][0]/singularValueAmps[ui][1]));
+					
+			}
+			else
+				missingRankCount++;
+					
+		}
+
+
+		if(missingRankCount != singularValueAmps.size() )
+		{
+			if(missingRankCount) 
+			{
+				string msg,tmpStr;
+				stream_cast(tmpStr,missingRankCount);
+				msg=string(TRANS("WARNING : ")) + tmpStr +
+					TRANS(" clusters had deficient rank when computing singular values -- morphology data cannot be computed for these clusters.");
+				consoleOutput.push_back(msg);
+			}
+
+			if(cache)
+			{
+				p->cached=0;
+				filterOutputs.push_back(p);
+			}
+			else
+				p->cached=1;
+
+			getOut.push_back(p);
+		}
+		else
+		{
+			//Crap, if we are missing all rank, we have no morph. data
+			//don't build the plot
+			ASSERT(!p->xyData.size());
+
+			delete p;
+
+			consoleOutput.push_back(
+				TRANS("Unable to perform morphology computation, no clusters had sufficient data rank to compute SVD"));
+
+		}
+
+	}
 
 	//Construct the output clustered data.
 	IonStreamData *i = new IonStreamData;
@@ -769,6 +905,18 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		type.push_back(PROPERTY_TYPE_BOOL);
 		keys.push_back(KEY_NORMALISE_COMPOSITION);
 	}
+
+
+	if(wantClusterMorphology)
+		tmpStr="1";
+	else
+		tmpStr="0";
+
+
+	s.push_back(make_pair(TRANS("Morphology Dist."),tmpStr));
+	type.push_back(PROPERTY_TYPE_BOOL);
+	keys.push_back(KEY_WANT_MORPHOLOGYDIST);
+
 
 	propertyList.data.push_back(s);
 	propertyList.types.push_back(type);
@@ -1034,6 +1182,61 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 				//If we don't want the cluster composition
 				//just kill it from the cache and request an update
 				if(!wantClusterComposition)
+				{
+					for(size_t ui=filterOutputs.size();ui;)
+					{
+						ui--;
+						if(filterOutputs[ui]->getStreamType() == STREAM_TYPE_PLOT)
+						{
+							//OK, is this the plot? 
+							//We should match the title we used to generate it
+							PlotStreamData *p;
+							p=(PlotStreamData*)filterOutputs[ui];
+
+							if(p->dataLabel.substr(0,strlen(CHEM_DIST_DATALABEL)) ==CHEM_DIST_DATALABEL )
+							{
+								//Yup, this is it.kill the distribution
+								std::swap(filterOutputs[ui],filterOutputs.back());
+								filterOutputs.pop_back();
+
+								//Now, note we DONT break
+								//here; as there is more than one
+							}
+
+						}
+					}
+				}
+				else
+				{
+					//OK, we don't have one and we would like one.
+					// We have to compute this. Wipe cache and start over
+					clearCache(); 
+				}
+					needUpdate=true;
+			}
+			
+			break;
+		}
+		case KEY_WANT_MORPHOLOGYDIST:
+		{
+			string stripped=stripWhite(value);
+
+			if(!(stripped == "1"|| stripped == "0"))
+				return false;
+
+			bool lastVal=wantClusterMorphology;
+			if(stripped=="1")
+				wantClusterMorphology=true;
+			else
+				wantClusterMorphology=false;
+
+			//if the result is different, e
+			//remove the filter elements we no longer want.
+			if(lastVal!=wantClusterMorphology)
+			{
+				//If we don't want the cluster composition
+				//just kill it from the cache and request an update
+				if(!wantClusterMorphology)
 				{
 					for(size_t ui=filterOutputs.size();ui;)
 					{
@@ -1418,13 +1621,13 @@ bool ClusterAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &pa
 	return true;
 }
 
-int ClusterAnalysisFilter::getRefreshBlockMask() const
+unsigned int ClusterAnalysisFilter::getRefreshBlockMask() const
 {
 	//Anything but ions can go through this filter.
 	return STREAM_TYPE_IONS;
 }
 
-int ClusterAnalysisFilter::getRefreshEmitMask() const
+unsigned int ClusterAnalysisFilter::getRefreshEmitMask() const
 {
 	if(wantClusterSizeDist || wantClusterComposition)
 		return STREAM_TYPE_IONS | STREAM_TYPE_PLOT;
@@ -1539,7 +1742,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	vector<IonHit> coreIons,bulkIons;
 	createRangedIons(dataIn,coreIons,bulkIons,progress,callback);
 
-	if(!coreIons.size())
+	if(coreIons.empty())
 		return 0;
 	//----------
 
@@ -1735,7 +1938,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 						*thisPt,bCore, true);
 
 
-				ASSERT(clustIdx == (unsigned int)-1 || coreTree.getTag(clustIdx));
+				ASSERT(clustIdx == (size_t)-1 || coreTree.getTag(clustIdx));
 				if(clustIdx != (size_t)-1)
 				{
 					curDistSqr=coreTree.getPt(clustIdx)->sqrDist(
@@ -2548,6 +2751,76 @@ void ClusterAnalysisFilter::genCompositionVersusSize(const vector<vector<IonHit>
 	}
 
 
+}
+
+void ClusterAnalysisFilter::getSingularValues(const vector<vector<IonHit> > &clusteredCore,
+				const vector<vector<IonHit> > &clusteredBulk, vector<vector<float> > &singularValues)
+{
+	ASSERT(clusteredCore.size() == clusteredBulk.size());
+
+	vector<float> curSingularVals;
+	float *data=0;
+	size_t dataSize=0;
+	for(unsigned int ui=0;ui<clusteredCore.size(); ui++)
+	{
+
+		curSingularVals.clear();
+		//For this cluster, compute its singular values amplitudes
+		// (ignore direction)
+		const unsigned int DIMENSION=3;
+		size_t numEntries = clusteredCore[ui].size() + clusteredBulk[ui].size();
+
+
+		//Check to see if we have sufficient data to compute an SVD
+		if(numEntries < DIMENSION )
+		{
+			singularValues.push_back(curSingularVals);
+			continue; 
+		}
+		
+		//Allocate space, by growing as needed
+		if(numEntries*DIMENSION > dataSize)
+		{
+			//TODO: Is it faster to pre-compute the maximum cluster size?
+			//      then determine the cluster backbone from that? 
+			//      Should we be usig realloc?
+			if(data)
+				delete[] data;
+			data = new float[numEntries*DIMENSION];
+			dataSize=numEntries*DIMENSION;
+		}
+
+		//Fill the data array
+		float *p;
+		p=data;
+		for(size_t uj=0;uj<clusteredCore[ui].size();uj++)
+		{
+			for(size_t uk=0;uk<DIMENSION;uk++)
+			{
+				*(p) = clusteredCore[ui][uj].getPos()[uk];
+				p++;
+			}
+		}
+		
+		for(size_t uj=0;uj<clusteredBulk[ui].size();uj++)
+		{
+			for(size_t uk=0;uk<DIMENSION;uk++)
+			{
+				*(p) = clusteredBulk[ui][uj].getPos()[uk];
+				p++;
+			}
+		}
+
+		//Cmpute the DIMENSION-D singular value decomposition for
+		//this vector set
+		computeSingularValues(data,numEntries,
+					DIMENSION,curSingularVals);
+
+		singularValues.push_back(curSingularVals);
+	}
+
+	if(data)
+		delete[] data;
 }
 
 /* I think this is roughly OK (written, but not compiled/tested), but we are going to get a code explosion, as

@@ -552,13 +552,80 @@ bool IonColourFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	return true;
 }
 
-int IonColourFilter::getRefreshBlockMask() const
+unsigned int IonColourFilter::getRefreshBlockMask() const
 {
 	//Anything but ions can go through this filter.
 	return STREAM_TYPE_IONS;
 }
 
-int IonColourFilter::getRefreshEmitMask() const
+unsigned int IonColourFilter::getRefreshEmitMask() const
 {
 	return  STREAM_TYPE_DRAW | STREAM_TYPE_IONS;
 }
+
+#ifdef DEBUG
+
+IonStreamData *sythIonCountData(unsigned int numPts, float mStart, float mEnd)
+{
+	IonStreamData *d = new IonStreamData;
+	d->data.resize(numPts);
+	for(unsigned int ui=0; ui<numPts;ui++)
+	{
+		IonHit h;
+
+		h.setPos(Point3D(ui,ui,ui));
+		h.setMassToCharge( (mEnd-mStart)*(float)ui/(float)numPts + mStart);
+		d->data[ui] =h;
+	}
+
+	return d;
+}
+
+
+bool ionCountTest()
+{
+	const int NUM_PTS=1000;
+	vector<const FilterStreamData*> streamIn,streamOut;
+	IonStreamData *d=sythIonCountData(NUM_PTS,0,100);
+	streamIn.push_back(d);
+
+
+	IonColourFilter *f = new IonColourFilter;
+	f->setCaching(false);
+
+	bool needUpdate;
+	f->setProperty(0,KEY_IONCOLOURFILTER_NCOLOURS,"100",needUpdate);
+	f->setProperty(0,KEY_IONCOLOURFILTER_MAPSTART,"0",needUpdate);
+	f->setProperty(0,KEY_IONCOLOURFILTER_MAPEND,"100",needUpdate);
+	f->setProperty(0,KEY_IONCOLOURFILTER_SHOWBAR,"0",needUpdate);
+	
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+	delete f;
+	delete d;
+	
+	TEST(streamOut.size() == 99,"stream count");
+
+	for(unsigned int ui=0;ui<streamOut.size();ui++)
+	{
+		TEST(streamOut[ui]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+	}
+
+	for(unsigned int ui=0;ui<streamOut.size();ui++)
+		delete streamOut[ui];
+
+	return true;
+}
+
+
+bool IonColourFilter::runUnitTests()
+{
+	if(!ionCountTest())
+		return false;
+
+	return true;
+}
+
+
+#endif
+

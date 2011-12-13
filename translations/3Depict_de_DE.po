@@ -11,7 +11,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2011-12-05 23:49+0000\n"
 "PO-Revision-Date: 2011-11-27 23:30+0000\n"
-"Last-Translator: epix1234 <erich_s@gmx.de>\n"
+"Last-Translator: epix1234\n"
 "Language-Team: German (Germany) (http://www.transifex.net/projects/p/3depict/"
 "team/de_DE/)\n"
 "MIME-Version: 1.0\n"
@@ -33,13 +33,11 @@ msgid "Unable to determine filter type in defaults listing."
 msgstr ""
 
 #: ../src/configFile.cpp:565
-#, fuzzy
 msgid "Online access for non win32/apple platforms is intentionally disabled, "
 msgstr ""
 "Onlinezugang für nicht win32/apple Systeme ist absichtlich deaktiviert,"
 
 #: ../src/configFile.cpp:566
-#, fuzzy
 msgid ""
 "regardless of the settings you use here. Use your package manager to keep up-"
 "to-date"
@@ -2419,11 +2417,11 @@ msgstr "- Anzahl -"
 
 #: ../src/filters/ionInfo.cpp:353
 msgid "Total Ranged\t"
-msgstr "Gesamt ranged<span class=\"whitespace other\" title=\"Tab\">»</span>"
+msgstr "Gesamt ranged\t"
 
 #: ../src/filters/ionInfo.cpp:358
 msgid "Total (incl. unranged)\t"
-msgstr "Total (inkl. nicht geranged)"
+msgstr "Total (inkl. nicht geranged)\t"
 
 #: ../src/filters/ionInfo.cpp:376
 msgid "Unranged"
@@ -2919,7 +2917,7 @@ msgid ""
 "Unable to allocate requested memory.\n"
 " Try a lower resolution, or save as vector (SVG)."
 msgstr ""
-"Kann den notwendigen Speicher nicht zuordnen. Versuche eine geringer "
+"Kann den notwendigen Speicher nicht zuordnen.\n Versuche eine geringer "
 "Auflösung oder speichere als Vektografik (svg)."
 
 #: ../src/mathglPane.cpp:1040
@@ -2928,19 +2926,19 @@ msgstr "Plot-Funktion meldete einen Fehler:\n"
 
 #: ../src/mathglPane.cpp:1042
 msgid "File readback check failed"
-msgstr "File readback check failed"
+msgstr ""
 
 #: ../src/mathglPane.cpp:1044
 msgid "Filesize during readback appears to be zero."
-msgstr "Filesize during readback appears to be zero."
+msgstr ""
 
 #: ../src/prefDialog.cpp:67
 msgid "Online Updates"
-msgstr "Online Updates"
+msgstr ""
 
 #: ../src/prefDialog.cpp:69
 msgid "Panel Display"
-msgstr "Panel Display"
+msgstr ""
 
 #: ../src/prefDialog.cpp:70
 msgid "Camera Speed"

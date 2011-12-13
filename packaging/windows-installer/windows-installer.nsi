@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "3Depict"
-!define PRODUCT_VERSION "0.0.6"
+!define PRODUCT_VERSION "0.0.8"
 !define PRODUCT_PUBLISHER "D. Haley, A. Ceguerra"
 !define PRODUCT_WEB_SITE "http://threedepict.sourceforge.net"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\3Depict.exe"
@@ -64,11 +64,22 @@ Section "3Depict program" SEC01
   File "src\libfreetype-6.dll"
   File "src\pthreadGC2.dll"
   File "src\libgomp-1.dll"
+  File "src\libintl-8.dll"
+  File "src\libiconv-2.dll"
+  File "docs\manual-latex\manual.pdf"
+
   CreateDirectory "$SMPROGRAMS\3Depict"
   CreateDirectory "$SMPROGRAMS\3Depict\textures"
   CreateShortCut "$SMPROGRAMS\3Depict\3Depict.lnk" "$INSTDIR\3Depict.exe"
   CreateShortCut "$DESKTOP\3Depict.lnk" "$INSTDIR\3Depict.exe"
+  
+  
+  ;Language translations installation
+  CreateDirectory "locales"
   SetOverwrite try
+  SetOutPath "$INSTDIR\locales\"
+  File /r locales\*.*
+  
   SetOutPath "$INSTDIR\textures\"
   File "src\textures\enlarge.png" 
   File "src\textures\keyboard-alt.png" 
@@ -131,6 +142,10 @@ Section Uninstall
   Delete "$INSTDIR\textures\enlarge.png"
   Delete "$INSTDIR\3Depict.exe"
 
+  Delete "$INSTDIR\manual.pdf"
+  RMDir /r "$INSTDIR\locales\*.*"
+  RMDir "$INSTDIR\locales"
+
   Delete "$INSTDIR\wxmsw28u_richtext_gcc_custom.dll"
   Delete "$INSTDIR\wxmsw28u_qa_gcc_custom.dll"
   Delete "$INSTDIR\wxmsw28u_html_gcc_custom.dll"
@@ -147,6 +162,8 @@ Section Uninstall
   Delete "$INSTDIR\libfreetype-6.dll"
   Delete "$INSTDIR\pthreadGC2.dll"
   Delete "$INSTDIR\libgomp-1.dll"
+  Delete "$INSTDIR\libintl-8.dll"
+  Delete "$INSTDIR\libiconv-2.dll"
 
   Delete "$INSTDIR\uninst.exe"  
  

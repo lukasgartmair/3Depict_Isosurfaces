@@ -615,8 +615,10 @@ bool IonDownsampleFilter::setProperty( unsigned int set, unsigned int key,
 			unsigned int offset;
 			offset=key-KEY_IONDOWNSAMPLE_DYNAMIC;
 
+			//Dynamically generated list of downsamples
 			if(fixedNumOut)
 			{
+				//Fixed count
 				size_t v;
 				if(stream_cast(v,value))
 					return false;
@@ -624,9 +626,14 @@ bool IonDownsampleFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			else
 			{
+				//Fixed fraction
 				float v;
 				if(stream_cast(v,value))
 					return false;
+
+				if(v < 0.0f || v> 1.0f)
+					return false;
+
 				ionFractions[offset]=v;
 			}
 			
@@ -767,12 +774,148 @@ bool IonDownsampleFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 }
 
 
-int IonDownsampleFilter::getRefreshBlockMask() const
+unsigned int IonDownsampleFilter::getRefreshBlockMask() const
 {
 	return STREAM_TYPE_IONS ;
 }
 
-int IonDownsampleFilter::getRefreshEmitMask() const
+unsigned int IonDownsampleFilter::getRefreshEmitMask() const
 {
 	return  STREAM_TYPE_IONS;
 }
+
+//----------
+
+
+//Unit testing for this class
+///-----
+#ifdef DEBUG
+
+//Create a synthetic dataset of points
+// returned pointer *must* be deleted. Span must have 3 elements, and for best results sould be co-prime with one another; eg all prime numbers
+IonStreamData *synthDataPts(unsigned int span[],unsigned int numPts);
+
+//Test for fixed number of output ions
+bool fixedSampleTest();
+
+//Test for variable number of output ions
+bool variableSampleTest();
+
+//Unit tests
+bool IonDownsampleFilter::runUnitTests()
+{
+	if(!fixedSampleTest())
+		return false;
+
+	if(!variableSampleTest())
+		return false;
+	
+	return true;
+}
+
+bool fixedSampleTest()
+{
+	//Simulate some data to send to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	IonStreamData *d= new IonStreamData;
+
+	const unsigned int NUM_PTS=10000;
+	for(unsigned int ui=0;ui<NUM_PTS;ui++)
+	{
+		IonHit h;
+		h.setPos(Point3D(ui,ui,ui));
+		h.setMassToCharge(ui);
+		d->data.push_back(h);
+	}
+
+
+	streamIn.push_back(d);
+	//Set up the filter itself
+	IonDownsampleFilter *f=new IonDownsampleFilter;
+	f->setCaching(false);
+
+	bool needUp;
+	string s;
+	unsigned int numOutput=NUM_PTS/10;
+	
+	f->setProperty(0,KEY_IONDOWNSAMPLE_FIXEDOUT,"1",needUp);
+	stream_cast(s,numOutput);
+	f->setProperty(0,KEY_IONDOWNSAMPLE_COUNT,s,needUp);
+
+	//Do the refresh
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+
+	delete f;
+	delete d;
+
+	//Pass some tests
+	TEST(streamOut.size() == 1, "Stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS, "stream type");
+	TEST(streamOut[0]->getNumBasicObjects() == numOutput, "output ions (basicobject)"); 
+	TEST( ((IonStreamData*)streamOut[0])->data.size() == numOutput, "output ions (direct)")
+
+	delete streamOut[0];
+	
+	return true;
+}
+
+bool variableSampleTest()
+{
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	
+	unsigned int span[]={ 
+			5, 7, 9
+			};	
+	const unsigned int NUM_PTS=10000;
+	IonStreamData *d=synthDataPts(span,NUM_PTS);
+
+	streamIn.push_back(d);
+	IonDownsampleFilter *f=new IonDownsampleFilter;
+	f->setCaching(false);	
+	
+	bool needUp;
+	f->setProperty(0,KEY_IONDOWNSAMPLE_FIXEDOUT,"0",needUp);
+	f->setProperty(0,KEY_IONDOWNSAMPLE_FRACTION,"0.1",needUp);
+
+	//Do the refresh
+	ProgressData p;
+	f->refresh(streamIn,streamOut,p,dummyCallback);
+
+	delete f;
+	delete d;
+
+
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+
+	//It is HIGHLY improbable that it will be <1/10th of the requested number
+	TEST(streamOut[0]->getNumBasicObjects() > 0.01*NUM_PTS 
+		&& streamOut[0]->getNumBasicObjects() <= NUM_PTS,"ion fraction");
+
+	delete streamOut[0];
+
+
+	return true;
+}
+
+IonStreamData *synthDataPts(unsigned int span[], unsigned int numPts)
+{
+	IonStreamData *d = new IonStreamData;
+	
+	for(unsigned int ui=0;ui<numPts;ui++)
+	{
+		IonHit h;
+		h.setPos(Point3D(ui%span[0],
+			ui%span[1],ui%span[2]));
+		h.setMassToCharge(ui);
+		d->data.push_back(h);
+	}
+
+	return d;
+}
+
+#endif
+///-----
+

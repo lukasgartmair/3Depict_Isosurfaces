@@ -12,6 +12,7 @@ class IonClipFilter :  public Filter
 		 * Planar clip (origin + normal)
 		 * spherical clip (origin + radius)
 		 * Cylindrical clip (origin + axis + length)
+		 * Axis aligned box (origin + corner)
 		 */
 		unsigned int primitiveType;
 
@@ -27,7 +28,7 @@ class IonClipFilter :  public Filter
 		bool lockAxisMag; 
 
 	public:
-		IonClipFilter() { primitiveType=IONCLIP_PRIMITIVE_PLANE;vectorParams.push_back(Point3D(0.0,0.0,0.0)); vectorParams.push_back(Point3D(0,1.0,0.0));invertedClip=false;showPrimitive=true;lockAxisMag=false;};
+		IonClipFilter();
 		
 		//!Duplicate filter contents, excluding cache.
 		Filter *cloneUncached() const;
@@ -63,14 +64,18 @@ class IonClipFilter :  public Filter
 		bool readState(xmlNodePtr &node, const std::string &packDir);
 	
 		//!Get the stream types that will be dropped during ::refresh	
-		int getRefreshBlockMask() const;
+		unsigned int getRefreshBlockMask() const;
 
 		//!Get the stream types that will be generated during ::refresh	
-		int getRefreshEmitMask() const;	
+		unsigned int getRefreshEmitMask() const;	
 		
 		
 		//!Set internal property value using a selection binding 
 		void setPropFromBinding(const SelectionBinding &b);
+
+#ifdef DEBUG
+		bool runUnitTests();
+#endif
 };
 
 #endif

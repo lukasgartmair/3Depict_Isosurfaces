@@ -294,6 +294,8 @@ void Scene::drawOverlays() const
 	glMatrixMode(GL_PROJECTION);
 	glPushMatrix();
 	glLoadIdentity();
+
+	glDisable(GL_LIGHTING);
 	//Set the opengl camera state back into modelview mode
 	if(viewRestrict)
 	{
@@ -587,7 +589,7 @@ void Scene::removeCam(unsigned int camIDVal)
 	cameras.erase(cameras.begin()+position);
 	camIDs.killByPos(position);
 
-	if(cameras.size() >0)
+	if(cameras.size())
 	{
 		activeCam=0;
 		cameraSet=true;

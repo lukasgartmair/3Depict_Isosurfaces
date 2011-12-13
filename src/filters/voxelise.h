@@ -22,7 +22,7 @@ private:
 	BoundCube bc;
 	
 	//!density-based or count-based	
-	int normaliseType;
+	unsigned int normaliseType;
 	bool numeratorAll, denominatorAll;
 	//This is filter's enabled ranges
 	RangeStreamData *rsdIncoming;
@@ -95,10 +95,10 @@ public:
 	bool readState(xmlNodePtr &node, const std::string &packDir);
 
 	//!Get the stream types that will be dropped during ::refresh	
-	int getRefreshBlockMask() const;
+	unsigned int getRefreshBlockMask() const;
 
 	//!Get the stream types that will be generated during ::refresh	
-	int getRefreshEmitMask() const;	
+	unsigned int getRefreshEmitMask() const;	
 
 	//!Set internal property value using a selection binding  
 	void setPropFromBinding(const SelectionBinding &b) ;
@@ -108,7 +108,7 @@ public:
 	void calculateWidthsFromNumBins(Point3D &widths, unsigned long long *nb) {
 		Point3D low, high;
 		bc.getBounds(low, high);
-		for (int i = 0; i < 3; i++) {
+		for (unsigned int i = 0; i < 3; i++) {
 			widths[i] = (high[i] - low[i])/(float)nb[i];
 		}
 	}
@@ -116,7 +116,7 @@ public:
 	void calculateNumBinsFromWidths(Point3D &widths, unsigned long long *nb) {
 		Point3D low, high;
 		bc.getBounds(low, high);
-		for (int i = 0; i < 3; i++) {
+		for (unsigned int i = 0; i < 3; i++) {
 			if (low[i] == high[i]) nb[i] = 1;
 			else nb[i] = (unsigned long long)((high[i] - low[i])/(float)widths[i]) + 1;
 		}

@@ -50,7 +50,9 @@ class RangeFile;
 
 const unsigned int PROGRESS_REDUCE=5000;
 
-extern const char *posErrStrings[];
+extern const char *POS_ERR_STRINGS[];
+
+extern const char *ION_TEXT_ERR_STRINGS[];
 
 //!Errors that can be encountered when openning pos files
 enum posErrors
@@ -155,7 +157,7 @@ class RangeFile
 		//
 		//This holds the min and max masses for the range
 		std::vector<std::pair<float,float> > ranges;
-		//The ion ID number for each range
+		//The ion ID number for each range FIXME: Convert to proper uniqueID system
 		std::vector<unsigned int> ionIDs;
 		unsigned int errState;
 
@@ -165,6 +167,12 @@ class RangeFile
 		RangeFile();
 		//!Open a specified range file
 		unsigned int open(const char *rangeFile, unsigned int format=RANGE_FORMAT_ORNL);	
+		//!Open a specified range file
+		unsigned int openGuessFormat(const char *rangeFile);
+
+		//!is the extension string the same as that for a range file? I don't advocate this method, but it is convenient in a pinch.
+		static bool extensionIsRange(const char *ext);
+
 		//!Print the error associated with the current range file state
 		void printErr(std::ostream &strm);
 		//!Get the number of unique ranges
@@ -239,8 +247,9 @@ class RangeFile
 		 */
 		bool isRanged(std::string shortName, bool caseSensitive=true);
 
-		//!Write the stream to a file 
+		//!Write the rangefile to the specified output stream (ORNL format)
 		unsigned int write(std::ostream &o) const;
+		//!WRite the rangefile to a file (ORNL format)
 		unsigned int write(const char *datafile) const;
 
 		//!Return the atomic number of the element from either the long or short version of the atomic name 
@@ -266,6 +275,13 @@ class RangeFile
 		bool moveRange(unsigned int range, bool limit, float newMass);
 		//!Move both of a range's masses to a new location
 		bool moveBothRanges(unsigned int range, float newLow, float newHigh);
+
+		//!Add a range to the rangefile. Returns ID number of added range
+		// if adding successfull, (unsigned int)-1 otherwise
+		unsigned int addRange(float start, float end, unsigned int ionID);
+
+		//Add the ion to the database returns ion ID if successful, -1 otherwise
+		unsigned int addIon(std::string &shortName, std::string &longName, RGBf &ionCol);
 		
 };
 

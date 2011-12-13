@@ -153,7 +153,7 @@ const char *cpAtomNaming[][2] = {
 	{"Ununoctium","Uuo"}
 };
 
-const char *posErrStrings[] = { "",
+const char *POS_ERR_STRINGS[] = { "",
        				NTRANS("Memory allocation failure on POS load"),
 				NTRANS("Error opening pos file"),
 				NTRANS("Pos file empty"),
@@ -163,6 +163,27 @@ const char *posErrStrings[] = { "",
 				NTRANS("Pos load aborted by interrupt.")
 };
 
+enum
+{
+	TEXT_ERR_OPEN=1,
+	TEXT_ERR_ONLY_HEADER,
+	TEXT_ERR_REOPEN,
+	TEXT_ERR_READ_CONTENTS,
+	TEXT_ERR_FORMAT,
+	TEXT_ERR_NUM_FIELDS,
+	TEXT_ERR_ALLOC_FAIL,
+	TEXT_ERR_ENUM_END //not an error, just end of enum
+};
+
+const char *ION_TEXT_ERR_STRINGS[] = { "",
+       					NTRANS("Error opening file"),
+       					NTRANS("No numerical data found"),
+       					NTRANS("Error re-opening file, after first scan"),
+       					NTRANS("Unable to read file contents after open"),
+					NTRANS("Error interpreting field in file"),
+					NTRANS("Incorrect number of fields in file"),
+					NTRANS("Unable to allocate memory to store data"),
+					};
 //!Create an pos file from a vector of IonHits
 unsigned int IonVectorToPos(const vector<IonHit> &ionVec, const string &filename)
 {
@@ -533,7 +554,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 	ifstream CFile(textFile,std::ios::binary);
 
 	if(!CFile)
-		return POS_OPEN_FAIL;
+		return TEXT_ERR_OPEN;
 
 
 	//seek to the end of the file
@@ -560,7 +581,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 		getline(CFile,s);
 
 		if(!CFile.good())
-			return POS_READ_FAIL;
+			return TEXT_ERR_READ_CONTENTS;
 
 		splitStrsRef(s.c_str(),delim,subStrs);	
 		stripZeroEntries(subStrs);
@@ -605,7 +626,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 
 	//could not find any data.. only header.
 	if(CFile.eof() || curPos >=maxPos)
-		return POS_READ_FAIL;
+		return TEXT_ERR_ONLY_HEADER;
 
 
 	CFile.close();
@@ -614,7 +635,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 	CFile.open(textFile,std::ios::binary);
 
 	if(!CFile)
-		return POS_OPEN_FAIL;
+		return TEXT_ERR_REOPEN;
 
 
 	//Jump to beyond the header
@@ -630,7 +651,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 		if(!CFile.good())
 		{
 			delete[] buffer;
-			return POS_READ_FAIL;
+			return TEXT_ERR_READ_CONTENTS;
 		}
 		//read up to BUFFER_SIZE bytes from the file
 		//but only if they are available
@@ -680,10 +701,10 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 	
 		//Just use the non-sampling method to load.	
 		if(loadTextData(textFile,data,header,delim))
-			return POS_READ_FAIL;
+			return TEXT_ERR_FORMAT;
 
 		if(data.size() !=4)
-			return POS_READ_FAIL;
+			return TEXT_ERR_NUM_FIELDS;
 
 		posIons.resize(data[0].size());
 		for(size_t ui=0;ui<data[0].size();ui++)
@@ -717,7 +738,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 	catch(std::bad_alloc)
 	{
 		delete[] buffer;
-		return POS_ALLOC_FAIL;
+		return TEXT_ERR_ALLOC_FAIL;
 	}
 
 
@@ -739,7 +760,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 	if(!CFile)
 	{
 		delete[] buffer;
-		return POS_OPEN_FAIL;
+		return TEXT_ERR_REOPEN;
 	}
 
 
@@ -770,7 +791,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 		{
 			//FIXME: Allow skipping of bad lines
 			delete[] buffer;
-			return POS_READ_FAIL;
+			return TEXT_ERR_NUM_FIELDS;
 		}
 
 		float f[4];
@@ -783,7 +804,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 				//FIXME: Allow skipping bad lines
 				//Can't parse line.. Abort.
 				delete[] buffer;
-				return POS_READ_FAIL;
+				return TEXT_ERR_FORMAT;
 			}
 		}
 
@@ -995,10 +1016,16 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 		return errState;
 	}
 
-	//switch to "C" style decimal notation (english)
+	//switch to "C" style decimal notation (english),
+	//as needed
 	char *oldLocale=setlocale(LC_NUMERIC,NULL);
-	setlocale(LC_NUMERIC,"C");
-	
+
+	//setlocale reserves the right to trash the returned pointer
+	//on subsequent calls (it totally makes sense, or something..).
+	oldLocale=strdup(oldLocale);
+	if(strcmp(oldLocale,"C"))
+		setlocale(LC_NUMERIC,"C");	
+		
 
 	switch(fileFormat)
 	{
@@ -1021,7 +1048,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			{
 				errState=RANGE_ERR_FORMAT;
 				fclose(fpRange);
-				setlocale(LC_NUMERIC,oldLocale);
+				if(strcmp(oldLocale,"C"))
+					setlocale(LC_NUMERIC,oldLocale);
+				free(oldLocale);
 				return errState;
 			}
 			
@@ -1029,7 +1058,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			{
 				errState= RANGE_ERR_EMPTY;
 				fclose(fpRange);
-				setlocale(LC_NUMERIC,oldLocale);
+				if(strcmp(oldLocale,"C"))
+					setlocale(LC_NUMERIC,oldLocale);
+				free(oldLocale);
 				return errState;
 			}
 			
@@ -1071,7 +1102,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				{
 					errState=RANGE_ERR_FORMAT;
 					fclose(fpRange);
-					setlocale(LC_NUMERIC,oldLocale);
+					if(strcmp(oldLocale,"C"))
+						setlocale(LC_NUMERIC,oldLocale);
+					free(oldLocale);
 					return errState;
 				}
 					
@@ -1083,7 +1116,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				{
 					errState=RANGE_ERR_FORMAT;
 					fclose(fpRange);
-					setlocale(LC_NUMERIC,oldLocale);
+					if(strcmp(oldLocale,"C"))
+						setlocale(LC_NUMERIC,oldLocale);
+					free(oldLocale);
 					return errState;
 				}
 				
@@ -1094,7 +1129,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				{
 					errState=RANGE_ERR_FORMAT;
 					fclose(fpRange);
-					setlocale(LC_NUMERIC,oldLocale);
+					if(strcmp(oldLocale,"C"))
+						setlocale(LC_NUMERIC,oldLocale);
+					free(oldLocale);
 					return errState;
 				}
 				
@@ -1105,6 +1142,17 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			fgets((char *)inBuffer, 256, fpRange); /* skip over <LF> */
 			fgets((char *)inBuffer, 256, fpRange); /* skip the comment line */
 
+
+			//We should be at the line which has lots of dashes
+			if(inBuffer[0] != '-')
+			{
+				errState=RANGE_ERR_FORMAT;
+				fclose(fpRange);
+				if(strcmp(oldLocale,"C"))
+					setlocale(LC_NUMERIC,oldLocale);
+				free(oldLocale);
+				return errState;
+			}
 
 			//Load in each range file line
 			tempInt=0;
@@ -1119,7 +1167,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 					{
 						errState=RANGE_ERR_FORMAT;
 						fclose(fpRange);
-						setlocale(LC_NUMERIC,oldLocale);
+						if(strcmp(oldLocale,"C"))
+							setlocale(LC_NUMERIC,oldLocale);
+						free(oldLocale);
 						return errState;
 					}
 
@@ -1131,7 +1181,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				{
 					errState=RANGE_ERR_FORMAT;
 					fclose(fpRange);
-					setlocale(LC_NUMERIC,oldLocale);
+					if(strcmp(oldLocale,"C"))
+						setlocale(LC_NUMERIC,oldLocale);
+					free(oldLocale);
 					return errState;
 				}
 
@@ -1139,7 +1191,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				{
 					errState=RANGE_ERR_DATA;
 					fclose(fpRange);
-					setlocale(LC_NUMERIC,oldLocale);
+					if(strcmp(oldLocale,"C"))
+						setlocale(LC_NUMERIC,oldLocale);
+					free(oldLocale);
 					return errState;
 				}
 
@@ -1152,7 +1206,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 					{
 						errState=RANGE_ERR_FORMAT;
 						fclose(fpRange);
-						setlocale(LC_NUMERIC,oldLocale);
+						if(strcmp(oldLocale,"C"))
+							setlocale(LC_NUMERIC,oldLocale);
+						free(oldLocale);
 						return errState;
 					}
 					
@@ -1184,7 +1240,10 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			{
 				errState=RANGE_ERR_DATA;
 				fclose(fpRange);
-				setlocale(LC_NUMERIC,oldLocale);
+
+				if(strcmp(oldLocale,"C"))
+					setlocale(LC_NUMERIC,oldLocale);
+				free(oldLocale);
 				return errState;
 
 			}
@@ -1230,7 +1289,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			
 				stripZeroEntries(strVec);
 
-				if(!strVec.size())
+				if(strVec.empty())
 					continue;
 
 				if(!haveNumRanges)
@@ -1240,7 +1299,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 					{
 						fclose(fpRange);
 						delete[] inBuffer;
-						setlocale(LC_NUMERIC,oldLocale);
+						if(strcmp(oldLocale,"C"))
+							setlocale(LC_NUMERIC,oldLocale);
+						free(oldLocale);
 						return RANGE_ERR_FORMAT;
 					}
 
@@ -1264,7 +1325,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							{
 								delete[] inBuffer;
 								fclose(fpRange);
-								setlocale(LC_NUMERIC,oldLocale);
+								if(strcmp(oldLocale,"C"))
+									setlocale(LC_NUMERIC,oldLocale);
+								free(oldLocale);
 								return RANGE_ERR_FORMAT;
 							}
 
@@ -1278,7 +1341,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 									fclose(fpRange);
 									delete[] inBuffer;
 
-									setlocale(LC_NUMERIC,oldLocale);
+									if(strcmp(oldLocale,"C"))
+										setlocale(LC_NUMERIC,oldLocale);
+									free(oldLocale);
 									return RANGE_ERR_FORMAT;
 								}
 							}
@@ -1292,7 +1357,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							{
 								fclose(fpRange);
 								delete[] inBuffer;
-								setlocale(LC_NUMERIC,oldLocale);
+								if(strcmp(oldLocale,"C"))
+									setlocale(LC_NUMERIC,oldLocale);
+								free(oldLocale);
 								return RANGE_ERR_FORMAT;
 
 							}
@@ -1303,7 +1370,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							{
 								fclose(fpRange);
 								delete[] inBuffer;
-								setlocale(LC_NUMERIC,oldLocale);
+								if(strcmp(oldLocale,"C"))
+									setlocale(LC_NUMERIC,oldLocale);
+								free(oldLocale);
 								return RANGE_ERR_FORMAT;
 
 							}
@@ -1318,7 +1387,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							//range block....
 							fclose(fpRange);
 							delete[] inBuffer;
-							setlocale(LC_NUMERIC,oldLocale);
+							if(strcmp(oldLocale,"C"))
+								setlocale(LC_NUMERIC,oldLocale);
+							free(oldLocale);
 							return RANGE_ERR_FORMAT;
 						}
 					}
@@ -1344,7 +1415,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							{
 								fclose(fpRange);
 								delete[] inBuffer;
-								setlocale(LC_NUMERIC,oldLocale);
+								if(strcmp(oldLocale,"C"))
+									setlocale(LC_NUMERIC,oldLocale);
+								free(oldLocale);
 								return RANGE_ERR_FORMAT;
 							}
 
@@ -1353,14 +1426,18 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							{
 								fclose(fpRange);
 								delete[] inBuffer;
-								setlocale(LC_NUMERIC,oldLocale);
+								if(strcmp(oldLocale,"C"))
+									setlocale(LC_NUMERIC,oldLocale);
+								free(oldLocale);
 								return RANGE_ERR_FORMAT;
 							}
 							if(stream_cast(rangeEnd,strVec[2]))
 							{
 								fclose(fpRange);
 								delete[] inBuffer;
-								setlocale(LC_NUMERIC,oldLocale);
+								if(strcmp(oldLocale,"C"))
+									setlocale(LC_NUMERIC,oldLocale);
+								free(oldLocale);
 								return RANGE_ERR_FORMAT;
 							}
 
@@ -1382,7 +1459,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			{
 				fclose(fpRange);
 				delete[] inBuffer;
-				setlocale(LC_NUMERIC,oldLocale);
+				if(strcmp(oldLocale,"C"))
+					setlocale(LC_NUMERIC,oldLocale);
+				free(oldLocale);
 				return RANGE_ERR_FORMAT;
 			}	
 		
@@ -1415,7 +1494,8 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 
 			while (!feof(fpRange))
 			{
-				fgets((char *)inBuffer, MAX_LINE_SIZE, fpRange);
+				if(!fgets((char *)inBuffer, MAX_LINE_SIZE, fpRange))
+					break;
 				//Trick to "strip" the buffer, assuming # is a comment
 				nullifyMarker(inBuffer,'#');
 
@@ -1457,7 +1537,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 					{
 						delete[] inBuffer;
 						fclose(fpRange);
-						setlocale(LC_NUMERIC,oldLocale);
+						if(strcmp(oldLocale,"C"))
+							setlocale(LC_NUMERIC,oldLocale);
+						free(oldLocale);
 						return RANGE_ERR_FORMAT;
 					}
 
@@ -1475,7 +1557,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 						{
 							delete[] inBuffer;
 							fclose(fpRange);
-							setlocale(LC_NUMERIC,oldLocale);
+							if(strcmp(oldLocale,"C"))
+								setlocale(LC_NUMERIC,oldLocale);
+							free(oldLocale);
 							return RANGE_ERR_FORMAT;
 						}
 						//Set the number of ions
@@ -1485,7 +1569,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 						{
 							delete[] inBuffer;
 							fclose(fpRange);
-							setlocale(LC_NUMERIC,oldLocale);
+							if(strcmp(oldLocale,"C"))
+								setlocale(LC_NUMERIC,oldLocale);
+							free(oldLocale);
 							return RANGE_ERR_FORMAT;
 						}
 					}
@@ -1501,7 +1587,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 						{
 							delete[] inBuffer;
 							fclose(fpRange);
-							setlocale(LC_NUMERIC,oldLocale);
+							if(strcmp(oldLocale,"C"))
+								setlocale(LC_NUMERIC,oldLocale);
+							free(oldLocale);
 							return RANGE_ERR_FORMAT;
 						}
 						}
@@ -1509,7 +1597,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 						{
 							delete[] inBuffer;
 							fclose(fpRange);
-							setlocale(LC_NUMERIC,oldLocale);
+							if(strcmp(oldLocale,"C"))
+								setlocale(LC_NUMERIC,oldLocale);
+							free(oldLocale);
 							return RANGE_ERR_FORMAT;
 						}
 					}
@@ -1526,7 +1616,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 					{
 						delete[] inBuffer;
 						fclose(fpRange);
-						setlocale(LC_NUMERIC,oldLocale);
+						if(strcmp(oldLocale,"C"))
+							setlocale(LC_NUMERIC,oldLocale);
+						free(oldLocale);
 						return RANGE_ERR_FORMAT;
 					}
 					vector<string> split;
@@ -1539,7 +1631,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 						{
 							delete[] inBuffer;
 							fclose(fpRange);
-							setlocale(LC_NUMERIC,oldLocale);
+							if(strcmp(oldLocale,"C"))
+								setlocale(LC_NUMERIC,oldLocale);
+							free(oldLocale);
 							return RANGE_ERR_FORMAT;
 						}
 
@@ -1551,7 +1645,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							{
 								delete[] inBuffer;
 								fclose(fpRange);
-								setlocale(LC_NUMERIC,oldLocale);
+								if(strcmp(oldLocale,"C"))
+									setlocale(LC_NUMERIC,oldLocale);
+								free(oldLocale);
 								return RANGE_ERR_FORMAT;
 							}
 
@@ -1559,7 +1655,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							{
 							
 								delete[] inBuffer;
-								setlocale(LC_NUMERIC,oldLocale);
+								if(strcmp(oldLocale,"C"))
+									setlocale(LC_NUMERIC,oldLocale);
+								free(oldLocale);
 								fclose(fpRange);
 								return RANGE_ERR_FORMAT;
 							}
@@ -1567,7 +1665,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							if (!numRanges)
 							{
 								delete[] inBuffer;
-								setlocale(LC_NUMERIC,oldLocale);
+								if(strcmp(oldLocale,"C"))
+									setlocale(LC_NUMERIC,oldLocale);
+								free(oldLocale);
 								fclose(fpRange);
 								return RANGE_ERR_FORMAT;
 							}
@@ -1608,7 +1708,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							{
 								delete[] inBuffer;
 								fclose(fpRange);
-								setlocale(LC_NUMERIC,oldLocale);
+								if(strcmp(oldLocale,"C"))
+									setlocale(LC_NUMERIC,oldLocale);
+								free(oldLocale);
 								return RANGE_ERR_FORMAT;
 							}
 
@@ -1617,7 +1719,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							{
 								delete[] inBuffer;
 								fclose(fpRange);
-								setlocale(LC_NUMERIC,oldLocale);
+								if(strcmp(oldLocale,"C"))
+									setlocale(LC_NUMERIC,oldLocale);
+								free(oldLocale);
 								return RANGE_ERR_FORMAT;
 							}
 
@@ -1651,7 +1755,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 								{
 									delete[] inBuffer;
 									fclose(fpRange);
-									setlocale(LC_NUMERIC,oldLocale);
+									if(strcmp(oldLocale,"C"))
+										setlocale(LC_NUMERIC,oldLocale);
+									free(oldLocale);
 									return RANGE_ERR_FORMAT;
 								}
 
@@ -1671,7 +1777,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 
 									//Rant:WTF is the point of the "name" section. They are 
 									//encoding information in a redundant and irksome fashion!
-									//Better to store the charge (if thats what you wnat) in a F-ing charge
+									//Better to store the charge (if that's what you want) in a F-ing charge
 									//section, and the multiplicity is already bloody defined elsewhere!
 									
 									//This won't be known until we complete the parse
@@ -1687,7 +1793,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 									{
 										delete[] inBuffer;
 										fclose(fpRange);
-										setlocale(LC_NUMERIC,oldLocale);
+										if(strcmp(oldLocale,"C"))
+											setlocale(LC_NUMERIC,oldLocale);
+										free(oldLocale);
 										return RANGE_ERR_FORMAT;
 									}
 
@@ -1720,7 +1828,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 									{
 										delete[] inBuffer;
 										fclose(fpRange);
-										setlocale(LC_NUMERIC,oldLocale);
+										if(strcmp(oldLocale,"C"))
+											setlocale(LC_NUMERIC,oldLocale);
+										free(oldLocale);
 										return RANGE_ERR_FORMAT;
 									}
 									//Check the multiplicty of the ion. should be an integer > 0
@@ -1729,7 +1839,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 									{
 										delete[] inBuffer;
 										fclose(fpRange);
-										setlocale(LC_NUMERIC,oldLocale);
+										if(strcmp(oldLocale,"C"))
+											setlocale(LC_NUMERIC,oldLocale);
+										free(oldLocale);
 										return RANGE_ERR_FORMAT;
 									}
 
@@ -1746,7 +1858,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							{
 								delete[] inBuffer;
 								fclose(fpRange);
-								setlocale(LC_NUMERIC,oldLocale);
+								if(strcmp(oldLocale,"C"))
+									setlocale(LC_NUMERIC,oldLocale);
+								free(oldLocale);
 								return RANGE_ERR_FORMAT;
 							}
 
@@ -1758,7 +1872,10 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 								{
 									delete[] inBuffer;
 									fclose(fpRange);
-									setlocale(LC_NUMERIC,oldLocale);
+									if(strcmp(oldLocale,"C"))
+										setlocale(LC_NUMERIC,oldLocale);
+									free(oldLocale);
+								
 									return RANGE_ERR_FORMAT;
 								}
 
@@ -1766,7 +1883,10 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 								{
 									delete[] inBuffer;
 									fclose(fpRange);
-									setlocale(LC_NUMERIC,oldLocale);
+									if(strcmp(oldLocale,"C"))
+										setlocale(LC_NUMERIC,oldLocale);
+									free(oldLocale);
+								
 									return RANGE_ERR_FORMAT;
 								}
 							}
@@ -1817,7 +1937,11 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 								{
 									delete[] inBuffer;
 									fclose(fpRange);
-									setlocale(LC_NUMERIC,oldLocale);
+									if(strcmp(oldLocale,"C"))
+										setlocale(LC_NUMERIC,oldLocale);
+									free(oldLocale);
+						
+				
 									return RANGE_ERR_FORMAT;
 								}
 
@@ -1872,7 +1996,9 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 						{
 							delete[] inBuffer;
 							fclose(fpRange);
-							setlocale(LC_NUMERIC,oldLocale);
+							if(strcmp(oldLocale,"C"))
+								setlocale(LC_NUMERIC,oldLocale);
+							free(oldLocale);
 							return RANGE_ERR_FORMAT;
 						}
 
@@ -1885,36 +2011,109 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				}
 			}
 
+			ASSERT(numRanges == ranges.size());
 			delete[] inBuffer;
 			break;
 		}
 		default:
 			ASSERT(false);
 			fclose(fpRange);
-			setlocale(LC_NUMERIC,oldLocale);
+			if(strcmp(oldLocale,"C"))
+				setlocale(LC_NUMERIC,oldLocale);
+			free(oldLocale);
 			return RANGE_ERR_FORMAT;
 	}
 
 
-	//revert back to user's locale
-	setlocale(LC_NUMERIC,oldLocale);
+	//revert back to user's locale, as needed
+	if(strcmp(oldLocale,"C"))
+		setlocale(LC_NUMERIC,oldLocale);
+
 	fclose(fpRange);
+	free(oldLocale);
 	
 	
+	//Run self consistency check on freshly loaded data
 	if(!isSelfConsistent())
-	{
-		//Failed self consistency check
 		return RANGE_ERR_DATA;
-	}
+	
 	return 0;
 }
 
+unsigned int RangeFile::openGuessFormat(const char *rangeFilename)
+{
+	unsigned int assumedFileFormat;
+	string s;
+	s=rangeFilename;
+	vector<string> sVec;
+	splitStrsRef(s.c_str(),'.',sVec);
+
+	if(!sVec.size())
+		assumedFileFormat=RANGE_FORMAT_ORNL;
+	else if(lowercase(sVec[sVec.size()-1]) == "rrng")
+		assumedFileFormat=RANGE_FORMAT_RRNG;
+	else if(lowercase(sVec[sVec.size()-1]) == "env")
+		assumedFileFormat=RANGE_FORMAT_ENV;
+	else
+		assumedFileFormat=RANGE_FORMAT_ORNL;
+
+	//Use the guessed format
+	if(open(rangeFilename,assumedFileFormat))
+	{
+		//If that failed, go to plan B-- Brute force.
+		//try all readers
+		bool openOK=false;
+
+		for(unsigned int ui=1;ui<RANGE_FORMAT_END_OF_ENUM; ui++)
+		{
+			if(ui == assumedFileFormat)
+				continue;
+
+			if(!open(rangeFilename,ui))
+			{
+				assumedFileFormat=ui;
+				openOK=true;
+				break;
+			}
+		}
+	
+		if(!openOK)
+			return false;
+	}
+
+	return true;
+}
+
+bool RangeFile::extensionIsRange(const char *ext) 
+{
+	const char *rangeExts[] = { "rng",
+				  "rrng",
+				  "env",
+					""};
+	bool isRange=false;
+	unsigned int extOff=0;
+	while(strlen(rangeExts[extOff]))
+	{
+		if(!strcmp(ext,rangeExts[extOff]))
+		{
+			isRange=true;
+			break;
+		}
+		extOff++;
+	}
+
+	return isRange;
+}
 
 bool RangeFile::isSelfConsistent() const
 {
-	//Check that ranges don't overlap.
 	for(unsigned int ui=0;ui<ranges.size();ui++)
 	{
+		//Check for range zero width
+		if(ranges[ui].first == ranges[ui].second)
+			return false;
+	
+		//Check that ranges don't overlap.
 		for(unsigned int uj=0; uj<ranges.size();uj++)
 		{
 			if(ui==uj)
@@ -1931,6 +2130,11 @@ bool RangeFile::isSelfConsistent() const
 			//check for not spanning a range
 			if(ranges[ui].first < ranges[uj].first &&
 					ranges[ui].second > ranges[uj].second)
+				return false;
+
+			//Check for range duplication
+			if(ranges[ui].first == ranges[uj].first &&
+					ranges[ui].second == ranges[uj].second)
 				return false;
 
 		}
@@ -2381,6 +2585,49 @@ bool RangeFile::moveBothRanges(unsigned int rangeId, float newLow, float newHigh
 }
 
 
+
+unsigned int RangeFile::addRange(float start, float end, unsigned int parentIonID)
+{
+	ASSERT(start < end);
+	//Ensure that they do NOT overlap
+	for(unsigned int ui=0;ui<ranges.size();ui++)
+	{
+		//Check for start end inside other range
+		if(start > ranges[ui].first && 
+				start<=ranges[ui].second)
+			return -1;
+
+		if(end > ranges[ui].first && 
+				end<=ranges[ui].second)
+			return -1;
+
+		//check for start/end spanning range entirely
+		if(start < ranges[ui].first && end > ranges[ui].second)
+			return -1;
+	}
+
+	//Got this far? Good - valid range. Insert it and move on
+	ionIDs.push_back(parentIonID);
+	ranges.push_back(std::make_pair(start,end));
+
+	ASSERT(isSelfConsistent());
+	return ranges.size();
+}
+
+unsigned int RangeFile::addIon(std::string &shortN, std::string &longN, RGBf &newCol)
+{
+	for(unsigned int ui=9; ui<ionNames.size() ;ui++)
+	{
+		if(ionNames[ui].first == shortN || ionNames[ui].second == longN)
+			return -1;
+	}
+
+	ionNames.push_back(make_pair(shortN,longN));
+	colours.push_back(newCol);
+
+	ASSERT(isSelfConsistent());
+	return ionNames.size()-1;
+}
 void RangeFile::setIonID(unsigned int range, unsigned int newIonId)
 {
 	ASSERT(newIonId < ionIDs.size());

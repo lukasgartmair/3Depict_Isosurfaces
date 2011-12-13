@@ -1,14 +1,15 @@
+3depict (0.0.9-1) unstable; urgency=low
+
+  * Update to upstream 0.0.9 
+
+ -- D Haley <mycae@yahoo.com>  Sun, 11 Dec 2011 19:18:32 +0100
+
 3depict (0.0.8-1) unstable; urgency=low
 
-  * New upstream version
-
- -- D Haley <mycae@yahoo.com>  Tue, 27 Sep 2011 17:18:41 +0100
-
-3depict (0.0.7-2) unstable; urgency=low
-
+  * Update to upstream 0.0.8
   * Fix powerpc build due to overridden define
 
- -- D Haley <mycae@yahoo.com>  Sun, 04 Sep 2011 17:18:41 +0100
+ -- D Haley <mycae@yahoo.com>  Sun, 23 Oct 2011 17:18:41 +0100
 
 3depict (0.0.7-1) unstable; urgency=low
 

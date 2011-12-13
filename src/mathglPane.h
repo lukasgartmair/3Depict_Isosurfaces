@@ -48,14 +48,15 @@ private:
 	bool leftWindow;
 	//!Last error reported by mathgl
 	std::string lastMglErr;
-	//!Is the user dragging with the mouse?
-	bool dragging, panning, regionDragging;
+	//!What is the user currently doing with the mouse?
+	unsigned int mouseDragMode;
+
 	//!Has the window resized since the last draw?
 	bool hasResized;
 	//!Start and currentlocations for the drag
 	wxPoint draggingStart,draggingCurrent;
-	//!Original bounds during panning operations
-	float origPanMinX, origPanMaxX;
+	//!Original bounds during panning operations.
+	float origPanMinX, origPanMaxX; //1D and 2D actions
 
 	//!region used at mouse down
 	unsigned int startMouseRegion,startMousePlot,regionMoveType;
@@ -82,7 +83,24 @@ private:
 	//!Compute the "aspect" for a given region; ie which grab handle type
 	// does this position correspond to
 	unsigned int computeRegionMoveType(float dataX,float dataY, const PlotRegion &r) const;
-	
+
+	//!Draw the interaction overlay objects
+	// like the ability to drag etc.
+	void drawInteractOverlay(wxDC *dc) const;
+
+	//Draw the region Overlays (dragging arrows, bounds etc) 
+	void drawRegionDraggingOverlay(wxDC *dc) const;
+
+	//
+	void updateDragPos(const wxPoint &event) const;
+
+	//Get the bitmask for the cursor position (below/above axis) from
+	//the specified window coordinates (use LH window coordinates, as from wx)
+	unsigned int getAxisMask(int x, int y) const ;
+
+	//Action to perform when showing 1D plots and mouse down event occurs
+	void oneDMouseDownAction(bool leftDown,bool middleMouseDown,
+		bool alternateDown, int dragX,int dragY);
 public:
 
 	MathGLPane(wxWindow* parent, int id);
@@ -109,21 +127,37 @@ public:
 
 	//!Do we have updates?
 	bool hasUpdates() const { return haveUpdates;}
+	//Instruct the plot that we no loger have updates available.
 	void clearUpdates() { haveUpdates=false;}
+	//Resize event for window
 	void resized(wxSizeEvent& evt);
+	//Draw window event
 	void render(wxPaintEvent& evt);
 	//!wx Event that triggers on mouse movement on grah
 	void mouseMoved(wxMouseEvent& event);
-	void mouseDown(wxMouseEvent& event);
+	//Left mouse depress on window
+	void middleMouseDown(wxMouseEvent& event);
+	//Right mouse depress on window
+	void leftMouseDown(wxMouseEvent& event);
+	//Mouse doubleclick on window
 	void mouseDoubleLeftClick(wxMouseEvent& event);
+	//Mousewheel Scroll event
 	void mouseWheelMoved(wxMouseEvent& event);
-	void mouseReleased(wxMouseEvent& event);
+	//Button being released inside box
+	void leftMouseReleased(wxMouseEvent& event);
+	//! Middle mouse button has been let go
+	void middleMouseReleased(wxMouseEvent& event);
+	//Right button down-release
 	void rightClick(wxMouseEvent& event);
+	//Button leaving client area
 	void mouseLeftWindow(wxMouseEvent& event);
 	void keyPressed(wxKeyEvent& event);
 	void keyReleased(wxKeyEvent& event);
+	//Select, by ID, which plot we would like to set to being shown
 	void setPlotVisible(unsigned int plotID, bool visible);
+	//Show/hide legent
 	void setLegendVisible(bool visible){thePlot->setLegendVisible(visible);}
+	//Prevent the user from interacting with the plot
 	void limitInteraction(bool doLimit=true){ limitInteract=doLimit;};
 protected:
     DECLARE_EVENT_TABLE()

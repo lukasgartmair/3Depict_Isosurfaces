@@ -572,6 +572,11 @@ void AnnotateFilter::getProperties(FilterProperties &propertyList) const
 			type.push_back(PROPERTY_TYPE_STRING);
 			keys.push_back(KEY_ANNOTATE_TEXT);
 			
+			stream_cast(tmpStr,textSize);
+			s.push_back(make_pair(TRANS("Text size"),tmpStr));
+			type.push_back(PROPERTY_TYPE_REAL);
+			keys.push_back(KEY_TEXTSIZE);
+			
 			stream_cast(tmpStr,upVec);
 			s.push_back(make_pair(TRANS("Up dir"),tmpStr));
 			type.push_back(PROPERTY_TYPE_STRING);
@@ -923,12 +928,11 @@ bool AnnotateFilter::setProperty( unsigned int set, unsigned int key,
 
 			break;
 		}
-		
 		case KEY_ANGLE_TEXT_VISIBLE:
 		{
-			float tmp;
-			stream_cast(tmp,value);
-
+			bool tmp;
+			tmp=(value=="1");
+			
 			if(tmp == showAngleText)
 				return false;
 
@@ -1222,12 +1226,12 @@ bool AnnotateFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	return true;
 }
 
-int AnnotateFilter::getRefreshBlockMask() const
+unsigned int AnnotateFilter::getRefreshBlockMask() const
 {
 	return 0;
 }
 
-int AnnotateFilter::getRefreshEmitMask() const
+unsigned int AnnotateFilter::getRefreshEmitMask() const
 {
 	return  STREAM_TYPE_DRAW;
 }

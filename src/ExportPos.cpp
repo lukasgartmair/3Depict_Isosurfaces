@@ -199,7 +199,7 @@ void ExportPosDialog::OnTreeFiltersSelChanged(wxTreeEvent &event)
 				listAvailable->InsertItem(ui,wxStr(label));
 				
 				size_t basicCount;
-				basicCount=ionData->GetNumBasicObjects();
+				basicCount=ionData->getNumBasicObjects();
 				stream_cast(label,basicCount);
 
 				listAvailable->SetItem(ui,1,wxStr(label));
@@ -341,7 +341,7 @@ void ExportPosDialog::updateSelectedList()
 		listSelected->InsertItem(idx,wxStr(label));
 		
 		size_t basicCount;
-		basicCount=ionData->GetNumBasicObjects();
+		basicCount=ionData->getNumBasicObjects();
 		stream_cast(label,basicCount);
 
 		listSelected->SetItem(idx,1,wxStr(label));

@@ -1,4 +1,4 @@
-AC_INIT([3Depict], [0.0.8], [mycae@yahoo.com])
+AC_INIT([3Depict], [0.0.9], [mycae@yahoo.com])
 AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CXX
 AC_PROG_CC
@@ -149,15 +149,11 @@ dnl ----------
 
 #Check for FTGL using custom script.
 dnl ----------
-#AX_CHECK_FTGL() #Not doing anything???
+AX_CHECK_FTGL() #Not doing anything???
 
-#AC_SUBST(FTGL_CFLAGS)
-#AC_SUBST(FTGL_LIBS)
-
-#AC_MSG_RESULT([FTGL_LIBS Set to be $FTGL_LIBS])
-#AC_MSG_ERROR([Aborting FTGL_LIBS is $FTGL_LIBS])
-FTGL_LIBS="-lftgl"
+AC_SUBST(FTGL_CFLAGS)
 AC_SUBST(FTGL_LIBS)
+
 dnl ----------
 
 #Check for qhull
@@ -267,7 +263,7 @@ dnl ----------
 AC_ARG_WITH(mgl-flags,
   [  --with-mgl-flags=PATH : specify compiler flags for mathgl])
 if test x"$with_mgl_flags" != x"" ; then
-	MGL_LIBS="$with_mgl_flags"
+	MGL_CFLAGS="$with_mgl_flags"
 fi
 
 AC_ARG_WITH(mgl-libs,
@@ -276,30 +272,30 @@ if test x"$with_mgl_libs" != x"" ; then
 	MGL_LIBS="$with_mgl_libs"
 	AC_SUBST(MGL_LIBS)
 else
-	AC_CHECK_HEADER([mgl/mgl_c.h],[AC_DEFINE(HAVE_MGL_H,[],[Have got mathgl headers])],
-		[AC_MSG_ERROR([Required MathGL headers not found (looking for mgl/mg_c.h])])
-
 	AC_SUBST(MGL_LIBS,[-lmgl])
 fi
+
+AC_CHECK_HEADER([mgl/mgl_c.h],[AC_DEFINE(HAVE_MGL_H,[],[Have got mathgl headers])],
+	[AC_MSG_ERROR([Required MathGL headers not found (looking for mgl/mg_c.h) - is mathgl developement scode installed?])])
 
 dnl -------
 
 #Check for gsl
 dnl -------
 
-#AC_ARG_WITH(gsl-flags,
-#  [  --with-gsl-flags=PATH : specify compiler flags for gsl])
-#AC_ARG_WITH(gsl-libs,
-#  [  --with-gsl-libs=PATH : specify linker flag (library) for gsl])
+AC_ARG_WITH(gsl-flags,
+  [  --with-gsl-flags=PATH : specify compiler flags for gsl])
+AC_ARG_WITH(gsl-libs,
+  [  --with-gsl-libs=PATH : specify linker flag (library) for gsl])
 
-#if test x"$with_gsl_flags" != x"" ; then
-#    GSL_CFLAGS="$with_gsl_flags"
-#fi
-#if test x"$with_gsl_libs" != x"" ; then
-#    GSL_LIBS="$with_gsl_libs"
-#else
-#	AX_PATH_GSL( GSL_VERSION, [1.1],[AC_MSG_WARN(["Could not find GNU Scientific Library.. You should install this, as it is needed by mathgl. Otherwise, you can override it with --with-gsl-link and --with-gsl-flags. For example you might use the gsl-config program to spit out the needed libs."])])
-#fi
+if test x"$with_gsl_flags" != x"" ; then
+    GSL_CFLAGS="$with_gsl_flags"
+fi
+if test x"$with_gsl_libs" != x"" ; then
+    GSL_LIBS="$with_gsl_libs"
+else
+	AX_PATH_GSL([1.1],[],[AC_MSG_WARN(["Could not find GNU Scientific Library.. You should install this, as it is needed by mathgl. Otherwise, you can override it with --with-gsl-link and --with-gsl-flags. For example you might use the gsl-config program to spit out the needed libs."])])
+fi
 
 dnl -----------
 
@@ -352,7 +348,7 @@ dnl -----------------
 
 #Should we compile with openMP?
 AC_ARG_ENABLE(openmp-parallel,
-  [  --enable-openmp-parallel  Enable OpenMP multi-CPU usage; requires GCC > 4.2 for paralell STL support ])
+  [  --enable-openmp-parallel  Enable OpenMP multi-CPU usage; requires GCC > 4.2 for parallel STL support ])
 #Should we enable or disable debug checking?
 AC_ARG_ENABLE(debug-checks,
   [  --disable-debug-checks Disable any debug checking, provides faster operation, but less information needed to debug internal problems, or to provide problem reports to developers ],[],[enable_no_debug_checks==""])
@@ -366,7 +362,7 @@ fi
 
 if test x"$enable_no_debug_checks" != x"yes" ; 
 then
-	DEBUG_FLAGS="-DDEBUG"
+	DEBUG_FLAGS="-DDEBUG -D_GLIBCXX_DEBUG"
 	AC_SUBST(DEBUG_FLAGS)
 fi
 

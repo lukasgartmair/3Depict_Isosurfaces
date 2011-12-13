@@ -75,16 +75,6 @@ enum
 
 extern const char *FILTER_NAMES[];
 
-//!Possible primitive types for ion clipping
-enum
-{
-	IONCLIP_PRIMITIVE_SPHERE,
-	IONCLIP_PRIMITIVE_PLANE,
-	IONCLIP_PRIMITIVE_CYLINDER,
-	IONCLIP_PRIMITIVE_AAB, //Axis aligned box
-
-	IONCLIP_PRIMITIVE_END //Not actually a primitive, just end of enum
-};
 
 
 //Stream data types. note that bitmasks are occasionally used, so we are limited in
@@ -117,14 +107,6 @@ enum
 	BINDING_RECT_CORNER_MOVE
 };
 
-//Possible primitive types (eg cylinder,sphere etc)
-enum
-{
-	PRIMITIVE_SPHERE,
-	PRIMITIVE_PLANE,
-	PRIMITIVE_CYLINDER,
-	PRIMITIVE_AAB
-};
 extern const char *STREAM_NAMES[];
 
 //Representations
@@ -163,7 +145,7 @@ enum
 class FilterStreamData;
 
 //!Return the number of elements in a vector of filter data
-size_t numElements(const vector<const FilterStreamData *> &vm, int mask=STREAMTYPE_MASK_ALL);
+size_t numElements(const vector<const FilterStreamData *> &vm, unsigned int mask=STREAMTYPE_MASK_ALL);
 
 bool parseXMLColour(xmlNodePtr &nodePtr, float &r, float&g, float&b, float&a);
 
@@ -186,7 +168,7 @@ class FilterStreamData
 
 		FilterStreamData() { cached=(unsigned int) -1; parent=0;}
 		virtual ~FilterStreamData() {}; 
-		virtual size_t GetNumBasicObjects() const =0;
+		virtual size_t getNumBasicObjects() const =0;
 		//!Returns an integer unique to the clas to identify type (yes rttid...)
 		virtual unsigned int getStreamType() const {return streamType;} ;
 		//!Returns true if filter is potentially misuable by third parties if loaded from external source
@@ -219,7 +201,7 @@ public:
 		representationType = ION_REPRESENT_POINTS; 
 		r=1.0,g=0.0,b=0.0,a=1.0;ionSize=2.0;valueType="Mass-to-Charge";};
 	void clear();
-	size_t GetNumBasicObjects() const  { return data.size();};
+	size_t getNumBasicObjects() const  { return data.size();};
 	
 	unsigned int representationType;
 	float r,g,b,a;
@@ -239,7 +221,7 @@ public:
 	VoxelStreamData(){ streamType=STREAM_TYPE_VOXEL;
 		representationType = VOXEL_REPRESENT_POINTCLOUD; 
 		r=1.0,g=0.0,b=0.0,a=0.3;splatSize=2.0;isoLevel=0.5;};
-	size_t GetNumBasicObjects() const { return data.getSize();};
+	size_t getNumBasicObjects() const { return data.getSize();};
 	void clear();
 	
 	unsigned int representationType;
@@ -255,11 +237,9 @@ public:
 class PlotStreamData : public FilterStreamData
 {
 	public:
-		PlotStreamData(){ streamType=STREAM_TYPE_PLOT;
-				plotType=PLOT_TRACE_LINES;errDat.mode=PLOT_ERROR_NONE;
-				r=1.0,g=0.0,b=0.0,a=1.0;logarithmic=false; index=(unsigned int)-1;};
+		PlotStreamData();
 		void clear() {xyData.clear();};
-		size_t GetNumBasicObjects() const { return xyData.size();};
+		size_t getNumBasicObjects() const { return xyData.size();};
 		float r,g,b,a;
 		//Type
 		unsigned int plotType;
@@ -276,7 +256,7 @@ class PlotStreamData : public FilterStreamData
 		//!Region colours
 		vector<float> regionR,regionB,regionG;
 
-		//!Region indicies
+		//!Region indicies from parent region
 		vector<unsigned int> regionID;
 
 		//!Region parent filter pointer, used for matching interaction with region to parent property
@@ -285,6 +265,9 @@ class PlotStreamData : public FilterStreamData
 		unsigned int index;
 		//!Error bar mode
 		PLOT_ERROR errDat;
+		
+		//!Hard bounds that cannot be exceeded when drawing plot
+		float hardMinX,hardMaxX,hardMinY,hardMaxY;
 };
 
 //!Drawable objects, for 3D decoration. 
@@ -298,7 +281,7 @@ class DrawStreamData: public FilterStreamData
 		//!Destructor
 		~DrawStreamData();
 		//!Returns 0, as this does not store basic object types -- i.e. is not for data storage per se.
-		size_t GetNumBasicObjects() const { return 0; }
+		size_t getNumBasicObjects() const { return 0; }
 
 		//!Erase the drawing vector, deleting its componets
 		void clear();
@@ -321,7 +304,7 @@ class RangeStreamData :  public FilterStreamData
 		//!Destructor
 		~RangeStreamData() {};
 		//!Returns 0, as this does not store basic object types -- i.e. is not for data storage per se.
-		size_t GetNumBasicObjects() const { return 0; }
+		size_t getNumBasicObjects() const { return 0; }
 
 		//!Unlink the pointer
 		void clear() { rangeFile=0;enabledRanges.clear();enabledIons.clear();};
@@ -358,7 +341,7 @@ class Filter
 	public:	
 		Filter() ;
 		virtual ~Filter();
-
+		
 		//Pure virtual functions
 		//====
 		//!Duplicate filter contents, excluding cache.
@@ -407,11 +390,11 @@ class Filter
 		//!Get the bitmask encoded list of filterStreams that this filter blocks from propagation.
 		// i.e. if this filterstream is passed to refresh, it is not emitted.
 		// This MUST always be consistent with ::refresh for filters current state.
-		virtual int getRefreshBlockMask() const =0; 
+		virtual unsigned int getRefreshBlockMask() const =0; 
 		
 		//!Get the bitmask encoded list of filterstreams that this filter emits from ::refresh.
 		// This MUST always be consistent with ::refresh for filters current state.
-		virtual int getRefreshEmitMask() const = 0;
+		virtual unsigned int getRefreshEmitMask() const = 0;
 
 		//====
 	
@@ -473,7 +456,8 @@ class Filter
 		//!Get the number of outputs for the specified type during the filter's last refresh
 		unsigned int getNumOutput(unsigned int streamType) const;
 
-		//!Get the filter messages from the console
+		//!Get the filter messages from the console -- also deletes the 
+		// console messages as a side-effect
 		void getConsoleStrings(std::vector<std::string > &v) { v.resize(consoleOutput.size());std::copy(consoleOutput.begin(),consoleOutput.end(),v.begin()); consoleOutput.clear();};
 
 		//!Should filters use strong randomisation (where applicable) or not?
@@ -482,6 +466,11 @@ class Filter
 		//Check to see if the filter needs to be refreshed 
 		virtual bool monitorNeedsRefresh() const { return false;};
 
+
+#ifdef DEBUG
+		//!Run all the registered unit tests for this filter
+		virtual bool runUnitTests() { cerr << "No test for " << typeString() << endl; return true;} ;
+#endif
 
 };
 

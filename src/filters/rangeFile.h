@@ -22,9 +22,11 @@ class RangeFileFilter : public Filter
 
 		void guessFormat(const std::string &s);
 
-	public:
-		//!range file -- whilst this is public, I am not advocating its use directly..
+		//!range file object 
 		RangeFile rng;
+
+	public:
+		const RangeFile &getRange() const { return rng;};
 
 		//!Set the format to assume when loading file
 		void setFormat(unsigned int format);
@@ -52,13 +54,17 @@ class RangeFileFilter : public Filter
 					ProgressData &progress, bool (*callback)(void));
 		//!Force a re-read of the rangefile Return value is range file reading error code
 		unsigned int updateRng();
+		
+		//!Set the internal data using the specified range object
+		void setRangeData(const RangeFile &newRange);
+
 		virtual std::string typeString() const { return std::string(TRANS("Ranging"));};
 
 		//Types that will be dropped during ::refresh
-		int getRefreshBlockMask() const;
+		unsigned int getRefreshBlockMask() const;
 		
 		//Types that are emitted by filer during ::refrash
-		int getRefreshEmitMask() const;
+		unsigned int getRefreshEmitMask() const;
 
 	
 
@@ -90,6 +96,10 @@ class RangeFileFilter : public Filter
 		virtual void getStateOverrides(std::vector<string> &overrides) const; 
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
+
+#ifdef DEBUG
+		bool runUnitTests();
+#endif
 };
 
 #endif

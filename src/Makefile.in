@@ -38,8 +38,9 @@ bin_PROGRAMS = 3Depict$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/wxwin.m4 \
-	$(top_srcdir)/acinclude.m4 $(top_srcdir)/configure.ac
+am__aclocal_m4_deps = $(top_srcdir)/m4/ftgl.m4 $(top_srcdir)/m4/gsl.m4 \
+	$(top_srcdir)/m4/wxwin.m4 $(top_srcdir)/acinclude.m4 \
+	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -60,7 +61,7 @@ am__3Depict_SOURCES_DIST = mathglPane.cpp plot.cpp prefDialog.cpp \
 	K3DTree-mk2.h basics.h xmlHelper.h cropPanel.h colourmap.h \
 	pngread.h mathfuncs.h wxcomponents.h wxcommon.h voxels.h \
 	endianTest.h assertion.h commonConstants.h art.h tree.hh \
-	3Depict.xpm filters/allFilter.cpp filters/posLoad.cpp \
+	3Depict.xpm filters/allFilter.cpp filters/dataLoad.cpp \
 	filters/ionDownsample.cpp filters/rangeFile.cpp \
 	filters/voxelise.cpp filters/spectrumPlot.cpp \
 	filters/transform.cpp filters/externalProgram.cpp \
@@ -68,7 +69,7 @@ am__3Depict_SOURCES_DIST = mathglPane.cpp plot.cpp prefDialog.cpp \
 	filters/boundingBox.cpp filters/compositionProfile.cpp \
 	filters/spatialAnalysis.cpp filters/clusterAnalysis.cpp \
 	filters/ionInfo.cpp filters/annotation.cpp filters/allFilter.h \
-	filters/posLoad.h filters/ionDownsample.h filters/rangeFile.h \
+	filters/dataLoad.h filters/ionDownsample.h filters/rangeFile.h \
 	filters/voxelise.h filters/spectrumPlot.h filters/transform.h \
 	filters/externalProgram.h filters/ionClip.h \
 	filters/ionColour.h filters/boundingBox.h \
@@ -92,7 +93,7 @@ am__objects_1 = 3Depict-mathglPane.$(OBJEXT) 3Depict-plot.$(OBJEXT) \
 	3Depict-pngread.$(OBJEXT) 3Depict-mathfuncs.$(OBJEXT) \
 	3Depict-wxcomponents.$(OBJEXT) 3Depict-wxcommon.$(OBJEXT)
 am__objects_2 =
-am__objects_3 = 3Depict-allFilter.$(OBJEXT) 3Depict-posLoad.$(OBJEXT) \
+am__objects_3 = 3Depict-allFilter.$(OBJEXT) 3Depict-dataLoad.$(OBJEXT) \
 	3Depict-ionDownsample.$(OBJEXT) 3Depict-rangeFile.$(OBJEXT) \
 	3Depict-voxelise.$(OBJEXT) 3Depict-spectrumPlot.$(OBJEXT) \
 	3Depict-transform.$(OBJEXT) 3Depict-externalProgram.$(OBJEXT) \
@@ -118,7 +119,8 @@ am__DEPENDENCIES_1 =
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 3Depict_LINK = $(CXXLD) $(3Depict_CXXFLAGS) $(CXXFLAGS) \
 	$(3Depict_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
@@ -151,6 +153,7 @@ CFLAGS = @CFLAGS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
+CXXCPP = @CXXCPP@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
@@ -163,12 +166,16 @@ ECHO_T = @ECHO_T@
 EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 FREETYPE_CONFIG = @FREETYPE_CONFIG@
+FTGL_CFLAGS = @FTGL_CFLAGS@
 FTGL_LIBS = @FTGL_LIBS@
 FT_INCLUDES = @FT_INCLUDES@
 FT_LIBS = @FT_LIBS@
 GETTEXT_LIBS = @GETTEXT_LIBS@
 GL_LIBS = @GL_LIBS@
 GREP = @GREP@
+GSL_CFLAGS = @GSL_CFLAGS@
+GSL_CONFIG = @GSL_CONFIG@
+GSL_LIBS = @GSL_LIBS@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -192,8 +199,6 @@ PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PKG_CONFIG = @PKG_CONFIG@
-PKG_CONFIG_LIBDIR = @PKG_CONFIG_LIBDIR@
-PKG_CONFIG_PATH = @PKG_CONFIG_PATH@
 PNG_CFLAGS = @PNG_CFLAGS@
 PNG_LIBS = @PNG_LIBS@
 QHULL_CFLAGS = @QHULL_CFLAGS@
@@ -267,19 +272,19 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 MSYS_PATH = /c/msys/1.0/local/include/
-3Depict_LDFLAGS = $(LDFLAGS) $(FT_LDFLAGS) $(MGL_LIBS)
+3Depict_LDFLAGS = $(LDFLAGS) $(FT_LDFLAGS) $(GSL_LIBS) $(MGL_LIBS)
 3Depict_CXXFLAGS = $(CXXFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) $(WX_CPPFLAGS) \
-	$(GL_FLAGS) $(MGL_CFLAGS) $(XML_CFLAGS) $(PNG_CFLAGS)  \
+	$(GL_FLAGS) $(GSL_CFLAGS) $(MGL_CFLAGS) $(XML_CFLAGS) $(PNG_CFLAGS)  \
 	$(OPENMP_FLAGS) $(DEBUG_FLAGS)
 
 3Depict_CFLAGS = $(CFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) \
-	       $(XML_CFLAGS)  $(MGL_CFLAGS) $(PNG_CFLAGS) $(QHULL_CFLAGS) \
+	       $(XML_CFLAGS) $(GSL_CFLAGS)  $(MGL_CFLAGS) $(PNG_CFLAGS) $(QHULL_CFLAGS) \
 	      $(OPENMP_FLAGS) $(DEBUG_FLAGS) 
 
 3Depict_LDADD = $(LIBS) $(GETTEXT_LIBS) $(WX_LIBS) $(MGL_LIBS)  $(FTGL_LIBS) \
 		 $(FT_LIBS) $(XML_LIBS) $(GSL_LIBS) $(GL_LIBS) $(GLU_LIBS) $(QHULL_LIBS) $(PNG_LIBS) 
 
-FILTER_FILES = filters/allFilter.cpp filters/posLoad.cpp filters/ionDownsample.cpp \
+FILTER_FILES = filters/allFilter.cpp filters/dataLoad.cpp filters/ionDownsample.cpp \
 		filters/rangeFile.cpp filters/voxelise.cpp filters/spectrumPlot.cpp \
 	       	filters/transform.cpp filters/externalProgram.cpp filters/ionClip.cpp \
 		filters/ionColour.cpp filters/boundingBox.cpp  \
@@ -287,7 +292,7 @@ FILTER_FILES = filters/allFilter.cpp filters/posLoad.cpp filters/ionDownsample.c
 		filters/clusterAnalysis.cpp filters/ionInfo.cpp \
 		filters/annotation.cpp
 
-FILTER_HEADER_FILES = filters/allFilter.h filters/posLoad.h filters/ionDownsample.h \
+FILTER_HEADER_FILES = filters/allFilter.h filters/dataLoad.h filters/ionDownsample.h \
 		filters/rangeFile.h filters/voxelise.h filters/spectrumPlot.h \
 	       	filters/transform.h filters/externalProgram.h filters/ionClip.h \
 		filters/ionColour.h filters/boundingBox.h  \
@@ -433,6 +438,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-compositionProfile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-configFile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-cropPanel.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-dataLoad.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-drawables.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-effect.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-externalProgram.Po@am__quote@
@@ -447,7 +453,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-mathglPane.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-plot.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-pngread.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-posLoad.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-prefDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-rangeFile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-rdf.Po@am__quote@
@@ -843,19 +848,19 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-allFilter.obj `if test -f 'filters/allFilter.cpp'; then $(CYGPATH_W) 'filters/allFilter.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/allFilter.cpp'; fi`
 
-3Depict-posLoad.o: filters/posLoad.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-posLoad.o -MD -MP -MF $(DEPDIR)/3Depict-posLoad.Tpo -c -o 3Depict-posLoad.o `test -f 'filters/posLoad.cpp' || echo '$(srcdir)/'`filters/posLoad.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-posLoad.Tpo $(DEPDIR)/3Depict-posLoad.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/posLoad.cpp' object='3Depict-posLoad.o' libtool=no @AMDEPBACKSLASH@
+3Depict-dataLoad.o: filters/dataLoad.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-dataLoad.o -MD -MP -MF $(DEPDIR)/3Depict-dataLoad.Tpo -c -o 3Depict-dataLoad.o `test -f 'filters/dataLoad.cpp' || echo '$(srcdir)/'`filters/dataLoad.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-dataLoad.Tpo $(DEPDIR)/3Depict-dataLoad.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/dataLoad.cpp' object='3Depict-dataLoad.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-posLoad.o `test -f 'filters/posLoad.cpp' || echo '$(srcdir)/'`filters/posLoad.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-dataLoad.o `test -f 'filters/dataLoad.cpp' || echo '$(srcdir)/'`filters/dataLoad.cpp
 
-3Depict-posLoad.obj: filters/posLoad.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-posLoad.obj -MD -MP -MF $(DEPDIR)/3Depict-posLoad.Tpo -c -o 3Depict-posLoad.obj `if test -f 'filters/posLoad.cpp'; then $(CYGPATH_W) 'filters/posLoad.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/posLoad.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-posLoad.Tpo $(DEPDIR)/3Depict-posLoad.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/posLoad.cpp' object='3Depict-posLoad.obj' libtool=no @AMDEPBACKSLASH@
+3Depict-dataLoad.obj: filters/dataLoad.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-dataLoad.obj -MD -MP -MF $(DEPDIR)/3Depict-dataLoad.Tpo -c -o 3Depict-dataLoad.obj `if test -f 'filters/dataLoad.cpp'; then $(CYGPATH_W) 'filters/dataLoad.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/dataLoad.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-dataLoad.Tpo $(DEPDIR)/3Depict-dataLoad.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filters/dataLoad.cpp' object='3Depict-dataLoad.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-posLoad.obj `if test -f 'filters/posLoad.cpp'; then $(CYGPATH_W) 'filters/posLoad.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/posLoad.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-dataLoad.obj `if test -f 'filters/dataLoad.cpp'; then $(CYGPATH_W) 'filters/dataLoad.cpp'; else $(CYGPATH_W) '$(srcdir)/filters/dataLoad.cpp'; fi`
 
 3Depict-ionDownsample.o: filters/ionDownsample.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ionDownsample.o -MD -MP -MF $(DEPDIR)/3Depict-ionDownsample.Tpo -c -o 3Depict-ionDownsample.o `test -f 'filters/ionDownsample.cpp' || echo '$(srcdir)/'`filters/ionDownsample.cpp

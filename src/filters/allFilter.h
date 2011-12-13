@@ -6,7 +6,7 @@
 #include "ionClip.h"
 #include "ionColour.h"
 #include "ionDownsample.h"
-#include "posLoad.h"
+#include "dataLoad.h"
 #include "rangeFile.h"
 #include "clusterAnalysis.h"
 #include "spatialAnalysis.h"

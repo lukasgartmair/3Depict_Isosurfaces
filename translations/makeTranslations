@@ -19,16 +19,17 @@ echo "Program name is $PROGRAM_NAME"
 
 if [ $# -eq 0 ] ; then
 
-
+	echo "Creating binary translation files.."
 	#Create binary versions of gettext translation files
 	for i in *.po
 	do
 		#Quick check to see if we have any "<span>" elements in the files
-		if  [ x`grep '<span' $i ` != x"" ] ; then
+		if  [ x"`grep '<span' $i `" != x"" ] ; then
 			echo "WARNING: Detected \"span\" element in translation file. This is probably an error, due to encoding of special characters by transifex"
 		fi
 		msgfmt -c -v -o `echo $i | sed 's/po$/mo/'` $i
 	done
+	echo "done"
 	exit 0
 fi
 

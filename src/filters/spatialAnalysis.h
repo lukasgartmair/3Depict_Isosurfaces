@@ -79,10 +79,10 @@ class SpatialAnalysisFilter : public Filter
 		bool readState(xmlNodePtr &node, const std::string &packDir);
 		
 		//!Get the stream types that will be dropped during ::refresh	
-		int getRefreshBlockMask() const;
+		unsigned int getRefreshBlockMask() const;
 
 		//!Get the stream types that will be generated during ::refresh	
-		int getRefreshEmitMask() const;	
+		unsigned int getRefreshEmitMask() const;	
 		
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;

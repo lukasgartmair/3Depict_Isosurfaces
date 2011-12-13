@@ -70,8 +70,7 @@ PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wx
     sizerCamSpeed_staticbox = new wxStaticBox(notePrefPanels_pane_3, -1, wxTRANS("Camera Speed"));
 	filterPropSizer_staticbox = new wxStaticBox(panelFilters, -1, wxTRANS("Filter Defaults"));
 	lblFilters = new wxStaticText(panelFilters, wxID_ANY, wxTRANS("Available Filters"));
-	const wxString *listFilters_choices = NULL;
-	listFilters = new wxListBox(panelFilters, ID_LIST_FILTERS, wxDefaultPosition, wxDefaultSize, 0, listFilters_choices, wxLB_SINGLE|wxLB_SORT);
+	listFilters = new wxListBox(panelFilters, ID_LIST_FILTERS, wxDefaultPosition, wxDefaultSize, 0, NULL, wxLB_SINGLE|wxLB_SORT);
 	filterGridProperties = new wxPropertyGrid(panelFilters, ID_GRID_PROPERTIES);
 	filterBtnResetAllFilters = new wxButton(panelFilters, ID_BTN_RESET_FILTER_ALL, wxTRANS("Reset All"));
 	filterResetDefaultFilter = new wxButton(panelFilters, ID_BTN_RESET_FILTER, wxTRANS("Reset"));
@@ -80,7 +79,7 @@ PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wx
 		wxNTRANS("Remember last"),
 		wxNTRANS("Show Selected")
 	};
-	comboPanelStartMode = new wxComboBox(panelStartup, ID_START_COMBO_PANEL, wxT(""), wxDefaultPosition, wxDefaultSize, 3, comboPanelStartMode_choices, wxCB_DROPDOWN|wxCB_SIMPLE|wxCB_DROPDOWN|wxCB_READONLY);
+	comboPanelStartMode = new wxComboBox(panelStartup, ID_START_COMBO_PANEL, wxT(""), wxDefaultPosition, wxDefaultSize, 3, comboPanelStartMode_choices, wxCB_SIMPLE|wxCB_DROPDOWN|wxCB_READONLY);
 	chkControl = new wxCheckBox(panelStartup, ID_START_CHECK_CONTROL, wxTRANS("Control Pane"));
 	chkRawData = new wxCheckBox(panelStartup, ID_START_CHECK_RAWDATA, wxTRANS("Raw Data Panel"));
 	chkPlotlist = new wxCheckBox(panelStartup, ID_START_CHECK_PLOTLIST, wxTRANS("Plot List"));
@@ -118,6 +117,10 @@ PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wx
 	// end wxGlade
 }
 
+PrefDialog::~PrefDialog()
+{
+	filterGridProperties->Destroy();
+}
 
 BEGIN_EVENT_TABLE(PrefDialog, wxDialog)
     // begin wxGlade: PrefDialog::event_table
@@ -172,9 +175,9 @@ void PrefDialog::initialise()
 
 	//Transfer the movement rates from class  to the slider
 	ASSERT(mouseZoomRatePercent  >=sliderCamZoomRate->GetMin() && 
-			mouseZoomRatePercent < sliderCamZoomRate->GetMax());
+			mouseZoomRatePercent <=sliderCamZoomRate->GetMax());
 	ASSERT(mouseMoveRatePercent  >=sliderCamMoveRate->GetMin() && 
-			mouseMoveRatePercent < sliderCamMoveRate->GetMax());
+			mouseMoveRatePercent <=sliderCamMoveRate->GetMax());
 
 
 	sliderCamZoomRate->SetValue(mouseZoomRatePercent);
@@ -429,8 +432,10 @@ void PrefDialog::updateFilterProp(const Filter *f)
 
 		//Empty the grid
 		//then fill it up with a note.
-		filterGridProperties->DeleteCols(0,filterGridProperties->GetNumberCols());
-		filterGridProperties->DeleteRows(0,filterGridProperties->GetNumberRows());
+		if(filterGridProperties->GetNumberCols())
+			filterGridProperties->DeleteCols(0,filterGridProperties->GetNumberCols());
+		if(filterGridProperties->GetNumberRows())
+			filterGridProperties->DeleteRows(0,filterGridProperties->GetNumberRows());
 		
 		filterGridProperties->AppendRows(1);
 		filterGridProperties->AppendCols(1);

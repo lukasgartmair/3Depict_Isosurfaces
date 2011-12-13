@@ -85,7 +85,7 @@ void ExportRngDialog::updateGrid(unsigned int index)
 	gridDetails->SetColLabelValue(2,wxTRANS("Value2"));
 
 	unsigned int nRows;
-	nRows=rangeData->rng.getNumIons()+rangeData->rng.getNumRanges() + 4;
+	nRows=rangeData->getRange().getNumIons()+rangeData->getRange().getNumRanges() + 4;
 	gridDetails->AppendRows(nRows);
 
 
@@ -94,13 +94,15 @@ void ExportRngDialog::updateGrid(unsigned int index)
 	unsigned int row=1;
 	std::string tmpStr;
 
+	unsigned int maxNum;
+	maxNum=rangeData->getRange().getNumIons();
 	//Add ion data, then range data
-	for(unsigned int ui=0;ui<rangeData->rng.getNumIons(); ui++)
+	for(unsigned int ui=0;ui<maxNum; ui++)
 	{	
 		//Use format 
 		// ION NAME  | NUMBER OF RANGES
-		gridDetails->SetCellValue(row,0,wxStr(rangeData->rng.getName(ui)));
-		stream_cast(tmpStr,rangeData->rng.getNumRanges(ui));
+		gridDetails->SetCellValue(row,0,wxStr(rangeData->getRange().getName(ui)));
+		stream_cast(tmpStr,rangeData->getRange().getNumRanges(ui));
 		gridDetails->SetCellValue(row,1,wxStr(tmpStr));
 		row++;
 	}
@@ -111,15 +113,16 @@ void ExportRngDialog::updateGrid(unsigned int index)
 	gridDetails->SetCellValue(row,2,wxTRANS("Range end"));
 	row++;	
 
-	for(unsigned int ui=0;ui<rangeData->rng.getNumRanges(); ui++)
+	maxNum=rangeData->getRange().getNumRanges();
+	for(unsigned int ui=0;ui<maxNum; ui++)
 	{
 		std::pair<float,float> rngPair;
 		unsigned int ionID;
 
-		rngPair=rangeData->rng.getRange(ui);
-		ionID=rangeData->rng.getIonID(ui);
+		rngPair=rangeData->getRange().getRange(ui);
+		ionID=rangeData->getRange().getIonID(ui);
 		gridDetails->SetCellValue(row,0,
-			wxStr(rangeData->rng.getName(ionID)));
+			wxStr(rangeData->getRange().getName(ionID)));
 
 		stream_cast(tmpStr,rngPair.first);
 		gridDetails->SetCellValue(row,1,wxStr(tmpStr));
@@ -136,7 +139,7 @@ void ExportRngDialog::updateGrid(unsigned int index)
 void ExportRngDialog::OnSave(wxCommandEvent &event)
 {
 
-	if(!rngFilters.size())
+	if(rngFilters.empty())
 		EndModal(wxID_CANCEL);
 
 	//create a file chooser for later.
@@ -152,7 +155,8 @@ void ExportRngDialog::OnSave(wxCommandEvent &event)
 	std::string dataFile = stlStr(wxF->GetPath());
 
 
-	if(((RangeFileFilter *)(rngFilters[selectedRange]))->rng.write(dataFile.c_str()))
+	if(((RangeFileFilter *)(rngFilters[selectedRange]))->
+				getRange().write(dataFile.c_str()))
 	{
 		std::string errString;
 		errString=TRANS("Unable to save. Check output destination can be written to.");
@@ -210,8 +214,8 @@ void ExportRngDialog::updateRangeList()
 		long itemIndex;
 	       	itemIndex=listRanges->InsertItem(0, wxStr(rangeData->getUserString())); 
 		unsigned int nIons,nRngs; 
-		nIons = rangeData->rng.getNumIons();
-		nRngs = rangeData->rng.getNumIons();
+		nIons = rangeData->getRange().getNumIons();
+		nRngs = rangeData->getRange().getNumIons();
 
 		stream_cast(tmpStr,nIons);
 		listRanges->SetItem(itemIndex, 1, wxStr(tmpStr)); 

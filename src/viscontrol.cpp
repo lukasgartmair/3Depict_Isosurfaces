@@ -22,6 +22,11 @@
 #include <list>
 #include <stack>
 
+#ifdef DEBUG
+//Only needed for assertion check
+#include <cstdlib>
+#endif
+
 #include "scene.h"
 #include "drawables.h"
 
@@ -787,10 +792,7 @@ void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &pr
 
 		}
 
-
 		propStarts.swap(seedFilts);
-
-
 	}
 
 #ifdef DEBUG
@@ -807,9 +809,6 @@ void VisController::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &pr
 				!isChild(filters,propStarts[uj],propStarts[ui]));
 		}
 	}
-
-
-
 #endif
 
 
@@ -1244,8 +1243,12 @@ unsigned int VisController::updateScene()
 								ionData->a);
 					//set the size from the ionstream data
 					curIonDraw->setSize(ionData->ionSize);
+				
+					(*wxYieldCallback)();
 					//Randomly shuffle the ion data before we draw it
 					curIonDraw->shuffle();
+					
+					(*wxYieldCallback)();
 
 					
 					drawIons.push_back(curIonDraw);
@@ -1268,7 +1271,7 @@ unsigned int VisController::updateScene()
 					plotData=((PlotStreamData *)((*it)[ui]));
 					
 					//The plot should have some data in it.
-					ASSERT(plotData->GetNumBasicObjects());
+					ASSERT(plotData->getNumBasicObjects());
 					//The plto should have a parent filter
 					ASSERT(plotData->parent);
 					//The plot should have an index, so we can keep
@@ -1386,28 +1389,6 @@ unsigned int VisController::updateScene()
 						}
 						case VOXEL_REPRESENT_ISOSURF:
 						{
-#ifdef HPMC_GPU_ISOSURFACE
-							//GPU based isosurface
-							DrawIsoSurfaceWithShader *dS = new DrawIsoSurfaceWithShader;
-							
-
-							if(dS->canRun())
-							{
-								dS->init(*v);
-
-								dS->wantsLight=true;
-//								dS->setColour(vSrc->r,vSrc->g,
-//										vSrc->b,1.0);
-								dS->setScalarThresh(vSrc->isoLevel);
-								targetScene->addDrawable(dS);
-								//Don't process normal isosurf.
-								//code.
-								break;
-							}
-					
-							delete dS;
-#else
-
 							DrawIsoSurface *d = new DrawIsoSurface;
 
 							d->swapVoxels(v);
@@ -1418,7 +1399,6 @@ unsigned int VisController::updateScene()
 							d->wantsLight=true;
 
 							targetScene->addDrawable(d);
-#endif
 							break;
 						}
 						default:
@@ -1435,6 +1415,9 @@ unsigned int VisController::updateScene()
 
 				
 			}
+			
+			//Run the callback to update the window as needed
+			(*wxYieldCallback)();
 
 		}
 	
@@ -1465,7 +1448,7 @@ unsigned int VisController::updateScene()
 			unsigned int plotID;
 
 			//Retreive the uniqueID
-			l=(wxListUint*)plotSelList->GetClientData(ui);
+			l=(wxListUint*)plotSelList->GetClientObject(ui);
 			plotID = l->value;
 			if(targetPlots->isPlotVisible(plotID))
 				plotSelList->SetSelection(ui);
@@ -1574,16 +1557,16 @@ void VisController::checkRefreshValidity(const vector< const FilterStreamData *>
 
 		switch(f->getStreamType())
 		{
-		case STREAM_TYPE_IONS:
-		{
-			const IonStreamData *ionData;
-			ionData=((const IonStreamData *)f);
+			case STREAM_TYPE_IONS:
+			{
+				const IonStreamData *ionData;
+				ionData=((const IonStreamData *)f);
 
-		//	ASSERT(ionData->data.size());
-			break;
-		}
-		default:
-			;
+			//	ASSERT(ionData->data.size());
+				break;
+			}
+			default:
+				;
 		}
 
 	}
@@ -1596,19 +1579,59 @@ void VisController::checkRefreshValidity(const vector< const FilterStreamData *>
 		curData[ui]->cached == 0);
 	}
 
-	//Filter outputs for this filter should only be from those specified in filter emit mask
+	//Filter outputs for this filter should 
+	//	 -only be from those specified in filter emit mask
 	for(unsigned int ui=0; ui<curData.size(); ui++)
 	{
 		if(!curData[ui]->parent)
 		{
-			cerr << "Warning: orphan filter stream (FilterStreamData::parent == 0). This must be set when creating new filters in the ::refresh function for the filter. " << endl;
-			cerr << "Filter :"  << refreshFilter->getUserString() << "Stream Type: " << STREAM_NAMES[getBitNum(curData[ui]->getStreamType())] << endl;
+			cerr << "Warning: orphan filter stream (FilterStreamData::parent == 0)." <<
+				"This must be set when creating new filters in the ::refresh function for the filter. " << endl;
+			cerr << "Filter :"  << refreshFilter->getUserString() << "Stream Type: " << 
+				STREAM_NAMES[getBitNum(curData[ui]->getStreamType())] << endl;
 		}
-		if(curData[ui]->parent == refreshFilter)
+		else if(curData[ui]->parent == refreshFilter)
 		{
-			ASSERT(curData[ui]->getStreamType() & refreshFilter->getRefreshEmitMask());
+			//Check we emitted something that our parent's emit mask said we should
+			// by performing bitwise ops 
+			ASSERT(curData[ui]->getStreamType() & 
+				refreshFilter->getRefreshEmitMask());
 		}
 	}
+
+	//plot output streams should only have known types
+	//for various identfiers
+	for(unsigned int ui=0; ui<curData.size(); ui++)
+	{
+		if(curData[ui]->getStreamType() != STREAM_TYPE_PLOT)
+			continue;
+
+		PlotStreamData *p;
+		p =(PlotStreamData*)curData[ui];
+
+		//Must have valid trace style
+		ASSERT(p->plotType < PLOT_TRACE_ENDOFENUM);
+		//Must have valid error bar style
+		ASSERT(p->errDat.mode< PLOT_ERROR_ENDOFENUM);
+		//Must set the "index" for this plot -- required for 
+		ASSERT(p->index != (unsigned int)-1);
+		//Each region set must have valid IDs
+		ASSERT(p->regions.size() == p->regionID.size());
+	}
+	
+	//Voxel output streams should only have known types
+	for(unsigned int ui=0; ui<curData.size(); ui++)
+	{
+		if(curData[ui]->getStreamType() != STREAM_TYPE_VOXEL)
+			continue;
+
+		VoxelStreamData *p;
+		p =(VoxelStreamData*)curData[ui];
+
+		//Must have valid representation 
+		ASSERT(p->representationType< VOXEL_REPRESENT_END);
+	}
+
 }
 #endif
 
@@ -2024,6 +2047,17 @@ bool VisController::saveState(const char *cpFilename, std::map<string,string> &f
 
 	if(!f)
 		return false;
+	
+	//Write header, also use local language if available
+	const char *headerMessage = NTRANS("This file is a \"state\" file for the 3Depict program, and stores information about a particular analysis session. This file should be a valid \"XML\" file");
+
+	f << "<!--" <<  headerMessage;
+	if(TRANS(headerMessage) != headerMessage) 
+		f << endl << TRANS(headerMessage); 
+	
+	f << "-->" <<endl;
+
+
 
 	//Write state open tag 
 	f<< "<threeDepictstate>" << endl;
@@ -2275,7 +2309,8 @@ bool VisController::saveState(const char *cpFilename, std::map<string,string> &f
 	//Close XMl tag.	
 	f<< "</threeDepictstate>" << endl;
 
-
+	//Debug check to ensure we have written a valid xml file
+	ASSERT(isValidXML(cpFilename));
 
 	return true;
 }
@@ -2283,9 +2318,6 @@ bool VisController::saveState(const char *cpFilename, std::map<string,string> &f
 bool VisController::loadState(const char *cpFilename, std::ostream &errStream, bool merge) 
 {
 	//Load the state from an XML file
-	//FIXME: This could leave the viscontrol in a half
-	//  loaded state if the file was non-parseable.
-	//  Create disposable data structure to hold intermed. state
 	
 	//here we use libxml2's loading routines
 	//http://xmlsoft.org/
@@ -2355,23 +2387,31 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 		{
 			xmlString=xmlGetProp(nodePtr, (const xmlChar *)"version"); 
 
-			vector<string> vecStrs;
-			vecStrs.push_back((char *)xmlString);
-			//Check to see if only contains 0-9 and period characters (valid version number)
-			if(vecStrs[0].find_first_not_of("0123456789.")== std::string::npos)
+			if(xmlString)
 			{
-				vecStrs.push_back(PROGRAM_VERSION);
-				if(getMaxVerStr(vecStrs)!=PROGRAM_VERSION)
+				string tmpVer;
+				
+				tmpVer =(char *)xmlString;
+				//Check to see if only contains 0-9 period and "-" characters (valid version number)
+				if(tmpVer.find_first_not_of("0123456789.-")== std::string::npos)
 				{
-					errStream << TRANS("State was created by a newer version of this program.. ")
-						<< TRANS("file reading will continue, but may fail.") << endl ;
+					//Check between the writer reported version, and the current program version
+					vector<string> vecStrs;
+					vecStrs.push_back(tmpVer);
+					vecStrs.push_back(PROGRAM_VERSION);
+
+					if(getMaxVerStr(vecStrs)!=PROGRAM_VERSION)
+					{
+						errStream << TRANS("State was created by a newer version of this program.. ")
+							<< TRANS("file reading will continue, but may fail.") << endl ;
+					}
 				}
+				else
+				{
+					errStream<< TRANS("Warning, unparseable version number in state file. File reading will continue, but may fail") << endl;
+				}
+				xmlFree(xmlString);
 			}
-			else
-			{
-				errStream<< TRANS("Warning, unparseable version number in state file. File reading will continue, but may fail") << endl;
-			}
-			xmlFree(xmlString);
 		}
 		else
 		{
@@ -2690,9 +2730,6 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 		}
 	}
 
-
-
-
 	if(!merge)
 	{
 		std::swap(filters,newFilterTree);
@@ -2725,6 +2762,9 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 		else
 			std::swap(filters,newFilterTree);
 	}
+
+	//NOTE: We must be careful about :return: at this point
+	// as we now have mixed in the new filter data.
 
 	//Re-generate the ID mapping for the stashes
 	stashUniqueIDs.clear();
@@ -3319,7 +3359,7 @@ void VisController::popRedoStack()
 void VisController::clearRedoStack()
 {
 	//Delete the undo stack trees
-	while(redoFilterStack.size())
+	while(!redoFilterStack.empty())
 	{
 		//clean up
 		for(tree<Filter * >::iterator it=redoFilterStack.back().begin(); 

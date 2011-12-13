@@ -1353,13 +1353,13 @@ std::string  SpatialAnalysisFilter::getErrString(unsigned int code) const
 	return std::string("Bug! (Spatial analysis filter) Shouldn't see this");
 }
 
-int SpatialAnalysisFilter::getRefreshBlockMask() const
+unsigned int SpatialAnalysisFilter::getRefreshBlockMask() const
 {
 	//Anything but ions and ranges can go through this filter.
 	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
 }
 
-int SpatialAnalysisFilter::getRefreshEmitMask() const
+unsigned int SpatialAnalysisFilter::getRefreshEmitMask() const
 {
 	return STREAM_TYPE_IONS | STREAM_TYPE_PLOT;
 }

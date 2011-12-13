@@ -106,7 +106,7 @@ class K3DTreeMk2
 		 */	
 		bool build();
 
-		void getBoundCube(BoundCube &b) {b.setBounds(treeBounds);}
+		void getBoundCube(BoundCube &b) {ASSERT(treeBounds.isValid());b.setBounds(treeBounds);}
 
 		//!Textual output of tree. tabs are used to separate different levels of the tree
 		/*!The output from this function can be quite large for even modest trees. 
@@ -130,12 +130,12 @@ class K3DTreeMk2
 					std::vector<std::pair<size_t,size_t> > &contigousBlocks ) const;
 
 		//Obtain a point from its internal index
-		const Point3D *getPt(size_t index) { return &(indexedPoints[index].first);};
+		const Point3D *getPt(size_t index) { ASSERT(index < indexedPoints.size());return &(indexedPoints[index].first);};
 
 		//reset the specified "tags" in the tree
 		void clearTags(std::vector<size_t> &tagsToClear);
 
-		size_t getOrigIndex(size_t treeIndex){return indexedPoints[treeIndex].second;};
+		size_t getOrigIndex(size_t treeIndex){ASSERT(treeIndex <indexedPoints.size()); return indexedPoints[treeIndex].second;};
 		
 		//Set the callback routine for progress reporting
 		void setCallback(bool (*cb)(void)) {callback = cb;}
@@ -145,11 +145,11 @@ class K3DTreeMk2
 
 		//Erase tree contents
 		void clear() { nodes.clear(); indexedPoints.clear();};
-		void tag(size_t tagID,bool tagVal=true) {nodes[tagID].tagged=tagVal;}
+		void tag(size_t tagID,bool tagVal=true) {ASSERT(tagID < nodes.size()); nodes[tagID].tagged=tagVal;}
 
-		bool getTag(size_t tagID) const { return nodes[tagID].tagged;};
+		bool getTag(size_t tagID) const { ASSERT(tagID < nodes.size()); return nodes[tagID].tagged;};
 
-		size_t size() { return indexedPoints.size(); ASSERT(nodes.size() == indexedPoints.size());}
+		size_t size() { ASSERT(nodes.size() == indexedPoints.size());return indexedPoints.size(); }
 		
 		size_t rootIdx() { return treeRoot;}
 

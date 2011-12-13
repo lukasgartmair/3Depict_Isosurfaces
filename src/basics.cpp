@@ -27,6 +27,8 @@
 #include <algorithm>
 #include <map>
 
+#include "translation.h"
+
 #ifdef __APPLE__
 	#include <sys/types.h>
 	#include <sys/sysctl.h>
@@ -41,17 +43,22 @@ using std::string;
 using std::vector;
 using std::list;
 
-using std::cerr;
-using std::endl;
 
 //Name of the  DTD file for state loading
 const char *DTD_NAME="threeDepict-state.dtd";
 //Program name
 const char *PROGRAM_NAME = "3Depict";
 //Program version
-const char *PROGRAM_VERSION = "0.0.8";
+const char *PROGRAM_VERSION = "0.0.9";
 //Path to font for Default FTGL  font
 const char *FONT_FILE= "FreeSans.ttf";
+
+const char *TEXT_LOAD_ERR_STRINGS[] = { "",
+       					NTRANS("Error opening file"),
+       					NTRANS("Error whilst reading file contents"),
+					NTRANS("Error interpreting field in file"),
+					NTRANS("Inconsistent number of columns found")
+					};
 
 //default font to use.
 std::string defaultFontFile;
@@ -77,7 +84,7 @@ std::string getMaxVerStr(const std::vector<std::string> &verStrings)
 			int i;
 			
 			//Try to cast the string (returns true on failure)
-			if(!stream_cast(strVerNum[uj],i))
+			if(!stream_cast(i,strVerNum[uj]))
 				thisVer.push_back(i);
 
 		}
@@ -87,7 +94,7 @@ std::string getMaxVerStr(const std::vector<std::string> &verStrings)
 	}
 		
 	
-	if(!verNum.size())
+	if(verNum.empty())
 		return std::string("");
 
 	//OK, so now we have an integral list.
@@ -109,8 +116,6 @@ std::string getMaxVerStr(const std::vector<std::string> &verStrings)
 			if(pos < verNum[ui].second.size() )
 				thisMax=std::max(thisMax,verNum[ui].second[pos]);
 		}
-
-
 
 		//Kill off any version numbers that were not 
 		//the max value, or had insufficient numbers
@@ -148,54 +153,9 @@ std::string boolStrEnc(bool b)
 		return "0";
 }
 
-//Adapted from KILE project, used under GPLv2 or later (ie, we choose GPLV3+). 
-//http://quickgit.kde.org/?p=kile.git&a=blob&h=7733f4b33f2b7deecddf1974216ea91a011bbb15&hb=f6579f3022b0fa2d13adca31d268186b29ada72f&f=src/plaintolatexconverter.h
-std::wstring convertToLaTeX(const std::wstring& toConv) 
+bool dummyCallback()
 {
-	std::map<wchar_t,std::wstring> replaceMap;
-
-	//TODO: make latexReplaceMap global or something
-	if(!replaceMap.size())
-	{
-		// Fill the replacement map
-/*		replaceMap.insert(std::make_pair(L'$', L"\\$"));
-		replaceMap.insert(std::make_pair(L'%', L"\\%"));
-		replaceMap.insert(std::make_pair(L'^', L"\\^"));
-		replaceMap.insert(std::make_pair(L'&', L"\\&"));
-		replaceMap.insert(std::make_pair(L'_', L"\\_"));
-		replaceMap.insert(std::make_pair(L'#', L"\\#"));
-		replaceMap.insert(std::make_pair(L'{', L"\\{"));
-		replaceMap.insert(std::make_pair(L'}', L"\\}"));
-		replaceMap.insert(std::make_pair(L'~', L"$\\sim$"));
-		replaceMap.insert(std::make_pair(L'ä',L"\\\"a"));
-		replaceMap.insert(std::make_pair(L'ö',L"\\\"o"));
-		replaceMap.insert(std::make_pair(L'ü',L"\\\"u"));
-		replaceMap.insert(std::make_pair(L'Ä',L"\\\"A"));
-		replaceMap.insert(std::make_pair(L'Ö',L"\\\"O"));
-		replaceMap.insert(std::make_pair(L'Ü',L"\\\"U"));
-*/
-	}        
-
-        std::wstring result(toConv);
- 
-        // Replacing what must be...
-        size_t sSize = result.length();
-        std::map<wchar_t, std::wstring>::const_iterator mapEnd = replaceMap.end();
-        for(size_t i = 0 ; i < sSize ; ++i) 
-        {
-                std::map<wchar_t, std::wstring>::const_iterator it = replaceMap.find(result.at(i));
- 
-                if(it != mapEnd) { // The character must be replaced
-                        result.replace(i, 1, it->second);
-                        unsigned int len = (it->second).length();
-                        if(1 < len) {
-                                i += len - 1;
-                                sSize += len - 1;
-                        }
-                }
-        }
- 
-        return result;
+	return true;
 }
 
 std::string onlyFilename( const std::string& path) 
@@ -740,6 +700,125 @@ void tickSpacingsFromFixedNum(float start, float end,
 //========
 
 
+//"Fuzzy" time, like a person might say it
+string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
+{
+
+	if(nowTime<origTime)
+		return string(TRANS("in the future?"));
+
+	time_t delta;
+
+	delta= nowTime-origTime;
+
+	string retString;
+
+
+	const unsigned int NUM_FUZZY_ENTRIES=17;
+	//Sorted sequence of fuzzy times, from biggest to smallest
+	const time_t TIMESTOPS[] = {
+					(100*365.25*24*60*60), //One century
+					(10*365.25*24*60*60), //One decade
+					(365.25*24*60*60), // One year
+					(365.25/12.0*24*60*60), // One month
+					(7.0*24*60*60), //One week
+					(24*60*60), //One day
+					(60*60), //One hour
+					(45*60),// 45 minutes
+					(30*60),// 30 minutes
+					(20*60),// 20 minutes
+					(15*60),// 15 minutes
+					(10*60),// 10 minutes
+					(5*60),//5 minutes
+					(60), //1 minute 
+					30, //30 sec
+					10, //10 sec
+					1 //1 sec
+				};
+
+	//Do these have a meaningful plural?
+	bool HAVE_PLURALS[] = { 	
+					true,//Century
+					true,	//decade	
+					true,	//year
+					true,	//month
+					true,	//week
+					true,	//day
+					true,	//hour
+					false,	//45m	
+					false,	//30m	
+					false,	//20m	
+					false,	//15m	
+					false,	//10m	
+					false,	//5m
+					true,	//1m
+					false,//30s	
+					false,//10s	
+					true//1s	
+				};				
+		
+	//Singular version
+	const char *SINGLE_FUZZY_STRING[] = {
+			 NTRANS("a century ago"),
+			 NTRANS("a decade ago"),
+			 NTRANS("a year ago"),
+			 NTRANS("a month ago"),
+			 NTRANS("a week ago"),
+			 NTRANS("a day ago"),
+			 NTRANS("an hour ago"),
+			 NTRANS("45 minutes ago"),
+			 NTRANS("30 minutes ago"),
+			 NTRANS("20 minutes ago"),
+			 NTRANS("15 minutes ago"),
+			 NTRANS("10 minutes ago"),
+			 NTRANS("5 minutes ago"),
+			 NTRANS("a minute ago"),
+			 NTRANS("30 seconds ago"),
+			 NTRANS("10 seconds ago"),
+			 NTRANS("a second ago")
+				};		
+
+	//Plurals, where they make sense. otherwise empty string
+	const char *PLURAL_FUZZY_STRING[] = {
+			 NTRANS("a few centuries ago"),
+			 NTRANS("a few decades ago"),
+			 NTRANS("a few years ago"),
+			 NTRANS("a few months ago"),
+			 NTRANS("a few weeks ago"),
+			 NTRANS("a few days ago"),
+			 NTRANS("a few hours ago"),
+			 "", //45m
+			 "", //30m
+			 "", //20m
+			 "", //15m
+			 "", //10m
+			 "", //5m
+			 NTRANS("a few minutes ago"),
+			 "",//30s
+			 "",//10s
+			 NTRANS("a few seconds ago")
+				};		
+
+	//Find the largest match by decending the tiemstops
+	for(unsigned int ui=0;ui<NUM_FUZZY_ENTRIES; ui++)
+	{
+
+		if(HAVE_PLURALS[ui] && delta>=2*TIMESTOPS[ui])
+		{
+#ifdef DEBUG
+			std::string s=(PLURAL_FUZZY_STRING[ui]);;
+			ASSERT(s.size());
+#endif
+			return TRANS(PLURAL_FUZZY_STRING[ui]);
+		}
+	
+		if ( delta>=TIMESTOPS[ui])
+			return TRANS(SINGLE_FUZZY_STRING[ui]);
+	}
+
+	return TRANS("moments ago");
+}
+
 
 void BoundCube::setBounds(const std::vector<Point3D> &points)
 {
@@ -767,6 +846,12 @@ void BoundCube::setBounds(const std::vector<Point3D> &points)
 		}
 	}
 
+#ifdef DEBUG
+	for(unsigned int ui=0; ui<points.size(); ui++)
+	{
+		ASSERT(containsPt(points[ui]));
+	}
+#endif
 }
 
 
@@ -808,6 +893,20 @@ bool BoundCube::isFlat() const
 			return true;
 	}	
 
+	return false;
+}
+
+bool BoundCube::isNumericallyBig() const
+{
+	const float TOO_BIG=sqrt(std::numeric_limits<float>::max());
+	for(unsigned int ui=0;ui<2; ui++)
+	{
+		for(unsigned int uj=0;uj<3; uj++)
+		{
+			if(TOO_BIG < fabs(bounds[uj][ui]))
+				return true;
+		}
+	}
 	return false;
 }
 
@@ -1090,7 +1189,7 @@ std::ostream &operator<<(std::ostream &stream, const BoundCube& b)
 
 bool getFilesize(const char *fname, size_t  &size)
 {
-	std::ifstream f(fname);
+	std::ifstream f(fname,std::ios::binary);
 
 	if(!f)
 		return false;
@@ -1098,6 +1197,7 @@ bool getFilesize(const char *fname, size_t  &size)
 	f.seekg(0,std::ios::end);
 
 	size = f.tellg();
+
 	return true;
 }
 
@@ -1214,6 +1314,7 @@ int getTotalRAM()
 	// Get RAM snapshot
 	::GlobalMemoryStatus(&MemStat);
 	ret= MemStat.dwTotalPhys / (1024*1024);
+	return ret;
 #elif __APPLE__ || __FreeBSD__
 
 	uint64_t mem;
@@ -1222,6 +1323,7 @@ int getTotalRAM()
 	sysctlbyname("hw.physmem", &mem, &len, NULL, 0);
 
 	ret = (int)(mem/(1024*1024));
+	return ret;
 #elif __linux__
 	struct sysinfo sysInf;
 	sysinfo(&sysInf);
@@ -1229,7 +1331,6 @@ int getTotalRAM()
 #else
 	#error Unknown platform, no getTotalRAM function defined.
 #endif
-    return ret;
 }
 
 size_t getAvailRAM()
@@ -1301,7 +1402,7 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 	std::ifstream CFile(cpFilename);
 
 	if(!CFile)
-		return ERR_FILE_OPEN_FAIL;
+		return ERR_FILE_OPEN;
 
 	//Drop the headers, if any
 	string str;
@@ -1313,6 +1414,9 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 	{
 		//Grab a line from the file
 		CFile.getline(inBuffer,BUFFER_SIZE);
+
+		if(!CFile.good())
+			return ERR_FILE_FORMAT;
 
 		prevStrs=strVec;
 		//Split the strings around the tab char
@@ -1405,9 +1509,7 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 			//Check the number of fields	
 			//=========
 			if(strVec.size() != num_fields)
-			{
-				return ERR_FILE_FORMAT_FAIL;	
-			}
+				return ERR_FILE_NUM_FIELDS;	
 	
 
 			for(unsigned int ui=0; ui<num_fields; ui++)
@@ -1416,7 +1518,7 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 				ss.str(strVec[ui]);
 				ss >> f;
 				if(ss.fail())
-					return ERR_FILE_FORMAT_FAIL;
+					return ERR_FILE_FORMAT;
 				dataVec[ui].push_back(f);
 			
 			}
@@ -1425,9 +1527,38 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 		}
 		//Grab a line from the file
 		CFile.getline(inBuffer,BUFFER_SIZE);
+		
+		if(!CFile.good())
+			return ERR_FILE_FORMAT;
 	}
 
 	return 0;
 }
+
+
+#ifdef DEBUG
+bool isValidXML(const char *filename)
+{
+	//Debug check to ensure we have written a valid xml file
+	std::string command;
+	unsigned int result;
+#if defined(WIN32) || defined(WIN64)
+	command = std::string("xmllint --version");
+#else
+	command = std::string("xmllint --version >/dev/null 2>/dev/null");
+#endif
+	result=system(command.c_str());
+	if(!result)
+	{
+		command = std::string("xmllint --noout \'") + filename + string("\'");
+		result=system(command.c_str());
+		return result ==0;
+	}
+
+	//Debug check ineffective
+	WARN(!result,"xmllint not installed in system PATH, cannot perform debug check")
+	return true;
+}
+#endif
 
 

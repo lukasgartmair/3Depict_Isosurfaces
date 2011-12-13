@@ -223,7 +223,7 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 			for(unsigned int ui=0; ui<3;ui++)
 			{
 				ASSERT(numTicks[ui]);
-				tmpTickSpacing[ui]=( (tickEnd[ui] - tickOrigin[ui])/(float)numTicks[ui]);
+				tmpTickSpacing[ui]=( (tickEnd[ui] - tickOrigin[ui])/(float)(numTicks[ui]-1));
 				tmpTickCount[ui]=numTicks[ui];
 			}
 		}
@@ -766,13 +766,113 @@ bool BoundingBoxFilter::readState(xmlNodePtr &nodePtr, const std::string &stateF
 	return true;	
 }
 
-int BoundingBoxFilter::getRefreshBlockMask() const
+unsigned int BoundingBoxFilter::getRefreshBlockMask() const
 {
 	//Everything goes through this filter
 	return 0;
 }
 
-int BoundingBoxFilter::getRefreshEmitMask() const
+unsigned int BoundingBoxFilter::getRefreshEmitMask() const
 {
 	return  STREAM_TYPE_DRAW;
 }
+
+#ifdef DEBUG
+#include <typeinfo>
+
+bool boxVolumeTest();
+
+bool BoundingBoxFilter::runUnitTests() 
+{
+	if(!boxVolumeTest())
+		return false;
+
+	return true;
+}
+
+
+bool boxVolumeTest()
+{
+	//Synthesise data
+	//---
+	IonStreamData *d = new IonStreamData;
+
+	vector<const FilterStreamData *> streamIn,streamOut;
+
+	IonHit h;
+	h.setMassToCharge(1);
+	
+	h.setPos(Point3D(0,0,1));
+	d->data.push_back(h);
+	h.setPos(Point3D(0,1,0));
+	d->data.push_back(h);
+	h.setPos(Point3D(1,0,0));
+	d->data.push_back(h);
+	h.setPos(Point3D(0,0,0));
+	d->data.push_back(h);
+	
+	streamIn.push_back(d);
+	//---
+
+	
+	//Set up and run filter
+	//---
+	BoundingBoxFilter *b = new BoundingBoxFilter;
+	b->setCaching(false);
+
+	bool needUp;
+	b->setProperty(0,KEY_BOUNDINGBOX_VISIBLE,"1",needUp);
+
+
+	ProgressData p;
+	b->refresh(streamIn,streamOut,p,dummyCallback);
+	//---
+
+	//Run tests 
+	//---
+	BoundCube bc;
+	bool havePrismDrawable=false;
+	for(unsigned int ui=0;ui<streamOut.size(); ui++)
+	{
+		if(streamOut[ui]->getStreamType() != STREAM_TYPE_DRAW)
+			continue;
+		
+		DrawStreamData *drawData;
+		drawData=(DrawStreamData*)streamOut[ui];
+	
+		for(unsigned int uj=0;uj<drawData->drawables.size(); uj++)
+		{
+			DrawableObj *draw;
+			draw= drawData->drawables[uj];
+
+			if(draw->getType() == DRAW_TYPE_RECTPRISM)
+			{
+				draw->getBoundingBox(bc);
+
+				havePrismDrawable=true;
+				break;
+			}
+		}
+
+		if(havePrismDrawable)
+			break;
+	
+	}
+
+
+	TEST(havePrismDrawable, "bounding box existance test");
+	
+	TEST(fabs(bc.volume() - 1.0f) 
+		< sqrt(std::numeric_limits<float>::epsilon()),
+						"Bounding volume test");
+
+	//Cleanup the emitted pointers
+	for(unsigned int ui=0;ui<streamOut.size(); ui++)
+		delete streamOut[ui];	
+
+	delete b;	
+	
+	return true;
+}
+#endif
+

@@ -23,8 +23,6 @@ class CompositionProfileFilter : public Filter
 
 		//!Frequency or percentile mode (0 - frequency; 1-normalised (ion freq))
 		bool normalise;
-		//!Stepping mode - fixed width or fixed number of bins
-		unsigned int stepMode;
 		//!Use fixed bins?
 		bool fixedBins;
 		
@@ -85,10 +83,10 @@ class CompositionProfileFilter : public Filter
 		//fails, filter will be in an undefined state.
 		bool readState(xmlNodePtr &node, const std::string &packDir);
 		//!Get the stream types that will be dropped during ::refresh	
-		int getRefreshBlockMask() const;
+		unsigned int getRefreshBlockMask() const;
 
 		//!Get the stream types that will be generated during ::refresh	
-		int getRefreshEmitMask() const;	
+		unsigned int getRefreshEmitMask() const;	
 		//!Set internal property value using a selection binding  
 		void setPropFromBinding(const SelectionBinding &b) ;
 

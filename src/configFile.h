@@ -55,6 +55,10 @@ class ConfigFile
 	private:
 		std::deque<std::string> recentFiles;
 		vector<Filter *> filterDefaults;
+		
+		//!Did the configuration load from file OK?
+		bool configLoadOK;
+		
 		//!Panel 
 		vector<bool> startupPanelView;
 
@@ -77,15 +81,22 @@ class ConfigFile
 
 		//!Should the program perform online version number checking?
 		bool allowOnlineVerCheck;	
+
+		//!fractional initial positions of sashes in main UI
+		float leftRightSashPos,topBottomSashPos,
+		      		filterSashPos,plotListSashPos;
 	public:
 		ConfigFile(); 
+		~ConfigFile(); 
 		void addRecentFile(const std::string &str);
 
 		void getRecentFiles(std::vector<std::string> &filenames) const; 
 		void removeRecentFile(const std::string &str);
 		unsigned int read();
 		bool write();
-
+		
+		bool configLoadedOK() const { return configLoadOK;}
+			
 		std::string getErrMessage() const { return errMessage;};
 
 		unsigned int getMaxHistory() const;
@@ -117,6 +128,7 @@ class ConfigFile
 
 		//!Return the current panelmode
 		unsigned int getStartupPanelMode() const;
+		//!Set the mode to use for recalling the startup panel layout
 		void setStartupPanelMode(unsigned int panelM);
 
 		//!Returns true if we have a suggested initial window size; with x & y being the suggestion
@@ -126,8 +138,30 @@ class ConfigFile
 
 		bool getAllowOnlineVersionCheck() const;
 
+		//!Set if the program is allowed to access network resources
 		void setAllowOnline(bool v);
+		//!Set if the program is allowed to phone home to get latest version #s
 		void setAllowOnlineVersionCheck(bool v);
+
+		//!Set the position for the main window left/right sash 
+		void setLeftRightSashPos(float fraction);
+		//!Set the position for the top/bottom sash
+		void setTopBottomSashPos(float fraction);
+		//!Set the position for the filter property/tree sash
+		void setFilterSashPos(float fraction);
+		//!Set the position for the plot list panel
+		void setPlotListSashPos(float fraction);
+
+		//!Set the position for the main window left/right sash 
+		float getLeftRightSashPos() { return leftRightSashPos;};
+		//!Set the position for the top/bottom sash
+		float getTopBottomSashPos(){ return topBottomSashPos;}
+		//!Set the position for the filter property/tree sash
+		float getFilterSashPos(){ return filterSashPos;};
+		//!Set the position for the plot list panel
+		float getPlotListSashPos(){ return plotListSashPos;};
+
+
 };
 
 #endif

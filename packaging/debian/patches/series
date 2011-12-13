@@ -1,4 +1,4 @@
-powerpc-endian-define.patch
+disable-fp-exceptions.patch
 3depict-docdir.patch
 debian-desktop-naming.patch
 font-path-changed.patch

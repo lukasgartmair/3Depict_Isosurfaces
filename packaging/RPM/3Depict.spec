@@ -1,5 +1,5 @@
 Name:		3Depict
-Version:	0.0.6
+Version:	0.0.9
 Release:	1%{?dist}
 Summary:	Valued 3D point cloud visualization and analysis
 Group:		Applications/Engineering
@@ -8,6 +8,7 @@ Group:		Applications/Engineering
 License:	GPLv3+
 URL:		http://threedepict.sourceforge.net
 Source0:	http://downloads.sourceforge.net/threedepict/%{name}-%{version}.tar.gz
+
 
 BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -32,9 +33,9 @@ BuildRequires: tex(latex)
 BuildRequires: qhull-devel
 
 #Fedora specific PDF dir.
-Patch0: 3Depict-0.0.6-manual-pdf-loc.patch
+Patch0: %{name}-0.0.9-manual-pdf-loc.patch
 #Fedora specific font dir
-Patch1: 3Depict-0.0.6-font-path.patch
+Patch1: %{name}-0.0.9-font-path.patch
 
 %description
 This program is designed to help users visualize and analyze 3D point clouds
@@ -81,7 +82,20 @@ desktop-file-install \
 		--dir %{buildroot}%{_datadir}/applications \
 		packaging/%{name}.desktop
 mkdir -p %{buildroot}%{_datadir}/pixmaps/
-install -Dp -m 644 src/tex-source/3Depict-icon.svg %{buildroot}%{_datadir}/pixmaps/3Depict.svg
+install -Dp -m 644 src/tex-source/%{name}-icon.svg %{buildroot}%{_datadir}/pixmaps/%{name}.svg
+
+#install language files
+#--
+#Remap locale names
+mv locales/de_DE/ locales/de/
+
+mkdir -p %{buildroot}/%{_datadir}/locale/
+cp -R locales/* %{buildroot}/%{_datadir}/locale/
+
+#Restore the internal build's locale namign
+mv locales/de/ locales/de_DE/
+#--
+
 
 #Move the documentation such that it is picked up by the doc macro
 mv docs/manual-latex/manual.pdf %{name}-%{version}-manual.pdf
@@ -107,7 +121,19 @@ rm -rf %{buildroot}
 
 
 %changelog
-* Fri May 20 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.6-1
+* Sat Dec 20 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.9-1
+- Update to 0.0.9
+
+* Sat Oct 29 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.8-2
+- Post release fixes for various crash bugs
+
+* Sun Oct 23 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.8-1
+- Update to 0.0.8
+
+* Sun Aug 14 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.7-1
+- Update to 0.0.7
+
+* Sun May 20 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.6-1
 - Update to 0.0.6
 
 * Mon Mar 27 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.5-1

@@ -143,8 +143,8 @@ class Point3D
 
 //IMPORTANT!!!
 //===============
-//Do NOT use mutliple instances of this in your code
-//with the same initialisation technique (EG intialising from system clock)
+//Do NOT use multiple instances of this in your code
+//with the same initialisation technique (e.g. initialising from system clock)
 //this would be BAD, correlations might well be introduced into your results
 //that are simply a result of using correlated random sequences!!! (think about it)
 //use ONE random number generator in the project, initialise it and then "register"
@@ -199,12 +199,12 @@ typedef struct
 
 //Uses quaternion mathematics to perform a rotation around your favourite axis
 //IMPORTANT: rotVec must be normalised before passing to this function 
-//failure to do so will have wierd results
-//Note result is stored in  point passsed as argument
+//failure to do so will have weird results
+//Note result is stored in  point passed as argument
 //angle is in radians.
 void quat_rot(Point3f *point, Point3f *rotVec, float angle);
 
-//Retrieve the quaternion for repeated rotations. pass to the quat_rot_apply_quats.
+//Retrieve the quaternion for repeated rotations. Pass to the quat_rot_apply_quats.
 //angle is in radians
 void quat_get_rot_quat(Point3f *rotVec, float angle,  Quaternion *rotQuat);
 
@@ -214,7 +214,7 @@ void quat_rot_apply_quat(Point3f *point, Quaternion *rotQuat);
 //This class implements a Linear Feedback Shift Register (in software) 
 //This is a mathematical construct based upon polynomials over closed natural numbers (N mod p).
 //This will generate a weakly random digit string, but with guaranteed no duplicates, using O(1)
-//memory and O(n) calls. The no duplicate guarantee is weak-ish, with no repitition in the
+//memory and O(n) calls. The no duplicate guarantee is weak-ish, with no repetition in the
 //shift register for 2^n-1 iterations. n can be set by setMaskPeriod.
 class LinearFeedbackShiftReg
 {

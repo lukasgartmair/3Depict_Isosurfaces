@@ -34,6 +34,7 @@
 #endif
 #include <mgl/mgl.h>
 
+//mathgl shadows std::isnan
 #undef isnan
 
 #include "basics.h"
@@ -48,6 +49,8 @@ enum{
 enum
 {
 	PLOT_TYPE_ONED,
+	PLOT_TYPE_TWOD,
+	PLOT_TYPE_MIXED, //When multiple plots are visible of different types
 	PLOT_TYPE_ENUM_END //not a plot, just end of enum
 };
 
@@ -67,9 +70,27 @@ unsigned int plotID(const std::string &plotString);
 //!Return the error mode type, given the human readable string
 unsigned int plotErrmodeID(const std::string &s);
 		
-//!Nasty hack to get nearest mathgl named colour from a given RGB
-//R,G,B in [0,1]
-char getNearestMathglColour(float r, float g, float b);
+//!Nasty hack class to change mathgl API from named char pallette to rgb specification
+class MGLColourFixer
+{
+	private:
+		vector<float> rs,gs,bs;
+		static int maxCols;
+		mglGraph *graph;
+	public:
+		void setGraph(mglGraph *g) { graph=g;};
+		//Restore the MGL colour strings
+		void reset();
+		//Return the exact colour, if there is one
+		char haveExactColour(float r, float g, float b) const;
+		//Get the best colour that is available
+		// returns the char to give to mathgl; may be exact,
+		// maybe nearest match, depending upon number of colours used
+		// and mgl pallette size
+		char getNextBestColour(float r, float g, float b);
+
+		unsigned int getMaxColours() const;
+};
 
 //!Data class  for holding info about non-overlapping 
 // interactive rectilinear "zones" overlaid on plots 
@@ -125,7 +146,7 @@ class PlotBase
 		unsigned int parentPlotIndex;
 		
 		//Draw the plot onto a given MGL graph
-		virtual void drawPlot(mglGraph *graph) const=0;
+		virtual void drawPlot(mglGraph *graph, MGLColourFixer &fixer) const=0;
 
 		//!Scan for the data bounds.
 		virtual void getBounds(float &xMin,float &xMax,
@@ -139,6 +160,9 @@ class PlotBase
 		virtual bool getRegionIdAtPosition(float x, float y, unsigned int &id) const=0;
 		//!Retrieve a region using its unique ID
 		virtual void getRegion(unsigned int id, PlotRegion &r) const=0;
+
+		//!Get the number of regions;
+		size_t getNumRegions() const { return regions.size();};
 		
 		//!Pass the region movement information to the parent filter object
 		virtual void moveRegion(unsigned int regionId, unsigned int method, 
@@ -147,6 +171,7 @@ class PlotBase
 		//!Obtain limit of motion for a given region movement type
 		virtual void moveRegionLimit(unsigned int regionId,
 				unsigned int movementType, float &maxX, float &maxY) const=0;
+
 };
 
 //1D Plot with ranges
@@ -188,10 +213,11 @@ class Plot1D : public PlotBase
 		
 		
 		//Draw the plot onto a given MGL graph
-		virtual void drawPlot(mglGraph *graph) const;
+		virtual void drawPlot(mglGraph *graph,MGLColourFixer &fixer) const;
 
 		//Draw the associated regions		
-		void drawRegions(mglGraph *graph, const mglPoint &min, const mglPoint &max) const;
+		void drawRegions(mglGraph *graph, MGLColourFixer &fixer,
+				const mglPoint &min, const mglPoint &max) const;
 
 
 		//!Retrieve the raw data associated with the currently visible plots. 
@@ -219,17 +245,18 @@ class Plot1D : public PlotBase
 		void setLogarithmic(bool p){logarithmic=p;};
 };
 
+//2D (value-value pair) 
 class Plot2D : public PlotBase
 {
 	private: 	
 		//!Data
 		std::vector<float> xValues,yValues,xErrBars,yErrBars;
-		
+		//Retrieve the bounds on the plot
 		void getBounds(float &xMin,float &xMax,float &yMin,float &yMax) const;
 
 	public:
 		//Draw the plot onto a given MGL graph
-		virtual void drawPlot(mglGraph *graph) const;
+		virtual void drawPlot(mglGraph *graph,MGLColourFixer &fixer) const;
 
 		//Retrieve the raw data associated with this plot.
 		virtual void getRawData(vector<vector<float> > &f,
@@ -250,7 +277,7 @@ class Plot2D : public PlotBase
 	
 };
 
-//Base class for plot functionality
+//Wrapper class for containing multiple plots 
 class PlotWrapper
 {
 	protected:
@@ -261,8 +288,11 @@ class PlotWrapper
 
 		//!which plots were last visible?
 		std::vector<std::pair< const void *, unsigned int> > lastVisiblePlots;
-		
+	
+		//Position independant ID handling for the 
+		//plots inserted into the vector
 		UniqueIDHandler plotIDHandler;
+
 
 		//!Use user-specified bounding values?
 		bool applyUserBounds;
@@ -274,8 +304,6 @@ class PlotWrapper
 		//!Swtich to enable or disable drawing of the plot legend
 		bool drawLegend;	
 
-
-		bool areVisiblePlotsMismatched() const;
 	public:
 		//!Constructor
 		PlotWrapper(){applyUserBounds=false;plotChanged=true;drawLegend=true;};
@@ -359,11 +387,14 @@ class PlotWrapper
 		void getRegion(unsigned int plotId, unsigned int regionId, PlotRegion &r) const;
 
 		//!Retrieve the raw data associated with the selected plots.
-		// FIXME: No data should be returned in the case of mismatched plots
 		void getRawData(vector<vector<vector<float> > >  &data, std::vector<std::vector<std::wstring> >  &labels) const;
+	
 
 		//!obtain the type of a plot, given the plot's uniqueID
 		unsigned int plotType(unsigned int plotId) const;
+
+		//Retrieve the types of visible plots
+		unsigned int getVisibleType() const;
 
 		//!Obtain limit of motion for a given region movement type
 		void moveRegionLimit(unsigned int plotId, unsigned int regionId,

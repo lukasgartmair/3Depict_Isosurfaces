@@ -20,7 +20,6 @@ else
 CROSS= --build $(DEB_BUILD_GNU_TYPE)
 endif
 
-include /usr/share/quilt/quilt.make
 
 config.status: configure
 	dh_testdir
@@ -39,18 +38,18 @@ endif
 	# Do latex's multi-pass build system on the manual
 	sh -c "cd docs/manual-latex && pdflatex manual.tex && bibtex *.aux && pdflatex manual.tex && pdflatex manual.tex"
 
+build: build-arch 
 
+build-arch: build-stamp
 
-build: build-stamp
-
-build-stamp:  config.status $(QUILT_STAMPFN)
+build-stamp:  config.status 
 	dh_testdir
 
 	$(MAKE)
 
 	touch $@
 
-clean: unpatch
+clean: 
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp 
@@ -61,7 +60,16 @@ clean: unpatch
 	[ ! -f Makefile ] || $(MAKE) distclean
 	rm -f config.sub config.guess config.status config.cache
 	#cleanup after manually built documentation
-	rm -f docs/manual-latex/*{log,aux,bbl,pdf,toc,out,blg}
+	rm -f docs/manual-latex/*.log
+	rm -f docs/manual-latex/*.aux
+	rm -f docs/manual-latex/*.bbl
+	rm -f docs/manual-latex/*.pdf
+	rm -f docs/manual-latex/*.out
+	rm -f docs/manual-latex/*.blg
+	rm -f docs/manual-latex/*.toc
+
+	#Prevent quilt 3.0 from annoyingly convoluting config.log with a patch
+	rm -f config.log
 
 	dh_clean 
 
@@ -75,7 +83,7 @@ install: build
 	$(MAKE) DESTDIR=$(CURDIR)/debian/3depict install
 
 	#Install the textures
-	cp -rp src/textures $(CURDIR)/debian/3depict/usr/share/3depict/
+	cp -rp src/textures/ $(CURDIR)/debian/3depict/usr/share/3depict/
 
 	#rename 3Depict (real program name) to debian-friendly 3depict
 	mv $(CURDIR)/debian/3depict/usr/bin/3Depict $(CURDIR)/debian/3depict/usr/bin/3depict
@@ -86,8 +94,9 @@ install: build
 
 	#Install .desktop file (for XFCE)
 	install -Dp -m 644 $(CURDIR)/packaging/3Depict.desktop $(CURDIR)/debian/3depict/usr/share/applications/3depict.desktop
-	#install icon into pixmaps
+	#install icon (both SVG and XPM) into pixmaps
 	install -Dp -m 644 $(CURDIR)/src/3Depict.xpm $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.xpm
+	install -Dp -m 644 $(CURDIR)/src/tex-source/3Depict-icon.svg $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.svg
 	
 	#Install the pre-built locale files that are shipped with the tarball.
 	#translation sources (.po) files are in the translations/ folder.
@@ -102,6 +111,8 @@ install: build
 	# convert installed 3Depict.mo files to lowercase	
 	find $(CURDIR)/debian/3depict/usr/share/locale/ -name 3Depict.mo | xargs rename 's/3Depict.mo/3depict.mo/'
 
+	#Install manual to 3depict dir
+	cp $(CURDIR)/docs/manual-latex/manual.pdf $(CURDIR)/debian/3depict/usr/share/3depict/
 
 	#delete some dirs that are generated.
 	rmdir $(CURDIR)/debian/3depict/usr/sbin
@@ -131,3 +142,6 @@ binary-arch: install
 
 binary: binary-indep binary-arch
 .PHONY: build clean binary-indep binary-arch binary install 
+
+build-indep:
+

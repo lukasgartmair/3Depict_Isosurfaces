@@ -297,7 +297,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 
 		const IonStreamData *is = (const IonStreamData *)dataIn[i];
 		//Don't work on empty or single object streams (bounding box needs to be defined)
-		if (is->GetNumBasicObjects() < 2) continue;
+		if (is->getNumBasicObjects() < 2) continue;
 	
 		BoundCube bcTmp;
 		bcTmp=getIonDataLimits(is->data);
@@ -510,6 +510,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 	return 0;
 }
 
+//TODO: Use arrays
 std::string VoxeliseFilter::getNormaliseTypeString(int type) const {
 	switch (type) {
 		case VOXELISE_NORMALISETYPE_NONE:
@@ -1163,7 +1164,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 				return false;
 
 			//FIXME: Min restriction is artificial and imposed due to incomplete separerable convolution filter implementation
-			if(i <= 0 || i > std::min(nBins[0],std::min(nBins[1],nBins[2])))
+			if(i == 0 || i > std::min(nBins[0],std::min(nBins[1],nBins[2])))
 				return false;
 			if(i != filterBins)
 			{
@@ -1441,13 +1442,13 @@ bool VoxeliseFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	
 }
 
-int VoxeliseFilter::getRefreshBlockMask() const
+unsigned int VoxeliseFilter::getRefreshBlockMask() const
 {
 	//Ions, plots and voxels cannot pass through this filter
 	return STREAM_TYPE_IONS | STREAM_TYPE_PLOT | STREAM_TYPE_VOXEL;
 }
 
-int VoxeliseFilter::getRefreshEmitMask() const
+unsigned int VoxeliseFilter::getRefreshEmitMask() const
 {
 	return STREAM_TYPE_VOXEL | STREAM_TYPE_DRAW;
 }

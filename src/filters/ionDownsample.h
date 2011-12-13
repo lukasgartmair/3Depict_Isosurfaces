@@ -48,6 +48,7 @@ class IonDownsampleFilter : public Filter
 
 		//!return string naming the human readable type of this class
 		virtual std::string typeString() const { return std::string(TRANS("Ion Sampler"));}
+
 		
 		
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
@@ -69,11 +70,15 @@ class IonDownsampleFilter : public Filter
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
 	
 		//!Get the stream types that will be dropped during ::refresh	
-		int getRefreshBlockMask() const;
+		unsigned int getRefreshBlockMask() const;
 
 		//!Get the stream types that will be generated during ::refresh	
-		int getRefreshEmitMask() const;	
+		unsigned int getRefreshEmitMask() const;	
 		
+#ifdef DEBUG
+		//Fire off the unit tests for this class. returns false if *any* test fails
+		bool runUnitTests();
+#endif
 };
 
 #endif

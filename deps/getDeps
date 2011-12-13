@@ -86,23 +86,15 @@ if [ $# -ne 2 ] ; then
 
 	#Check the http proxy variable
 	if [ x"$http_proxy" == x"" ] ; then 
-		NOPROXY=1
 		if [ x"$OS_NAME" == x"Darwin" ] ; then
 			#Not sure this works.
 			##Are we using mac? Try to get the proxy automagically
 			PROXY=`system_profiler |grep "Auto Configure URL"|awk {'sub(/^.*:[ \t]*/, "", $0); print $0;'}`
+			echo "using proxy as : $PROXY ; hope this works"
 
-			if [ x"$PROXY" !=x"" ] ; then
-				echo "using proxy as : $PROXY ; hope this works"
-
-				http_proxy=$PROXY
-				echo "using $1 as the proxy server"
-				NOPROXY=0;
-			fi
-		fi
-
-		if [ $NOPROXY  -eq 1 ] ; then
-
+			http_proxy=$PROXY
+			echo "using $1 as the proxy server"
+		else
 			echo "Proxy not found... Hope you dont need one."
 			echo "	You can set one by passing it as an argument (./getdeps nameofproxy), if required"
 			echo " eg: ./getdeps http://www-cache.usyd.edu.au:8080"

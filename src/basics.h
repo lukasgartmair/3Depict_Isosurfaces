@@ -40,11 +40,13 @@ class K3DTree;
 
 std::string boolStrEnc(bool b);
 
+bool dummyCallback();
 
 extern const char *DTD_NAME;
 extern const char *PROGRAM_NAME;
 extern const char *PROGRAM_VERSION;
 extern const char *FONT_FILE;
+
 
 
 
@@ -64,14 +66,16 @@ inline int fpeek(FILE *stream)
 //!Text file loader errors
 enum
 {
-	ERR_FILE_INPUT_OPEN_FAIL=1,
-	ERR_FILE_OPEN_FAIL,
-	ERR_FILE_OUT_FAIL,
-	ERR_FILE_FORMAT_FAIL
+	ERR_FILE_OPEN=1,
+	ERR_FILE_FORMAT,
+	ERR_FILE_NUM_FIELDS,
+	ERR_FILE_ENUM_END // not an error, just end of enum
 };
 
+extern const char *TEXT_LOAD_ERR_STRINGS[];
 
-template<class T1, class T2>
+	
+	template<class T1, class T2>
 bool hasFirstInPairVec(const std::vector<std::pair<T1,T2> > &v, const std::pair<T1,T2> &r)
 {
 	for(size_t ui=0;ui<v.size();ui++)
@@ -94,6 +98,11 @@ void tickSpacingsFromInterspace(float start, float end,
 
 void tickSpacingsFromFixedNum(float start, float end, 
 		unsigned int nTicks, std::vector<float> &spacings);
+
+//!Get a "human-like" version of the time elapsed between new and original time period
+std::string veryFuzzyTimeSince( time_t origTime, time_t newTime);
+
+
 //!A routine for loading numeric data from a text file
 unsigned int loadTextData(const char *cpFilename, 
 		std::vector<std::vector<float> > &dataVec,
@@ -272,6 +281,11 @@ int getTotalRAM();
 //!Get available ram in MB
 size_t getAvailRAM();
 
+
+#ifdef DEBUG
+bool isValidXML(const char *filename);
+#endif
+
 inline std::string tabs(unsigned int nTabs)
 {
 	std::string s;
@@ -376,6 +390,11 @@ public:
 
     //! Returns true if any bound is of null thickness
     bool isFlat() const;
+
+    //!Returns true if any bound of datacube is considered to be "large" in magnitude compared to 
+    // floating pt data type.
+    bool isNumericallyBig() const;
+
     //!Obtain bounds from an array of Point3Ds
     void setBounds( const Point3D *ptArray, unsigned int nPoints);
     //!Use two points to set bounds -- does not need to be high,low. this is worked out/
@@ -509,7 +528,7 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 
 	result.resize(num);
 
-	if(strongRandom)
+	if(strongRandom || source.size() < 4)
 	{
 
 		size_t numTicksNeeded;
@@ -681,7 +700,9 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 
 	result.resize(num);
 
-	if(strongRandom)
+	//If we have strong randomisation, or we have too few items to use the LFSR,
+	//use proper random generation
+	if(strongRandom || max < 3 )
 	{
 
 		size_t numTicksNeeded;
@@ -697,7 +718,6 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 		std::vector<size_t> ticks;
 		ticks.resize(numTicksNeeded);
 
-		std::cerr << "Generating some unique numbers:" << std::endl;
 		//Create an array of numTicksNeededbers and fill 
 		for(size_t ui=0; ui<numTicksNeeded; ui++)
 			ticks[ui]=(size_t)(rng.genUniformDev()*(max-1));
@@ -712,7 +732,6 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 		ticks.erase(itLast,ticks.end());
 		std::vector<size_t> moreTicks;
 		//Top up with unique entries
-		std::cerr << "Topping up" << std::endl;
 		while(ticks.size() +moreTicks.size() < numTicksNeeded)
 		{
 			size_t index;
@@ -726,7 +745,6 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 				moreTicks.push_back(index);
 
 		}
-		std::cerr << "Finished topup" << std::endl;
 
 		ticks.reserve(numTicksNeeded);
 		for(size_t ui=0;ui<moreTicks.size();ui++)

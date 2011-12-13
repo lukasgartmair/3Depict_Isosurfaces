@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian Science Maintainers <debian-science-maintainers@lists.alioth.debian.org>
 Uploaders: D Haley <mycae@yahoo.com>
 DM-Upload-Allowed: yes
-Build-Depends: debhelper (>= 7), quilt, libgl1-mesa-dev | libgl-dev, libpng-dev, libqhull-dev, libwxgtk2.8-dev, libftgl-dev, autoconf, libxml2-dev, libmgl-dev, autotools-dev, texlive-latex-extra, texlive-latex-base
+Build-Depends: debhelper (>= 7), libgl1-mesa-dev | libgl-dev, libpng-dev, libqhull-dev, libwxgtk2.8-dev, libftgl-dev, autoconf, libxml2-dev, libmgl-dev, autotools-dev, texlive-latex-extra, texlive-latex-base
 Standards-Version: 3.9.2
 Homepage: http://threedepict.sourceforge.net/index.html
 Vcs-Git: git://git.debian.org/debian-science/packages/3depict.git
@@ -12,7 +12,6 @@ Vcs-Browser: http://git.debian.org/?p=debian-science/packages/3depict.git
 
 Package: 3depict
 Architecture: any
-Section: science
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: visualisation and analysis for single valued point data 
  This program provides a graphical interface for the scientific analysis

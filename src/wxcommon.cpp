@@ -98,7 +98,7 @@ std::string locateDataFile(const char *name)
 		s=std::string(possibleDirs[ui]) + name;
 
 		if(wxFileExists(wxStr(s)))
-				return s;
+			return s;
 	}
 
 	//Give up and force cur working dir.
@@ -157,18 +157,14 @@ void *VersionCheckThread::Entry()
 	//Find first channel
 	wxXmlNode *child = doc->GetRoot()->GetChildren();
 
-	bool foundChannel=false;
 	while(child)
 	{
 		if(child->GetName() == wxT("channel"))
-		{
-			foundChannel=true;
 			break;
-		}
 	    child = child->GetNext();
 	}
 
-	if(!foundChannel)
+	if(!child)
 	{
 		delete doc;
 		retrieveOK=false;
@@ -232,16 +228,19 @@ void *VersionCheckThread::Entry()
 
 
 //Does a process with a given ID both (1) exist, and (2) match the process name?
+
+#if defined(__LINUX__) || defined(__BSD__)
 bool processMatchesName(size_t processID, const std::string &procName)
 {
-
-//Really, any system with a working "ps" command (i.e. posix compliant)
-#if defined(__LINUX__) || defined(__BSD__)
 	//Execute the ps process, then filter the output by processID
 	
 	wxArrayString stdOut;
 	long res;
-	res=wxExecute(wxT("ps ax"),stdOut,wxEXEC_SYNC);
+#if wxCHECK_VERSION(2,9,0)
+	res=wxExecute(wxT("ps ax"),stdOut, wxEXEC_BLOCK);
+#else
+	res=wxExecute(wxT("ps ax"),stdOut);
+#endif
 
 	if(res !=0 )
 		return false;
@@ -259,12 +258,105 @@ bool processMatchesName(size_t processID, const std::string &procName)
 		if(s.find(pidStr) == 0 && s.find(procName) != std::string::npos)
 			return true;
 	}
-
-#else
-	#error __FUNCTION__ not implemented.
-#endif
-
 	return false;
 }
+#else
+	#include <windows.h>
+	typedef long NTSTATUS; 
 
+	#define STATUS_SUCCESS               ((NTSTATUS)0x00000000L)
+	#define STATUS_INFO_LENGTH_MISMATCH  ((NTSTATUS)0xC0000004L)
+
+	typedef enum _SYSTEM_INFORMATION_CLASS {
+		SystemProcessInformation = 5
+	} SYSTEM_INFORMATION_CLASS;
+
+	typedef struct _UNICODE_STRING {
+		USHORT Length;
+		USHORT MaximumLength;
+		PWSTR  Buffer;
+	} UNICODE_STRING;
+
+	typedef LONG KPRIORITY; // Thread priority
+
+	typedef struct _SYSTEM_PROCESS_INFORMATION_DETAILD {
+		ULONG NextEntryOffset;
+		ULONG NumberOfThreads;
+		LARGE_INTEGER SpareLi1;
+		LARGE_INTEGER SpareLi2;
+		LARGE_INTEGER SpareLi3;
+		LARGE_INTEGER CreateTime;
+		LARGE_INTEGER UserTime;
+		LARGE_INTEGER KernelTime;
+		UNICODE_STRING ImageName;
+		KPRIORITY BasePriority;
+		HANDLE UniqueProcessId;
+		ULONG InheritedFromUniqueProcessId;
+		ULONG HandleCount;
+		BYTE Reserved4[4];
+		PVOID Reserved5[11];
+		SIZE_T PeakPagefileUsage;
+		SIZE_T PrivatePageCount;
+		LARGE_INTEGER Reserved6[6];
+	} SYSTEM_PROCESS_INFORMATION_DETAILD, *PSYSTEM_PROCESS_INFORMATION_DETAILD;
+
+	//Function ptr
+	typedef  NTSTATUS (WINAPI *PFN_NT_QUERY_SYSTEM_INFORMATION)(
+									  IN       SYSTEM_INFORMATION_CLASS SystemInformationClass,
+									  IN OUT   PVOID SystemInformation,
+									  IN       ULONG SystemInformationLength,
+									  OUT OPTIONAL  PULONG ReturnLength
+									);
+
+	bool processMatchesName(size_t processID, const std::string &procName)
+	{
+		//Construct the memory structures, and load the DLLs needed to grab the win32 api constructs required
+		size_t bufferSize = 102400;
+		PSYSTEM_PROCESS_INFORMATION_DETAILD pspid=
+			(PSYSTEM_PROCESS_INFORMATION_DETAILD) malloc (bufferSize);
+		ULONG ReturnLength;
+		PFN_NT_QUERY_SYSTEM_INFORMATION pfnNtQuerySystemInformation = (PFN_NT_QUERY_SYSTEM_INFORMATION)
+			GetProcAddress (GetModuleHandle(TEXT("ntdll.dll")), "NtQuerySystemInformation");
+		NTSTATUS status;
+
+		//Grab the process ID stuff, expanding the buffer until we can do the job we need.
+		while (TRUE) {
+			status = pfnNtQuerySystemInformation (SystemProcessInformation, (PVOID)pspid,
+												  bufferSize, &ReturnLength);
+			if (status == STATUS_SUCCESS)
+				break;
+			else if (status != STATUS_INFO_LENGTH_MISMATCH) { // 0xC0000004L
+				return false;   // error
+			}
+
+			bufferSize *= 2;
+			pspid = (PSYSTEM_PROCESS_INFORMATION_DETAILD) realloc ((PVOID)pspid, bufferSize);
+		}
+
+		PSYSTEM_PROCESS_INFORMATION_DETAILD pspidBase;
+		pspidBase=pspid;
+		
+	
+		//Loop through the linked list of process data strcutures
+		while(pspid=(PSYSTEM_PROCESS_INFORMATION_DETAILD)(pspid->NextEntryOffset + (PBYTE)pspid) )
+		{
+			//If the name exists and is not null
+			if(pspid->ImageName.Length && pspid->ImageName.Buffer)
+			{
+				//Check to see if the result matches
+				if((size_t)pspid->UniqueProcessId  == processID &&  !strcmp(procName.c_str(),(char *)pspid->ImageName.Buffer) ) 
+				{
+					free(pspidBase);
+					return true;
+				}
+			}
+			
+		}
+
+		free(pspidBase);
+
+	}
+	
+	
+#endif
 
