@@ -1,3 +1,55 @@
+* Dec 17, 2011  : 0.0.9
+	Features:
+	- Rangefile filter now has "all ions/ranges" enable/disable option
+	- Autosave dialog now shows timestamp on file, eg "autosave.123.xml,
+	one day ago"
+	- Density computation in volume estimation filter 
+	- Implement scroll-to-zoom in plots
+	- Rangefiles can now be dropped onto program to open.
+
+	User Visible Bugfixes/Changes:
+	- Fix crash-on-load due to strict floating point checks under some
+	  wxGtk (linux) systems (Reported by users)
+	- Fix text file loading when loadlimit is 0.
+	- Fix hang when loading incorrectly formatted text files
+	- Fix bug where primitives might not show from transform filter until
+  	  forcing a refresh
+	- Spectrum filter no longer resets bincount when no data passed to it.
+	- Composition profile now matches 3D cylinder size when using fixed
+	  number of bins. (Reported by user)
+	- Fix bug where only line plots could be selected for plot dropdowns.
+	- Fix random crash/weirdness bug when dragging 3D items.
+	- Fix several internal debug dialogs being shown in wx2.9 (OSX 10.7)\
+	- Fix non-responsive dialogs in wx2.9 (OSX 10.7)
+	- Fix occasional corruption of volume estimate in IonInfo filter
+	- Better colouring of ranges in plot area (now uses exact colour, not
+	  closest from fixed palette)
+	- Better error messages when failing to load data files
+	- Fix config file error message for new 3Depict installs
+	- Fix double message dialog when failing to load autosave
+	- Fix bug where dataset would appear rotated when changing view axis
+	for certain orientations.
+	- Fix various bugs in autosave dialog
+
+	Technical Bugfixes/Features:
+	- Implement quality assurance code : unit testing of most filters, add
+  	  release build checks.
+	- Cluster filter now can do morphology (ellipse fit), but user frontend incomplete.
+	- Many small memory leak fixes 
+	- Fix corner case bug in  cluster analysis filter where small data
+	  corruption could occur for very small datasets.
+	- Fix duplication of final range in rangefile
+	- Fix large memory leak in convex hull estimation.
+	- More strict checking for source dependencies in configure script
+	- Marginally faster data loading by removing unneeded shuffle
+	  operation
+	- More correct and strict rangefile checking
+	- Fix bogus error in debug mode when dragging mouse move rate slider to max
+	in pref. dialog
+	- Fix bogus error in debug mode when using smoothing filter on voxels
+	- Colourbar overlay no longer affected by scene lighting.
+	- Fix bug where editing a property, then switching cameras can cause
+	  hang in debug mode.
 
 * Sep 30, 2011  : 0.0.8
 	Features:

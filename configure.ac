@@ -336,22 +336,12 @@ fi
 dnl -----------------
 
 
-# Check for hpmc isosurface shader library  enable
-#http://www.sintef.no/Projectweb/Heterogeneous-Computing/
-# Research-Topics/Marching-Cubes-using-Histogram-Pyramids/
-#----------
-
-#AC_CHECK_HEADER([hpmc/hpmc.h],[AC_DEFINE(HPMC_GPU_ISOSURFACE,[],[Have HPMC isosurface headers. using])],
-#	[AC_MSG_WARN([=================================Unable to find GPU isosurface shader library HPMC -- will use much slower CPU method=================])])
-
-#-----------
-
 #Should we compile with openMP?
 AC_ARG_ENABLE(openmp-parallel,
   [  --enable-openmp-parallel  Enable OpenMP multi-CPU usage; requires GCC > 4.2 for parallel STL support ])
 #Should we enable or disable debug checking?
 AC_ARG_ENABLE(debug-checks,
-  [  --disable-debug-checks Disable any debug checking, provides faster operation, but less information needed to debug internal problems, or to provide problem reports to developers ],[],[enable_no_debug_checks==""])
+  [  --disable-debug-checks Disable any debug checking, provides faster operation, but less information needed to debug internal problems, or to provide problem reports to developers ],[enable_no_debug_checks="yes"],[enable_no_debug_checks="no"])
 
 
 if test x"$enable_openmp_parallel" != x"" ; 
@@ -360,10 +350,21 @@ then
 	AC_SUBST(OPENMP_FLAGS)
 fi
 
-if test x"$enable_no_debug_checks" != x"yes" ; 
+if test x"$enable_debug_checks" != x"no" ; 
 then
-	DEBUG_FLAGS="-DDEBUG -D_GLIBCXX_DEBUG"
+	if test x"$enable_openmp_parallel" != x"" ;
+	then
+		#Note that GLIBCXX_DEBUG cannot exist with GLIBCXX_PARALLEL
+		DEBUG_FLAGS="-DDEBUG"
+	else
+		DEBUG_FLAGS="-DDEBUG -D_GLIBCXX_DEBUG"
+	fi
 	AC_SUBST(DEBUG_FLAGS)
+else 
+	if test x"$enable_debug_checks" !=x"yes" ;
+	then
+		AC_MSG_ERROR(["Well something isnt right, debug checks should be enabled or disabled (yes/no"])
+	fi
 fi
 
 # Checks for typedefs, structures, and compiler characteristics.

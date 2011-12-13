@@ -1,5 +1,8 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Dont use pkg-config to locate ftgl */
+#undef FTGL_NO_PKG_CONFIG
+
 /* Define to 1 if you have the `atexit' function. */
 #undef HAVE_ATEXIT
 
