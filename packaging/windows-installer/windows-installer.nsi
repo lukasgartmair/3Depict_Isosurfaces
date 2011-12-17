@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "3Depict"
-!define PRODUCT_VERSION "0.0.8"
+!define PRODUCT_VERSION "0.0.9"
 !define PRODUCT_PUBLISHER "D. Haley, A. Ceguerra"
 !define PRODUCT_WEB_SITE "http://threedepict.sourceforge.net"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\3Depict.exe"
@@ -120,7 +120,7 @@ Function un.onUninstSuccess
 FunctionEnd
 
 Function un.onInit
-  MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "Are you sure you want to completely remove $(^Name) and all of its components?" IDYES +2
+  MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "Are you sure you want to completely remove $(^Name)?" IDYES +2
   Abort
 FunctionEnd
 
