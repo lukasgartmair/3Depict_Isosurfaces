@@ -85,18 +85,25 @@ class ConfigFile
 		//!fractional initial positions of sashes in main UI
 		float leftRightSashPos,topBottomSashPos,
 		      		filterSashPos,plotListSashPos;
+					
+					
 	public:
 		ConfigFile(); 
 		~ConfigFile(); 
 		void addRecentFile(const std::string &str);
-
 		void getRecentFiles(std::vector<std::string> &filenames) const; 
 		void removeRecentFile(const std::string &str);
+		
 		unsigned int read();
 		bool write();
 		
 		bool configLoadedOK() const { return configLoadOK;}
 			
+		//Create the configuration folder, if needed.
+		bool createConfigDir() const;
+		//Get the configartion dir path
+		std::string getConfigDir() const;
+		
 		std::string getErrMessage() const { return errMessage;};
 
 		unsigned int getMaxHistory() const;

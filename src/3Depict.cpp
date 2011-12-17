@@ -36,17 +36,18 @@ void trapfpe () {
 //Shut wxwidgets assertion errors up by defining a "safe" cb_sort wrapper macro
 #if defined(__WXMAC__) || defined(__WXGTK20__)
 	       
-#include <wx/version.h>
-#if (wxCHECK_VERSION(2,8,0) )
-	#if (wxCHECK_VERSION(2,9,0))
-	//Sorted combos not supported under gtk in 2.8 series 
-	// http://trac.wxwidgets.org/ticket/4398
-	//and not supported in mac.
-	// http://trac.wxwidgets.org/ticket/12419
-	#define SAFE_CB_SORT 0 
+	#include <wx/version.h>
+	#if (wxCHECK_VERSION(2,8,0) )
+		#if (wxCHECK_VERSION(2,9,0))
+		//Sorted combos not supported under gtk in 2.8 series 
+		// http://trac.wxwidgets.org/ticket/4398
+		//and not supported in mac.
+		// http://trac.wxwidgets.org/ticket/12419
+			#define SAFE_CB_SORT 0 
+		#else
+			#define SAFE_CB_SORT wxCB_SORT
+		#endif
 	#endif
-#endif
-
 #else
 	#define SAFE_CB_SORT wxCB_SORT
 #endif
@@ -822,6 +823,13 @@ MainWindowFrame::~MainWindowFrame()
 
 	//delete the file history  pointer
 	delete recentHistory;
+
+	//wxwidgets can crash if objects are ->Connect-ed  in 
+	// wxWindowBase::DestroyChildren(), so Disconnect before destructing
+	noteDataView->Disconnect();
+	comboStash->Disconnect();
+	comboCamera->Disconnect();
+
 }
 
 

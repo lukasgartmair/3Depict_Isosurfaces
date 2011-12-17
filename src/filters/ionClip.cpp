@@ -70,7 +70,7 @@ unsigned int primitiveID(const std::string &str)
 std::string primitiveStringFromID(unsigned int id)
 {
 	ASSERT(id< PRIMITIVE_END);
-	return string(primitiveNames[id]);
+	return string(TRANS(primitiveNames[id]));
 }
 
 IonClipFilter::IonClipFilter()

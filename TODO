@@ -4,19 +4,10 @@ TODO List - worlds simplest bugtracking system
 
 --Main app--
 	Fix Needs testing:
+		* Windows' .3Depict folder should be hidden on creation
 	To Implement:
 		== Next version ==
-		* Camera animation control (slerp?)
-		* Support for XY scatter plots
-		* Front-to back alpha blending ordering support for
-		 scene drawing of non-pointcloud objects
-		* Voxelisation filter needs progress
-		* Better progress during cluster ranging
-		* Clipping should be parallelised
-		* Billboard text
-		* Voxel export dialog 
 
-	
 		== Eventually == 
 		* Binomial? (MM edition)
 		* Improved resolution dialog (Easy fix, but needs time/thought)
@@ -37,22 +28,31 @@ TODO List - worlds simplest bugtracking system
 		* Theora video?
 		* Multiple selection in filter tree for many to one stash/unstash operations
 		* We are using too many timers. There are limits to max. timers (win32?).
-		* Voxel export
+		* Front-to back alpha blending ordering support for
+		 scene drawing of non-pointcloud objects
+		* Voxelisation filter needs progress
+		* Better progress during cluster ranging
+		* Clipping should be parallelised
+		* Billboard text
+		* Voxel export dialog 
+		* Camera animation control (slerp?)
+		* Undo by timestream
+		* MD5sums could be used on filter input to determine cache-refreshingness! (clever!)
+		* Per ion type ion display sizes?
+		* Stats bar message queue
+		* Support for XY scatter plots
 
 	Outstanding bugs:
 		== Next release==
-		* Select an X-Y crop, camera coords, on a dataset,
-		  then view   target  (-9.14237,-0.995174,83.2904) origin
-		  (188.23,-0.995174,83.2904). Now press ctrl+space. Note
-		  dataset disappears until mouse motion. This is due to
-		  camera up vector not being updated, I suspect.
-		* Bar plots do not work (under windows?) for composition profiles
-		* Text bounding boxes are wrong.
-		
+		* Windows complains if .3Depict folder is missing on startup (after install? Fixed?)
+		* Windows crash on startup bug -- seems to happen after
+		  locale init, maybe openGL related (there was a second
+		  opengl program running at the time - context problem???)
+		* Drag and drop under windows fails
+		* Voxelisation filter & ion sampler filter show ions disabled in upstream range
+		* Voxelisation "filter" option appears to be reducing voxel intensity
+			
 		== Eventually==
-		* If errors are encountered in Filter::readState, then
-		 the object will be in a half-read state, due to the
-		 in-place data loading.
 		* Scroll wheel on text area for camera drop down does
 		  not scroll cameras; only on button (wxGTK only??)
 		* Switching between fixed width and num bins in voxel
@@ -69,20 +69,43 @@ TODO List - worlds simplest bugtracking system
 			 wxWidgets Bug Ticket #11811 ??? )
 		* Under mac osx, changing languages does not cause stock
 		  wx translation strings to change, even after app restart.
+		* Select an X-Y crop, camera coords, on a dataset,
+		  then view   target  (-9.14237,-0.995174,83.2904) origin
+		  (188.23,-0.995174,83.2904). Now press ctrl+space. Note
+		  dataset disappears until mouse motion. This is due to
+		  camera up vector not being updated, I suspect.
+		* Bar plots do not work (under windows?) for composition profiles
+			(Is this fixed?)
+		* Text bounding boxes are wrong.
+		* Cylinder unit test fails.
+		* Range file drag/drop ignores drop coordinates; this could be useful
+		  in trying to interpret where the user wants to drop the object
 
 		== Needs reproducing ==
 		* Invalid range file being opened cause Package export to crash
 		* Data files when failing to load, do remove, but are put back at next program load	
-		* was able to get assertion (excomponents.cpp:399) when selecting orthogonal camera.
 		* Windows appears to have weird front-back drawing behaviour for point clouds.
 		* Debian user reports unconditional segfault in libmgl during STIX font parse. 
 			- Debian Bug 623431 : http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=623431
 			- Patches sent upstream, fixed the issue for me. Original bug reporter not responsive
+		*"Autosave found"
+			user:~/.3Depict> ls
+			autosave.1148.xml  config.xml
+			user:~/.3Depict> ps augxw | grep 3D
+			user    1148  2.1  2.4 680456 201292 ?       Sl   14:53   1:07 3Depict /home/user/Desktop/hiroto/r14/R14_14052-v02.pos
+			user    2234  9.0  0.6 407756 55380 ?        S    15:44   0:01 3Depict /home/user/Desktop/hiroto/r14/R14_14054-v03.pos
+			user    2274  0.0  0.0   7672   812 pts/0    S+   15:44   0:00 grep 3D
+			user:~/.3Depict> ps augxw | grep 3D
+			user    1148  2.1  2.4 680456 201292 ?       Sl   14:53   1:07 3Depict /home/user/Desktop/hiroto/r14/R14_14052-v02.pos
+			user    2289  0.0  0.0   7672   812 pts/0    S+   15:44   0:00 grep 3D
+		* Duplicate range at end when exporting range
+		* Large datasets causing crash?
+		* Ion transform leaking memory??
+
 
 	Auditing:
 		== Next release ==
 		* Check each filter is actually reporting the required cache memory
-		* Update licence headers
 
 	Performance:
 		* Scene is sometimes continuously refreshed during post effects, causing CPU usage
@@ -93,6 +116,7 @@ TODO List - worlds simplest bugtracking system
 		 file, skip buffer).
 		* Clustering could be paralellised, but is complex. Split & weld along KD tree lines using 
 		  cluster BB interactions.
+		* Examine performance characteristics of HULL_GRAB in ioninfo
 	
 	Misc:
 

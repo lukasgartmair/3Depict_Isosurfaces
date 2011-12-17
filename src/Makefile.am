@@ -42,21 +42,21 @@ BASE_SOURCE_FILES=  mathglPane.cpp plot.cpp prefDialog.cpp configFile.cpp filter
 		     APTClasses.cpp resDialog.cpp select.cpp \
 		     drawables.cpp effect.cpp textures.cpp rdf.cpp \
 		     cameras.cpp isoSurface.cpp K3DTree.cpp K3DTree-mk2.cpp\
-			basics.cpp xmlHelper.cpp cropPanel.cpp colourmap.cpp \
+			 xmlHelper.cpp cropPanel.cpp colourmap.cpp \
 			pngread.c mathfuncs.cpp wxcomponents.cpp wxcommon.cpp
 
 BASE_HEADER_FILES=   mathglPane.h plot.h prefDialog.h configFile.h filter.h \
 		     APTClasses.h resDialog.h select.h \
 		     drawables.h effect.h textures.h rdf.h translation.h winconsole.h \
 		     cameras.h isoSurface.h K3DTree.h K3DTree-mk2.h\
-			basics.h xmlHelper.h cropPanel.h colourmap.h \
+			h xmlHelper.h cropPanel.h colourmap.h \
 			pngread.h mathfuncs.h wxcomponents.h wxcommon.h voxels.h \
 		       endianTest.h assertion.h commonConstants.h  art.h tree.hh 3Depict.xpm
 
 
 #These files are inter-dependant to some extent (mostly viscontrol)
-CROSS_DEP_SOURCE_FILES=3Depict.cpp ExportPos.cpp ExportRngDialog.cpp glPane.cpp scene.cpp StashDialog.cpp viscontrol.cpp
-CROSS_DEP_HEADER_FILES=3Depict.h ExportPos.h ExportRngDialog.h glPane.h scene.h StashDialog.h viscontrol.h
+CROSS_DEP_SOURCE_FILES=3Depict.cpp basics.cpp ExportPos.cpp ExportRngDialog.cpp glPane.cpp scene.cpp StashDialog.cpp viscontrol.cpp
+CROSS_DEP_HEADER_FILES=3Depict.h basics. ExportPos.h ExportRngDialog.h glPane.h scene.h StashDialog.h viscontrol.h
 
 
 

@@ -20,7 +20,6 @@ enum
 	KEY_WANT_LOGSIZEDIST,
 	KEY_WANT_COMPOSITIONDIST,
 	KEY_NORMALISE_COMPOSITION,
-	KEY_WANT_MORPHOLOGYDIST,
 	KEY_CROP_SIZE,
 	KEY_SIZE_COUNT_BULK,
 	KEY_CROP_NMIN,
@@ -145,6 +144,7 @@ void makeCompositionTable(const IonStreamData *i ,const RangeFile *r,
 void computeSingularValues(float *data, size_t numRows, size_t numCols,
 				vector<float> &resultValues)
 {
+/*
 	gsl_matrix *m=gsl_matrix_alloc(numRows,numCols);
 	for(unsigned int ui=0;ui<numRows;ui++)
 	{
@@ -182,6 +182,7 @@ void computeSingularValues(float *data, size_t numRows, size_t numCols,
 	
 	gsl_matrix_free(newSpace);
 	gsl_matrix_free(m);
+	*/
 }
 
 
@@ -236,7 +237,6 @@ ClusterAnalysisFilter::ClusterAnalysisFilter()
 	wantCropSize=false;
 	wantClusterComposition=true;
 	normaliseComposition=true;
-	wantClusterMorphology=false;
 	haveRangeParent=false; //we set this to false, as required by ::initFilter
 
 	cacheOK=false;
@@ -267,7 +267,6 @@ Filter *ClusterAnalysisFilter::cloneUncached() const
 	
 	p->wantClusterComposition=wantClusterComposition;
 	p->normaliseComposition = normaliseComposition;
-	p->wantClusterMorphology=wantClusterMorphology;
 
 	p->haveRangeParent=false; //lets assume not, and this will be reset at ::initFilter time
 
@@ -564,90 +563,6 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	}
 
 
-	if(wantClusterMorphology)
-	{
-		//amplitudes for the singular values
-		vector<vector<float> > singularValueAmps;
-		//Build a 2D scatter plot of the cluster morphology
-		getSingularValues(clusteredCore,clusteredBulk,singularValueAmps);
-
-		PlotStreamData *p=new PlotStreamData;
-		p->parent=this;
-		p->index=0;
-		
-		p->plotType=PLOT_TRACE_POINTS;
-		p->logarithmic=false;
-		p->dataLabel=TRANS("Aspect ratio: S_1/S_2 - S_2/S_3");
-
-		p->xLabel="S_2/S_3";
-		p->yLabel="S_1/S_2";
-
-		//How many singular values are not full-rank?
-		size_t missingRankCount=0;
-
-		p->xyData.reserve(singularValueAmps.size());
-		for(size_t ui=0; ui<singularValueAmps.size(); ui++)
-		{
-			//all singular values non null
-			if(singularValueAmps[ui].size() ==3) 
-			{
-#ifdef DEBUG
-				//No, really, they should have a valid value.
-				for(unsigned int uk=0;uk<3;uk++)
-				{
-					ASSERT(singularValueAmps[ui][uk]  >
-						sqrt(std::numeric_limits<float>::epsilon()));
-				}
-#endif
-
-				//Set the aspect ratios as the plot output
-				p->xyData.push_back(make_pair(
-					singularValueAmps[ui][1]/singularValueAmps[ui][2],
-					singularValueAmps[ui][0]/singularValueAmps[ui][1]));
-					
-			}
-			else
-				missingRankCount++;
-					
-		}
-
-
-		if(missingRankCount != singularValueAmps.size() )
-		{
-			if(missingRankCount) 
-			{
-				string msg,tmpStr;
-				stream_cast(tmpStr,missingRankCount);
-				msg=string(TRANS("WARNING : ")) + tmpStr +
-					TRANS(" clusters had deficient rank when computing singular values -- morphology data cannot be computed for these clusters.");
-				consoleOutput.push_back(msg);
-			}
-
-			if(cache)
-			{
-				p->cached=0;
-				filterOutputs.push_back(p);
-			}
-			else
-				p->cached=1;
-
-			getOut.push_back(p);
-		}
-		else
-		{
-			//Crap, if we are missing all rank, we have no morph. data
-			//don't build the plot
-			ASSERT(!p->xyData.size());
-
-			delete p;
-
-			consoleOutput.push_back(
-				TRANS("Unable to perform morphology computation, no clusters had sufficient data rank to compute SVD"));
-
-		}
-
-	}
-
 	//Construct the output clustered data.
 	IonStreamData *i = new IonStreamData;
 	i->parent =this;	
@@ -905,17 +820,6 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		type.push_back(PROPERTY_TYPE_BOOL);
 		keys.push_back(KEY_NORMALISE_COMPOSITION);
 	}
-
-
-	if(wantClusterMorphology)
-		tmpStr="1";
-	else
-		tmpStr="0";
-
-
-	s.push_back(make_pair(TRANS("Morphology Dist."),tmpStr));
-	type.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(KEY_WANT_MORPHOLOGYDIST);
 
 
 	propertyList.data.push_back(s);
@@ -1182,61 +1086,6 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 				//If we don't want the cluster composition
 				//just kill it from the cache and request an update
 				if(!wantClusterComposition)
-				{
-					for(size_t ui=filterOutputs.size();ui;)
-					{
-						ui--;
-						if(filterOutputs[ui]->getStreamType() == STREAM_TYPE_PLOT)
-						{
-							//OK, is this the plot? 
-							//We should match the title we used to generate it
-							PlotStreamData *p;
-							p=(PlotStreamData*)filterOutputs[ui];
-
-							if(p->dataLabel.substr(0,strlen(CHEM_DIST_DATALABEL)) ==CHEM_DIST_DATALABEL )
-							{
-								//Yup, this is it.kill the distribution
-								std::swap(filterOutputs[ui],filterOutputs.back());
-								filterOutputs.pop_back();
-
-								//Now, note we DONT break
-								//here; as there is more than one
-							}
-
-						}
-					}
-				}
-				else
-				{
-					//OK, we don't have one and we would like one.
-					// We have to compute this. Wipe cache and start over
-					clearCache(); 
-				}
-					needUpdate=true;
-			}
-			
-			break;
-		}
-		case KEY_WANT_MORPHOLOGYDIST:
-		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
-				return false;
-
-			bool lastVal=wantClusterMorphology;
-			if(stripped=="1")
-				wantClusterMorphology=true;
-			else
-				wantClusterMorphology=false;
-
-			//if the result is different, e
-			//remove the filter elements we no longer want.
-			if(lastVal!=wantClusterMorphology)
-			{
-				//If we don't want the cluster composition
-				//just kill it from the cache and request an update
-				if(!wantClusterMorphology)
 				{
 					for(size_t ui=filterOutputs.size();ui;)
 					{
@@ -2823,102 +2672,3 @@ void ClusterAnalysisFilter::getSingularValues(const vector<vector<IonHit> > &clu
 		delete[] data;
 }
 
-/* I think this is roughly OK (written, but not compiled/tested), but we are going to get a code explosion, as
- * I have to enumerate all the differeing paths, such that I don't have to
- * manually *check* each boolean option (count bulk/no count bulk, use paralell/use single)
- * So this is disabled for now.
-void ClusterAnalysisFilter::makeRangedFreqMap(const <vector<vector<IonHIT> > &clusteredCore,
-			const vector<vector<IonHit> > &clusteredBulk, const RangeFile *rng.
-			map<size_t,vector<size_t> > countMap)
-{
-	vector<size_t> dummyIonFreqTable;
-	dummyInFreqTable.resize(rng->getNumIons(),0);	
-
-#ifdef OPENMP
-	//parallel version
-	//---
-	vector< map<size_t,vector<size_t> > > countMaps;
-	unsigned int maxThreads=omp_get_max_num_threads();
-	
-	//OK, so the composition will be the core and bulk both;
-	//Now, lets figure out who belongs where.
-	#pragma omp parallel for
-	for(size_t ui=0;ui<clusteredCore.size();ui++)
-	{
-		unsigned int thread = omp_get_thread_num();
-		if(countMaps[thread].find(curSize) ==countMaps.end())
-			countMaps[thread].insert(make_pair(curSize,dummyIonFreqTable));
-	}
-	
-	#pragma omp parallel for 	
-	for(size_t ui=0;ui<clusteredCore.size();ui++)
-	{
-		unsigned int thread = omp_get_thread_num();
-		for(size_t uj=0;uj<clusteredCore[ui].size();uj++)
-		{
-			offset= rng->getIonID(clusteredCore[ui][uj]);
-			countMaps[thread][curSize][offset]++;
-		}
-		
-		for(size_t uj=0;uj<clusteredBulk[ui].size();uj++)
-		{
-			offset= rng->getIonID(clusteredBulk[ui][uj]);
-			countMaps[thread][curSize][offset]++;
-		}
-
-	}
-
-
-	//merge the differing threads into a single map
-	//which is our final frequency tally
-
-
-	//firstly we have to "prepare" the final "master" map.
-	//ie, fill it with zeros at the appropriate sizes.
-	for(size_t ui=0;ui<countMaps.size();ui++)
-	{
-		//Loop through the map, and prepare the final "master" map with
-		//zero values
-		for(map<size_t,vector<size_t> >::const_iterator 
-			it=countMaps.begin(); it!=countMaps.end();it++)
-		{
-			if(countMap.find(it->first) == countMaps.end())
-				countMap.insert(it->first,dummyIonFreqTable);
-		}
-	}
-
-	//Now we have to sum the thread-specific maps into the master map
-	for(size_t ui=0;ui<countMaps.size();ui++)
-	{
-		for(map<size_t,vector<size_t> >::const_iterator 
-			it=countMaps.begin(); it!=countMaps.end();it++)
-			countMap[it->first]+=it->second;
-	}
-	//---
-#else
-	//Single-threaded version
-	//---
-	for(size_t ui=0;ui<clusteredCore.size();ui++)
-	{
-		if(countMap.find(curSize) ==countMap.end())
-			countMap.insert(make_pair(curSize,ionFreq));
-	}
-	
-	for(size_t ui=0;ui<clusteredCore.size();ui++)
-	{
-		for(size_t uj=0;uj<clusteredCore[ui].size();uj++)
-		{
-			offset= rng->getIonID(clusteredCore[ui][uj]);
-			countMap[curSize][offset]++;
-		}
-		
-		for(size_t uj=0;uj<clusteredBulk[ui].size();uj++)
-		{
-			offset= rng->getIonID(clusteredBulk[ui][uj]);
-			countMap[curSize][offset]++;
-		}
-
-	}
-#endif
-}
- */

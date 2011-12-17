@@ -53,15 +53,15 @@ am__3Depict_SOURCES_DIST = mathglPane.cpp plot.cpp prefDialog.cpp \
 	configFile.cpp filter.cpp APTClasses.cpp resDialog.cpp \
 	select.cpp drawables.cpp effect.cpp textures.cpp rdf.cpp \
 	cameras.cpp isoSurface.cpp K3DTree.cpp K3DTree-mk2.cpp \
-	basics.cpp xmlHelper.cpp cropPanel.cpp colourmap.cpp pngread.c \
+	xmlHelper.cpp cropPanel.cpp colourmap.cpp pngread.c \
 	mathfuncs.cpp wxcomponents.cpp wxcommon.cpp mathglPane.h \
 	plot.h prefDialog.h configFile.h filter.h APTClasses.h \
 	resDialog.h select.h drawables.h effect.h textures.h rdf.h \
 	translation.h winconsole.h cameras.h isoSurface.h K3DTree.h \
-	K3DTree-mk2.h basics.h xmlHelper.h cropPanel.h colourmap.h \
-	pngread.h mathfuncs.h wxcomponents.h wxcommon.h voxels.h \
-	endianTest.h assertion.h commonConstants.h art.h tree.hh \
-	3Depict.xpm filters/allFilter.cpp filters/dataLoad.cpp \
+	K3DTree-mk2.h h xmlHelper.h cropPanel.h colourmap.h pngread.h \
+	mathfuncs.h wxcomponents.h wxcommon.h voxels.h endianTest.h \
+	assertion.h commonConstants.h art.h tree.hh 3Depict.xpm \
+	filters/allFilter.cpp filters/dataLoad.cpp \
 	filters/ionDownsample.cpp filters/rangeFile.cpp \
 	filters/voxelise.cpp filters/spectrumPlot.cpp \
 	filters/transform.cpp filters/externalProgram.cpp \
@@ -75,9 +75,9 @@ am__3Depict_SOURCES_DIST = mathglPane.cpp plot.cpp prefDialog.cpp \
 	filters/ionColour.h filters/boundingBox.h \
 	filters/compositionProfile.h filters/spatialAnalysis.h \
 	filters/clusterAnalysis.h filters/ionInfo.h \
-	filters/annotation.h 3Depict.cpp ExportPos.cpp \
+	filters/annotation.h 3Depict.cpp basics.cpp ExportPos.cpp \
 	ExportRngDialog.cpp glPane.cpp scene.cpp StashDialog.cpp \
-	viscontrol.cpp 3Depict.h ExportPos.h ExportRngDialog.h \
+	viscontrol.cpp 3Depict.h basics. ExportPos.h ExportRngDialog.h \
 	glPane.h scene.h StashDialog.h viscontrol.h winconsole.cpp \
 	3Depict.rc
 am__objects_1 = 3Depict-mathglPane.$(OBJEXT) 3Depict-plot.$(OBJEXT) \
@@ -88,10 +88,10 @@ am__objects_1 = 3Depict-mathglPane.$(OBJEXT) 3Depict-plot.$(OBJEXT) \
 	3Depict-textures.$(OBJEXT) 3Depict-rdf.$(OBJEXT) \
 	3Depict-cameras.$(OBJEXT) 3Depict-isoSurface.$(OBJEXT) \
 	3Depict-K3DTree.$(OBJEXT) 3Depict-K3DTree-mk2.$(OBJEXT) \
-	3Depict-basics.$(OBJEXT) 3Depict-xmlHelper.$(OBJEXT) \
-	3Depict-cropPanel.$(OBJEXT) 3Depict-colourmap.$(OBJEXT) \
-	3Depict-pngread.$(OBJEXT) 3Depict-mathfuncs.$(OBJEXT) \
-	3Depict-wxcomponents.$(OBJEXT) 3Depict-wxcommon.$(OBJEXT)
+	3Depict-xmlHelper.$(OBJEXT) 3Depict-cropPanel.$(OBJEXT) \
+	3Depict-colourmap.$(OBJEXT) 3Depict-pngread.$(OBJEXT) \
+	3Depict-mathfuncs.$(OBJEXT) 3Depict-wxcomponents.$(OBJEXT) \
+	3Depict-wxcommon.$(OBJEXT)
 am__objects_2 =
 am__objects_3 = 3Depict-allFilter.$(OBJEXT) 3Depict-dataLoad.$(OBJEXT) \
 	3Depict-ionDownsample.$(OBJEXT) 3Depict-rangeFile.$(OBJEXT) \
@@ -103,10 +103,10 @@ am__objects_3 = 3Depict-allFilter.$(OBJEXT) 3Depict-dataLoad.$(OBJEXT) \
 	3Depict-spatialAnalysis.$(OBJEXT) \
 	3Depict-clusterAnalysis.$(OBJEXT) 3Depict-ionInfo.$(OBJEXT) \
 	3Depict-annotation.$(OBJEXT)
-am__objects_4 = 3Depict-3Depict.$(OBJEXT) 3Depict-ExportPos.$(OBJEXT) \
-	3Depict-ExportRngDialog.$(OBJEXT) 3Depict-glPane.$(OBJEXT) \
-	3Depict-scene.$(OBJEXT) 3Depict-StashDialog.$(OBJEXT) \
-	3Depict-viscontrol.$(OBJEXT)
+am__objects_4 = 3Depict-3Depict.$(OBJEXT) 3Depict-basics.$(OBJEXT) \
+	3Depict-ExportPos.$(OBJEXT) 3Depict-ExportRngDialog.$(OBJEXT) \
+	3Depict-glPane.$(OBJEXT) 3Depict-scene.$(OBJEXT) \
+	3Depict-StashDialog.$(OBJEXT) 3Depict-viscontrol.$(OBJEXT)
 am__objects_5 = $(am__objects_1) $(am__objects_2) $(am__objects_3) \
 	$(am__objects_2) $(am__objects_4) $(am__objects_2)
 @HAVE_WINDRES_FALSE@am_3Depict_OBJECTS = $(am__objects_5)
@@ -306,21 +306,21 @@ BASE_SOURCE_FILES = mathglPane.cpp plot.cpp prefDialog.cpp configFile.cpp filter
 		     APTClasses.cpp resDialog.cpp select.cpp \
 		     drawables.cpp effect.cpp textures.cpp rdf.cpp \
 		     cameras.cpp isoSurface.cpp K3DTree.cpp K3DTree-mk2.cpp\
-			basics.cpp xmlHelper.cpp cropPanel.cpp colourmap.cpp \
+			 xmlHelper.cpp cropPanel.cpp colourmap.cpp \
 			pngread.c mathfuncs.cpp wxcomponents.cpp wxcommon.cpp
 
 BASE_HEADER_FILES = mathglPane.h plot.h prefDialog.h configFile.h filter.h \
 		     APTClasses.h resDialog.h select.h \
 		     drawables.h effect.h textures.h rdf.h translation.h winconsole.h \
 		     cameras.h isoSurface.h K3DTree.h K3DTree-mk2.h\
-			basics.h xmlHelper.h cropPanel.h colourmap.h \
+			h xmlHelper.h cropPanel.h colourmap.h \
 			pngread.h mathfuncs.h wxcomponents.h wxcommon.h voxels.h \
 		       endianTest.h assertion.h commonConstants.h  art.h tree.hh 3Depict.xpm
 
 
 #These files are inter-dependant to some extent (mostly viscontrol)
-CROSS_DEP_SOURCE_FILES = 3Depict.cpp ExportPos.cpp ExportRngDialog.cpp glPane.cpp scene.cpp StashDialog.cpp viscontrol.cpp
-CROSS_DEP_HEADER_FILES = 3Depict.h ExportPos.h ExportRngDialog.h glPane.h scene.h StashDialog.h viscontrol.h
+CROSS_DEP_SOURCE_FILES = 3Depict.cpp basics.cpp ExportPos.cpp ExportRngDialog.cpp glPane.cpp scene.cpp StashDialog.cpp viscontrol.cpp
+CROSS_DEP_HEADER_FILES = 3Depict.h basics. ExportPos.h ExportRngDialog.h glPane.h scene.h StashDialog.h viscontrol.h
 SOURCE_FILES = $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(FILTER_FILES) $(FILTER_HEADER_FILES) $(CROSS_DEP_SOURCE_FILES) $(CROSS_DEP_HEADER_FILES)
 @HAVE_WINDRES_FALSE@3Depict_SOURCES = $(SOURCE_FILES)
 
@@ -736,20 +736,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-K3DTree-mk2.obj `if test -f 'K3DTree-mk2.cpp'; then $(CYGPATH_W) 'K3DTree-mk2.cpp'; else $(CYGPATH_W) '$(srcdir)/K3DTree-mk2.cpp'; fi`
 
-3Depict-basics.o: basics.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-basics.o -MD -MP -MF $(DEPDIR)/3Depict-basics.Tpo -c -o 3Depict-basics.o `test -f 'basics.cpp' || echo '$(srcdir)/'`basics.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-basics.Tpo $(DEPDIR)/3Depict-basics.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='basics.cpp' object='3Depict-basics.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-basics.o `test -f 'basics.cpp' || echo '$(srcdir)/'`basics.cpp
-
-3Depict-basics.obj: basics.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-basics.obj -MD -MP -MF $(DEPDIR)/3Depict-basics.Tpo -c -o 3Depict-basics.obj `if test -f 'basics.cpp'; then $(CYGPATH_W) 'basics.cpp'; else $(CYGPATH_W) '$(srcdir)/basics.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-basics.Tpo $(DEPDIR)/3Depict-basics.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='basics.cpp' object='3Depict-basics.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-basics.obj `if test -f 'basics.cpp'; then $(CYGPATH_W) 'basics.cpp'; else $(CYGPATH_W) '$(srcdir)/basics.cpp'; fi`
-
 3Depict-xmlHelper.o: xmlHelper.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-xmlHelper.o -MD -MP -MF $(DEPDIR)/3Depict-xmlHelper.Tpo -c -o 3Depict-xmlHelper.o `test -f 'xmlHelper.cpp' || echo '$(srcdir)/'`xmlHelper.cpp
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-xmlHelper.Tpo $(DEPDIR)/3Depict-xmlHelper.Po
@@ -1071,6 +1057,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='3Depict.cpp' object='3Depict-3Depict.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-3Depict.obj `if test -f '3Depict.cpp'; then $(CYGPATH_W) '3Depict.cpp'; else $(CYGPATH_W) '$(srcdir)/3Depict.cpp'; fi`
+
+3Depict-basics.o: basics.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-basics.o -MD -MP -MF $(DEPDIR)/3Depict-basics.Tpo -c -o 3Depict-basics.o `test -f 'basics.cpp' || echo '$(srcdir)/'`basics.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-basics.Tpo $(DEPDIR)/3Depict-basics.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='basics.cpp' object='3Depict-basics.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-basics.o `test -f 'basics.cpp' || echo '$(srcdir)/'`basics.cpp
+
+3Depict-basics.obj: basics.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-basics.obj -MD -MP -MF $(DEPDIR)/3Depict-basics.Tpo -c -o 3Depict-basics.obj `if test -f 'basics.cpp'; then $(CYGPATH_W) 'basics.cpp'; else $(CYGPATH_W) '$(srcdir)/basics.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-basics.Tpo $(DEPDIR)/3Depict-basics.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='basics.cpp' object='3Depict-basics.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-basics.obj `if test -f 'basics.cpp'; then $(CYGPATH_W) 'basics.cpp'; else $(CYGPATH_W) '$(srcdir)/basics.cpp'; fi`
 
 3Depict-ExportPos.o: ExportPos.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ExportPos.o -MD -MP -MF $(DEPDIR)/3Depict-ExportPos.Tpo -c -o 3Depict-ExportPos.o `test -f 'ExportPos.cpp' || echo '$(srcdir)/'`ExportPos.cpp

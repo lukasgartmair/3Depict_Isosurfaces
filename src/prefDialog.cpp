@@ -183,6 +183,8 @@ void PrefDialog::initialise()
 	sliderCamZoomRate->SetValue(mouseZoomRatePercent);
 	sliderCamMoveRate->SetValue(mouseMoveRatePercent);
 
+
+
 }
 
 void PrefDialog::cleanup()
@@ -485,9 +487,6 @@ void PrefDialog::setStartupCheckboxEnables(unsigned int value)
 			break;
 		case STARTUP_COMBO_SELECT_SPECIFY:
 			comboPanelStartMode->SetToolTip(wxTRANS("Show selected panels when starting program"));
-			chkRawData->SetValue(true);
-			chkControl->SetValue(true);
-			chkPlotlist->SetValue(true);
 			break;
 		default:
 			ASSERT(false);

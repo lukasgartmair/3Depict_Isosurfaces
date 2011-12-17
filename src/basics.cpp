@@ -713,11 +713,17 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 
 	string retString;
 
-
+//Win32 time_t overflows with one century..
+#ifndef WIN32
 	const unsigned int NUM_FUZZY_ENTRIES=17;
+#else
+	const unsigned int NUM_FUZZY_ENTRIES=16;
+#endif
 	//Sorted sequence of fuzzy times, from biggest to smallest
 	const time_t TIMESTOPS[] = {
+#ifndef WIN32
 					(100*365.25*24*60*60), //One century
+#endif			
 					(10*365.25*24*60*60), //One decade
 					(365.25*24*60*60), // One year
 					(365.25/12.0*24*60*60), // One month
@@ -737,8 +743,10 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 				};
 
 	//Do these have a meaningful plural?
-	bool HAVE_PLURALS[] = { 	
+	bool HAVE_PLURALS[] = { 
+#ifndef WIN32	
 					true,//Century
+#endif
 					true,	//decade	
 					true,	//year
 					true,	//month
@@ -759,7 +767,9 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 		
 	//Singular version
 	const char *SINGLE_FUZZY_STRING[] = {
+#ifndef WIN32
 			 NTRANS("a century ago"),
+#endif
 			 NTRANS("a decade ago"),
 			 NTRANS("a year ago"),
 			 NTRANS("a month ago"),
@@ -780,7 +790,9 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 
 	//Plurals, where they make sense. otherwise empty string
 	const char *PLURAL_FUZZY_STRING[] = {
+#ifndef WIN32
 			 NTRANS("a few centuries ago"),
+#endif
 			 NTRANS("a few decades ago"),
 			 NTRANS("a few years ago"),
 			 NTRANS("a few months ago"),
@@ -799,10 +811,11 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 			 NTRANS("a few seconds ago")
 				};		
 
-	//Find the largest match by decending the tiemstops
+	//Find the largest match by decending the timestops
 	for(unsigned int ui=0;ui<NUM_FUZZY_ENTRIES; ui++)
 	{
 
+		//If we have a plural, and we are double are base timestop, use it.
 		if(HAVE_PLURALS[ui] && delta>=2*TIMESTOPS[ui])
 		{
 #ifdef DEBUG
@@ -811,7 +824,8 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 #endif
 			return TRANS(PLURAL_FUZZY_STRING[ui]);
 		}
-	
+
+		//stop decending	
 		if ( delta>=TIMESTOPS[ui])
 			return TRANS(SINGLE_FUZZY_STRING[ui]);
 	}
@@ -1528,7 +1542,7 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 		//Grab a line from the file
 		CFile.getline(inBuffer,BUFFER_SIZE);
 		
-		if(!CFile.good())
+		if(!CFile.good() && !CFile.eof())
 			return ERR_FILE_FORMAT;
 	}
 
@@ -1542,15 +1556,23 @@ bool isValidXML(const char *filename)
 	//Debug check to ensure we have written a valid xml file
 	std::string command;
 	unsigned int result;
+	
+//Windows doesn't really have  a /dev/null device, rather it has a reserved file name "NUL" or "nul"
+//http://technet.microsoft.com/en-gb/library/cc961816.aspx
 #if defined(WIN32) || defined(WIN64)
-	command = std::string("xmllint --version");
+	command = std::string("xmllint --version > NUL 2> NUL");
 #else
 	command = std::string("xmllint --version >/dev/null 2>/dev/null");
 #endif
 	result=system(command.c_str());
 	if(!result)
 	{
+	//Windows' shell handles escapes differently, workaround
+	#if defined(WIN32) || defined(WIN64)
+		command = std::string("xmllint --noout \"") + filename + string("\"");
+	#else
 		command = std::string("xmllint --noout \'") + filename + string("\'");
+	#endif
 		result=system(command.c_str());
 		return result ==0;
 	}

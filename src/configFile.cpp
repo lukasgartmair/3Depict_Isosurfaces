@@ -492,12 +492,9 @@ nodeptrEndJump:
 
 }
 
-bool ConfigFile::write()
+bool ConfigFile::createConfigDir() const
 {
-	string filename;
 	wxStandardPaths *paths = new wxStandardPaths;
-
-
 	wxString filePath = paths->GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);
 
 	//Create the folder if it does not exist
@@ -506,12 +503,36 @@ bool ConfigFile::write()
 		if(!wxMkdir(filePath))
 			return false;
 
+		//Make it a hidden folder
 #if defined(__WIN32) || defined(__WIN64)
-		string s;
-		s=stlStr(filePath);
-		SetFileAttributes(s.c_str(),FILE_ATTRIBUTE_HIDDEN);
+		SetFileAttributes(filePath.wc_str(),FILE_ATTRIBUTE_HIDDEN);
 #endif
 	}
+	delete  paths;
+	
+	return true;
+}
+
+std::string ConfigFile::getConfigDir() const
+{
+ 	wxStandardPaths *paths = new wxStandardPaths;
+	wxString filePath = paths->GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);
+	
+	delete paths;
+	
+	return stlStr(filePath);
+}
+
+
+bool ConfigFile::write()
+{
+	string filename;
+	wxStandardPaths *paths = new wxStandardPaths;
+
+
+	wxString filePath = paths->GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);
+
+
 
 	filePath+=wxCStr("/") + wxCStr(CONFIG_FILENAME);
 	filename = stlStr(filePath);

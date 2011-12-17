@@ -1222,7 +1222,10 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 			else if ( value == TRANS("Spatial Noise"))
 				transformMode= MODE_SPATIAL_NOISE;
 			else
+			{
+				ASSERT(false);
 				return false;
+			}
 
 			vectorParams.clear();
 			scalarParams.clear();
@@ -1707,7 +1710,7 @@ bool rotateTest()
 
 	bool needUp;
 	string s;
-	f->setProperty(0,KEY_MODE,TRANSFORM_MODE_STRING[MODE_ROTATE],needUp);
+	f->setProperty(0,KEY_MODE,TRANS(TRANSFORM_MODE_STRING[MODE_ROTATE]),needUp);
 	float tmpVal;
 	tmpVal=rng.genUniformDev()*M_PI*2.0;
 	stream_cast(s,tmpVal);
@@ -1865,11 +1868,13 @@ bool scaleTest()
 	bool needUp;
 	string s;
 	//Switch to scale mode
-	f->setProperty(0,KEY_MODE,TRANSFORM_MODE_STRING[MODE_SCALE],needUp);
+	f->setProperty(0,KEY_MODE,
+			TRANS(TRANSFORM_MODE_STRING[MODE_SCALE]),needUp);
 
 
 	//Switch to mass-centre origin
-	f->setProperty(0,KEY_ORIGINMODE,TRANSFORM_ORIGIN_STRING[ORIGINMODE_MASSCENTRE],needUp);
+	f->setProperty(0,KEY_ORIGINMODE,
+		TRANS(TRANSFORM_ORIGIN_STRING[ORIGINMODE_MASSCENTRE]),needUp);
 
 	float scaleFact;
 	//Pick some scale, both positive and negative.
