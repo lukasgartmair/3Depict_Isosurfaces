@@ -74,9 +74,6 @@ winconsole winC;
 #ifdef __APPLE__
 #include "CoreFoundation/CoreFoundation.h"
 #endif
-#if defined(__WIN32) || defined(__WIN64)
-#include <windows.h>
-#endif
 
 #include "3Depict.h"
 #include <utility>
@@ -368,37 +365,33 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     window_2_pane_2 = new wxPanel(splitterSpectra, wxID_ANY);
     panelTop = new BasicGLPane(splitTopBottom);
 
+
+	bool glPanelOK;
 #if wxCHECK_VERSION(2,9,0)
-    if(!panelTop->displaySupported())
-    {
-		wxMessageDialog *wxD  =new wxMessageDialog(this,
-				wxTRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please check your video drivers.") 
-			,wxTRANS("OpenGL Failed"),wxICON_ERROR|wxOK);
-		
-		wxD->ShowModal();
-
-		cerr << wxTRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please check your video drivers.") << endl;
-		delete wxD;
-		return;
-    }
-#endif
-
-#if defined(__WXGTK20__) && !wxCHECK_VERSION(2,9,0)
+	glPanelOK = panelTop->displaySupported();
+#else
+	#if defined(__WXGTK20__) 
     //I had to work this out by studying the construtor, and then testing simultaneously
     //on a broken and working Gl install. booyah.
-    if(!panelTop->m_glWidget)
+		glPanelOK=panelTop->m_glWidget;
+	#elif defined(__WIN32) || defined(__WIN64)
+		//I hope this works. I'm not 100% sure -- I can't seem to reliably break my GL under windows.
+		glPanelOK=panelTop->GetContext();
+	#endif
+#endif
+
+	if(!glPanelOK)
     {
 		wxMessageDialog *wxD  =new wxMessageDialog(this,
 				wxTRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please check your video drivers.") 
 			,wxTRANS("OpenGL Failed"),wxICON_ERROR|wxOK);
 		
 		wxD->ShowModal();
+		delete wxD;
 
 		cerr << wxTRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please check your video drivers.") << endl;
-		delete wxD;
 		return;
     }
-#endif
 
     panelLeft = new wxPanel(splitLeftRight, wxID_ANY);
     notebookControl = new wxNotebook(panelLeft, ID_NOTEBOOK_CONTROL, wxDefaultPosition, wxDefaultSize, wxNB_RIGHT);
@@ -3265,27 +3258,6 @@ void MainWindowFrame::OnAutosaveTimer(wxTimerEvent &event)
 					+wxCStr("/.")+wxCStr(PROGRAM_NAME);
 
 
-	//create the dir
-	if(!wxDirExists(filePath))
-	{
-		if(wxMkdir(filePath))
-		{
-			//Under windows, lets hide this folder
-#if defined(__WIN32) || defined(__WIN64)
-			string s;
-			s=stlStr(filePath);
-			SetFileAttributes(s.c_str(),FILE_ATTRIBUTE_HIDDEN);
-#endif
-		}
-		else
-		{
-			//Creating the folder failed, for whatever reason.
-			// just give up.
-			return;
-		}
-
-	}
-
 	unsigned int pid;
 	pid = wxGetProcessId();;
 
@@ -3774,7 +3746,8 @@ void MainWindowFrame::OnViewFullscreen(wxCommandEvent &event)
 	}
 	fullscreenState++;
 	fullscreenState%=4;
-#else
+#elif __LINUX__
+
 	//This does not work under non-apple platforms. :(
 	switch(fullscreenState)
 	{
@@ -3796,6 +3769,22 @@ void MainWindowFrame::OnViewFullscreen(wxCommandEvent &event)
 	}
 	fullscreenState++;
 	fullscreenState%=3;
+#else
+	
+	//This does not work under non-apple platforms. :(
+	switch(fullscreenState)
+	{
+		case 0:
+			ShowFullScreen(true);
+			break;
+		case 1:
+			ShowFullScreen(false);
+			break;
+		default:
+			ASSERT(false);
+	}
+	fullscreenState++;
+	fullscreenState%=2;
 #endif
 	programmaticEvent=false;
 }
@@ -4203,8 +4192,9 @@ void MainWindowFrame::OnClose(wxCloseEvent &event)
 		}
 	}
 	
-	//Remove the autosave file if it exists
-	wxString filePath = wxStandardPaths::Get().GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);
+	
+
+	//Remove the autosave file if it exists, as we are shutting down neatly.
 
 	//Get self PID
 	std::string pidStr;
@@ -4212,7 +4202,7 @@ void MainWindowFrame::OnClose(wxCloseEvent &event)
 	pid=wxGetProcessId();
 	stream_cast(pidStr,pid);
 	
-	
+	wxString filePath =wxStr(configFile.getConfigDir());
 	filePath+=wxCStr("/") + wxCStr(AUTOSAVE_PREFIX) + wxStr(pidStr)+ wxCStr(AUTOSAVE_SUFFIX);
 
 	if(wxFileExists(filePath))
@@ -4466,10 +4456,11 @@ void MainWindowFrame::OnCheckUpdatesThread(wxCommandEvent &evt)
 
 void MainWindowFrame::checkReloadAutosave()
 {
-
-	wxString filePath = wxStandardPaths::Get().GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);
+	wxString filePath =wxStr(configFile.getConfigDir());
 	filePath+=wxCStr("/") ;
 
+	if(!wxDirExists(filePath))
+		return;
 
 	//obtain a list of autosave xml files
 	wxArrayString *dirListing= new wxArrayString;
@@ -4929,21 +4920,118 @@ static const wxCmdLineEntryDesc g_cmdLineDesc [] =
 
 IMPLEMENT_APP(threeDepictApp)
 
+void threeDepictApp::initLanguageSupport()
+{
+	language =  wxLANGUAGE_DEFAULT;
+
+	// load language if possible, fall back to English otherwise
+	if(wxLocale::IsAvailable(language))
+	{
+		//Wx 2.9 and above are now unicode, so locale encoding
+		//conversion is deprecated.
+#if (wxMAJOR_VERSION <= 2) && (wxMINOR_VERSION <= 8)
+		usrLocale = new wxLocale( language, wxLOCALE_CONV_ENCODING | wxLOCALE_LOAD_DEFAULT);
+#else
+		usrLocale = new wxLocale( language, wxLOCALE_LOAD_DEFAULT);
+#endif
+
+#if defined(__WXMAC__)
+		wxStandardPaths* paths = (wxStandardPaths*) &wxStandardPaths::Get();
+		usrLocale->AddCatalogLookupPathPrefix(paths->GetResourcesDir());
+		
+#elif defined(__WIN32__)
+		wxStandardPaths* paths = (wxStandardPaths*) &wxStandardPaths::Get();
+		usrLocale->AddCatalogLookupPathPrefix(paths->GetResourcesDir());
+		usrLocale->AddCatalogLookupPathPrefix ( wxT ( "locales" ) );
+#endif
+		usrLocale->AddCatalog(wxCStr(PROGRAM_NAME));
+
+
+
+		if(! usrLocale->IsOk() )
+		{
+			std::cerr << "Unable to initialise usrLocale, falling back to English" << std::endl;
+			delete usrLocale;
+			usrLocale = new wxLocale( wxLANGUAGE_ENGLISH );
+			language = wxLANGUAGE_ENGLISH;
+		}
+		else
+		{
+			//Set the gettext language
+			textdomain( PROGRAM_NAME );
+			setlocale (LC_ALL, "");
+#ifdef __WXMAC__
+			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
+#elif defined(WIN32) || defined(WIN64)
+			cerr << paths->GetResourcesDir().mb_str(wxConvUTF8) << endl;;
+			std::string s;
+			s =  paths->GetResourcesDir().mb_str(wxConvUTF8);
+			s+="/locales/";
+			bindtextdomain( PROGRAM_NAME, s.c_str() );
+			//The names for the codesets are in confg.charset in gettext-runtime/intl in
+			// the gettext package. Tell gettext what codepage windows is using.
+			//
+			// The windows lookup codes are at
+			// http://msdn.microsoft.com/en-us/library/dd317756%28v=VS.85%29.aspx
+			unsigned int curPage;
+			curPage=GetACP();
+			switch(curPage)
+			{
+				case 1252:
+					cerr << "Bound cp1252" << endl;
+					bind_textdomain_codeset(PROGRAM_NAME, "CP1252");
+					break;
+				case 65001:
+					cerr << "Bound utf8"<< endl;
+					bind_textdomain_codeset(PROGRAM_NAME, "UTF-8");
+					break;
+				default:
+					cerr << "Unknown codepage " << curPage << endl;
+					break;
+			}
+			
+			cerr << TRANS("Saved package: ") << endl;
+			
+#else
+			bindtextdomain( PROGRAM_NAME, "/usr/share/locale" );
+			bind_textdomain_codeset(PROGRAM_NAME, "utf-8");
+#endif
+		}
+	}
+	else
+	{
+		std::cout << "Language not supported, falling back to English" << endl;
+		usrLocale = new wxLocale( wxLANGUAGE_ENGLISH );
+		language = wxLANGUAGE_ENGLISH;
+	}
+}
+
 //Catching key events globally.
 int threeDepictApp::FilterEvent(wxEvent& event)
 {
 
     if ( event.GetEventType()==wxEVT_KEY_DOWN )
     {
-	//Re-task the escape key globally as aborting
-	//during filter tree updates
-	if(  MainFrame && MainFrame->isCurrentlyUpdatingScene() &&
+		if(  MainFrame  &&
 	    ((wxKeyEvent&)event).GetKeyCode()==WXK_ESCAPE)
 	{
+			if( MainFrame->isCurrentlyUpdatingScene())
+			{
 		wxCommandEvent cmd;
 		MainFrame->OnProgressAbort( cmd);
 		return true;
 	}
+#ifdef __APPLE__
+			else if(MainFrame->IsFullScreen())
+			{
+				wxCommandEvent cmd;
+				MainFrame->OnViewFullscreen(cmd);
+				MainFrame->ShowFullScreen(false);
+				return true;
+			}
+#endif
+		
+		}
 
     }
 
@@ -5087,80 +5175,6 @@ bool threeDepictApp::OnInit()
     return true;
 }
 
-void threeDepictApp::initLanguageSupport()
-{
-	language =  wxLANGUAGE_DEFAULT;
-
-	// load language if possible, fall back to English otherwise
-	if(wxLocale::IsAvailable(language))
-	{
-		//Wx 2.9 and above are now unicode, so locale encoding
-		//conversion is deprecated.
-#if (wxMAJOR_VERSION <= 2) && (wxMINOR_VERSION <= 8)
-		usrLocale = new wxLocale( language, wxLOCALE_CONV_ENCODING | wxLOCALE_LOAD_DEFAULT);
-#else
-		usrLocale = new wxLocale( language, wxLOCALE_LOAD_DEFAULT);
-#endif
-
-#if defined(__WXMAC__)
-		wxStandardPaths* paths = (wxStandardPaths*) &wxStandardPaths::Get();
-		usrLocale->AddCatalogLookupPathPrefix(paths->GetResourcesDir());
-#elif defined(__WIN32__)
-		wxStandardPaths* paths = (wxStandardPaths*) &wxStandardPaths::Get();
-		usrLocale->AddCatalogLookupPathPrefix(paths->GetResourcesDir());
-#endif
-		usrLocale->AddCatalog(wxCStr(PROGRAM_NAME));
-//		usrLocale->AddCatalog(wxT("wxstd"));
-
-		if(! usrLocale->IsOk() )
-		{
-			std::cerr << "Unable to initialise usrLocale, falling back to English" << std::endl;
-			delete usrLocale;
-			usrLocale = new wxLocale( wxLANGUAGE_ENGLISH );
-			language = wxLANGUAGE_ENGLISH;
-		}
-		else
-		{
-			//Set the gettext language
-			textdomain( PROGRAM_NAME );
-			setlocale (LC_ALL, "");
-#ifdef __WXMAC__
-			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
-#elif defined(WIN32) || defined(WIN64)
-			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
-			//The names for the codesets are in confg.charset in gettext-runtime/intl in
-			// the gettext package. Tell gettext what codepage windows is using.
-			//
-			// The windows lookup codes are at
-			// http://msdn.microsoft.com/en-us/library/dd317756%28v=VS.85%29.aspx
-			unsigned int curPage;
-			curPage=GetACP();
-			switch(curPage)
-			{
-				case 1252:
-					bind_textdomain_codeset(PROGRAM_NAME, "CP1252");
-					break;
-				case 65001:
-					bind_textdomain_codeset(PROGRAM_NAME, "UTF-8");
-					break;
-				default:
-					cerr << "Unknown codepage " << curPage << endl;
-					break;
-			}
-			
-#else
-			bindtextdomain( PROGRAM_NAME, "/usr/share/locale" );
-			bind_textdomain_codeset(PROGRAM_NAME, "utf-8");
-#endif
-		}
-	}
-	else
-	{
-		std::cout << "Language not supported, falling back to English" << endl;
-		usrLocale = new wxLocale( wxLANGUAGE_ENGLISH );
-		language = wxLANGUAGE_ENGLISH;
-	}
-}
 #ifdef DEBUG
 #include "filters/allFilter.h"
 bool threeDepictApp::runUnitTests()
@@ -5322,3 +5336,4 @@ bool threeDepictApp::runUnitTests()
 	return true;
 }
 #endif
+

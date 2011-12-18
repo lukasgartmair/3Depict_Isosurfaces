@@ -28,14 +28,21 @@
 #include <vector>
 #include <utility>
 
+#include "filter.h"
+
+
 #if  defined(WIN32) || defined(WIN64)
 	//Help mathgl out a bit: we don't need the GSL on this platform
 	#define NO_GSL
 #endif
+
+
+
 #include <mgl/mgl.h>
 
 //mathgl shadows std::isnan
 #undef isnan
+
 
 #include "basics.h"
 
@@ -55,7 +62,6 @@ enum
 };
 
 
-#include "filter.h"
 
 
 //!Return a human readable string for a given plot type

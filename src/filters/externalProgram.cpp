@@ -749,7 +749,7 @@ bool echoTest()
 #if !defined(__WIN32__) && !defined(__WIN64__)
 	errCode=system("echo testing... > /dev/null");
 #else
-	errCode=system("echo testing..."):
+	errCode=system("echo testing... > NUL");
 #endif
 	if(errCode)
 	{

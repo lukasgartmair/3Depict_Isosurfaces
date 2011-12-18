@@ -22,7 +22,6 @@ class FilterStreamData;
 class ProgressData;
 class RangeFileFilter;
 
-#include "translation.h"
 
 #include <list>
 #include <vector>
@@ -30,10 +29,11 @@ class RangeFileFilter;
 #include <utility>
 #include <map>
 
+#include "drawables.h"
 #include "basics.h"
 #include "APTClasses.h"
 #include "mathfuncs.h"
-#include "drawables.h"
+
 #include "select.h"
 #include "voxels.h"
 
@@ -47,6 +47,10 @@ class RangeFileFilter;
 
 
 #include "wxcomponents.h"
+
+
+#include "translation.h"
+
 
 const unsigned int NUM_CALLBACK=50000;
 

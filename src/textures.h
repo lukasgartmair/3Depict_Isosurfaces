@@ -20,6 +20,9 @@
 #ifndef TEXTURES_H
 #define TEXTURES_H
 
+#include "basics.h"
+#include "wxcommon.h"
+
 #ifdef __APPLE__ 
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
@@ -33,8 +36,8 @@
 #include <string>
 
 #include "pngread.h"
-#include "basics.h"
-#include "wxcommon.h"
+
+
 //Named Textures
 enum
 {

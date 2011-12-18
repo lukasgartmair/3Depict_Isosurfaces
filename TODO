@@ -3,8 +3,6 @@ TODO List - worlds simplest bugtracking system
 --Packaging--
 
 --Main app--
-	Fix Needs testing:
-		* Windows' .3Depict folder should be hidden on creation
 	To Implement:
 		== Next version ==
 
@@ -44,11 +42,6 @@ TODO List - worlds simplest bugtracking system
 
 	Outstanding bugs:
 		== Next release==
-		* Windows complains if .3Depict folder is missing on startup (after install? Fixed?)
-		* Windows crash on startup bug -- seems to happen after
-		  locale init, maybe openGL related (there was a second
-		  opengl program running at the time - context problem???)
-		* Drag and drop under windows fails
 		* Voxelisation filter & ion sampler filter show ions disabled in upstream range
 		* Voxelisation "filter" option appears to be reducing voxel intensity
 			
@@ -101,6 +94,9 @@ TODO List - worlds simplest bugtracking system
 		* Duplicate range at end when exporting range
 		* Large datasets causing crash?
 		* Ion transform leaking memory??
+		* Windows (32 bit on 64) crash on startup bug -- seems to happen after
+		  locale init, maybe openGL related (there was a second
+		  opengl program running at the time - context problem???). Cannot reproduce... Maybe fixed by improved glpane error code?
 
 
 	Auditing:
