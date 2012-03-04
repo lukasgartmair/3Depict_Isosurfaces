@@ -1,10 +1,6 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
-#
-# Translators:
-# epix1234 <erich_s@gmx.de>, 2011.
-#   <erich_s@gmx.de>, 2011.
 msgid ""
 msgstr ""
 "Project-Id-Version: 3Depict\n"
@@ -34,8 +30,7 @@ msgstr ""
 
 #: ../src/configFile.cpp:565
 msgid "Online access for non win32/apple platforms is intentionally disabled, "
-msgstr ""
-"Onlinezugang für nicht win32/apple Systeme ist absichtlich deaktiviert,"
+msgstr "Onlinezugang für nicht win32/apple Systeme ist absichtlich deaktiviert,"
 
 #: ../src/configFile.cpp:566
 msgid ""
@@ -1523,8 +1518,9 @@ msgid "Primitive Type (0-"
 msgstr "Primitive Art (0-"
 
 #: ../src/filters/compositionProfile.cpp:913
+#, fuzzy
 msgid "Show primitive"
-msgstr ""
+msgstr "Zeige Primitiv"
 
 #: ../src/filters/compositionProfile.cpp:956
 msgid "Fixed Bin Num"
@@ -2917,8 +2913,8 @@ msgid ""
 "Unable to allocate requested memory.\n"
 " Try a lower resolution, or save as vector (SVG)."
 msgstr ""
-"Kann den notwendigen Speicher nicht zuordnen.\n Versuche eine geringer "
-"Auflösung oder speichere als Vektografik (svg)."
+"Kann den notwendigen Speicher nicht zuordnen.\n"
+" Versuche eine geringer Auflösung oder speichere als Vektografik (svg)."
 
 #: ../src/mathglPane.cpp:1040
 msgid "Plotting functions returned an error:\n"
@@ -3108,18 +3104,20 @@ msgstr "Begrenzungs-Box"
 msgid "Spectral Colour"
 msgstr "Spectral Farbe"
 
-msgid "Filled Voxels"
-msgstr "Gefüllte Voxel"
 
-msgid "Cube length"
-msgstr "Cube Länge"
+#, fuzzy
 
-msgid "Error loading autosave"
-msgstr "Fehler beim Laden der Datei"
+#~ msgid "Filled Voxels"
+#~ msgstr "Gefüllte Voxel"
 
-msgid "Error opening autosave file."
-msgstr "Fehler beim Öffnen der pos-Datei"
+#~ msgid "Cube length"
+#~ msgstr "Cube Länge"
 
-msgid "colour "
-msgstr "Farbe"
+#~ msgid "Error loading autosave"
+#~ msgstr "Fehler beim Laden der Datei"
 
+#~ msgid "Error opening autosave file."
+#~ msgstr "Fehler beim Öffnen der pos-Datei"
+
+#~ msgid "colour "
+#~ msgstr "Farbe"
