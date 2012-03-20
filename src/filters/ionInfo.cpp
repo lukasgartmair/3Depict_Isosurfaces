@@ -58,7 +58,7 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 	//(result is stored in qh's globals :(  )
 	//note that the input is "joggled" to 
 	//ensure simplicial facet generation
-    
+
 	qh_new_qhull(	dim,
 			bufferSize,
 			buffer,
@@ -73,16 +73,17 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 	//OKay, whilst this may look like invalid syntax,
 	//qh is actually a macro from qhull
 	//that creates qh. or qh-> as needed
-	vertexT *vertex;// = qh vertex_list;
-	FORALLvertices
+	vertexT *vertex = qh vertex_list;
+	while(vertex != qh vertex_tail)
 	{
+		vertex = vertex->next;
 		numPoints++;
 	}
 	//--	
 
 	//store points in vector
 	//--
-	//vertex= qh.vertex_list;
+	vertex= qh vertex_list;
 	try
 	{
 		resHull.resize(numPoints);	
@@ -98,13 +99,14 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 	//--
 	int curPt=0;
 	midPoint=Point3D(0,0,0);	
-    FORALLvertices
+	while(vertex != qh vertex_tail)
 	{
 		resHull[curPt]=Point3D(vertex->point[0],
 				vertex->point[1],
 				vertex->point[2]);
 		midPoint+=resHull[curPt];
 		curPt++;
+		vertex = vertex->next;
 	}
 	midPoint*=1.0f/(float)numPoints;
 	//--
