@@ -1,0 +1,28 @@
+[Ions]
+Number=9
+Ion1=A
+Ion2=B
+Ion3=C
+Ion4=D
+Ion5=E
+Ion6=F
+Ion7=G
+Ion8=H
+Ion9=I
+[Ranges]
+Number=15
+Range1=11.877 13.29 A:1 Color:CC00CC
+Range2=5.93 6.17 A:1 Color:00FF00
+Range3=28.812 32.3 B:1 Color:FF0000
+Range4=13.94 14.44 A:1 C:2 Color:99FF00
+Range5=15.03 15.47 A:1 C:3 Color:00B200
+Range6=15.89 18.43 D:1 Color:0000FF
+Range7=37.24 39.88 A:6 Color:999900
+Range8=43.54 48.89 A:7 Color:CCFF00
+Range9=57.43 60.95 A:8 Color:B2B200
+Range10=73.44 79 A:10 D:1 Color:66FF66
+Range11=27.3 27.81 E:1 Color:FF6666
+Range12=25.97 26.29 F:1 Color:009999
+Range13=23.87 24.29 G:1 Color:666666
+Range14=27.85 28.33 H:1 Color:000000
+Range15=0.98 1.13 C:1 Color:FFAFAF

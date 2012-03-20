@@ -75,8 +75,15 @@
 	#define TEST(f,g) if(!(f)) { cerr << "Test fail :" << __FILE__ << ":" << __LINE__ << "\t"<< g << endl;return false;}
 	#endif
 
+	//A hack to generate compile time asserts (thanks Internet).
+	//This causes gcc to give "duplicate case value", if the predicate is false
+	#define COMPILE_ASSERT(pred)            \
+	    switch(0){case 0:case pred:;}
+
+
 #else
 	#define ASSERT(f)
+	#define COMPILE_ASSERT(f)
 	#define WARN(f,g) 
 #endif
 

@@ -604,6 +604,7 @@ GSL_LIBS
 GSL_CFLAGS
 GSL_CONFIG
 MGL_LIBS
+MGL_CFLAGS
 GL_LIBS
 PNG_LIBS
 PNG_CFLAGS
@@ -6419,6 +6420,8 @@ esac
 #------------
 
 #Check for Mathgl
+CFLAGS_ORIG="$CFLAGS"
+LIBS_ORIG="$LIBS"
 
 
 # Check whether --with-mgl-flags was given.
@@ -6427,7 +6430,9 @@ if test "${with_mgl_flags+set}" = set; then :
 fi
 
 if test x"$with_mgl_flags" != x"" ; then
-	MGL_CFLAGS="$with_mgl_flags"
+	CFLAGS="$CFLAGS $with_mgl_flags"
+	MGL_CFLAGS=$CFLAGS
+
 fi
 
 
@@ -6437,12 +6442,12 @@ if test "${with_mgl_libs+set}" = set; then :
 fi
 
 if test x"$with_mgl_libs" != x"" ; then
-	MGL_LIBS="$with_mgl_libs"
-
+	LIBS="$LDFLAGS $with_mgl_libs"
 else
-	MGL_LIBS=-lmgl
-
+	LIBS="$LDFLAGS -lmgl"
 fi
+	MGL_LIBS=$LIBS
+
 
 ac_fn_c_check_header_mongrel "$LINENO" "mgl/mgl_c.h" "ac_cv_header_mgl_mgl_c_h" "$ac_includes_default"
 if test "x$ac_cv_header_mgl_mgl_c_h" = x""yes; then :
@@ -6450,10 +6455,12 @@ if test "x$ac_cv_header_mgl_mgl_c_h" = x""yes; then :
 $as_echo "#define HAVE_MGL_H /**/" >>confdefs.h
 
 else
-  as_fn_error "Required MathGL headers not found (looking for mgl/mg_c.h) - is mathgl developement scode installed?" "$LINENO" 5
+  as_fn_error "Required MathGL headers not found (looking for mgl/mgl_c.h) - is mathgl developement scode installed?" "$LINENO" 5
 fi
 
 
+CFLAGS="$CFLAGS_ORIG"
+LIBS="$LIBS_ORIG"
 
 
 #Check for gsl

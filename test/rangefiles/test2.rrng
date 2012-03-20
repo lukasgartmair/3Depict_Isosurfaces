@@ -1,0 +1,14 @@
+[Ions]
+Number=3
+Ion1=A
+Ion2=B
+Ion3=C
+[Ranges]
+Number=6
+Range1=1.00 2.001 A:1 Color:A033FF
+Range2=20.00 21.00 A:1 Color:A033FF
+Range3=32.00 34.00 B:1 Color:33FF33
+Range4=92.08 94.00 C:1 Color:FF00A0
+Range5=39.00 39.98 C:1 Color:FF00A0
+Range6=40.00 41.00 C:1 Color:FF00A0
+
