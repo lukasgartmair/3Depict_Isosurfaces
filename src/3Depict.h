@@ -29,6 +29,7 @@
 // end wxGlade
 
 //Local stuff
+#include "wxcommon.h"
 #include "glPane.h"
 #include "mathglPane.h"
 #include "cropPanel.h" // cropping tools
@@ -50,6 +51,7 @@ public:
     MainWindowFrame(wxWindow* parent, int id, const wxString& title, const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_FRAME_STYLE);
     virtual ~MainWindowFrame();
 
+    //Drop the following files onto the given window XY coordinates.
     void OnDropFiles(const wxArrayString &files, int x, int y);
 
     bool isCurrentlyUpdatingScene() const { return currentlyUpdatingScene;};
@@ -356,4 +358,4 @@ public:
 
 };
 
-#endif // QUICK3D_H
+#endif 

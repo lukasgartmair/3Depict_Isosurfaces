@@ -20,13 +20,18 @@
 #define XMLHELPER_H
 
 //Undefs are because wxwidgets and libxml both define this
-#undef ATTRIBUTE_PRINTF
-#include <libxml/xmlreader.h>
-#undef ATTRIBUTE_PRINTF
-
+#ifdef ATTRIBUTE_PRINTF
+	#pragma push_macro("ATTRIBUTE_PRINTF")
+	#include <libxml/xmlreader.h>
+	#pragma pop_macro(" ATTRIBUTE_PRINTF")
+#else
+	#include <libxml/xmlreader.h>
+	#undef ATTRIBUTE_PRINTF
+#endif
 #include <string>
 using std::string;
 
+#include "basics.h"
 
 //These functions return nonzero on failure,
 //zero on success
@@ -38,6 +43,10 @@ unsigned int XMLHelpNextType(xmlNodePtr &node,int);
 //Scroll forwards until we reach an element of a given node. return nonzero on error
 unsigned int XMLHelpFwdToElem(xmlNodePtr &node,  const char *nodeName);
 
+//Convert a normal string sequence into an XML escaped sequence
+std::string escapeXML(const std::string &s);
+//Convert an xml escaped sequence into a normal string sequence
+std::string unescapeXML(const std::string &s);
 
 //!Jump to the next element of the given name and retreive the value for the specified attrip
 //returns false on failure
@@ -69,6 +78,7 @@ bool XMLGetNextElemAttrib(xmlNodePtr &nodePtr, T &v, const char *nodeName, const
 
 
 //Returns false on failure 
+//Do not use on validly whitespace containing XML
 template<class T>
 bool XMLGetAttrib(xmlNodePtr &nodePtr, T&v, const char *attrib)
 {

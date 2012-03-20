@@ -1,5 +1,5 @@
 #include "externalProgram.h"
-
+#include "../wxcommon.h"
 
 #include "../xmlHelper.h"
 
@@ -68,7 +68,7 @@ size_t ExternalProgramFilter::numBytesForCache(size_t nObjects) const
 }
 
 unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
 	//use the cached copy if we have it.
 	if(cacheOK)
@@ -313,7 +313,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			wxRemoveFile(wxStr(ionOutputNames[ui]));
 
 			//call the update to be nice
-			(*callback)();
+			(*callback)(false);
 		}
 		for(unsigned int ui=0;ui<plotOutputNames.size();ui++)
 		{
@@ -321,7 +321,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			wxRemoveFile(wxStr(plotOutputNames[ui]));
 
 			//call the update to be nice
-			(*callback)();
+			(*callback)(false);
 		}
 	}
 	wxSetWorkingDirectory(origDir);	
@@ -652,9 +652,9 @@ bool ExternalProgramFilter::writeState(std::ofstream &f,unsigned int format, uns
 		{
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
 
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
-			f << tabs(depth+1) << "<commandline name=\"" << commandLine << "\"/>" << endl;
-			f << tabs(depth+1) << "<workingdir name=\"" << workingDir << "\"/>" << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
+			f << tabs(depth+1) << "<commandline name=\"" << escapeXML(commandLine )<< "\"/>" << endl;
+			f << tabs(depth+1) << "<workingdir name=\"" << escapeXML(convertFileStringToCanonical(workingDir)) << "\"/>" << endl;
 			f << tabs(depth+1) << "<alwayscache value=\"" << alwaysCache << "\"/>" << endl;
 			f << tabs(depth+1) << "<cleaninput value=\"" << cleanInput << "\"/>" << endl;
 			f << tabs(depth) << "</" << trueName() << ">" << endl;
@@ -835,7 +835,7 @@ bool posTest()
 	vector<const FilterStreamData*> streamIn,streamOut;
 	streamIn.push_back(someData);
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
 
 	//Should have exactly one stream, which is an ion stream
 	TEST(streamOut.size() == 1,"stream count");

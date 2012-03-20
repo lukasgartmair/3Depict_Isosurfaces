@@ -20,12 +20,12 @@
 #include <wx/sizer.h>
 #include <wx/dcbuffer.h>
 #include "mathglPane.h"
-#include "wxcomponents.h"
 
+#include "wxcomponents.h"
+#include "wxcommon.h"
+#include "translation.h"
 
 #include <mgl/mgl_eps.h>
-
-#include "translation.h"
 
 #include <fstream>
 #include <vector>
@@ -50,7 +50,7 @@ enum
 };
 
 //Do the particular enums require a redraw?
-const bool MOUSE_ACTION_NEEDS_REDRAW[] = { false,true,true,false};
+const bool MOUSE_ACTION_NEEDS_REDRAW[] = { false,true,true};
 
 
 
@@ -85,6 +85,8 @@ enum
 MathGLPane::MathGLPane(wxWindow* parent, int id) :
 wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 {
+	COMPILE_ASSERT(ARRAYSIZE(MOUSE_ACTION_NEEDS_REDRAW) == MOUSE_MODE_ENUM_END);
+
 	hasResized=true;
 	limitInteract=haveUpdates=false;
 	mouseDragMode=MOUSE_MODE_ENUM_END;	
@@ -319,10 +321,11 @@ void MathGLPane::render(wxPaintEvent &event)
 			unsigned int startMask, endMask;
 			startMask=getAxisMask(draggingStart.x, draggingStart.y);
 			endMask=getAxisMask(draggingCurrent.x, draggingCurrent.y);
+
 			if( (startMask & AXIS_POSITION_LOW_X)
 				&& (endMask & AXIS_POSITION_LOW_X) )
 			{
-				if( !(startMask &AXIS_POSITION_LOW_Y && endMask && AXIS_POSITION_LOW_Y))
+				if( !((startMask &AXIS_POSITION_LOW_Y) && (endMask & AXIS_POSITION_LOW_Y)))
 				{
 					//left of X-Axis event
 					//Draw a little I beam.
@@ -445,6 +448,11 @@ bool MathGLPane::getRegionUnderCursor(const wxPoint  &mousePos, unsigned int &pl
 
 	//Convert the mouse coordinates to data coordinates.
 	mglPoint pMouse= gr->CalcXYZ(mousePos.x,mousePos.y);
+
+
+	//Only allow  range interaction within the plot bb
+	if(pMouse.x > gr->Max.x || pMouse.x < gr->Min.x)
+		return false;
 
 	//check if we actually have a region
 	if(!thePlot->getRegionIdAtPosition(pMouse.x,pMouse.y,plotId,regionId))
@@ -807,7 +815,6 @@ void MathGLPane::middleMouseReleased(wxMouseEvent& event)
 {
 	if(mouseDragMode == MOUSE_MODE_DRAG_PAN)
 	{
-		wxPoint draggingEnd = event.GetPosition();
 		mouseDragMode=MOUSE_MODE_ENUM_END;
 		//Repaint
 		Refresh();
@@ -845,7 +852,8 @@ void MathGLPane::updateDragPos(const wxPoint &draggingEnd) const
 		endY=draggingStart.y;
 	}
 
-	if(startX == endX || startY == endY )
+	//Check that the start and end were not the same (i.e. null zoom in all cases)
+	if(startX == endX && startY == endY )
 		return ;
 
 
@@ -870,6 +878,10 @@ void MathGLPane::updateDragPos(const wxPoint &draggingEnd) const
 		}
 		else
 		{
+			//Check if can't do anything with this, as it is a null zoom
+			if(startY == endY)
+				return;
+
 			//left of X-Axis event
 			//Reset the axes such that the
 			//zoom is only along one dimension (y)
@@ -879,6 +891,9 @@ void MathGLPane::updateDragPos(const wxPoint &draggingEnd) const
 	}
 	else if(pStart.y < currentAxisY  && pEnd.y < currentAxisY )
 	{
+		//Check if can't do anything with this, as it is a null zoom
+		if(startX == endX)
+			return;
 		//below Y axis event
 		//Reset the axes such that the
 		//zoom is only along one dimension (x)

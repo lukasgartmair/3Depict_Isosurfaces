@@ -1,6 +1,7 @@
 #ifndef SPATIALANALYSIS_H
 #define SPATIALANALYSIS_H
 #include "../filter.h"
+#include "../translation.h"
 
 //!Spatial analysis filter
 class SpatialAnalysisFilter : public Filter
@@ -58,7 +59,7 @@ class SpatialAnalysisFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &getOut, 
-					ProgressData &progress, bool (*callback)(void));
+					ProgressData &progress, bool (*callback)(bool));
 		//!Get the type string  for this fitler
 		virtual std::string typeString() const { return std::string(TRANS("Spat. Analysis"));};
 
@@ -86,6 +87,9 @@ class SpatialAnalysisFilter : public Filter
 		
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
+#ifdef DEBUG
+		bool runUnitTests();
+#endif
 };
 
 #endif

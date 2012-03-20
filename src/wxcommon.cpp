@@ -20,7 +20,6 @@
 #include "basics.h"
 
 #include <wx/xml/xml.h>
-#include <wx/url.h>
 #include <wx/event.h>
 #include <vector>
 #include <string>
@@ -111,6 +110,16 @@ std::string locateDataFile(const char *name)
 #endif
 }
 
+VersionCheckThread::VersionCheckThread(wxWindow *target) : wxThread(wxTHREAD_JOINABLE)
+{
+	targetWindow=0; 
+	complete=false;
+	retrieveOK=false;
+	targetWindow=target; 
+	url.GetProtocol().Initialize();
+}
+
+
 void *VersionCheckThread::Entry()
 {
   	wxCommandEvent event( RemoteUpdateAvailEvent);
@@ -120,7 +129,19 @@ void *VersionCheckThread::Entry()
 	versionStr.clear();
 
 	//Try to download RSS feed
-	wxURL url(wxCStr(RSS_FEED_LOCATION));
+	std::string strUrl;
+	wxString rssUrl;
+
+	std::cerr << "Running version check" << std::endl;	
+	//Build the rss query string, encoding 3depict version and OS description 
+	strUrl = std::string(RSS_FEED_LOCATION) + std::string("?progver=") + std::string(PROGRAM_VERSION) + 
+				std::string("&os=") + stlStr(::wxGetOsDescription());
+
+	wxURI uri(wxStr(strUrl));
+	rssUrl = uri.BuildURI();
+
+	rssUrl = wxStr(strUrl);
+	url.SetURL(rssUrl); 
 
 	//If the URL could not be downloaded, tough.
 	if (url.GetError() != wxURL_NOERR)
@@ -208,7 +229,7 @@ void *VersionCheckThread::Entry()
 	}
 	delete doc;
 
-	if(!itemStrs.size())
+	if(itemStrs.empty())
 	{
 		//hmm. thats odd. no items. guess we failed :(
 		retrieveOK=false;

@@ -21,7 +21,6 @@
 
 #include <sys/time.h>
 #include <limits>
-#include <cassert>
 
 
 

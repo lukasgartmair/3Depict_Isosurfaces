@@ -81,7 +81,7 @@ void RangeFileFilter::initFilter(const std::vector<const FilterStreamData *> &da
 }
 
 unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-		std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
+		std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
 
 	//use the cached copy of the data if we have it.
@@ -128,7 +128,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 
 	progress.step=1;
 	progress.filterProgress=0;
-	progress.stepName="Pre-Allocate";
+	progress.stepName=TRANS("Pre-Allocate");
 	progress.maxStep=2;	
 
 	vector<size_t> dSizes;
@@ -200,7 +200,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 						curProg=NUM_CALLBACK;
 
 
-						if(!(*callback)())
+						if(!(*callback)(false))
 							spin=true;
 						}
 					}
@@ -215,6 +215,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 					for(unsigned int uj=0;uj<dSizes.size();uj++)
 						dSizes[uj] = dSizes[uj]+dSizeArr[uk][uj];
 				}
+				delete[] dSizeArr;
 #endif
 
 			}
@@ -241,7 +242,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 	//Update progress info
 	progress.step=2;
 	progress.filterProgress=0;
-	progress.stepName="Range";
+	progress.stepName=TRANS("Range");
 	size_t n=0;
 
 
@@ -318,7 +319,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 						curProg=NUM_CALLBACK;
 
 						
-						if(!(*callback)())
+						if(!(*callback)(false))
 						{
 							//Free space allocated for output ion streams...
 							for(unsigned int ui=0;ui<d.size();ui++)
@@ -432,11 +433,10 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 	return 0;
 }
 
-unsigned int RangeFileFilter::updateRng()
+bool RangeFileFilter::updateRng()
 {
-	unsigned int uiErr;	
-	if((uiErr = rng.open(rngName.c_str(),assumedFileFormat)))
-		return uiErr;
+	if(!rng.openGuessFormat(rngName.c_str()))
+		return false;
 
 	unsigned int nRng = rng.getNumRanges();
 	enabledRanges.resize(nRng);
@@ -449,7 +449,7 @@ unsigned int RangeFileFilter::updateRng()
 	for(unsigned int ui=0;ui<enabledIons.size(); ui++)
 		enabledIons[ui]=(char)1;
 
-	return 0;
+	return true;
 }
 
 void RangeFileFilter::setRangeData(const RangeFile &rngNew)
@@ -543,7 +543,7 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 		stream_cast(suffix,ui);
 		strVec.push_back(make_pair(string(TRANS("IonID ") +suffix),rng.getName(ui)));
 		types.push_back(PROPERTY_TYPE_STRING);
-		keys.push_back(3*ui+KEY_ENABLE_ALL_IONS);
+		keys.push_back(3*ui+1+KEY_ENABLE_ALL_IONS);
 
 
 		string str;	
@@ -554,7 +554,7 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 		strVec.push_back(make_pair(string(TRANS("Active Ion "))
 						+ suffix,str));
 		types.push_back(PROPERTY_TYPE_BOOL);
-		keys.push_back(3*ui+1+KEY_ENABLE_ALL_IONS);
+		keys.push_back(3*ui+2+KEY_ENABLE_ALL_IONS);
 		
 		RGBf col;
 		string thisCol;
@@ -566,7 +566,7 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 
 		strVec.push_back(make_pair(string(TRANS("Colour ")) + suffix,thisCol)); 
 		types.push_back(PROPERTY_TYPE_COLOUR);
-		keys.push_back(3*ui+2+KEY_ENABLE_ALL_IONS);
+		keys.push_back(3*ui+3+KEY_ENABLE_ALL_IONS);
 
 
 	}
@@ -747,9 +747,9 @@ bool RangeFileFilter::setProperty(unsigned int set, unsigned int key,
 			//The ion ID is simply the row number/NUM_ROWS.
 			//similarly the element is given by remainder 
 			const unsigned int NUM_ROWS=3;
-			unsigned int ionID=(key-KEY_ENABLE_ALL_IONS)/NUM_ROWS;
+			unsigned int ionID=((key-1)-KEY_ENABLE_ALL_IONS)/NUM_ROWS;
 			ASSERT(key < NUM_ROWS*rng.getNumIons()+KEY_ENABLE_ALL_IONS);
-			unsigned int prop = (key-KEY_ENABLE_ALL_IONS)-ionID*NUM_ROWS;
+			unsigned int prop = ((key-1)-KEY_ENABLE_ALL_IONS)-ionID*NUM_ROWS;
 
 			switch(prop)
 			{
@@ -977,9 +977,9 @@ bool RangeFileFilter::writeState(std::ofstream &f,unsigned int format, unsigned 
 		case STATE_FORMAT_XML:
 		{	
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 
-			f << tabs(depth+1) << "<file name=\""<< convertFileStringToCanonical(rngName) << "\"/>"  << endl;
+			f << tabs(depth+1) << "<file name=\""<< escapeXML(convertFileStringToCanonical(rngName)) << "\"/>"  << endl;
 			f << tabs(depth+1) << "<dropunranged value=\""<<(int)dropUnranged<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<enabledions>"<< endl;
 			for(unsigned int ui=0;ui<enabledIons.size();ui++)
@@ -1315,7 +1315,7 @@ bool testRanged()
 
 	//Run the initialisation stage
 	ProgressData prog;
-	r->refresh(streamIn,streamOut,prog,dummyCallback);
+	TEST(!r->refresh(streamIn,streamOut,prog,dummyCallback),"Refresh error code");
 	//--
 	
 	//Run the tests

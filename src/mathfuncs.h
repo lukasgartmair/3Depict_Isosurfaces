@@ -179,8 +179,6 @@ class RandNumGen
 #endif
 #endif
 #endif
-//needed for sin and cos
-#include <math.h>
 
 typedef struct 
 {

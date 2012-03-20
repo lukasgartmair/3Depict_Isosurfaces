@@ -18,8 +18,18 @@
 
 #include "rdf.h"
 #include "mathfuncs.h"
-#include "voxels.h"
 
+#include <utility>
+
+using std::vector;
+#ifdef DEBUG
+using std::cerr;
+using std::endl;
+#endif
+
+#ifdef _OPENMP
+#include <omp.h> 
+#endif
 //QHull library
 //Build fix for qhull ; wx defines powerpc without
 //assigning a value, causing build fail on powerpc
@@ -66,11 +76,9 @@ unsigned int vectorPointDir(const Point3D &pA, const Point3D &pB,
 	if( dot1 < 0.0f && dot2 <0.0f )
 		return POINTDIR_APART; 
 
-	if(dot1 > 0.0f && dot2 > 0.0f )
-		return POINTDIR_TOGETHER;
-
-	ASSERT(false)
-	return 0; 
+	ASSERT(dot1 > 0.0f && dot2 > 0.0f );
+	
+	return POINTDIR_TOGETHER;
 }
 
 //! Returns the shortest distance between a line segment and a given point
@@ -333,8 +341,6 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 	//shrink the convex hull such that it lies at
 	//least reductionDim from the original surface of
 	//the convex hull
-	//The scale factor that we want is 
-	//given by s = 1 -(reductionDim/maxDist)
 	float scaleFactor;
 	scaleFactor = 1  - reductionDim/ minDist;
 
@@ -345,7 +351,7 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 	}
 
 	//update mindist such that it is still valid after scaling
-	minDist=minDist*scaleFactor;
+	minDist=minDist*scaleFactor; 
 	
 #ifdef DEBUG
 	cerr << "Scale Factor : " << scaleFactor << endl;
@@ -434,7 +440,7 @@ reduced_loop_next:
 unsigned int generateNNHist( const vector<Point3D> &pointList, 
 			const K3DTree &tree,unsigned int nnMax, unsigned int numBins,
 		       	vector<vector<size_t> > &histogram, float *binWidth , unsigned int *progressPtr,
-			bool (*callback)(void))
+			bool (*callback)(bool))
 {
 	if(pointList.size() <=nnMax)
 		return RDF_ERR_INSUFFICIENT_INPUT_POINTS;
@@ -457,8 +463,8 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 	size_t numAnalysed=0;
 #ifdef _OPENMP
 	bool spin=false;
-	int callbackReduce[omp_get_num_threads()];
-	for(unsigned int ui=0;ui<omp_get_num_threads();ui++)
+	int callbackReduce[omp_get_max_threads()];
+	for(unsigned int ui=0;ui<omp_get_max_threads();ui++)
 		callbackReduce[ui]=CALLBACK_REDUCE;
 #else
 	int callbackReduce=CALLBACK_REDUCE;
@@ -493,7 +499,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 		#pragma omp critical
 		{
 			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
-			if(!(*callback)())
+			if(!(*callback)(false))
 				spin=true;
 			numAnalysed+=CALLBACK_REDUCE;
 		}			
@@ -503,7 +509,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 		if(!(callbackReduce--))
 		{
 			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
-			if(!(*callback)())
+			if(!(*callback)(false))
 			{
 				delete[] maxSqrDist;
 				return RDF_ABORT_FAIL;
@@ -535,12 +541,12 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 	}	
 
 	maxOfMaxDists=sqrtf(maxOfMaxDists);
-	maxDist[nnMax] = maxOfMaxDists;	
+	maxDist[nnMax-1] = maxOfMaxDists;	
 
 	//Cacluate the bin widths required to accommodate this
-	//distribution, allowing an extra 2% for the tail bin
+	//distribution
 	for(unsigned int ui=0; ui<nnMax; ui++)
-		binWidth[ui]= 1.02f*maxDist[ui]/(float)numBins;
+		binWidth[ui]= maxDist[ui]/(float)numBins;
 	delete[] maxDist;
 	
 	//Generate histogram for what we have already
@@ -555,7 +561,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 #ifdef _OPENMP
 	spin=false;
 	numAnalysed=0;
-	for(unsigned int ui=0;ui<omp_get_num_threads();ui++)
+	for(unsigned int ui=0;ui<omp_get_max_threads();ui++)
 		callbackReduce[ui]=CALLBACK_REDUCE;
 #else
 	callbackReduce=CALLBACK_REDUCE;
@@ -596,7 +602,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 		#pragma omp critical
 		{
 			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
-			if(!(*callback)())
+			if(!(*callback)(false))
 				spin=true;
 			numAnalysed+=CALLBACK_REDUCE;
 		}			
@@ -606,7 +612,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 		if(!(callbackReduce--))
 		{
 			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
-			if(!(*callback)())
+			if(!(*callback)(false))
 			{
 				delete[] maxSqrDist;
 				return RDF_ABORT_FAIL;
@@ -626,7 +632,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &tree,
 			unsigned int *histogram, float distMax,
 			unsigned int numBins, unsigned int &warnBiasCount,
-			unsigned int *progressPtr,bool (*callback)(void))
+			unsigned int *progressPtr,bool (*callback)(bool))
 		
 {
 
@@ -642,15 +648,14 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 	//but i dont have  a tree.numvertcies
 	float maxSqrDist = distMax*distMax;
 
-	vector<const Point3D *> pts;
 	warnBiasCount=0;
 	
 	//Main r-max searching routine
 #ifdef _OPENMP
 	bool spin=false;
 	size_t numAnalysed=0;
-	int callbackReduce[omp_get_num_threads()];
-	for(unsigned int ui=0;ui<omp_get_num_threads();ui++)
+	int callbackReduce[omp_get_max_threads()];
+	for(unsigned int ui=0;ui<omp_get_max_threads();ui++)
 		callbackReduce[ui]=CALLBACK_REDUCE;
 #else
 	int callbackReduce=CALLBACK_REDUCE;
@@ -663,7 +668,7 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 			continue;
 #endif
 
-		pair<unsigned int,unsigned int> thisPair;	
+		std::pair<unsigned int,unsigned int> thisPair;	
 		float sqrDist,deadDistSqr;
 		Point3D sourcePoint;
 		const Point3D *nearPt=0;
@@ -721,7 +726,7 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 			#pragma omp critical
 			{
 				*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
-				if(!(*callback)())
+				if(!(*callback)(false))
 					spin=true;
 				numAnalysed+=CALLBACK_REDUCE;
 			}			
@@ -731,7 +736,7 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 			if(!(callbackReduce--))
 			{
 				*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*100.0f);
-				if(!(*callback)())
+				if(!(*callback)(false))
 					return RDF_ABORT_FAIL;
 				callbackReduce=CALLBACK_REDUCE;
 			}

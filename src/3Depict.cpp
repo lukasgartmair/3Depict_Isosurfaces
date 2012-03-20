@@ -22,7 +22,7 @@
 #include <fenv.h>
 #include <sys/cdefs.h>
 void trapfpe () {
-//  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
+  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
 }
 #endif
 #endif
@@ -80,6 +80,7 @@ winconsole winC;
 
 //wxWidgets stuff
 #include "wxcomponents.h"
+
 #include <wx/colordlg.h>
 #include <wx/aboutdlg.h> 
 #include <wx/platinfo.h>
@@ -95,11 +96,13 @@ winconsole winC;
 #include <wx/dir.h>
 #include <wx/choicdlg.h>
 
+
 #if (wxMAJOR_VERSION >= 2) && (wxMINOR_VERSION > 8)
 	#include <wx/utils.h>  // Needed for wxLaunchDefaultApplication
 #else
 	#include <wx/mimetype.h> //Needed for GetOpenCommand
 #endif
+
 //Custom program dialog windows
 #include "StashDialog.h" //Stash editor
 #include "resDialog.h" // resolution selection dialog
@@ -116,6 +119,9 @@ winconsole winC;
 #include "filters/rangeFile.h"
 #include "filters/dataLoad.h"
 
+//Unit testing code
+#include "testing.h"
+
 using std::pair;
 using std::max;
 
@@ -126,7 +132,7 @@ const unsigned int UPDATE_TIMER_DELAY=50;
 //Milliseconds between progress bar updates 
 const unsigned int PROGRESS_TIMER_DELAY=100; 
 //Seconds between autosaves
-const unsigned int AUTOSAVE_DELAY=300; 
+const unsigned int AUTOSAVE_DELAY=180; 
 
 //Default window size
 const unsigned int DEFAULT_WIN_WIDTH=1024;
@@ -150,8 +156,6 @@ const char *stashIntroString=NTRANS("New stash name....");
 //Name of autosave state file. MUST end in .xml middle
 const char *AUTOSAVE_PREFIX= "autosave.";
 const char *AUTOSAVE_SUFFIX=".xml";
-
-
 
 
 //This is the dropdown matching list. This must match
@@ -371,12 +375,15 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 	glPanelOK = panelTop->displaySupported();
 #else
 	#if defined(__WXGTK20__) 
-    //I had to work this out by studying the construtor, and then testing simultaneously
-    //on a broken and working Gl install. booyah.
+		//I had to work this out by studying the construtor, and then testing simultaneously
+		//on a broken and working Gl install. booyah.
 		glPanelOK=panelTop->m_glWidget;
-	#elif defined(__WIN32) || defined(__WIN64)
+	#elif defined(__WIN32) || defined(__WIN64) || defined(__APPLE__)
 		//I hope this works. I'm not 100% sure -- I can't seem to reliably break my GL under windows.
 		glPanelOK=panelTop->GetContext();
+	#else
+		//lets just hope it worked.
+		glPanelOK=true;
 	#endif
 #endif
 
@@ -790,14 +797,27 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 #ifndef DISABLE_ONLINE_UPDATE
         wxDateTime datetime = wxDateTime::Today();	
 	
-	//Annoy the user, on average, every (% blah) days. Note that you need to choose the modulo numbers
-	//carefully, such that the GCD of the maximum day (7), maximum week (53 or 52) and modulo number
-	//are all coprime. Otherwise the numbers might "sync" and either always be true, or never be true.
-	//See Euclid's algorithm for details
-	const int MODULO_NUMBER=5;
-       	if( configFile.getAllowOnlineVersionCheck() && 
-		datetime.GetWeekOfYear() % MODULO_NUMBER == (datetime.GetWeekDay()) % MODULO_NUMBER)
+	//Annoy the user, on average, every (% blah) days. 
+	const int CHECK_FREQUENCY=7;
+
+	//Generate a pseudorandom number of fixed sequence	
+	LinearFeedbackShiftReg lfsr;
+	//Set the period to 2^9 (power of 2 > weeksinyear*daysinweek)
+	lfsr.setMaskPeriod(9);
+	lfsr.setState(109); //Guaranteed to be random. Chosen by fair random generator.
+
+ 	unsigned int offset = datetime.GetWeekOfYear()*7 + datetime.GetWeekDay();
+	while(offset--)
+		lfsr.clock(); //Discard a whole bunch of entires
+
+	//Everyone will get the same pseudorandom number on the same day.
+	size_t pseudorandomVal=lfsr.clock();
+	ASSERT(pseudorandomVal); //shouldn't be zero, or LFSR is in bad state
+
+	if( configFile.getAllowOnlineVersionCheck() &&  
+		!(pseudorandomVal %CHECK_FREQUENCY))
 	{
+		
 		verCheckThread=new VersionCheckThread(this);
 		verCheckThread->Create();
 		verCheckThread->Run();
@@ -819,10 +839,13 @@ MainWindowFrame::~MainWindowFrame()
 
 	//wxwidgets can crash if objects are ->Connect-ed  in 
 	// wxWindowBase::DestroyChildren(), so Disconnect before destructing
+#if (wxMAJOR_VERSION <= 2) && (wxMINOR_VERSION <= 8)
+    // this part does not work in my build of mac os x lion & wx Widgets 2.9
+    // crashes at OnSinkDestroyed
 	noteDataView->Disconnect();
 	comboStash->Disconnect();
 	comboCamera->Disconnect();
-
+#endif
 }
 
 
@@ -987,23 +1010,35 @@ void MainWindowFrame::OnFileMerge(wxCommandEvent &event)
 
 	textConsoleOut->Clear();
 	//Load the file
-	loadFile(wxF->GetPath(),true);
+	if(!loadFile(wxF->GetPath(),true))
+		return;
 
 	//Get vis controller to update tree control to match internal
 	//structure
 	visControl.updateWxTreeCtrl(treeFilters);
 	refreshButton->Enable(visControl.numFilters());
-	
-	doSceneUpdate();
+
+	bool updateOK;	
+	updateOK =doSceneUpdate();
+	if(updateOK)
+		statusMessage(TRANS("Merged file."),MESSAGE_INFO);
+
+	panelTop->Refresh();
 	
 	wxF->Destroy();
 }
 
 void MainWindowFrame::OnDropFiles(const wxArrayString &files, int x, int y)
 {
+	//We can't alter the filter state if we are refreshing
+	if(visControl.isRefreshing())
+		return ;
 
 	textConsoleOut->Clear();
 	wxMouseState wxm = wxGetMouseState();
+
+
+	Filter *fToSelect=0;
 
 	//Try opening the files as range (if ext. agrees)
 	// or as 
@@ -1036,7 +1071,7 @@ void MainWindowFrame::OnDropFiles(const wxArrayString &files, int x, int y)
 				//TODO:Better to use the XY coordinates,
 				// rather than just dropping it on the selection
 				// or the first item
-				wxTreeItemId id=treeFilters->GetSelection();;
+				wxTreeItemId id=treeFilters->GetSelection();
 
 				if(id == treeFilters->GetRootItem())
 				{
@@ -1049,23 +1084,24 @@ void MainWindowFrame::OnDropFiles(const wxArrayString &files, int x, int y)
 					RangeFile rng;
 					string s;
 					s=stlStr(files[ui]);
-					if(!rng.openGuessFormat(s.c_str()))
+					if(rng.openGuessFormat(s.c_str()))
 					{
 						rangeOK=true;
 
 							
 						//Load rangefile &  construct filter
-						RangeFileFilter *f=(RangeFileFilter*)
-							configFile.getDefaultFilter(FILTER_TYPE_RANGEFILE);
+						RangeFileFilter *f;
+						f=(RangeFileFilter *)configFile.getDefaultFilter(FILTER_TYPE_RANGEFILE);
 						//Copy across the range data
 						f->setRangeData(rng);
+						f->setRangeFilename(s.c_str());
 
 						//Get the tree data container
 						wxTreeItemData *tData=treeFilters->GetItemData(id);
 						//Get the parent filter pointer	
-						visControl.addFilter(f,((wxTreeUint *)tData)->value);
-						//Rebuild tree control
-						visControl.updateWxTreeCtrl(treeFilters,f);
+						visControl.addFilter(f,false,((wxTreeUint *)tData)->value);
+
+						fToSelect=f;
 					}
 					else
 					{
@@ -1110,7 +1146,10 @@ void MainWindowFrame::OnDropFiles(const wxArrayString &files, int x, int y)
 
 	if(files.Count())
 	{
-		visControl.updateWxTreeCtrl(treeFilters);
+		if(fToSelect)
+			visControl.updateWxTreeCtrl(treeFilters,fToSelect);
+		else
+			visControl.updateWxTreeCtrl(treeFilters);
 		refreshButton->Enable(visControl.numFilters());
 		doSceneUpdate();	
 		//If we are using the default camera,
@@ -1122,6 +1161,9 @@ void MainWindowFrame::OnDropFiles(const wxArrayString &files, int x, int y)
 
 bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 {
+
+	//Don't try to alter viscontrol if we are refreshing. That would be bad.
+	ASSERT(!visControl.isRefreshing());
 	std::string dataFile = stlStr(fileStr);
 	
 	//Split the filename into chunks: path, volume, name and extension
@@ -1165,7 +1207,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 			wxD->SetEscapeId(wxID_NO);
 
 			if(wxD->ShowModal()!= wxID_NO)
-				visControl.makeFiltersSafe();
+				visControl.stripHazardousContents();
 
 		}
 
@@ -1233,67 +1275,49 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 		comboStash->Clear();
 	
 		std::vector<std::pair<std::string,unsigned int > > stashList;
-		visControl.getStashList(stashList);
+		visControl.getStashes(stashList);
 		for(unsigned int ui=0;ui<stashList.size(); ui++)
 		{
 			wxListUint *u;
 			u = new wxListUint(stashList[ui].second);
 			comboStash->Append(wxStr(stashList[ui].first),(wxClientData *)u);
-			ASSERT(comboStash->wxItemContainer::GetClientObject(comboStash->GetCount()-1));
+			ASSERT(comboStash->GetClientObject(comboStash->GetCount()-1));
 		}
 
+		gridFilterProperties->clear();
+
 	}
-	else if (extStr == std::string("txt") || extStr == std::string("csv"))
+	else 
 	{
-		//Load the file as if it were a text file.
-		unsigned int err;
-	
+
+		FilterTree fTree;
+
 		Filter *posFilter,*downSampleFilter;
 		posFilter= configFile.getDefaultFilter(FILTER_TYPE_POSLOAD);
 		downSampleFilter= configFile.getDefaultFilter(FILTER_TYPE_IONDOWNSAMPLE);
 
 		//Bastardise the default settings such that it knows to use the correct
 		// file type, based upon file extension
-		((DataLoadFilter*)posFilter)->setFileMode(DATALOAD_TEXT_FILE);
+		unsigned int fileMode;
+		if(extStr == std::string("txt") || extStr == std::string("csv") )
+			fileMode=DATALOAD_TEXT_FILE;
+		else
+			fileMode=DATALOAD_FLOAT_FILE;
+		
+		((DataLoadFilter*)posFilter)->setFileMode(fileMode);
+		((DataLoadFilter*)posFilter)->setFilename(dataFile);
 
 
-		//No need to refresh scene, this is done internally	
-		if((err = visControl.LoadIonSet(dataFile,posFilter,
-						downSampleFilter)))
-		{
-			wxMessageDialog *wxD  =new wxMessageDialog(this,wxTRANS("Unable to open file")
-							,wxTRANS("Load error"),wxOK|wxICON_ERROR);
-			wxD->ShowModal();
-			wxD->Destroy();
-
-			return false;
-		}
-
+		//Append a new filter to the filter tree
+		fTree.addFilter(posFilter,0);
+		fTree.addFilter(downSampleFilter,posFilter);
+		visControl.addFilterTree(fTree,true,0);
+		//Update the tree control
+		visControl.updateWxTreeCtrl(treeFilters);
+		
+		doSceneUpdate();
 		currentFile.clear();
 	}	
-	else
-	{
-		//Load the file as if it were a pos file.
-		unsigned int err;
-		
-
-		//No need to refresh scene, this is done internally	
-		if((err = visControl.LoadIonSet(dataFile,
-				configFile.getDefaultFilter(FILTER_TYPE_POSLOAD),
-				configFile.getDefaultFilter(FILTER_TYPE_IONDOWNSAMPLE)))) 
-		{
-			wxMessageDialog *wxD  =new wxMessageDialog(this,wxTRANS("Unable to open file")
-							,wxTRANS("Load error"),wxOK|wxICON_ERROR);
-			wxD->ShowModal();
-			wxD->Destroy();
-
-			return false;
-		}
-
-		currentFile.clear();
-
-
-	}
 
 	return true;
 }	
@@ -1311,15 +1335,27 @@ void MainWindowFrame::OnRecentFile(wxCommandEvent &event)
 		textConsoleOut->Clear();
 		if(loadFile(f))
 		{
-			//Get vis controller to update tree control to match internal
-			//structure
-			visControl.updateWxTreeCtrl(treeFilters);
-			refreshButton->Enable(visControl.numFilters());
-			doSceneUpdate();
 			//If we are using the default camera,
 			//move it to make sure that it is visible
 			if(visControl.numCams() == 1)
 				visControl.ensureSceneVisible(3);
+
+			//set the viscontrol to match tree
+			visControl.updateWxTreeCtrl(treeFilters);
+			refreshButton->Enable(visControl.numFilters());
+
+			bool updateOK;	
+			updateOK =doSceneUpdate();
+			//If we are using the default camera,
+			//move it to make sure that it is visible
+			if(updateOK)
+			{
+				if(visControl.numCams() == 1)
+					visControl.ensureSceneVisible(3);
+
+					statusMessage(TRANS("Loaded file."),MESSAGE_INFO);
+			}
+
 			panelTop->Refresh();
 		}
 		else
@@ -1456,7 +1492,7 @@ void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
 	}
 	else
 	{
-		dataFile=std::string("Saved plot: ") + dataFile;
+		dataFile=std::string(TRANS("Saved plot: ")) + dataFile;
 		statusMessage(dataFile.c_str(),MESSAGE_INFO);
 	}
 }
@@ -1512,7 +1548,7 @@ void MainWindowFrame::OnFileExportImage(wxCommandEvent &event)
 	}
 	else
 	{
-		dataFile=std::string("Saved 3D View :") + dataFile;
+		dataFile=std::string(TRANS("Saved 3D View :")) + dataFile;
 		statusMessage(dataFile.c_str(),MESSAGE_INFO);
 	}
 
@@ -1737,15 +1773,18 @@ void MainWindowFrame::OnFileExportIons(wxCommandEvent &event)
 		return;
 
 	}
+
+	//Steal the filter tree (including caches) from viscontrol
+	FilterTree f;
+	visControl.switchoutFilterTree(f);
+	
 	//Load up the export dialog
 	ExportPosDialog *exportDialog=new ExportPosDialog(this,wxID_ANY,wxTRANS("Export"));
+	exportDialog->initialiseData(f);
 	
 	//create a file chooser for later.
 	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Save pos..."), wxT(""),
 		wxT(""),wxTRANS("POS Data (*.pos)|*.pos|All Files (*)|*"),wxFD_SAVE);
-
-
-	exportDialog->initialiseData(&visControl);
 	
 	//If the user cancels the file chooser, 
 	//drop them back into the export dialog.
@@ -1754,11 +1793,11 @@ void MainWindowFrame::OnFileExportIons(wxCommandEvent &event)
 		//Show, then check for user cancelling export dialog
 		if(exportDialog->ShowModal() == wxID_CANCEL)
 		{
-			exportDialog->cleanup(&visControl);
+			//Take control of the filter tree back from the export dialog,
+			// and return it to visControl	
+			exportDialog->swapFilterTree(f);
+			visControl.swapFilterTree(f);
 			exportDialog->Destroy();
-			//Need this to reset the ID values
-			visControl.updateWxTreeCtrl(treeFilters);
-			visControl.setRefreshed();
 			return;	
 		}
 		
@@ -1773,11 +1812,13 @@ void MainWindowFrame::OnFileExportIons(wxCommandEvent &event)
 		if(wxD->ShowModal() == wxID_CANCEL)
 		{
 			wxD->Destroy();
-			exportDialog->cleanup(&visControl);
+			
+			//Take control of the filter tree back from the export dialog,
+			// and return it to visControl	
+			exportDialog->swapFilterTree(f);
+			visControl.swapFilterTree(f);
+			
 			exportDialog->Destroy();
-			//Need this to reset the ID values
-			visControl.updateWxTreeCtrl(treeFilters);
-			visControl.setRefreshed();
 			return;
 		}
 	}
@@ -1802,19 +1843,20 @@ void MainWindowFrame::OnFileExportIons(wxCommandEvent &event)
 	}
 	else
 	{
-		dataFile=std::string("Saved ions: ") + dataFile;
+		dataFile=std::string(TRANS("Saved ions: ")) + dataFile;
 		statusMessage(dataFile.c_str(),MESSAGE_INFO);
 	}
-	
-	exportDialog->cleanup(&visControl);
+
+	//Take control of the filter tree back from the export dialog,
+	// and return it to visControl	
+	exportDialog->swapFilterTree(f);
+	visControl.swapFilterTree(f);
 
 	//Call ->Destroy to invoke destructor, which will safely delete the
 	//filterstream pointers it generated	
 	exportDialog->Destroy();
 	//Need this to reset the ID values
 	visControl.updateWxTreeCtrl(treeFilters);
-	visControl.setRefreshed();
-	
 }
 
 void MainWindowFrame::OnFileExportRange(wxCommandEvent &event)
@@ -1831,7 +1873,7 @@ void MainWindowFrame::OnFileExportRange(wxCommandEvent &event)
 
 	vector<const Filter *> rangeData;
 	//Retrieve all the range filters in the viscontrol
-	visControl.getFilterTypes(rangeData,FILTER_TYPE_RANGEFILE);
+	visControl.getFiltersByType(rangeData,FILTER_TYPE_RANGEFILE);
 	//pass this to the range dialog
 	rngDialog->addRangeData(rangeData);
 
@@ -1953,7 +1995,7 @@ void MainWindowFrame::OnEditUndo(wxCommandEvent &event)
 	visControl.updateWxTreeCtrl(treeFilters);
 
 	//Get the parent filter from the tree selection
-	wxTreeItemId id=treeFilters->GetSelection();;
+	wxTreeItemId id=treeFilters->GetSelection();
 	if(id !=treeFilters->GetRootItem() && id.IsOk())
 	{
 		//Get the parent filter pointer	
@@ -1982,7 +2024,7 @@ void MainWindowFrame::OnEditRedo(wxCommandEvent &event)
 	visControl.updateWxTreeCtrl(treeFilters);
 
 	//Get the parent filter from the tree selection
-	wxTreeItemId id=treeFilters->GetSelection();;
+	wxTreeItemId id=treeFilters->GetSelection();
 	if(id !=treeFilters->GetRootItem() && id.IsOk())
 	{
 		//Get the parent filter pointer	
@@ -2280,12 +2322,12 @@ void MainWindowFrame::OnHelpContact(wxCommandEvent &event)
 
 void MainWindowFrame::OnButtonStashDialog(wxCommandEvent &event)
 {
-	std::vector<std::pair<std::string,unsigned int > > stashList;
-	visControl.getStashList(stashList);
+	std::vector<std::pair<std::string,unsigned int > > stashVec;
+	visControl.getStashes(stashVec);
 
-	ASSERT(comboStash->GetCount() == stashList.size())
+	ASSERT(comboStash->GetCount() == stashVec.size())
 
-	if(stashList.empty())
+	if(stashVec.empty())
 	{
 		statusMessage(TRANS("No filter stashes to edit."),MESSAGE_ERROR);
 		return;
@@ -2299,16 +2341,16 @@ void MainWindowFrame::OnButtonStashDialog(wxCommandEvent &event)
 	s->Destroy();
 
 	//Stash list may have changed. Force update
-	stashList.clear();
-	visControl.getStashList(stashList);
+	stashVec.clear();
+	visControl.getStashes(stashVec);
 
 	comboStash->Clear();
-	for(unsigned int ui=0;ui<stashList.size(); ui++)
+	for(unsigned int ui=0;ui<stashVec.size(); ui++)
 	{
 		wxListUint *u;
-		u = new wxListUint(stashList[ui].second);
-		comboStash->Append(wxStr(stashList[ui].first),(wxClientData *)u);
-		ASSERT(comboStash->wxItemContainer::GetClientObject(comboStash->GetCount()-1));
+		u = new wxListUint(stashVec[ui].second);
+		comboStash->Append(wxStr(stashVec[ui].first),(wxClientData *)u);
+		ASSERT(comboStash->GetClientObject(comboStash->GetCount()-1));
 	}
 
 	
@@ -2375,7 +2417,7 @@ void MainWindowFrame::OnComboStashEnter(wxCommandEvent &event)
 		return;
 
 	std::vector<std::pair<std::string,unsigned int > > stashList;
-	visControl.getStashList(stashList);
+	visControl.getStashes(stashList);
 
 	unsigned int stashPos = (unsigned int ) -1;
 	for(unsigned int ui=0;ui<stashList.size(); ui++)
@@ -2405,7 +2447,7 @@ void MainWindowFrame::OnComboStashEnter(wxCommandEvent &event)
 
 		unsigned int n =visControl.stashFilters(((wxTreeUint *)tData)->value,userText.c_str());
 		n=comboStash->Append(wxStr(userText),(wxClientData *)new wxListUint(n));
-		ASSERT(comboStash->wxItemContainer::GetClientObject(n));
+		ASSERT(comboStash->GetClientObject(n));
 		
 		statusMessage(TRANS("Created new filter tree stash"),MESSAGE_INFO);
 
@@ -2416,10 +2458,11 @@ void MainWindowFrame::OnComboStashEnter(wxCommandEvent &event)
 		//Find the stash associated with this item
 		int index;
 		index= comboStash->FindString(comboStash->GetValue());
+		ASSERT(index != wxNOT_FOUND);
 		wxListUint *l;
-		l =(wxListUint*)comboStash->wxItemContainer::GetClientObject(index);
+		l =(wxListUint*)comboStash->GetClientObject(index);
 		//Get the parent filter from the tree selection
-		wxTreeItemId id=treeFilters->GetSelection();;
+		wxTreeItemId id=treeFilters->GetSelection();
 		if(id !=treeFilters->GetRootItem() && id.IsOk())
 		{
 			//Get the parent filter pointer	
@@ -2451,9 +2494,9 @@ void MainWindowFrame::OnComboStash(wxCommandEvent &event)
 {
 	//Find the stash associated with this item
 	wxListUint *l;
-	l =(wxListUint*)comboStash->wxItemContainer::GetClientObject(comboStash->GetSelection());
+	l =(wxListUint*)comboStash->GetClientObject(comboStash->GetSelection());
 	//Get the parent filter from the tree selection
-	wxTreeItemId id=treeFilters->GetSelection();;
+	wxTreeItemId id=treeFilters->GetSelection();
 	if(id !=treeFilters->GetRootItem() && id.IsOk())
 	{
 		//Get the parent filter pointer	
@@ -2502,6 +2545,8 @@ void MainWindowFrame::OnTreeEndDrag(wxTreeEvent &event)
 		//Copy elements from a to b, if a and b are not the same
 		if(pId != sId)
 		{
+			visControl.setWxTreeFilterViewPersistence(sId);
+			visControl.setWxTreeFilterViewPersistence(pId);
 			//If command button down (ctrl or clover on mac),
 			//then copy, otherwise move
 			if(wxm.CmdDown())
@@ -2510,22 +2555,24 @@ void MainWindowFrame::OnTreeEndDrag(wxTreeEvent &event)
 				needRefresh=visControl.reparentFilter(sId,pId);
 		}	
 	}
-	else
+	else 
 	{
-		wxTreeItemId parent = treeFilters->GetItemParent(*filterTreeDragSource);
-		if(parent ==treeFilters->GetRootItem() && wxm.CmdDown())
+		//Only filters that are a data source are allowed to be in the base.
+		if( visControl.filterIsPureDataSource(sId))
 		{
-			//OK, so this is a base item, and is therefore a data source
-			//allow duplication
-			needRefresh=visControl.copyFilter(sId,0,true);
+			if(wxm.CmdDown())
+				needRefresh=visControl.copyFilter(sId,0);
+			else
+				needRefresh=visControl.reparentFilter(sId,0);
 		}
+		else
+			statusMessage(TRANS("Filter type not a data source - can't be at tree base"),MESSAGE_ERROR);
 	}
 
 	if(needRefresh )
 	{
 		//Refresh the treecontrol
-		visControl.updateWxTreeCtrl(treeFilters,
-				visControl.getFilterById(sId));
+		visControl.updateWxTreeCtrl(treeFilters);
 
 		//We have finished the drag	
 		statusMessage("",MESSAGE_NONE);
@@ -2547,13 +2594,21 @@ void MainWindowFrame::OnTreeItemTooltip(wxTreeEvent &event)
 
 void MainWindowFrame::OnTreeSelectionChange(wxTreeEvent &event)
 {
+	wxTreeItemId id;
+	id=treeFilters->GetSelection();
+
 	if(currentlyUpdatingScene)
 	{
 		event.Veto();
 		return;
 	}
-	wxTreeItemId id;
-	id=treeFilters->GetSelection();
+
+	if(!id.IsOk() || id == treeFilters->GetRootItem())
+	{
+		gridFilterProperties->clear();
+		return;
+	}
+
 	//Tree data contains unique identifier for vis control to do matching
 	wxTreeItemData *tData=treeFilters->GetItemData(id);
 
@@ -2714,29 +2769,43 @@ void MainWindowFrame::OnTreeKeyDown(wxTreeEvent &event)
 			wxTreeItemData *tData=treeFilters->GetItemData(id);
 
 
-			//Remove the item from the Tree 
-			visControl.removeTreeFilter(((wxTreeUint *)tData)->value);
-			//Clear property grid
-			gridFilterProperties->clear();
 		
 			//Rebuild the tree control, ensuring that the parent is visible,
 			//if it has a parent (recall root node  of wx control is hidden)
 			
-			//Get the parent
+			//Get the parent & its data
 			wxTreeItemId parent = treeFilters->GetItemParent(id);
+			wxTreeItemData *parentData=treeFilters->GetItemData(parent);
+
+			//Ask viscontrol to ensure that the tree stays persistantly
+			// visible when next rebuilding the tree control
+			visControl.setWxTreeFilterViewPersistence(
+					((wxTreeUint*)parentData)->value);	
+
+			//Remove the item from the Tree 
+			visControl.removeFilterSubtree(((wxTreeUint *)tData)->value);
+			//Clear property grid
+			gridFilterProperties->clear();
 			if(parent !=treeFilters->GetRootItem())
 			{
-				//Get the parent filter pointer	
-				wxTreeItemData *parentData=treeFilters->GetItemData(parent);
-				const Filter *parentFilter=visControl.getFilterById(
-							((wxTreeUint *)parentData)->value);
+				ASSERT(parent.IsOk()); // should be - base node should always exist.
 
-				//Note, you *must* update the tree after the grid if you
-				//wish to dereference the treeItem, otherwise the treeitem
-				//referred to by the pointer is destroyed, and invalid
+				//Ensure that the parent stays visible 
+				visControl.setWxTreeFilterViewPersistence(
+						((wxTreeUint*)parentData)->value);
+				visControl.updateWxTreeCtrl(treeFilters);
+
+				
+				//OK, so those old Id s are no longer valid,
+				//as we just rebuilt the tree. We need new ones
+				//Parent is now selected
+				parent=treeFilters->GetSelection();
+				parentData=treeFilters->GetItemData(parent);
+
+
+				//Update the filter property grid with the parent's data
 				visControl.updateFilterPropGrid(gridFilterProperties,
-								((wxTreeUint *)parentData)->value);
-				visControl.updateWxTreeCtrl(treeFilters,parentFilter);
+							((wxTreeUint *)parentData)->value);
 			}
 			else
 			{
@@ -2787,13 +2856,15 @@ void MainWindowFrame::OnGridFilterPropertyChange(wxGridEvent &event)
 		return;
 	}
 
+	ASSERT(tId!=treeFilters->GetRootItem());
+
 	size_t filterId;
 	wxTreeItemData *tData=treeFilters->GetItemData(tId);
 	filterId = ((wxTreeUint *)tData)->value;
 
 	bool needUpdate;
 	int row=event.GetRow();
-	if(!visControl.setFilterProperties(filterId,gridFilterProperties->getSetFromRow(row),
+	if(!visControl.setFilterProperty(filterId,gridFilterProperties->getSetFromRow(row),
 					gridFilterProperties->getKeyFromRow(row),value,needUpdate))
 	{
 		event.Veto();
@@ -2832,12 +2903,14 @@ void MainWindowFrame::OnGridCameraPropertyChange(wxGridEvent &event)
 	//Get the camera ID value (long song and dance that it is)
 	wxListUint *l;
 	int n = comboCamera->FindString(comboCamera->GetValue());
-	l =(wxListUint*)  comboCamera->wxItemContainer::GetClientObject(n);
-	if(!l)
+	if(n == wxNOT_FOUND)
 	{
 		programmaticEvent=false;
 		return;
 	}
+	l =(wxListUint*)  comboCamera->GetClientObject(n);
+
+	ASSERT(l);
 
 	size_t cameraId;
 	cameraId = l->value;
@@ -2894,7 +2967,7 @@ void MainWindowFrame::OnComboCameraEnter(wxCommandEvent &event)
 		comboCamera->Select(n);
 		//Set this camera as thew new camera
 		wxListUint *l;
-		l =(wxListUint*)  comboCamera->wxItemContainer::GetClientObject(comboCamera->GetSelection());
+		l =(wxListUint*)  comboCamera->GetClientObject(comboCamera->GetSelection());
 		visControl.setCam(l->value);
 		
 		std::string s = std::string(TRANS("Restored camera: ") ) +stlStr(comboCamera->GetValue());	
@@ -2927,7 +3000,7 @@ void MainWindowFrame::OnComboCamera(wxCommandEvent &event)
 {
 	//Set the active camera
 	wxListUint *l;
-	l =(wxListUint*)  comboCamera->wxItemContainer::GetClientObject(comboCamera->GetSelection());
+	l =(wxListUint*)  comboCamera->GetClientObject(comboCamera->GetSelection());
 	visControl.setCam(l->value);
 
 
@@ -2946,21 +3019,20 @@ void MainWindowFrame::OnComboCameraSetFocus(wxFocusEvent &event)
 	
 	if(!haveSetComboCamText)
 	{
-		comboCamera->SetValue(wxT(""));
+		//Even if we have
+		int pos;
+		pos = comboCamera->FindString(comboCamera->GetValue());
+
+		//clear the text if it is the introduction string, or something 
+		// we don't have in the camera 
+		if(pos == wxNOT_FOUND)
+			comboCamera->SetValue(wxT(""));
+
 		haveSetComboCamText=true;
 		event.Skip();
 		return;
 	}
 	
-	if(comboCamera->GetCount())
-	{
-
-		wxListUint *l;
-		int n = comboCamera->FindString(comboCamera->GetValue());
-		l =(wxListUint*)  comboCamera->wxItemContainer::GetClientObject(n);
-		if(l)
-			visControl.updateCamPropertyGrid(gridCameraProperties,l->value);
-	}
 	event.Skip();
 }
 
@@ -3031,63 +3103,26 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 			}
 
 			//Load rangefile &  construct filter
-			RangeFileFilter *f=(RangeFileFilter*)configFile.getDefaultFilter(FILTER_TYPE_RANGEFILE);
-
-			//TODO: Delete me, the logic is already in aptclasses.h
-			//-------
-			//Split the filename into chunks: path, volume, name and extension
-			//the format of this is OS dependant, but wxWidgets can deal with this.
-			wxFileName fname;
-			wxString volume,path,name,ext;
-			bool hasExt;
-			fname.SplitPath(wxF->GetPath(),&volume,
-					&path,&name,&ext, &hasExt);
-			
-			std::string strExt;
-			strExt=stlStr(ext);
-			strExt = lowercase(strExt);
-			if(strExt == "env")
-				f->setFormat(RANGE_FORMAT_ENV);
-			else if(strExt == "rng")
-			       f->setFormat(RANGE_FORMAT_ORNL);	
-			else if(strExt == "rrng")
-			       f->setFormat(RANGE_FORMAT_RRNG);	
-			else
-			{
-				statusMessage(TRANS("Unknown file extension"),MESSAGE_ERROR);
-				return;
-			}
-				
-
+			Filter*f=configFile.getDefaultFilter(FILTER_TYPE_RANGEFILE);
 			std::string dataFile = stlStr(wxF->GetPath());
-			f->setRangeFileName(dataFile);
-			//-------
+			RangeFileFilter *r = (RangeFileFilter*)f;
+			r->setRangeFilename(dataFile);
 
-
-			unsigned int errCode;
-			errCode = f->updateRng();
-			std::string  errString;
-			switch(errCode)
+			
+				
+			if(!r->updateRng())
 			{
-				case 0:
-					break;
-				default:
-				{
-					errString = TRANS("Failed reading range file, may not readable or may be invalid: ");
-					errString += "\n";
-					errString+=dataFile;
+				std::string errString;
+				errString = TRANS("Failed reading range file.");
+				errString += "\n";
+				errString+=r->getRange().getErrString();
 					
-				}
-			}
-
-			if(errCode)
-			{
 				wxMessageDialog *wxD  =new wxMessageDialog(this,
 					wxStr(errString),wxTRANS("Error loading file"),wxOK|wxICON_ERROR);
 				wxD->ShowModal();
 				wxD->Destroy();
 				delete f;
-				haveErr=true;;
+				haveErr=true;
 				break;
 			}
 			
@@ -3095,7 +3130,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 			wxTreeItemData *tData=treeFilters->GetItemData(id);
 
 			ASSERT(tData);
-			visControl.addFilter(f,((wxTreeUint *)tData)->value);
+			visControl.addFilter(f,false,((wxTreeUint *)tData)->value);
 
 			//Rebuild tree control
 			visControl.updateWxTreeCtrl(treeFilters,f);
@@ -3113,7 +3148,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 			
 			ASSERT(tData);
 			//Add the filter to viscontrol
-			visControl.addFilter(t,((wxTreeUint *)tData)->value);
+			visControl.addFilter(t,false,((wxTreeUint *)tData)->value);
 
 			//Rebuild tree control
 			visControl.updateWxTreeCtrl(treeFilters,t);
@@ -3143,7 +3178,8 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 bool MainWindowFrame::doSceneUpdate()
 {
 	//Update scene
-	
+	ASSERT(!currentlyUpdatingScene);
+
 	//Suspend the update timer, and start the progress timer
 	updateTimer->Stop();
 	progressTimer->Start(PROGRESS_TIMER_DELAY);		
@@ -3173,7 +3209,7 @@ bool MainWindowFrame::doSceneUpdate()
 	//Set focus on the main frame itself, so that we can catch escape key presses
 	SetFocus();
 
-	unsigned int errCode=visControl.updateScene();
+	unsigned int errCode=visControl.refreshFilterTree();
 
 	progressTimer->Stop();
 	updateTimer->Start(UPDATE_TIMER_DELAY);
@@ -3254,12 +3290,10 @@ void MainWindowFrame::OnAutosaveTimer(wxTimerEvent &event)
 	//with the title "autosave.xml"
 	//
 
-	wxString filePath = wxStandardPaths::Get().GetDocumentsDir()
-					+wxCStr("/.")+wxCStr(PROGRAM_NAME);
-
+	wxString filePath = wxStr(configFile.getConfigDir());
 
 	unsigned int pid;
-	pid = wxGetProcessId();;
+	pid = wxGetProcessId();
 
 	std::string pidStr;
 	stream_cast(pidStr,pid);
@@ -3272,6 +3306,12 @@ void MainWindowFrame::OnAutosaveTimer(wxTimerEvent &event)
 	std::map<string,string> dummyMap;
 	if(visControl.saveState(s.c_str(),dummyMap))
 		statusMessage(TRANS("Autosave complete."),MESSAGE_INFO);
+	else
+	{
+		//The save failed, but may have left an incomplete file lying around
+		if(wxFileExists(filePath))
+			wxRemoveFile(filePath);
+	}
 
 
 }
@@ -3330,7 +3370,7 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 		//the correct thing to update, rather than nuking everything
 		//from orbit
 		if(plotUpdates)
-			visControl.invalidateRangeCaches();
+			visControl.clearCacheByType(FILTER_TYPE_RANGEFILE);
 
 		doSceneUpdate();
 	}
@@ -3347,7 +3387,7 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 		if(n != wxNOT_FOUND)
 		{
 			wxListUint *l;
-			l =(wxListUint*)  comboCamera->wxItemContainer::GetClientObject(n);
+			l =(wxListUint*)  comboCamera->GetClientObject(n);
 
 			visControl.updateCamPropertyGrid(gridCameraProperties,l->value);
 		}
@@ -3468,7 +3508,7 @@ void MainWindowFrame::updateProgressStatus()
 			if(totalProg == totalCount)
 				progressString = TRANS("Updated.");
 			else
-				progressString = totalProg + " of " + totalCount;
+				progressString = totalProg + TRANS(" of ") + totalCount;
 		}
 
 		if( p.filterProgress != 100)
@@ -3718,13 +3758,11 @@ void MainWindowFrame::OnViewFullscreen(wxCommandEvent &event)
 
 	//Toggle fullscreen, leave the menubar  & statusbar visible
 
-	unsigned int flags;
 #ifdef __APPLE__
 	switch(fullscreenState)
 	{
 		case 0:
-			flags= wxFULLSCREEN_NOTOOLBAR;
-			ShowFullScreen(true,flags);
+			ShowFullScreen(true,wxFULLSCREEN_NOTOOLBAR);
 			menuViewFullscreen->SetHelp(wxTRANS("Next Fullscreen mode: none"));	
 			break;
 		case 1:
@@ -3752,8 +3790,7 @@ void MainWindowFrame::OnViewFullscreen(wxCommandEvent &event)
 	switch(fullscreenState)
 	{
 		case 0:
-			flags= wxFULLSCREEN_NOTOOLBAR;
-			ShowFullScreen(true,flags);
+			ShowFullScreen(true,wxFULLSCREEN_NOTOOLBAR);
 			statusMessage(TRANS("Next Mode: No fullscreen"),MESSAGE_HINT);
 			break;
 		case 1:
@@ -3791,7 +3828,6 @@ void MainWindowFrame::OnViewFullscreen(wxCommandEvent &event)
 
 void MainWindowFrame::OnButtonRefresh(wxCommandEvent &event)
 {
-
 	//dirty hack to get keyboard state.
 	wxMouseState wxm = wxGetMouseState();
 	if(wxm.ShiftDown())
@@ -3856,11 +3892,17 @@ void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 
 	bool needUpdate=false;
 
+#ifdef DEBUG
+	visControl.checkTree(treeFilters);
+#endif
+
+	ASSERT(treeFilters->GetSelection() != treeFilters->GetRootItem());
+
 	//Get the filter ID value (long song and dance that it is)
 	wxTreeItemId tId = treeFilters->GetSelection();
 	if(!tId.IsOk())
 		return;
-	
+
 	size_t filterId;
 	wxTreeItemData *tData=treeFilters->GetItemData(tId);
 	filterId = ((wxTreeUint *)tData)->value;
@@ -3876,7 +3918,7 @@ void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 				s= "1";
 			else
 				s="0";
-			visControl.setFilterProperties(filterId,set,key,s,needUpdate);
+			visControl.setFilterProperty(filterId,set,key,s,needUpdate);
 
 			event.Veto();
 			break;
@@ -3904,7 +3946,7 @@ void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 			
 				//Pass the new colour to the viscontrol system, which updates
 				//the filters	
-				visControl.setFilterProperties(filterId,set,key,s,needUpdate);
+				visControl.setFilterProperty(filterId,set,key,s,needUpdate);
 			}
 
 			//Set the filter property
@@ -3964,7 +4006,10 @@ void MainWindowFrame::OnCameraGridCellEditorShow(wxGridEvent &event)
 	//Get the camera ID
 	wxListUint *l;
 	int n = comboCamera->FindString(comboCamera->GetValue());
-	l =(wxListUint*)  comboCamera->wxItemContainer::GetClientObject(n);
+	if( n == wxNOT_FOUND)
+		return;
+		
+	l =(wxListUint*)  comboCamera->GetClientObject(n);
 	if(!l)
 		return;
 	
@@ -4104,7 +4149,7 @@ void MainWindowFrame::OnButtonRemoveCam(wxCommandEvent &event)
 	if ( n!= wxNOT_FOUND ) 
 	{
 		wxListUint *l;
-		l =(wxListUint*)  comboCamera->wxItemContainer::GetClientObject(n);
+		l =(wxListUint*)  comboCamera->GetClientObject(n);
 		visControl.removeCam(l->value);
 		comboCamera->Delete(n);
 		
@@ -4129,7 +4174,7 @@ void MainWindowFrame::OnSpectraListbox(wxCommandEvent &event)
 		unsigned int plotID;
 
 		//Retrieve the uniqueID
-		l=(wxListUint*)plotList->wxItemContainer::GetClientObject(ui);
+		l=(wxListUint*)plotList->GetClientObject(ui);
 		plotID = l->value;
 
 		panelSpectra->setPlotVisible(plotID,plotList->IsSelected(ui));
@@ -4463,10 +4508,11 @@ void MainWindowFrame::checkReloadAutosave()
 		return;
 
 	//obtain a list of autosave xml files
+	//--
 	wxArrayString *dirListing= new wxArrayString;
 	std::string s;
 	s=std::string(AUTOSAVE_PREFIX) +
-			std::string("*") + std::string(AUTOSAVE_SUFFIX);;
+			std::string("*") + std::string(AUTOSAVE_SUFFIX);
 	wxString fileMask = wxStr(s);
 
 	wxDir::GetAllFiles(filePath,dirListing,fileMask,wxDIR_FILES);
@@ -4476,11 +4522,14 @@ void MainWindowFrame::checkReloadAutosave()
 		delete dirListing;
 		return;
 	}
+	//--
 
 
 	unsigned int prefixLen;
 	prefixLen = stlStr(filePath).size() + strlen(AUTOSAVE_PREFIX) + 1;
 
+	//For convenience, Construct a mapping to the PIDs from the string
+	//--
 	map<string,unsigned int> autosaveNamePIDMap;
 	for(unsigned int ui=0;ui<dirListing->GetCount(); ui++)
 	{
@@ -4497,13 +4546,15 @@ void MainWindowFrame::checkReloadAutosave()
 			continue;
 		autosaveNamePIDMap[stlStr(dirListing->Item(ui))] = pid;
 	}
-
 	delete dirListing;
+	//--
 
+
+	//Filter on process existence and name match.
+	//---
 	for(map<string,unsigned int>::iterator it=autosaveNamePIDMap.begin();
 		it!=autosaveNamePIDMap.end();)
 	{
-		//Filter on process existence and name match.
 		//Note that map does not have a return value for erase in C++<C++11.
 		// so use the unusual postfix incrementor method
 		if(wxProcess::Exists(it->second) && processMatchesName(it->second,PROGRAM_NAME) )
@@ -4511,11 +4562,12 @@ void MainWindowFrame::checkReloadAutosave()
 		else
 			++it;
 	}
+	//---
 
 	if(autosaveNamePIDMap.size() == 1)
 	{
+		//If we have exactly one autosave, ask the user about loading it
 		filePath=wxStr(autosaveNamePIDMap.begin()->first);
-		//Well, looky here, looks like we got an autosave
 		wxMessageDialog *wxD  =new wxMessageDialog(this,
 			wxTRANS("An auto-save state was found, would you like to restore it?.") 
 			,wxTRANS("Autosave"),wxCANCEL|wxOK|wxICON_QUESTION|wxYES_DEFAULT );
@@ -4541,6 +4593,8 @@ void MainWindowFrame::checkReloadAutosave()
 	}
 	else if(autosaveNamePIDMap.size() > 1)
 	{	
+		//OK, so we have more than one autosave, from dead 3depict processes. 
+		//ask the user which one they would like to load
 		wxArrayString autoSaveChoices;
 		vector<string> filenames;
 		for(map<string,unsigned int>::iterator it=autosaveNamePIDMap.begin();
@@ -4592,7 +4646,7 @@ void MainWindowFrame::checkReloadAutosave()
 	}
 	
 
-	//
+	//delete the selected file after loading it
 	if(filePath != wxT(""))	
 		wxRemoveFile(filePath);	
 	
@@ -4638,8 +4692,9 @@ void MainWindowFrame::set_properties()
 {
     // begin wxGlade: MainWindowFrame::set_properties
     SetTitle(wxCStr(PROGRAM_NAME));
-    comboFilters->SetToolTip(wxTRANS("List of available filters"));
     comboFilters->SetSelection(-1);
+    
+    comboFilters->SetToolTip(wxTRANS("List of available filters"));
     treeFilters->SetToolTip(wxTRANS("Tree of data filters"));
     checkAutoUpdate->SetToolTip(wxTRANS("Enable/Disable automatic updates of data when filter change takes effect"));
     checkAutoUpdate->SetValue(true);
@@ -4660,6 +4715,7 @@ void MainWindowFrame::set_properties()
     gridCameraProperties->SetColLabelValue(1, wxTRANS("Value"));
     gridCameraProperties->SetToolTip(wxTRANS("Camera data information"));
     noteCamera->SetScrollRate(10, 10);
+
 #ifndef APPLE_EFFECTS_WORKAROUND
     checkPostProcessing->SetToolTip(wxTRANS("Enable/disable visual effects on final 3D output"));
 #endif
@@ -4677,7 +4733,16 @@ void MainWindowFrame::set_properties()
     gridRawData->SetColLabelValue(1, wxTRANS("Y"));
     btnRawDataSave->SetToolTip(wxTRANS("Save raw data to file"));
     btnRawDataClip->SetToolTip(wxTRANS("Copy raw data to clipboard"));
+    btnStashManage->SetToolTip(wxTRANS("Manage \"stashed\" data."));
     textConsoleOut->SetToolTip(wxTRANS("Program text output"));
+    comboCamera->SetToolTip(wxTRANS("Select active camera, or type to create new named camera"));
+    buttonRemoveCam->SetToolTip(wxTRANS("Remove the selected camera"));
+    checkFxCropCameraFrame->SetToolTip(wxTRANS("Perform cropping from coordinate frame of camera"));
+    spinCachePercent->SetToolTip(wxTRANS("Set the maximum amount of RAM to use in order to speed repeat computations"));
+    btnFilterTreeCollapse->SetToolTip(wxTRANS("Collapse the filter tree"));
+    btnFilterTreeExpand->SetToolTip(wxTRANS("Expand the filter tree"));
+    refreshButton->SetToolTip (wxTRANS("Process the filter tree, hold shift to purge cached filter data"));
+
     // end wxGlade
     //
 
@@ -4874,10 +4939,6 @@ private:
 
 	void initLanguageSupport();
 
-#ifdef DEBUG
-	bool runUnitTests();
-#endif
-
 
 public:
 
@@ -4901,11 +4962,11 @@ static const wxCmdLineEntryDesc g_cmdLineDesc [] =
 #if wxCHECK_VERSION(2,9,0) 
 	{ wxCMD_LINE_SWITCH, ("h"), ("help"), ("displays this message"),
 		wxCMD_LINE_VAL_NONE, wxCMD_LINE_OPTION_HELP },
-	{ wxCMD_LINE_PARAM,  NULL, NULL, ("inputfile"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL},
+	{ wxCMD_LINE_PARAM,  NULL, NULL, ("inputfile"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL | wxCMD_LINE_PARAM_MULTIPLE},
 #else
 	{ wxCMD_LINE_SWITCH, wxT("h"), wxT("help"), wxNTRANS("displays this message"),
 		wxCMD_LINE_VAL_NONE, wxCMD_LINE_OPTION_HELP },
-	{ wxCMD_LINE_PARAM,  NULL, NULL, wxNTRANS("inputfile"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL},
+	{ wxCMD_LINE_PARAM,  NULL, NULL, wxNTRANS("inputfile"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL | wxCMD_LINE_PARAM_MULTIPLE},
 #endif
 	//Unit testing system
 #ifdef DEBUG
@@ -4963,7 +5024,7 @@ void threeDepictApp::initLanguageSupport()
 #ifdef __WXMAC__
 			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
 #elif defined(WIN32) || defined(WIN64)
-			cerr << paths->GetResourcesDir().mb_str(wxConvUTF8) << endl;;
+			cerr << paths->GetResourcesDir().mb_str(wxConvUTF8) << endl;
 			std::string s;
 			s =  paths->GetResourcesDir().mb_str(wxConvUTF8);
 			s+="/locales/";
@@ -5010,30 +5071,61 @@ void threeDepictApp::initLanguageSupport()
 int threeDepictApp::FilterEvent(wxEvent& event)
 {
 
-    if ( event.GetEventType()==wxEVT_KEY_DOWN )
-    {
-		if(  MainFrame  &&
-	    ((wxKeyEvent&)event).GetKeyCode()==WXK_ESCAPE)
+	//Process global keyboard (non-accellerator) events
+	if ( event.GetEventType()==wxEVT_KEY_DOWN )
 	{
-			if( MainFrame->isCurrentlyUpdatingScene())
+		if(MainFrame)
+		{
+			wxKeyEvent& keyEvent = (wxKeyEvent&)event;
+			//Under GTK, escape aborts refresh. under mac, 
+			//set it to also abort fullscreen, if not refreshing
+			if(keyEvent.GetKeyCode()==WXK_ESCAPE)
 			{
-		wxCommandEvent cmd;
-		MainFrame->OnProgressAbort( cmd);
-		return true;
-	}
+				if( MainFrame->isCurrentlyUpdatingScene())
+				{
+					wxCommandEvent cmd;
+					MainFrame->OnProgressAbort( cmd);
+					return true;
+				}
 #ifdef __APPLE__
-			else if(MainFrame->IsFullScreen())
+				else if(MainFrame->IsFullScreen())
+				{
+					wxCommandEvent cmd;
+					MainFrame->OnViewFullscreen(cmd);
+					MainFrame->ShowFullScreen(false);
+					return true;
+				}
+#endif
+
+			}
+
+			//If the user presses F5, generate refresh
+			if( keyEvent.GetKeyCode()==WXK_F5)
 			{
 				wxCommandEvent cmd;
-				MainFrame->OnViewFullscreen(cmd);
-				MainFrame->ShowFullScreen(false);
-				return true;
+				MainFrame->OnButtonRefresh(cmd);
+			}
+
+#ifdef DEBUG
+			//Determine if control or meta key is down (dep. platform)
+			bool commandDown;
+#ifdef __APPLE__
+			commandDown=keyEvent.MetaDown();
+#else
+			commandDown=keyEvent.ControlDown();
+#endif
+			//If the user presses ctrl+insert, this activates hidden
+			//functionality to create autosave from filtertree
+			if(keyEvent.GetKeyCode()==WXK_INSERT
+						&& commandDown)
+			{
+				wxTimerEvent evt;
+				MainFrame->OnAutosaveTimer(evt);
 			}
 #endif
-		
 		}
 
-    }
+	}
 
     return -1;
 }
@@ -5153,7 +5245,7 @@ bool threeDepictApp::OnInit()
 	//directory using the absolute path
 	CFBundleRef mainBundle = CFBundleGetMainBundle();
 	CFURLRef resourcesURL = CFBundleCopyResourcesDirectoryURL(mainBundle);
-	char path[PATH_MAX], fullpath[PATH_MAX];
+	char path[PATH_MAX];
 	if (!CFURLGetFileSystemRepresentation(resourcesURL, TRUE, (UInt8 *)path, PATH_MAX))
 	{
 		// error!
@@ -5175,165 +5267,4 @@ bool threeDepictApp::OnInit()
     return true;
 }
 
-#ifdef DEBUG
-#include "filters/allFilter.h"
-bool threeDepictApp::runUnitTests()
-{
-	bool fileWarn=false;
-	//Instaniate various filters, then run their unit tests
-	cerr << "Running per-filter unit tests...";
-	for(unsigned int ui=0; ui<FILTER_TYPE_ENUM_END; ui++)
-	{
-		Filter *f;
-	       	f= makeFilter(ui);
-		if(!f->runUnitTests())
-			return false;
-
-		delete f;
-	}
-	cerr << "OK" <<endl;
-
-	//Run the clone/uncloned versions of filter write functions
-	//against each other and ensure
-	//that their XML output is the same. Then check against
-	//the read function.
-	//
-	// Without a user config file (with altered defaults), this is not a
-	// "strong" test, as nothing is being altered   inside the filter after 
-	// instantiation in the default case -- stuff can still be missed 
-	// in the cloneUncached, and won't be detected, but it does prevent cross-wiring. 
-	//
-	ConfigFile configFile;
-    	configFile.read();
-	
-	cerr << "Running clone tests...";
-	for(unsigned int ui=0; ui<FILTER_TYPE_ENUM_END; ui++)
-	{
-		//Get the user's preferred, or the program
-		//default filter.
-		Filter *f = configFile.getDefaultFilter(ui);
-		
-		//now attempt to clone the filter, and write both XML outputs.
-		Filter *g;
-		g=f->cloneUncached();
-
-		//create the files
-		string sOrig,sClone;
-		{
-
-			wxString wxs,tmpStr;
-
-			tmpStr=wxT("3Depict-unit-test-a");
-			tmpStr=tmpStr+wxStr(f->getUserString());
-			
-			wxs= wxFileName::CreateTempFileName(tmpStr);
-			sOrig=stlStr(wxs);
-		
-			//write out one file from original object	
-			ofstream fileOut(sOrig.c_str());
-			if(!fileOut)
-			{
-				//Run a warning, but only once.
-				WARN(fileWarn,"unable to open output xml file for xml test");
-				fileWarn=true;
-			}
-
-			f->writeState(fileOut,STATE_FORMAT_XML);
-			fileOut.close();
-
-			//write out file from cloned object
-			tmpStr=wxT("3Depict-unit-test-b");
-			tmpStr=tmpStr+wxStr(f->getUserString());
-			wxs= wxFileName::CreateTempFileName(tmpStr);
-			sClone=stlStr(wxs);
-			fileOut.open(sClone.c_str());
-			if(!fileOut)
-			{
-				//Run a warning, but only once.
-				WARN(fileWarn,"unable to open output xml file for xml test");
-				fileWarn=true;
-			}
-
-			g->writeState(fileOut,STATE_FORMAT_XML);
-			fileOut.close();
-
-
-
-		}
-
-		//Now run diff
-		//------------
-		string command;
-		command = string("diff \'") +  sOrig + "\' \'" + sClone + "\'";
-
-		wxArrayString stdOut;
-		long res;
-#if wxCHECK_VERSION(2,9,0)
-		res=wxExecute(wxStr(command),stdOut, wxEXEC_BLOCK);
-#else
-		res=wxExecute(wxStr(command),stdOut);
-#endif
-
-
-		string comment = f->getUserString() + string(" Orig: ")+ sOrig + string (" Clone:") +sClone+
-			string("Cloned filter output was different... (or diff not around?)");
-		TEST(res==0,comment.c_str());
-		//-----------
-	
-		//Check both files are valid XML
-		TEST(isValidXML(sOrig.c_str()) ==true,"XML output of filter not valid...");	
-
-		//Now, try to re-read the XML, and get back the filter,
-		//then write it out again.
-		//---
-		{
-			xmlDocPtr doc;
-			xmlParserCtxtPtr context;
-			context =xmlNewParserCtxt();
-			if(!context)
-			{
-				WARN(false,"Failed allocating XmL context");
-				return false;
-			}
-
-			//Open the XML file
-			doc = xmlCtxtReadFile(context, sClone.c_str(), NULL,0);
-
-			//release the context
-			xmlFreeParserCtxt(context);
-
-			//retrieve root node	
-			xmlNodePtr nodePtr = xmlDocGetRootElement(doc);
-
-			//Read the state file, then re-write it!
-			g->readState(nodePtr);
-
-			xmlFreeDoc(doc);
-
-			ofstream fileOut(sClone.c_str());
-			g->writeState(fileOut,STATE_FORMAT_XML);
-
-			//Re-run diff
-#if wxCHECK_VERSION(2,9,0)
-			res=wxExecute(wxStr(command),stdOut, wxEXEC_BLOCK);
-#else
-			res=wxExecute(wxStr(command),stdOut);
-#endif
-			comment = f->getUserString() + string("Orig: ")+ sOrig + string (" Clone:") +sClone+
-				string("Read-back filter output was different... (or diff not around?)");
-			TEST(res==0,comment.c_str());
-		}
-		//----
-		//clean up
-		wxRemoveFile(wxStr(sOrig));
-		wxRemoveFile(wxStr(sClone));
-
-		delete f;
-		delete g;
-	}
-	cerr << "OK" << endl;
-
-	return true;
-}
-#endif
 

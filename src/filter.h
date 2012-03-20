@@ -37,8 +37,6 @@ class RangeFileFilter;
 #include "select.h"
 #include "voxels.h"
 
-#include "rdf.h"
-
 //This MUST go after the other headers,
 //as there is some kind of symbol clash...
 #undef ATTRIBUTE_PRINTF
@@ -47,9 +45,6 @@ class RangeFileFilter;
 
 
 #include "wxcomponents.h"
-
-
-#include "translation.h"
 
 
 const unsigned int NUM_CALLBACK=50000;
@@ -194,6 +189,9 @@ class FilterProperties
 		
 		//!Names for each group of keys.
 		std::vector<std::string> keyNames;
+#ifdef DEBUG
+		void checkConsistent() const; 
+#endif
 	
 };
 
@@ -203,7 +201,7 @@ class IonStreamData : public FilterStreamData
 public:
 	IonStreamData(){ streamType=STREAM_TYPE_IONS;
 		representationType = ION_REPRESENT_POINTS; 
-		r=1.0,g=0.0,b=0.0,a=1.0;ionSize=2.0;valueType="Mass-to-Charge";};
+		r=1.0,g=0.0,b=0.0,a=1.0;ionSize=2.0;valueType=("Mass-to-Charge (amu/e)");};
 	void clear();
 	size_t getNumBasicObjects() const  { return data.size();};
 	
@@ -354,7 +352,7 @@ class Filter
 		//!Apply filter to new data, updating cache as needed. Vector of returned pointers must be deleted manually, first checking ->cached.
 		virtual unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &dataOut,
-				ProgressData &progress, bool (*callback)(void)) =0;
+				ProgressData &progress, bool (*callback)(bool)) =0;
 		//!Erase cache
 		virtual void clearCache();
 		//!Get (approx) number of bytes required for cache
@@ -470,7 +468,8 @@ class Filter
 		//Check to see if the filter needs to be refreshed 
 		virtual bool monitorNeedsRefresh() const { return false;};
 
-
+		//Are we a pure data source  - i.e. can function with no input
+		virtual bool isPureDataSource() const { return false;};
 #ifdef DEBUG
 		//!Run all the registered unit tests for this filter
 		virtual bool runUnitTests() { cerr << "No test for " << typeString() << endl; return true;} ;
@@ -511,7 +510,7 @@ unsigned int getIonstreamIonID(const IonStreamData *d, const RangeFile *r);
 
 //!Extend a point data vector using some ion data
 unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<IonHit> &vIonData,
-				bool (*callback)(),unsigned int &progress, size_t offset);
+				bool (*callback)(bool),unsigned int &progress, size_t offset);
 
 const RangeFile *getRangeFile(const std::vector<const FilterStreamData*> &dataIn);
 

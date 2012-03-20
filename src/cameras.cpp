@@ -319,7 +319,7 @@ void CameraLookAt::apply(float aspect,const BoundCube &b,bool loadIdentity,
 		case PROJECTION_MODE_PERSPECTIVE:
 		{
 			float width,height;
-			height = tan(fovAngle/2.0*M_PI/180)*nearPlane;
+			height = tan(fovAngle/2.0*M_PI/180.0f)*nearPlane;
 			width= height*aspect;
 			
 
@@ -723,7 +723,7 @@ void CameraLookAt::getProperties(CameraProperties &p) const
 	choices.push_back(make_pair((unsigned int)PROJECTION_MODE_ORTHOGONAL,tmp));
 	tmp= choiceString(choices,projectionMode);
 	
-	s.push_back(std::make_pair("Projection", tmp));
+	s.push_back(std::make_pair(TRANS("Projection"), tmp));
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	keys.push_back(KEY_LOOKAT_PROJECTIONMODE);
 
@@ -876,7 +876,7 @@ bool CameraLookAt::writeState(std::ostream &f, unsigned int format,
 
 			f << tabs(nTabs) << "<persplookat>" << endl;
 			ASSERT(userString.size());
-			f << tabs(nTabs+1) << "<userstring value=\"" << userString << "\"/>" << endl;
+			f << tabs(nTabs+1) << "<userstring value=\"" << escapeXML(userString) << "\"/>" << endl;
 			f << tabs(nTabs+1) << "<projectionmode value=\""<< projectionMode << "\"/>" << endl;
 			f << tabs(nTabs+1) << "<orthoscale value=\""<< orthoScale << "\"/>" << endl;
 			

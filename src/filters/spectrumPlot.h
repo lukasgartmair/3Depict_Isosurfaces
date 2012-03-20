@@ -1,6 +1,7 @@
 #ifndef SPECTRUMPLOT_H
 #define SPECTRUMPLOT_H
 #include "../filter.h"
+#include "../translation.h"
 
 
 //!Spectrum plot filter
@@ -30,7 +31,7 @@ class SpectrumPlotFilter : public Filter
 		//!update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 			std::vector<const FilterStreamData *> &getOut, 
-			ProgressData &progress, bool (*callback)(void));
+			ProgressData &progress, bool (*callback)(bool));
 		
 		virtual std::string typeString() const { return std::string(TRANS("Spectrum"));};
 

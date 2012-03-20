@@ -6,35 +6,35 @@
 
 enum
 {
-	KEY_COMPPROFILE_BINWIDTH=1,
-	KEY_COMPPROFILE_FIXEDBINS,
-	KEY_COMPPROFILE_NORMAL,
-	KEY_COMPPROFILE_NUMBINS,
-	KEY_COMPPROFILE_ORIGIN,
-	KEY_COMPPROFILE_PLOTTYPE,
-	KEY_COMPPROFILE_PRIMITIVETYPE,
-	KEY_COMPPROFILE_RADIUS,
-	KEY_COMPPROFILE_SHOWPRIMITIVE,
-	KEY_COMPPROFILE_NORMALISE,
-	KEY_COMPPROFILE_COLOUR,
-	KEY_COMPPROFILE_ERRMODE,
-	KEY_COMPPROFILE_AVGWINSIZE,
-	KEY_COMPPROFILE_LOCKAXISMAG
+	KEY_BINWIDTH=1,
+	KEY_FIXEDBINS,
+	KEY_NORMAL,
+	KEY_NUMBINS,
+	KEY_ORIGIN,
+	KEY_PLOTTYPE,
+	KEY_PRIMITIVETYPE,
+	KEY_RADIUS,
+	KEY_SHOWPRIMITIVE,
+	KEY_NORMALISE,
+	KEY_COLOUR,
+	KEY_ERRMODE,
+	KEY_AVGWINSIZE,
+	KEY_LOCKAXISMAG
 };
 
 //!Possible primitive types for composition profiles
 enum
 {
-	COMPPROFILE_PRIMITIVE_CYLINDER,
-	COMPPROFILE_PRIMITIVE_END, //Not actually a primitive, just end of enum
+	PRIMITIVE_CYLINDER,
+	PRIMITIVE_END, //Not actually a primitive, just end of enum
 };
 
 //!Error codes
 enum
 {
-	COMPPROFILE_ERR_NUMBINS=1,
-	COMPPROFILE_ERR_MEMALLOC,
-	COMPPROFILE_ERR_ABORT
+	ERR_NUMBINS=1,
+	ERR_MEMALLOC,
+	ERR_ABORT
 };
 
 CompositionProfileFilter::CompositionProfileFilter()
@@ -51,7 +51,7 @@ CompositionProfileFilter::CompositionProfileFilter()
 	r=g=0;
 	b=a=1;
 	
-	primitiveType=COMPPROFILE_PRIMITIVE_CYLINDER;
+	primitiveType=PRIMITIVE_CYLINDER;
 	vectorParams.push_back(Point3D(0.0,0.0,0.0));
 	vectorParams.push_back(Point3D(0,20.0,0.0));
 	scalarParams.push_back(5.0);
@@ -141,7 +141,7 @@ void CompositionProfileFilter::initFilter(const std::vector<const FilterStreamDa
 
 unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 			std::vector<const FilterStreamData *> &getOut, ProgressData &progress, 
-								bool (*callback)(void))
+								bool (*callback)(bool))
 {
 	//Clear selection devices
 	devices.clear();
@@ -153,7 +153,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		drawData->parent=this;
 		switch(primitiveType)
 		{
-			case COMPPROFILE_PRIMITIVE_CYLINDER:
+			case PRIMITIVE_CYLINDER:
 			{
 				//Origin + normal
 				ASSERT(vectorParams.size() == 2);
@@ -274,7 +274,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 	{
 		switch(primitiveType)
 		{
-			case COMPPROFILE_PRIMITIVE_CYLINDER:
+			case PRIMITIVE_CYLINDER:
 			{
 				//length of cylinder (as axis starts in cylinder middle)
 				float length;
@@ -284,7 +284,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 
 				//Check for possible overflow
 				if(length/binWidth > (float)std::numeric_limits<unsigned int>::max())
-					return COMPPROFILE_ERR_NUMBINS;
+					return ERR_NUMBINS;
 
 				numBins=(unsigned int)(length/binWidth);
 				break;
@@ -335,7 +335,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		}
 		catch(std::bad_alloc)
 		{
-			return COMPPROFILE_ERR_MEMALLOC;
+			return ERR_MEMALLOC;
 		}
 
 	}
@@ -348,7 +348,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		}
 		catch(std::bad_alloc)
 		{
-			return COMPPROFILE_ERR_MEMALLOC;
+			return ERR_MEMALLOC;
 		}
 	}
 
@@ -365,7 +365,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 
 				switch(primitiveType)
 				{
-					case COMPPROFILE_PRIMITIVE_CYLINDER:
+					case PRIMITIVE_CYLINDER:
 					{
 						//Origin + axis
 						ASSERT(vectorParams.size() == 2);
@@ -445,8 +445,8 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 									n+=NUM_CALLBACK;
 									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 									curProg=NUM_CALLBACK;
-									if(!(*callback)())
-										return COMPPROFILE_ERR_ABORT;
+									if(!(*callback)(false))
+										return ERR_ABORT;
 								}
 							}
 				
@@ -478,8 +478,8 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 									n+=NUM_CALLBACK;
 									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 									curProg=NUM_CALLBACK;
-									if(!(*callback)())
-										return COMPPROFILE_ERR_ABORT;
+									if(!(*callback)(false))
+										return ERR_ABORT;
 								}
 							}
 							
@@ -616,11 +616,11 @@ std::string  CompositionProfileFilter::getErrString(unsigned int code) const
 {
 	switch(code)
 	{
-		case COMPPROFILE_ERR_NUMBINS:
+		case ERR_NUMBINS:
 			return std::string(TRANS("Too many bins in comp. profile."));
-		case COMPPROFILE_ERR_MEMALLOC:
+		case ERR_MEMALLOC:
 			return std::string(TRANS("Not enough memory for comp. profile."));
-		case COMPPROFILE_ERR_ABORT:
+		case ERR_ABORT:
 			return std::string(TRANS("Aborted composition prof."));
 	}
 	return std::string("BUG: (CompositionProfileFilter::getErrString) Shouldn't see this!");
@@ -633,7 +633,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			
 	switch(key)
 	{
-		case KEY_COMPPROFILE_BINWIDTH:
+		case KEY_BINWIDTH:
 		{
 			float newBinWidth;
 			if(stream_cast(newBinWidth,value))
@@ -647,7 +647,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_COMPPROFILE_FIXEDBINS:
+		case KEY_FIXEDBINS:
 		{
 			unsigned int valueInt;
 			if(stream_cast(valueInt,value))
@@ -669,13 +669,13 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			needUpdate=true;	
 			break;	
 		}
-		case KEY_COMPPROFILE_NORMAL:
+		case KEY_NORMAL:
 		{
 			Point3D newPt;
 			if(!parsePointStr(value,newPt))
 				return false;
 
-			if(primitiveType == COMPPROFILE_PRIMITIVE_CYLINDER)
+			if(primitiveType == PRIMITIVE_CYLINDER)
 			{
 				if(lockAxisMag && 
 					newPt.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()))
@@ -684,6 +684,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 					newPt*=sqrt(vectorParams[1].sqrMag());
 				}
 			}
+			
 			if(!(vectorParams[1] == newPt ))
 			{
 				vectorParams[1] = newPt;
@@ -692,7 +693,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			}
 			return true;
 		}
-		case KEY_COMPPROFILE_NUMBINS:
+		case KEY_NUMBINS:
 		{
 			unsigned int newNumBins;
 			if(stream_cast(newNumBins,value))
@@ -708,7 +709,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_COMPPROFILE_ORIGIN:
+		case KEY_ORIGIN:
 		{
 			Point3D newPt;
 			if(!parsePointStr(value,newPt))
@@ -723,11 +724,11 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 
 			return true;
 		}
-		case KEY_COMPPROFILE_PRIMITIVETYPE:
+		case KEY_PRIMITIVETYPE:
 		{
 			unsigned int newPrimitive;
 			if(stream_cast(newPrimitive,value) ||
-					newPrimitive >= COMPPROFILE_PRIMITIVE_END)
+					newPrimitive >= PRIMITIVE_END)
 				return false;
 	
 
@@ -740,7 +741,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			scalarParams.clear();
 			switch(primitiveType)
 			{
-				case COMPPROFILE_PRIMITIVE_CYLINDER:
+				case PRIMITIVE_CYLINDER:
 					vectorParams.push_back(Point3D(0,0,0));
 					vectorParams.push_back(Point3D(0,20,0));
 					scalarParams.push_back(10.0f);
@@ -754,7 +755,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			needUpdate=true;	
 			return true;	
 		}
-		case KEY_COMPPROFILE_RADIUS:
+		case KEY_RADIUS:
 		{
 			float newRad;
 			if(stream_cast(newRad,value))
@@ -768,7 +769,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			}
 			return true;
 		}
-		case KEY_COMPPROFILE_SHOWPRIMITIVE:
+		case KEY_SHOWPRIMITIVE:
 		{
 			unsigned int valueInt;
 			if(stream_cast(valueInt,value))
@@ -789,7 +790,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			break;	
 		}
 
-		case KEY_COMPPROFILE_NORMALISE:
+		case KEY_NORMALISE:
 		{
 			unsigned int valueInt;
 			if(stream_cast(valueInt,value))
@@ -811,7 +812,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			needUpdate=true;	
 			break;	
 		}
-		case KEY_COMPPROFILE_LOCKAXISMAG:
+		case KEY_LOCKAXISMAG:
 		{
 			string stripped=stripWhite(value);
 
@@ -828,7 +829,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			break;
 		}
 
-		case KEY_COMPPROFILE_PLOTTYPE:
+		case KEY_PLOTTYPE:
 		{
 			unsigned int tmpPlotType;
 
@@ -841,7 +842,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			needUpdate=true;	
 			break;
 		}
-		case KEY_COMPPROFILE_COLOUR:
+		case KEY_COLOUR:
 		{
 			unsigned char newR,newG,newB,newA;
 			parseColString(value,newR,newG,newB,newA);
@@ -854,7 +855,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;	
 		}
-		case KEY_COMPPROFILE_ERRMODE:
+		case KEY_ERRMODE:
 		{
 			unsigned int tmpMode;
 			tmpMode=plotErrmodeID(value);
@@ -867,7 +868,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 
 			break;
 		}
-		case KEY_COMPPROFILE_AVGWINSIZE:
+		case KEY_AVGWINSIZE:
 		{
 			unsigned int tmpNum;
 			stream_cast(tmpNum,value);
@@ -900,35 +901,35 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 	string str,tmpStr;
 
 	//Allow primitive selection if we have more than one primitive
-	if(COMPPROFILE_PRIMITIVE_END > 1)
+	if(PRIMITIVE_END > 1)
 	{
-		stream_cast(str,(int)COMPPROFILE_PRIMITIVE_END-1);
+		stream_cast(str,(int)PRIMITIVE_END-1);
 		str =string(TRANS("Primitive Type (0-") + str + ")");
 		stream_cast(tmpStr,primitiveType);
 		s.push_back(make_pair(str,tmpStr));
-		keys.push_back(KEY_COMPPROFILE_PRIMITIVETYPE);
+		keys.push_back(KEY_PRIMITIVETYPE);
 		type.push_back(PROPERTY_TYPE_INTEGER);
 	}
 
-	str = TRANS("Show primitive");	
+	str = TRANS("Show Primitive");	
 	stream_cast(tmpStr,showPrimitive);
 	s.push_back(make_pair(str,tmpStr));
-	keys.push_back(KEY_COMPPROFILE_SHOWPRIMITIVE);
+	keys.push_back(KEY_SHOWPRIMITIVE);
 	type.push_back(PROPERTY_TYPE_BOOL);
 
 	switch(primitiveType)
 	{
-		case COMPPROFILE_PRIMITIVE_CYLINDER:
+		case PRIMITIVE_CYLINDER:
 		{
 			ASSERT(vectorParams.size() == 2);
 			ASSERT(scalarParams.size() == 1);
 			stream_cast(str,vectorParams[0]);
-			keys.push_back(KEY_COMPPROFILE_ORIGIN);
+			keys.push_back(KEY_ORIGIN);
 			s.push_back(make_pair(TRANS("Origin"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			
 			stream_cast(str,vectorParams[1]);
-			keys.push_back(KEY_COMPPROFILE_NORMAL);
+			keys.push_back(KEY_NORMAL);
 			s.push_back(make_pair(TRANS("Axis"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 
@@ -936,12 +937,12 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 				str="1";
 			else
 				str="0";
-			keys.push_back(KEY_COMPPROFILE_LOCKAXISMAG);
+			keys.push_back(KEY_LOCKAXISMAG);
 			s.push_back(make_pair(TRANS("Lock Axis Mag."), str));
 			type.push_back(PROPERTY_TYPE_BOOL);
 			
 			stream_cast(str,scalarParams[0]);
-			keys.push_back(KEY_COMPPROFILE_RADIUS);
+			keys.push_back(KEY_RADIUS);
 			s.push_back(make_pair(TRANS("Radius"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 
@@ -951,7 +952,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 		}
 	}
 
-	keys.push_back(KEY_COMPPROFILE_FIXEDBINS);
+	keys.push_back(KEY_FIXEDBINS);
 	stream_cast(str,fixedBins);
 	s.push_back(make_pair(TRANS("Fixed Bin Num"), str));
 	type.push_back(PROPERTY_TYPE_BOOL);
@@ -961,7 +962,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 		stream_cast(tmpStr,nBins);
 		str = TRANS("Num Bins");
 		s.push_back(make_pair(str,tmpStr));
-		keys.push_back(KEY_COMPPROFILE_NUMBINS);
+		keys.push_back(KEY_NUMBINS);
 		type.push_back(PROPERTY_TYPE_INTEGER);
 	}
 	else
@@ -969,14 +970,14 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 		str = TRANS("Bin width");
 		stream_cast(tmpStr,binWidth);
 		s.push_back(make_pair(str,tmpStr));
-		keys.push_back(KEY_COMPPROFILE_BINWIDTH);
+		keys.push_back(KEY_BINWIDTH);
 		type.push_back(PROPERTY_TYPE_REAL);
 	}
 
 	str = TRANS("Normalise");	
 	stream_cast(tmpStr,normalise);
 	s.push_back(make_pair(str,tmpStr));
-	keys.push_back(KEY_COMPPROFILE_NORMALISE);
+	keys.push_back(KEY_NORMALISE);
 	type.push_back(PROPERTY_TYPE_BOOL);
 
 
@@ -1007,7 +1008,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 	tmpStr= choiceString(choices,plotType);
 	s.push_back(make_pair(string(TRANS("Plot Type")),tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_COMPPROFILE_PLOTTYPE);
+	keys.push_back(KEY_PLOTTYPE);
 	//Convert the colour to a hex string
 	if(!haveRangeParent)
 	{
@@ -1017,7 +1018,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 
 		s.push_back(make_pair(string(TRANS("Colour")),thisCol)); 
 		type.push_back(PROPERTY_TYPE_COLOUR);
-		keys.push_back(KEY_COMPPROFILE_COLOUR);
+		keys.push_back(KEY_COLOUR);
 	}
 
 	propertyList.data.push_back(s);
@@ -1038,7 +1039,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 	tmpStr= choiceString(choices,errMode.mode);
 	s.push_back(make_pair(string(TRANS("Err. Estimator")),tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_COMPPROFILE_ERRMODE);
+	keys.push_back(KEY_ERRMODE);
 
 
 	if(errMode.mode == PLOT_ERROR_MOVING_AVERAGE)
@@ -1046,7 +1047,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 		stream_cast(tmpStr,errMode.movingAverageNum);
 		s.push_back(make_pair(string(TRANS("Avg. Window")), tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
-		keys.push_back(KEY_COMPPROFILE_AVGWINSIZE);
+		keys.push_back(KEY_AVGWINSIZE);
 
 	}	
 
@@ -1070,7 +1071,7 @@ bool CompositionProfileFilter::writeState(std::ofstream &f,unsigned int format, 
 		case STATE_FORMAT_XML:
 		{	
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<primitivetype value=\"" << primitiveType<< "\"/>" << endl;
 			f << tabs(depth+1) << "<showprimitive value=\"" << showPrimitive << "\"/>" << endl;
@@ -1146,7 +1147,7 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	if(stream_cast(primitiveType,tmpStr))
 		return false;
 
-	if(primitiveType >= COMPPROFILE_PRIMITIVE_END)
+	if(primitiveType >= PRIMITIVE_END)
 	       return false;	
 	xmlFree(xmlString);
 	//====
@@ -1270,7 +1271,7 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	//Check the scalar params match the selected primitive	
 	switch(primitiveType)
 	{
-		case COMPPROFILE_PRIMITIVE_CYLINDER:
+		case PRIMITIVE_CYLINDER:
 			if(vectorParams.size() != 2 || scalarParams.size() !=1)
 				return false;
 			break;
@@ -1419,3 +1420,224 @@ void CompositionProfileFilter::setPropFromBinding(const SelectionBinding &b)
 
 	clearCache();
 }
+
+#ifdef DEBUG
+
+bool testDensityCylinder();
+bool testCompositionCylinder();
+void synthComposition(const vector<pair<float,float> > &compositionData,
+			vector<IonHit> &h);
+IonStreamData *synthLinearProfile(const Point3D &start, const Point3D &end,
+					float radialSpread,unsigned int numPts);
+
+bool CompositionProfileFilter::runUnitTests()
+{
+	if(!testDensityCylinder())
+		return false;
+
+	if(!testCompositionCylinder())
+		return false;
+
+	return true;
+}
+
+bool testCompositionCylinder()
+{
+	cerr << "FIXME: IMPLEMENT ME :" << __FUNCTION__ << endl;	
+	cerr << "Missing composition test in cylinder profile" << endl;
+	return true;
+}
+
+bool testDensityCylinder()
+{
+	IonStreamData *d;
+	const size_t NUM_PTS=10000;
+
+	//Create a cylinder of data, forming a linear profile
+	Point3D startPt(-1.0f,-1.0f,-1.0f),endPt(1.0f,1.0f,1.0f);
+	d= synthLinearProfile(startPt,endPt,
+			0.5f, NUM_PTS);
+
+	//Generate two compositions for the test dataset
+	{
+	vector<std::pair<float,float>  > vecCompositions;
+	vecCompositions.push_back(make_pair(2.0f,0.5f));
+	vecCompositions.push_back(make_pair(3.0f,0.5f));
+	synthComposition(vecCompositions,d->data);
+	}
+
+	CompositionProfileFilter *f = new CompositionProfileFilter;
+	f->setCaching(false);
+
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	streamIn.push_back(d);
+	
+	bool needUp; std::string s;
+	stream_cast(s,Point3D((startPt+endPt)*0.5f));
+	TEST(f->setProperty(0,KEY_ORIGIN,s,needUp),"set origin");
+	
+	stream_cast(s,Point3D((endPt-startPt)*0.5f));
+	TEST(f->setProperty(0,KEY_NORMAL,s,needUp),"set direction");
+	
+	TEST(f->setProperty(0,KEY_SHOWPRIMITIVE,"1",needUp),"Set cylinder visibility");
+
+	TEST(f->setProperty(0,KEY_NORMALISE,"0",needUp),"Disable normalisation");
+	TEST(f->setProperty(0,KEY_RADIUS,"5",needUp),"Set radius");
+
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	delete f;
+	delete d;
+
+
+	TEST(streamOut.size() == 2, "output stream count");
+
+	std::map<unsigned int, unsigned int> countMap;
+	countMap[STREAM_TYPE_PLOT] = 0;
+	countMap[STREAM_TYPE_DRAW] = 0;
+
+	for(unsigned int ui=0;ui<streamOut.size();ui++)
+	{
+		ASSERT(countMap.find(streamOut[ui]->getStreamType()) != countMap.end());
+		countMap[streamOut[ui]->getStreamType()]++;
+	}
+
+	TEST(countMap[STREAM_TYPE_PLOT] == 1,"Plot count");
+	TEST(countMap[STREAM_TYPE_DRAW] == 1,"Draw count");
+
+	
+	const PlotStreamData* plotData=0;
+	for(unsigned int ui=0;ui<streamOut.size();ui++)
+	{
+		if(streamOut[ui]->getStreamType() == STREAM_TYPE_PLOT)
+		{
+			plotData = (const PlotStreamData *)streamOut[ui];
+			break;
+		}
+	}
+
+	float sum=0;
+	for(size_t ui=0;ui<plotData->xyData.size(); ui++)
+		sum+=plotData->xyData[ui].second;
+
+
+	TEST(sum > NUM_PTS/1.2f,"Number points roughly OK");
+	TEST(sum <= NUM_PTS,"No overcounting");
+	
+	for(unsigned int ui=0;ui<streamOut.size();ui++)
+		delete streamOut[ui];
+
+	return true;
+}
+
+
+//first value in pair is target mass, second value is target composition
+void synthComposition(const vector<std::pair<float,float> > &compositionData,
+			vector<IonHit> &h)
+{
+	float fractionSum=0;
+	for(size_t ui=0;ui<compositionData.size(); ui++)
+		fractionSum+=compositionData[ui].second;
+
+	//build the spactings between 0 and 1, so we can
+	//randomly select ions by uniform deviates
+	vector<std::pair<float,float> > ionCuts;
+	ionCuts.resize(compositionData.size());
+	//ionCuts.resize[compositionData.size()];
+	float runningSum=0;
+	for(size_t ui=0;ui<ionCuts.size(); ui++)
+	{
+		runningSum+=compositionData[ui].second;
+		ionCuts[ui]=make_pair(compositionData[ui].first, 
+				runningSum/fractionSum);
+	}
+
+	RandNumGen rngHere;
+	rngHere.initTimer();
+	for(size_t ui=0;ui<h.size();ui++)
+	{
+
+		float newMass;
+		bool haveSetMass;
+		
+		//keep generating random selections until we hit something.
+		// This is to prevent any fp fallthrough
+		do
+		{
+			float uniformDeviate;
+			uniformDeviate=rngHere.genUniformDev();
+
+			haveSetMass=false;
+			//This is not efficient -- data is sorted,
+			//so binary search would work, but whatever.
+			for(size_t uj=0;uj<ionCuts.size();uj++)	
+			{
+				if(uniformDeviate >=ionCuts[uj].second)
+				{
+					newMass=ionCuts[uj].first;
+					haveSetMass=true;
+					break;
+				}
+			}
+		}while(!haveSetMass);
+
+
+		h[ui].setMassToCharge(newMass);
+	}
+}
+
+
+//Create a line of points of fixed mass (1), with a top-hat radial spread function
+// so we end up with a cylinder of unit mass data along some start-end axis
+//you must free the returned value by calling "delete"
+IonStreamData *synthLinearProfile(const Point3D &start, const Point3D &end,
+					float radialSpread,unsigned int numPts)
+{
+
+	ASSERT((start-end).sqrMag() > std::numeric_limits<float>::epsilon());
+	IonStreamData *d = new IonStreamData;
+
+	IonHit h;
+	h.setMassToCharge(1.0f);
+
+	Point3D delta; 
+	delta=(end-start)*1.0f/(float)numPts;
+
+	RandNumGen rngAxial;
+	rngAxial.initTimer();
+	
+	Point3D unitDelta;
+	unitDelta=delta;
+	unitDelta.normalise();
+	
+	
+	d->data.resize(numPts);
+	for(size_t ui=0;ui<numPts;ui++)
+	{
+		//generate a random offset vector
+		//that is normal to the axis of the simulation
+		Point3D randomVector;
+		do
+		{
+			randomVector=Point3D(rngAxial.genUniformDev(),
+					rngAxial.genUniformDev(),
+					rngAxial.genUniformDev());
+		}while(randomVector.sqrMag() < std::numeric_limits<float>::epsilon() &&
+			randomVector.angle(delta) < std::numeric_limits<float>::epsilon());
+
+		
+		randomVector=randomVector.crossProd(unitDelta);
+		randomVector.normalise();
+
+		//create the point
+		Point3D pt;
+		pt=delta*(float)ui + start; //true location
+		pt+=randomVector*radialSpread;
+		h.setPos(pt);
+		d->data[ui] =h;
+	}
+
+	return d;
+}
+#endif

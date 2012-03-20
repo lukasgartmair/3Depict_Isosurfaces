@@ -1,6 +1,7 @@
 #ifndef COMPPROFILE_H
 #define COMPPROFILE_H
 #include "../filter.h"
+#include "../translation.h"
 
 //!Filter that does composition profiles for various primitives
 class CompositionProfileFilter : public Filter
@@ -63,7 +64,7 @@ class CompositionProfileFilter : public Filter
 		//!update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 						std::vector<const FilterStreamData *> &getOut, 
-						ProgressData &progress, bool (*callback)(void));
+						ProgressData &progress, bool (*callback)(bool));
 		
 		virtual std::string typeString() const { return std::string(TRANS("Comp. Prof."));};
 
@@ -91,6 +92,10 @@ class CompositionProfileFilter : public Filter
 		void setPropFromBinding(const SelectionBinding &b) ;
 
 		void setUserString(const std::string &s); 
+
+#ifdef DEBUG
+		bool runUnitTests() ;
+#endif
 };
 
 #endif

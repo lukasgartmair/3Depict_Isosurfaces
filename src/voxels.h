@@ -151,7 +151,7 @@ template<class T> class Voxels
 		//to maxBound
 		Point3D minBound, maxBound;
 	
-		bool (*callback)(void);
+		bool (*callback)(bool);
 			
 	public:
 		//!Constructor.
@@ -412,7 +412,7 @@ template<class T> class Voxels
 			voxels[(size_t)z*(size_t)binCount[1]*(size_t)binCount[0]
 				+(size_t)y*(size_t)binCount[0] + (size_t)x]++;}
 	
-		void setCallbackMethod(bool (*cb)(void)) {callback = cb;}
+		void setCallbackMethod(bool (*cb)(bool)) {callback = cb;}
 
 		//!Element wise division	
 		void operator/=(const Voxels<T> &v);
@@ -994,7 +994,7 @@ size_t Voxels<T>::resizeKeepData(size_t &newX, size_t &newY, size_t &newZ,
 
 #pragma omp critical
 					{
-					if(!(*callback)())
+					if(!(*callback)(false))
 						spin=true;
 					}
 				}
@@ -1289,7 +1289,7 @@ size_t Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &result,  size_t b
 					{
 						progress = (size_t) ((float)its/itsToDo*100);
 					}
-					if(!(*callback)())
+					if(!(*callback)(false))
 						spin=true;
 				}
 			for (size_t uk=0;uk<binCount[2]-z; uk++)
@@ -1990,7 +1990,7 @@ void Voxels<T>::makeSphericalKernel(size_t sideLen, float bound, const T &val, u
 
 						//Level 0 corresponds to 1/8th of the original voxel. Level n = 1/(2^3(n+1)) 
 						//each voxel has side lenght L_v = originalLen/(2^(level+1))
-						while(!positionStack.empty())
+						while(positionStack.size())
 						{
 							thisCentre = positionStack.top().first;
 							thisLevel = positionStack.top().second;
@@ -2225,7 +2225,7 @@ void Voxels<T>::fillSpheresByPosition( const std::vector<Point3D> &spherePos, fl
 					}
 				}
 				
-				
+
 			}
 		}
 	}
@@ -2257,7 +2257,7 @@ void Voxels<T>::fillSpheresByPosition( const std::vector<Point3D> &spherePos, fl
 #pragma omp critical
 				setData(p[0],p[1],p[2],value);
 			}
-			
+
 		}
 
 	}
@@ -2279,7 +2279,7 @@ int Voxels<T>::countPoints( const std::vector<Point3D> &points, bool noWrap, boo
 	{
 		if(!downSample--)
 		{
-			if(!(*callback)())
+			if(!(*callback)(false))
 				return VOXEL_ABORT_ERR;
 			downSample=MAX_CALLBACK;
 		}
@@ -2404,7 +2404,7 @@ int Voxels<T>::histogram(std::vector<size_t> &v, size_t histBinCount) const
 		}
 #pragma omp critical
 		{
-		if(!(*callback)())
+		if(!(*callback)(false))
 			spin=true;
 		}
 
@@ -2461,7 +2461,7 @@ void Voxels<T>::findSorted(std::vector<size_t> &x, std::vector<size_t> &y,
 	//Could be better if we didn't use indexed data aquisition (record opsition)
 	std::deque<size_t> bSx,bSy,bSz;
 
-	if(!voxels.size())
+	if(voxels.empty())
 		return;
 	
 	T curBest;

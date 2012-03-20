@@ -44,7 +44,7 @@ class AxisCompare
 	public:
 		AxisCompare();
 		void setAxis(unsigned int Axis);
-		inline bool operator() (const Point3D &p1,const Point3D &p2)
+		inline bool operator()(const Point3D &p1,const Point3D &p2) const
 		{return p1[axis]<p2[axis];};
 };
 
@@ -105,7 +105,7 @@ class K3DTree
 		K3DNode *buildRecurse(std::vector<Point3D>::iterator pts_start,
 			       	std::vector<Point3D>::iterator pts_end, unsigned int depth );
 		
-		bool (*callback)(void);
+		bool (*callback)(bool);
 
 		unsigned int *progress; //Progress counter
 		size_t curNodeCount; //Counter for build operations
@@ -118,7 +118,7 @@ class K3DTree
 		~K3DTree();
 		
 		//Set the callback routine for progress reporting
-		void setCallbackMethod(bool (*cb)(void)) {callback = cb;}
+		void setCallbackMethod(bool (*cb)(bool)) {callback = cb;}
 		
 		void setProgressPointer(unsigned int *p) { progress=p;};
 	

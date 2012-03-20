@@ -18,8 +18,6 @@
 
 #include <wx/wx.h>
 
-#include "tree.hh"
-
 #ifndef STASHDIALOG_H
 #define STASHDIALOG_H
 
@@ -44,7 +42,7 @@ public:
 
 private:
 
-    tree<Filter *> curTree;
+    FilterTree curTree;
     std::vector<std::pair<unsigned int,const Filter *> > filterTreeMapping;
     UniqueIDHandler uniqueIds;
     // begin wxGlade: StashDialog::methods

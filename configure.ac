@@ -259,24 +259,31 @@ esac
 
 #Check for Mathgl
 dnl ----------
+CFLAGS_ORIG="$CFLAGS"
+LIBS_ORIG="$LIBS"
 
 AC_ARG_WITH(mgl-flags,
   [  --with-mgl-flags=PATH : specify compiler flags for mathgl])
 if test x"$with_mgl_flags" != x"" ; then
-	MGL_CFLAGS="$with_mgl_flags"
+	CFLAGS="$CFLAGS $with_mgl_flags"
+	MGL_CFLAGS=$CFLAGS
+	AC_SUBST(MGL_CFLAGS)
 fi
 
 AC_ARG_WITH(mgl-libs,
   [  --with-mgl-libs=PATH : specify linker flag (library) for mathgl])
 if test x"$with_mgl_libs" != x"" ; then
-	MGL_LIBS="$with_mgl_libs"
-	AC_SUBST(MGL_LIBS)
+	LIBS="$LDFLAGS $with_mgl_libs"
 else
-	AC_SUBST(MGL_LIBS,[-lmgl])
+	LIBS="$LDFLAGS -lmgl"
 fi
+	MGL_LIBS=$LIBS
+	AC_SUBST(MGL_LIBS)
 
 AC_CHECK_HEADER([mgl/mgl_c.h],[AC_DEFINE(HAVE_MGL_H,[],[Have got mathgl headers])],
-	[AC_MSG_ERROR([Required MathGL headers not found (looking for mgl/mg_c.h) - is mathgl developement scode installed?])])
+	[AC_MSG_ERROR([Required MathGL headers not found (looking for mgl/mgl_c.h) - is mathgl developement scode installed?])])
+CFLAGS="$CFLAGS_ORIG"
+LIBS="$LIBS_ORIG"
 
 dnl -------
 

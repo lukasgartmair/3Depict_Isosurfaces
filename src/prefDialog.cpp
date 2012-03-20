@@ -25,6 +25,8 @@
 
 #include <wx/colordlg.h>
 
+#include "wxcommon.h"
+
 using std::vector;
 
 
@@ -58,6 +60,7 @@ enum
 PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
     wxDialog(parent, id, title, pos, size, style)
 {
+	SetTitle(wxTRANS("PReferences"));
     // begin wxGlade: prefDialog::prefDialog
 	notePrefPanels = new wxNotebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0);
     notePrefPanels_pane_3 = new wxPanel(notePrefPanels, wxID_ANY);

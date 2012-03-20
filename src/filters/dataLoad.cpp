@@ -4,11 +4,13 @@
 #include <wx/filefn.h>
 #include <wx/file.h>
 #include <wx/filename.h>
+#include "../wxcommon.h"
 
 #include "../xmlHelper.h"
 #include "../basics.h"
 
 #include "../translation.h"
+
 
 //Default number of ions to load
 const size_t MAX_IONS_LOAD_DEFAULT=5*1024*1024/(4*sizeof(float)); //5 MB worth.
@@ -27,6 +29,7 @@ enum
 	KEY_COLOUR,
 	KEY_IONSIZE,
 	KEY_ENABLED,
+	KEY_VALUELABEL,
 	KEY_SELECTED_COLUMN0,
 	KEY_SELECTED_COLUMN1,
 	KEY_SELECTED_COLUMN2,
@@ -46,16 +49,20 @@ enum
 const char *AVAILABLE_FILEDATA_TYPES[] = { 	NTRANS("POS Data"),
 					NTRANS("Text Data"),
 					};
+const char *DEFAULT_LABEL="Mass-to-Charge (amu/e)";
 
 // == Pos load filter ==
 DataLoadFilter::DataLoadFilter()
 {
+	COMPILE_ASSERT(ARRAYSIZE(AVAILABLE_FILEDATA_TYPES) == FILEDATA_TYPE_ENUM_END);
 	cache=true;
 	maxIons=MAX_IONS_LOAD_DEFAULT;
 	fileType=FILEDATA_TYPE_POS;
 	//default ion colour is red.
 	r=a=1.0f;
 	g=b=0.0f;
+	//Default label is user locale string for m/c
+	valueLabel=TRANS(DEFAULT_LABEL);
 
 	enabled=true;
 	volumeRestrict=false;
@@ -172,13 +179,8 @@ size_t DataLoadFilter::numBytesForCache(size_t nObjects) const
 	return result;	
 }
 
-string DataLoadFilter::getValueLabel()
-{
-	return std::string(TRANS("Mass-to-Charge (amu/e)"));
-}
-
 unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
 	errStr="";
 	//use the cached copy if we have it.
@@ -322,7 +324,6 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 				}
 		
 					
-				ionData->data.resize(outDat.size());
 
 				if(outDat.size() !=4)
 				{
@@ -340,6 +341,8 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 				ASSERT(outDat[0].size() == outDat[1].size() && 
 					outDat[1].size() == outDat[2].size()
 					&& outDat[2].size() == outDat[3].size());
+
+				ionData->data.resize(outDat[0].size());
 				#pragma omp parallel for
 				for(unsigned int ui=0;ui<outDat[0].size(); ui++)
 				{
@@ -363,7 +366,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	ionData->b = b;
 	ionData->a = a;
 	ionData->ionSize=ionSize;
-	ionData->valueType=getValueLabel();
+	ionData->valueType=valueLabel;
 	
 	BoundCube dataCube;
 	dataCube = getIonDataLimits(ionData->data);
@@ -458,25 +461,35 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 	}
 	
 	colStr= choiceString(choices,index[0]);
-	s.push_back(std::make_pair("x", colStr));
+	s.push_back(std::make_pair("X", colStr));
 	keys.push_back(KEY_SELECTED_COLUMN0);
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
 	colStr= choiceString(choices,index[1]);
-	s.push_back(std::make_pair("y", colStr));
+	s.push_back(std::make_pair("Y", colStr));
 	keys.push_back(KEY_SELECTED_COLUMN1);
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
 	colStr= choiceString(choices,index[2]);
-	s.push_back(std::make_pair("z", colStr));
+	s.push_back(std::make_pair("Z", colStr));
 	keys.push_back(KEY_SELECTED_COLUMN2);
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
 	colStr= choiceString(choices,index[3]);
-	s.push_back(std::make_pair(TRANS("value"), colStr));
+	s.push_back(std::make_pair(TRANS("Value"), colStr));
 	keys.push_back(KEY_SELECTED_COLUMN3);
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
+	s.push_back(std::make_pair(TRANS("Value Label"), valueLabel));
+	keys.push_back(KEY_VALUELABEL);
+	type.push_back(PROPERTY_TYPE_STRING);
+
+
+	propertyList.data.push_back(s);
+	propertyList.types.push_back(type);
+	propertyList.keys.push_back(keys);
+	s.clear();type.clear();keys.clear();
+
 	string tmpStr;
 	stream_cast(tmpStr,enabled);
 	s.push_back(std::make_pair(TRANS("Enabled"), tmpStr));
@@ -539,7 +552,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 			if(ltmp == (unsigned int) -1 || ltmp == fileType)
 				return false;
 
-			fileType=FILEDATA_TYPE_TEXT;
+			fileType=ltmp;
 			clearCache();
 			needUpdate=true;
 			break;
@@ -666,7 +679,6 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 				return false;
 
 			ionSize=ltmp;
-			needUpdate=true;
 
 			//Check the cache, updating it if needed
 			if(cacheOK)
@@ -682,6 +694,31 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 				}
 			}
 			needUpdate=true;
+
+			break;
+		}
+		case KEY_VALUELABEL:
+		{
+			if(value !=valueLabel)
+			{
+				valueLabel=value;
+				needUpdate=true;
+			
+				//Check the cache, updating it if needed
+				if(cacheOK)
+				{
+					for(unsigned int ui=0;ui<filterOutputs.size();ui++)
+					{
+						if(filterOutputs[ui]->getStreamType() == STREAM_TYPE_IONS)
+						{
+							IonStreamData *i;
+							i=(IonStreamData *)filterOutputs[ui];
+							i->valueType=valueLabel;
+						}
+					}
+				}
+
+			}
 
 			break;
 		}
@@ -858,14 +895,34 @@ bool DataLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	xmlNodePtr nodeTmp;
 	nodeTmp=nodePtr;
 	if(XMLGetNextElemAttrib(nodePtr,tmpVal,"monitor","value"))
-	{
 		wantMonitor=tmpVal;
-	}
 	else
 	{
 		nodePtr=nodeTmp;
 		wantMonitor=false;
 	}
+	//--
+	
+	//Retrieve value type string (eg mass-to-charge, 
+	// or whatever the data type is)
+	//--
+	nodeTmp=nodePtr;
+	if(XMLHelpFwdToElem(nodePtr,"valuetype"))
+	{
+		nodePtr=nodeTmp;
+		valueLabel=TRANS(DEFAULT_LABEL);
+	}
+	else
+	{
+		xmlChar *xmlString;
+		xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
+		if(!xmlString)
+			return false;
+		valueLabel=(char *)xmlString;
+		xmlFree(xmlString);
+
+	}
+
 	//--
 
 	//Get max Ions
@@ -921,12 +978,13 @@ bool DataLoadFilter::writeState(std::ofstream &f,unsigned int format, unsigned i
 		{	
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
 
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
-			f << tabs(depth+1) << "<file name=\"" << convertFileStringToCanonical(ionFilename) << "\" type=\"" << fileType << "\"/>" << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
+			f << tabs(depth+1) << "<file name=\"" << escapeXML(convertFileStringToCanonical(ionFilename)) << "\" type=\"" << fileType << "\"/>" << endl;
 			f << tabs(depth+1) << "<columns value=\"" << numColumns << "\"/>" << endl;
 			f << tabs(depth+1) << "<xyzm values=\"" << index[0] << "," << index[1] << "," << index[2] << "," << index[3] << "\"/>" << endl;
 			f << tabs(depth+1) << "<enabled value=\"" << enabled<< "\"/>" << endl;
 			f << tabs(depth+1) << "<monitor value=\"" << wantMonitor<< "\"/>"<< endl; 
+			f << tabs(depth+1) << "<valuetype value=\"" << escapeXML(valueLabel)<< "\"/>"<< endl; 
 			f << tabs(depth+1) << "<maxions value=\"" << maxIons << "\"/>" << endl;
 
 			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
@@ -997,12 +1055,20 @@ bool DataLoadFilter::monitorNeedsRefresh() const
 
 #ifdef DEBUG
 
+#include <memory>
+
 bool posFileTest();
+bool textFileTest();
+
 
 bool DataLoadFilter::runUnitTests()
 {
 	if(!posFileTest())
 		return false;
+
+	if(!textFileTest())
+		return false;
+
 	return true;
 }
 
@@ -1021,6 +1087,7 @@ bool posFileTest()
 
 	//TODO: Make more robust
 	const char *posName="testAFNEUEA1754.pos";
+	//see if we can open the file for input. If so, it must exist
 	std::ifstream file(posName,std::ios::binary);
 
 	if(file)
@@ -1044,7 +1111,7 @@ bool posFileTest()
 
 	//Create the data load filter, load it, then check we loaded the same data
 	//---------
-	DataLoadFilter *d = new DataLoadFilter;
+	DataLoadFilter* d= new DataLoadFilter;
 	d->setCaching(false);
 
 	bool needUp;
@@ -1054,7 +1121,8 @@ bool posFileTest()
 
 	vector<const FilterStreamData*> streamIn,streamOut;
 	ProgressData prog;
-	d->refresh(streamIn,streamOut,prog,dummyCallback);
+	TEST(!d->refresh(streamIn,streamOut,prog,dummyCallback),"Refresh error code");
+	delete d;
 
 
 	TEST(streamOut.size() == 1, "Stream count");
@@ -1063,8 +1131,6 @@ bool posFileTest()
 	TEST(streamOut[0]->getNumBasicObjects() == hits.size(), "Stream count");
 	
 	
-	WARN(false,"Implement unit tests for text dataload!");
-
 #if defined(__LINUX__) || defined(__APPLE__)
 	//Hackish mathod to delete file
 	std::string s;
@@ -1072,7 +1138,90 @@ bool posFileTest()
 	system(s.c_str());
 #endif
 
+	delete streamOut[0];
+	return true;
+}
+
+bool textFileTest()
+{
+	//write some random data
+	// with a fixed seed value
+	RandNumGen r;
+	r.initialise(232635); 
+	const unsigned int NUM_PTS=1000;
+
+	//TODO: do better than this
+	const char *FILENAME="test-3mdfuneaascn.txt";
+	//see if we can open the file for input. If so, it must exist,
+	//and thus we don't want to overwite it, as it may contain useful data.
+	std::ifstream inFile(FILENAME);
+	if(inFile)
+	{
+		std::string s;
+		s="Unwilling to execute file test, will not overwrite file :";
+		s+=FILENAME;
+		s+=". Test is indeterminate";
+		WARN(false,s.c_str());
+
+		return true;
+	}
+		
+	std::ofstream outFile(FILENAME);
+
+	if(!outFile)
+	{
+		WARN(false,"Unable to create test output file. Unit test was indeterminate. Requires write access to excution path");
+		return true;
+	}
+
+	vector<IonHit> hitVec;
+	hitVec.resize(NUM_PTS);
+	
+	//Write out the file
+	outFile << "x y\tz\tValues" << endl;
+	for(unsigned int ui=0;ui<NUM_PTS;ui++)
+	{
+		Point3D p;
+		p.setValue(r.genUniformDev(),r.genUniformDev(),r.genUniformDev());
+		hitVec[ui].setPos(p);
+		hitVec[ui].setMassToCharge(r.genUniformDev());
+		outFile << p[0] << " " << p[1] << "\t" << p[2] << "\t" << hitVec[ui].getMassToCharge() << endl;
+	}
+
+	outFile.close();
+
+	//Create the data load filter, load it, then check we loaded the same data
+	//---------
+	DataLoadFilter* d=new DataLoadFilter;
+	d->setCaching(false);
+
+	bool needUp;
+	d->setProperty(0,KEY_FILE,FILENAME,needUp);
+	d->setProperty(0,KEY_SIZE,"0",needUp); //load all data
+	//Load data as text file
+	d->setProperty(0,KEY_FILETYPE,
+			AVAILABLE_FILEDATA_TYPES[FILEDATA_TYPE_TEXT],needUp); 
+	//---------
+
+
+	vector<const FilterStreamData*> streamIn,streamOut;
+	ProgressData prog;
+	TEST(!d->refresh(streamIn,streamOut,prog,dummyCallback),"Refresh error code");
 	delete d;
+
+
+	TEST(streamOut.size() == 1, "Stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS, "Stream type");
+
+	TEST(streamOut[0]->getNumBasicObjects() == NUM_PTS,"Stream count");
+
+#if defined(__LINUX__) || defined(__APPLE__)
+	//Hackish mathod to delete file
+	std::string s;
+	s=string("rm -f ") + string(FILENAME);
+	system(s.c_str());
+#endif
+
 	delete streamOut[0];
 	return true;
 }

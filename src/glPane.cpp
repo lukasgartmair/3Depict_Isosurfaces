@@ -22,8 +22,10 @@
 #include <wx/glcanvas.h>
 #include <wx/progdlg.h>
 #include <wx/defs.h>
+#include "wxcommon.h"
 
 #include "glPane.h"
+
 
 // include OpenGL
 #ifdef __WXMAC__
@@ -297,8 +299,8 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 	lrMove=CAMERA_MOVE_RATE*camMultRate*(draggingCurrent.x - draggingStart.x);
 	udMove=CAMERA_MOVE_RATE*camMultRate*(draggingCurrent.y - draggingStart.y);
 
-	lrMove*=2*M_PI/180.0;
-	udMove*=2*M_PI/180.0;
+	lrMove*=2.0f*M_PI/180.0;
+	udMove*=2.0f*M_PI/180.0;
 	unsigned int camMode=0;
 	//Decide camera movement mode
 	bool translateMode;
@@ -517,7 +519,6 @@ void BasicGLPane::mouseLeftWindow(wxMouseEvent& event)
 	{
 		if(currentScene.haveTempCam())
 		{
-			wxPoint draggingCurrent = event.GetPosition();
 			currentScene.commitTempCam();
 			dragging=false;
 		}
@@ -598,11 +599,7 @@ void BasicGLPane::keyPressed(wxKeyEvent& event)
 
 				
 				currentScene.ensureVisible(visibleDir);
-#ifdef wxMAC
-				parentStatusBar->SetStatusText(wxTRANS("Use shift/⌘-space or double tap to alter reset axis"));
-#else
 				parentStatusBar->SetStatusText(wxTRANS("Use shift/ctrl-space or double tap to alter reset axis"));
-#endif
 				parentStatusBar->SetBackgroundColour(*wxCYAN)
 					;
 				parentStatusTimer->Start(statusDelay,wxTIMER_ONE_SHOT);
@@ -829,13 +826,15 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	int panelWidth,panelHeight;
 	GetClientSize(&panelWidth,&panelHeight);
 
-	
+	float oldAspect = currentScene.getAspect();
+	currentScene.setAspect((float)panelHeight/(float)panelWidth);
+
 	//Check
 	if((unsigned int)width > panelWidth || (unsigned int)height> panelHeight)
 	{
 		unsigned int numTilesX,numTilesY;
 		numTilesX = width/panelWidth;
-		numTilesY = width/panelWidth;
+		numTilesY = height/panelHeight;
 		if(panelWidth % width)
 			numTilesX++;
 		
@@ -981,7 +980,11 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 
 	bool isOK=image->SaveFile(wxCStr(filename),wxBITMAP_TYPE_PNG);
 
+	currentScene.setAspect(oldAspect);
 	delete image;
+
+	wxPaintEvent event;
+	wxPostEvent(this,event);
 
 	return isOK;
 }
@@ -1045,6 +1048,9 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 	//Discard the current temp. cam to return the scene back to normal
 	currentScene.discardTempCam();
 	wxD->Destroy();
+	
+	wxPaintEvent event;
+	wxPostEvent(this,event);
 	return true;
 		
 }

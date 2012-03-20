@@ -58,8 +58,7 @@ enum{
 	ANAGLYPH_GREENMAGENTA,
 	//Colour matrix +accumulation buffer methods
 	ANAGLYPH_HALF_COLOUR,
-	ANAGLYPH_MIXED
-		,
+	ANAGLYPH_MIXED,
 	ANAGLYPH_ENUM_END //Not a method. end of enum
 };
 
@@ -70,6 +69,8 @@ class Effect
 		static BoundCube bc;
 		unsigned int effectType;
 	public:
+		Effect();
+		virtual ~Effect() {};
 		virtual void enable(unsigned int pass=0) const =0;
 		virtual void disable() const=0;
 		std::string getName() const;
@@ -112,7 +113,7 @@ class BoxCropEffect : public Effect
 		void doClip(const Point3D &origin, const Point3D & normal,unsigned int glOffset) const;
 	public:
 		BoxCropEffect(){useCamCoordinates=false;effectType=EFFECT_BOX_CROP;openGLIdStart=0; }
-		~BoxCropEffect(){}; 
+		virtual ~BoxCropEffect(){}; 
 
 		//!Enable the clipping plane. Values *must* be set before calling
 		void enable(unsigned int pass) const;

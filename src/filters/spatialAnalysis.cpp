@@ -1,5 +1,7 @@
 #include "spatialAnalysis.h"
 #include "../xmlHelper.h"
+#include "../rdf.h"
+
 
 #include "../translation.h"
 enum
@@ -23,9 +25,9 @@ enum {
 };
 
 enum{
-	SPATIAL_DENSITY_NEIGHBOUR,
-	SPATIAL_DENSITY_RADIUS,
-	SPATIAL_DENSITY_ENUM_END
+	STOP_MODE_NEIGHBOUR,
+	STOP_MODE_RADIUS,
+	STOP_MODE_ENUM_END
 };
 
 //!Error codes
@@ -37,13 +39,26 @@ enum
 // == NN analysis filter ==
 
 
+const char *SPATIAL_ALGORITHMS[] = {
+	NTRANS("Local Density"),
+	NTRANS("Radial Distribution")
+	};
+
+const char *STOP_MODES[] = {
+	NTRANS("Fixed Neighbour Count"),
+	NTRANS("Fixed Radius")
+};
+
+
 
 SpatialAnalysisFilter::SpatialAnalysisFilter()
 {
+	COMPILE_ASSERT(ARRAYSIZE(STOP_MODES) == STOP_MODE_ENUM_END);
+	COMPILE_ASSERT(ARRAYSIZE(SPATIAL_ALGORITHMS) == ALGORITHM_ENUM_END);
 	algorithm=ALGORITHM_DENSITY;
 	nnMax=1;
 	distMax=1;
-	stopMode=SPATIAL_DENSITY_NEIGHBOUR;
+	stopMode=STOP_MODE_NEIGHBOUR;
 
 	//Default colour is red
 	r=a=1.0f;
@@ -150,7 +165,7 @@ void SpatialAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 }
 
 unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
 	//use the cached copy if we have it.
 	if(cacheOK)
@@ -217,7 +232,9 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		progress.step=1;
 		progress.stepName=TRANS("Collate");
 		progress.maxStep=3;
-		(*callback)();
+		progress.filterProgress=0;
+		if(!(*callback)(true))
+			return ABORT_ERR;
 
 		for(unsigned int ui=0;ui<dataIn.size() ;ui++)
 		{
@@ -243,8 +260,9 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		//---
 
 		progress.step=2;
-		progress.stepName="Build";
-		if(!(*callback)())
+		progress.stepName=TRANS("Build");
+		progress.filterProgress=0;
+		if(!(*callback)(true))
 			return ABORT_ERR;
 
 		BoundCube treeDomain;
@@ -259,7 +277,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 
 
 		//Update progress & User interface by calling callback
-		if(!(*callback)())
+		if(!(*callback)(false))
 			return ABORT_ERR;
 		p.clear(); //We don't need pts any more, as tree *is* a copy.
 
@@ -270,7 +288,8 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		n=0;
 		progress.step=3;
 		progress.stepName=TRANS("Analyse");
-		if(!(*callback)())
+		progress.filterProgress=0;
+		if(!(*callback)(true))
 			return ABORT_ERR;
 
 		//List of points for which there was a failure
@@ -292,7 +311,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 					//are not doing an o(1) task between updates; yes, it is  hack
 					unsigned int curProg=NUM_CALLBACK/(10*nnMax);
 					newD->data.resize(d->data.size());
-					if(stopMode == SPATIAL_DENSITY_NEIGHBOUR)
+					if(stopMode == STOP_MODE_NEIGHBOUR)
 					{
 						bool spin=false;
 						#pragma omp parallel for shared(spin)
@@ -334,7 +353,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 								{
 								n+=NUM_CALLBACK/(nnMax);
 								progress.filterProgress= (unsigned int)(((float)n/(float)totalDataSize)*100.0f);
-								if(!(*callback)())
+								if(!(*callback)(false))
 									spin=true;
 								curProg=NUM_CALLBACK/(nnMax);
 								}
@@ -349,7 +368,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 
 
 					}
-					else if(stopMode == SPATIAL_DENSITY_RADIUS)
+					else if(stopMode == STOP_MODE_RADIUS)
 					{
 #ifdef _OPENMP
 						bool spin=false;
@@ -393,7 +412,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 								if(!curProg--)
 								{
 									progress.filterProgress= (unsigned int)((float)n/(float)totalDataSize*100.0f);
-									if(!(*callback)())
+									if(!(*callback)(false))
 									{
 #ifdef _OPENMP
 										spin=true;
@@ -516,10 +535,14 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 	{
 		progress.step=1;
 		progress.stepName=TRANS("Collate");
+		progress.filterProgress=0;
 		if(excludeSurface)
 			progress.maxStep=4;
 		else
 			progress.maxStep=3;
+		
+		if(!(*callback)(true))
+			return ABORT_ERR;
 
 		K3DTree kdTree;
 		kdTree.setCallbackMethod(callback);
@@ -716,171 +739,174 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		//of interest, and the vector "p" contains the source points
 		//of interest, whatever they might be.
 
-		if (stopMode == SPATIAL_DENSITY_NEIGHBOUR)
+		switch(stopMode)
 		{
-			//User is after an NN histogram analysis
-
-			//Histogram is output as a per-NN histogram of frequency.
-			vector<vector<size_t> > histogram;
-			
-			//Bin widths for the NN histograms (each NN hist
-			//is scaled separately). The +1 is due to the tail bin
-			//being the totals
-			float *binWidth = new float[nnMax];
-
-
-			unsigned int errCode;
-			//Run the analysis
-			errCode=generateNNHist(p,kdTree,nnMax,
-					numBins,histogram,binWidth,
-					&(progress.filterProgress),callback);
-			switch(errCode)
+			case STOP_MODE_NEIGHBOUR:
 			{
-				case 0:
-					break;
-				case RDF_ERR_INSUFFICIENT_INPUT_POINTS:
+				//User is after an NN histogram analysis
+
+				//Histogram is output as a per-NN histogram of frequency.
+				vector<vector<size_t> > histogram;
+				
+				//Bin widths for the NN histograms (each NN hist
+				//is scaled separately). The +1 is due to the tail bin
+				//being the totals
+				float *binWidth = new float[nnMax];
+
+
+				unsigned int errCode;
+				//Run the analysis
+				errCode=generateNNHist(p,kdTree,nnMax,
+						numBins,histogram,binWidth,
+						&(progress.filterProgress),callback);
+				switch(errCode)
 				{
-					delete[] binWidth;
-					return INSUFFICIENT_SIZE_ERR;
+					case 0:
+						break;
+					case RDF_ERR_INSUFFICIENT_INPUT_POINTS:
+					{
+						delete[] binWidth;
+						return INSUFFICIENT_SIZE_ERR;
+					}
+					case RDF_ABORT_FAIL:
+					{
+						delete[] binWidth;
+						return ABORT_ERR;
+					}
+					default:
+						ASSERT(false);
 				}
-				case RDF_ABORT_FAIL:
+
+				//Alright then, we have the histogram in x-{y1,y2,y3...y_n} form
+				//lets make some plots shall we?
+				PlotStreamData *plotData[nnMax];
+
+				for(unsigned int ui=0;ui<nnMax;ui++)
 				{
-					delete[] binWidth;
-					return ABORT_ERR;
+					plotData[ui] = new PlotStreamData;
+					plotData[ui]->index=ui;
+					plotData[ui]->parent=this;
+					plotData[ui]->xLabel=TRANS("Radial Distance");
+					plotData[ui]->yLabel=TRANS("Count");
+					std::string tmpStr;
+					stream_cast(tmpStr,ui+1);
+					plotData[ui]->dataLabel=getUserString() + string(" ") +tmpStr + TRANS("NN Freq.");
+
+					//Red plot.
+					plotData[ui]->r=r;
+					plotData[ui]->g=g;
+					plotData[ui]->b=b;
+					plotData[ui]->xyData.resize(numBins);
+
+					for(unsigned int uj=0;uj<numBins;uj++)
+					{
+						float dist;
+						ASSERT(ui < histogram.size() && uj<histogram[ui].size());
+						dist = (float)uj*binWidth[ui];
+						plotData[ui]->xyData[uj] = std::make_pair(dist,
+								histogram[ui][uj]);
+					}
+
+					if(cache)
+					{
+						plotData[ui]->cached=1;
+						filterOutputs.push_back(plotData[ui]);
+						cacheOK=true;
+					}	
+					else
+					{
+						plotData[ui]->cached=0;
+					}
+					
+					getOut.push_back(plotData[ui]);
 				}
-				default:
-					ASSERT(false);
+
+				break;
 			}
 
-			//Alright then, we have the histogram in x-{y1,y2,y3...y_n} form
-			//lets make some plots shall we?
-			PlotStreamData *plotData[nnMax];
-
-			for(unsigned int ui=0;ui<nnMax;ui++)
+			case STOP_MODE_RADIUS:
 			{
-				plotData[ui] = new PlotStreamData;
-				plotData[ui]->index=ui;
-				plotData[ui]->parent=this;
-				plotData[ui]->xLabel=TRANS("Radial Distance");
-				plotData[ui]->yLabel=TRANS("Count");
-				std::string tmpStr;
-				stream_cast(tmpStr,ui+1);
-				plotData[ui]->dataLabel=getUserString() + string(" ") +tmpStr + TRANS("NN Freq.");
+				unsigned int warnBiasCount=0;
+				
+				//Histogram is output as a histogram of frequency vs distance
+				unsigned int *histogram = new unsigned int[numBins];
+				for(unsigned int ui=0;ui<numBins;ui++)
+					histogram[ui] =0;
+			
+				//User is after an RDF analysis. Run it.
+				unsigned int errcode;
+				errcode=generateDistHist(p,kdTree,histogram,distMax,numBins,
+						warnBiasCount,&(progress.filterProgress),callback);
+
+				if(errcode)
+				{
+					return ABORT_ERR;
+				}
+
+				if(warnBiasCount)
+				{
+					string sizeStr;
+					stream_cast(sizeStr,warnBiasCount);
+				
+					consoleOutput.push_back(std::string(TRANS("Warning, "))
+							+ sizeStr + TRANS(" points were unable to find neighbour points that exceeded the search radius, and thus terminated prematurely"));
+				}
+
+				PlotStreamData *plotData = new PlotStreamData;
+
+				plotData = new PlotStreamData;
+				plotData->index=0;
+				plotData->parent=this;
+				plotData->xLabel=TRANS("Radial Distance");
+				plotData->yLabel=TRANS("Count");
+				plotData->dataLabel=getUserString() + TRANS(" RDF");
 
 				//Red plot.
-				plotData[ui]->r=r;
-				plotData[ui]->g=g;
-				plotData[ui]->b=b;
-				plotData[ui]->xyData.resize(numBins);
+				plotData->r=r;
+				plotData->g=g;
+				plotData->b=b;
+				plotData->xyData.resize(numBins);
 
 				for(unsigned int uj=0;uj<numBins;uj++)
 				{
 					float dist;
-					ASSERT(ui < histogram.size() && uj<histogram[ui].size());
-					dist = (float)uj*binWidth[ui];
-					plotData[ui]->xyData[uj] = std::make_pair(dist,
-							histogram[ui][uj]);
+					dist = (float)uj/(float)numBins*distMax;
+					plotData->xyData[uj] = std::make_pair(dist,
+							histogram[uj]);
 				}
 
 				if(cache)
 				{
-					plotData[ui]->cached=1;
-					filterOutputs.push_back(plotData[ui]);
+					plotData->cached=1;
+					filterOutputs.push_back(plotData);
 					cacheOK=true;
-				}	
+				}
 				else
-				{
-					plotData[ui]->cached=0;
-				}
+					plotData->cached=0;	
 				
-				getOut.push_back(plotData[ui]);
-			}
-
-
-
-
-		}
-		else if(stopMode == SPATIAL_DENSITY_RADIUS)
-		{
-			unsigned int warnBiasCount=0;
+				getOut.push_back(plotData);
 			
-			//Histogram is output as a histogram of frequency vs distance
-			unsigned int *histogram = new unsigned int[numBins];
-			for(unsigned int ui=0;ui<numBins;ui++)
-				histogram[ui] =0;
-		
-			//User is after an RDF analysis. Run it.
-			unsigned int errcode;
-			errcode=generateDistHist(p,kdTree,histogram,distMax,numBins,
-					warnBiasCount,&(progress.filterProgress),callback);
-
-			if(errcode)
-			{
-				return ABORT_ERR;
-			}
-
-			if(warnBiasCount)
-			{
-				string sizeStr;
-				stream_cast(sizeStr,warnBiasCount);
-			
-				consoleOutput.push_back(std::string(TRANS("Warning, "))
-						+ sizeStr + TRANS(" points were unable to find neighbour points that exceeded the search radius, and thus terminated prematurely"));
-			}
-
-			PlotStreamData *plotData = new PlotStreamData;
-
-			plotData = new PlotStreamData;
-			plotData->index=0;
-			plotData->parent=this;
-			plotData->xLabel=TRANS("Radial Distance");
-			plotData->yLabel=TRANS("Count");
-			plotData->dataLabel=getUserString() + TRANS(" RDF");
-
-			//Red plot.
-			plotData->r=r;
-			plotData->g=g;
-			plotData->b=b;
-			plotData->xyData.resize(numBins);
-
-			for(unsigned int uj=0;uj<numBins;uj++)
-			{
-				float dist;
-				dist = (float)uj/(float)numBins*distMax;
-				plotData->xyData[uj] = std::make_pair(dist,
-						histogram[uj]);
-			}
-
-			if(cache)
-			{
-				plotData->cached=1;
-				filterOutputs.push_back(plotData);
-				cacheOK=true;
-			}
-			else
-				plotData->cached=0;	
-			
-			getOut.push_back(plotData);
-		
-			for(unsigned int ui=0;ui<dataIn.size() ;ui++)
-			{
-				switch(dataIn[ui]->getStreamType())
+				for(unsigned int ui=0;ui<dataIn.size() ;ui++)
 				{
-					case STREAM_TYPE_IONS:
-					case STREAM_TYPE_RANGE: 
-						//Do not propagate ranges, or ions
-					break;
-					default:
-						getOut.push_back(dataIn[ui]);
+					switch(dataIn[ui]->getStreamType())
+					{
+						case STREAM_TYPE_IONS:
+						case STREAM_TYPE_RANGE: 
+							//Do not propagate ranges, or ions
 						break;
+						default:
+							getOut.push_back(dataIn[ui]);
+							break;
+					}
+					
 				}
-				
-			}
 
+				break;
+			}
+			default:
+				ASSERT(false);
 		}
 	}
-
-
 
 	return 0;
 }
@@ -897,9 +923,9 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	string tmpStr;
 	vector<pair<unsigned int,string> > choices;
 	
-	tmpStr=TRANS("Local Density");
+	tmpStr=TRANS(SPATIAL_ALGORITHMS[ALGORITHM_DENSITY]);
 	choices.push_back(make_pair((unsigned int)ALGORITHM_DENSITY,tmpStr));
-	tmpStr=TRANS("Radial Distribution");
+	tmpStr=TRANS(SPATIAL_ALGORITHMS[ALGORITHM_RDF]);
 	choices.push_back(make_pair((unsigned int)ALGORITHM_RDF,tmpStr));
 
 	tmpStr= choiceString(choices,algorithm);
@@ -920,17 +946,17 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	if(algorithm ==  ALGORITHM_RDF
 		||  algorithm == ALGORITHM_DENSITY)
 	{
-		tmpStr=TRANS("Fixed Neighbour Count");
+		tmpStr=TRANS(STOP_MODES[STOP_MODE_NEIGHBOUR]);
 
-		choices.push_back(make_pair((unsigned int)SPATIAL_DENSITY_NEIGHBOUR,tmpStr));
-		tmpStr=TRANS("Fixed Radius");
-		choices.push_back(make_pair((unsigned int)SPATIAL_DENSITY_RADIUS,tmpStr));
+		choices.push_back(make_pair((unsigned int)STOP_MODE_NEIGHBOUR,tmpStr));
+		tmpStr=TRANS(STOP_MODES[STOP_MODE_RADIUS]);
+		choices.push_back(make_pair((unsigned int)STOP_MODE_RADIUS,tmpStr));
 		tmpStr= choiceString(choices,stopMode);
 		s.push_back(make_pair(string(TRANS("Stop Mode")),tmpStr));
 		type.push_back(PROPERTY_TYPE_CHOICE);
 		keys.push_back(KEY_STOPMODE);
 
-		if(stopMode == SPATIAL_DENSITY_NEIGHBOUR)
+		if(stopMode == STOP_MODE_NEIGHBOUR)
 		{
 			stream_cast(tmpStr,nnMax);
 			s.push_back(make_pair(string(TRANS("NN Max")),tmpStr));
@@ -1067,11 +1093,15 @@ bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
 		case KEY_ALGORITHM:
 		{
 			size_t ltmp=ALGORITHM_ENUM_END;
+			for(unsigned int ui=0;ui<ALGORITHM_ENUM_END;ui++)
+			{
+				if(value == TRANS(SPATIAL_ALGORITHMS[ui]))
+				{
+					ltmp=ui;
+					break;
+				}
+			}
 
-			if(value == TRANS("Local Density"))
-				ltmp=ALGORITHM_DENSITY;
-			else if( value == TRANS("Radial Distribution"))
-				ltmp=ALGORITHM_RDF;
 			
 			if(ltmp>=ALGORITHM_ENUM_END)
 				return false;
@@ -1089,14 +1119,18 @@ bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
 				case ALGORITHM_DENSITY:
 				case ALGORITHM_RDF:
 				{
-					size_t ltmp=SPATIAL_DENSITY_ENUM_END;
+					size_t ltmp=STOP_MODE_ENUM_END;
 
-					if(value == TRANS("Fixed Radius"))
-						ltmp=SPATIAL_DENSITY_RADIUS;
-					else if (value == TRANS("Fixed Neighbour Count"))
-						ltmp=SPATIAL_DENSITY_NEIGHBOUR;
+					for(unsigned int ui=0;ui<STOP_MODE_ENUM_END;ui++)
+					{
+						if(value == TRANS(STOP_MODES[ui]))
+						{
+							ltmp=ui;
+							break;
+						}
+					}
 					
-					if(ltmp>=SPATIAL_DENSITY_ENUM_END)
+					if(ltmp>=STOP_MODE_ENUM_END)
 						return false;
 					
 					stopMode=ltmp;
@@ -1371,7 +1405,7 @@ bool SpatialAnalysisFilter::writeState(std::ofstream &f,unsigned int format, uns
 		case STATE_FORMAT_XML:
 		{	
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 			f << tabs(depth+1) << "<algorithm value=\""<<algorithm<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<stopmode value=\""<<stopMode<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<nnmax value=\""<<nnMax<< "\"/>"  << endl;
@@ -1421,7 +1455,7 @@ bool SpatialAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 	//===
 	if(!XMLGetNextElemAttrib(nodePtr,stopMode,"stopmode","value"))
 		return false;
-	if(stopMode >=SPATIAL_DENSITY_ENUM_END)
+	if(stopMode >=STOP_MODE_ENUM_END)
 		return false;
 	//===
 	
@@ -1481,3 +1515,198 @@ bool SpatialAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 
 	return true;
 }
+
+
+#ifdef DEBUG
+
+bool densityPairTest();
+bool nnHistogramTest();
+bool rdfPlotTest();
+
+bool SpatialAnalysisFilter::runUnitTests()
+{
+	if(!densityPairTest())
+		return false;
+
+	if(!nnHistogramTest())
+		return false;
+
+	if(!rdfPlotTest())
+		return false;
+	
+	return true;
+}
+
+
+bool densityPairTest()
+{
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+
+	
+
+	IonStreamData*d = new IonStreamData;
+	IonHit h;
+	h.setMassToCharge(1);
+
+	//create two points, 1 unit apart	
+	h.setPos(Point3D(0,0,0));
+	d->data.push_back(h);
+
+	h.setPos(Point3D(0,0,1));
+	d->data.push_back(h);
+
+	streamIn.push_back(d);
+	//---------
+	
+	//Create a spatial analysis filter
+	SpatialAnalysisFilter *f=new SpatialAnalysisFilter;
+	f->setCaching(false);	
+	//Set it to do an NN terminated density computation
+	bool needUp;
+	string s;
+	stream_cast(s,STOP_MODES[STOP_MODE_NEIGHBOUR]);
+	f->setProperty(0,KEY_STOPMODE,s,needUp);
+	stream_cast(s,SPATIAL_ALGORITHMS[ALGORITHM_DENSITY]);
+	f->setProperty(0,KEY_ALGORITHM,s,needUp);
+
+
+	//Do the refresh
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh OK");
+	//Kill the input ion stream
+	delete d; 
+	streamIn.clear();
+
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+
+	const IonStreamData* dOut = (const IonStreamData*)streamOut[0];
+
+	TEST(dOut->data.size() == 2, "ion count");
+
+	for(unsigned int ui=0;ui<2;ui++)
+	{
+		TEST( fabs( dOut->data[0].getMassToCharge()  - 1.0/(4.0/3.0*M_PI))
+			< sqrt(std::numeric_limits<float>::epsilon()),"NN density test");
+	}	
+
+
+	delete streamOut[0];
+
+	return true;
+}
+
+bool nnHistogramTest()
+{
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+
+	
+
+	IonStreamData*d = new IonStreamData;
+	IonHit h;
+	h.setMassToCharge(1);
+
+	//create two points, 1 unit apart	
+	h.setPos(Point3D(0,0,0));
+	d->data.push_back(h);
+
+	h.setPos(Point3D(0,0,1));
+	d->data.push_back(h);
+
+	streamIn.push_back(d);
+	
+	//Create a spatial analysis filter
+	SpatialAnalysisFilter *f=new SpatialAnalysisFilter;
+	f->setCaching(false);	
+	//Set it to do an NN terminated density computation
+	bool needUp;
+	string s;
+	TEST(f->setProperty(0,KEY_STOPMODE,
+		STOP_MODES[STOP_MODE_NEIGHBOUR],needUp),"set stop mode");
+	TEST(f->setProperty(0,KEY_ALGORITHM,
+			SPATIAL_ALGORITHMS[ALGORITHM_RDF],needUp),"set Algorithm");
+	TEST(f->setProperty(0,KEY_NNMAX,"1",needUp),"Set NNmax");
+	
+	//Do the refresh
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh OK");
+
+	streamIn.clear();
+
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_PLOT,"plot outputting");
+	const PlotStreamData* dPlot=(const PlotStreamData *)streamOut[0];
+
+
+	float fMax=0;
+	for(size_t ui=0;ui<dPlot->xyData.size();ui++)
+	{
+		fMax=std::max(fMax,dPlot->xyData[ui].second);
+	}
+
+	TEST(fMax > 0 , "plot has nonzero contents");
+	//Kill the input ion stream
+	delete d; 
+
+	return true;
+}
+
+bool rdfPlotTest()
+{
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+
+	IonStreamData*d = new IonStreamData;
+	IonHit h;
+	h.setMassToCharge(1);
+
+	//create two points, 1 unit apart	
+	h.setPos(Point3D(0,0,0));
+	d->data.push_back(h);
+
+	h.setPos(Point3D(0,0,1));
+	d->data.push_back(h);
+
+	streamIn.push_back(d);
+	
+	//Create a spatial analysis filter
+	SpatialAnalysisFilter *f=new SpatialAnalysisFilter;
+	f->setCaching(false);	
+	//Set it to do an NN terminated density computation
+	bool needUp;
+	string s;
+	TEST(f->setProperty(0,KEY_STOPMODE,
+		STOP_MODES[STOP_MODE_RADIUS],needUp),"set stop mode");
+	TEST(f->setProperty(0,KEY_ALGORITHM,
+			SPATIAL_ALGORITHMS[ALGORITHM_RDF],needUp),"set Algorithm");
+	TEST(f->setProperty(0,KEY_DISTMAX,"2",needUp),"Set NNmax");
+	
+	//Do the refresh
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh OK");
+
+	streamIn.clear();
+
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_PLOT,"plot outputting");
+	const PlotStreamData* dPlot=(const PlotStreamData *)streamOut[0];
+
+
+	float fMax=0;
+	for(size_t ui=0;ui<dPlot->xyData.size();ui++)
+	{
+		fMax=std::max(fMax,dPlot->xyData[ui].second);
+	}
+
+	TEST(fMax > 0 , "plot has nonzero contents");
+	//Kill the input ion stream
+	delete d; 
+
+	return true;
+}
+
+
+#endif
+

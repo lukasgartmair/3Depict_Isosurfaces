@@ -17,10 +17,12 @@
 */
 
 #include "ExportRngDialog.h"
-
+#include "wxcommon.h"
 #include "translation.h"
 
 #include <fstream>
+
+#include "filters/rangeFile.h"
 // begin wxGlade: ::extracode
 
 // end wxGlade

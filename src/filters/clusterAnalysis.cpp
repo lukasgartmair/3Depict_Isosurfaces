@@ -8,6 +8,9 @@
 
 #include <gsl/gsl_linalg.h>
 
+#include "../K3DTree-mk2.h"
+
+
 enum
 {
 	KEY_CLUSTERANALYSIS_ALGORITHM,
@@ -58,6 +61,10 @@ using std::vector;
 // number of points to expect in a KD query sphere before the bulk query pays off
 //  in terms of algorithm speed
 const float SPHERE_PRESEARCH_CUTOFF = 75;
+
+const unsigned int SET_CORE_IONS=3;
+const unsigned int SET_BULK_IONS=4;
+
 
 
 
@@ -234,6 +241,8 @@ ClusterAnalysisFilter::ClusterAnalysisFilter()
 	nMax=std::numeric_limits<size_t>::max();
 	sizeCountBulk=true;
 
+
+
 	wantCropSize=false;
 	wantClusterComposition=true;
 	normaliseComposition=true;
@@ -243,6 +252,9 @@ ClusterAnalysisFilter::ClusterAnalysisFilter()
 
 	//By default, we should cache, but final decision is made higher up
 	cache=true; 
+#ifdef DEBUG
+	wantParanoidDebug=false;
+#endif
 }
 
 
@@ -378,14 +390,18 @@ void ClusterAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 }
 
 unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
-	//By default, copy inputs to output, unless it is an ion stream type.
+	//By default, copy inputs to output, unless it is an ion or range stream type.
 	for(unsigned int ui=0;ui<dataIn.size();ui++)
 	{
+		unsigned int type;
+		type=dataIn[ui]->getStreamType();
 		//Block ions moving through filter; we modify them.
-		if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
+		// and also rangefiles, as we don't propagate these
+		if(type != STREAM_TYPE_IONS && type!=STREAM_TYPE_RANGE)
 			getOut.push_back(dataIn[ui]);
+
 	}
 	
 	//use the cached copy if we have it.
@@ -441,11 +457,15 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 
 
 	//Check that the user has enabled something as matrix/bulk. 
-	if(!haveABulk)
+	if(!haveABulk )
 	{
-		consoleOutput.push_back(
-			string(TRANS("No ranges selected for cluster \"bulk\". Cannot continue with clustering.")));
-		return NOBULK_ERR;
+		//TODO: Refactor - we are really asking if algorithm needs bulk
+		if(bulkLink >std::numeric_limits<float>::epsilon())
+		{
+			consoleOutput.push_back(
+				string(TRANS("No ranges selected for cluster \"bulk\". Cannot continue with clustering.")));
+			return NOBULK_ERR;
+		}
 	}
 
 #ifdef DEBUG
@@ -478,15 +498,15 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 			ASSERT(false);
 	}
 
+#ifdef DEBUG
 	/* If you are paranoid about the quality of the output, uncomment this. 
 	 * This will enable running some sanity checks that do not use the data structures
 	 * involved in the clustering; ie a secondary check.
 	 * However this is far too slow to enable by default, even in debug mode
-	cerr << "Running paranoid debug checks -- this will be slow:" ;
-	paranoidDebugAssert(clusteredCore,clusteredBulk);
-	cerr << "Done" << endl;
-	*/
-
+	 */
+	if(wantParanoidDebug)
+		paranoidDebugAssert(clusteredCore,clusteredBulk);
+#endif
 	if(wantCropSize)
 		stripClusterBySize(clusteredCore,clusteredBulk,callback,progress);
 
@@ -832,6 +852,10 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 
 	if(haveRangeParent)
 	{	
+		//Offset markers are used elsewhere. Must be in sync with
+		//this code	
+		ASSERT(propertyList.data.size() == SET_CORE_IONS);
+
 		ASSERT(ionCoreEnabled.size() == ionBulkEnabled.size());
 		ASSERT(ionCoreEnabled.size() == ionNames.size())
 		for(size_t ui=0;ui<ionNames.size();ui++)
@@ -848,8 +872,12 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		propertyList.types.push_back(type);
 		propertyList.keys.push_back(keys);
 		propertyList.keyNames.push_back(TRANS("Core Ranges"));
-		
 		s.clear(); type.clear(); keys.clear(); 
+		
+	
+		//Offset markers are used elsewhere. Must be in sync with
+		//this code	
+		ASSERT(propertyList.data.size() == SET_BULK_IONS);
 		
 		for(size_t ui=0;ui<ionNames.size();ui++)
 		{
@@ -1227,7 +1255,7 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 		{
 			//Set value is dictated by getProperties routine
 			//and is the vector push back value
-			if(set==3)
+			if(set==SET_CORE_IONS)
 			{
 				bool b;
 				if(stream_cast(b,value))
@@ -1249,7 +1277,7 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 				clearCache();
 				needUpdate=true;
 			}
-			else if(set ==4)
+			else if(set ==SET_BULK_IONS)
 			{
 				bool b;
 				if(stream_cast(b,value))
@@ -1292,7 +1320,7 @@ bool ClusterAnalysisFilter::writeState(std::ofstream &f,unsigned int format,
 		case STATE_FORMAT_XML:
 		{	
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 			f << tabs(depth+1) << "<algorithm value=\""<<algorithm<< "\"/>"  << endl;
 		
 			//Core-linkage algorithm parameters	
@@ -1502,7 +1530,7 @@ std::string ClusterAnalysisFilter::getErrString(unsigned int i) const
 unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<const FilterStreamData *> &dataIn,
 		std::vector< std::vector<IonHit> > &clusteredCore, 
 		std::vector<std::vector<IonHit>  > &clusteredBulk,ProgressData &progress,
-					bool (*callback)(void)) 
+					bool (*callback)(bool)) 
 {
 
 	//Clustering algorithm, as per 
@@ -1583,9 +1611,9 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	//----------
 	progress.step=1;
 	progress.filterProgress=0;
-	progress.stepName="Collate";
+	progress.stepName=TRANS("Collate");
 	progress.maxStep=numClusterSteps;
-	if(!(*callback)())
+	if(!(*callback)(true))
 		return ABORT_ERR;
 
 	vector<IonHit> coreIons,bulkIons;
@@ -1602,8 +1630,8 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	//----------
 	progress.step++;
 	progress.filterProgress=0;
-	progress.stepName="Build Core";
-	if(!(*callback)())
+	progress.stepName=TRANS("Build Core");
+	if(!(*callback)(true))
 		return ABORT_ERR;
 
 	//Build the core tree (eg, solute ions)
@@ -1620,8 +1648,8 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		//Perform Clustering Stage (1) : clustering classification
 		//==	
 		progress.step++;
-		progress.stepName="Classify Core";
-		if(!(*callback)())
+		progress.stepName=TRANS("Classify Core");
+		if(!(*callback)(true))
 			return ABORT_ERR;
 		
 		vector<bool> coreOK;
@@ -1678,7 +1706,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 			if(!(ui%PROGRESS_REDUCE))
 			{
 				progress.filterProgress= (unsigned int)(((float)ui/(float)coreTree.size())*100.0f);
-				if(!(*callback)())
+				if(!(*callback)(false))
 					return ABORT_ERR;
 			}
 		}
@@ -1714,8 +1742,8 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	if(needBulkLink)
 	{
 		progress.step++;
-		progress.stepName="Build Bulk";
-		if(!(*callback)())
+		progress.stepName=TRANS("Build Bulk");
+		if(!(*callback)(true))
 			return ABORT_ERR;
 		bulkTree.setCallback(callback);
 		bulkTree.setProgressPointer(&(progress.filterProgress));
@@ -1734,9 +1762,9 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 
 	//Update progress stuff
 	progress.step++;
-	progress.stepName="Core";
+	progress.stepName=TRANS("Core");
 	progress.filterProgress=0;
-	if(!(*callback)())
+	if(!(*callback)(true))
 		return ABORT_ERR;
 		
 
@@ -1819,7 +1847,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 				{
 					//Progress may be a little non-linear if cluster sizes are not random
 					progress.filterProgress= (unsigned int)(((float)ui/(float)coreTree.size())*100.0f);
-					if(!(*callback)())
+					if(!(*callback)(false))
 						return ABORT_ERR;
 				}
 			}
@@ -1841,7 +1869,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	//====
 
 	//update progress
-	if(!(*callback)())
+	if(!(*callback)(false))
 		return ABORT_ERR;
 
 	//NOTE : Speedup trick. If we know the cluster size at this point
@@ -1873,120 +1901,124 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	//or any of the following stages
 	if(needBulkLink)
 	{
+
 		//Update progress stuff
 		progress.step++;
-		progress.stepName="Bulk";
+		progress.stepName=TRANS("Bulk");
 		progress.filterProgress=0;
-		if(!(*callback)())
+		if(!(*callback)(true))
 			return ABORT_ERR;
 
-		bulkTree.getBoundCube(bBulk);
-
-		//Compute the expected number of points that we would encapsulate
-		//if we were to place  a sphere of size bulkLink in the KD domain.
-		// This allows us to choose whether to use a bulk "grab" approach, or not.
-		bool expectedPtsInSearchEnough;
-		expectedPtsInSearchEnough=((float)bulkTree.size())/bBulk.volume()*4.0/3.0*M_PI*pow(bulkLink,3.0f)> SPHERE_PRESEARCH_CUTOFF;
-
-		//So-called "envelope" step.
-		float bulkLinkSqr=bulkLink*bulkLink;
-		size_t prog=PROGRESS_REDUCE;
-		//Now do the same thing with the matrix, but use the clusters as the "seed"
-		//positions
-		for(size_t ui=0;ui<allCoreClusters.size();ui++)
+		if(bulkTree.size())
 		{
-			//The bulkTree component of the cluster
-			vector<size_t> thisBulkCluster,dummy;
-			for(size_t uj=0;uj<allCoreClusters[ui].size();uj++)
+			bulkTree.getBoundCube(bBulk);
+
+			//Compute the expected number of points that we would encapsulate
+			//if we were to place  a sphere of size bulkLink in the KD domain.
+			// This allows us to choose whether to use a bulk "grab" approach, or not.
+			bool expectedPtsInSearchEnough;
+			expectedPtsInSearchEnough=((float)bulkTree.size())/bBulk.volume()*4.0/3.0*M_PI*pow(bulkLink,3.0f)> SPHERE_PRESEARCH_CUTOFF;
+
+			//So-called "envelope" step.
+			float bulkLinkSqr=bulkLink*bulkLink;
+			size_t prog=PROGRESS_REDUCE;
+			//Now do the same thing with the matrix, but use the clusters as the "seed"
+			//positions
+			for(size_t ui=0;ui<allCoreClusters.size();ui++)
 			{
-				size_t curIdx,bulkTreeIdx;
-				curIdx=allCoreClusters[ui][uj];
-
-				const Point3D *curPt;
-				curPt=(coreTree.getPt(curIdx));
-
-
-				//First do a grab of any sub-regions for cur pt
-				// based upon intersecting KD regions
-				// For readability, I have not factored this
-				// out of the loop; it should not have  a giant performance
-				// cost.
-				//---
-				if(expectedPtsInSearchEnough)
+				//The bulkTree component of the cluster
+				vector<size_t> thisBulkCluster,dummy;
+				for(size_t uj=0;uj<allCoreClusters[ui].size();uj++)
 				{
-					vector<pair<size_t,size_t> > blocks;
-					bulkTree.getTreesInSphere(*curPt,bulkLinkSqr,bBulk,blocks);
+					size_t curIdx,bulkTreeIdx;
+					curIdx=allCoreClusters[ui][uj];
 
-					for(size_t uj=0; uj<blocks.size();uj++)
+					const Point3D *curPt;
+					curPt=(coreTree.getPt(curIdx));
+
+
+					//First do a grab of any sub-regions for cur pt
+					// based upon intersecting KD regions
+					// For readability, I have not factored this
+					// out of the loop; it should not have  a giant performance
+					// cost.
+					//---
+					if(expectedPtsInSearchEnough)
 					{
-						for(size_t uk=blocks[uj].first; uk<=blocks[uj].second;uk++)
+						vector<pair<size_t,size_t> > blocks;
+						bulkTree.getTreesInSphere(*curPt,bulkLinkSqr,bBulk,blocks);
+
+						for(size_t uj=0; uj<blocks.size();uj++)
 						{
-							if(!bulkTree.getTag(uk))
+							for(size_t uk=blocks[uj].first; uk<=blocks[uj].second;uk++)
 							{
-								//Tag, then record it as part of the cluster	
-								bulkTree.tag(uk);
-								thisBulkCluster.push_back(uk);
+								if(!bulkTree.getTag(uk))
+								{
+									//Tag, then record it as part of the cluster	
+									bulkTree.tag(uk);
+									thisBulkCluster.push_back(uk);
+								}
 							}
+
+						}
+					}
+
+					//--
+
+
+
+					//Scan for bulkTree NN.
+					while(true)
+					{
+						float curDistSqr;
+						//Find the next point that we have not yet retrieved
+						//the find will tag the point, so we won't see it again
+						bulkTreeIdx=bulkTree.findNearestUntagged(
+								*curPt,bBulk, true);
+			
+
+						if(bulkTreeIdx !=(size_t)-1)
+						{
+							curDistSqr=bulkTree.getPt(
+								bulkTreeIdx)->sqrDist(*curPt);
 						}
 
+						//Point out of clustering range, or no more points
+						if(bulkTreeIdx == (size_t)-1 || curDistSqr > bulkLinkSqr )
+						{
+							//Un-tag the point; as it was too far away
+							if(bulkTreeIdx !=(size_t)-1)
+								bulkTree.tag(bulkTreeIdx,false);
+							break;
+						}
+						else
+						{
+							//Record it as part of the cluster	
+							thisBulkCluster.push_back(bulkTreeIdx);
+						}
+					
+						prog--;	
+						if(!prog)
+						{
+							prog=PROGRESS_REDUCE;
+							//Progress may be a little non-linear if cluster sizes are not random
+							progress.filterProgress= (unsigned int)(((float)ui/(float)allCoreClusters.size())*100.0f);
+							if(!(*callback)(false))
+								return ABORT_ERR;
+
+						}
 					}
+
+					
+
 				}
 
-				//--
 
-
-
-				//Scan for bulkTree NN.
-				while(true)
-				{
-					float curDistSqr;
-					//Find the next point that we have not yet retrieved
-					//the find will tag the point, so we won't see it again
-					bulkTreeIdx=bulkTree.findNearestUntagged(
-							*curPt,bBulk, true);
-		
-
-					if(bulkTreeIdx !=(size_t)-1)
-					{
-						curDistSqr=bulkTree.getPt(
-							bulkTreeIdx)->sqrDist(*curPt);
-					}
-
-					//Point out of clustering range, or no more points
-					if(bulkTreeIdx == (size_t)-1 || curDistSqr > bulkLinkSqr )
-					{
-						//Un-tag the point; as it was too far away
-						if(bulkTreeIdx !=(size_t)-1)
-							bulkTree.tag(bulkTreeIdx,false);
-						break;
-					}
-					else
-					{
-						//Record it as part of the cluster	
-						thisBulkCluster.push_back(bulkTreeIdx);
-					}
-				
-					prog--;	
-					if(!prog)
-					{
-						prog=PROGRESS_REDUCE;
-						//Progress may be a little non-linear if cluster sizes are not random
-						progress.filterProgress= (unsigned int)(((float)ui/(float)allCoreClusters.size())*100.0f);
-						if(!(*callback)())
-							return ABORT_ERR;
-
-					}
-				}
-
-				
-
-			}
-
-
-			allBulkClusters.push_back(dummy);
-			allBulkClusters.back().swap(thisBulkCluster);
-			thisBulkCluster.clear();
-		}	
+				allBulkClusters.push_back(dummy);
+				allBulkClusters.back().swap(thisBulkCluster);
+				thisBulkCluster.clear();
+			}	
+		}
 	}
 	//====
 
@@ -1999,9 +2031,9 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	{
 		//Update progress stuff
 		progress.step++;
-		progress.stepName="Erode";
+		progress.stepName=TRANS("Erode");
 		progress.filterProgress=0;
-		if(!(*callback)())
+		if(!(*callback)(true))
 			return ABORT_ERR;
 
 		//Now perform the "erosion" step, where we strip off previously
@@ -2059,7 +2091,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 				numCounted+=PROGRESS_REDUCE;
 				//Progress may be a little non-linear if cluster sizes are not random
 				progress.filterProgress= (unsigned int)(((float)numCounted/(float)allBulkClusters.size())*100.0f);
-				if(!(*callback)())
+				if(!(*callback)(false))
 					spin=true;
 				}
 
@@ -2073,11 +2105,11 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	//===
 
 	progress.step++;
-	progress.stepName="Re-Collate";
+	progress.stepName=TRANS("Re-Collate");
 	progress.filterProgress=0;
 
 	//update progress
-	if(!(*callback)())
+	if(!(*callback)(true))
 		return ABORT_ERR;
 	clusteredCore.resize(allCoreClusters.size());
 	clusteredBulk.resize(allBulkClusters.size());
@@ -2105,7 +2137,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	}
 
 	//Update progress
-	(*callback)();
+	(*callback)(false);
 
 	return 0;	
 }
@@ -2115,9 +2147,6 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 bool ClusterAnalysisFilter::paranoidDebugAssert(
 	const std::vector<vector<IonHit> > &core, const std::vector<vector<IonHit> > &bulk) const
 {
-	using std::cerr;
-	using std::endl;
-
 	for(size_t ui=0;ui<bulk.size(); ui++)
 	{
 		if(bulk[ui].size())
@@ -2196,7 +2225,7 @@ bool ClusterAnalysisFilter::paranoidDebugAssert(
 #endif
 
 void ClusterAnalysisFilter::createRangedIons(const std::vector<const FilterStreamData *> &dataIn,vector<IonHit> &core,
-			vector<IonHit> &bulk, ProgressData &p, bool (*callback)(void)) const
+			vector<IonHit> &bulk, ProgressData &p, bool (*callback)(bool)) const
 {
 
 	//TODO: Progress reporting and callback
@@ -2355,7 +2384,7 @@ PlotStreamData* ClusterAnalysisFilter::clusterSizeDistribution(const vector<vect
 
 bool ClusterAnalysisFilter::stripClusterBySize(vector<vector<IonHit> > &clusteredCore,
 						vector<vector<IonHit> > &clusteredBulk,
-							bool (*callback)(void),ProgressData &progress) const
+							bool (*callback)(bool),ProgressData &progress) const
 
 {
 
@@ -2385,7 +2414,7 @@ bool ClusterAnalysisFilter::stripClusterBySize(vector<vector<IonHit> > &clustere
 			{
 				progress.filterProgress= (unsigned int)(((float)ui/(float)clusteredCore.size()+1)*100.0f);
 				
-				if(!(*callback)())
+				if(!(*callback)(false))
 					return ABORT_ERR;
 			}
 		}
@@ -2406,7 +2435,7 @@ bool ClusterAnalysisFilter::stripClusterBySize(vector<vector<IonHit> > &clustere
 			{
 				progress.filterProgress= (unsigned int)(((float)ui/(float)clusteredCore.size()+1)*100.0f);
 				
-				if(!(*callback)())
+				if(!(*callback)(false))
 					return ABORT_ERR;
 			}
 		}
@@ -2430,7 +2459,7 @@ bool ClusterAnalysisFilter::stripClusterBySize(vector<vector<IonHit> > &clustere
 			{
 				progress.filterProgress= (unsigned int)(((float)ui/(float)clusteredCore.size()+1)*100.0f);
 				
-				if(!(*callback)())
+				if(!(*callback)(false))
 					return ABORT_ERR;
 			}
 		}
@@ -2603,7 +2632,7 @@ void ClusterAnalysisFilter::genCompositionVersusSize(const vector<vector<IonHit>
 }
 
 void ClusterAnalysisFilter::getSingularValues(const vector<vector<IonHit> > &clusteredCore,
-				const vector<vector<IonHit> > &clusteredBulk, vector<vector<float> > &singularValues)
+				const vector<vector<IonHit> > &clusteredBulk, vector<vector<float> > &singularValues) const
 {
 	ASSERT(clusteredCore.size() == clusteredBulk.size());
 
@@ -2672,3 +2701,216 @@ void ClusterAnalysisFilter::getSingularValues(const vector<vector<IonHit> > &clu
 		delete[] data;
 }
 
+
+#ifdef DEBUG
+
+#include <memory>
+
+//Cluster Ids for generating cluster test datasets with genCluster
+enum
+{
+	CLUSTER_UNITTEST_ISOLATED_WITH_BULK,
+	CLUSTER_UNITTEST_ISOLATED,
+	CLUSTER_UNITTEST_END
+};
+
+//Cluster sizes generated by genCluster
+const unsigned int CLUSTER_SIZES[]= { 15, 9};
+
+//Create a synthetic dataset of points for cluster
+IonStreamData *genCluster(unsigned int datasetID);
+
+bool isolatedClusterTest();
+
+//Unit tests
+bool ClusterAnalysisFilter::runUnitTests()
+{
+	if(!isolatedClusterTest())
+		return false;
+	
+	return true;
+}
+
+
+IonStreamData *genCluster(unsigned int id)
+{
+	IonStreamData*d = new IonStreamData;
+	d->parent=0;
+
+	IonHit a;
+	switch(id)
+	{
+		case CLUSTER_UNITTEST_ISOLATED_WITH_BULK:
+		{
+			//Create a "cloud" of bulk, isolated from the 
+			// particle
+			a.setMassToCharge(1);
+			a.setPos(Point3D(2,2,4));
+			d->data.push_back(a);
+			a.setPos(Point3D(4,0,1));
+			d->data.push_back(a);
+			a.setPos(Point3D(-3,1,1));
+			d->data.push_back(a);
+			a.setPos(Point3D(-2,1,2));
+			d->data.push_back(a);
+			a.setPos(Point3D(-2,-1,2));
+			d->data.push_back(a);
+			a.setPos(Point3D(-2,1,-2));
+			d->data.push_back(a);
+			//Fall through; add in the core 
+			//from the other test
+		}
+		case CLUSTER_UNITTEST_ISOLATED:
+		{
+			a.setMassToCharge(1);
+
+			//Create a little network of points
+			//each at most 1
+			//unit distance from another
+			a.setPos(Point3D(0,0,0));
+			d->data.push_back(a);
+			a.setPos(Point3D(0,0,1));
+			d->data.push_back(a);
+			a.setPos(Point3D(0,1,1));
+			d->data.push_back(a);
+			a.setPos(Point3D(0,1,2));
+			d->data.push_back(a);
+			a.setPos(Point3D(1,1,2));
+			d->data.push_back(a);
+			a.setPos(Point3D(2,1,2));
+			d->data.push_back(a);
+			a.setPos(Point3D(2,1,1));
+			d->data.push_back(a);
+			a.setPos(Point3D(2,1,0));
+			d->data.push_back(a);
+			a.setPos(Point3D(2,2,0));
+			d->data.push_back(a);
+			break;
+		}
+		default:
+			ASSERT(false);
+	}
+
+	ASSERT(CLUSTER_SIZES[id] == d->data.size());
+	ASSERT(d->data.size());
+	return d;
+}
+
+
+bool isolatedClusterTest()
+{
+
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	
+	//Create a range file with two
+	//range datasets, A and B
+	RangeFile r;
+	RGBf filler;
+	filler.red=filler.green=filler.blue=0.5f;
+
+	unsigned int ionA,ionB;
+	std::string shortName,longName;
+	shortName="A"; longName="AType";
+	ionA=r.addIon(shortName,longName,filler);
+	shortName="B"; longName="BType";
+	ionB=r.addIon(shortName,longName,filler);
+
+	r.addRange(0.5,1.5,ionA);
+	r.addRange(1.5,2.5,ionB);
+
+	//Build a rangestream data
+	RangeStreamData *rng = new RangeStreamData;
+	rng->rangeFile=&r;
+	rng->parent=0;
+	rng->enabledIons.resize(r.getNumIons(),1);
+	rng->enabledRanges.resize(r.getNumRanges(),1);
+
+	//Create a cluster analysis filter
+	ClusterAnalysisFilter *f=new ClusterAnalysisFilter;
+	f->setCaching(false);	
+	f->wantParanoidDebug=true;	
+	
+	
+	streamIn.push_back(rng);
+	f->initFilter(streamIn,streamOut);
+	streamOut.clear();	
+	
+	//Enable A as core, and B as bulk
+	bool needUp;
+	f->setProperty(SET_CORE_IONS,KEY_CORE_OFFSET,"1",needUp);
+	f->setProperty(SET_BULK_IONS,KEY_BULK_OFFSET+1,"1",needUp);
+	f->setProperty(0,KEY_LINKDIST,"1.1",needUp);
+	f->setProperty(0,KEY_BULKLINK,"1.1",needUp);
+	f->setProperty(0,KEY_ERODEDIST,"0",needUp);
+	
+	//stop the plots
+	f->setProperty(0,KEY_WANT_CLUSTERSIZEDIST,"0",needUp);
+	f->setProperty(0,KEY_WANT_COMPOSITIONDIST,"0",needUp);
+
+	for(unsigned int ui=0;ui<CLUSTER_UNITTEST_END;ui++)
+	{
+		
+		IonStreamData *d;
+		d=genCluster(ui);
+		streamIn.push_back(d);
+
+		//Do the refresh
+		ProgressData p;
+		TEST(!(f->refresh(streamIn,streamOut,p,dummyCallback)),"Refresh err code");
+
+		//Kill the input ion stream, and remove old pointer
+		delete d; 
+		streamIn.pop_back();
+
+		TEST(streamOut.size() == 1,"stream count");
+		TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+		//Use an auto_ptr so if the test fails, we still free ram
+		{
+		auto_ptr<const IonStreamData> outD((const IonStreamData*)streamOut[0]);
+		TEST(outD->data.size() == CLUSTER_SIZES[ui],"Cluster size");
+
+		switch(ui)
+		{
+			case CLUSTER_UNITTEST_ISOLATED:
+			{
+				for(unsigned int ui=0;ui<outD->data.size();ui++)
+				{
+					TEST(r.getIonID(outD->data[ui].getMassToCharge())
+						       		==  ionA,"cluster ranging");
+				}
+				break;
+			}
+			case CLUSTER_UNITTEST_ISOLATED_WITH_BULK:
+			{
+				//Check bulk contains bulk or core
+				for(unsigned int ui=0;ui<outD->data.size();ui++)
+				{
+					unsigned int idIon;
+					idIon=r.getIonID(outD->data[ui].getMassToCharge());
+					TEST( idIon== ionB || idIon == ionA,"cluster ranging ");
+				}
+				
+				break;
+			}
+			default:
+				ASSERT(false);
+		}
+
+		}
+	
+
+		streamOut.clear();	
+	
+	}
+
+	delete rng;
+	delete f;
+	return true;
+}
+
+
+
+
+
+#endif

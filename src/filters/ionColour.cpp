@@ -91,7 +91,7 @@ DrawColourBarOverlay *IonColourFilter::makeColourBar() const
 
 
 unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
 	//use the cached copy if we have it.
 	if(cacheOK)
@@ -186,7 +186,7 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 						n+=NUM_CALLBACK;
 						progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 						curProg=NUM_CALLBACK;
-						if(!(*callback)())
+						if(!(*callback)(false))
 						{
 							for(unsigned int ui=0;ui<nColours;ui++)
 								delete d[ui];
@@ -423,7 +423,7 @@ bool IonColourFilter::writeState(std::ofstream &f,unsigned int format, unsigned 
 		case STATE_FORMAT_XML:
 		{	
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<colourmap value=\"" << colourMap << "\"/>" << endl;
 			f << tabs(depth+1) << "<extrema min=\"" << mapBounds[0] << "\" max=\"" 
@@ -600,7 +600,7 @@ bool ionCountTest()
 	f->setProperty(0,KEY_IONCOLOURFILTER_SHOWBAR,"0",needUpdate);
 	
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
 	delete f;
 	delete d;
 	

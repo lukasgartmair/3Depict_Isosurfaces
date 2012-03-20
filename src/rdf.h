@@ -19,7 +19,6 @@
 #ifndef RDF_H
 #define RDF_H
 
-#include "basics.h"
 #include "K3DTree.h"
 
 #include <vector>
@@ -38,14 +37,14 @@ enum
 unsigned int generateNNHist( const std::vector<Point3D> &pointList, 
 			const K3DTree &tree,unsigned int nnMax, unsigned int numBins,
 		       	std::vector<std::vector<size_t> > &histogram, float *binWidth,
-		       	unsigned int *progressPtr,bool (*callback)(void));
+		       	unsigned int *progressPtr,bool (*callback)(bool));
 
 //!Generate an NN histogram using distance max cutoffs. Input histogram must be zeroed,
 //if a voxelsname is given, a 3D RDF will be recorded. in this case voxelBins must be nonzero
 unsigned int generateDistHist(const std::vector<Point3D> &pointList, const K3DTree &tree,
 			unsigned int *histogram, float distMax,
 			unsigned int numBins, unsigned int &warnBiasCount,
-			unsigned int *progressPtr,bool (*callback)(void));
+			unsigned int *progressPtr,bool (*callback)(bool));
 
 //!Returns a subset of points guaranteed to lie at least reductionDim inside hull of input points
 /*! Calculates the hull of the input ions and then scales the hull such that the 

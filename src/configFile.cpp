@@ -17,11 +17,14 @@
 */
 
 #include "configFile.h"
+#include "wxcommon.h"
+
 #include "xmlHelper.h"
 
 #include "filters/allFilter.h"
 
 #include "translation.h"
+
 
 const char *CONFIG_FILENAME="config.xml";
 
@@ -47,8 +50,8 @@ ConfigFile::ConfigFile()
 { 
 	panelMode=CONFIG_PANELMODE_REMEMBER;
 	mouseZoomRatePercent=mouseMoveRatePercent=100;
-	allowOnline=false;
-	allowOnlineVerCheck=false;
+	allowOnline=true;
+	allowOnlineVerCheck=true;
 	haveIntialAppSize=false;
 	configLoadOK=false;
 
@@ -144,13 +147,8 @@ Filter *ConfigFile::getDefaultFilter(unsigned int type) const
 
 unsigned int ConfigFile::read()
 {
-
 	string filename;
-	wxStandardPaths *paths = new wxStandardPaths;
-
-	wxString filePath = paths->GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);
-	filePath+=wxCStr("/") + wxCStr(CONFIG_FILENAME);
-	filename = stlStr(filePath);
+	filename = getConfigDir() + std::string("/") + std::string(CONFIG_FILENAME);
 
 	//Load the state from an XML file
 	//here we use libxml2's loading routines
@@ -478,13 +476,13 @@ nodeptrEndJump:
 	catch (int)
 	{
 		//Code threw an error, just say "bad parse" and be done with it
-		delete paths;
+		//delete paths;
 		xmlFreeDoc(doc);
 		return CONFIG_ERR_BADFILE;
 	}
 
 
-	delete paths;
+	//delete paths;
 	xmlFreeDoc(doc);
 
 	configLoadOK=true;
@@ -494,8 +492,7 @@ nodeptrEndJump:
 
 bool ConfigFile::createConfigDir() const
 {
-	wxStandardPaths *paths = new wxStandardPaths;
-	wxString filePath = paths->GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);
+	wxString filePath = wxStr(getConfigDir());
 
 	//Create the folder if it does not exist
 	if(!wxDirExists(filePath))
@@ -508,7 +505,7 @@ bool ConfigFile::createConfigDir() const
 		SetFileAttributes(filePath.wc_str(),FILE_ATTRIBUTE_HIDDEN);
 #endif
 	}
-	delete  paths;
+//	delete  paths;
 	
 	return true;
 }
@@ -527,16 +524,12 @@ std::string ConfigFile::getConfigDir() const
 bool ConfigFile::write()
 {
 	string filename;
-	wxStandardPaths *paths = new wxStandardPaths;
-
-
-	wxString filePath = paths->GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);
-
-
-
-	filePath+=wxCStr("/") + wxCStr(CONFIG_FILENAME);
-	filename = stlStr(filePath);
 	
+	if(!createConfigDir())
+		return false;
+
+	filename = getConfigDir() + std::string("/") + std::string(CONFIG_FILENAME);
+
 	//Open file for output
 	std::ofstream f(filename.c_str());
 
@@ -582,7 +575,7 @@ bool ConfigFile::write()
 	f << tabs(1) <<  "</mousedefaults> " << endl;
 
 	//Online access settings
-#if (!defined(APPLE) && !defined(WIN32))
+#if (!defined(__APPLE__) && !defined(WIN32))
 	f << tabs(1) <<"<!--" << TRANS("Online access for non win32/apple platforms is intentionally disabled, ") <<
 		TRANS("regardless of the settings you use here. Use your package manager to keep up-to-date") << "-->" << endl;
 #endif
@@ -609,7 +602,6 @@ bool ConfigFile::write()
 
 	ASSERT(isValidXML(filename.c_str()));
 
-	delete paths;
 	return true;
 }
 
@@ -663,7 +655,7 @@ unsigned int ConfigFile::getStartupPanelMode() const
 
 bool ConfigFile::getAllowOnlineVersionCheck() const
 {
-	#if defined( APPLE) || defined(WIN32)
+	#if defined( __APPLE__) || defined(WIN32)
 		//Apple and windows don't have good package
 		//management systems as yet, so we check,
 		//iff the user opts in
@@ -680,7 +672,7 @@ void ConfigFile::setAllowOnline(bool v)
 	//Do not allow this setting to
 	//be modified from the default for non-apple-non windows 
 	//platforms
-	#if defined( APPLE) || defined(WIN32)
+	#if defined( __APPLE__) || defined(WIN32)
 		allowOnline=v;
 	#endif
 }
@@ -689,7 +681,7 @@ void ConfigFile::setAllowOnlineVersionCheck(bool v)
 	//Do not allow this setting to
 	//be modified from the default for non-apple-non windows 
 	//platforms
-	#if defined( APPLE) || defined(WIN32)
+	#if defined( __APPLE__) || defined(WIN32)
 		allowOnlineVerCheck=v;
 	#endif
 }

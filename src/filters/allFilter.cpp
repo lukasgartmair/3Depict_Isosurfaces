@@ -15,60 +15,7 @@ Filter *makeFilter(const std::string &s)
 			type=ui;
 	}
 
-	switch(type)
-	{
-		
-		case FILTER_TYPE_POSLOAD:
-			f=new DataLoadFilter;
-			break;
-		case FILTER_TYPE_IONDOWNSAMPLE:
-			f=new IonDownsampleFilter;
-			break;
-		case FILTER_TYPE_RANGEFILE:
-			f=new RangeFileFilter;
-			break;
-		case FILTER_TYPE_SPECTRUMPLOT:
-			f=new SpectrumPlotFilter;
-			break;
-		case FILTER_TYPE_IONCLIP:
-			f=new IonClipFilter;
-			break;
-		case FILTER_TYPE_IONCOLOURFILTER:
-			f=new IonColourFilter;
-			break;
-		case FILTER_TYPE_IONINFO:
-			f = new IonInfoFilter;
-			break;
-		case FILTER_TYPE_COMPOSITION:
-			f=new CompositionProfileFilter;
-			break;
-		case FILTER_TYPE_BOUNDBOX:
-			f = new BoundingBoxFilter;
-			break;
-		case FILTER_TYPE_TRANSFORM:
-			f= new TransformFilter;
-			break;
-		case FILTER_TYPE_EXTERNALPROC:
-			f= new ExternalProgramFilter;
-			break;
-		case FILTER_TYPE_SPATIAL_ANALYSIS:
-			f = new SpatialAnalysisFilter;
-			break;
-		case FILTER_TYPE_CLUSTER_ANALYSIS:
-			f = new ClusterAnalysisFilter;
-			break;
-		case FILTER_TYPE_VOXELS:
-			f = new VoxeliseFilter;
-			break;
-		case FILTER_TYPE_ANNOTATION:
-			f = new AnnotateFilter;
-			break;
-		default:
-			f=0;
-
-	}
-
-	WARN(f,"Should have only got here with invalid input. Might be worth double checking"); 
+	f=makeFilter(type);
 #ifdef DEBUG
 	//Should have set filter
 	//type string should match

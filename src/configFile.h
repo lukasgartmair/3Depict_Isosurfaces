@@ -160,13 +160,13 @@ class ConfigFile
 		void setPlotListSashPos(float fraction);
 
 		//!Set the position for the main window left/right sash 
-		float getLeftRightSashPos() { return leftRightSashPos;};
+		float getLeftRightSashPos() const { return leftRightSashPos;};
 		//!Set the position for the top/bottom sash
-		float getTopBottomSashPos(){ return topBottomSashPos;}
+		float getTopBottomSashPos() const{ return topBottomSashPos;}
 		//!Set the position for the filter property/tree sash
-		float getFilterSashPos(){ return filterSashPos;};
+		float getFilterSashPos() const { return filterSashPos;};
 		//!Set the position for the plot list panel
-		float getPlotListSashPos(){ return plotListSashPos;};
+		float getPlotListSashPos()const { return plotListSashPos;};
 
 
 };

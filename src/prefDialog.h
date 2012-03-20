@@ -107,7 +107,7 @@ protected:
 public:
 	// begin wxGlade: PrefDialog::ids
 	// end wxGlade
-	PrefDialog(wxWindow* parent, int id=wxID_ANY, const wxString& title=_("Preferences"), const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
+	PrefDialog(wxWindow* parent, int id=wxID_ANY, const wxString& title=_(""), const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
 	virtual ~PrefDialog();
 	virtual void OnFilterListClick(wxCommandEvent &event); // wxGlade: <event_handler>
 	virtual void OnFilterCellChange(wxGridEvent &event); // wxGlade: <event_handler>

@@ -20,6 +20,7 @@
 #include <wx/wx.h>
 #include <wx/treectrl.h>
 #include <wx/thread.h>
+#include <wx/url.h>
 #include <string>
 
 #define wxCStr(a) wxString(a,*wxConvCurrent)
@@ -63,12 +64,9 @@ class VersionCheckThread : public wxThread
 		std::string versionStr;
 		//Window to post event to upon completion
 		wxWindow *targetWindow;
+		wxURL url;
 	public:
-		VersionCheckThread(wxWindow *target) : wxThread(wxTHREAD_JOINABLE){targetWindow=0; complete=false;retrieveOK=false;targetWindow=target;}
-
-		//!Set the target window to send completion event to 
-		//before running !MUST BE DONE!
-		void setTargetWindow(wxWindow *w) {targetWindow=w;};
+		VersionCheckThread(wxWindow *target); 
 
 		//!Used internally by wxwidgets to launch thread
 		void *Entry();

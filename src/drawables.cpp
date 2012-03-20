@@ -49,6 +49,56 @@ const Camera *DrawableObj::curCamera = 0;
 //==
 
 
+//Common functions
+//
+void drawBox(Point3D pMin, Point3D pMax, float r,float g, float b, float a)
+{
+	//TODO: Could speedup with LINE_STRIP/LOOP. This is 
+	//not a bottleneck atm though.
+	glBegin(GL_LINES);
+		glColor4f(r,g,b,a);
+		//Bottom corner out (three lines from corner)
+		glVertex3f(pMin[0],pMin[1],pMin[2]);
+		glVertex3f(pMax[0],pMin[1],pMin[2]);
+		
+		glVertex3f(pMin[0],pMin[1],pMin[2]);
+		glVertex3f(pMin[0],pMax[1],pMin[2]);
+
+		glVertex3f(pMin[0],pMin[1],pMin[2]);
+		glVertex3f(pMin[0],pMin[1],pMax[2]);
+		
+		//Top Corner out (three lines from corner)
+		glVertex3f(pMax[0],pMax[1],pMax[2]);
+		glVertex3f(pMin[0],pMax[1],pMax[2]);
+	
+		glVertex3f(pMax[0],pMax[1],pMax[2]);
+		glVertex3f(pMax[0],pMin[1],pMax[2]);
+		
+		glVertex3f(pMax[0],pMax[1],pMax[2]);
+		glVertex3f(pMax[0],pMax[1],pMin[2]);
+
+		//Missing pieces - in an "across-down-across" shape
+		glVertex3f(pMin[0],pMax[1],pMin[2]);
+		glVertex3f(pMax[0],pMax[1],pMin[2]);
+		
+		glVertex3f(pMax[0],pMax[1],pMin[2]);
+		glVertex3f(pMax[0],pMin[1],pMin[2]);
+
+		glVertex3f(pMax[0],pMin[1],pMin[2]);
+		glVertex3f(pMax[0],pMin[1],pMax[2]);
+		
+		glVertex3f(pMax[0],pMin[1],pMax[2]);
+		glVertex3f(pMin[0],pMin[1],pMax[2]);
+		
+		glVertex3f(pMin[0],pMin[1],pMax[2]);
+		glVertex3f(pMin[0],pMax[1],pMax[2]);
+
+		glVertex3f(pMin[0],pMax[1],pMax[2]);
+		glVertex3f(pMin[0],pMax[1],pMin[2]);
+	glEnd();
+}
+
+
 using std::vector;
 
 DrawableObj::DrawableObj() : active(true), haveChanged(true), canSelect(false), wantsLight(false)
@@ -461,14 +511,12 @@ void DrawCylinder::getBoundingBox(BoundCube &b) const
 	tmp=sin(acos(normAxis.dotProd(Point3D(0,0,1))));
 	offset[2] = radius*tmp;
 
-
 	vector<Point3D> p;
 	p.resize(4);
-	p[0]= offset+direction*0.5+origin;
-	p[1]= -offset+direction*0.5+origin;
-	p[2]= offset-direction*0.5+origin;
-	p[3]= -offset-direction*0.5+origin;
-
+	p[0]= offset+(direction*0.5+origin);
+	p[1]= -offset+(direction*0.5+origin);
+	p[2]= offset+(-direction*0.5+origin);
+	p[3]= -offset+(-direction*0.5+origin);
 
 	b.setBounds(p);
 }
@@ -765,7 +813,7 @@ void DrawGLText::draw() const
 			axis.fz=rotateAxis[2];
 
 
-			glRotatef(angle*180/M_PI,rotateAxis[0],rotateAxis[1],rotateAxis[2]);
+			glRotatef(angle*180.0f/M_PI,rotateAxis[0],rotateAxis[1],rotateAxis[2]);
 			quat_rot(&tmp,&axis,angle); //angle is in radiians
 
 			newUp[0]=tmp.fx;
@@ -780,7 +828,7 @@ void DrawGLText::draw() const
 		{
 			rotateAxis = newUp.crossProd(Point3D(0,-1,0));
 			rotateAxis.normalise();
-			glRotatef(angle*180/M_PI,rotateAxis[0],rotateAxis[1],rotateAxis[2]);
+			glRotatef(angle*180.0f/M_PI,rotateAxis[0],rotateAxis[1],rotateAxis[2]);
 		}
 
 		//Ensure that the text is not back-culled (i.e. if the
@@ -960,50 +1008,8 @@ void DrawRectPrism::draw() const
 	{
 		case DRAW_WIREFRAME:
 		{
-			//TODO: Could speedup with LINE_STRIP/LOOP. This is 
-			//not a bottleneck atm though.
 			glLineWidth(lineWidth);	
-			glBegin(GL_LINES);
-				glColor4f(r,g,b,a);
-				//Bottom corner out (three lines from corner)
-				glVertex3f(pMin[0],pMin[1],pMin[2]);
-				glVertex3f(pMax[0],pMin[1],pMin[2]);
-				
-				glVertex3f(pMin[0],pMin[1],pMin[2]);
-				glVertex3f(pMin[0],pMax[1],pMin[2]);
-
-				glVertex3f(pMin[0],pMin[1],pMin[2]);
-				glVertex3f(pMin[0],pMin[1],pMax[2]);
-				
-				//Top Corner out (three lines from corner)
-				glVertex3f(pMax[0],pMax[1],pMax[2]);
-				glVertex3f(pMin[0],pMax[1],pMax[2]);
-			
-				glVertex3f(pMax[0],pMax[1],pMax[2]);
-				glVertex3f(pMax[0],pMin[1],pMax[2]);
-				
-				glVertex3f(pMax[0],pMax[1],pMax[2]);
-				glVertex3f(pMax[0],pMax[1],pMin[2]);
-
-				//Missing pieces - in an "across-down-across" shape
-				glVertex3f(pMin[0],pMax[1],pMin[2]);
-				glVertex3f(pMax[0],pMax[1],pMin[2]);
-				
-				glVertex3f(pMax[0],pMax[1],pMin[2]);
-				glVertex3f(pMax[0],pMin[1],pMin[2]);
-
-				glVertex3f(pMax[0],pMin[1],pMin[2]);
-				glVertex3f(pMax[0],pMin[1],pMax[2]);
-				
-				glVertex3f(pMax[0],pMin[1],pMax[2]);
-				glVertex3f(pMin[0],pMin[1],pMax[2]);
-				
-				glVertex3f(pMin[0],pMin[1],pMax[2]);
-				glVertex3f(pMin[0],pMax[1],pMax[2]);
-
-				glVertex3f(pMin[0],pMax[1],pMax[2]);
-				glVertex3f(pMin[0],pMax[1],pMin[2]);
-			glEnd();
+			drawBox(pMin,pMax,r,g,b,a);
 			break;
 		}
 		case DRAW_FLAT:
@@ -1470,53 +1476,8 @@ void DrawField3D::draw() const
 	//Draw the bounding box as required
 	if(drawBoundBox)
 	{
-		Point3D pMin,pMax;
-		pMin=field->getMinBounds();
-		pMax=field->getMaxBounds();
-	
-
-		glColor4f(boxColourR, boxColourG,boxColourB,boxColourA);
-		//Draw lines between field min and max
-		glBegin(GL_LINES);
-			//Bottom corner out
-			glVertex3f(pMin[0],pMin[1],pMin[2]);
-			glVertex3f(pMax[0],pMin[1],pMin[2]);
-			
-			glVertex3f(pMin[0],pMin[1],pMin[2]);
-			glVertex3f(pMin[0],pMax[1],pMin[2]);
-
-			glVertex3f(pMin[0],pMin[1],pMin[2]);
-			glVertex3f(pMin[0],pMin[1],pMax[2]);
-			
-			//Top Corner out
-			glVertex3f(pMax[0],pMax[1],pMax[2]);
-			glVertex3f(pMin[0],pMax[1],pMax[2]);
-		
-			glVertex3f(pMax[0],pMax[1],pMax[2]);
-			glVertex3f(pMax[0],pMin[1],pMax[2]);
-			
-			glVertex3f(pMax[0],pMax[1],pMax[2]);
-			glVertex3f(pMax[0],pMax[1],pMin[2]);
-
-			//Missing pieces - in a across down across shape
-			glVertex3f(pMin[0],pMax[1],pMin[2]);
-			glVertex3f(pMax[0],pMax[1],pMin[2]);
-			
-			glVertex3f(pMax[0],pMax[1],pMin[2]);
-			glVertex3f(pMax[0],pMin[1],pMin[2]);
-
-			glVertex3f(pMax[0],pMin[1],pMin[2]);
-			glVertex3f(pMax[0],pMin[1],pMax[2]);
-			
-			glVertex3f(pMax[0],pMin[1],pMax[2]);
-			glVertex3f(pMin[0],pMin[1],pMax[2]);
-			
-			glVertex3f(pMin[0],pMin[1],pMax[2]);
-			glVertex3f(pMin[0],pMax[1],pMax[2]);
-
-			glVertex3f(pMin[0],pMax[1],pMax[2]);
-			glVertex3f(pMin[0],pMax[1],pMin[2]);
-		glEnd();
+		drawBox(field->getMinBounds(),field->getMaxBounds(),
+			boxColourR, boxColourG,boxColourB,boxColourA);
 	}
 	//Draw the projections
 }

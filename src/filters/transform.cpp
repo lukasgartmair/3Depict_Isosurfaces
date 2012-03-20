@@ -75,6 +75,9 @@ const char *TRANSFORM_ORIGIN_STRING[]={
 //=== Transform filter === 
 TransformFilter::TransformFilter()
 {
+	COMPILE_ASSERT(ARRAYSIZE(TRANSFORM_MODE_STRING) == MODE_ENUM_END);
+	COMPILE_ASSERT(ARRAYSIZE(TRANSFORM_ORIGIN_STRING) == ORIGINMODE_END);
+
 	randGen.initTimer();
 	transformMode=MODE_TRANSLATE;
 	originMode=ORIGINMODE_SELECT;
@@ -163,7 +166,7 @@ DrawStreamData* TransformFilter::makeMarkerSphere(SelectionDevice<Filter>* &s) c
 }
 
 unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
 	//Clear selection devices FIXME: Is this a memory leak???
 	devices.clear();
@@ -350,7 +353,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 
 									if(thisT == 0)
 									{
-										if(!(*callback)())
+										if(!(*callback)(false))
 											spin=true;
 									}
 								}
@@ -381,7 +384,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 								{
 									n+=NUM_CALLBACK;
 									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-									if(!(*callback)())
+									if(!(*callback)(false))
 									{
 										delete d;
 										return ERR_CALLBACK_FAIL;
@@ -470,7 +473,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 									
 									if(thisT == 0)
 									{
-										if(!(*callback)())
+										if(!(*callback)(false))
 											spin=true;
 									}
 								}
@@ -501,7 +504,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 								{
 									n+=NUM_CALLBACK;
 									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-									if(!(*callback)())
+									if(!(*callback)(false))
 									{
 										delete d;
 										return ERR_CALLBACK_FAIL;
@@ -588,7 +591,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 									
 									if(thisT == 0)
 									{
-										if(!(*callback)())
+										if(!(*callback)(false))
 											spin=true;
 									}
 								}
@@ -619,7 +622,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 								{
 									n+=NUM_CALLBACK;
 									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-									if(!(*callback)())
+									if(!(*callback)(false))
 									{
 										delete d;
 										return ERR_CALLBACK_FAIL;
@@ -721,7 +724,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 								{
 									n+=NUM_CALLBACK;
 									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-									if(!(*callback)())
+									if(!(*callback)(false))
 									{
 										delete d;
 										return ERR_CALLBACK_FAIL;
@@ -818,7 +821,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 										{
 											curProg=NUM_CALLBACK;
 											progress.filterProgress= (unsigned int)((float)(ui)/((float)totalSize)*100.0f);
-											if(!(*callback)())
+											if(!(*callback)(false))
 											{
 												delete d;
 												return ERR_CALLBACK_FAIL;
@@ -848,7 +851,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 										{
 											curProg=NUM_CALLBACK;
 											progress.filterProgress= (unsigned int)((float)(ui)/((float)totalSize)*100.0f);
-											if(!(*callback)())
+											if(!(*callback)(false))
 											{
 												delete d;
 												return ERR_CALLBACK_FAIL;
@@ -888,6 +891,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		progress.filterProgress=0;
 		progress.stepName=TRANS("Collate");
 		progress.maxStep=3;
+		if((*callback)(true))
+			return ERR_CALLBACK_FAIL;
 		//we have to cross the streams (I thought that was bad?) 
 		//  - Each dataset is no longer independant, and needs to
 		//  be mixed with the other datasets. Bugger; sounds mem. expensive.
@@ -903,7 +908,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		d->b = 0.5;
 		d->a = 0.5;
 		d->ionSize = 2.0;
-		d->valueType=TRANS("Mass-to-Charge");
+		d->valueType=TRANS("Mass-to-Charge (amu/e)");
 
 		size_t n=0;
 		size_t curPos=0;
@@ -944,7 +949,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							n+=NUM_CALLBACK;
 							progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 
-							if(!(*callback)())
+							if(!(*callback)(false))
 							{
 								delete d;
 								return ERR_CALLBACK_FAIL;
@@ -967,14 +972,14 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		progress.step=1;
 		progress.filterProgress=0;
 		progress.stepName=TRANS("Shuffle");
-		if(!(*callback)())
+		if(!(*callback)(true))
 		{
 			delete d;
 			return ERR_CALLBACK_FAIL;
 		}
 		//Shuffle the value data.TODO: callback functor	
 		std::random_shuffle(d->data.begin(),d->data.end());	
-		if(!(*callback)())
+		if(!(*callback)(false))
 		{
 			delete d;
 			return ERR_CALLBACK_FAIL;
@@ -983,7 +988,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		progress.step=2;
 		progress.filterProgress=0;
 		progress.stepName=TRANS("Splice");
-		if(!(*callback)())
+		if(!(*callback)(true))
 		{
 			delete d;
 			return ERR_CALLBACK_FAIL;
@@ -1003,7 +1008,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 				n+=NUM_CALLBACK;
 				progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 
-				if(!(*callback)())
+				if(!(*callback)(false))
 				{
 					delete d;
 					return ERR_CALLBACK_FAIL;
@@ -1394,7 +1399,7 @@ bool TransformFilter::writeState(std::ofstream &f,unsigned int format, unsigned 
 		case STATE_FORMAT_XML:
 		{	
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 			f << tabs(depth+1) << "<transformmode value=\"" << transformMode<< "\"/>"<<endl;
 			f << tabs(depth+1) << "<originmode value=\"" << originMode<< "\"/>"<<endl;
 			
@@ -1732,7 +1737,7 @@ bool rotateTest()
 	//OK, so now do the rotation
 	//Do the refresh
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
 	delete f;
 
 	TEST(streamOut.size() == 1,"stream count");
@@ -1813,7 +1818,7 @@ bool translateTest()
 	
 	//Do the refresh
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
 	delete f;
 	
 	TEST(streamOut.size() == 1,"stream count");
@@ -1894,7 +1899,7 @@ bool scaleTest()
 	//OK, so now do the rotation
 	//Do the refresh
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
 	delete f;
 
 	TEST(streamOut.size() == 1,"stream count");

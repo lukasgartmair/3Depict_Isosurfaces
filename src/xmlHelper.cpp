@@ -17,6 +17,73 @@
  */
 #include "xmlHelper.h"
 
+#include <cstring>
+
+//Convert a normal string sequence into an XML escaped sequence
+std::string escapeXML(const std::string &input)
+{
+	size_t strLen= input.size();
+	std::string output;
+	for (size_t ui = 0; ui < strLen; ui++)
+	{
+		char c;
+		c= input[ui];
+		if (c == '&') 
+			output+=("&amp;");
+		else if (c == '<') 
+			output+=("&lt;");
+		else if (c == '>') 
+			output+=("&gt;");
+		else if (c == '"') 
+			output+=("&quot;");
+		else if (c == '\'') 
+			output+=("&apos;");
+		else 
+			output+=c;
+	}
+	return output;
+}
+
+
+//Convert an xml escaped sequence into a normal string sequence
+//Re-used under GPL v3+ From:
+//http://svn.lsdcas.engineering.uiowa.edu/repos/lsdcas/trunk/cas2/libcas/xml.cc
+//accessed 3 Mar 2012
+std::string unescapeXML(const std::string &input)
+{
+	const char* chars = "<>'\"&" ;
+	const char* refs[] =
+	{
+		"&lt;",
+		"&gt;",
+		"&apos;",
+		"&quot;",
+		"&amp;",
+		0
+	} ;
+
+	std::string data=input;
+	for( size_t i = 0 ; refs[i] != NULL ; i++ )
+	{
+		std::string::size_type pos = data.find( refs[i] ) ;
+
+		while( pos != std::string::npos )
+		{
+			std::stringstream unescaped ;
+			unescaped	<< data.substr( 0, pos )
+			<< chars[i]
+			<< data.substr( pos + strlen( refs[i] ) ) ;
+
+			data = unescaped.str() ;
+			pos = data.find( refs[i], pos + strlen( refs[i] ) ) ;
+		}
+	}
+
+	return data ;
+}
+
+
+
 unsigned int XMLHelpNextType(xmlNodePtr &node, int nodeType)
 {
 	do

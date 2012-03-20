@@ -185,6 +185,8 @@ class Scene
 		void clearCams();
 		//!Set the aspect ratio of the output window. Required.
 		void setAspect(float newAspect);
+		//!retreive aspect ratio (h/w) of output win
+		float getAspect() const { return outWinAspect;};
 		
 		//!Add a drawable object 
 		/*!Pointer must be set to a valid (allocated) object.
@@ -327,7 +329,7 @@ class Scene
 		//!Set whether to enable the XYZ world axes
 		void setWorldAxisVisible(bool newAxis) { showAxis=newAxis;};
 		//!Get whether the XYZ world axes are enabled
-		bool getWorldAxisVisible() { return showAxis;};
+		bool getWorldAxisVisible() const { return showAxis;};
 
 		//!Set window size
 		void setWinSize(unsigned int x, unsigned int y) {winX=x;winY=y;}
@@ -341,7 +343,7 @@ class Scene
 		//!Set the background colour
 		void setBackgroundColour(float newR,float newG,float newB) { rBack=newR;gBack=newG;bBack=newB;};
 
-		void getBackgroundColour(float &newR,float &newG,float &newB) { newR=rBack;newG=gBack;newB=bBack;};
+		void getBackgroundColour(float &newR,float &newG,float &newB) const { newR=rBack;newG=gBack;newB=bBack;};
 		
 		//!Computes the bounding box for the scene. 
 		//this is locked to a minimum of 0.1 unit box around the origin.

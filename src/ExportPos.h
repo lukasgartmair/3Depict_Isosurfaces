@@ -31,7 +31,6 @@
 
 // end wxGlade
 
-#include "tree.hh"
 #include "viscontrol.h"
 
 
@@ -45,13 +44,14 @@ public:
 private:
 
 
+    FilterTree filterTree;
+
+    std::map<size_t, Filter*> filterMap;
 
     //!Have we refreshed the filterstream data list?
     bool haveRefreshed;
     //!Should we be exporting selected ions (false) or visible ions (true)
     bool exportVisible;
-    //!Vis controller pointer FIXME: Can we downgrade this to const?
-    VisController *visControl;
     //!List containing filter and  ion streams to export 
    std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > outputData; 
     //!vector containing currently available filter streams
@@ -100,12 +100,11 @@ public:
     virtual void OnListAvailableItemActivate(wxListEvent &event); // wxGlade: <event_handler>
     virtual void OnListSelectedItemActivate(wxListEvent &event); // wxGlade: <event_handler>
     virtual void OnListSelectedItemKeyDown(wxListEvent &event); // wxGlade: <event_handler>
-    void setViscontrol(VisController *vis) { visControl=vis;};
 
-    void cleanup(VisController *v);
-    void initialiseData(VisController *v);
+    void initialiseData(FilterTree &f);
     void enableSelectionControls(bool enabled);
     void getExportVec(std::vector<const FilterStreamData *> &v) const; 
+    void swapFilterTree(FilterTree &f) { f.swap(filterTree);haveRefreshed=false;}
 
 }; // wxGlade: end class
 

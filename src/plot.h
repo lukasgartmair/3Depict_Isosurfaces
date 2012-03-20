@@ -122,6 +122,8 @@ class PlotRegion
 class PlotBase
 {
 	public:
+		PlotBase(){};
+		virtual ~PlotBase(){};
 		//The type of plot (ie what class is it?)	
 		unsigned int plotType;
 		
@@ -312,7 +314,7 @@ class PlotWrapper
 
 	public:
 		//!Constructor
-		PlotWrapper(){applyUserBounds=false;plotChanged=true;drawLegend=true;};
+		PlotWrapper();
 
 
 		//!Has the contents of the plot changed since the last call to resetChange?

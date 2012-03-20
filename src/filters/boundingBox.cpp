@@ -84,7 +84,7 @@ size_t BoundingBoxFilter::numBytesForCache(size_t nObjects) const
 }
 
 unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
 
 	//Compute the bounding box of the incoming streams
@@ -152,7 +152,7 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 
 							if(thisT == 0)
 							{
-								if(!(*callback)())
+								if(!(*callback)(false))
 									spin=true;
 							}
 						}
@@ -178,7 +178,7 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 						{
 							n+=NUM_CALLBACK;
 							progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-							if(!(*callback)())
+							if(!(*callback)(false))
 							{
 								delete d;
 								return BOUNDINGBOX_ABORT_ERR;
@@ -562,7 +562,7 @@ bool BoundingBoxFilter::writeState(std::ofstream &f,unsigned int format, unsigne
 		case STATE_FORMAT_XML:
 		{	
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 			f << tabs(depth+1) << "<visible value=\"" << isVisible << "\"/>" << endl;
 			f << tabs(depth+1) << "<fixedticks value=\"" << fixedNumTicks << "\"/>" << endl;
 			f << tabs(depth+1) << "<ticknum x=\""<<numTicks[0]<< "\" y=\"" 
@@ -825,7 +825,7 @@ bool boxVolumeTest()
 
 
 	ProgressData p;
-	b->refresh(streamIn,streamOut,p,dummyCallback);
+	TEST(!b->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
 	//---
 
 	//Run tests 

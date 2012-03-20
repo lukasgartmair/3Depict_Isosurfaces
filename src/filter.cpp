@@ -22,7 +22,6 @@
 
 #include "colourmap.h"
 #include "mathfuncs.h"
-#include "rdf.h"
 
 #include "translation.h"
 
@@ -75,8 +74,10 @@ void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f)
 
 	FilterProperties p;
 	f->getProperties(p);
-
-
+#ifdef DEBUG
+	//If debugging, rtest self consistency
+	p.checkConsistent();
+#endif	
 	g->clearKeys();
 	g->setNumSets(p.data.size());
 
@@ -243,7 +244,7 @@ unsigned int getIonstreamIonID(const IonStreamData *d, const RangeFile *r)
 
 //!Extend a point data vector using some ion data
 unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<IonHit> &vIonData,
-				bool (*callback)(),unsigned int &progress, size_t offset)
+				bool (*callback)(bool),unsigned int &progress, size_t offset)
 {
 	unsigned int curProg=NUM_CALLBACK;
 	unsigned int n =offset;
@@ -266,7 +267,7 @@ unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<Ion
 			progress= (unsigned int)(((float)n/(float)dest.size())*100.0f);
 			if(!omp_get_thread_num())
 			{
-				if(!(*callback)())
+				if(!(*callback)(false))
 					spin=true;
 			}
 			}
@@ -287,7 +288,7 @@ unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<Ion
 		{
 			n+=NUM_CALLBACK;
 			progress= (unsigned int)(((float)n/(float)dest.size())*100.0f);
-			if(!(*callback)())
+			if(!(*callback)(false))
 				return 1;
 		}
 
@@ -298,6 +299,22 @@ unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<Ion
 	return 0;
 }
 
+#ifdef DEBUG
+void FilterProperties::checkConsistent() const
+{
+	//Check that the key numbers from the refresh are in fact unique,
+	//across each set
+	for(size_t ui=0;ui<keys.size(); ui++)
+	{
+		vector<unsigned int> keyCopy;
+		keyCopy=keys[ui];
+
+		std::sort(keyCopy.begin(),keyCopy.end());
+		ASSERT(std::unique(keyCopy.begin(),keyCopy.end()) == keyCopy.end());
+
+	}
+}
+#endif
 void IonStreamData::clear()
 {
 	data.clear();
@@ -344,6 +361,9 @@ Filter::~Filter()
 {
     if(cacheOK)
 	    clearCache();
+
+    for(unsigned int ui=0;ui<devices.size();ui++)
+	    delete devices[ui];
 }
 
 void Filter::clearCache()

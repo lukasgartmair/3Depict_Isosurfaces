@@ -274,7 +274,7 @@ K3DNode *K3DTree::buildRecurse(vector<Point3D>::iterator pts_start, vector<Point
 	{
 		
 		//Only do process if callback is OK
-		if((*callback)())
+		if((*callback)(false))
 		{
 			node->setLeft(buildRecurse(pts_start,pts_start + median,depth+1));
 			*progress= (unsigned int)((float)curNodeCount/(float)treeSize*100.0f);
@@ -288,7 +288,7 @@ K3DNode *K3DTree::buildRecurse(vector<Point3D>::iterator pts_start, vector<Point
 	if(median!=ptsSize)
 	{
 		//Only do process if callback is OK
-		if((*callback)())
+		if((*callback)(false))
 		{
 			node->setRight(buildRecurse(pts_start + median + 1, pts_end,depth+1));
 			*progress= (unsigned int)((float)curNodeCount/(float)treeSize*100.0f);
@@ -510,14 +510,17 @@ const Point3D *K3DTree::findNearest(const Point3D &searchPt, const BoundCube &do
 
 
 				
-				ASSERT(stackTop < maxDepth+1);	
-				stackTop--;
-				visit=visitStack[stackTop];
-				curNode=nodeStack[stackTop];
-				curDomain.bounds[curAxis][0]=domainStack[stackTop][0];
-				curDomain.bounds[curAxis][1]=domainStack[stackTop][1];
+				ASSERT(stackTop < maxDepth+1);
+				if(stackTop)
+				{
+					stackTop--;
+					visit=visitStack[stackTop];
+					curNode=nodeStack[stackTop];
+					curDomain.bounds[curAxis][0]=domainStack[stackTop][0];
+					curDomain.bounds[curAxis][1]=domainStack[stackTop][1];
+					ASSERT((stackTop)%3 == curAxis)
+				}
 				
-				ASSERT((stackTop)%3 == curAxis)
 				break;
 			}
 			default:

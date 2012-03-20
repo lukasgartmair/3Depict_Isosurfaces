@@ -18,6 +18,10 @@
 
 #include "textures.h"
 
+#include "pngread.h"
+
+#include "wxcommon.h"
+
 const char *TEST_OVERLAY_PNG[] = { 
 				"textures/Left_clicked_mouse.png",
 				"textures/Left-Right-arrow.png",

@@ -70,7 +70,9 @@ void IonDownsampleFilter::initFilter(const std::vector<const FilterStreamData *>
 	{
 
 
-		//If we didn't have an incoming rsd, then make one up!
+		//If we didn't have a previously incoming rsd, then make one up!
+		// - we can't use a reference, as the rangestreams are technically transient,
+		// so we have to copy.
 		if(!rsdIncoming)
 		{
 			rsdIncoming = new RangeStreamData;
@@ -109,7 +111,12 @@ void IonDownsampleFilter::initFilter(const std::vector<const FilterStreamData *>
 				ionLimits.resize(rsdIncoming->rangeFile->getNumIons(),maxAfterFilter);
 			}
 
-		
+			//Ensure what is enabled and is disabled is up-to-date	
+			for(unsigned int ui=0;ui<rsdIncoming->enabledRanges.size();ui++)
+				rsdIncoming->enabledRanges[ui] = c->enabledRanges[ui];
+			for(unsigned int ui=0;ui<rsdIncoming->enabledIons.size();ui++)
+				rsdIncoming->enabledIons[ui] = c->enabledIons[ui];
+				
 		}
 
 	}
@@ -158,7 +165,7 @@ size_t IonDownsampleFilter::numBytesForCache(size_t nObjects) const
 }
 
 unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
 	//use the cached copy if we have it.
 	if(cacheOK)
@@ -225,7 +232,7 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 									curProg=NUM_CALLBACK;
 									n+=NUM_CALLBACK;
 									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-									if(!(*callback)())
+									if(!(*callback)(false))
 									{
 										delete d;
 										return IONDOWNSAMPLE_ABORT_ERR;
@@ -366,7 +373,7 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 										n+=NUM_CALLBACK;
 										progress.filterProgress= 
 											(unsigned int)((float)(n)/((float)totalSize)*100.0f);
-										if(!(*callback)())
+										if(!(*callback)(false))
 										{
 											delete d;
 											return IONDOWNSAMPLE_ABORT_ERR;
@@ -668,7 +675,7 @@ bool IonDownsampleFilter::writeState(std::ofstream &f,unsigned int format, unsig
 		case STATE_FORMAT_XML:
 		{	
 			f << tabs(depth) <<  "<" << trueName() << ">" << endl;
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<fixednumout value=\""<<fixedNumOut<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<fraction value=\""<<fraction<< "\"/>"  << endl;
@@ -881,7 +888,7 @@ bool variableSampleTest()
 
 	//Do the refresh
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	TEST(!(f->refresh(streamIn,streamOut,p,dummyCallback)),"refresh error code");
 
 	delete f;
 	delete d;

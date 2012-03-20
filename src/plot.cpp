@@ -23,10 +23,6 @@
 
 #include "translation.h"
 
-//Apple are special....
-#ifdef __APPLE__
-	#include <math.h>
-#endif
 
 #include <iostream>
 #include <algorithm>
@@ -278,6 +274,14 @@ void genErrBars(const std::vector<float> &x, const std::vector<float> &y,
 }
 //===
 
+		//!Constructor
+PlotWrapper::PlotWrapper()
+{
+	COMPILE_ASSERT(ARRAYSIZE(plotModeStrings) == PLOT_TRACE_ENDOFENUM);
+	applyUserBounds=false;
+	plotChanged=true;
+	drawLegend=true;
+}
 
 unsigned int PlotWrapper::addPlot(PlotBase *p)
 {

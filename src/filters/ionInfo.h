@@ -2,6 +2,7 @@
 #define IONINFO_H
 
 #include "../filter.h"
+#include "../translation.h"
 
 
 //!Ion derived information filter, things like volume, composition, etc.
@@ -38,7 +39,7 @@ class IonInfoFilter : public Filter
 		//returns 0 on success. global "qh " "object"  will contain
 		//the hull. Volume is computed.
 		unsigned int convexHullEstimateVol(const vector<const FilterStreamData*> &data, 
-							float &vol,bool (*callback)(void)) const;
+							float &vol,bool (*callback)(bool)) const;
 	public:
 		//!Constructor
 		IonInfoFilter();
@@ -55,7 +56,7 @@ class IonInfoFilter : public Filter
 		// ->cached.
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 							std::vector<const FilterStreamData *> &dataOut,
-							ProgressData &progress, bool (*callback)(void));
+							ProgressData &progress, bool (*callback)(bool));
 		//!Get (approx) number of bytes required for cache
 		size_t numBytesForCache(size_t nObjects) const;
 

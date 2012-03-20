@@ -16,9 +16,12 @@ if [ $1 = '--update-config=yes' ]; then
 		DISABLE_DEBUG="--enable-no-debug-checks"
 	fi
 
+	CXXFLAGS=" -Dqh_QHpointer $CXXFLAGS" \
 	./configure $SHOULD_PARALLEL $DISABLE_DEBUG \
-		--with-mgl-libs="-L/opt/local/lib -lmgl" \
-		--with-mgl-flags="-I/opt/local/include" \
+		--with-libqhull-link=" -L/opt/local/lib -lqhull" \
+		--with-libqhull-flags="-I/opt/local/include -Dqh_QHpointer " \
+		--with-mgl-libs="-L/usr/local/lib -lmgl" \
+		--with-mgl-flags="-I/usr/local/include -I/opt/local/include" \
 		--with-freetype=/opt/local \
 		--with-gsl-flags=-I`gsl-config --prefix`/include \
 		--with-gsl-libs="-L`gsl-config --prefix`/lib -lgsl" \
@@ -27,13 +30,13 @@ if [ $1 = '--update-config=yes' ]; then
 		--with-libpng-flags=-I`libpng14-config --prefix`/include \
 		--with-libpng-link="-L`libpng14-config --prefix`/lib -lpng14" \
 		--with-intl-libs="-L/opt/local/lib -lintl " \
-		LDFLAGS="-headerpad_max_install_names" \
+		LDFLAGS="-headerpad_max_install_names" 
 #		--build=x86_64-apple-darwin11.0.0
 
 
 	if [ $? -ne 0 ]; then
 		echo "Configure unsuccessful - exiting"
-		exit
+		exit 1
 	fi
 
 
@@ -44,7 +47,7 @@ make -j8
 
 if [ $? -ne 0 ]; then
 	echo "Make unsuccessful - exiting"
-	exit
+	exit 1
 fi
 
 echo "Updating .app bundle..."

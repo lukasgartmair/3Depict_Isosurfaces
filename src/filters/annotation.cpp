@@ -24,6 +24,9 @@ enum
 	KEY_LINEAR_NUMTICKS,
 	KEY_LINEAR_FIXED_TICKS,
 	KEY_LINEAR_TICKSPACING,
+	KEY_ANGLE_POS_ZERO,
+	KEY_ANGLE_POS_ONE,
+	KEY_ANGLE_POS_TWO
 };
 
 enum
@@ -40,7 +43,6 @@ enum
 	BINDING_LINEAR_SPHERERADIUS
 };
 
-const unsigned int NUM_ANNOTATION_MODES=5;
 
 const char *annotationModeStrings[] =
 {
@@ -54,6 +56,7 @@ const char *annotationModeStrings[] =
 
 AnnotateFilter::AnnotateFilter()
 {
+	COMPILE_ASSERT(ARRAYSIZE(annotationModeStrings) == ANNOTATION_MODE_END);
 
 	annotationMode=ANNOTATION_TEXT;
 
@@ -134,7 +137,7 @@ Filter *AnnotateFilter::cloneUncached() const
 }
 
 unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
 
 	//Clear devices
@@ -276,11 +279,15 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 			std::string angleString;
 			
 			Point3D d1,d2;
-			float angleVal;
+			float angleVal=0;
 			
 			d1=anglePos[1]-anglePos[0];
 			d2=anglePos[2]-anglePos[0];
-			angleVal =d1.angle(d2);
+
+			//Work out the angle if there is a non-degenerate vector.
+			//otherwise set it to the "undefined" value of zero
+			if(fabs(d1.dotProd(d2))  > sqrt(std::numeric_limits<float>::epsilon()))
+				angleVal =d1.angle(d2);
 
 			if(reflexAngle)
 				angleVal=2.0*M_PI-angleVal;
@@ -332,14 +339,16 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 			//a factor of the text size in
 			//the direction of the average
 			//of the two vector components
-			Point3D averageVec;
-			averageVec = (d1+d2)*0.5f;
-			averageVec.normalise();
-			averageVec*=textSize*1.1;
-			if(reflexAngle)
-				averageVec.negate();
+			Point3D averageVec(1,0,0);
+			if(averageVec.sqrMag() > std::numeric_limits<float>::epsilon())
+			{
+				averageVec = (d1+d2)*0.5f;
+				averageVec.normalise();
+				averageVec*=textSize*1.1;
+				if(reflexAngle)
+					averageVec.negate();
+			}
 			dt->setOrigin(anglePos[0]+averageVec);
-
 			//Use user-specifications for colour,
 			//size and orientation
 			dt->setUp(upVec);
@@ -590,6 +599,31 @@ void AnnotateFilter::getProperties(FilterProperties &propertyList) const
 		}
 		case ANNOTATION_ANGLE_MEASURE:
 		{
+			stream_cast(tmpStr,anglePos[0]);
+			s.push_back(make_pair(TRANS("Position A"),tmpStr));
+			type.push_back(PROPERTY_TYPE_POINT3D);
+			keys.push_back(KEY_ANGLE_POS_ZERO);
+
+			stream_cast(tmpStr,anglePos[1]);
+			s.push_back(make_pair(TRANS("Origin "),tmpStr));
+			type.push_back(PROPERTY_TYPE_POINT3D);
+			keys.push_back(KEY_ANGLE_POS_ONE);
+			
+			stream_cast(tmpStr,anglePos[2]);
+			s.push_back(make_pair(TRANS("Position B"),tmpStr));
+			type.push_back(PROPERTY_TYPE_POINT3D);
+			keys.push_back(KEY_ANGLE_POS_TWO);
+			
+			propertyList.data.push_back(s);
+			propertyList.keys.push_back(keys);
+			propertyList.types.push_back(type);
+			s.clear();keys.clear();type.clear();
+
+			stream_cast(tmpStr,acrossVec);
+			s.push_back(make_pair(TRANS("Across dir"),tmpStr));
+			type.push_back(PROPERTY_TYPE_STRING);
+			keys.push_back(KEY_ACROSSVEC);
+
 			stream_cast(tmpStr,upVec);
 			s.push_back(make_pair(TRANS("Up dir"),tmpStr));
 			type.push_back(PROPERTY_TYPE_STRING);
@@ -727,13 +761,13 @@ bool AnnotateFilter::setProperty( unsigned int set, unsigned int key,
 		{
 			unsigned int newMode;
 
-			for(newMode=0;newMode<NUM_ANNOTATION_MODES;newMode++)
+			for(newMode=0;newMode<ANNOTATION_MODE_END;newMode++)
 			{
-				if(stripped == annotationModeStrings[newMode])
+				if(stripped == TRANS(annotationModeStrings[newMode]))
 					break;
 			}
 
-			if(newMode == NUM_ANNOTATION_MODES)
+			if(newMode == ANNOTATION_MODE_END)
 				return false;
 
 			if(newMode!=annotationMode)
@@ -844,6 +878,45 @@ bool AnnotateFilter::setProperty( unsigned int set, unsigned int key,
 			}
 
 			break;	
+		}
+		case KEY_ANGLE_POS_ZERO:
+		{
+			Point3D newPt;
+			if(!parsePointStr(value,newPt))
+				return false;
+
+			if(!(anglePos[0]== newPt))
+			{
+				anglePos[0]=newPt;
+				needUpdate=true;
+			}
+			break;
+		}
+		case KEY_ANGLE_POS_ONE:
+		{
+			Point3D newPt;
+			if(!parsePointStr(value,newPt))
+				return false;
+
+			if(!(anglePos[1]== newPt))
+			{
+				anglePos[1]=newPt;
+				needUpdate=true;
+			}
+			break;
+		}
+		case KEY_ANGLE_POS_TWO:
+		{
+			Point3D newPt;
+			if(!parsePointStr(value,newPt))
+				return false;
+
+			if(!(anglePos[2]== newPt))
+			{
+				anglePos[2]=newPt;
+				needUpdate=true;
+			}
+			break;
 		}
 		case KEY_ARROW_SIZE:
 		{
@@ -1057,7 +1130,7 @@ bool AnnotateFilter::writeState(std::ofstream &f,unsigned int format, unsigned i
 		case STATE_FORMAT_XML:
 		{	
 			f << tabs(depth) <<  "<" << trueName() << ">" << endl;
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<position value=\""<<position<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<target value=\""<<target<< "\"/>"  << endl;
@@ -1070,7 +1143,7 @@ bool AnnotateFilter::writeState(std::ofstream &f,unsigned int format, unsigned i
 			f << tabs(depth+1) << "</anglepos>" << endl;
 
 
-			f << tabs(depth+1) << "<annotatetext value=\""<<annotateText<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<annotatetext value=\""<<escapeXML(annotateText)<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<textsize value=\""<<textSize<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<annotatesize value=\""<<annotateSize<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<sphereanglesize value=\""<<sphereAngleSize<< "\"/>"  << endl;
@@ -1276,3 +1349,340 @@ void AnnotateFilter::setPropFromBinding(const SelectionBinding &b)
 			ASSERT(false);
 	}
 }
+
+
+#ifdef DEBUG
+
+//Test the ruler functionality
+bool rulerTest();
+//Test the angle measurement tool 
+bool angleTest();
+//Test the pointing arrow annotation
+bool arrowTest();
+//Test the text+arrow functionality
+bool textArrowTest();
+
+
+bool AnnotateFilter::runUnitTests()
+{
+	if(!rulerTest())
+		return false;
+
+	if(!angleTest())
+		return false;
+	
+	if(!arrowTest())
+		return false;
+
+	if(!textArrowTest())
+		return false;
+
+	return true;
+}
+
+
+bool rulerTest()
+{
+	vector<const FilterStreamData*> streamIn,streamOut;
+	AnnotateFilter*f=new AnnotateFilter;
+	f->setCaching(false);
+	
+	bool needUp; std::string s;
+	//Set linear ruler mode
+	f->setProperty(0,KEY_MODE,annotationModeStrings[ANNOTATION_LINEAR_MEASURE],needUp);
+	//Set ruler position & length
+	stream_cast(s,Point3D(0,0,0));
+	f->setProperty(0,KEY_POSITION,s,needUp);
+	stream_cast(s,Point3D(1,1,1));
+	f->setProperty(0,KEY_TARGET,s,needUp);
+	stream_cast(s,sqrt(2)/10);
+	f->setProperty(0,KEY_LINEAR_TICKSPACING,s,needUp);
+	
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+
+	delete f;
+
+
+	TEST(streamOut.size(),"stream size");
+
+	//Count the number of text object types
+	size_t textCount,vecCount,otherDrawCount;
+	textCount=vecCount=otherDrawCount=0;
+	for(unsigned int ui=0;ui<streamOut.size(); ui++)
+	{
+		switch(streamOut[ui]->getStreamType())
+		{
+			case STREAM_TYPE_DRAW:
+			{
+				const DrawStreamData* d;
+				d= (const DrawStreamData*)streamOut[ui];
+				for(unsigned int ui=0;ui<d->drawables.size();ui++)
+				{
+					switch(d->drawables[ui]->getType())
+					{
+						case DRAW_TYPE_GLTEXT:
+							textCount++;
+							break;
+						case DRAW_TYPE_VECTOR:
+							vecCount++;
+							break;
+						default:
+							otherDrawCount++;
+							break;
+					}
+
+				}
+				break;
+			}
+			default:
+				;
+		}
+
+	}
+
+	//We should have a line, one would hope
+	TEST(vecCount>0,"Number of lines in ruler test");
+	//Floating pt errors, and not setting the zero could alter this
+	//so it should be close to, but not exactly 10
+	TEST(textCount == 10 || textCount == 9 || textCount == 11,
+			"Number of lines in ruler test");
+
+	for(unsigned int ui=0;ui<streamOut.size();ui++)
+		delete streamOut[ui];
+
+	return true;
+}
+
+bool angleTest()
+{
+	vector<const FilterStreamData*> streamIn,streamOut;
+	AnnotateFilter*f=new AnnotateFilter;
+	f->setCaching(false);
+	
+	bool needUp; std::string s;
+	//Set arrow annotation mode
+	f->setProperty(0,KEY_MODE,annotationModeStrings[ANNOTATION_ANGLE_MEASURE],needUp);
+	//Set position & target for arrow
+	const Point3D ANGLE_ORIGIN(0,0,0);
+	const Point3D ANGLE_A(0,0,1);
+	const Point3D ANGLE_B(0,1,0);
+	stream_cast(s,ANGLE_ORIGIN);
+	f->setProperty(0,KEY_ANGLE_POS_ONE,s,needUp);
+	stream_cast(s,ANGLE_A);
+	f->setProperty(0,KEY_ANGLE_POS_ZERO,s,needUp);
+	stream_cast(s,ANGLE_B);
+	f->setProperty(0,KEY_ANGLE_POS_TWO,s,needUp);
+	
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+
+	delete f;
+
+
+
+	TEST(streamOut.size(),"stream size");
+	
+	//Count the number of text object types
+	size_t vecCount,otherDrawCount,textDrawCount,sphereDrawCount;
+	vecCount=otherDrawCount=textDrawCount=sphereDrawCount=0;
+	for(unsigned int ui=0;ui<streamOut.size(); ui++)
+	{
+		switch(streamOut[ui]->getStreamType())
+		{
+			case STREAM_TYPE_DRAW:
+			{
+				const DrawStreamData* d;
+				d= (const DrawStreamData*)streamOut[ui];
+				for(unsigned int ui=0;ui<d->drawables.size();ui++)
+				{
+					switch(d->drawables[ui]->getType())
+					{
+						case DRAW_TYPE_VECTOR:
+							vecCount++;
+							break;
+						case DRAW_TYPE_GLTEXT:
+							textDrawCount++;
+							break;
+						case DRAW_TYPE_SPHERE:
+							sphereDrawCount++;
+							break;
+						default:
+							otherDrawCount++;
+							break;
+					}
+
+				}
+				break;
+			}
+			default:
+				;
+		}
+	}
+
+
+	TEST(textDrawCount,"angle text drawable");
+	TEST(vecCount,"angle arms drawable");
+	TEST(sphereDrawCount,"sphere marker drawable");
+	TEST(!otherDrawCount,"unexpected drawable in angle measure");
+
+	for(unsigned int ui=0;ui<streamOut.size();ui++)
+		delete streamOut[ui];
+
+	return true;
+}
+
+bool arrowTest()
+{
+	vector<const FilterStreamData*> streamIn,streamOut;
+	AnnotateFilter*f=new AnnotateFilter;
+	f->setCaching(false);
+	
+	bool needUp; std::string s;
+	//Set arrow annotation mode
+	f->setProperty(0,KEY_MODE,annotationModeStrings[ANNOTATION_ARROW],needUp);
+	//Set position & target for arrow
+	const Point3D ARROW_ORIGIN(-1,-1,-1);
+	const Point3D ARROW_TARGET(1,1,1);
+	stream_cast(s,ARROW_ORIGIN);
+	f->setProperty(0,KEY_POSITION,s,needUp);
+	stream_cast(s,ARROW_TARGET);
+	f->setProperty(0,KEY_TARGET,s,needUp);
+	
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
+
+	delete f;
+
+
+	TEST(streamOut.size(),"stream size");
+
+	//Count the number of text object types
+	size_t vecCount,otherDrawCount;
+	vecCount=otherDrawCount=0;
+	for(unsigned int ui=0;ui<streamOut.size(); ui++)
+	{
+		switch(streamOut[ui]->getStreamType())
+		{
+			case STREAM_TYPE_DRAW:
+			{
+				const DrawStreamData* d;
+				d= (const DrawStreamData*)streamOut[ui];
+				for(unsigned int ui=0;ui<d->drawables.size();ui++)
+				{
+					switch(d->drawables[ui]->getType())
+					{
+						case DRAW_TYPE_VECTOR:
+						{
+							vecCount++;
+							const DrawVector *dv;
+							dv= (const DrawVector*)d->drawables[ui];
+							bool testV;
+							testV=(dv->getOrigin() == ARROW_ORIGIN);
+							TEST(testV,"Origin test");
+							break;
+						}
+						default:
+							otherDrawCount++;
+							break;
+					}
+
+				}
+				break;
+			}
+			default:
+				;
+		}
+
+	}
+
+	//We should have a line, one would hope
+	TEST(vecCount==1,"Number of lines");
+	TEST(otherDrawCount==0,"Draw count");
+
+	for(unsigned int ui=0;ui<streamOut.size();ui++)
+		delete streamOut[ui];
+
+	return true;
+}
+
+bool textArrowTest()
+{
+	vector<const FilterStreamData*> streamIn,streamOut;
+	AnnotateFilter*f=new AnnotateFilter;
+	f->setCaching(false);
+	
+	bool needUp; std::string s;
+	//Set linear ruler mode
+	f->setProperty(0,KEY_MODE,annotationModeStrings[ANNOTATION_TEXT_WITH_ARROW],needUp);
+	//Set ruler position & length
+	const Point3D ARROW_ORIGIN(-1,-1,-1);
+	const Point3D ARROW_TARGET(1,1,1);
+	stream_cast(s,ARROW_ORIGIN);
+	f->setProperty(0,KEY_POSITION,s,needUp);
+	stream_cast(s,ARROW_TARGET);
+	f->setProperty(0,KEY_TARGET,s,needUp);
+	
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+
+	delete f;
+
+
+	TEST(streamOut.size(),"stream size");
+
+	//Count the number of text object types
+	size_t vecCount,textCount,otherDrawCount;
+	vecCount=textCount=otherDrawCount=0;
+	for(unsigned int ui=0;ui<streamOut.size(); ui++)
+	{
+		switch(streamOut[ui]->getStreamType())
+		{
+			case STREAM_TYPE_DRAW:
+			{
+				const DrawStreamData* d;
+				d= (const DrawStreamData*)streamOut[ui];
+				for(unsigned int ui=0;ui<d->drawables.size();ui++)
+				{
+					switch(d->drawables[ui]->getType())
+					{
+						case DRAW_TYPE_VECTOR:
+						{
+							vecCount++;
+							const DrawVector *dv;
+							dv= (const DrawVector*)d->drawables[ui];
+							bool testV;
+							testV=(dv->getOrigin() == ARROW_ORIGIN);
+							TEST(testV,"Origin test");
+							break;
+						}
+						case DRAW_TYPE_GLTEXT:
+							textCount++;
+							break;
+						default:
+							otherDrawCount++;
+							break;
+					}
+
+				}
+				break;
+			}
+			default:
+				;
+		}
+
+	}
+
+	//We should have a line, one would hope
+	TEST(vecCount==1,"Number of lines");
+	TEST(textCount==1,"Number of text objects");
+	TEST(otherDrawCount==0,"No other draw items");
+
+	for(unsigned int ui=0;ui<streamOut.size();ui++)
+		delete streamOut[ui];
+
+	return true;
+}
+
+
+#endif

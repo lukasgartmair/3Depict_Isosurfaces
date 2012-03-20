@@ -43,7 +43,7 @@ class AxisCompareMk2
 		unsigned int axis;
 	public:
 		void setAxis(unsigned int Axis){axis=Axis;};
-		inline bool operator() (const std::pair<Point3D,size_t> &p1,const std::pair<Point3D,size_t> &p2)
+		inline bool operator()(const std::pair<Point3D,size_t> &p1,const std::pair<Point3D,size_t> &p2) const
 		{return p1.first[axis]<p2.first[axis];};
 };
 
@@ -85,7 +85,7 @@ class K3DTreeMk2
 		BoundCube treeBounds;
 		
 		//Callback for progress reporting
-		bool (*callback)(void);
+		bool (*callback)(bool);
 
 		unsigned int *progress; //Progress counter
 
@@ -130,15 +130,15 @@ class K3DTreeMk2
 					std::vector<std::pair<size_t,size_t> > &contigousBlocks ) const;
 
 		//Obtain a point from its internal index
-		const Point3D *getPt(size_t index) { ASSERT(index < indexedPoints.size());return &(indexedPoints[index].first);};
+		const Point3D *getPt(size_t index) const { ASSERT(index < indexedPoints.size());return &(indexedPoints[index].first);};
 
 		//reset the specified "tags" in the tree
 		void clearTags(std::vector<size_t> &tagsToClear);
 
-		size_t getOrigIndex(size_t treeIndex){ASSERT(treeIndex <indexedPoints.size()); return indexedPoints[treeIndex].second;};
+		size_t getOrigIndex(size_t treeIndex) const {ASSERT(treeIndex <indexedPoints.size()); return indexedPoints[treeIndex].second;};
 		
 		//Set the callback routine for progress reporting
-		void setCallback(bool (*cb)(void)) {callback = cb;}
+		void setCallback(bool (*cb)(bool)) {callback = cb;}
 		
 		//Set a pointer that can be used to write the current progress
 		void setProgressPointer(unsigned int *p) { progress=p;};
@@ -149,9 +149,9 @@ class K3DTreeMk2
 
 		bool getTag(size_t tagID) const { ASSERT(tagID < nodes.size()); return nodes[tagID].tagged;};
 
-		size_t size() { ASSERT(nodes.size() == indexedPoints.size());return indexedPoints.size(); }
+		size_t size() const { ASSERT(nodes.size() == indexedPoints.size());return indexedPoints.size(); }
 		
-		size_t rootIdx() { return treeRoot;}
+		size_t rootIdx() const { return treeRoot;}
 
 		size_t tagCount() const;
 

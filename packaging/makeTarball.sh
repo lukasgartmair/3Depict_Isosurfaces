@@ -33,6 +33,11 @@ rm -rf autom4te.cache
 #Build tarball
 make dist
 
+if [ $? -ne 0 ] ; then
+	echo "make dist failed";
+	exit 1;
+fi
+
 #Various release-time checks
 #----
 #Check version
@@ -77,6 +82,38 @@ if [ x"`grep feenableexcept src/3Depict.cpp | egrep -v '^\s*//'`" != x"" ] ; the
 	echo " WARNING: Floating point exceptions still appear to be enabled..." >> $MSG_FILE
 fi
 
+#check that we are not using preprocessor macros incorrectly
+#Apple preprocessor is exactly __APPLE__
+RES=`find src/ -name *.cpp -exec grep APPLE {} \; | egrep '^\s*#' | grep -v EFFECTS_WORKAROUND | grep -v __APPLE__`
+if [ x"$RES" != x"" ] ; then
+	echo " WARNING: possible incorrect APPLE preprocessor token..." >> $MSG_FILE
+	echo "$RES" >> $MSG_FILE
+fi
+
+RES=`find src/ -name *.h -exec grep APPLE {} \; | egrep '^\s*#' | grep -v EFFECTS_WORKAROUND | grep -v __APPLE__`
+if [ x"$RES" != x"" ] ;  then
+	echo " WARNING: possible incorrect APPLE preprocessor token..." >> $MSG_FILE
+	echo "$RES" >> $MSG_FILE
+fi
+
+#Check for editor ~ files and orig files
+SOMEFILES=`find ./ -name \*~`
+if [ x"$SOMEFILES" != x"" ] ; then
+	echo " WARNING : Found some maybe-backup files (~ extension)" >> $MSG_FILE
+	echo "$FILES" >> $MSG_FILE
+fi
+
+SOMEFILES=`find ./ -name \*.orig`
+if [ x"$SOMEFILES" != x"" ] ; then
+	echo " WARNING : Found some maybe-backup files (\"orig\" extension)" >> $MSG_FILE
+	echo "$FILES" >> $MSG_FILE
+fi
+
+SOMEFILES=`find ./ -name \*.rej`
+if [ x"$SOMEFILES" != x"" ] ; then
+	echo " WARNING : Found some maybe-backup files (\"rej\" extension)" >> $MSG_FILE
+	echo "$FILES" >> $MSG_FILE
+fi
 #----
 
 

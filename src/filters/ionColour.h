@@ -2,6 +2,7 @@
 #define IONCOLOUR_H
 
 #include "../filter.h"
+#include "../translation.h"
 
 //!Ion colouring filter
 class IonColourFilter: public Filter
@@ -36,7 +37,7 @@ class IonColourFilter: public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &getOut, 
-				ProgressData &progress, bool (*callback)(void));
+				ProgressData &progress, bool (*callback)(bool));
 
 		//!return string naming the human readable type of this class
 		virtual std::string typeString() const { return std::string(TRANS("Spectral Colour"));}

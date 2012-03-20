@@ -62,9 +62,31 @@ enum
 	VOXELISE_BOUNDS_INVALID_ERR
 };
 
+const char *NORMALISE_TYPE_STRING[] = {
+		NTRANS("None (Raw count)"),
+		NTRANS("Volume (Density)"),
+		NTRANS("All Ions (conc)"),
+		NTRANS("Ratio (Num/Denom)"),
+	};
+
+const char *REPRESENTATION_TYPE_STRING[] = {
+		NTRANS("Point Cloud"),
+		NTRANS("Isosurface")
+	};
+
+const char *VOXELISE_FILTER_TYPE_STRING[]={
+	NTRANS("None"),
+	NTRANS("Gaussian (2𝜎)"),
+	};
+
+const char *VOXELISE_FILTER_BOUND_STRING[] ={
+	NTRANS("Zero"),
+	NTRANS("Bounce")
+	};
+
 //This is not a member of voxels.h, as the voxels do not have any concept of the IonHit
 int countPoints(Voxels<float> &v, const std::vector<IonHit> &points, 
-				bool noWrap,bool (*callback)(void))
+				bool noWrap,bool (*callback)(bool))
 {
 
 	size_t x,y,z;
@@ -76,7 +98,7 @@ int countPoints(Voxels<float> &v, const std::vector<IonHit> &points,
 	{
 		if(!downSample--)
 		{
-			if(!(*callback)())
+			if(!(*callback)(false))
 				return 1;
 			downSample=MAX_CALLBACK;
 		}
@@ -106,6 +128,12 @@ int countPoints(Voxels<float> &v, const std::vector<IonHit> &points,
 VoxeliseFilter::VoxeliseFilter() 
 : fixedWidth(false), normaliseType(VOXELISE_NORMALISETYPE_NONE)
 {
+	COMPILE_ASSERT(ARRAYSIZE(NORMALISE_TYPE_STRING) ==  VOXELISE_NORMALISETYPE_MAX);
+	COMPILE_ASSERT(ARRAYSIZE(VOXELISE_FILTER_TYPE_STRING) == VOXELISE_FILTERTYPE_MAX );
+	COMPILE_ASSERT(ARRAYSIZE(VOXELISE_FILTER_BOUND_STRING) ==  VOXELISE_FILTERBOUNDMODE_MAX);
+
+	COMPILE_ASSERT(ARRAYSIZE(REPRESENTATION_TYPE_STRING) == VOXEL_REPRESENT_END);
+
 	splatSize=1.0f;
 	a=0.9f;
 	r=g=b=0.5;
@@ -266,9 +294,8 @@ void VoxeliseFilter::initFilter(const std::vector<const FilterStreamData *> &dat
 	}
 }
 
-//TODO:
 unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-										  std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
+		  std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
 	for(size_t ui=0;ui<dataIn.size();ui++)
 	{
@@ -399,7 +426,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 				countPoints(vsDenom,is->data,true,callback);
 			}
 
-			if(!(*callback)())
+			if(!(*callback)(false))
 			{
 				delete vs;
 				return VOXELISE_ABORT_ERR;
@@ -425,7 +452,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 
 				countPoints(vs->data,is->data,true,callback);
 				
-				if(!(*callback)())
+				if(!(*callback)(false))
 				{
 					delete vs;
 					return VOXELISE_ABORT_ERR;
@@ -510,58 +537,27 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 	return 0;
 }
 
-//TODO: Use arrays
 std::string VoxeliseFilter::getNormaliseTypeString(int type) const {
-	switch (type) {
-		case VOXELISE_NORMALISETYPE_NONE:
-			return std::string(TRANS("None (Raw count)"));
-		case VOXELISE_NORMALISETYPE_VOLUME:
-			return std::string(TRANS("Volume (Density)"));
-		case VOXELISE_NORMALISETYPE_COUNT2INVOXEL:
-			return std::string(TRANS("Ratio (Num/Denom)"));
-		case VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL:
-			return std::string(TRANS("All Ions (conc)"));
-		default:
-			ASSERT(false);
-	}
+	ASSERT(type < VOXELISE_NORMALISETYPE_MAX);
+	return TRANS(NORMALISE_TYPE_STRING[type]);
 }
 
 std::string VoxeliseFilter::getRepresentTypeString(int type) const {
-	switch (type) {
-		case VOXEL_REPRESENT_POINTCLOUD:
-			return std::string(TRANS("Point Cloud"));
-		case VOXEL_REPRESENT_ISOSURF:
-			return std::string(TRANS("Isosurface"));
-		default:
-			ASSERT(false);
-	}
+	ASSERT(type<VOXEL_REPRESENT_END);
+	return  std::string(TRANS(REPRESENTATION_TYPE_STRING[type]));
 }
 
 std::string VoxeliseFilter::getFilterTypeString(int type) const 
 {
-	switch (type)
-	{
-		case VOXELISE_FILTERTYPE_NONE:
-			return std::string(TRANS("None"));
-		case VOXELISE_FILTERTYPE_GAUSS:
-			return std::string(TRANS("Gaussian (2𝜎)"));
-		default:
-			ASSERT(false);
-	}
+	ASSERT(type < VOXELISE_FILTERTYPE_MAX);
+	return std::string(TRANS(VOXELISE_FILTER_TYPE_STRING[type]));
 }
 
 
 std::string VoxeliseFilter::getFilterBoundTypeString(int type) const 
 {
-	switch (type)
-	{
-		case VOXELISE_FILTERBOUNDMODE_ZERO:
-			return std::string(TRANS("Zero"));
-		case VOXELISE_FILTERBOUNDMODE_BOUNCE:
-			return std::string(TRANS("Bounce"));
-		default:
-			ASSERT(false);
-	}
+	ASSERT(type < VOXELISE_FILTERBOUNDMODE_MAX);
+	return std::string(TRANS(VOXELISE_FILTER_BOUND_STRING[type]));
 }
 
 void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
@@ -1238,7 +1234,7 @@ bool VoxeliseFilter::writeState(std::ofstream &f,unsigned int format, unsigned i
 		case STATE_FORMAT_XML:
 		{	
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
-			f << tabs(depth+1) << "<userstring value=\"" << userString << "\"/>" << endl;
+			f << tabs(depth+1) << "<userstring value=\"" << escapeXML(userString) << "\"/>" << endl;
 			f << tabs(depth+1) << "<fixedwidth value=\""<<fixedWidth << "\"/>"  << endl;
 			f << tabs(depth+1) << "<nbins values=\""<<nBins[0] << ","<<nBins[1]<<","<<nBins[2] << "\"/>"  << endl;
 			f << tabs(depth+1) << "<binwidth values=\""<<binWidth[0] << ","<<binWidth[1]<<","<<binWidth[2] << "\"/>"  << endl;

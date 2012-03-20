@@ -22,6 +22,7 @@
 #include "wxcomponents.h"
 #include <wx/treectrl.h>
 #include <wx/grid.h>
+#include <wx/listbox.h>
 
 #include <string>
 #include <vector>
@@ -31,23 +32,22 @@
 #include <deque>
 
 
-#include "tree.hh"
 
 
 class VisController;
-
 #include "scene.h"
-#include "filter.h"
-#include "plot.h"
 
-enum
-{
-	CACHE_DEPTH_FIRST=1,
-	CACHE_NEVER,
-};
+#include "filtertree.h"
+#include "plot.h"
 
 const unsigned int MAX_UNDO_SIZE=10;
 
+
+//TODO: Find a better home sourcefile for this function?
+//!Update a wxTree control to layout according to the specified filter tree
+void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
+		std::map<size_t,Filter *> &filterMap,vector<const Filter *> &persistentFilters,
+		const Filter *visibleFilt);
 
 
 //!Visualisation controller
@@ -57,12 +57,11 @@ const unsigned int MAX_UNDO_SIZE=10;
  * This is essentially responsible for interfacing between program
  * data structures and the user interface.
  *
- * Only one of these may be instantiated at any time due to abort mechanism
+ * Only one of these should be instantiated at any time (such as due to abort mechanisms).
  */
 class VisController
 {
 	private:
-		unsigned long long nextID;
 		//!Target scene
 		Scene *targetScene;
 		//!Target Plot wrapper system
@@ -76,19 +75,20 @@ class VisController
 		//!UI element for selecting plots from a list (for enable/disable)
 		wxListBox *plotSelList;
 
-		//!Filters that provide and act upon data. filters.begin() is posfile.
-		tree<Filter *> filters;
+
+		//--- Data storage ----
+		//!Primary data storage for filter tree
+		FilterTree filterTree;
 	
 		//!Undo filter tree stack 
-		std::deque<tree<Filter *> > undoFilterStack,redoFilterStack;
+		std::deque<FilterTree> undoFilterStack,redoFilterStack;
 
 		//!Named, stored trees that can be put aside for secondary use
-		std::vector<std::pair<std::string,tree<Filter *> > > stashedFilters;
+		std::vector<std::pair<std::string,FilterTree> > stashedFilters;
 
 		//!Unique IDs for stash
 		UniqueIDHandler stashUniqueIDs;
-		//!A mapping between wxitem IDs and filters TODO: Replace with uniqueID handler?
-		std::list<std::pair<unsigned long long, Filter *> > filterTreeMapping;
+		//--------------------
 
 		//!True if viscontrol should abort current operation
 		bool doProgressAbort;
@@ -99,69 +99,147 @@ class VisController
 		//!True if there are pending updates from the user
 		bool pendingUpdates;
 
-		//!Maximum size for cache (percent of available ram).
-		float maxCachePercent;
-
-		//!Caching stragegy
-		unsigned int cacheStrategy;
-
 		//!Have we implicitly used relative references when saving data files?
 		unsigned int useRelativePathsForSave;
 
 		//!Current progress
 		ProgressData curProg;
 
-		//!internal function for the lading of a filter tree from its XML representation
-		unsigned int loadFilterTree(const xmlNodePtr &treeParent, tree<Filter *> &newTree, std::ostream &errStream, const std::string &stateDir) const;
-
-		//!Internal function for pointer deletion from stack during refreshing filter tree
-		void popPointerStack(std::list<const FilterStreamData *> &pointerTrackList,
-				std::stack<vector<const FilterStreamData * > > &inDataStack, unsigned int depth) const;
 
 		void clear();
 	
-		//!Return filter pointer using the filter id value	
-		Filter* getFilterByIdNonConst(unsigned long long filterId) const;
 
 		//!Retreive the updates to the filter tree from the scene
 		void getFilterUpdates();
 
-		//!Used to remove potentially hazardous filters 
-		//(filters that can do nasty things to computers, like executing commands)
-		//which may have come from unsafe sources
-		void stripHazardousFilters(tree<Filter *> &tree);
 
-		//!Does a particular filter tree contain hazardous contents?
-		bool hasHazardous(const tree<Filter *> &tree) const;
 
 		//!Push the current filter tree onto the undo stack
 		void pushUndoStack(); 
 
-		//!Run the initialisation stage of the filter processing
-		void initFilterTree() const;
 
 		//!Erase the redo stack
 		void clearRedoStack();
+	
 		
+
 		//!Update the console strings
 		void updateConsole(const std::vector<std::string> &v, const Filter *f) const;
 
-		//!Get the filter refresh seed points in tree, by examination of tree caches, block/emit of filters
-		//and tree topology
-		void getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propStarts) const;
-
-#ifdef DEBUG
-		//!Check that the output of filter refresh functions
-		void checkRefreshValidity(const vector< const FilterStreamData *> curData, 
-					const Filter *refreshFilter) const;
-#endif
-
+		//!Force an update to the scene. 
+		unsigned int updateScene(std::list<vector<const FilterStreamData *> > &outputData);
+		
+		//!ID handler that assigns each filter its own ID that
+		// is guaranteed to be unique for the life of the filter in the filterTree	
+		std::map<size_t, Filter * > filterMap;		
+		
+		//Filters that should be able to be seen next time we show
+		// the wxTree control
+		std::vector<const Filter *> persistentFilters;
 
 	public:
 		VisController();
 		~VisController();
+
+		//Filter tree access functions
+		//-----------------
+		//!Run a refresh of the underlying tree
+		//Overall progress give the progress for all filters, as a numeral (1 of n)
+		//filterprogress gives the progress within a filter, as a percentage
+		//curFilter gives the current filter, or the latest filter if exiting
+		//on error. if == 0, then scene update has been initiated
+		unsigned int refreshFilterTree(bool doUpdateScene=true);
+
+
+		//obtain the outputs from the filter tree's refresh. 
+		// The outputs *must* be deleted with safeDeleteFilterList
+		unsigned int refreshFilterTree(
+			std::list<std::pair<Filter *, 
+				std::vector<const FilterStreamData * > > > &outputData); 
+
+		//Obtain a clone of the active filter tree
+		void cloneFilterTree(FilterTree &f) const{f=filterTree;};
+
+		//!Safely delete data generated by refreshFilterTree(...). 
+		//a mask can be used to *prevent* STREAM_TYPE_blah from being deleted. Deleted items are removed from the list.
+		void safeDeleteFilterList(std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > &outData, 
+								size_t typeMask=0, bool maskPrevents=true) const;
+
+
+		//!Add a new filter to the tree. set isbase=false and parentID for not
+		//setting a parent (ie makeing filter base)
+		void addFilter(Filter *f, bool isBase, size_t parentId);
+		
+		
+		//!Add a new subtree to the tree. Note that the tree will be cleared
+		// as a result of this operation. Control of all pointers will be handled internally.
+		// If you wish to use ::getFilterById you *must* rebuild the tree control with
+		// ::updateWxTreeCtrl
+		void addFilterTree(FilterTree &f,bool isBase=true, 
+						size_t parentId=(unsigned int)-1); 
+
+		//!Grab the filter tree from the internal one, and swap the 
+		// internal with a cloned copy. Can be used eg, to steal the cache
+		// Note that the passed filter tree will be destroyed.
+		void switchoutFilterTree(FilterTree &f);
+
+		//Perform a swap operation on the filter tree. 
+		// - *must* have same topology, or you must call updateWxTreeCtrl
+		void swapFilterTree(FilterTree &f) { f.swap(filterTree);}
+
+		//!Duplicate a branch of the tree to a new position. Do not copy cache,
+		bool copyFilter(size_t toCopy, size_t newParent,bool copyToRoot=false) ;
+		
+		const Filter* getFilterById(size_t filterId) const; 
+
+		//!Return all of a given type of filter from the filter tree
+		void getFiltersByType(std::vector<const Filter *> &filters, unsigned int type)  const;
+
+		//!Returns true if the tree contains any state overrides (external entity referrals)
+		bool hasStateOverrides() const 
+				{return filterTree.hasStateOverrides();};
+
+		//!Make the filters safe for the end user, assuming the filter tree could have had
+		// its data initialised from anywhere
+		void stripHazardousContents() { filterTree.stripHazardousContents();};
+
+		//!Return the number of filters currently in the main tree
+		size_t numFilters() const { return filterTree.size();};
+
+		//!Clear the cache for the filters
+		void purgeFilterCache() { filterTree.purgeCache();};
+
+		//!Delete a filter and all its children
+		void removeFilterSubtree(size_t filterId);
+
+		//Move a filter from one part of the tree to another
+		bool reparentFilter(size_t filterID, size_t newParentID);
+
+		//!Set the properties using a key-value result (as obtained from updatewxPropertyGrid)
+		/*
+		 * The return code tells whether to reject or accept the change. 
+		 * need update tells us if the change to the filter resulted in a change to the scene
+		 */
+		bool setFilterProperty(size_t filterId, unsigned int set,
+				unsigned int key, const std::string &value, bool &needUpdate);
+	
+		//!Set the filter's string	
+		bool setFilterString(size_t id, const std::string &s);
+		
+		//!Clear all caches
+		void clearCache();
+		
+		//!Clear all caches
+		void clearCacheByType(unsigned int type) { filterTree.clearCacheByType(type);};
+
+		//-----------------
+
+
+
+
+
 		//!Call to get viscontrol to abort current operation. Call once per abort.
-		void abort() {ASSERT(!doProgressAbort);doProgressAbort=true;} ;
+		void abort() {ASSERT(!doProgressAbort);doProgressAbort=true;} 
 
 		//!Call to set window to be partially excluded (wx dependant) from blocking during scene updates
 		void setYieldWindow(wxWindow *win);
@@ -180,53 +258,13 @@ class VisController
 		void setRawGrid(wxGrid *theRawGrid){targetRawGrid=theRawGrid;};
 	
 	
-		//!Load the ion set - returns nonzero on fail TODO: Remove me?
-		//1st Filter MUST BE a dataload filter, 2nd Downsample. Function takes
-		//control of both pointers.
-		unsigned int LoadIonSet(const std::string &name,Filter *fPos,Filter *down);
 		//!Write out the filters into a wxtreecontrol.
-		void updateWxTreeCtrl(wxTreeCtrl *t,const Filter *visibleFilter=0);
+		void updateWxTreeCtrl(wxTreeCtrl *t,const Filter *f=0);
 		//!Update a wxtGrid with the properties for a given filter
-		void updateFilterPropGrid(wxPropertyGrid *g,unsigned long long filterId);
-		//!Add a new filter to the tree
-		void addFilter(Filter *f, unsigned long long parentId);
-
-		//!Move a branch of the tree to a new position
-		bool reparentFilter(unsigned long long filterID, unsigned long long newParentID);
-		//!Duplicte a branch of the tree to a new position. Do not copy cache,
-		bool copyFilter(unsigned long long toCopy, unsigned long long newParent,bool copyToRoot=false);
-
-		//!Set the properties using a key-value result (as obtaed from updatewxPropertyGrid)
-		/*
-		 * The return code tells whether to reject or accept the change. 
-		 * need update tells us if the change to the filter resulted in a change to the scene
-		 */
-		bool setFilterProperties(unsigned long long filterId, unsigned int set,
-				unsigned int key, const std::string &value, bool &needUpdate);
-
-		//!Retrieves a filter by its ID (TODO: Refactor. Try to minimise filter pointer exposure. Use ID values where possible)
-		const Filter* getFilterById(unsigned long long filterId) const;
-		//!Remove an element and all sub elements from the tree, 
-		void removeTreeFilter(unsigned long long id);
-		//!Force an update to the scene. 
-		//Overall progress give the progress for all filters, as a numeral (1 of n)
-		//filterprogress gives the progress within a filter, as a percentage
-		//curFilter gives the current filter, or the latest filter if exiting
-		//on error. if == 0, then scene update has been initiated
-		unsigned int updateScene();
+		void updateFilterPropGrid(wxPropertyGrid *g,size_t filterId);
 			
 
-		//!Refresh the entire filter tree. Whilst this is public, great care must be taken in
-		// deleting the filterstream data corrrectlty. To do this, use the "safeDeleteFilterList" function.
-		unsigned int refreshFilterTree(	std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > &outData);
 
-		//!Safely delete data generated by refreshFilterTree(...). 
-		//a mask can be used to *prevent* STREAM_TYPE_blah from being deleted. Deleted items are removed from the list.
-		void safeDeleteFilterList(std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > &outData, 
-								unsigned long long typeMask=0, bool maskPrevents=true) const;
-
-		//!Return the number of filters
-		unsigned int numFilters() const {return filters.size();};
 
 		//!Set the camera to use in the scene
 		bool setCam(unsigned int uniqueID) ;
@@ -246,28 +284,14 @@ class VisController
 		//!Set the properties using a key-value result (as obtaed from updatewxPropertyGrid)
 		/*! The return code tells whether to reject or accept the change. 
 		 */
-		bool setCamProperties(unsigned long long camUniqueID, 
+		bool setCamProperties(size_t camUniqueID, 
 				unsigned int key, const std::string &value);
 
-		//!Set the filter user text
-		bool setFilterString(unsigned long long id , const std::string &s);
 
 		//!Ensure visible
 		void ensureSceneVisible(unsigned int direction);
 
-		//!Invalidate the cache of a given Filter and all its children. set to 0 to invalidate all.
-		void invalidateCache(const Filter *filt);
 		
-		//!FIXME: Invalidates all caches downstream of ranges. Remove me. 
-		/*This is a hack. This is a special
-		call to invalidate all range file caches in the event
-		of a region update, as we cannot match the region that
-		was actually updated to the filter tree. This requires
-		re-writing the selection & region feedback code to do a filter
-		tree comparison between the "last" and current trees,
-		which i don't do atm.*/
-		void invalidateRangeCaches();
-
 		//!Save the viscontrol state: writes an XML file containing the viscontrol state
 		bool saveState(const char *filename, std::map<string,string> &fileMapping,
 					bool writePackage=false) const;
@@ -296,9 +320,6 @@ class VisController
 		unsigned int exportIonStreams(const std::vector<const FilterStreamData *> &selected, 
 								const std::string &outFile, unsigned int format=IONFORMAT_POS) const;
 		
-		//!Return all of a given type of filter from the filter tree
-		void getFilterTypes(std::vector<const Filter *> &filters, unsigned int type);
-
 		//!Returns true if the filter is in the midst of a refresh
 		bool isRefreshing() const {return amRefreshing; }
 
@@ -308,9 +329,11 @@ class VisController
 		//!Returns true if the scene has updates that need to be processed
 		bool hasUpdates() const; 
 
-		//!Force a wipe of all caches in the filter tree
-		void purgeFilterCache();
 
+		//"Stash" operations
+		//	- The stashes are secondary trees that are not part of the update
+		//	  but can be stored for reference (eg to recall common tree sequences)
+		//----
 		//!Create a new stash. Returns ID for stash
 		unsigned int stashFilters(unsigned int filterID, const char *stashName);
 
@@ -321,32 +344,24 @@ class VisController
 		void deleteStash(unsigned int stashID);
 
 		//!Retreive the stash filters
-		void getStashList(std::vector<std::pair<std::string,unsigned int > > &stashList) const;
+		void getStashes(std::vector<std::pair<std::string,unsigned int > > &stashes) const;
 
 		//!Retreive a given stash tree by ID
-		void getStashTree(unsigned int stashId, tree<Filter *> &t) const;
+		void getStashTree(unsigned int stashId, FilterTree &) const;
 
 		//!Get the number of stashes
 		unsigned int getNumStashes() const { return stashedFilters.size();}
 
-		//!Write out the filters into a wxtreecontrol.
-		void updateWxTreeCtrlFromStash(wxTreeCtrl *t, unsigned int stashId) const ;
-		//!Write out the filters into a wxtreecontrol.
-		void updateStashPropertyGrid(wxGrid *g, unsigned int stashId, const Filter *stashFilter) const ;
+		//----
 
 		void updateRawGrid() const;
 
 		//!Set the percentage of ram to use for cache. 0 to disable
 		void setCachePercent(unsigned int percent); 
 
-		//!Make the filter system safe (non-hazardous)
-		void makeFiltersSafe();
-
-		//!return true if the viscontrol contains hazardous filters
-		bool hasHazardousContents() const ;
 
 		//!restore top filter tree from undo stack
-		void popUndoStack();
+		void popUndoStack(bool restorePopped=true);
 
 		//!restore top filter tree from redo stack
 		void popRedoStack();
@@ -362,9 +377,6 @@ class VisController
 		//!reset the progress data
 		void resetProgress() { curProg.reset();};
 
-		//!Reset the refreshing state. use very carefully.
-		void setRefreshed(){amRefreshing=false;};
-
 		//!Return the scene's world axis visibility
 		bool getAxisVisible();
 
@@ -374,8 +386,25 @@ class VisController
 		//!Set whether to use effects or not
 		void setEffects(bool enable); 
 
-		//!Returns true if any of the filters (incl. stash)
-		//return a state override (i.e. refer to external entities, such as files)
-		bool hasStateOverrides() const ;
+		
+		//!return true if the primary tree contains hazardous filters
+		bool hasHazardousContents() const ;
+
+		//!Ask that next time we build the tree, this filter is kept visible/selected.
+		//	may be used repeatedly to make more items visible, 
+		//	prior to calling updateWxTreeCtrl. 
+		//	filterId must exist during call.
+		void setWxTreeFilterViewPersistence(size_t filterId);
+
+
+		//!Ask if a given filter is a pure data source
+		bool filterIsPureDataSource(size_t filterId) const ;  
+
+#ifdef DEBUG
+		//Check that the tree conrol is synced up to the filter map correctly
+		void checkTree(wxTreeCtrl *t);
+#endif
 };
+
+
 #endif

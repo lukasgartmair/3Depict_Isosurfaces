@@ -1,7 +1,7 @@
 #ifndef CLUSTERANALYSIS_H
 #define CLUSTERANALYSIS_H
 #include "../filter.h"
-#include "../K3DTree-mk2.h"
+#include "../translation.h"
 
 //!Cluster analysis filter
 class ClusterAnalysisFilter : public Filter
@@ -46,19 +46,18 @@ class ClusterAnalysisFilter : public Filter
 		
 		//!Which ions are core/builk for a  particular incoming range?
 		std::vector<bool> ionCoreEnabled,ionBulkEnabled;
-	
 
 		//Do cluster refresh using Link Algorithm (Core + max sep)
 		unsigned int refreshLinkClustering(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector< std::vector<IonHit> > &clusteredCore, 
 				std::vector<std::vector<IonHit>  > &clusteredBulk,ProgressData &progress,
-					       		bool (*callback)(void));
+					       		bool (*callback)(bool));
 
 
 		//Helper function to create core and bulk vectors of ions from input ionstreams
 		void createRangedIons(const std::vector<const FilterStreamData *> &dataIn,
 						std::vector<IonHit> &core,std::vector<IonHit> &bulk,
-					       		ProgressData &p,bool (*callback)(void)) const;
+					       		ProgressData &p,bool (*callback)(bool)) const;
 
 
 		//Check to see if there are any core or bulk ions enabled respectively.
@@ -70,7 +69,7 @@ class ClusterAnalysisFilter : public Filter
 		//Strip out clusters with a given number of elements
 		bool stripClusterBySize(vector<vector<IonHit> > &clusteredCore,
 						vector<vector<IonHit> > &clusteredBulk,
-							bool (*callback)(void), ProgressData &p) const;
+							bool (*callback)(bool), ProgressData &p) const;
 		//Build a plot that is the cluster size distribution as  afunction of cluster size
 		PlotStreamData *clusterSizeDistribution(const vector<vector<IonHit> > &solutes, 
 						const vector<vector<IonHit> > &matrix) const;
@@ -85,7 +84,7 @@ class ClusterAnalysisFilter : public Filter
 
 		//COmpute the singular values that area associated with each cluster
 		void getSingularValues(const vector<vector<IonHit> > &clusteredCore,
-				const vector<vector<IonHit> > &clusteredBulk, vector<vector<float> > &singularValues);
+				const vector<vector<IonHit> > &clusteredBulk, vector<vector<float> > &singularValues) const;
 #ifdef DEBUG
 		bool paranoidDebugAssert(const std::vector<std::vector<IonHit > > &core, 
 				const std::vector<std::vector<IonHit> > &bulk) const;
@@ -106,7 +105,7 @@ class ClusterAnalysisFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &getOut, 
-					ProgressData &progress, bool (*callback)(void));
+					ProgressData &progress, bool (*callback)(bool));
 		//!Get the type string  for this fitler
 		virtual std::string typeString() const { return std::string(TRANS("Cluster Analysis"));};
 
@@ -133,6 +132,11 @@ class ClusterAnalysisFilter : public Filter
 		unsigned int getRefreshEmitMask() const;	
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
+
+#ifdef DEBUG
+		bool wantParanoidDebug;
+		bool runUnitTests();
+#endif
 };
 
 #endif

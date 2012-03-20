@@ -545,6 +545,7 @@ void Scene::clearObjs()
 	for(unsigned int ui=0; ui<objects.size(); ui++)
 		delete objects[ui];
 	objects.clear();
+	lastHovered=-1;
 }
 
 void Scene::clearBindings()

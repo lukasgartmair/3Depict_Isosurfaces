@@ -1,3 +1,42 @@
+* 1 Apr, 2011  : 0.0.10
+	Features:
+	- Improved aborting behaviour for filters
+
+	User Visible Bugfixes/Changes:
+	- In cluster filter, datasets consisting of "core" only can now be clustered. Previously some "bulk" was required, due to programming error.
+	- Fix drag/drop loading bugs
+	- Fix multiple data files not being accepted at command line
+	- Fix crash-on-exit in OSX 10.7 bug
+	- Improved rangefile reader - more tolerant of oddly formatted rangefiles
+	- Fix bug where downsample filter would not update ion selection if parent rangefile filter was altered.
+	- Data loading can now use custom string for data name - defaults to "mass-to-charge"
+	- Plot region dragging now disallowed if region not shown (ie lies outside visible data area).
+	- Fix bug in plot panel, where I beam would not show if user did Y zoom starting below plot X axis
+	- Fix bug in plot zooming, where a perfectly X or perfectly Y zoom (ie mouse moved exactly horizontally or vertically) would fail to zoom.
+	- Fix bug in clip & composition cylinder where perfectly horizontal (XY plane) would result in incorrect direction for analysis.
+	- Better drag/drop support when dropping into tree "base" - now will only allow filters that can be a data source on top level.
+	- Most buttons/checkboxes/spinbuttons etc ("controls") now have tool tips when hovering mouse.
+	- Several previously untranslated items added to translation database
+	- Minor layout change to ion info properties.
+
+	Technical Bugfixes/Features:	
+	- Major internal reorganisation (refactor) of viscontrol. Now split into two parts, a tree manipulator & refresher (FilterTree), and UI/backend sync (Viscontroller)- Some export dialogs now take advantage of tree cache, making exporting dialog appearance faster in complex filter trees.
+	- More unit tests for filters, rangefiles and filter trees.
+	- Some export dialogs now take advantage of tree cache, making exporting dialog appearance faster in complex filter trees.
+	- Improved dependency retrieval script, making porting a bit easier.
+	- More QA checking in release script
+	- Compiles against GCC 4.7.
+	- Re-enable convex hull based algorithms in OSX.
+	- Remove unneccessary #includes.
+	- Some code de-duplication, thanks to pmd.sourceforge.net
+	- Hidden debug only Autosave with ctrl+insert.
+	- Fix memory leaks in filter devices, rangefile filter 
+	- Property keys now throw assertion error if not unique.
+	- Fix small array overrun in NN histogram generation in RDF filter
+	- Fix MK1 KD tree stack underrun for some trees.
+	- Properties in XML files are now escaped and unescaped, avoiding malformatted/broken state and configuration files, if using any of "<>&" in saved elements.
+
+
 * Dec 17, 2011  : 0.0.9
 	Features:
 	- Rangefile filter now has "all ions/ranges" enable/disable option

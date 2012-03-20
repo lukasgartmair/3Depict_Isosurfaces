@@ -82,7 +82,7 @@ size_t SpectrumPlotFilter::numBytesForCache(size_t nObjects) const
 }
 
 unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
 
 	if(cacheOK)
@@ -135,7 +135,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 							n+=NUM_CALLBACK;
 							progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 							curProg=NUM_CALLBACK;
-							if(!(*callback)())
+							if(!(*callback)(false))
 								return SPECTRUM_ABORT_FAIL;
 						}
 					}
@@ -328,7 +328,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 						n+=NUM_CALLBACK;
 						progress.filterProgress= (unsigned int)(((float)(n)/((float)totalSize))*100.0f);
 						curProg=NUM_CALLBACK;
-						if(!(*callback)())
+						if(!(*callback)(false))
 						{
 							delete d;
 							return SPECTRUM_ABORT_FAIL;
@@ -685,7 +685,7 @@ bool SpectrumPlotFilter::writeState(std::ofstream &f,unsigned int format, unsign
 		case STATE_FORMAT_XML:
 		{	
 			f << tabs(depth) << "<"  << trueName() << ">" << endl;
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<extrema min=\"" << minPlot << "\" max=\"" <<
 					maxPlot  << "\" auto=\"" << autoExtrema << "\"/>" << endl;
@@ -876,7 +876,7 @@ bool countTest()
 	//Do the refresh
 	ProgressData p;
 	f->setCaching(false);
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
 	delete f;
 	
 	TEST(streamOut.size() == 1,"stream count");

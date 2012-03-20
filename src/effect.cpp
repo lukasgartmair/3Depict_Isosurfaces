@@ -36,7 +36,7 @@ Camera* Effect::curCam=0;
 BoundCube Effect::bc;
 float MIN_CROP_FRACTION=0.0001;
 
-unsigned int NUM_EFFECTS=2;
+const unsigned int NUM_EFFECTS=2;
 const char *EFFECT_NAMES[] = { "boxcrop",
 				"anaglyph"
 				};
@@ -97,6 +97,11 @@ float halfMatrix[]={	0.299f, 0.587f,	0.114f,	0,
 				0.0f,	0.0f,	0.0f,	0,
 				0.0f,	0.0f,	0.0f,	0,
 				0,   	0,   	0,   	1};
+
+Effect::Effect()
+{
+	COMPILE_ASSERT(ARRAYSIZE(EFFECT_NAMES) == NUM_EFFECTS);
+}
 
 std::string Effect::getName() const
 {
@@ -254,7 +259,7 @@ void BoxCropEffect::enable(unsigned int pass) const
 			else
 			{
 				//Lower
-				dC[ui]=2.0*(cropFractions[ui]-0.5);;
+				dC[ui]=2.0*(cropFractions[ui]-0.5);
 			}
 		}
 	
@@ -482,6 +487,7 @@ void AnaglyphEffect::enable(unsigned int passNumber) const
 	else
 	{
 		*curCam=*oldCam;
+		//this time, in the reverse direction;
 		//Translate both the target, and the origin
 		curCam->translate(-baseShift,0);
 		//Apply the frustum offset to restore the shifted focal plane

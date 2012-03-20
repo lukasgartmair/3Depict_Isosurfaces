@@ -2,6 +2,7 @@
 #define RANGEFILE_H
 
 #include "../filter.h"
+#include "../translation.h"
 
 
 //!Range file filter
@@ -31,14 +32,14 @@ class RangeFileFilter : public Filter
 		//!Set the format to assume when loading file
 		void setFormat(unsigned int format);
 	
-		std::vector<char> getEnabledRanges() {return enabledRanges;};
+		std::vector<char> getEnabledRanges() const {return enabledRanges;};
 		void setEnabledRanges(vector<char> i) {enabledRanges = i;};
 
 
 		RangeFileFilter(); 
 		//!Duplicate filter contents, excluding cache.
 		Filter *cloneUncached() const;
-		void setRangeFileName(std::string filename){rngName=filename;};
+		void setRangeFilename(std::string filename){rngName=filename;};
 
 		//!Returns -1, as range file cache size is dependant upon input.
 		virtual size_t numBytesForCache(size_t nObjects) const;
@@ -51,9 +52,9 @@ class RangeFileFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &getOut, 
-					ProgressData &progress, bool (*callback)(void));
-		//!Force a re-read of the rangefile Return value is range file reading error code
-		unsigned int updateRng();
+					ProgressData &progress, bool (*callback)(bool));
+		//!Force a re-read of the rangefile, returning false on failure, true on success
+		bool updateRng();
 		
 		//!Set the internal data using the specified range object
 		void setRangeData(const RangeFile &newRange);

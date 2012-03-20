@@ -45,7 +45,7 @@ bool inFrontPlane(const Point3D &testPt, const Point3D &origin, const Point3D &p
 }
 
 
-const char *primitiveNames[]  = {
+const char *PRIMITIVE_NAMES[]  = {
 				 NTRANS("Sphere"),
 				 NTRANS("Plane"),
 				 NTRANS("Cylinder"),
@@ -58,7 +58,7 @@ unsigned int primitiveID(const std::string &str)
 {
 	for(unsigned int ui=0;ui<PRIMITIVE_END;ui++)
 	{
-		if(str == TRANS(primitiveNames[ui]))
+		if(str == TRANS(PRIMITIVE_NAMES[ui]))
 			return ui;
 	}
 
@@ -70,11 +70,13 @@ unsigned int primitiveID(const std::string &str)
 std::string primitiveStringFromID(unsigned int id)
 {
 	ASSERT(id< PRIMITIVE_END);
-	return string(TRANS(primitiveNames[id]));
+	return string(TRANS(PRIMITIVE_NAMES[id]));
 }
 
 IonClipFilter::IonClipFilter()
 {
+	COMPILE_ASSERT(ARRAYSIZE(PRIMITIVE_NAMES) == PRIMITIVE_END);
+
 	primitiveType=PRIMITIVE_PLANE;
 	vectorParams.push_back(Point3D(0.0,0.0,0.0));
 	vectorParams.push_back(Point3D(0,1.0,0.0));
@@ -116,7 +118,7 @@ size_t IonClipFilter::numBytesForCache(size_t nObjects) const
 //!update filter
 unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 			std::vector<const FilterStreamData *> &getOut, ProgressData &progress, 
-								bool (*callback)(void))
+								bool (*callback)(bool))
 {
 	ASSERT(vectorParams.size() || scalarParams.size());	
 	//Clear selection devices
@@ -410,7 +412,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 								n+=NUM_CALLBACK;
 								progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 								curProg=NUM_CALLBACK;
-								if(!(*callback)())
+								if(!(*callback)(false))
 								{
 									delete d;
 									return CALLBACK_FAIL;
@@ -441,7 +443,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 								n+=NUM_CALLBACK;
 								progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 								curProg=NUM_CALLBACK;
-								if(!(*callback)())
+								if(!(*callback)(false))
 								{
 									delete d;
 									return CALLBACK_FAIL;
@@ -473,7 +475,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 						//Check that we actually need to rotate, to avoid numerical singularity 
 						//when cylinder axis is too close to (or is) z-axis
 						if(angle > sqrt(std::numeric_limits<float>::epsilon()) 
-							&& angle < M_PI/2.0f - sqrt(std::numeric_limits<float>::epsilon()))
+							&& angle < M_PI - sqrt(std::numeric_limits<float>::epsilon()))
 						{
 							dir = dir.crossProd(direction);
 							dir.normalise();
@@ -513,7 +515,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 									n+=NUM_CALLBACK;
 									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 									curProg=NUM_CALLBACK;
-									if(!(*callback)())
+									if(!(*callback)(false))
 									{
 										delete d;
 										return CALLBACK_FAIL;
@@ -542,7 +544,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 									n+=NUM_CALLBACK;
 									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 									curProg=NUM_CALLBACK;
-									if(!(*callback)())
+									if(!(*callback)(false))
 									{
 										delete d;
 										return CALLBACK_FAIL;
@@ -576,7 +578,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 								n+=NUM_CALLBACK;
 								progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 								curProg=NUM_CALLBACK;
-								if(!(*callback)())
+								if(!(*callback)(false))
 								{
 									delete d;
 									return CALLBACK_FAIL;
@@ -593,27 +595,32 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 				}
 
 
-				//Copy over other attributes
-				d->r = ((IonStreamData *)dataIn[ui])->r;
-				d->g = ((IonStreamData *)dataIn[ui])->g;
-				d->b =((IonStreamData *)dataIn[ui])->b;
-				d->a =((IonStreamData *)dataIn[ui])->a;
-				d->ionSize =((IonStreamData *)dataIn[ui])->ionSize;
-				d->representationType=((IonStreamData *)dataIn[ui])->representationType;
-
-				//getOut is const, so shouldn't be modified
-				if(cache)
+				if(d->data.size())
 				{
-					d->cached=1;
-					filterOutputs.push_back(d);
-					cacheOK=true;
+					//Copy over other attributes
+					d->r = ((IonStreamData *)dataIn[ui])->r;
+					d->g = ((IonStreamData *)dataIn[ui])->g;
+					d->b =((IonStreamData *)dataIn[ui])->b;
+					d->a =((IonStreamData *)dataIn[ui])->a;
+					d->ionSize =((IonStreamData *)dataIn[ui])->ionSize;
+					d->representationType=((IonStreamData *)dataIn[ui])->representationType;
+
+					//getOut is const, so shouldn't be modified
+					if(cache)
+					{
+						d->cached=1;
+						filterOutputs.push_back(d);
+						cacheOK=true;
+					}
+					else
+						d->cached=0;
+					
+
+					getOut.push_back(d);
+					d=0;
 				}
 				else
-					d->cached=0;
-				
-
-				getOut.push_back(d);
-				d=0;
+					delete d;
 				break;
 			}
 			default:
@@ -1033,7 +1040,7 @@ bool IonClipFilter::writeState(std::ofstream &f,unsigned int format, unsigned in
 		case STATE_FORMAT_XML:
 		{	
 			f << tabs(depth) << "<"<< trueName() <<  ">" << endl;
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<primitivetype value=\"" << primitiveType<< "\"/>" << endl;
 			f << tabs(depth+1) << "<invertedclip value=\"" << invertedClip << "\"/>" << endl;
@@ -1294,7 +1301,7 @@ void IonClipFilter::setPropFromBinding(const SelectionBinding &b)
 // returned pointer *must* be deleted by caller.
 //Span must have 3 elements, and for best results sould be co-prime with
 // one another; eg all prime numbers
-IonStreamData *synthData(unsigned int span[],unsigned int numPts);
+IonStreamData *synthData(const unsigned int span[],unsigned int numPts);
 
 
 //Test the spherical clipping primitive
@@ -1302,7 +1309,8 @@ bool sphereTest();
 //Test the plane primitive
 bool planeTest();
 //Test the cylinder primitive
-bool cylinderTest();
+bool cylinderTest(const Point3D &pAxis, const unsigned int *span, float testRadius);
+
 //Test the axis-aligned box primitve
 bool rectTest();
 
@@ -1314,12 +1322,20 @@ bool IonClipFilter::runUnitTests()
 
 	if(!planeTest())
 		return false;
-	
-	if(!cylinderTest())
-	{
-		WARN(true,"This unit test did NOT succeeed. Overridden. FIXME.");
-	}
 
+	unsigned int span[]={ 
+			5, 7, 9
+			};	
+	const float TEST_RADIUS=3.0f;
+	Point3D axis; 
+	axis=Point3D(1,2,3);
+	if(!cylinderTest(axis,span,TEST_RADIUS))
+		return false;
+
+	axis=Point3D(0,1,0);
+	if(!cylinderTest(axis,span,TEST_RADIUS))
+		return false;
+	
 	if(!rectTest())
 		return false;
 
@@ -1437,14 +1453,11 @@ bool planeTest()
 	return true;
 }
 
-bool cylinderTest()
+bool cylinderTest(const Point3D &pAxis, const unsigned int *span, float testRadius)
 {
 	//Build some points to pass to the filter
 	vector<const FilterStreamData*> streamIn,streamOut;
 	
-	unsigned int span[]={ 
-			5, 7, 9
-			};	
 	const unsigned int NUM_PTS=10000;
 	IonStreamData *d=synthData(span,NUM_PTS);
 	streamIn.push_back(d);
@@ -1460,17 +1473,16 @@ bool cylinderTest()
 	stream_cast(s,pOrigin);
 	f->setProperty(0,KEY_ORIGIN,s,needUp);
 
-	Point3D pAxis(1,2,3);
 	stream_cast(s,pAxis);
 	f->setProperty(0,KEY_NORMAL,s,needUp);
 
-	const float TEST_RADIUS=3.0f;
+	stream_cast(s,testRadius);
 	f->setProperty(0,KEY_RADIUS,s,needUp);
 
 	f->setProperty(0,KEY_PRIMITIVE_SHOW,"0",needUp);
 	//Do the refresh
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
 	delete f;
 	delete d;
 	
@@ -1480,17 +1492,18 @@ bool cylinderTest()
 	const IonStreamData *dOut=(IonStreamData*)streamOut[0];
 
 	DrawCylinder *dC = new DrawCylinder;
-	dC->setRadius(TEST_RADIUS);
+	dC->setRadius(testRadius);
 	dC->setOrigin(pOrigin);
 	float len = sqrt(pAxis.sqrMag());
-	pAxis.normalise();
+
+	Point3D axisNormal(pAxis);
+	axisNormal.normalise();
+	
 	dC->setDirection(pAxis);
 	dC->setLength(len);
 
 	BoundCube b;
 	dC->getBoundingBox(b);
-
-	cerr << "Cyl BB : " << b << endl;
 
 	delete dC;
 
@@ -1499,9 +1512,8 @@ bool cylinderTest()
 	{
 		Point3D p;
 		p=dOut->data[ui].getPos();
-
-		if(!b.containsPt(p))
-			cerr << "p :" << p << endl;
+		//FIXME: This fails, but appears to work, depending upon the 
+		// tests I put it through???
 		TEST(b.containsPt(p), "Bounding box containment");
 	}
 
@@ -1542,7 +1554,7 @@ bool rectTest()
 	f->setProperty(0,KEY_CORNER,s,needUp);
 
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
 	delete f;
 	delete d;
 
@@ -1567,7 +1579,7 @@ bool rectTest()
 }
 
 
-IonStreamData *synthData(unsigned int span[], unsigned int numPts)
+IonStreamData *synthData(const unsigned int span[], unsigned int numPts)
 {
 	IonStreamData *d = new IonStreamData;
 	

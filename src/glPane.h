@@ -23,7 +23,6 @@
 //Local includes
 #include "scene.h"
 
-#include "basics.h"
 
 class BasicGLPane : public wxGLCanvas
 {
@@ -47,7 +46,7 @@ private:
 	//!Last mouseflags/keyflags during selection event
 	unsigned int lastMouseFlags,lastKeyFlags;
 
-	//Test for a object selection. REturns -1 if no selection
+	//Test for a object selection. Returns -1 if no selection
 	//or object ID if selection OK. Also sets lastSelected & scene
 	unsigned int selectionTest(wxPoint &p,  bool &shouldRedraw);
 
@@ -73,7 +72,7 @@ public:
 	//!The scene object, holds all info about 3D drawable components
 	Scene currentScene;
 
-	//!Must be cllaed before user has a chance to perform interaction
+	//!Must be called before user has a chance to perform interaction
 	void setParentStatus(wxStatusBar *statusBar,
 			wxTimer *timer,unsigned int statDelay) 
 		{ parentStatusBar=statusBar;parentStatusTimer=timer;statusDelay=statDelay;};
@@ -94,7 +93,7 @@ public:
 	void setMouseMoveFactor(float f) { mouseMoveFactor=f;};
 	void setMouseZoomFactor(float f) { mouseZoomFactor=f;};
 
-	//!Is the window initialied?
+	//!Is the window initialised?
 	bool isInited() { return paneInitialised;}
        	
 	//!Set the background colour (openGL clear colour)
@@ -103,7 +102,7 @@ public:
 	void updateClearColour();
 	//!Render the view using the scene
 	void render(wxPaintEvent& evt);
-	//!Construct a 3D viewport, ready for openGL output. returns false if intialisation failed
+	//!Construct a 3D viewport, ready for openGL output. Returns false if initialisation failed
 	bool prepare3DViewport(int topleft_x, int topleft_y, int bottomrigth_x, int bottomrigth_y);
    	//!Save an image to file, return false on failure
 	bool saveImage(unsigned int width, unsigned int height,const char *filename, bool showProgress=true);

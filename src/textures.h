@@ -21,7 +21,6 @@
 #define TEXTURES_H
 
 #include "basics.h"
-#include "wxcommon.h"
 
 #ifdef __APPLE__ 
 #include <OpenGL/gl.h>
@@ -35,7 +34,6 @@
 #include <utility>
 #include <string>
 
-#include "pngread.h"
 
 
 //Named Textures

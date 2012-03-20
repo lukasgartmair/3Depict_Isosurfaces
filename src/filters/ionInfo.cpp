@@ -58,7 +58,7 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 	//(result is stored in qh's globals :(  )
 	//note that the input is "joggled" to 
 	//ensure simplicial facet generation
-
+    
 	qh_new_qhull(	dim,
 			bufferSize,
 			buffer,
@@ -73,17 +73,16 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 	//OKay, whilst this may look like invalid syntax,
 	//qh is actually a macro from qhull
 	//that creates qh. or qh-> as needed
-	vertexT *vertex = qh vertex_list;
-	while(vertex != qh vertex_tail)
+	vertexT *vertex;// = qh vertex_list;
+	FORALLvertices
 	{
-		vertex = vertex->next;
 		numPoints++;
 	}
 	//--	
 
 	//store points in vector
 	//--
-	vertex= qh vertex_list;
+	//vertex= qh.vertex_list;
 	try
 	{
 		resHull.resize(numPoints);	
@@ -99,14 +98,13 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 	//--
 	int curPt=0;
 	midPoint=Point3D(0,0,0);	
-	while(vertex != qh vertex_tail)
+    FORALLvertices
 	{
 		resHull[curPt]=Point3D(vertex->point[0],
 				vertex->point[1],
 				vertex->point[2]);
 		midPoint+=resHull[curPt];
 		curPt++;
-		vertex = vertex->next;
 	}
 	midPoint*=1.0f/(float)numPoints;
 	//--
@@ -115,7 +113,7 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 }
 
 bool getRectilinearBounds(const std::vector<const FilterStreamData *> &dataIn, BoundCube &bound,
-					unsigned int *progress, unsigned int totalSize,bool (*callback)(void))
+					unsigned int *progress, unsigned int totalSize,bool (*callback)(bool))
 {
 	bound.setInvalid();
 
@@ -154,7 +152,7 @@ bool getRectilinearBounds(const std::vector<const FilterStreamData *> &dataIn, B
 			}
 		
 			*progress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-			if(!(*callback)())
+			if(!(*callback)(false))
 				return false;
 		}
 	}
@@ -245,7 +243,7 @@ void IonInfoFilter::initFilter(const std::vector<const FilterStreamData *> &data
 //TODO: Refactor -- this is a clone of countPoints from voxelise.cpp
 //This is not a member of voxels.h, as the voxels do not have any concept of the IonHit
 int countPoints(Voxels<size_t> &v, const std::vector<IonHit> &points, 
-				bool noWrap,bool (*callback)(void))
+				bool noWrap,bool (*callback)(bool))
 {
 
 	size_t x,y,z;
@@ -257,7 +255,7 @@ int countPoints(Voxels<size_t> &v, const std::vector<IonHit> &points,
 	{
 		if(!downSample--)
 		{
-			if(!(*callback)())
+			if(!(*callback)(false))
 				return 1;
 			downSample=MAX_CALLBACK;
 		}
@@ -304,7 +302,7 @@ Filter *IonInfoFilter::cloneUncached() const
 }
 
 unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(void))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
 
 	//Count the number of ions input
@@ -522,20 +520,12 @@ void IonInfoFilter::getProperties(FilterProperties &propertyList) const
 		keys.push_back(KEY_NORMALISE);
 		type.push_back(PROPERTY_TYPE_BOOL);
 
-		propertyList.data.push_back(s);
-		propertyList.keys.push_back(keys);
-		propertyList.types.push_back(type);
-		s.clear(); keys.clear(); type.clear();
-	} 
-	
-	if(wantVolume) 	
-	{
-		propertyList.data.push_back(s);
-		propertyList.keys.push_back(keys);
-		propertyList.types.push_back(type);
-
-		s.clear();keys.clear();type.clear();
 	}
+
+	propertyList.data.push_back(s);
+	propertyList.keys.push_back(keys);
+	propertyList.types.push_back(type);
+	s.clear(); keys.clear(); type.clear();
 
 	stream_cast(str,wantVolume);
 	keys.push_back(KEY_VOLUME);
@@ -661,7 +651,7 @@ std::string  IonInfoFilter::getErrString(unsigned int code) const
 }
 
 unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStreamData*> &data, 
-								float &volume,bool (*callback)())const
+								float &volume,bool (*callback)(bool))const
 {
 	//OK, so heres the go. partition the input data
 	//into GRAB_SIZE lots before processing hull.
@@ -752,7 +742,7 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 			}
 
 
-			if(!(*callback)())
+			if(!(*callback)(false))
 			{
 				free(buffer);
 				return ERR_USER_ABORT;
@@ -764,6 +754,14 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 
 	}
 
+    if(doneHull)
+    {
+        //Free the last convex hull mem	
+        qh_freeqhull(!qh_ALL);
+        
+        int curlong, totlong;
+        qh_memfreeshort(&curlong, &totlong);
+    }
 
 	//Need at least 3 objects to construct a sufficiently large buffer
 	if(bufferSize + curHull.size() > 3)
@@ -870,7 +868,7 @@ bool IonInfoFilter::writeState(std::ofstream &f,unsigned int format, unsigned in
 		case STATE_FORMAT_XML:
 		{	
 			f << tabs(depth) <<  "<" << trueName() << ">" << endl;
-			f << tabs(depth+1) << "<userstring value=\""<<userString << "\"/>"  << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<wantioncounts value=\""<<wantIonCounts<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<wantnormalise value=\""<<wantNormalise<< "\"/>"  << endl;
@@ -1145,7 +1143,8 @@ bool volumeSphereTest()
 	vector<string> dummy;
 	f->getConsoleStrings(dummy);
 
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
+
 	volMeasure=f->getLastVolume();
 
 	//Convex volume of sphere

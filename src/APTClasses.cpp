@@ -153,6 +153,10 @@ const char *cpAtomNaming[][2] = {
 	{"Ununoctium","Uuo"}
 };
 
+const char *RANGE_EXTS[] = { "rng",
+			  "rrng",
+			  "env",
+				""};
 const char *POS_ERR_STRINGS[] = { "",
        				NTRANS("Memory allocation failure on POS load"),
 				NTRANS("Error opening pos file"),
@@ -184,6 +188,24 @@ const char *ION_TEXT_ERR_STRINGS[] = { "",
 					NTRANS("Incorrect number of fields in file"),
 					NTRANS("Unable to allocate memory to store data"),
 					};
+const char *rangeErrStrings[] = 
+{
+	"",
+	NTRANS("Error opening file, check name and permissions."),
+	NTRANS("Error interpreting range file header, expecting ion count and range count, respectively."),
+	NTRANS("Range file appears to be empty, check file is a proper range file and is not empty."),
+	NTRANS("Error reading the long name for ion."),
+	NTRANS("Error reading the short name for ion."),
+	NTRANS("Error reading colour data in the file, expecting 3 decimal values, space separated."),
+	NTRANS("Tried skipping to table separator line (line with dashes), but did not find it."),	
+	NTRANS("Unexpected failure whilst trying to skip over range lead-in data (bit before range start value)"),
+	NTRANS("Unable to read range start and end values"),
+	NTRANS("Unable to read range table entry"),
+	NTRANS("Error reading file, unexpected format, are you sure it is a proper range file?"),
+	NTRANS("Too many ranges appeared to have range entries with no usable data (eg, all blank)"),
+	NTRANS("Range file appears to contain malformed data, check things like start and ends of m/c are not equal or flipped."),
+	NTRANS("Range file appears to be inconsistent (eg, overlapping ranges)")
+};	
 //!Create an pos file from a vector of IonHits
 unsigned int IonVectorToPos(const vector<IonHit> &ionVec, const string &filename)
 {
@@ -217,7 +239,7 @@ void appendPos(const vector<IonHit> &points, const char *name)
 }
 
 unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumcols, unsigned int index[], vector<IonHit> &posIons,const char *posFile, size_t limitCount,
-	       	unsigned int &progress, bool (*callback)(),bool strongSampling)
+	       	unsigned int &progress, bool (*callback)(bool),bool strongSampling)
 {
 
 	//Function is only defined for 4 columns here.
@@ -352,7 +374,7 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 
 			progress= (unsigned int)((float)(CFile.tellg())/((float)fileSize)*100.0f);
 			curProg=PROGRESS_REDUCE;
-			if(!(*callback)())
+			if(!(*callback)(false))
 			{
 				delete[] buffer;
 				posIons.clear();
@@ -370,7 +392,7 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 
 unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int outputnumcols, 
 		unsigned int index[], vector<IonHit> &posIons,const char *posFile, 
-			unsigned int &progress, bool (*callback)())
+			unsigned int &progress, bool (*callback)(bool))
 {
 	ASSERT(outputnumcols==4); //Due to ionHit.setHit
 	//buffersize must be a power of two and at least sizeof(float)*outputnumCols
@@ -500,7 +522,7 @@ unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int output
 			{
 				progress= (unsigned int)((float)(CFile.tellg())/((float)fileSize)*100.0f);
 				curProg=PROGRESS_REDUCE;
-				if(!(*callback)())
+				if(!(*callback)(false))
 				{
 					delete[] buffer;
 					delete[] buffer2;
@@ -526,7 +548,7 @@ unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int output
 //TODO: Add progress
 unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedCols[], 
 			vector<IonHit> &posIons,const char *textFile, const char *delim, const size_t limitCount,
-				unsigned int &progress, bool (*callback)(),bool strongRandom)
+				unsigned int &progress, bool (*callback)(bool),bool strongRandom)
 {
 
 	ASSERT(numColsTotal);
@@ -659,8 +681,6 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 
 		CFile.read(buffer,bytesToRead);
 
-		curPos+=bytesToRead;	
-	
 		//check that this buffer contains numeric info	
 		for(unsigned int ui=0;ui<bytesToRead; ui++)
 		{
@@ -671,11 +691,13 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 			{
 				//Check that we have not hit a run of non-numeric data
 				if(seenNumeric)
-					newLinePositions.push_back(ui);
+					newLinePositions.push_back(ui+curPos);
 			} 
 			else if(buffer[ui] >= '0' && buffer[ui] <='9')
 				seenNumeric=true;
 		}
+		
+		curPos+=bytesToRead;	
 	
 	}
 	
@@ -963,47 +985,7 @@ unsigned int RangeFile::write(const char *filename) const
 	if(!f)
 		return 1;
 
-	ASSERT(colours.size() == ionNames.size());
-
-	//File header
-	f << ionNames.size() << " " ; 
-	f << ranges.size() << std::endl;
-
-	//Colour and longname data
-	for(unsigned int ui=0;ui<ionNames.size() ; ui++)
-	{
-		f << ionNames[ui].second<< std::endl;
-		f << ionNames[ui].first << " " << colours[ui].red << " " << colours[ui].green << " " << colours[ui].blue << std::endl;
-
-	}	
-
-	//Construct the table header
-	f<< "-------------";
-	for(unsigned int ui=0;ui<ionNames.size() ; ui++)
-	{
-		f << " " << ionNames[ui].first;
-	}
-
-	f << std::endl;
-	//Construct the range table
-	for(unsigned int ui=0;ui<ranges.size() ; ui++)
-	{
-		f << ". " << ranges[ui].first << " " << ranges[ui].second ;
-
-		//Now put the "1" in the correct column
-		for(unsigned int uj=0;uj<ionNames.size(); uj++)
-		{
-			if(uj == ionIDs[ui])
-				f << " " << 1;
-			else
-				f << " " << 0;
-		}
-
-		f << std::endl;
-		
-	}
-
-	return 0;
+	return write(f);
 }
 
 unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
@@ -1026,7 +1008,8 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 	if(strcmp(oldLocale,"C"))
 		setlocale(LC_NUMERIC,"C");	
 		
-
+	//TODO: This needs to be broken apart into several functions.
+	// it is far too unwieldy to be a single switch statemet
 	switch(fileFormat)
 	{
 		//Oak-Ridge "Format" - this is based purely on example, as no standard exists
@@ -1046,7 +1029,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			//Read out the number of ions and ranges int hef ile	
 			if(fscanf(fpRange, "%64u %64u", &numIons, &numRanges) != 2)
 			{
-				errState=RANGE_ERR_FORMAT;
+				errState=RANGE_ERR_FORMAT_HEADER;
 				fclose(fpRange);
 				if(strcmp(oldLocale,"C"))
 					setlocale(LC_NUMERIC,oldLocale);
@@ -1100,7 +1083,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				//Read the input for long name (max 256 chars)
 				if(!fscanf(fpRange, " %256s", inBuffer))
 				{
-					errState=RANGE_ERR_FORMAT;
+					errState=RANGE_ERR_FORMAT_LONGNAME;
 					fclose(fpRange);
 					if(strcmp(oldLocale,"C"))
 						setlocale(LC_NUMERIC,oldLocale);
@@ -1114,7 +1097,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				//Read short name
 				if(!fscanf(fpRange, " %256s", inBuffer))
 				{
-					errState=RANGE_ERR_FORMAT;
+					errState=RANGE_ERR_FORMAT_SHORTNAME;
 					fclose(fpRange);
 					if(strcmp(oldLocale,"C"))
 						setlocale(LC_NUMERIC,oldLocale);
@@ -1127,7 +1110,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				if(!fscanf(fpRange,"%128f %128f %128f",&(colourStruct.red),
 					&(colourStruct.green),&(colourStruct.blue)))
 				{
-					errState=RANGE_ERR_FORMAT;
+					errState=RANGE_ERR_FORMAT_COLOUR;
 					fclose(fpRange);
 					if(strcmp(oldLocale,"C"))
 						setlocale(LC_NUMERIC,oldLocale);
@@ -1146,7 +1129,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			//We should be at the line which has lots of dashes
 			if(inBuffer[0] != '-')
 			{
-				errState=RANGE_ERR_FORMAT;
+				errState=RANGE_ERR_FORMAT_TABLESEPARATOR;
 				fclose(fpRange);
 				if(strcmp(oldLocale,"C"))
 					setlocale(LC_NUMERIC,oldLocale);
@@ -1160,26 +1143,29 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			unsigned int badRanges=0;	
 			for(unsigned int i=0; i<numRanges; i++)
 			{
-				//read dummy char
-				do
+				//Read dummy chars until we hit a digit
+				char peekVal;
+				peekVal=fpeek(fpRange);
+				while((peekVal< '0' || peekVal > '9'))
 				{
-					if(!fread(inBuffer, 1 , 1 , fpRange))
+					fgetc(fpRange);
+					if(feof(fpRange))
 					{
-						errState=RANGE_ERR_FORMAT;
+						errState=RANGE_ERR_FORMAT_RANGE_DUMMYCHARS;
 						fclose(fpRange);
 						if(strcmp(oldLocale,"C"))
 							setlocale(LC_NUMERIC,oldLocale);
 						free(oldLocale);
 						return errState;
 					}
+				
+					peekVal=fpeek(fpRange);
 
 				}
-				while(inBuffer[0] != '.');
-				
-				if(!fscanf(fpRange, " %128f %128f",&massPair.first, 
+				if(!fscanf(fpRange, "%128f %128f",&massPair.first, 
 							&massPair.second))
 				{
-					errState=RANGE_ERR_FORMAT;
+					errState=RANGE_ERR_FORMAT_MASS_PAIR;
 					fclose(fpRange);
 					if(strcmp(oldLocale,"C"))
 						setlocale(LC_NUMERIC,oldLocale);
@@ -1189,7 +1175,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 
 				if(massPair.first >= massPair.second)
 				{
-					errState=RANGE_ERR_DATA;
+					errState=RANGE_ERR_DATA_FLIPPED;
 					fclose(fpRange);
 					if(strcmp(oldLocale,"C"))
 						setlocale(LC_NUMERIC,oldLocale);
@@ -1204,7 +1190,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				{
 					if(!fscanf(fpRange, "%64u",&tempInt))
 					{
-						errState=RANGE_ERR_FORMAT;
+						errState=RANGE_ERR_FORMAT_TABLE_ENTRY;
 						fclose(fpRange);
 						if(strcmp(oldLocale,"C"))
 							setlocale(LC_NUMERIC,oldLocale);
@@ -1238,7 +1224,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			//from being loaded
 			if(badRanges >= numRanges)
 			{
-				errState=RANGE_ERR_DATA;
+				errState=RANGE_ERR_DATA_TOO_MANY_USELESS_RANGES;
 				fclose(fpRange);
 
 				if(strcmp(oldLocale,"C"))
@@ -1305,8 +1291,24 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 						return RANGE_ERR_FORMAT;
 					}
 
-					stream_cast(numIons,strVec[0]);
-					stream_cast(numRanges,strVec[1]);
+					if(stream_cast(numIons,strVec[0]))
+					{
+						fclose(fpRange);
+						delete[] inBuffer;
+						if(strcmp(oldLocale,"C"))
+							setlocale(LC_NUMERIC,oldLocale);
+						free(oldLocale);
+						return RANGE_ERR_FORMAT;
+					}
+					if(stream_cast(numRanges,strVec[1]))
+					{
+						fclose(fpRange);
+						delete[] inBuffer;
+						if(strcmp(oldLocale,"C"))
+							setlocale(LC_NUMERIC,oldLocale);
+						free(oldLocale);
+						return RANGE_ERR_FORMAT;
+					}
 
 					haveNumRanges=true;
 				}
@@ -1563,7 +1565,15 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							return RANGE_ERR_FORMAT;
 						}
 						//Set the number of ions
-						stream_cast(numBasicIons, split[1]);
+						if(stream_cast(numBasicIons, split[1]))
+						{
+							delete[] inBuffer;
+							fclose(fpRange);
+							if(strcmp(oldLocale,"C"))
+								setlocale(LC_NUMERIC,oldLocale);
+							free(oldLocale);
+							return RANGE_ERR_FORMAT;
+						}
 
 						if (numBasicIons == 0)
 						{
@@ -1737,6 +1747,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							split.clear();
 							splitStrsRef(strTmp.c_str(),' ',split);
 
+							stripZeroEntries(split);
 							RGBf col;
 							bool haveColour,haveNameField;
 							haveColour=false;
@@ -1855,14 +1866,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							}
 
 							if (!haveColour )
-							{
-								delete[] inBuffer;
-								fclose(fpRange);
-								if(strcmp(oldLocale,"C"))
-									setlocale(LC_NUMERIC,oldLocale);
-								free(oldLocale);
-								return RANGE_ERR_FORMAT;
-							}
+								col.red=col.green=col.blue=0.0f;
 
 							//Get the range values
 							float rngStartV,rngEndV;
@@ -2011,8 +2015,17 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				}
 			}
 
-			ASSERT(numRanges == ranges.size());
 			delete[] inBuffer;
+			//If we didn't find anything useful, then thats a formatting error
+			if(!haveSeenIonBlock || (!numRanges  && !numBasicIons))
+			{
+				fclose(fpRange);
+				if(strcmp(oldLocale,"C"))
+					setlocale(LC_NUMERIC,oldLocale);
+				free(oldLocale);
+				return RANGE_ERR_FORMAT;
+			}
+			ASSERT(numRanges == ranges.size());
 			break;
 		}
 		default:
@@ -2035,12 +2048,12 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 	
 	//Run self consistency check on freshly loaded data
 	if(!isSelfConsistent())
-		return RANGE_ERR_DATA;
+		return RANGE_ERR_DATA_INCONSISTENT;
 	
 	return 0;
 }
 
-unsigned int RangeFile::openGuessFormat(const char *rangeFilename)
+bool RangeFile::openGuessFormat(const char *rangeFilename)
 {
 	unsigned int assumedFileFormat;
 	string s;
@@ -2060,6 +2073,8 @@ unsigned int RangeFile::openGuessFormat(const char *rangeFilename)
 	//Use the guessed format
 	if(open(rangeFilename,assumedFileFormat))
 	{
+		unsigned int errStateRestore;
+		errStateRestore=errState;
 		//If that failed, go to plan B-- Brute force.
 		//try all readers
 		bool openOK=false;
@@ -2078,7 +2093,11 @@ unsigned int RangeFile::openGuessFormat(const char *rangeFilename)
 		}
 	
 		if(!openOK)
+		{
+			//Restore the erorr state for the assumed file format
+			errState=errStateRestore;
 			return false;
+		}
 	}
 
 	return true;
@@ -2086,15 +2105,11 @@ unsigned int RangeFile::openGuessFormat(const char *rangeFilename)
 
 bool RangeFile::extensionIsRange(const char *ext) 
 {
-	const char *rangeExts[] = { "rng",
-				  "rrng",
-				  "env",
-					""};
 	bool isRange=false;
 	unsigned int extOff=0;
-	while(strlen(rangeExts[extOff]))
+	while(strlen(RANGE_EXTS[extOff]))
 	{
-		if(!strcmp(ext,rangeExts[extOff]))
+		if(!strcmp(ext,RANGE_EXTS[extOff]))
 		{
 			isRange=true;
 			break;
@@ -2103,6 +2118,15 @@ bool RangeFile::extensionIsRange(const char *ext)
 	}
 
 	return isRange;
+}
+
+
+void RangeFile::getAllExts(std::vector<std::string> &exts)
+{
+	exts.resize(ARRAYSIZE(RANGE_EXTS));
+
+	for(unsigned int ui=0;ui<ARRAYSIZE(RANGE_EXTS); ui++)
+		exts[ui]=RANGE_EXTS[ui];
 }
 
 bool RangeFile::isSelfConsistent() const
@@ -2256,30 +2280,20 @@ void RangeFile::rangeByRangeID(vector<IonHit> &ions, unsigned int rangeID)
 }
 
 
-void RangeFile::printErr(std::ostream &strm)
-{	
-	const char *errString=0;
-		
-	switch(errState)
-	{
-		case RANGE_ERR_OPEN:
-			errString=TRANS("Error opening file, check name and permissions");
-			break;
-		case RANGE_ERR_FORMAT:
-			errString=TRANS("Error reading file, unexpected format, are you sure it is a proper range file?");
-			break;
-		case RANGE_ERR_EMPTY:
-			errString = TRANS("Range file appears to be empty, check is proper range file and non empty");
-			break;
-		case RANGE_ERR_DATA:
-			errString = TRANS("Range file appears to contain malformed data, check things like start and ends of m/c are not flipped");	
-			break;
-		default:
-			ASSERT(0);
-			errString=TRANS("Unknown error! -- possible bug");
-	}
-	
-	strm << errString << std::endl;
+void RangeFile::printErr(std::ostream &strm) const
+{
+	ASSERT(errState < RANGE_ERR_ENUM_END);
+	strm <<TRANS(rangeErrStrings[errState]) << std::endl;
+}
+
+std::string RangeFile::getErrString() const
+{
+	ASSERT(errState < RANGE_ERR_ENUM_END);
+	COMPILE_ASSERT(ARRAYSIZE(rangeErrStrings) == RANGE_ERR_ENUM_END);
+
+	std::string s;
+	s=TRANS(rangeErrStrings[errState]);
+	return s;
 }
 
 unsigned int RangeFile::getNumRanges() const

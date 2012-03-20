@@ -21,7 +21,6 @@
 #define BASICS_H
 //!Basic objects header file
 
-#include "endianTest.h"
 #include "assertion.h"
 #include "mathfuncs.h"
 
@@ -40,13 +39,14 @@ class K3DTree;
 
 std::string boolStrEnc(bool b);
 
-bool dummyCallback();
+bool dummyCallback(bool);
 
 extern const char *DTD_NAME;
 extern const char *PROGRAM_NAME;
 extern const char *PROGRAM_VERSION;
 extern const char *FONT_FILE;
 
+#define ARRAYSIZE(f) (sizeof (f) / sizeof(*f))
 
 
 
@@ -248,6 +248,7 @@ void splitStrsRef(const char *cpStr, const char *delim,std::vector<std::string> 
 
 //!A class to manage "tear-off" ID values, to allow for indexing without knowing position. 
 //You simply ask for a new unique ID. and it maintains the position->ID mapping
+//TODO: Extend to any unique type, rather than just int (think iterators..., pointers)
 class UniqueIDHandler
 {
 	private:
@@ -451,7 +452,7 @@ template<class T>
 class GreaterWithCallback 
 {
 	private:
-		bool (*callback)(void);
+		bool (*callback)(bool);
 		//!Reduction frequency (use callback every k its)
 		unsigned int redMax;
 		//!Current reduction counter
@@ -461,7 +462,7 @@ class GreaterWithCallback
 	public:
 		//!Second argument is a "reduction" value to set the number of calls
 		//to the random functor before initiating a callback
-		GreaterWithCallback( bool (*ptr)(void),unsigned int red)
+		GreaterWithCallback( bool (*ptr)(bool),unsigned int red)
 			{ callback=ptr; reduction=redMax=red;};
 
 		bool operator()(const T &a, const T &b) 
@@ -470,7 +471,7 @@ class GreaterWithCallback
 			{
 				reduction=redMax;
 				//Execute callback
-				(*callback)();
+				(*callback)(false);
 			}
 
 			return a < b;
@@ -482,7 +483,7 @@ template<class T>
 class EqualWithCallback 
 {
 	private:
-		bool (*callback)(void);
+		bool (*callback)(bool);
 		//!Reduction frequency (use callback every k its)
 		unsigned int redMax;
 		//!Current reduction counter
@@ -492,7 +493,7 @@ class EqualWithCallback
 	public:
 		//!Second argument is a "reduction" value to set the number of calls
 		//to the random functor before initiating a callback
-		EqualWithCallback( bool (*ptr)(void),unsigned int red)
+		EqualWithCallback( bool (*ptr)(bool),unsigned int red)
 			{ callback=ptr; reduction=redMax=red;};
 
 		bool operator()(const T &a, const T &b) 
@@ -501,7 +502,7 @@ class EqualWithCallback
 			{
 				reduction=redMax;
 				//Execute callback
-				(*callback)();
+				(*callback)(false);
 			}
 
 			return a ==b;
@@ -512,7 +513,7 @@ class EqualWithCallback
 
 //Randomly select subset. Subset will be (somewhat) sorted on output
 template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<T> &source, 
-							RandNumGen &rng, size_t num,unsigned int &progress,bool (*callback)(), bool strongRandom=false)
+							RandNumGen &rng, size_t num,unsigned int &progress,bool (*callback)(bool), bool strongRandom=false)
 {
 	const unsigned int NUM_CALLBACK=50000;
 	//If there are not enough points, just copy it across in whole
@@ -595,7 +596,7 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 				if(!curProg--)
 				{
 					progress= (unsigned int)((float)(pos)/((float)num)*100.0f);
-					(*callback)();
+					(*callback)(false);
 					curProg=NUM_CALLBACK;
 				}
 			}
@@ -620,7 +621,7 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 				if(!curProg--)
 				{
 					progress= (unsigned int)(((float)(ui)/(float)source.size())*100.0f);
-					(*callback)();
+					(*callback)(false);
 					curProg=NUM_CALLBACK;
 				}
 			}
@@ -672,7 +673,7 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 			if(!curProg--)
 			{
 				progress= (unsigned int)((float)(ui)/((float)source.size())*100.0f);
-				(*callback)();
+				(*callback)(false);
 				curProg=NUM_CALLBACK;
 			}
 		}
@@ -684,7 +685,7 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 
 //Randomly select subset. Subset will be (somewhat) sorted on output
 template<class T> size_t randomDigitSelection(std::vector<T> &result, const size_t max,
-			RandNumGen &rng, size_t num,unsigned int &progress,bool (*callback)(),
+			RandNumGen &rng, size_t num,unsigned int &progress,bool (*callback)(bool),
 			bool strongRandom=false)
 {
 	//If there are not enough points, just copy it across in whole
@@ -769,7 +770,7 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 				if(!curProg--)
 				{
 					progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
-					(*callback)();
+					(*callback)(false);
 					curProg=70000;
 				}
 			}
@@ -791,7 +792,7 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 				if(!curProg--)
 				{
 					progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
-					(*callback)();
+					(*callback)(false);
 					curProg=70000;
 				}
 			}

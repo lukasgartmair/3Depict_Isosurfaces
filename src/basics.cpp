@@ -17,7 +17,6 @@
 */
 
 #include "basics.h"
-#include "../config.h"
 
 #include <iostream>
 #include <limits>
@@ -90,7 +89,10 @@ std::string getMaxVerStr(const std::vector<std::string> &verStrings)
 		}
 
 		if(thisVer.size())
+		{
 			verNum.push_back(make_pair(ui,thisVer));
+			thisVer.clear();
+		}
 	}
 		
 	
@@ -128,10 +130,10 @@ std::string getMaxVerStr(const std::vector<std::string> &verStrings)
 			{
 				std::swap(verNum[ui],verNum.back());
 				verNum.pop_back();
-
-				if(ui)
-					ui--;
 			}
+            
+            if(ui)
+                ui--;
 		}
 
 		//move to next number
@@ -139,7 +141,8 @@ std::string getMaxVerStr(const std::vector<std::string> &verStrings)
 	}
 
 
-	ASSERT(verNum.size() ==1);
+	//Should contain at least one version (ie the maximum, or multiple copies thereof)
+	ASSERT(verNum.size());
 
 
 	return verStrings[verNum[0].first];
@@ -153,7 +156,7 @@ std::string boolStrEnc(bool b)
 		return "0";
 }
 
-bool dummyCallback()
+bool dummyCallback(bool)
 {
 	return true;
 }
@@ -713,21 +716,13 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 
 	string retString;
 
-//Win32 time_t overflows with one century..
-#ifndef WIN32
-	const unsigned int NUM_FUZZY_ENTRIES=17;
-#else
 	const unsigned int NUM_FUZZY_ENTRIES=16;
-#endif
-	//Sorted sequence of fuzzy times, from biggest to smallest
+	//Sorted sequence of fuzzy, approximate times, from biggest to smallest
 	const time_t TIMESTOPS[] = {
-#ifndef WIN32
-					(100*365.25*24*60*60), //One century
-#endif			
-					(10*365.25*24*60*60), //One decade
-					(365.25*24*60*60), // One year
-					(365.25/12.0*24*60*60), // One month
-					(7.0*24*60*60), //One week
+					(10*36525*24*6*6), //One decade (factor of 100 taken to prevent invalid C++11 narrowing double)
+					(36525*24*6*6), // One year
+					(36525/12*24*6*6), // One month (factor of 100 taken from minutes and hrs to prevent invalid C++11 narrowing double code)
+					(7*24*60*60), //One week
 					(24*60*60), //One day
 					(60*60), //One hour
 					(45*60),// 45 minutes
@@ -744,9 +739,6 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 
 	//Do these have a meaningful plural?
 	bool HAVE_PLURALS[] = { 
-#ifndef WIN32	
-					true,//Century
-#endif
 					true,	//decade	
 					true,	//year
 					true,	//month
@@ -767,9 +759,6 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 		
 	//Singular version
 	const char *SINGLE_FUZZY_STRING[] = {
-#ifndef WIN32
-			 NTRANS("a century ago"),
-#endif
 			 NTRANS("a decade ago"),
 			 NTRANS("a year ago"),
 			 NTRANS("a month ago"),
@@ -790,9 +779,6 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 
 	//Plurals, where they make sense. otherwise empty string
 	const char *PLURAL_FUZZY_STRING[] = {
-#ifndef WIN32
-			 NTRANS("a few centuries ago"),
-#endif
 			 NTRANS("a few decades ago"),
 			 NTRANS("a few years ago"),
 			 NTRANS("a few months ago"),
@@ -811,6 +797,11 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 			 NTRANS("a few seconds ago")
 				};		
 
+	COMPILE_ASSERT(ARRAYSIZE(PLURAL_FUZZY_STRING)==  NUM_FUZZY_ENTRIES);
+	COMPILE_ASSERT(ARRAYSIZE(SINGLE_FUZZY_STRING)==  NUM_FUZZY_ENTRIES);
+	COMPILE_ASSERT(ARRAYSIZE(HAVE_PLURALS)==  NUM_FUZZY_ENTRIES);
+	COMPILE_ASSERT(ARRAYSIZE(TIMESTOPS)==  NUM_FUZZY_ENTRIES);
+
 	//Find the largest match by decending the timestops
 	for(unsigned int ui=0;ui<NUM_FUZZY_ENTRIES; ui++)
 	{
@@ -819,7 +810,7 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 		if(HAVE_PLURALS[ui] && delta>=2*TIMESTOPS[ui])
 		{
 #ifdef DEBUG
-			std::string s=(PLURAL_FUZZY_STRING[ui]);;
+			std::string s=(PLURAL_FUZZY_STRING[ui]);
 			ASSERT(s.size());
 #endif
 			return TRANS(PLURAL_FUZZY_STRING[ui]);
@@ -1318,8 +1309,8 @@ void UniqueIDHandler::getIds(std::vector<unsigned int> &idVec) const
 // Total ram in MB
 int getTotalRAM()
 {
-    int ret = 0;
 #if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
+    	int ret;
 	MEMORYSTATUS MemStat;
 
 	// Zero structure
@@ -1331,6 +1322,7 @@ int getTotalRAM()
 	return ret;
 #elif __APPLE__ || __FreeBSD__
 
+    	int ret;
 	uint64_t mem;
 	size_t len = sizeof(mem);
 

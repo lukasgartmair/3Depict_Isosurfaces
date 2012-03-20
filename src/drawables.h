@@ -260,7 +260,7 @@ class DrawManyPoints : public DrawableObj
 		void getBoundingBox(BoundCube &b) const; 
 		
 		//!return number of points
-		size_t getNumPts() { return pts.size();};
+		size_t getNumPts() const { return pts.size();};
 
 		//!This object is explodable
 		bool isExplodable() { return true;}
@@ -302,10 +302,10 @@ class DrawVector: public DrawableObj
 		//!Sets the location of the poitns
 		void setVector(const Point3D &);
 		//!Gets the arrow axis direction
-		Point3D getVector(){ return vector;};
+		Point3D getVector() const { return vector;};
 
 		//!Gets the arrow axis direction
-		Point3D getOrigin(){ return origin;};
+		Point3D getOrigin() const{ return origin;};
 
 		//!Set the arrowhead size
 		void setArrowSize(float size) { arrowSize=size;}
@@ -473,9 +473,9 @@ class DrawCylinder : public DrawableObj
 		void setStacks(unsigned int i);
 
 		//!Gets the location of the origin
-		Point3D getOrigin(){ return origin;};
+		Point3D getOrigin() const { return origin;};
 		//!Gets the cylinder axis direction
-		Point3D getDirection(){ return direction;};
+		Point3D getDirection() const{ return direction;};
 		//!Set end radius
 		void setRadius(float val);
 		//!get the radius

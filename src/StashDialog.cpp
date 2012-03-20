@@ -18,6 +18,7 @@
 
 #include "StashDialog.h"
 
+#include "wxcommon.h"
 
 #include "translation.h"
 
@@ -86,6 +87,11 @@ void StashDialog::set_properties()
     // begin wxGlade: StashDialog::set_properties
     SetTitle(wxTRANS("Stashed Trees"));
     SetSize(wxSize(600, 430));
+
+    btnRemove->SetToolTip(wxTRANS("Erase stashed item"));
+    treeFilters->SetToolTip(wxTRANS("Filter view for current stash"));
+    gridProperties->SetToolTip(wxTRANS("Settings for selected filter in current stash"));
+    listStashes->SetToolTip(wxTRANS("Available stashes"));
     // end wxGlade
 }
 
@@ -139,7 +145,7 @@ void StashDialog::updateList()
 	//
 	vector<pair<string,unsigned int> > stashes;
 
-	visControl->getStashList(stashes);
+	visControl->getStashes(stashes);
 
 	//Clear the existing list
 	listStashes->ClearAll();
@@ -147,7 +153,7 @@ void StashDialog::updateList()
 	//Fill it with "stash" entries
 	long itemIdx;
 	string strTmp;
-	tree<Filter *> t;
+	FilterTree t;
 	//Add columns to report listviews
 	listStashes->InsertColumn(0,wxTRANS("Stash Name"),3);
 	listStashes->InsertColumn(1,wxTRANS("Filter Count"),1);
@@ -192,13 +198,13 @@ void StashDialog::updateGrid()
 	
 	unsigned int filterIdx = ((wxTreeUint *)tData)->value;
 
-	tree<Filter *> t;
+	FilterTree t;
 	visControl->getStashTree(stashId,t);
 
 	Filter *targetFilter=0;
 	unsigned int pos=0;
 	//Spin through the tree iterators until we hit the target index
-	for(tree<Filter *>::iterator it=t.begin();it!=t.end(); ++it)
+	for(tree<Filter *>::iterator it=t.depthBegin();it!=t.depthEnd(); ++it)
 	{
 		if(pos == filterIdx)
 		{
@@ -296,8 +302,8 @@ void StashDialog::updateTree()
 
 	//Depth first  add
 	unsigned int pos=0;
-	for(tree<Filter * >::pre_order_iterator filtIt=curTree.begin();
-					filtIt!=curTree.end(); filtIt++)
+	for(tree<Filter * >::pre_order_iterator filtIt=curTree.depthBegin();
+					filtIt!=curTree.depthEnd(); filtIt++)
 	{
 		//Push or pop the stack to make it match the iterator position
 		if( lastDepth > curTree.depth(filtIt))

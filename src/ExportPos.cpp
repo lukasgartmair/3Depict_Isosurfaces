@@ -18,11 +18,31 @@
 
 
 #include "ExportPos.h"
+#include "wxcommon.h"
 
 #include "translation.h"
 // begin wxGlade: ::extracode
 
 // end wxGlade
+
+wxWindow *exportPosYieldWindow=0;
+bool abortOp;
+wxStopWatch *exportPosDelayTime=0;
+
+bool yieldCallback(bool)
+{
+	const unsigned int YIELD_MS=75;
+
+	ASSERT(exportPosDelayTime);
+	//Rate limit the updates
+	if(exportPosDelayTime->Time() > YIELD_MS)
+	{
+		wxSafeYield(exportPosYieldWindow);
+		exportPosDelayTime->Start();
+	}
+
+	return !abortOp;
+}
 
 
 using std::list;
@@ -72,6 +92,15 @@ ExportPosDialog::ExportPosDialog(wxWindow* parent, int id, const wxString& title
 	//Disable most everything.
 	enableSelectionControls(false);
 
+	//Assign global variables their init value
+	//--
+	ASSERT(!exportPosYieldWindow);
+	exportPosYieldWindow=this;
+	
+	ASSERT(!exportPosDelayTime); //Should not have been inited yet.
+
+	exportPosDelayTime = new wxStopWatch();
+	//--
 
 	//Add columns to report listviews
 	listSelected->InsertColumn(0,wxTRANS("Index"));
@@ -81,17 +110,11 @@ ExportPosDialog::ExportPosDialog(wxWindow* parent, int id, const wxString& title
 	listAvailable->InsertColumn(1,wxTRANS("Count"));
 }
 
-void ExportPosDialog::cleanup(VisController *v)
-{
-	//clean up our filter data, as needed
-	if(haveRefreshed)
-		visControl->safeDeleteFilterList(outputData);
-
-	haveRefreshed=false;
-}
-
 ExportPosDialog::~ExportPosDialog()
 {
+	delete exportPosDelayTime;
+	exportPosDelayTime=0;
+	exportPosYieldWindow=0;
 	//Should have called cleanup before exiting.
 	ASSERT(!haveRefreshed);
 }
@@ -111,31 +134,22 @@ BEGIN_EVENT_TABLE(ExportPosDialog, wxDialog)
     EVT_BUTTON(wxID_CANCEL, ExportPosDialog::OnCancel)
 	
     // end wxGlade
-END_EVENT_TABLE();
+END_EVENT_TABLE()
 
-void ExportPosDialog::initialiseData(VisController *v)
+void ExportPosDialog::initialiseData(FilterTree &f)
 {
 	ASSERT(!haveRefreshed)
+		
+	//Steal the filter tree contents
+	f.swap(filterTree);
+	vector<const Filter*> dummyPersist;
+	upWxTreeCtrl(filterTree,treeData,filterMap,dummyPersist,0);	
 
-	//FIXME: Remove the need for this pointer. If we pull the tree data out from the viscontrol
-	//and tie it to the output data pointers, this shoudl be possible	
-	visControl=v;	
-	//FIXME: we don't show progress information....
-	visControl->refreshFilterTree(outputData);
-	visControl->resetProgress();
-
-	//FIXME: This is a hack -- this will cause
-	//viscontrol to rewrite its internal filter->tree mapping
-	//which is not cool. but will work as the tree is read only
-	//in this dialog.
-	visControl->updateWxTreeCtrl(treeData);	
-	
-	//Delete any non-ion data (using mask to prevent STREAM_TYPE_IONS from deletion)
-	//from the generated data from the filter list
-	visControl->safeDeleteFilterList(outputData,STREAM_TYPE_IONS);	
-
-	visControl->setRefreshed();
-	
+	ProgressData p;
+	//TODO: Is trashing the devices a problem? do we have to restore them??
+	std::vector<SelectionDevice<Filter> *> dummyDevices;
+	std::vector<string> consoleStrings;
+	filterTree.refreshFilterTree(outputData,dummyDevices,consoleStrings,p,yieldCallback);
 	haveRefreshed=true;
 }
 
@@ -173,8 +187,7 @@ void ExportPosDialog::OnTreeFiltersSelChanged(wxTreeEvent &event)
 	listAvailable->DeleteAllItems();
 	availableFilterData.clear();
 
-	
-	const Filter *targetFilter=visControl->getFilterById(((wxTreeUint *)tData)->value);
+	const Filter *targetFilter=filterMap[((wxTreeUint *)tData)->value];
 
 	typedef std::pair<Filter *,vector<const FilterStreamData * > > filterOutputData;
 	//Spin through the output list, looking for this filter's contribution
@@ -428,6 +441,12 @@ void ExportPosDialog::set_properties()
     // begin wxGlade: ExportPosDialog::set_properties
     SetTitle(wxTRANS("Export Pos Data"));
     // end wxGlade
+
+	treeData->SetToolTip(wxTRANS("Tree of filters, select leaves to show ion data."));
+	
+	btnAddAll->SetToolTip(wxTRANS("Add all data from all filters"));
+	btnAddNode->SetToolTip(wxTRANS("Add all data from currently selected filter"));
+	btnAddData->SetToolTip(wxTRANS("Add selected data from currently selected filter"));
 }
 
 void ExportPosDialog::enableSelectionControls(bool enabled)

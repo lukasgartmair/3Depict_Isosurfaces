@@ -3,6 +3,8 @@
 
 #include "../filter.h"
 
+#include "../translation.h"
+
 enum
 {
 	DATALOAD_FLOAT_FILE,
@@ -58,6 +60,9 @@ class DataLoadFilter:public Filter
 
 		//!string to use in error situation, set during ::refresh
 		std::string errStr;
+
+		//!String to use to set the value type
+		std::string valueLabel;
 	public:
 		DataLoadFilter();
 		//!Duplicate filter contents, excluding cache.
@@ -80,7 +85,7 @@ class DataLoadFilter:public Filter
 		//!Refresh object data
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &getOut, 
-				ProgressData &progress, bool (*callback)(void));
+				ProgressData &progress, bool (*callback)(bool));
 
 		void updatePosData();
 
@@ -122,6 +127,9 @@ class DataLoadFilter:public Filter
 
 		//!Return if we need monitoring or not
 		virtual bool monitorNeedsRefresh() const;
+		
+		//Are we a pure data source  - i.e. can function with no input
+		virtual bool isPureDataSource() const { return true;};
 
 #ifdef DEBUG
 		bool runUnitTests();

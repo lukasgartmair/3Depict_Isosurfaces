@@ -232,7 +232,7 @@ bool K3DTreeMk2::build()
 		{
 			*progress= (unsigned int)((float)numSeen/(float)nodes.size()*100.0f);
 
-			if(!(*callback)())
+			if(!(*callback)(false))
 				return false;
 		}
 

@@ -2,6 +2,7 @@
 #define ANNOTATION_H
 
 #include "../filter.h"
+#include "../translation.h"
 
 enum
 {
@@ -69,7 +70,7 @@ class AnnotateFilter : public Filter
 		// ->cached.
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 							std::vector<const FilterStreamData *> &dataOut,
-							ProgressData &progress, bool (*callback)(void));
+							ProgressData &progress, bool (*callback)(bool));
 		//!Get (approx) number of bytes required for cache
 		size_t numBytesForCache(size_t nObjects) const;
 
@@ -112,6 +113,10 @@ class AnnotateFilter : public Filter
 		//!Get the bitmask encoded list of filterstreams that this filter emits from ::refresh.
 		// This MUST always be consistent with ::refresh for filters current state.
 		unsigned int getRefreshEmitMask() const;
+
+#ifdef DEBUG
+		bool runUnitTests();
+#endif
 };
 
 

@@ -80,12 +80,25 @@ BoundCube getIonDataLimits(const vector<IonHit> &p);//
 //Range file strucutres
 //=========
 
-enum{ RANGE_ERR_OPEN =1, 
-	RANGE_ERR_FORMAT,
+enum{	
+	RANGE_ERR_OPEN =1, 
+	RANGE_ERR_FORMAT_HEADER,
 	RANGE_ERR_EMPTY,
-	RANGE_ERR_NOASSIGN,
-	RANGE_ERR_DATA
-	};
+	RANGE_ERR_FORMAT_LONGNAME,
+	RANGE_ERR_FORMAT_SHORTNAME,
+	RANGE_ERR_FORMAT_COLOUR,
+	RANGE_ERR_FORMAT_TABLESEPARATOR,
+	RANGE_ERR_FORMAT_RANGE_DUMMYCHARS,
+	RANGE_ERR_FORMAT_MASS_PAIR,
+	RANGE_ERR_FORMAT_TABLE_ENTRY,
+	RANGE_ERR_FORMAT,
+	RANGE_ERR_DATA_TOO_MANY_USELESS_RANGES,
+	RANGE_ERR_DATA_FLIPPED,
+	RANGE_ERR_DATA_INCONSISTENT,
+	RANGE_ERR_ENUM_END
+};
+
+
 
 enum{ RANGE_FORMAT_ORNL=1,
 	RANGE_FORMAT_ENV,
@@ -168,13 +181,17 @@ class RangeFile
 		//!Open a specified range file
 		unsigned int open(const char *rangeFile, unsigned int format=RANGE_FORMAT_ORNL);	
 		//!Open a specified range file
-		unsigned int openGuessFormat(const char *rangeFile);
+		bool openGuessFormat(const char *rangeFile);
 
 		//!is the extension string the same as that for a range file? I don't advocate this method, but it is convenient in a pinch.
 		static bool extensionIsRange(const char *ext);
+		//!Grab a vector that contains all the extensions that are valid for range files
+		static void getAllExts(std::vector<std::string> &exts);
 
-		//!Print the error associated with the current range file state
-		void printErr(std::ostream &strm);
+		//!Print the translated error associated with the current range file state
+		void printErr(std::ostream &strm) const;
+		//!Retreive the translated error associated with the current range file state
+		std::string getErrString() const;
 		//!Get the number of unique ranges
 		unsigned int getNumRanges() const;
 		//!Get the number of ranges for a given ion ID
@@ -296,18 +313,18 @@ const unsigned int NUM_ELEMENTS=119;
 //!Load a pos file into a T of IonHits
 unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int outputnumcols, 
 		unsigned int index[], vector<IonHit> &posIons,const char *posFile, 
-				unsigned int &progress, bool (*callback)());
+				unsigned int &progress, bool (*callback)(bool));
 
 
 unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumcols, unsigned int index[], 
 			vector<IonHit> &posIons,const char *posFile, size_t limitCount,
-					       	unsigned int &progress, bool (*callback)(),bool strongRandom);
+					       	unsigned int &progress, bool (*callback)(bool),bool strongRandom);
 
 
 
 unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedCols[], 
 			vector<IonHit> &posIons,const char *posFile, const char *deliminator, const size_t limitCount,
-					       	unsigned int &progress, bool (*callback)(),bool strongRandom);
+					       	unsigned int &progress, bool (*callback)(bool),bool strongRandom);
 
 
 #endif
