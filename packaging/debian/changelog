@@ -1,8 +1,17 @@
+3depict (0.0.10-1) unstable; urgency=low
+
+  * Update to upstream 0.0.10
+
+ -- D Haley <mycae@yahoo.com>  Sun, 1 Apr 2012 19:33:32 +0100
+
 3depict (0.0.9-1) unstable; urgency=low
 
   * Update to upstream 0.0.9 
+  * Close powerpc bug fixed by 0.0.8-1 (Closes: #655682) 
+  * Close mgl font parsing bug fixed by mathgl upstream (Closes: #623431)
+  * Fix unclean source package (Closes: #643039)
 
- -- D Haley <mycae@yahoo.com>  Sun, 11 Dec 2011 19:18:32 +0100
+ -- D Haley <mycae@yahoo.com>  Sun, 18 Dec 2011 19:33:32 +0100
 
 3depict (0.0.8-1) unstable; urgency=low
 

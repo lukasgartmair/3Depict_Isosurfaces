@@ -584,8 +584,10 @@ void CropPanel::draw()
 
 		//Draw the corner
 		dc->SetPen(*highPen);
-		dc->DrawLine(xC + 2.0*sizeX, yC+sizeY, xC+sizeX,yC+sizeY);
-		dc->DrawLine(xC+sizeX, yC+sizeY, xC+sizeX,yC+2.0*sizeY);
+		dc->DrawLine(wxCoord(xC + 2.0f*sizeX), wxCoord(yC+sizeY),
+			       wxCoord(xC+sizeX),wxCoord(yC+sizeY));
+		dc->DrawLine(wxCoord(xC+sizeX), wxCoord(yC+sizeY),
+			       wxCoord(xC+sizeX),wxCoord(yC+2.0f*sizeY));
 		dc->SetPen(*normalPen);
 	}	
 

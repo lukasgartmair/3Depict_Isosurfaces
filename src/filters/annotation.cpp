@@ -167,7 +167,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 		dt->setUp(upVec);
 		dt->setColour(r,g,b,a);
 		dt->setTextDir(acrossVec);
-		dt->setSize(textSize);
+		dt->setSize((unsigned int)textSize);
 
 		dt->setAlignment(DRAWTEXT_ALIGN_CENTRE);
 		
@@ -354,7 +354,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 			dt->setUp(upVec);
 			dt->setColour(r,g,b,a);
 			dt->setTextDir(acrossVec);
-			dt->setSize(textSize);
+			dt->setSize((unsigned int)textSize);
 		
 
 			d->drawables.push_back(dt);
@@ -403,7 +403,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 				dT->setOrigin(measureNormal*tickSpacings[ui] + position);
 				dT->setUp(upVec);	
 				dT->setTextDir(acrossVec);
-				dT->setSize(fontSizeLinearMeasure);
+				dT->setSize((unsigned int)fontSizeLinearMeasure);
 
 				string s;
 				stream_cast(s,tickSpacings[ui]);

@@ -1,5 +1,5 @@
 Name:		3Depict
-Version:	0.0.9
+Version:	0.0.10
 Release:	1%{?dist}
 Summary:	Valued 3D point cloud visualization and analysis
 Group:		Applications/Engineering
@@ -33,12 +33,12 @@ BuildRequires: tex(latex)
 BuildRequires: qhull-devel
 
 #Fedora specific PDF dir.
-Patch0: %{name}-0.0.9-manual-pdf-loc.patch
+Patch0: %{name}-%{version}-manual-pdf-loc.patch
 #Fedora specific font dir
-Patch1: %{name}-0.0.9-font-path.patch
+Patch1: %{name}-%{version}-font-path.patch
 
 %description
-This program is designed to help users visualize and analyze 3D point clouds
+This software is designed to help users visualize and analyze 3D point clouds
 with an associated real value, in a fast and flexible fashion. It is 
 specifically targeted to atom probe tomography applications, but may be 
 useful for general scalar valued point data purposes.
@@ -51,12 +51,7 @@ useful for general scalar valued point data purposes.
 %patch1
 
 %build
-#--enable-openmp-parallel does not work -- there is a bug in the
-# tr1 headers with -D_GLIBCXX_PARALLEL . Lets drop that and only use
-# -fopenmp
-export CFLAGS="$RPM_OPT_FLAGS -fopenmp"
-export CXXFLAGS="$RPM_OPT_FLAGS -fopenmp"
-%configure --disable-debug-checks
+%configure --disable-debug-checks --enable-openmp-parallel
 make %{?_smp_mflags}
 
 pushd docs/manual-latex
@@ -92,7 +87,7 @@ mv locales/de_DE/ locales/de/
 mkdir -p %{buildroot}/%{_datadir}/locale/
 cp -R locales/* %{buildroot}/%{_datadir}/locale/
 
-#Restore the internal build's locale namign
+#Restore the internal build's locale naming
 mv locales/de/ locales/de_DE/
 #--
 
@@ -121,8 +116,23 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Mon Apr 2 2012 D Haley <mycae(a!t)yahoo.com> - 0.0.10-1
+- Update to 0.0.10
+
+* Tue Feb 28 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.9-4
+- Rebuilt for c++ ABI breakage
+
+* Thu Jan 12 2012 D Haley <mycae(a!t)yahoo.com> - 0.0.9-3
+- Patch to fix FTFBS for gcc 4.7
+
+* Thu Jan 12 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.9-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_17_Mass_Rebuild
+
 * Sat Dec 20 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.9-1
 - Update to 0.0.9
+
+* Tue Dec 06 2011 Adam Jackson <ajax@redhat.com> - 0.0.8-3
+- Rebuild for new libpng
 
 * Sat Oct 29 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.8-2
 - Post release fixes for various crash bugs

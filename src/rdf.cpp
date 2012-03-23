@@ -23,6 +23,8 @@
 
 using std::vector;
 #ifdef DEBUG
+#include <iostream>
+#include <cstdlib>
 using std::cerr;
 using std::endl;
 #endif
@@ -345,10 +347,7 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 	scaleFactor = 1  - reductionDim/ minDist;
 
 	if(scaleFactor < 0.0f)
-	{
-		cerr << "Scale factor negative. Aborting." << endl;
 		return RDF_ERR_NEGATIVE_SCALE_FACT;
-	}
 
 	//update mindist such that it is still valid after scaling
 	minDist=minDist*scaleFactor; 

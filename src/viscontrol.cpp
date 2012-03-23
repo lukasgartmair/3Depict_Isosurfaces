@@ -67,7 +67,7 @@ void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
 	filterMap.clear();
 	size_t nextID=0;
 	
-	int lastDepth=0;
+	size_t lastDepth=0;
 	//Add dummy root node. This will be invisible to wxTR_HIDE_ROOT controls
 	wxTreeItemId tid;
 	tid=t->AddRoot(wxT("TreeBase"));
@@ -86,7 +86,7 @@ void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
 		//Push or pop the stack to make it match the iterator position
 		if( lastDepth > filterTree.depth(filtIt))
 		{
-			while(filterTree.depth(filtIt) +1 < (int)treeIDs.size())
+			while(filterTree.depth(filtIt) +1 < treeIDs.size())
 				treeIDs.pop();
 		}
 		else if( lastDepth < filterTree.depth(filtIt))

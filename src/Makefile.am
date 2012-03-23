@@ -45,7 +45,7 @@ BASE_SOURCE_FILES=  filtertree.cpp mathglPane.cpp plot.cpp prefDialog.cpp config
 			 xmlHelper.cpp cropPanel.cpp colourmap.cpp \
 			pngread.c mathfuncs.cpp wxcomponents.cpp wxcommon.cpp
 
-BASE_HEADER_FILES=   filterTree.h mathglPane.h plot.h prefDialog.h configFile.h filter.h \
+BASE_HEADER_FILES=   filtertree.h mathglPane.h plot.h prefDialog.h configFile.h filter.h \
 		     APTClasses.h resDialog.h select.h \
 		     drawables.h effect.h textures.h rdf.h translation.h winconsole.h \
 		     cameras.h isoSurface.h K3DTree.h K3DTree-mk2.h\

@@ -1632,6 +1632,7 @@ bool nnHistogramTest()
 	//Do the refresh
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh OK");
+	delete f;
 
 	streamIn.clear();
 
@@ -1701,6 +1702,11 @@ bool rdfPlotTest()
 	}
 
 	TEST(fMax > 0 , "plot has nonzero contents");
+
+
+	//kill output data
+	delete dPlot;
+
 	//Kill the input ion stream
 	delete d; 
 

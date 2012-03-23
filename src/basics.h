@@ -566,7 +566,7 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 			//This is actually not too bad. the collision probability is at most 50%
 			//due the switching behaviour above, for any large number of items 
 			//So this is at worst case nlog(n) (I think)
-			index =rng.genUniformDev()*(source.size()-1);
+			index =(size_t)(rng.genUniformDev()*(float)(source.size()-1));
 			if(!binary_search(ticks.begin(),ticks.end(),index) &&
 				std::find(moreTicks.begin(),moreTicks.end(),index) ==moreTicks.end())
 				moreTicks.push_back(index);
@@ -740,7 +740,7 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 			//This is actually not too bad. the collision probability is at most 50%
 			//due the switching behaviour above, for any large number of items 
 			//So this is at worst case nlog(n) (I think)
-			index =rng.genUniformDev()*(max-1);
+			index =(size_t)(rng.genUniformDev()*(float)(max-1));
 			if(!binary_search(ticks.begin(),ticks.end(),index) &&
 				std::find(moreTicks.begin(),moreTicks.end(),index) ==moreTicks.end())
 				moreTicks.push_back(index);

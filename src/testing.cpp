@@ -367,7 +367,7 @@ bool filterTreeTests()
 	//  -> D
 	//  -> E
 	//-> C
-	size_t oldSize,newSIze;
+	size_t oldSize;
 	oldSize=fTree.size();
 	TEST(fTree.copyFilter(fD,fB),"copy test");
 	TEST(oldSize+1 == fTree.size(), "copy test");

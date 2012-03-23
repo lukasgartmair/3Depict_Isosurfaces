@@ -22,7 +22,7 @@
 #include <fenv.h>
 #include <sys/cdefs.h>
 void trapfpe () {
-  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
+//  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
 }
 #endif
 #endif

@@ -266,18 +266,12 @@ int countPoints(Voxels<size_t> &v, const std::vector<IonHit> &points,
 		//Ensure it lies within the dataset
 		if (x < binCount[0] && y < binCount[1] && z< binCount[2])
 		{
-			{
-				float value;
-				value=v.getData(x,y,z)+1.0f;
+			size_t value;
+			value=v.getData(x,y,z);
 
 				//Prevent wrap-around errors
-				if (noWrap) {
-					if (value > v.getData(x,y,z))
-						v.setData(x,y,z,value);
-				} else {
-					v.setData(x,y,z,value);
-				}
-			}
+			if(!noWrap || value != std::numeric_limits<size_t>::max())
+				v.setData(x,y,z,value+1);
 		}
 	}
 	return 0;
@@ -998,7 +992,7 @@ void makeSphereOutline(float radius, float angularStep,
 {
 	d->clear();
 	ASSERT(angularStep > 0.0f);
-	unsigned int numAngles= 180.0/angularStep;
+	unsigned int numAngles=(unsigned int)( 180.0f/angularStep);
 
 	for( unsigned int  ui=0; ui<numAngles; ui++)
 	{

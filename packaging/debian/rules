@@ -24,19 +24,9 @@ endif
 config.status: configure
 	dh_testdir
 	# Add here commands to configure the package.
-ifneq "$(wildcard /usr/share/misc/config.sub)" ""
-	cp -f /usr/share/misc/config.sub config.sub
-endif
-ifneq "$(wildcard /usr/share/misc/config.guess)" ""
-	cp -f /usr/share/misc/config.guess config.guess
-endif
-	#Note the PNG_CFLAGS are required to shut pkg-config macro up
-	#Also, we cant use --enable-openmp-parallel, as this enables
-	#
-	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --disable-debug-checks --with-libpng-link="-lpng" --with-libpng-flags="-L/lib" LDFLAGS="-Wl,-z,defs" CFLAGS="-fopenmp"
+	
+	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --enable-openmp-parallel --disable-debug-checks --with-libpng-link="-lpng" --with-libpng-flags="-L/lib" LDFLAGS="-Wl,-z,defs"  --with-ftgl-prefix="/usr"
 
-	# Do latex's multi-pass build system on the manual
-	sh -c "cd docs/manual-latex && pdflatex manual.tex && bibtex *.aux && pdflatex manual.tex && pdflatex manual.tex"
 
 build: build-arch 
 
@@ -53,21 +43,10 @@ clean:
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp 
-	-test -r /usr/share/misc/config.sub && cp -f /usr/share/misc/config.sub config.sub
-	-test -r /usr/share/misc/config.guess && cp -f /usr/share/misc/config.guess config.guess
 
 	# Add here commands to clean up after the build process.
 	[ ! -f Makefile ] || $(MAKE) distclean
-	rm -f config.sub config.guess config.status config.cache
-	#cleanup after manually built documentation
-	rm -f docs/manual-latex/*.log
-	rm -f docs/manual-latex/*.aux
-	rm -f docs/manual-latex/*.bbl
-	rm -f docs/manual-latex/*.pdf
-	rm -f docs/manual-latex/*.out
-	rm -f docs/manual-latex/*.blg
-	rm -f docs/manual-latex/*.toc
-
+	rm -f config.status config.cache
 	#Prevent quilt 3.0 from annoyingly convoluting config.log with a patch
 	rm -f config.log
 

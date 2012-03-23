@@ -114,6 +114,12 @@ if [ x"$SOMEFILES" != x"" ] ; then
 	echo " WARNING : Found some maybe-backup files (\"rej\" extension)" >> $MSG_FILE
 	echo "$FILES" >> $MSG_FILE
 fi
+
+#Check that PDF manual is built
+if [ ! -f docs/manual-latex/manual.pdf ] ; then
+	echo " WARNING : PDF manual was not found -- has it been compiled?" >> $MSG_FILE
+	echo "$FILES" >> $MSG_FILE
+fi
 #----
 
 
@@ -165,7 +171,7 @@ popd
 # so lets just "fix it"
 #--------
 pushd 3Depict-$VER/
-for i in textures tex-source glade-skeleton 
+for i in textures tex-source glade-skeleton test
 do
 	if [ -d src/$i/$i ] ; then
 		mv src/$i/$i/* src/$i/

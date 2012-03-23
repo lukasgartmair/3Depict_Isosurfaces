@@ -1,4 +1,4 @@
-AC_INIT([3Depict], [0.0.9], [mycae@yahoo.com])
+AC_INIT([3Depict], [0.0.10], [mycae@yahoo.com])
 AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CXX
 AC_PROG_CC
