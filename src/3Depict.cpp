@@ -4478,8 +4478,12 @@ void MainWindowFrame::OnCheckUpdatesThread(wxCommandEvent &evt)
 	{
 		string remoteMax=verCheckThread->getVerStr().c_str();
 
+		vector<string> maxVers;
+		maxVers.push_back(remoteMax);
+		maxVers.push_back(PROGRAM_VERSION);
+		
 		string s;
-		if(remoteMax != PROGRAM_VERSION)
+		if(getMaxVerStr(maxVers) !=PROGRAM_VERSION)
 		{
 			//Use status bar message to notify user about update
 			s = string(TRANS("Update Notice: New version ")) + remoteMax + TRANS(" found online.");
@@ -5049,10 +5053,7 @@ void threeDepictApp::initLanguageSupport()
 				default:
 					cerr << "Unknown codepage " << curPage << endl;
 					break;
-			}
-			
-			cerr << TRANS("Saved package: ") << endl;
-			
+			}			
 #else
 			bindtextdomain( PROGRAM_NAME, "/usr/share/locale" );
 			bind_textdomain_codeset(PROGRAM_NAME, "utf-8");

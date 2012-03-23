@@ -29,14 +29,46 @@ bool filterCloneTests();
 //!Try loading each range file in the testing folder
 bool rangeFileLoadTests();
 
+//!Some elementary function testing
+bool basicFunctionTests() ;
+
 //!Run a few checks on our XML helper functions
 bool XMLTests();
 
 //!basic filter tree topology tests
 bool filterTreeTests();
 
+bool basicFunctionTests()
+{
+	//Test getMaxVerStr
+	{
+	vector<string> verStrs;
+
+	verStrs.push_back("0.0.9");
+	verStrs.push_back("0.0.10");
+
+	TEST(getMaxVerStr(verStrs) == "0.0.10","version string maximum testing");
+
+	verStrs.clear();
+	
+	verStrs.push_back("0.0.9");
+	verStrs.push_back("0.0.9");
+	TEST(getMaxVerStr(verStrs) == "0.0.9","version string maximum testing");
+
+	
+	verStrs.push_back("0.0.9");
+	verStrs.push_back("0.0.blah");
+	TEST(getMaxVerStr(verStrs) == "0.0.9","version string maximum testing");
+	}
+
+	return true;
+}
+
 bool runUnitTests()
 {
+	if(!basicFunctionTests())
+		return false;
+	
 	if(!filterTests())
 		return false;
 
@@ -51,6 +83,7 @@ bool runUnitTests()
 
 	if(!filterTreeTests())
 		return false;
+
 	return true;
 }
 

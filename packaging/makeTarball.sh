@@ -141,6 +141,8 @@ mkdir -p ../tarball/3Depict-$VER/translations
 cp 3Depict*.mo ../tarball/3Depict-$VER/translations/
 popd
 
+#copy the manual
+cp ../docs/manual-latex/manual.pdf ./tarball/3Depict-$VER/docs/manual-latex/
 
 pushd 3Depict-$VER/translations/
 
@@ -171,7 +173,7 @@ popd
 # so lets just "fix it"
 #--------
 pushd 3Depict-$VER/
-for i in textures tex-source glade-skeleton test
+for i in textures tex-source glade-skeleton 
 do
 	if [ -d src/$i/$i ] ; then
 		mv src/$i/$i/* src/$i/
@@ -179,7 +181,9 @@ do
 	fi
 done
 
-for i in packaging docs m4 translations deps
+
+
+for i in packaging docs m4 translations deps test
 do
 	if [ -d $i/$i ] ; then
 		mv $i/$i/* $i/

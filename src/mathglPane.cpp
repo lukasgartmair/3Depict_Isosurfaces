@@ -93,9 +93,9 @@ wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 	leftWindow=true;
 	thePlot=0;	
 	gr=0;
-#if !(defined(WIN32) || defined(WIN64))
+
 	SetBackgroundStyle(wxBG_STYLE_CUSTOM);
-#endif
+
 }
 
 MathGLPane::~MathGLPane()
@@ -184,7 +184,7 @@ void MathGLPane::render(wxPaintEvent &event)
 
 		dc->SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
 #endif
-#ifndef __APPLE__
+#if !defined(__APPLE__) 
 		dc->Clear();
 #endif
 

@@ -115,6 +115,7 @@ std::string getMaxVerStr(const std::vector<std::string> &verStrings)
 
 		for(unsigned int ui=0;ui<verNum.size();ui++)
 		{
+			//If the version string has enough digits, check to see if it is the maximum for this digit
 			if(pos < verNum[ui].second.size() )
 				thisMax=std::max(thisMax,verNum[ui].second[pos]);
 		}
@@ -131,9 +132,6 @@ std::string getMaxVerStr(const std::vector<std::string> &verStrings)
 				std::swap(verNum[ui],verNum.back());
 				verNum.pop_back();
 			}
-            
-            if(ui)
-                ui--;
 		}
 
 		//move to next number
