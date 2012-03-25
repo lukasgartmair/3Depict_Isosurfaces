@@ -97,21 +97,6 @@ struct GRID_PROPERTY
 
 class wxPropertyGrid;
 
-//!Mouse event handler for property grid (wxGrid doesn't do mouse motion by default.)
-class PropGridHandler: public wxEvtHandler
-{
-	public:
-		PropGridHandler(wxPropertyGrid* grid) : m_Grid(grid) {eventGrace=5;}
-		~PropGridHandler() {};
-	protected:
-		void OnMouseMovement(wxMouseEvent& evt);
-		wxPropertyGrid* m_Grid;
-		unsigned int eventGrace;
-
-		DECLARE_EVENT_TABLE()
-};
-
-
 //!WxGrid derived class to hold and display property data
 //So it turns out that someone has MADE a property grid.
 //http://wxpropgrid.sourceforge.ne
@@ -122,7 +107,6 @@ class PropGridHandler: public wxEvtHandler
 class wxPropertyGrid : public wxGrid
 {
 	protected:
-		PropGridHandler *m_GridHandler;
 		//First element is key number. Second element is key type
 		std::vector<std::vector<GRID_PROPERTY> > propertyKeys;
 		//Names of each of the grouped keys in propertyKeys

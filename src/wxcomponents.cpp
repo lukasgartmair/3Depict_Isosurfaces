@@ -73,28 +73,15 @@ std::string wxChoiceParamString(std::string choiceString)
 	return retStr;
 }
 
-
-BEGIN_EVENT_TABLE(PropGridHandler, wxEvtHandler)
-	EVT_MOUSE_EVENTS(PropGridHandler::OnMouseMovement)
-END_EVENT_TABLE()
-
 BEGIN_EVENT_TABLE(wxPropertyGrid, wxGrid)
 	EVT_GRID_CELL_LEFT_CLICK(wxPropertyGrid::OnCellLeftClick )
 	EVT_GRID_LABEL_LEFT_DCLICK(wxPropertyGrid::OnLabelDClick) 
 END_EVENT_TABLE()
 
-
-void PropGridHandler::OnMouseMovement(wxMouseEvent& evt)
-{
-	evt.Skip();
-}
-
 wxPropertyGrid::wxPropertyGrid(wxWindow* parent, wxWindowID id, 
 		const wxPoint& pos , const wxSize& size , long style ) :
 					wxGrid(parent, id, pos, size , style)
 {
-	m_GridHandler=new PropGridHandler(this);
-	GetGridWindow()->PushEventHandler(m_GridHandler);
 }
 
 void wxPropertyGrid::OnSize(wxSizeEvent &event)
@@ -120,7 +107,6 @@ void wxPropertyGrid::fitCols(wxSize &size)
 
 wxPropertyGrid::~wxPropertyGrid()
 {
-	GetGridWindow()->PopEventHandler(true);
 }
 
 //Function adapted from nomadsync.sourceforge.net (GPL)
@@ -199,27 +185,15 @@ void wxGridCellChoiceRenderer::Draw(wxGrid& grid, wxGridCellAttr& attr, wxDC& dc
 void wxPropertyGrid::OnCellLeftClick(wxGridEvent &ev)
 {
 	// This forces the cell to go into edit mode directly
-	m_waitForSlowClick = TRUE;
+	m_waitForSlowClick = true;
 	SetGridCursor(ev.GetRow(), ev.GetCol());
-	// Store the click co-ordinates in the editor if possible
-	// if an editor has created a ClientData area, we presume it's
-	// a wxPoint and we store the click co-ordinates
-	wxGridCellEditor* pEditor  = GetCellEditor(ev.GetRow(), ev.GetCol());
-	wxPoint* pClickPoint = (wxPoint*)pEditor->GetClientData();
-	if (pClickPoint)
-	{
-		*pClickPoint = ClientToScreen(ev.GetPosition());
-#ifndef __WINDOWS__
-		EnableCellEditControl(true);
-#endif
-	}
+
 	// hack to prevent selection from being lost when click combobox
 	if (ev.GetCol() == 0 && IsInSelection(ev.GetRow(), ev.GetCol()))
 	{
 		m_selection = NULL;
 	}
 	ev.Skip();
-
 }
 
 void wxPropertyGrid::clear()

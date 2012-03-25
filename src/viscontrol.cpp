@@ -1791,6 +1791,7 @@ void VisController:: safeDeleteFilterList(std::list<std::pair<Filter *, std::vec
 #ifdef DEBUG
 void VisController::checkTree(wxTreeCtrl *t)
 {
+/*
 	//spin through the non-root items in the tree,
 	//and check they have a valid ID & map
 	wxTreeItemIdValue cookie;
@@ -1824,5 +1825,6 @@ void VisController::checkTree(wxTreeCtrl *t)
 			itemStack.pop();
 		}
 	}
+*/
 }
 #endif
