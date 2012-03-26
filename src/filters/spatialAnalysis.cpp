@@ -375,7 +375,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 #endif
 						float maxSqrRad = distMax*distMax;
 						float vol = 4.0/3.0*M_PI*maxSqrRad*distMax; //Sphere volume=4/3 Pi R^3
-						#pragma omp parallel for shared(spin) private(treeDomain)
+						#pragma omp parallel for shared(spin) firstprivate(treeDomain,curProg)
 						for(size_t uj=0;uj<d->data.size();uj++)
 						{
 							Point3D r;
@@ -411,17 +411,23 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 								//Update callback as needed
 								if(!curProg--)
 								{
+#pragma omp critical
+									{
 									progress.filterProgress= (unsigned int)((float)n/(float)totalDataSize*100.0f);
 									if(!(*callback)(false))
 									{
 #ifdef _OPENMP
 										spin=true;
-										continue;
 #else
 										delete newD;
 										return ABORT_ERR;
 #endif
 									}
+									}
+#ifdef _OPENMP
+									if(spin)
+										break;
+#endif
 									curProg=NUM_CALLBACK/(10*nnMax);
 								}
 							}while(true);

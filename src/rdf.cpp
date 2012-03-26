@@ -459,17 +459,13 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 	
 
 
-	size_t numAnalysed=0;
-#ifdef _OPENMP
-	bool spin=false;
-	int callbackReduce[omp_get_max_threads()];
-	for(unsigned int ui=0;ui<omp_get_max_threads();ui++)
-		callbackReduce[ui]=CALLBACK_REDUCE;
-#else
 	int callbackReduce=CALLBACK_REDUCE;
+#ifdef _OPENMP
+	size_t numAnalysed=0;
+	bool spin=false;
 #endif
 	//do NN search
-#pragma omp parallel for shared(spin,callbackReduce)
+#pragma omp parallel for shared(spin,numAnalysed) firstprivate(callbackReduce)
 	for(unsigned int ui=0; ui<pointList.size(); ui++)
 	{
 #ifdef _OPENMP
@@ -492,30 +488,26 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 			
 
 		//Callbacks to perform UI updates as needed
-#ifdef _OPENMP 
-		if(!(callbackReduce[omp_get_thread_num()]--))
-		{
-		#pragma omp critical
-		{
-			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
-			if(!(*callback)(false))
-				spin=true;
-			numAnalysed+=CALLBACK_REDUCE;
-		}			
-			callbackReduce[omp_get_thread_num()]=CALLBACK_REDUCE;
-		}	
-#else
 		if(!(callbackReduce--))
 		{
-			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
+#ifdef _OPENMP 
+			#pragma omp critical
+			{
+				numAnalysed+=CALLBACK_REDUCE;
+				*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
+				if(!(*callback)(false))
+					spin=true;
+			}			
+#else
+			*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*100.0f);
 			if(!(*callback)(false))
 			{
 				delete[] maxSqrDist;
 				return RDF_ABORT_FAIL;
 			}
+#endif
 			callbackReduce=CALLBACK_REDUCE;
 		}
-#endif
 
 	}
 #ifdef _OPENMP
@@ -560,12 +552,10 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 #ifdef _OPENMP
 	spin=false;
 	numAnalysed=0;
-	for(unsigned int ui=0;ui<omp_get_max_threads();ui++)
-		callbackReduce[ui]=CALLBACK_REDUCE;
-#else
-	callbackReduce=CALLBACK_REDUCE;
 #endif
-#pragma omp parallel for
+	
+	callbackReduce=CALLBACK_REDUCE;
+#pragma omp parallel for firstprivate(callbackReduce)
 	for(unsigned int ui=0; ui<pointList.size(); ui++)
 	{
 		vector<const Point3D *> nnPoints;
@@ -596,7 +586,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 
 		//Callbacks to perform UI updates as needed
 #ifdef _OPENMP 
-		if(!(callbackReduce[omp_get_thread_num()]--))
+		if(!(callbackReduce--))
 		{
 		#pragma omp critical
 		{
@@ -605,12 +595,12 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 				spin=true;
 			numAnalysed+=CALLBACK_REDUCE;
 		}			
-			callbackReduce[omp_get_thread_num()]=CALLBACK_REDUCE;
+			callbackReduce=CALLBACK_REDUCE;
 		}	
 #else
 		if(!(callbackReduce--))
 		{
-			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
+			*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*100.0f);
 			if(!(*callback)(false))
 			{
 				delete[] maxSqrDist;
@@ -636,6 +626,13 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 {
 
 
+#ifdef DEBUG
+	for(unsigned int ui=0;ui<numBins;ui++)
+	{
+		ASSERT(!histogram[ui]);
+	}
+#endif
+
 	if(pointList.empty())
 		return 0;
 
@@ -650,16 +647,21 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 	warnBiasCount=0;
 	
 	//Main r-max searching routine
+	unsigned int callbackReduce=CALLBACK_REDUCE;
 #ifdef _OPENMP
 	bool spin=false;
 	size_t numAnalysed=0;
-	int callbackReduce[omp_get_max_threads()];
-	for(unsigned int ui=0;ui<omp_get_max_threads();ui++)
-		callbackReduce[ui]=CALLBACK_REDUCE;
-#else
-	int callbackReduce=CALLBACK_REDUCE;
+	size_t numAnalysedThread=0;
+
+	unsigned int threadHist[numBins][omp_get_max_threads()];
+	for(size_t ui=0; ui<omp_get_max_threads(); ui++)
+	{
+		for (size_t uj = 0; uj < numBins; uj++)
+			threadHist[uj][ui] = 0;
+	}
 #endif
-#pragma omp parallel for shared(spin,callbackReduce,histogram)
+
+#pragma omp parallel for shared(spin,histogram,numAnalysed,threadHist) firstprivate(callbackReduce,numAnalysedThread) default(shared)
 	for(unsigned int ui=0; ui<pointList.size(); ui++)
 	{
 #ifdef _OPENMP
@@ -699,13 +701,11 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 				if(sqrDist < maxSqrDist)
 				{
 					//Add the point to the histogram
-					unsigned int *bin;
-					unsigned int offset;
-					offset=((size_t) ((sqrtf(sqrDist/maxSqrDist)*(float)numBins)));
-					bin= histogram+offset;
-
-#pragma omp atomic
-					(*bin)++;
+#ifdef _OPENMP
+					threadHist[(size_t) ((sqrtf(sqrDist/maxSqrDist)*(float)numBins))] [omp_get_thread_num()]++;
+#else
+					histogram[(size_t)((sqrtf(sqrDist/maxSqrDist)*(float)numBins))]++;
+#endif
 				}
 
 				//increase the dead distance to the last distance
@@ -719,34 +719,41 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 			}
 
 
-#ifdef _OPENMP 
-			if(!(callbackReduce[omp_get_thread_num()]--))
-			{
-			#pragma omp critical
-			{
-				*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
-				if(!(*callback)(false))
-					spin=true;
-				numAnalysed+=CALLBACK_REDUCE;
-			}			
-				callbackReduce[omp_get_thread_num()]=CALLBACK_REDUCE;
-			}	
-#else
 			if(!(callbackReduce--))
 			{
+#ifdef _OPENMP 
+				#pragma omp critical
+				{
+					numAnalysed+=numAnalysedThread;
+					*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
+					if(!(*callback)(false))
+						spin=true;
+				}
+				if(spin)
+					break;
+				numAnalysedThread=0;
+#else
 				*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*100.0f);
 				if(!(*callback)(false))
 					return RDF_ABORT_FAIL;
+#endif
 				callbackReduce=CALLBACK_REDUCE;
 			}
-#endif
 		}
-
+#ifdef _OPENMP
+		numAnalysedThread++;
+#endif
 	}
 
 #ifdef _OPENMP
 	if(spin)
 		return RDF_ABORT_FAIL;
+    
+	for (size_t i = 0; i < numBins; i++)
+	{
+		for (size_t j = 0; j < omp_get_max_threads(); j++)
+			histogram[i] += threadHist[i][j];
+	}
 #endif
 
 	//Calculations complete!
