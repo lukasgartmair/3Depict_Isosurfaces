@@ -1618,7 +1618,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				case BLOCK_RANGES:
 				{
 
-					//Altough it looks like the blocks are independent.
+					//Although it looks like the blocks are independent.
 					//it is more complicated to juggle a parser with them
 					//out of dependency order, as  a second pass would
 					//need to be done.
@@ -1705,6 +1705,8 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							// Range1=95.3100 95.5800 Vol:0.04542 Name:1Zn1Sb1 Color:00FFFF
 							// or
 							// Range1=95.3100 95.5800 Vol:0.04542 Zn:1 Sb:1 Name:1Zn1Sb1 Color:00FFFF
+							// or
+							// Range1= 95.3100 95.5800 Color:00FFFF Vol:0.04542 Zn:1 Sb:1 Name:1Zn1Sb1 
 
 							//Starting positions (string index)
 							//of range start and end
@@ -1712,6 +1714,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 							//	 	^rngmid ^rngend
 							size_t rngMidIdx,rngEndIdx;
 							string rngStart,rngEnd;
+							split[1]=stripWhite(split[1]);
 							rngMidIdx = split[1].find_first_of(' ');
 
 							if (rngMidIdx == std::string::npos)
@@ -1844,7 +1847,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 										free(oldLocale);
 										return RANGE_ERR_FORMAT;
 									}
-									//Check the multiplicty of the ion. should be an integer > 0
+									//Check the multiplicity of the ion. Should be an integer > 0
 									unsigned int uintVal;
 									if (stream_cast(uintVal,value) || !uintVal)
 									{
@@ -1857,7 +1860,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 									}
 
 									//If it is  1, then use straight name. Otherwise try to give it a
-									//chemical formula look by mixing in the multiplicty after the key
+									//chemical formula look by mixing in the multiplicity after the key
 									if (uintVal==1)
 										strIonNameTmp+=key;
 									else
