@@ -33,9 +33,16 @@ private:
 	//In some implementation of openGL in wx. 
 	//calling GL funcs before Paint() will crash program
 	bool paneInitialised;
+	//Is the user engaged in a drag operation?
 	bool dragging;
+
+	//Where is the start of the mouse drag?
 	wxPoint draggingStart;
 	bool lastMoveShiftDown;
+	
+	//Is scene interaction OK?
+	bool disableSceneInteraction;
+
 	//True if an object has been mouse-overed for selection
 	bool selectionMode;
 	//The scene ID value for the currently selected object
@@ -68,6 +75,9 @@ private:
 	wxTimer *keyDoubleTapTimer;
 public:
 	bool displaySupported() const;
+
+	//Enable/Disable the scene interaction for user objects?
+	void setSceneInteractionAllowed(bool enabled=true);
 
 	//!The scene object, holds all info about 3D drawable components
 	Scene currentScene;

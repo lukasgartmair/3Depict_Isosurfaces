@@ -96,6 +96,7 @@ wxGLCanvas(parent, wxID_ANY,  wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas
 	haveCameraUpdates=false;
 	applyingDevice=false;
 	paneInitialised=false;
+	disableSceneInteraction=false;
 
 	keyDoubleTapTimer=new wxTimer(this,ID_KEYPRESS_TIMER);
 	lastKeyDoubleTap=(unsigned int)-1;
@@ -118,11 +119,16 @@ bool BasicGLPane::displaySupported() const
 	return IsDisplaySupported(attribList);
 #else
 	ASSERT(false);
-	//Lets hope so. If its not, then its just going to fai anyway. 
+	//Lets hope so. If its not, then its just going to fail anyway. 
 	//If it is, then returning false would simply create a roadblock.
 	//Either way, you shouldn't get here.
 	return true; 
 #endif
+}
+
+void BasicGLPane::setSceneInteractionAllowed(bool enabled)
+{
+	disableSceneInteraction=!enabled;
 }
 
 unsigned int  BasicGLPane::selectionTest(wxPoint &p,bool &shouldRedraw)
@@ -210,8 +216,15 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 	};
 
 
-	if(selectionMode)
+	if(selectionMode )
 	{
+		if(disableSceneInteraction)
+		{
+			event.Skip();
+			return;
+		}
+
+
 		wxPoint p=event.GetPosition();
 		
 		unsigned int mouseFlags=0;
@@ -240,6 +253,7 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 				
 		int w, h;
 		GetClientSize(&w, &h);
+
 
 		currentScene.applyDevice((float)draggingStart.x/(float)w,
 					(float)draggingStart.y/(float)h,
@@ -371,9 +385,9 @@ void BasicGLPane::mouseDown(wxMouseEvent& event)
 
 	//Do not re-trigger if dragging or doing a scene update.
 	//This can cause a selection test to occur whilst
-	//a temp cam is activated in the scene,
+	//a temp cam is activated in the scene, or a binding refresh is underway,
 	//which is currently considered bad
-	if(!dragging && !applyingDevice && !selectionMode)
+	if(!dragging && !applyingDevice && !selectionMode && !disableSceneInteraction)
 	{
 		//Check to see if the user has clicked an object in the scene
 		bool redraw;

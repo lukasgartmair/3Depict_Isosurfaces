@@ -78,8 +78,10 @@ void ExportRngDialog::updateGrid(unsigned int index)
 	rangeData=(RangeFileFilter *)rngFilters[index];
 
 	gridDetails->BeginBatch();
-	gridDetails->DeleteCols(0,gridDetails->GetNumberCols());
-	gridDetails->DeleteRows(0,gridDetails->GetNumberRows());
+    if (gridDetails->GetNumberCols())
+        gridDetails->DeleteCols(0,gridDetails->GetNumberCols());
+    if (gridDetails->GetNumberRows())
+        gridDetails->DeleteRows(0,gridDetails->GetNumberRows());
 
 	gridDetails->AppendCols(3);
 	gridDetails->SetColLabelValue(0,wxTRANS("Param"));

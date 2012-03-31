@@ -3198,10 +3198,11 @@ bool MainWindowFrame::doSceneUpdate()
 	editRedoMenuItem->Enable(false);
 	gridFilterProperties->Enable(false);
 	comboStash->Enable(false);
-
+	
 	panelSpectra->limitInteraction();
 	panelSpectra->Refresh();
 
+	panelTop->setSceneInteractionAllowed(false);
 
 	if(!requireFirstUpdate)
 		textConsoleOut->Clear();	
@@ -3239,7 +3240,9 @@ bool MainWindowFrame::doSceneUpdate()
 	visControl.resetProgress();
 
 	//Restore the UI elements to their interactive state
+	panelTop->setSceneInteractionAllowed(true);
 	panelSpectra->limitInteraction(false);
+	
 	treeFilters->Enable(true);
 	refreshButton->Enable(true);
 	gridFilterProperties->Enable(true);

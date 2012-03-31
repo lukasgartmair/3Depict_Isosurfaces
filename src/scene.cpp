@@ -550,8 +550,8 @@ void Scene::clearObjs()
 
 void Scene::clearBindings()
 {
-	for(unsigned int ui=0; ui<selectionDevices.size(); ui++)
-		delete selectionDevices[ui];
+	//Note that the filter is responsible for cleaning the
+	// bindings. So, we just forget about it, without delete-ing
 	selectionDevices.clear();
 }
 

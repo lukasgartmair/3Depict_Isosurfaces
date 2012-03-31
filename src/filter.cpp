@@ -364,6 +364,8 @@ Filter::~Filter()
 
     for(unsigned int ui=0;ui<devices.size();ui++)
 	    delete devices[ui];
+
+    devices.clear();
 }
 
 void Filter::clearCache()

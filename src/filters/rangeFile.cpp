@@ -748,7 +748,8 @@ bool RangeFileFilter::setProperty(unsigned int set, unsigned int key,
 			//similarly the element is given by remainder 
 			const unsigned int NUM_ROWS=3;
 			unsigned int ionID=((key-1)-KEY_ENABLE_ALL_IONS)/NUM_ROWS;
-			ASSERT(key < NUM_ROWS*rng.getNumIons()+KEY_ENABLE_ALL_IONS);
+			ASSERT(ionID < rng.getNumIons());
+			ASSERT(key <=NUM_ROWS*rng.getNumIons()+KEY_ENABLE_ALL_IONS);
 			unsigned int prop = ((key-1)-KEY_ENABLE_ALL_IONS)-ionID*NUM_ROWS;
 
 			switch(prop)

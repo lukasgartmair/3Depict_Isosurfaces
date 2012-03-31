@@ -48,7 +48,6 @@ TODO List - worlds simplest bugtracking system
 	Outstanding bugs:
 		== Next release==
 		* File -> export image -> Height*=2, results in aspect ratio of output image being distorted
-		* Windows plot flickers (on some machines?)
 		* Ensure getdeps does not clash with fink/homebrew, so we don't stuff a user's machine
 			
 		== Eventually==
