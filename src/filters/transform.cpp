@@ -891,7 +891,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		progress.filterProgress=0;
 		progress.stepName=TRANS("Collate");
 		progress.maxStep=3;
-		if((*callback)(true))
+		if(!(*callback)(true))
 			return ERR_CALLBACK_FAIL;
 		//we have to cross the streams (I thought that was bad?) 
 		//  - Each dataset is no longer independant, and needs to
@@ -1644,17 +1644,30 @@ IonStreamData *synthDataPoints(unsigned int span[],unsigned int numPts);
 bool rotateTest();
 bool translateTest();
 bool scaleTest();
+bool shuffleTest();
+
+
+class MassCompare
+{
+	public:
+		inline bool operator()(const IonHit &h1,const IonHit &h2) const
+		{return h1.getMassToCharge()<h2.getMassToCharge();};
+};
 
 bool TransformFilter::runUnitTests()
 {
 	if(!rotateTest())
 		return false;
+
 	if(!translateTest())
 		return false;
 
 	if(!scaleTest())
 		return false;
-	
+
+	if(!shuffleTest())
+		return false;
+
 	return true;
 }
 
@@ -1920,6 +1933,83 @@ bool scaleTest()
 	volumeDelta=fabs(bc[1].volume()/cubeOfScale - bc[0].volume() );
 
 	TEST(volumeDelta < 100.0f*sqrt(std::numeric_limits<float>::epsilon()), "scaled volume test");
+
+	delete streamOut[0];
+	delete d;
+	return true;
+}
+
+bool shuffleTest() 
+{
+	//Simulate some data to send to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	IonStreamData *d;
+
+	RandNumGen rng;
+	rng.initTimer();
+
+	const unsigned int NUM_PTS=1000;
+
+	unsigned int span[]={ 
+			5, 7, 9
+			};	
+	d=synthDataPoints(span,NUM_PTS);
+	streamIn.push_back(d);
+
+	//Set up the filter itself
+	//---
+	TransformFilter *f=new TransformFilter;
+
+	bool needUp;
+	//Switch to shuffle mode
+	TEST(f->setProperty(0,KEY_MODE,
+			TRANS(TRANSFORM_MODE_STRING[MODE_VALUE_SHUFFLE]),needUp),"refresh error code");
+	//---
+
+
+	//OK, so now run the shuffle 
+	//Do the refresh
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
+	delete f;
+
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+	TEST(streamOut[0]->getNumBasicObjects() == d->data.size(),"Ion count invariance");
+
+	TEST(streamOut[0]->getNumBasicObjects() == d->data.size(),"Ion count invariance");
+
+	IonStreamData *outData=(IonStreamData*)streamOut[0];
+
+	//Check to see that the output masses each exist in the input,
+	//but are not in  the same sequence
+	//---
+	
+
+	bool sequenceDifferent=false;	
+	for(size_t ui=0;ui<d->data.size();ui++)
+	{
+		if(d->data[ui].getMassToCharge() == outData->data[ui].getMassToCharge())
+		{
+			sequenceDifferent=true;
+			break;
+		}
+	}
+	TEST(sequenceDifferent,
+		"Should be shuffled - Prob. of sequence being identical in both orig & shuffled cases is very low");
+	//Sort masses
+	MassCompare cmp;
+	std::sort(outData->data.begin(),outData->data.end(),cmp);
+	std::sort(d->data.begin(),d->data.end(),cmp);
+
+
+	for(size_t ui=0;ui<d->data.size();ui++)
+	{
+		TEST(d->data[ui].getMassToCharge() == outData->data[ui].getMassToCharge(),"Shuffle + Sort mass should be the same");
+	
+	}
+
+
 
 	delete streamOut[0];
 	delete d;
