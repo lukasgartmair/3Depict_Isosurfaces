@@ -462,8 +462,8 @@ class GreaterWithCallback
 	public:
 		//!Second argument is a "reduction" value to set the number of calls
 		//to the random functor before initiating a callback
-		GreaterWithCallback( bool (*ptr)(bool),unsigned int red)
-			{ callback=ptr; reduction=redMax=red;};
+		GreaterWithCallback( bool (*ptr)(bool),unsigned int red) : callback(ptr), redMax(red), reduction(red)
+	{};
 
 		bool operator()(const T &a, const T &b) 
 		{
@@ -493,8 +493,8 @@ class EqualWithCallback
 	public:
 		//!Second argument is a "reduction" value to set the number of calls
 		//to the random functor before initiating a callback
-		EqualWithCallback( bool (*ptr)(bool),unsigned int red)
-			{ callback=ptr; reduction=redMax=red;};
+		EqualWithCallback( bool (*ptr)(bool),unsigned int red) : callback(ptr), redMax(red), reduction(red)
+			{ };
 
 		bool operator()(const T &a, const T &b) 
 		{

@@ -22,7 +22,7 @@
 #define STASHDIALOG_H
 
 
-#include "viscontrol.h"
+#include "../viscontrol.h"
 #include <wx/listctrl.h>
 // end wxGlade
 

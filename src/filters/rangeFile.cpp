@@ -756,12 +756,13 @@ bool RangeFileFilter::setProperty(unsigned int set, unsigned int key,
 			{
 				case 0://Ion name
 				{
-					//only allow english alphabet, upper and lowercase
+					//only allow english alphabet, upper and lowercase, as well as 0->9
 					for(unsigned int ui=0;ui<value.size();ui++)
 					{
-						if( value[ui] < 'A'  || value[ui] > 'z' ||
-							 (value[ui] > 'Z' && value[ui] < 'a')) 
+
+						if(!(isalpha(value[ui]) || isdigit(value[ui])))
 							return false;
+
 					}
 					//TODO: At some point I should work out a 
 					//nice way of setting the short and long names.
@@ -1200,6 +1201,11 @@ unsigned int RangeFileFilter::getRefreshBlockMask() const
 unsigned int RangeFileFilter::getRefreshEmitMask() const
 {
 	return STREAM_TYPE_RANGE | STREAM_TYPE_IONS ;
+}
+
+unsigned int RangeFileFilter::getRefreshUseMask() const
+{
+	return STREAM_TYPE_IONS ;
 }
 
 void RangeFileFilter::setPropFromRegion(unsigned int method, unsigned int regionID, float newPos)

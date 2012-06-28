@@ -264,6 +264,100 @@ void FilterTree::clear()
 	filters.clear();
 }
 
+void FilterTree::getAccumulatedPropagationMaps(map<Filter*, size_t> &emitTypes, map<Filter*,size_t> &blockTypes) const
+{
+	//Build the  emit type map. This describes
+	//what possible types can be emitted at any point in the tree.
+	for(tree<Filter *>::iterator it=filters.begin_breadth_first();
+	it!=filters.end_breadth_first(); ++it)
+	{
+		//FIXME: HACK -- why does the BFS not terminate correctly?
+		if(!filters.is_valid(it))
+			break;
+
+		size_t curEmit;
+		//Root node is special, does not combine with the
+		//previous filter
+		if(!filters.depth(it))
+			curEmit=(*it)->getRefreshEmitMask();
+		else
+		{
+			//Normal child. We need to remove any types that
+			//are blocked (& (~blocked)), then add any types that are emitted
+			//(|)
+			curEmit=emitTypes[*(filters.parent(it))];
+			curEmit&=(~(*it)->getRefreshBlockMask() )& STREAMTYPE_MASK_ALL;
+			curEmit|=(*it)->getRefreshEmitMask();
+		}
+
+		ASSERT(curEmit < STREAMTYPE_MASK_ALL);
+		emitTypes.insert(make_pair(*it,curEmit));
+
+	}
+	
+
+
+	
+	//Build the accumulated block map;  this describes
+	//what types, if emitted, will NOT be propagated to the final output
+	//Nor affect any downstream filters
+	for(size_t ui=filters.max_depth()+1; ui; )
+	{
+		ui--;
+
+		for(tree<Filter * >::iterator it=filters.begin(); it!=filters.end(); ++it)
+		{
+			//Check to see if we are at the correct depth
+			if(filters.depth(it) != ui)
+				continue;
+
+
+			//Initially assume that everything is passed through
+			//filter
+			int blockMask=0x0;
+
+
+			if((*it)->haveCache())
+			{
+				//Loop over the children of this filter, grab their block masks
+				for(tree<Filter *>::sibling_iterator itJ=it.begin(); itJ!=it.end(); itJ++)
+				{
+
+					if((*itJ)->haveCache())
+					{
+						int curBlockMask;
+						curBlockMask=(*itJ)->getRefreshBlockMask();
+						blockMask= (blockMask & curBlockMask);
+
+					}
+					else
+					{
+						blockMask&=0;
+						//The only reason to keep looping is to
+						//alter the blockmask. If it is at any point zero,
+						//then the answer will be zero, due to the & operator.
+						break;
+					}
+
+				}
+
+				//OK, so we now know which filters the children will ALL block.
+				//Combine this with our block list for this filter, and we this will give ush
+				//the blocklist for this subtree section
+				blockMask|=(*it)->getRefreshBlockMask();
+			}
+			else
+				blockMask=0;
+
+			blockTypes.insert(make_pair(*it,blockMask));
+		}
+
+	}
+
+
+
+}
+
 
 void FilterTree::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propStarts) const
 {
@@ -290,91 +384,7 @@ void FilterTree::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propS
 
 		//Block and emit adjuncts for tree
 		map<Filter *, size_t> accumulatedEmitTypes,accumulatedBlockTypes;
-
-
-		//Build the accumulated emit type map. This describes
-		//what possible types can be emitted at any point in the tree.
-		for(tree<Filter *>::iterator it=filters.begin_breadth_first();
-		it!=filters.end_breadth_first(); ++it)
-		{
-			//FIXME: HACK -- why does the BFS not terminate correctly?
-			if(!filters.is_valid(it))
-				break;
-
-			size_t curEmit;
-			//Root node is special, does not combine with the
-			//previous filter
-			if(!filters.depth(it))
-				curEmit=(*it)->getRefreshEmitMask();
-			else
-			{
-				//Normal child. We need to remove any types that
-				//are blocked (& (~blocked)), then add any types that are emitted
-				//(|)
-				curEmit=accumulatedEmitTypes[*(filters.parent(it))];
-				curEmit&=(~(*it)->getRefreshBlockMask() )& STREAMTYPE_MASK_ALL;
-				curEmit|=(*it)->getRefreshEmitMask();
-			}
-
-			accumulatedEmitTypes.insert(make_pair(*it,curEmit));
-
-		}
-
-		//Build the accumulated block map;  this describes
-		//what types, if emitted, will NOT be propagated to the final output
-		//Nor affect any downstream filters
-		for(size_t ui=filters.max_depth()+1; ui; )
-		{
-			ui--;
-
-			for(tree<Filter * >::iterator it=filters.begin(); it!=filters.end(); ++it)
-			{
-				//Check to see if we are at the correct depth
-				if(filters.depth(it) != ui)
-					continue;
-
-
-				//Initially assume that everything is passed through
-				//filter
-				int blockMask=0x0;
-
-
-				if((*it)->haveCache())
-				{
-					//Loop over the children of this filter, grab their block masks
-					for(tree<Filter *>::sibling_iterator itJ=it.begin(); itJ!=it.end(); itJ++)
-					{
-
-						if((*itJ)->haveCache())
-						{
-							int curBlockMask;
-							curBlockMask=(*itJ)->getRefreshBlockMask();
-							blockMask= (blockMask & curBlockMask);
-
-						}
-						else
-						{
-							blockMask&=0;
-							//The only reason to keep looping is to
-							//alter the blockmask. If it is at any point zero,
-							//then the answer will be zero, due to the & operator.
-							break;
-						}
-
-					}
-
-					//OK, so we now know which filters the children will ALL block.
-					//Combine this with our block list for this filter, and we this will give ush
-					//the blocklist for this subtree section
-					blockMask|=(*it)->getRefreshBlockMask();
-				}
-				else
-					blockMask=0;
-
-				accumulatedBlockTypes.insert(make_pair(*it,blockMask));
-			}
-
-		}
+		getAccumulatedPropagationMaps(accumulatedEmitTypes,accumulatedBlockTypes);
 
 		vector<tree<Filter *>::iterator > seedFilts;
 
@@ -722,9 +732,6 @@ unsigned int FilterTree::refreshFilterTree(
 	//Pointer tracking list should be empty.
 	ASSERT(pointerTrackList.size() == 0);
 	ASSERT(inDataStack.size() ==0);
-
-	//Progress data should reflect number of filters
-	//ASSERT(curProg.totalProgress == numFilters());
 
 	//====Output scrubbing ===
 
@@ -1102,16 +1109,16 @@ void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> cu
 {
 	//Filter outputs should
 	//	- never be null pointers.
-	for(unsigned int ui=0; ui<curData.size(); ui++)
+	for(size_t ui=0; ui<curData.size(); ui++)
 	{
 		ASSERT(curData[ui]);
 	}
 
 	//Filter outputs should
 	//	- never contain duplicate pointers
-	for(unsigned int ui=0; ui<curData.size(); ui++)
+	for(size_t ui=0; ui<curData.size(); ui++)
 	{
-		for(unsigned int uj=ui+1; uj<curData.size(); uj++)
+		for(size_t uj=ui+1; uj<curData.size(); uj++)
 		{
 			ASSERT(curData[ui]!= curData[uj]);
 		}
@@ -1143,20 +1150,34 @@ void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> cu
 
 	//Filter outputs should
 	//	- Always have isCached set to 0 or 1.
-	for(unsigned int ui=0; ui<curData.size(); ui++)
+	//	- Filter should report that it has a cache, if it is emitting cached objects
+	//	- If caching is disabled, filter should not be caching objects
+	bool hasSomeCached=false;
+	for(size_t ui=0; ui<curData.size(); ui++)
 	{
 		ASSERT(curData[ui]->cached == 1 ||
-		curData[ui]->cached == 0);
+				curData[ui]->cached == 0);
+
+		if(curData[ui]->parent == refreshFilter)
+		{
+			if(!(refreshFilter->cacheEnabled()) )
+			{
+				ASSERT(curData[ui]->cached==0);
+			}
+			hasSomeCached|=curData[ui]->cached;
+		}
 	}
+
+	ASSERT(!(hasSomeCached == false && refreshFilter->haveCache()));
 
 	//Filter outputs for this filter should 
 	//	 -only be from those specified in filter emit mask
-	for(unsigned int ui=0; ui<curData.size(); ui++)
+	for(size_t ui=0; ui<curData.size(); ui++)
 	{
 		if(!curData[ui]->parent)
 		{
 			cerr << "Warning: orphan filter stream (FilterStreamData::parent == 0)." <<
-				"This must be set when creating new filters in the ::refresh function for the filter. " << endl;
+				"This must be set when creating new filter streams in the ::refresh function for the filter." << endl;
 			cerr << "Filter :"  << refreshFilter->getUserString() << "Stream Type: " << 
 				STREAM_NAMES[getBitNum(curData[ui]->getStreamType())] << endl;
 		}
@@ -1171,32 +1192,27 @@ void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> cu
 
 	//plot output streams should only have known types
 	//for various identfiers
-	for(unsigned int ui=0; ui<curData.size(); ui++)
+	for(size_t ui=0; ui<curData.size(); ui++)
 	{
 		if(curData[ui]->getStreamType() != STREAM_TYPE_PLOT)
 			continue;
 
-		PlotStreamData *p;
-		p =(PlotStreamData*)curData[ui];
+		const PlotStreamData *p;
+		p =(const PlotStreamData*)curData[ui];
 
-		//Must have valid trace style
-		ASSERT(p->plotType < PLOT_TRACE_ENDOFENUM);
-		//Must have valid error bar style
-		ASSERT(p->errDat.mode< PLOT_ERROR_ENDOFENUM);
-		//Must set the "index" for this plot -- required for 
-		ASSERT(p->index != (unsigned int)-1);
-		//Each region set must have valid IDs
-		ASSERT(p->regions.size() == p->regionID.size());
+#ifdef DEBUG
+		p->checkSelfConsistent();
+#endif
 	}
 	
 	//Voxel output streams should only have known types
-	for(unsigned int ui=0; ui<curData.size(); ui++)
+	for(size_t ui=0; ui<curData.size(); ui++)
 	{
 		if(curData[ui]->getStreamType() != STREAM_TYPE_VOXEL)
 			continue;
 
-		VoxelStreamData *p;
-		p =(VoxelStreamData*)curData[ui];
+		const VoxelStreamData *p;
+		p =(const VoxelStreamData*)curData[ui];
 
 		//Must have valid representation 
 		ASSERT(p->representationType< VOXEL_REPRESENT_END);

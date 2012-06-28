@@ -108,6 +108,11 @@ std::string Effect::getName() const
 	return EFFECT_NAMES[this->getType()];
 }
 
+BoxCropEffect::BoxCropEffect() : openGLIdStart(0), useCamCoordinates(false)
+{
+	effectType=EFFECT_BOX_CROP;
+}
+
 void BoxCropEffect::enable(unsigned int pass) const
 {
 
@@ -468,6 +473,11 @@ bool BoxCropEffect::readState(xmlNodePtr nodePtr)
 
 
 	return true;
+}
+AnaglyphEffect::AnaglyphEffect() : colourMode(ANAGLYPH_REDBLUE), eyeFlip(false),
+	oldCam(0),baseShift(0.01f)
+{
+	effectType=EFFECT_ANAGLYPH;
 }
 
 void AnaglyphEffect::enable(unsigned int passNumber) const

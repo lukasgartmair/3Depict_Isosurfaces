@@ -112,7 +112,7 @@ class BoxCropEffect : public Effect
 
 		void doClip(const Point3D &origin, const Point3D & normal,unsigned int glOffset) const;
 	public:
-		BoxCropEffect(){useCamCoordinates=false;effectType=EFFECT_BOX_CROP;openGLIdStart=0; }
+		BoxCropEffect();
 		virtual ~BoxCropEffect(){}; 
 
 		//!Enable the clipping plane. Values *must* be set before calling
@@ -157,7 +157,7 @@ class AnaglyphEffect : public Effect
 		float baseShift;
 
 	public:
-		AnaglyphEffect(){effectType=EFFECT_ANAGLYPH;colourMode=ANAGLYPH_REDBLUE;oldCam=0;baseShift=0.01f; eyeFlip=false;}
+		AnaglyphEffect();
 		~AnaglyphEffect(){}; 
 
 		//!Enable the clipping plane. Values *must* be set before calling

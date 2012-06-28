@@ -87,11 +87,8 @@ void K3DNode::dump(std::ostream &strm, unsigned int depth) const
 
 //K3D Tree
 //=============
-K3DTree::K3DTree() : maxDepth(0),root(0)
+K3DTree::K3DTree() : treeSize(0),maxDepth(0),root(0), callback(0),progress(0)
 {
-	treeSize=0;
-	progress=0;
-	callback=0;
 }
 
 

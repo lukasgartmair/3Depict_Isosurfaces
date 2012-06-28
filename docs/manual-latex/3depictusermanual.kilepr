@@ -3,7 +3,7 @@ def_graphic_ext=
 img_extIsRegExp=false
 img_extensions=.eps .jpg .jpeg .png .pdf .ps .fig .gif
 kileprversion=2
-kileversion=2.1 beta2
+kileversion=2.1.0
 lastDocument=manual.tex
 masterDocument=
 name=3Depict User Manual
@@ -16,12 +16,21 @@ src_extensions=.tex .ltx .latex .dtx .ins
 MakeIndex=
 QuickBuild=
 
+[document-settings,item:manual.tex]
+Bookmarks=349,882
+Encoding=UTF-8
+Highlighting=LaTeX
+Indentation Mode=
+Mode=LaTeX
+ReadWrite=true
+
 [item:figures/CoverImage.png]
 archive=true
 column=32609
 encoding=
 highlight=
 line=0
+mode=
 open=false
 order=-1
 
@@ -31,6 +40,7 @@ column=0
 encoding=
 highlight=
 line=0
+mode=
 open=false
 order=-1
 
@@ -40,6 +50,7 @@ column=6357024
 encoding=
 highlight=
 line=0
+mode=
 open=false
 order=-1
 
@@ -49,14 +60,20 @@ column=7798816
 encoding=
 highlight=
 line=0
+mode=
 open=false
 order=-1
 
 [item:manual.tex]
 archive=true
-column=11
+column=12
 encoding=UTF-8
 highlight=LaTeX
-line=40
+line=109
+mode=LaTeX
 open=true
 order=0
+
+[view-settings,view=0,item:manual.tex]
+CursorColumn=12
+CursorLine=109

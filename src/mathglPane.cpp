@@ -574,6 +574,7 @@ void MathGLPane::oneDMouseDownAction(bool leftDown,bool middleDown,
 			PlotRegion r;
 			thePlot->getRegion(plotId,regionId,r);
 
+			//TODO: Implement a more generic region handler?
 			ASSERT(thePlot->plotType(plotId) == PLOT_TYPE_ONED);
 
 			mglPoint mglDragStart = gr->CalcXYZ(draggingStart.x,draggingStart.y);
@@ -602,7 +603,6 @@ void MathGLPane::oneDMouseDownAction(bool leftDown,bool middleDown,
 
 }
 
-
 void MathGLPane::leftMouseDown(wxMouseEvent& event)
 {
 	if(!gr || !thePlot->getNumVisible())
@@ -622,9 +622,6 @@ void MathGLPane::leftMouseDown(wxMouseEvent& event)
 						event.GetPosition().x,
 						event.GetPosition().y);
 			break;
-		case PLOT_TYPE_TWOD:
-			break;
-		case PLOT_TYPE_MIXED:
 		case PLOT_TYPE_ENUM_END:
 			//Do nothing
 			break;
@@ -655,9 +652,6 @@ void MathGLPane::middleMouseDown(wxMouseEvent &event)
 						event.GetPosition().x,
 						event.GetPosition().y);
 			break;
-		case PLOT_TYPE_TWOD:
-			break;
-		case PLOT_TYPE_MIXED:
 		case PLOT_TYPE_ENUM_END:
 			//Do nothing
 			break;

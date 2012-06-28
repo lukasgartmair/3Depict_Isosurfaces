@@ -99,6 +99,9 @@ class IonInfoFilter : public Filter
 		//!Get the bitmask encoded list of filterstreams that this filter emits from ::refresh.
 		// This MUST always be consistent with ::refresh for filters current state.
 		unsigned int getRefreshEmitMask() const;
+		
+		//!Get the bitmask encoded list of filterstreams that this filter may use during ::refresh.
+		unsigned int getRefreshUseMask() const;
 
 #ifdef DEBUG
 		bool runUnitTests();

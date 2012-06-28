@@ -35,7 +35,7 @@ SpectrumPlotFilter::SpectrumPlotFilter()
 	maxPlot=150;
 	autoExtrema=true;	
 	binWidth=0.5;
-	plotType=0;
+	plotStyle=0;
 	logarithmic=1;
 
 	//Default to blue plot
@@ -55,7 +55,7 @@ Filter *SpectrumPlotFilter::cloneUncached() const
 	p->g=g;	
 	p->b=b;	
 	p->a=a;	
-	p->plotType=plotType;
+	p->plotStyle=plotStyle;
 	p->logarithmic = logarithmic;
 
 
@@ -207,12 +207,17 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 		delete d;
 		return SPECTRUM_BAD_ALLOC;
 	}
+
+	
 	d->r = r;
 	d->g = g;
 	d->b = b;
 	d->a = a;
+
 	d->logarithmic=logarithmic;
-	d->plotType = plotType;
+	d->plotStyle = plotStyle;
+	d->plotMode=PLOT_MODE_1D;
+
 	d->index=0;
 	d->parent=this;
 	d->dataLabel = getUserString();
@@ -295,6 +300,10 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 		d->xyData[ui].first = minPlot + ui*binWidth;
 		d->xyData[ui].second=0;
 	}	
+	//Compute the plot bounds
+	d->autoSetHardBounds();
+	//Limit them to 1.0 or greater (due to log)
+	d->hardMinY=std::min(1.0f,d->hardMaxY);
 
 
 	//Number of ions currently procesed
@@ -419,7 +428,7 @@ void SpectrumPlotFilter::getProperties(FilterProperties &propertyList) const
 	choices.push_back(make_pair((unsigned int)PLOT_TRACE_STEM,tmpStr));
 
 
-	tmpStr= choiceString(choices,plotType);
+	tmpStr= choiceString(choices,plotStyle);
 	s.push_back(make_pair(string(TRANS("Plot Type")),tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	keys.push_back(KEY_SPECTRUM_PLOTTYPE);
@@ -590,7 +599,7 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 			if(tmpPlotType >= PLOT_TRACE_ENDOFENUM)
 				return false;
 
-			plotType = tmpPlotType;
+			plotStyle = tmpPlotType;
 			needUpdate=true;	
 
 
@@ -605,7 +614,7 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 						PlotStreamData *p;
 						p =(PlotStreamData*)filterOutputs[ui];
 
-						p->plotType=plotType;
+						p->plotStyle=plotStyle;
 					}
 				}
 
@@ -696,7 +705,7 @@ bool SpectrumPlotFilter::writeState(std::ofstream &f,unsigned int format, unsign
 			
 			f << tabs(depth+1) << "<logarithmic value=\"" << logarithmic<< "\"/>" << endl;
 
-			f << tabs(depth+1) << "<plottype value=\"" << plotType<< "\"/>" << endl;
+			f << tabs(depth+1) << "<plottype value=\"" << plotStyle<< "\"/>" << endl;
 			
 			f << tabs(depth) << "</" << trueName() <<  ">" << endl;
 			break;
@@ -810,9 +819,9 @@ bool SpectrumPlotFilter::readState(xmlNodePtr &nodePtr, const std::string &state
 
 	//Retrieve plot type 
 	//====
-	if(!XMLGetNextElemAttrib(nodePtr,plotType,"plottype","value"))
+	if(!XMLGetNextElemAttrib(nodePtr,plotStyle,"plottype","value"))
 		return false;
-	if(plotType >= PLOT_TRACE_ENDOFENUM)
+	if(plotStyle >= PLOT_TRACE_ENDOFENUM)
 	       return false;	
 	//====
 
@@ -828,6 +837,11 @@ unsigned int SpectrumPlotFilter::getRefreshBlockMask() const
 unsigned int SpectrumPlotFilter::getRefreshEmitMask() const
 {
 	return STREAM_TYPE_PLOT;
+}
+
+unsigned int SpectrumPlotFilter::getRefreshUseMask() const
+{
+	return STREAM_TYPE_IONS;
 }
 
 #ifdef DEBUG

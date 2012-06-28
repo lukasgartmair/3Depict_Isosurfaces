@@ -1,3 +1,51 @@
+* 1 Jul, 2012  : 0.0.11 
+	Features:
+	- Filter tree is now scanned for common errors, with a clickable
+	  warning message for detected errors, e.g.:
+		- Filters connected that cannot have any effect
+		- Filters connected that may alter the outcome of 
+		  density dependant analyses, due to sampling.
+	- Spatial analysis now has "density filtering" mode.
+	- Bounding box has new draw modes "dimension" and "box only"
+	- User manual has been expanded, now provides more detail on filters,
+	  and specific examples for the External Program filter for multiple
+	  programming languages (Scilab/bash/python/C++).
+	
+	
+	User Visible Bugfixes/Changes:
+	- Clustering core mode in core-link algorithm has been fixed (Core dist > 0)
+		- Previously program would crash/generate nonsense results.
+	- Fixed voxels not showing if transparency set to zero in point cloud
+	  mode
+	- Multiple-autosave and resolution selection dialog usability improvements
+	- Fix Undo not working after deleting filters
+	- Recent files that do not exist are removed from recent files menu
+	- External Program option "Clear cache" now correctly updates after
+	  selection.
+	- Spatial analysis colour change for plot no long requires
+	  recomputation.
+	- Bulk distance > 0.5*Link distance now emits warning in cluster
+	  filter, previously was incorrectly set to > 1.0*Link distance.
+	- Tree no longer completely disables user interaction during refresh.
+	- Lines now have conical arrow heads where appropriate (eg
+	  annotation).
+	- Package state restores now correctly restore working directory
+	  information, fixing load failures for some external resources.
+	- Fix cluster cropping/nmin not loading correctly from state files.
+	- Fix bug where ion downsampler might not propagate range data
+	- Cluster filter restores ions better when dragging/dropping between
+	  different range file parents
+	- Fix ion export not working correctly, due to change in viscontrol
+	  behaviour for 0.0.10
+
+	Technical Bugfixes/Features:
+	- Improvements to dependency fetch script "getDeps" for Mac OSX Lion.
+	- Several small memory leaks fixed
+	- Speed improvements by removing initialiser on ionhit data class
+	- More unit test cases for filters
+	- More strict emit/use/block patterns for spatial analysis, bound box
+	  and external program
+
 * 1 Apr, 2011  : 0.0.10
 	Features:
 	- Improved aborting behaviour for filters

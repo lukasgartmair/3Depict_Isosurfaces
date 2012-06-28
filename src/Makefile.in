@@ -49,52 +49,63 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am__3Depict_SOURCES_DIST = filtertree.cpp mathglPane.cpp plot.cpp \
-	prefDialog.cpp configFile.cpp filter.cpp APTClasses.cpp \
-	resDialog.cpp select.cpp drawables.cpp effect.cpp textures.cpp \
-	rdf.cpp cameras.cpp isoSurface.cpp K3DTree.cpp K3DTree-mk2.cpp \
-	xmlHelper.cpp cropPanel.cpp colourmap.cpp pngread.c \
-	mathfuncs.cpp wxcomponents.cpp wxcommon.cpp filtertree.h \
-	mathglPane.h plot.h prefDialog.h configFile.h filter.h \
-	APTClasses.h resDialog.h select.h drawables.h effect.h \
-	textures.h rdf.h translation.h winconsole.h cameras.h \
+am__3Depict_SOURCES_DIST = filtertreeAnalyse.cpp filtertree.cpp \
+	mathglPane.cpp plot.cpp configFile.cpp filter.cpp \
+	APTClasses.cpp select.cpp drawables.cpp effect.cpp \
+	textures.cpp rdf.cpp cameras.cpp isoSurface.cpp K3DTree.cpp \
+	K3DTree-mk2.cpp xmlHelper.cpp cropPanel.cpp colourmap.cpp \
+	pngread.c mathfuncs.cpp wxcomponents.cpp wxcommon.cpp \
+	filtertreeAnalyse.h filtertree.h mathglPane.h plot.h \
+	configFile.h filter.h APTClasses.h select.h drawables.h \
+	effect.h textures.h rdf.h translation.h winconsole.h cameras.h \
 	isoSurface.h K3DTree.h K3DTree-mk2.h xmlHelper.h cropPanel.h \
 	colourmap.h pngread.h mathfuncs.h wxcomponents.h wxcommon.h \
 	voxels.h endianTest.h assertion.h commonConstants.h art.h \
-	tree.hh 3Depict.xpm filters/allFilter.cpp filters/dataLoad.cpp \
-	filters/ionDownsample.cpp filters/rangeFile.cpp \
-	filters/voxelise.cpp filters/spectrumPlot.cpp \
-	filters/transform.cpp filters/externalProgram.cpp \
-	filters/ionClip.cpp filters/ionColour.cpp \
-	filters/boundingBox.cpp filters/compositionProfile.cpp \
-	filters/spatialAnalysis.cpp filters/clusterAnalysis.cpp \
-	filters/ionInfo.cpp filters/annotation.cpp filters/allFilter.h \
-	filters/dataLoad.h filters/ionDownsample.h filters/rangeFile.h \
-	filters/voxelise.h filters/spectrumPlot.h filters/transform.h \
+	tree.hh 3Depict.xpm dialogs/ExportPos.cpp \
+	dialogs/ExportRngDialog.cpp dialogs/prefDialog.cpp \
+	dialogs/resolutionDialog.cpp dialogs/StashDialog.cpp \
+	dialogs/autosaveDialog.cpp dialogs/filterErrorDialog.cpp \
+	dialogs/ExportPos.h dialogs/ExportRngDialog.h \
+	dialogs/prefDialog.h dialogs/StashDialog.h \
+	dialogs/resolutionDialog.h dialogs/autosaveDialog.h \
+	dialogs/filterErrorDialog.h filters/allFilter.cpp \
+	filters/dataLoad.cpp filters/ionDownsample.cpp \
+	filters/rangeFile.cpp filters/voxelise.cpp \
+	filters/spectrumPlot.cpp filters/transform.cpp \
+	filters/externalProgram.cpp filters/ionClip.cpp \
+	filters/ionColour.cpp filters/boundingBox.cpp \
+	filters/compositionProfile.cpp filters/spatialAnalysis.cpp \
+	filters/clusterAnalysis.cpp filters/ionInfo.cpp \
+	filters/annotation.cpp filters/allFilter.h filters/dataLoad.h \
+	filters/ionDownsample.h filters/rangeFile.h filters/voxelise.h \
+	filters/spectrumPlot.h filters/transform.h \
 	filters/externalProgram.h filters/ionClip.h \
 	filters/ionColour.h filters/boundingBox.h \
 	filters/compositionProfile.h filters/spatialAnalysis.h \
 	filters/clusterAnalysis.h filters/ionInfo.h \
 	filters/annotation.h testing.cpp 3Depict.cpp basics.cpp \
-	ExportPos.cpp ExportRngDialog.cpp glPane.cpp scene.cpp \
-	StashDialog.cpp viscontrol.cpp testing.h 3Depict.h basics.h \
-	ExportPos.h ExportRngDialog.h glPane.h scene.h StashDialog.h \
-	viscontrol.h winconsole.cpp 3Depict.rc
-am__objects_1 = 3Depict-filtertree.$(OBJEXT) \
-	3Depict-mathglPane.$(OBJEXT) 3Depict-plot.$(OBJEXT) \
-	3Depict-prefDialog.$(OBJEXT) 3Depict-configFile.$(OBJEXT) \
+	glPane.cpp scene.cpp viscontrol.cpp testing.h 3Depict.h \
+	basics.h glPane.h scene.h viscontrol.h winconsole.cpp \
+	3Depict.rc
+am__objects_1 = 3Depict-filtertreeAnalyse.$(OBJEXT) \
+	3Depict-filtertree.$(OBJEXT) 3Depict-mathglPane.$(OBJEXT) \
+	3Depict-plot.$(OBJEXT) 3Depict-configFile.$(OBJEXT) \
 	3Depict-filter.$(OBJEXT) 3Depict-APTClasses.$(OBJEXT) \
-	3Depict-resDialog.$(OBJEXT) 3Depict-select.$(OBJEXT) \
-	3Depict-drawables.$(OBJEXT) 3Depict-effect.$(OBJEXT) \
-	3Depict-textures.$(OBJEXT) 3Depict-rdf.$(OBJEXT) \
-	3Depict-cameras.$(OBJEXT) 3Depict-isoSurface.$(OBJEXT) \
-	3Depict-K3DTree.$(OBJEXT) 3Depict-K3DTree-mk2.$(OBJEXT) \
-	3Depict-xmlHelper.$(OBJEXT) 3Depict-cropPanel.$(OBJEXT) \
-	3Depict-colourmap.$(OBJEXT) 3Depict-pngread.$(OBJEXT) \
-	3Depict-mathfuncs.$(OBJEXT) 3Depict-wxcomponents.$(OBJEXT) \
-	3Depict-wxcommon.$(OBJEXT)
+	3Depict-select.$(OBJEXT) 3Depict-drawables.$(OBJEXT) \
+	3Depict-effect.$(OBJEXT) 3Depict-textures.$(OBJEXT) \
+	3Depict-rdf.$(OBJEXT) 3Depict-cameras.$(OBJEXT) \
+	3Depict-isoSurface.$(OBJEXT) 3Depict-K3DTree.$(OBJEXT) \
+	3Depict-K3DTree-mk2.$(OBJEXT) 3Depict-xmlHelper.$(OBJEXT) \
+	3Depict-cropPanel.$(OBJEXT) 3Depict-colourmap.$(OBJEXT) \
+	3Depict-pngread.$(OBJEXT) 3Depict-mathfuncs.$(OBJEXT) \
+	3Depict-wxcomponents.$(OBJEXT) 3Depict-wxcommon.$(OBJEXT)
 am__objects_2 =
-am__objects_3 = 3Depict-allFilter.$(OBJEXT) 3Depict-dataLoad.$(OBJEXT) \
+am__objects_3 = 3Depict-ExportPos.$(OBJEXT) \
+	3Depict-ExportRngDialog.$(OBJEXT) 3Depict-prefDialog.$(OBJEXT) \
+	3Depict-resolutionDialog.$(OBJEXT) \
+	3Depict-StashDialog.$(OBJEXT) 3Depict-autosaveDialog.$(OBJEXT) \
+	3Depict-filterErrorDialog.$(OBJEXT)
+am__objects_4 = 3Depict-allFilter.$(OBJEXT) 3Depict-dataLoad.$(OBJEXT) \
 	3Depict-ionDownsample.$(OBJEXT) 3Depict-rangeFile.$(OBJEXT) \
 	3Depict-voxelise.$(OBJEXT) 3Depict-spectrumPlot.$(OBJEXT) \
 	3Depict-transform.$(OBJEXT) 3Depict-externalProgram.$(OBJEXT) \
@@ -104,15 +115,14 @@ am__objects_3 = 3Depict-allFilter.$(OBJEXT) 3Depict-dataLoad.$(OBJEXT) \
 	3Depict-spatialAnalysis.$(OBJEXT) \
 	3Depict-clusterAnalysis.$(OBJEXT) 3Depict-ionInfo.$(OBJEXT) \
 	3Depict-annotation.$(OBJEXT)
-am__objects_4 = 3Depict-testing.$(OBJEXT) 3Depict-3Depict.$(OBJEXT) \
-	3Depict-basics.$(OBJEXT) 3Depict-ExportPos.$(OBJEXT) \
-	3Depict-ExportRngDialog.$(OBJEXT) 3Depict-glPane.$(OBJEXT) \
-	3Depict-scene.$(OBJEXT) 3Depict-StashDialog.$(OBJEXT) \
-	3Depict-viscontrol.$(OBJEXT)
-am__objects_5 = $(am__objects_1) $(am__objects_2) $(am__objects_3) \
-	$(am__objects_2) $(am__objects_4) $(am__objects_2)
-@HAVE_WINDRES_FALSE@am_3Depict_OBJECTS = $(am__objects_5)
-@HAVE_WINDRES_TRUE@am_3Depict_OBJECTS = $(am__objects_5) \
+am__objects_5 = 3Depict-testing.$(OBJEXT) 3Depict-3Depict.$(OBJEXT) \
+	3Depict-basics.$(OBJEXT) 3Depict-glPane.$(OBJEXT) \
+	3Depict-scene.$(OBJEXT) 3Depict-viscontrol.$(OBJEXT)
+am__objects_6 = $(am__objects_1) $(am__objects_2) $(am__objects_3) \
+	$(am__objects_2) $(am__objects_4) $(am__objects_2) \
+	$(am__objects_5) $(am__objects_2)
+@HAVE_WINDRES_FALSE@am_3Depict_OBJECTS = $(am__objects_6)
+@HAVE_WINDRES_TRUE@am_3Depict_OBJECTS = $(am__objects_6) \
 @HAVE_WINDRES_TRUE@	3Depict-winconsole.$(OBJEXT) \
 @HAVE_WINDRES_TRUE@	3Depict.$(OBJEXT)
 3Depict_OBJECTS = $(am_3Depict_OBJECTS)
@@ -303,17 +313,26 @@ FILTER_HEADER_FILES = filters/allFilter.h filters/dataLoad.h filters/ionDownsamp
 		filters/clusterAnalysis.h filters/ionInfo.h \
 		filters/annotation.h
 
+DIALOG_SOURCE_FILES = dialogs/ExportPos.cpp  dialogs/ExportRngDialog.cpp dialogs/prefDialog.cpp  \
+		dialogs/resolutionDialog.cpp  dialogs/StashDialog.cpp \
+		dialogs/autosaveDialog.cpp dialogs/filterErrorDialog.cpp
+
+DIALOG_HEADER_FILES = dialogs/ExportPos.h dialogs/ExportRngDialog.h dialogs/prefDialog.h \
+		dialogs/StashDialog.h dialogs/resolutionDialog.h \
+		dialogs/autosaveDialog.h dialogs/filterErrorDialog.h
+
 
 #These source files should have heirachical couplings only; no cross-coupling
-BASE_SOURCE_FILES = filtertree.cpp mathglPane.cpp plot.cpp prefDialog.cpp configFile.cpp filter.cpp \
-		     APTClasses.cpp resDialog.cpp select.cpp \
+BASE_SOURCE_FILES = filtertreeAnalyse.cpp filtertree.cpp mathglPane.cpp \
+	  	     plot.cpp configFile.cpp filter.cpp \
+		     APTClasses.cpp select.cpp \
 		     drawables.cpp effect.cpp textures.cpp rdf.cpp \
 		     cameras.cpp isoSurface.cpp K3DTree.cpp K3DTree-mk2.cpp\
 			 xmlHelper.cpp cropPanel.cpp colourmap.cpp \
 			pngread.c mathfuncs.cpp wxcomponents.cpp wxcommon.cpp
 
-BASE_HEADER_FILES = filtertree.h mathglPane.h plot.h prefDialog.h configFile.h filter.h \
-		     APTClasses.h resDialog.h select.h \
+BASE_HEADER_FILES = filtertreeAnalyse.h filtertree.h mathglPane.h plot.h \
+		     configFile.h filter.h APTClasses.h select.h \
 		     drawables.h effect.h textures.h rdf.h translation.h winconsole.h \
 		     cameras.h isoSurface.h K3DTree.h K3DTree-mk2.h\
 			xmlHelper.h cropPanel.h colourmap.h \
@@ -322,14 +341,14 @@ BASE_HEADER_FILES = filtertree.h mathglPane.h plot.h prefDialog.h configFile.h f
 
 
 #These files are inter-dependant to some extent (mostly viscontrol)
-CROSS_DEP_SOURCE_FILES = testing.cpp 3Depict.cpp basics.cpp ExportPos.cpp ExportRngDialog.cpp glPane.cpp \
-		       scene.cpp StashDialog.cpp viscontrol.cpp 
+CROSS_DEP_SOURCE_FILES = testing.cpp 3Depict.cpp basics.cpp glPane.cpp \
+		       scene.cpp viscontrol.cpp 
 
-CROSS_DEP_HEADER_FILES = testing.h 3Depict.h basics.h ExportPos.h ExportRngDialog.h glPane.h \
-			scene.h StashDialog.h viscontrol.h 
+CROSS_DEP_HEADER_FILES = testing.h 3Depict.h basics.h glPane.h \
+			scene.h viscontrol.h 
 
-SOURCE_FILES = $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(FILTER_FILES) $(FILTER_HEADER_FILES) \
-	      $(CROSS_DEP_SOURCE_FILES) $(CROSS_DEP_HEADER_FILES)
+SOURCE_FILES = $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(DIALOG_SOURCE_FILES) $(DIALOG_HEADER_FILES) $(FILTER_FILES) $(FILTER_HEADER_FILES) \
+	      $(CROSS_DEP_SOURCE_FILES) $(CROSS_DEP_HEADER_FILES) 
 
 @HAVE_WINDRES_FALSE@3Depict_SOURCES = $(SOURCE_FILES)
 
@@ -340,7 +359,7 @@ SOURCE_FILES = $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(FILTER_FILES) $(FILTE
 EXTRA_DIST = textures/ tex-source/ glade-skeleton/ myAppIcon.ico
 
 #Precompiled headers
-@USE_PRECOMPILED_HEADERS_TRUE@BUILT_SOURCES = mathglPane.h.gch plot.h.gch prefDialog.h.gch configFile.h.gch filter.h.gch \
+@USE_PRECOMPILED_HEADERS_TRUE@BUILT_SOURCES = mathglPane.h.gch plot.h.gch configFile.h.gch filter.h.gch \
 @USE_PRECOMPILED_HEADERS_TRUE@		     APTClasses.h.gch resDialog.h.gch select.h.gch \
 @USE_PRECOMPILED_HEADERS_TRUE@		     drawables.h.gch effect.h.gch textures.h.gch rdf.h.gch \
 @USE_PRECOMPILED_HEADERS_TRUE@		     cameras.h.gch isoSurface.h.gch K3DTree.h.gch K3DTree-mk2.h.gch\
@@ -439,6 +458,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-StashDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-allFilter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-annotation.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-autosaveDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-basics.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-boundingBox.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-cameras.Po@am__quote@
@@ -452,7 +472,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-effect.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-externalProgram.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-filter.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-filterErrorDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-filtertree.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-filtertreeAnalyse.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-glPane.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ionClip.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ionColour.Po@am__quote@
@@ -466,7 +488,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-prefDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-rangeFile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-rdf.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-resDialog.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-resolutionDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-scene.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-select.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-spatialAnalysis.Po@am__quote@
@@ -523,6 +545,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXXCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
+3Depict-filtertreeAnalyse.o: filtertreeAnalyse.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-filtertreeAnalyse.o -MD -MP -MF $(DEPDIR)/3Depict-filtertreeAnalyse.Tpo -c -o 3Depict-filtertreeAnalyse.o `test -f 'filtertreeAnalyse.cpp' || echo '$(srcdir)/'`filtertreeAnalyse.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-filtertreeAnalyse.Tpo $(DEPDIR)/3Depict-filtertreeAnalyse.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filtertreeAnalyse.cpp' object='3Depict-filtertreeAnalyse.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-filtertreeAnalyse.o `test -f 'filtertreeAnalyse.cpp' || echo '$(srcdir)/'`filtertreeAnalyse.cpp
+
+3Depict-filtertreeAnalyse.obj: filtertreeAnalyse.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-filtertreeAnalyse.obj -MD -MP -MF $(DEPDIR)/3Depict-filtertreeAnalyse.Tpo -c -o 3Depict-filtertreeAnalyse.obj `if test -f 'filtertreeAnalyse.cpp'; then $(CYGPATH_W) 'filtertreeAnalyse.cpp'; else $(CYGPATH_W) '$(srcdir)/filtertreeAnalyse.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-filtertreeAnalyse.Tpo $(DEPDIR)/3Depict-filtertreeAnalyse.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='filtertreeAnalyse.cpp' object='3Depict-filtertreeAnalyse.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-filtertreeAnalyse.obj `if test -f 'filtertreeAnalyse.cpp'; then $(CYGPATH_W) 'filtertreeAnalyse.cpp'; else $(CYGPATH_W) '$(srcdir)/filtertreeAnalyse.cpp'; fi`
+
 3Depict-filtertree.o: filtertree.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-filtertree.o -MD -MP -MF $(DEPDIR)/3Depict-filtertree.Tpo -c -o 3Depict-filtertree.o `test -f 'filtertree.cpp' || echo '$(srcdir)/'`filtertree.cpp
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-filtertree.Tpo $(DEPDIR)/3Depict-filtertree.Po
@@ -565,20 +601,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-plot.obj `if test -f 'plot.cpp'; then $(CYGPATH_W) 'plot.cpp'; else $(CYGPATH_W) '$(srcdir)/plot.cpp'; fi`
 
-3Depict-prefDialog.o: prefDialog.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-prefDialog.o -MD -MP -MF $(DEPDIR)/3Depict-prefDialog.Tpo -c -o 3Depict-prefDialog.o `test -f 'prefDialog.cpp' || echo '$(srcdir)/'`prefDialog.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-prefDialog.Tpo $(DEPDIR)/3Depict-prefDialog.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='prefDialog.cpp' object='3Depict-prefDialog.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-prefDialog.o `test -f 'prefDialog.cpp' || echo '$(srcdir)/'`prefDialog.cpp
-
-3Depict-prefDialog.obj: prefDialog.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-prefDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-prefDialog.Tpo -c -o 3Depict-prefDialog.obj `if test -f 'prefDialog.cpp'; then $(CYGPATH_W) 'prefDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/prefDialog.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-prefDialog.Tpo $(DEPDIR)/3Depict-prefDialog.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='prefDialog.cpp' object='3Depict-prefDialog.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-prefDialog.obj `if test -f 'prefDialog.cpp'; then $(CYGPATH_W) 'prefDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/prefDialog.cpp'; fi`
-
 3Depict-configFile.o: configFile.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-configFile.o -MD -MP -MF $(DEPDIR)/3Depict-configFile.Tpo -c -o 3Depict-configFile.o `test -f 'configFile.cpp' || echo '$(srcdir)/'`configFile.cpp
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-configFile.Tpo $(DEPDIR)/3Depict-configFile.Po
@@ -620,20 +642,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='APTClasses.cpp' object='3Depict-APTClasses.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-APTClasses.obj `if test -f 'APTClasses.cpp'; then $(CYGPATH_W) 'APTClasses.cpp'; else $(CYGPATH_W) '$(srcdir)/APTClasses.cpp'; fi`
-
-3Depict-resDialog.o: resDialog.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-resDialog.o -MD -MP -MF $(DEPDIR)/3Depict-resDialog.Tpo -c -o 3Depict-resDialog.o `test -f 'resDialog.cpp' || echo '$(srcdir)/'`resDialog.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-resDialog.Tpo $(DEPDIR)/3Depict-resDialog.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='resDialog.cpp' object='3Depict-resDialog.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-resDialog.o `test -f 'resDialog.cpp' || echo '$(srcdir)/'`resDialog.cpp
-
-3Depict-resDialog.obj: resDialog.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-resDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-resDialog.Tpo -c -o 3Depict-resDialog.obj `if test -f 'resDialog.cpp'; then $(CYGPATH_W) 'resDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/resDialog.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-resDialog.Tpo $(DEPDIR)/3Depict-resDialog.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='resDialog.cpp' object='3Depict-resDialog.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-resDialog.obj `if test -f 'resDialog.cpp'; then $(CYGPATH_W) 'resDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/resDialog.cpp'; fi`
 
 3Depict-select.o: select.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-select.o -MD -MP -MF $(DEPDIR)/3Depict-select.Tpo -c -o 3Depict-select.o `test -f 'select.cpp' || echo '$(srcdir)/'`select.cpp
@@ -844,6 +852,104 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='wxcommon.cpp' object='3Depict-wxcommon.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-wxcommon.obj `if test -f 'wxcommon.cpp'; then $(CYGPATH_W) 'wxcommon.cpp'; else $(CYGPATH_W) '$(srcdir)/wxcommon.cpp'; fi`
+
+3Depict-ExportPos.o: dialogs/ExportPos.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ExportPos.o -MD -MP -MF $(DEPDIR)/3Depict-ExportPos.Tpo -c -o 3Depict-ExportPos.o `test -f 'dialogs/ExportPos.cpp' || echo '$(srcdir)/'`dialogs/ExportPos.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ExportPos.Tpo $(DEPDIR)/3Depict-ExportPos.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/ExportPos.cpp' object='3Depict-ExportPos.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ExportPos.o `test -f 'dialogs/ExportPos.cpp' || echo '$(srcdir)/'`dialogs/ExportPos.cpp
+
+3Depict-ExportPos.obj: dialogs/ExportPos.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ExportPos.obj -MD -MP -MF $(DEPDIR)/3Depict-ExportPos.Tpo -c -o 3Depict-ExportPos.obj `if test -f 'dialogs/ExportPos.cpp'; then $(CYGPATH_W) 'dialogs/ExportPos.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/ExportPos.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ExportPos.Tpo $(DEPDIR)/3Depict-ExportPos.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/ExportPos.cpp' object='3Depict-ExportPos.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ExportPos.obj `if test -f 'dialogs/ExportPos.cpp'; then $(CYGPATH_W) 'dialogs/ExportPos.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/ExportPos.cpp'; fi`
+
+3Depict-ExportRngDialog.o: dialogs/ExportRngDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ExportRngDialog.o -MD -MP -MF $(DEPDIR)/3Depict-ExportRngDialog.Tpo -c -o 3Depict-ExportRngDialog.o `test -f 'dialogs/ExportRngDialog.cpp' || echo '$(srcdir)/'`dialogs/ExportRngDialog.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ExportRngDialog.Tpo $(DEPDIR)/3Depict-ExportRngDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/ExportRngDialog.cpp' object='3Depict-ExportRngDialog.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ExportRngDialog.o `test -f 'dialogs/ExportRngDialog.cpp' || echo '$(srcdir)/'`dialogs/ExportRngDialog.cpp
+
+3Depict-ExportRngDialog.obj: dialogs/ExportRngDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ExportRngDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-ExportRngDialog.Tpo -c -o 3Depict-ExportRngDialog.obj `if test -f 'dialogs/ExportRngDialog.cpp'; then $(CYGPATH_W) 'dialogs/ExportRngDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/ExportRngDialog.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ExportRngDialog.Tpo $(DEPDIR)/3Depict-ExportRngDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/ExportRngDialog.cpp' object='3Depict-ExportRngDialog.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ExportRngDialog.obj `if test -f 'dialogs/ExportRngDialog.cpp'; then $(CYGPATH_W) 'dialogs/ExportRngDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/ExportRngDialog.cpp'; fi`
+
+3Depict-prefDialog.o: dialogs/prefDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-prefDialog.o -MD -MP -MF $(DEPDIR)/3Depict-prefDialog.Tpo -c -o 3Depict-prefDialog.o `test -f 'dialogs/prefDialog.cpp' || echo '$(srcdir)/'`dialogs/prefDialog.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-prefDialog.Tpo $(DEPDIR)/3Depict-prefDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/prefDialog.cpp' object='3Depict-prefDialog.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-prefDialog.o `test -f 'dialogs/prefDialog.cpp' || echo '$(srcdir)/'`dialogs/prefDialog.cpp
+
+3Depict-prefDialog.obj: dialogs/prefDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-prefDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-prefDialog.Tpo -c -o 3Depict-prefDialog.obj `if test -f 'dialogs/prefDialog.cpp'; then $(CYGPATH_W) 'dialogs/prefDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/prefDialog.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-prefDialog.Tpo $(DEPDIR)/3Depict-prefDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/prefDialog.cpp' object='3Depict-prefDialog.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-prefDialog.obj `if test -f 'dialogs/prefDialog.cpp'; then $(CYGPATH_W) 'dialogs/prefDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/prefDialog.cpp'; fi`
+
+3Depict-resolutionDialog.o: dialogs/resolutionDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-resolutionDialog.o -MD -MP -MF $(DEPDIR)/3Depict-resolutionDialog.Tpo -c -o 3Depict-resolutionDialog.o `test -f 'dialogs/resolutionDialog.cpp' || echo '$(srcdir)/'`dialogs/resolutionDialog.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-resolutionDialog.Tpo $(DEPDIR)/3Depict-resolutionDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/resolutionDialog.cpp' object='3Depict-resolutionDialog.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-resolutionDialog.o `test -f 'dialogs/resolutionDialog.cpp' || echo '$(srcdir)/'`dialogs/resolutionDialog.cpp
+
+3Depict-resolutionDialog.obj: dialogs/resolutionDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-resolutionDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-resolutionDialog.Tpo -c -o 3Depict-resolutionDialog.obj `if test -f 'dialogs/resolutionDialog.cpp'; then $(CYGPATH_W) 'dialogs/resolutionDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/resolutionDialog.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-resolutionDialog.Tpo $(DEPDIR)/3Depict-resolutionDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/resolutionDialog.cpp' object='3Depict-resolutionDialog.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-resolutionDialog.obj `if test -f 'dialogs/resolutionDialog.cpp'; then $(CYGPATH_W) 'dialogs/resolutionDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/resolutionDialog.cpp'; fi`
+
+3Depict-StashDialog.o: dialogs/StashDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-StashDialog.o -MD -MP -MF $(DEPDIR)/3Depict-StashDialog.Tpo -c -o 3Depict-StashDialog.o `test -f 'dialogs/StashDialog.cpp' || echo '$(srcdir)/'`dialogs/StashDialog.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-StashDialog.Tpo $(DEPDIR)/3Depict-StashDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/StashDialog.cpp' object='3Depict-StashDialog.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-StashDialog.o `test -f 'dialogs/StashDialog.cpp' || echo '$(srcdir)/'`dialogs/StashDialog.cpp
+
+3Depict-StashDialog.obj: dialogs/StashDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-StashDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-StashDialog.Tpo -c -o 3Depict-StashDialog.obj `if test -f 'dialogs/StashDialog.cpp'; then $(CYGPATH_W) 'dialogs/StashDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/StashDialog.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-StashDialog.Tpo $(DEPDIR)/3Depict-StashDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/StashDialog.cpp' object='3Depict-StashDialog.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-StashDialog.obj `if test -f 'dialogs/StashDialog.cpp'; then $(CYGPATH_W) 'dialogs/StashDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/StashDialog.cpp'; fi`
+
+3Depict-autosaveDialog.o: dialogs/autosaveDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-autosaveDialog.o -MD -MP -MF $(DEPDIR)/3Depict-autosaveDialog.Tpo -c -o 3Depict-autosaveDialog.o `test -f 'dialogs/autosaveDialog.cpp' || echo '$(srcdir)/'`dialogs/autosaveDialog.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-autosaveDialog.Tpo $(DEPDIR)/3Depict-autosaveDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/autosaveDialog.cpp' object='3Depict-autosaveDialog.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-autosaveDialog.o `test -f 'dialogs/autosaveDialog.cpp' || echo '$(srcdir)/'`dialogs/autosaveDialog.cpp
+
+3Depict-autosaveDialog.obj: dialogs/autosaveDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-autosaveDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-autosaveDialog.Tpo -c -o 3Depict-autosaveDialog.obj `if test -f 'dialogs/autosaveDialog.cpp'; then $(CYGPATH_W) 'dialogs/autosaveDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/autosaveDialog.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-autosaveDialog.Tpo $(DEPDIR)/3Depict-autosaveDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/autosaveDialog.cpp' object='3Depict-autosaveDialog.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-autosaveDialog.obj `if test -f 'dialogs/autosaveDialog.cpp'; then $(CYGPATH_W) 'dialogs/autosaveDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/autosaveDialog.cpp'; fi`
+
+3Depict-filterErrorDialog.o: dialogs/filterErrorDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-filterErrorDialog.o -MD -MP -MF $(DEPDIR)/3Depict-filterErrorDialog.Tpo -c -o 3Depict-filterErrorDialog.o `test -f 'dialogs/filterErrorDialog.cpp' || echo '$(srcdir)/'`dialogs/filterErrorDialog.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-filterErrorDialog.Tpo $(DEPDIR)/3Depict-filterErrorDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/filterErrorDialog.cpp' object='3Depict-filterErrorDialog.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-filterErrorDialog.o `test -f 'dialogs/filterErrorDialog.cpp' || echo '$(srcdir)/'`dialogs/filterErrorDialog.cpp
+
+3Depict-filterErrorDialog.obj: dialogs/filterErrorDialog.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-filterErrorDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-filterErrorDialog.Tpo -c -o 3Depict-filterErrorDialog.obj `if test -f 'dialogs/filterErrorDialog.cpp'; then $(CYGPATH_W) 'dialogs/filterErrorDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/filterErrorDialog.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-filterErrorDialog.Tpo $(DEPDIR)/3Depict-filterErrorDialog.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='dialogs/filterErrorDialog.cpp' object='3Depict-filterErrorDialog.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-filterErrorDialog.obj `if test -f 'dialogs/filterErrorDialog.cpp'; then $(CYGPATH_W) 'dialogs/filterErrorDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/dialogs/filterErrorDialog.cpp'; fi`
 
 3Depict-allFilter.o: filters/allFilter.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-allFilter.o -MD -MP -MF $(DEPDIR)/3Depict-allFilter.Tpo -c -o 3Depict-allFilter.o `test -f 'filters/allFilter.cpp' || echo '$(srcdir)/'`filters/allFilter.cpp
@@ -1111,34 +1217,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-basics.obj `if test -f 'basics.cpp'; then $(CYGPATH_W) 'basics.cpp'; else $(CYGPATH_W) '$(srcdir)/basics.cpp'; fi`
 
-3Depict-ExportPos.o: ExportPos.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ExportPos.o -MD -MP -MF $(DEPDIR)/3Depict-ExportPos.Tpo -c -o 3Depict-ExportPos.o `test -f 'ExportPos.cpp' || echo '$(srcdir)/'`ExportPos.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ExportPos.Tpo $(DEPDIR)/3Depict-ExportPos.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ExportPos.cpp' object='3Depict-ExportPos.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ExportPos.o `test -f 'ExportPos.cpp' || echo '$(srcdir)/'`ExportPos.cpp
-
-3Depict-ExportPos.obj: ExportPos.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ExportPos.obj -MD -MP -MF $(DEPDIR)/3Depict-ExportPos.Tpo -c -o 3Depict-ExportPos.obj `if test -f 'ExportPos.cpp'; then $(CYGPATH_W) 'ExportPos.cpp'; else $(CYGPATH_W) '$(srcdir)/ExportPos.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ExportPos.Tpo $(DEPDIR)/3Depict-ExportPos.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ExportPos.cpp' object='3Depict-ExportPos.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ExportPos.obj `if test -f 'ExportPos.cpp'; then $(CYGPATH_W) 'ExportPos.cpp'; else $(CYGPATH_W) '$(srcdir)/ExportPos.cpp'; fi`
-
-3Depict-ExportRngDialog.o: ExportRngDialog.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ExportRngDialog.o -MD -MP -MF $(DEPDIR)/3Depict-ExportRngDialog.Tpo -c -o 3Depict-ExportRngDialog.o `test -f 'ExportRngDialog.cpp' || echo '$(srcdir)/'`ExportRngDialog.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ExportRngDialog.Tpo $(DEPDIR)/3Depict-ExportRngDialog.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ExportRngDialog.cpp' object='3Depict-ExportRngDialog.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ExportRngDialog.o `test -f 'ExportRngDialog.cpp' || echo '$(srcdir)/'`ExportRngDialog.cpp
-
-3Depict-ExportRngDialog.obj: ExportRngDialog.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ExportRngDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-ExportRngDialog.Tpo -c -o 3Depict-ExportRngDialog.obj `if test -f 'ExportRngDialog.cpp'; then $(CYGPATH_W) 'ExportRngDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/ExportRngDialog.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ExportRngDialog.Tpo $(DEPDIR)/3Depict-ExportRngDialog.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='ExportRngDialog.cpp' object='3Depict-ExportRngDialog.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ExportRngDialog.obj `if test -f 'ExportRngDialog.cpp'; then $(CYGPATH_W) 'ExportRngDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/ExportRngDialog.cpp'; fi`
-
 3Depict-glPane.o: glPane.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-glPane.o -MD -MP -MF $(DEPDIR)/3Depict-glPane.Tpo -c -o 3Depict-glPane.o `test -f 'glPane.cpp' || echo '$(srcdir)/'`glPane.cpp
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-glPane.Tpo $(DEPDIR)/3Depict-glPane.Po
@@ -1166,20 +1244,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='scene.cpp' object='3Depict-scene.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-scene.obj `if test -f 'scene.cpp'; then $(CYGPATH_W) 'scene.cpp'; else $(CYGPATH_W) '$(srcdir)/scene.cpp'; fi`
-
-3Depict-StashDialog.o: StashDialog.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-StashDialog.o -MD -MP -MF $(DEPDIR)/3Depict-StashDialog.Tpo -c -o 3Depict-StashDialog.o `test -f 'StashDialog.cpp' || echo '$(srcdir)/'`StashDialog.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-StashDialog.Tpo $(DEPDIR)/3Depict-StashDialog.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='StashDialog.cpp' object='3Depict-StashDialog.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-StashDialog.o `test -f 'StashDialog.cpp' || echo '$(srcdir)/'`StashDialog.cpp
-
-3Depict-StashDialog.obj: StashDialog.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-StashDialog.obj -MD -MP -MF $(DEPDIR)/3Depict-StashDialog.Tpo -c -o 3Depict-StashDialog.obj `if test -f 'StashDialog.cpp'; then $(CYGPATH_W) 'StashDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/StashDialog.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-StashDialog.Tpo $(DEPDIR)/3Depict-StashDialog.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='StashDialog.cpp' object='3Depict-StashDialog.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-StashDialog.obj `if test -f 'StashDialog.cpp'; then $(CYGPATH_W) 'StashDialog.cpp'; else $(CYGPATH_W) '$(srcdir)/StashDialog.cpp'; fi`
 
 3Depict-viscontrol.o: viscontrol.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-viscontrol.o -MD -MP -MF $(DEPDIR)/3Depict-viscontrol.Tpo -c -o 3Depict-viscontrol.o `test -f 'viscontrol.cpp' || echo '$(srcdir)/'`viscontrol.cpp

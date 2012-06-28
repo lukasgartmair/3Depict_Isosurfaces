@@ -48,7 +48,7 @@ const char *DTD_NAME="threeDepict-state.dtd";
 //Program name
 const char *PROGRAM_NAME = "3Depict";
 //Program version
-const char *PROGRAM_VERSION = "0.0.10";
+const char *PROGRAM_VERSION = "0.0.11";
 //Path to font for Default FTGL  font
 const char *FONT_FILE= "FreeSans.ttf";
 
@@ -921,10 +921,6 @@ void BoundCube::expand(const BoundCube &b)
 	if(!b.isValid())
 		return;
 
-	//If self not valid, ensure that it will be after this run
-	//if(!isValid())
-	//	setInverseLimits();
-
 	for(unsigned int ui=0; ui<3; ui++)
 	{
 		if(b.bounds[ui][0] < bounds[ui][0])
@@ -944,7 +940,6 @@ void BoundCube::expand(const BoundCube &b)
 void BoundCube::expand(const Point3D &p) 
 {
 	//If self not valid, ensure that it will be after this run
-	//ASSERT(isValid())
 	for(unsigned int ui=0; ui<3; ui++)
 	{
 		//Check lower bound is lower to new pt
@@ -960,7 +955,6 @@ void BoundCube::expand(const Point3D &p)
 void BoundCube::expand(float f) 
 {
 	//If self not valid, ensure that it will be after this run
-	//ASSERT(isValid())
 	for(unsigned int ui=0; ui<3; ui++)
 	{
 		//Check lower bound is lower to new pt

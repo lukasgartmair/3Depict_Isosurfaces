@@ -18,7 +18,7 @@
 
 #ifndef APTCLASSES_H
 #define APTCLASSES_H
-//#include "datastructs.h"
+
 #include "endianTest.h"
 #include "mathfuncs.h"
 #include "commonConstants.h"
@@ -77,6 +77,9 @@ void appendPos(const vector<IonHit> &points, const char *name);
 //!Set the bounds from an array of ion hits
 BoundCube getIonDataLimits(const vector<IonHit> &p);//
 
+//!Get the sum of all Point3Ds in an ion vector
+void getPointSum(const std::vector<IonHit> &points,Point3D &centroid);
+
 //Range file strucutres
 //=========
 
@@ -129,7 +132,7 @@ class IonHit
 		IonHit();
 		//copy constructor
 		IonHit(const IonHit &);
-		IonHit(Point3D p, float massToCharge);
+		IonHit(const Point3D &p, float massToCharge);
 
 		void setHit(float *arr) { pos.setValueArr(arr); massToCharge=arr[3];};
 		void setMassToCharge(float newMassToCharge);

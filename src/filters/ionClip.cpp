@@ -73,16 +73,13 @@ std::string primitiveStringFromID(unsigned int id)
 	return string(TRANS(PRIMITIVE_NAMES[id]));
 }
 
-IonClipFilter::IonClipFilter()
+IonClipFilter::IonClipFilter() : primitiveType(PRIMITIVE_PLANE),
+	invertedClip(false),showPrimitive(true), lockAxisMag(false)
 {
 	COMPILE_ASSERT(ARRAYSIZE(PRIMITIVE_NAMES) == PRIMITIVE_END);
 
-	primitiveType=PRIMITIVE_PLANE;
 	vectorParams.push_back(Point3D(0.0,0.0,0.0));
 	vectorParams.push_back(Point3D(0,1.0,0.0));
-	invertedClip=false;
-	showPrimitive=true;
-	lockAxisMag=false;
 };
 
 Filter *IonClipFilter::cloneUncached() const
@@ -200,6 +197,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 				DrawVector *dV  = new DrawVector;
 				dV->setOrigin(vectorParams[0]);
 				dV->setVector(vectorParams[1]*drawScale);
+				dV->wantsLight=true;
 				drawData->drawables.push_back(dV);
 				
 				//Set up selection "device" for user interaction
@@ -1243,6 +1241,11 @@ unsigned int IonClipFilter::getRefreshEmitMask() const
 		return STREAM_TYPE_IONS | STREAM_TYPE_DRAW;
 	else
 		return  STREAM_TYPE_IONS ;
+}
+
+unsigned int IonClipFilter::getRefreshUseMask() const
+{
+	return  STREAM_TYPE_IONS;
 }
 
 void IonClipFilter::setPropFromBinding(const SelectionBinding &b)

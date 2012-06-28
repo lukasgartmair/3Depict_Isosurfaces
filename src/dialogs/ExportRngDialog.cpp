@@ -17,12 +17,13 @@
 */
 
 #include "ExportRngDialog.h"
-#include "wxcommon.h"
-#include "translation.h"
+#include "../wxcommon.h"
+#include "../translation.h"
+
+
+#include "../filters/rangeFile.h"
 
 #include <fstream>
-
-#include "filters/rangeFile.h"
 // begin wxGlade: ::extracode
 
 // end wxGlade
@@ -78,10 +79,10 @@ void ExportRngDialog::updateGrid(unsigned int index)
 	rangeData=(RangeFileFilter *)rngFilters[index];
 
 	gridDetails->BeginBatch();
-    if (gridDetails->GetNumberCols())
-        gridDetails->DeleteCols(0,gridDetails->GetNumberCols());
-    if (gridDetails->GetNumberRows())
-        gridDetails->DeleteRows(0,gridDetails->GetNumberRows());
+    	if (gridDetails->GetNumberCols())
+        	gridDetails->DeleteCols(0,gridDetails->GetNumberCols());
+    	if (gridDetails->GetNumberRows())
+        	gridDetails->DeleteRows(0,gridDetails->GetNumberRows());
 
 	gridDetails->AppendCols(3);
 	gridDetails->SetColLabelValue(0,wxTRANS("Param"));
@@ -166,7 +167,7 @@ void ExportRngDialog::OnSave(wxCommandEvent &event)
 		errString=TRANS("Unable to save. Check output destination can be written to.");
 		
 		wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
-						,wxT("Save error"),wxOK|wxICON_ERROR);
+						,wxTRANS("Save error"),wxOK|wxICON_ERROR);
 		wxD->ShowModal();
 		wxD->Destroy();
 		return;

@@ -91,36 +91,6 @@ enum {
 	VOXEL_BOUNDS_INVALID_ERR
 };
 
-/*
-template<class T> class TRIPLET
-{
-	public:
-		T x,y,z;
-		//Equality operator
-		TRIPLET operator=(const TRIPLET<T> &t){ x=t.x; y=t.y; z=t.z; return *this;};
-		//used for sorting; exact definition defined only internally
-		bool operator<(const TRIPLET<T> &t) const;
-		//Equality
-		bool operator==(const TRIPLET<T> &t) const { return t.x==x && t.y==y && t.z==z;};
-};
-
-inline std::ostream& operator<<(std::ostream &stream, const TRIPLET &pt)
-{
-	stream << "(" << pt.x << "," << pt.y << "," << pt.z << ")";
-	return stream;
-}
-*/
-
-//Convenient C++ tricks
-template<class T>
-void push_sorted (std::list<T> & storage, T item)
-{
-	storage.insert(std::lower_bound(storage.begin(), storage.end(), item),item);
-}
-
-
-
-
 #ifdef _OPENMP
 //Auto-detect the openMP iterator type.
 #if ( __GNUC__ > 4 && __GNUC_MINOR__ > 3 )
@@ -175,6 +145,11 @@ template<class T> class Voxels
 		void getIndex(size_t &x, size_t &y,
 				size_t &z, const Point3D &p) const;
 		
+		//!Retrieve the XYZ voxel location associated with a given position,
+		// including upper borders
+		void getIndexWithUpper(size_t &x, size_t &y,
+				size_t &z, const Point3D &p) const;
+		
 		//!Get the position associated with an XYZ voxel
 		Point3D getPoint(size_t x, 
 				size_t y, size_t z) const;
@@ -182,19 +157,6 @@ template<class T> class Voxels
 		inline T getData(size_t x, size_t y, size_t z) const;
 		//!Retrieve value of the nth voxel
 		inline T getData(size_t i) const { return voxels[i];}
-		//!Retrieve the value of the nth voxel
-		/* No guarantees are made about the ordering of the voxel, however each voxel will be obtained uniquely
-		 * by its ith index
-		 */
-		//const T &getDataRef(size_t i) const { return voxels[i];};
-		//!Returns underlying pointer --  UNSUPPORTED FUNCTION -- USE AT YOUR PERIL
-		/* No guarantees are made about world not exploding
-		 * Function use may cause operator harm! Do not use 
-		 * unless you know what you are doing... even then its not really a good idea. 
-		 * Just a nasty hack I needed one day..
-		 */
-		//const T *getDataPtr() const { return voxels;};
-
 		//Return a padded version of the data. Valid pads are BOUND_*
 		T getPaddedData(long long x, long long y, long long z, 
 						unsigned int padMode) const;
@@ -356,11 +318,6 @@ template<class T> class Voxels
 		void binarise(Voxels<T> &result,const T &thresh, const T &onThresh, 
 				const T &offThresh) const;
 	
-		//!Calculate the moravec-harris eigenvalues for feature detection
-		/* Computes the eigenvalues of the moravec-harris detector
-		 * See Harris, C. & Stephens, M. A combined corner and edge detector Alvey vision conference, 1998, 15, 50
-		 */	
-		void moravecHarrisFeatures(Voxels<float> &eigA, Voxels<float> &eigB,Voxels<float> &eigC ) const;
 
 		//!Empty the data
 		/*Remove the data from the voxel set
@@ -454,7 +411,7 @@ void sumVoxels(const Voxels<T> &src, U &counter)
 	{
 		for(size_t uj=0; uj<ny; uj++)	
 		{
-			for(size_t uk=0; uk<nz; uk++)	
+			for(size_t uk=0; uk<nz; uk++)
 				counter+=src.getData(ui,uj,uk);
 		}
 	}
@@ -1046,7 +1003,6 @@ size_t Voxels<T>::init(size_t nX, size_t nY,
 	binCount[1]=nY;
 	binCount[2]=nZ;
 
-	//voxels.clear();
 	typedef size_t ull;
 	ull binCountMax;
        
@@ -1626,21 +1582,6 @@ T Voxels<T>::getPaddedData(long long x, long long y, long long z, unsigned int p
 
 	ASSERT(false);
 }
-
-/*
-template<class T>
-const T &Voxels<T>::getDataRef(size_t x, size_t y, size_t z) const
-{
-	typedef size_t ull;
-	ASSERT(x < binCount[0] && y < binCount[1] && z < binCount[2]);
-	ull off;//byte offset
-
-	//Typecast everything to at least 64 bit uints.
-	off=(ull)z*(ull)binCount[1]*(ull)binCount[0];
-	off+=(ull)y*(ull)binCount[0] + (ull)x;
-	return	voxels[off]; 
-}
-*/
 
 template<class T>
 void Voxels<T>::setGaussianKernelCube(float stdDev, float bound, size_t sideLen)
@@ -2307,11 +2248,6 @@ int Voxels<T>::countPoints( const std::vector<Point3D> &points, bool noWrap, boo
 	return 0;
 }
 
-/*
-template<class T>
-int Voxels<T>::countPoints( const std::vector<IonHit> &points, bool noWrap, bool doErase)
-*/
-
 template<class T>
 void Voxels<T>::calculateDensity()
 {
@@ -2343,14 +2279,33 @@ template<class T>
 void Voxels<T>::getIndex(size_t &x, size_t &y,
 	       			size_t &z, const Point3D &p) const
 {
-	//ASSERT(p[0] >=0 && p[1] >=0 && p[2] >=0);
-
 
 	ASSERT(p[0] >=minBound[0] && p[1] >=minBound[1] && p[2] >=minBound[2] &&
 		   p[0] <=maxBound[0] && p[1] <=maxBound[1] && p[2] <=maxBound[2]);
 	x=(size_t)((p[0]-minBound[0])/(maxBound[0]-minBound[0])*(float)binCount[0]);
 	y=(size_t)((p[1]-minBound[1])/(maxBound[1]-minBound[1])*(float)binCount[1]);
 	z=(size_t)((p[2]-minBound[2])/(maxBound[2]-minBound[2])*(float)binCount[2]);
+}
+
+template<class T>
+void Voxels<T>::getIndexWithUpper(size_t &x, size_t &y,
+	       			size_t &z, const Point3D &p) const
+{
+	//Get the data index as per normal
+	getIndex(x,y,z,p);
+
+	//but, as a special case, if the index is the same as our bincount, check
+	//to see if it is positioned on an edge
+	if(x==binCount[0] &&  
+		fabs(p[0] -maxBound[0]) < sqrt(std::numeric_limits<float>::epsilon()))
+		x--;
+	if(y==binCount[1] &&  
+		fabs(p[1] -maxBound[1]) < sqrt(std::numeric_limits<float>::epsilon()))
+		y--;
+	if(z==binCount[2] &&  
+		fabs(p[2] -maxBound[2]) < sqrt(std::numeric_limits<float>::epsilon()))
+		z--;
+
 }
 
 template<class T>

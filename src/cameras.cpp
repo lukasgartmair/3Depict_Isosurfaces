@@ -57,9 +57,9 @@ enum
 
 
 
-Camera::Camera() : origin(0.0f,0.0f,0.0f), viewDirection(0.0f,0.0f,-1.0f), upDirection(0.0f,0.0f,1.0f)
+Camera::Camera() : lock(false),origin(0.0f,0.0f,0.0f), viewDirection(0.0f,0.0f,-1.0f), upDirection(0.0f,0.0f,1.0f)
 {
-	lock=false;
+	
 }
 
 Camera::~Camera()
@@ -165,19 +165,15 @@ void Camera::pivot(float lrRad, float udRad)
 
 //=====
 
-CameraLookAt::CameraLookAt() 
+CameraLookAt::CameraLookAt()  : target(Point3D(0,0,0)),fovAngle(90.0f),
+	nearPlane(1.0f), frustumDistortion(0.0f)
 {
-	target=Point3D(0.0f,0.0f,0.0f);
 	origin=Point3D(0.0f,0.0f,1.0f);
 	viewDirection=Point3D(0.0f,0.0f,-1.0f);
 	upDirection=Point3D(0.0f,1.0f,0.0f);
+
 	typeNum=CAM_LOOKAT;
 	projectionMode=PROJECTION_MODE_PERSPECTIVE;
-	fovAngle=90.0f;
-	nearPlane=1.0f;
-	frustumDistortion=0.0f;
-
-	orthoScale=1.0f;
 }
 
 Camera *CameraLookAt::clone() const
@@ -226,9 +222,15 @@ void CameraLookAt::doPerspCalcs(float aspectRatio, const BoundCube &bc,bool load
 	if(loadIdentity)
 		glLoadIdentity();
 
+	//As the far plane is dynamically computed, similarly 
+	//bring the near plane to a constant factor of the far plane
+	// that way, when the far plane comes in, so should the near plane
+	// this factor is only somewhat arbitrary, as it is based upon the
+	// number of significant figures in a 32 bit float
+	const float NEAR_PLANE_FACTOR=1.0f/10000.0f; 
 	
-	farPlane = 1.5*bc.getMaxDistanceToBox(origin);
-	gluPerspective(fovAngle/2.0,aspectRatio,nearPlane,farPlane);
+	farPlane = 1.5f*bc.getMaxDistanceToBox(origin);
+	gluPerspective(fovAngle/2.0,aspectRatio,farPlane*NEAR_PLANE_FACTOR,farPlane);
 	glMatrixMode(GL_MODELVIEW);
 
 	glTranslatef(origin[0],origin[1],origin[2]);

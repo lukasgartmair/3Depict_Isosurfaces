@@ -3,6 +3,18 @@
 
 #include "../filter.h"
 #include "../translation.h"
+
+enum
+{
+	KEY_IONDOWNSAMPLE_FRACTION=1,
+	KEY_IONDOWNSAMPLE_FIXEDOUT,
+	KEY_IONDOWNSAMPLE_COUNT,
+	KEY_IONDOWNSAMPLE_PERSPECIES,
+	KEY_IONDOWNSAMPLE_ENABLE,
+	//Dynamic area for this filter class. May validly use any index after this value
+	KEY_IONDOWNSAMPLE_DYNAMIC, 
+};
+
 //!Random picker filter
 class IonDownsampleFilter : public Filter
 {
@@ -75,6 +87,9 @@ class IonDownsampleFilter : public Filter
 
 		//!Get the stream types that will be generated during ::refresh	
 		unsigned int getRefreshEmitMask() const;	
+		
+		//!Get the stream types that will be possibly used during ::refresh	
+		unsigned int getRefreshUseMask() const;	
 		
 #ifdef DEBUG
 		//Fire off the unit tests for this class. returns false if *any* test fails

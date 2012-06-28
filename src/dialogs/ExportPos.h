@@ -31,7 +31,7 @@
 
 // end wxGlade
 
-#include "viscontrol.h"
+#include "../viscontrol.h"
 
 
 class ExportPosDialog: public wxDialog {

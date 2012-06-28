@@ -20,8 +20,8 @@
 
 #include "prefDialog.h"
 
-#include "filters/allFilter.h"
-#include "translation.h"
+#include "../filters/allFilter.h"
+#include "../translation.h"
 
 #include <wx/colordlg.h>
 
@@ -60,7 +60,7 @@ enum
 PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
     wxDialog(parent, id, title, pos, size, style)
 {
-	SetTitle(wxTRANS("PReferences"));
+	SetTitle(wxTRANS("Preferences"));
     // begin wxGlade: prefDialog::prefDialog
 	notePrefPanels = new wxNotebook(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0);
     notePrefPanels_pane_3 = new wxPanel(notePrefPanels, wxID_ANY);
@@ -87,7 +87,7 @@ PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wx
 	chkRawData = new wxCheckBox(panelStartup, ID_START_CHECK_RAWDATA, wxTRANS("Raw Data Panel"));
 	chkPlotlist = new wxCheckBox(panelStartup, ID_START_CHECK_PLOTLIST, wxTRANS("Plot List"));
 #ifndef DISABLE_ONLINE_UPDATE
-	checkAllowOnlineUpdate = new wxCheckBox(panelStartup, wxID_ANY, _("Periodically notify about available updates"));
+	checkAllowOnlineUpdate = new wxCheckBox(panelStartup, wxID_ANY, wxTRANS("Periodically notify about available updates"));
 #endif
 	lblMoveSpeed = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, wxTRANS("Move Rate"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
 	labelSlowCamMoveRate = new wxStaticText(notePrefPanels_pane_3,wxID_ANY, wxTRANS("(slow)"));
@@ -547,6 +547,10 @@ void PrefDialog::set_properties()
 #endif
     sliderCamMoveRate->SetToolTip(wxTRANS("Camera translation, orbit and swivel rates. "));
     sliderCamZoomRate->SetToolTip(wxTRANS("Camera zooming rate."));
+
+    filterResetDefaultFilter->SetToolTip(wxTRANS("Reset the filter initial values back to program defaults"));
+    filterBtnResetAllFilters->SetToolTip(wxTRANS("Reset all filter initial values back to program defaults"));
+    
     // end wxGlade
 }
 

@@ -49,17 +49,10 @@ function setMacDeps {
 	#Dependency ID, URL and name
 	DEPIDS=( 0)
 	DEPNAMES=( mathgl)
-	DEPURLS=( http://sourceforge.net/projects/mathgl/files/mathgl/mathgl%201.11.2/mathgl-1.11.2.tar.gz)
+	DEPURLS=( http://sourceforge.net/projects/mathgl/files/mathgl/mathgl%201.11.2/mathgl-1.11.2.tar.gz/download)
 	DEPFILENAMES=( mathgl-1.11.2.tar.gz)
 	DEPMDSUM=( acd33e68911d9506f60d769dce23f95e)
 	
-	
-	ACTIVE_GCC_PORT=`port select --list gcc|grep \(active\)`
-	if [ $? -ne 0 ] ; then
-		echo "macports was not successful in finding the current gcc version"
-		exit 1
-	fi
-	ACTIVE_GCC_PORT=${ACTIVE_GCC_PORT% \(active\)}
 }
 
 function installMacPorts {
@@ -87,7 +80,7 @@ function installMacPorts {
 		fi
 
 		# use installer to install macports to /opt/local
-		sudo installer -pkg /Volumes/MacPorts-2.0.3/MacPorts-2.0.3.pkg -target /opt/local/
+		sudo installer -pkg /Volumes/MacPorts-2.0.3/MacPorts-2.0.3.pkg -target /
 		hdiutil detach /Volumes/MacPorts-2.0.3/
 
 		echo "sourcing .profile after macports installation"
@@ -145,15 +138,16 @@ function detectProxy()
 
 function parseArgs()
 {
-	if [ $# -ne 2 ] ; then
-		#User did not specify a proxy as argument - try to detect
-		detectProxy
+	if [ $# -gt 1 ] ; then
+		echo "usage : getDeps [proxyserver]"
+		exit 1
 	elif [ $# -eq 1 ] ; then
 		export http_proxy=$1
 		echo "using $1 as the proxy server"
 	else
-		echo "usage : getDeps [proxyserver]"
-		exit 1
+		#User did not specify a proxy as argument - try to detect
+		echo "detecting proxy..."
+		detectProxy
 	fi
 }
 
@@ -181,9 +175,20 @@ function testCompiler()
 
 function handleMacDistro()
 {
+
+	#Ensure fink/homebrew are not installed
+	for i in fink homebrew
+	do
+		if [ x"`which $i`" != x"" ] ; then
+			echo "$i was detected on your system - getDeps assumes macports is in use. Either install deps manually using fink, or use macports..."
+			exit 1
+		fi
+	done
+
+
 	# install deps except mathgl
-	echo "installing 3Depict dependencies…"
-	sudo port install wget gcc46 libpng freetype ftgl wxWidgets-devel dylibbundler qhull gsl +universal
+	echo "installing 3Depict dependencies..."
+	sudo port install wget libpng freetype ftgl wxWidgets-devel dylibbundler qhull gsl  cmake libtool pkgconfig
 	if [ $? -ne 0 ] ; then
 		echo "macports was not successful in getting the dependencies"
 		exit 1
@@ -451,15 +456,12 @@ function prepBuildDir()
 
 	sleep 2
 
-	echo "Re-arranging build directory"
-	#FTGL has a tilde in the filename, but not the download, move it.
-	mv "ftgl-2.1.3~rc5" "ftgl-2.1.3-rc5"
 
 }
 
 #-----------Entry point------------
 OS_NAME=`uname`
-parseArgs
+parseArgs $*
 
 #Each platform needs to be initialised in a different way
 case $OS_NAME in
@@ -613,6 +615,10 @@ do
 			;;
 
 		ftgl)
+			echo "Re-arranging build directory"
+			#FTGL has a tilde in the filename, but not the download, move it.
+			mv "ftgl-2.1.3~rc5" "ftgl-2.1.3-rc5"
+
 			# Configure ftgl
 			./configure CXXFLAGS="-fpermissive"
 
@@ -646,6 +652,9 @@ do
 				PNGDIR=/opt/local
 				PNGLIBS=" CXXFLAGS=-I$PNGDIR/include LDFLAGS=-L$PNGDIR/lib "
 				echo $PNGLIBS
+				pwd
+				patch mgl/mgl_eps.cpp < ../../sources/mgl_eps.patch 
+				patch mgl/mgl_export.cpp < ../../sources/mgl_export.patch 
 			fi
 			./configure --disable-gsl $PNGLIBS
 

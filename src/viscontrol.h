@@ -38,6 +38,7 @@ class VisController;
 #include "scene.h"
 
 #include "filtertree.h"
+#include "filtertreeAnalyse.h"
 #include "plot.h"
 
 const unsigned int MAX_UNDO_SIZE=10;
@@ -79,6 +80,9 @@ class VisController
 		//--- Data storage ----
 		//!Primary data storage for filter tree
 		FilterTree filterTree;
+	
+		//!Analysis results for last filter tree refresh
+		FilterTreeAnalyse fta;
 	
 		//!Undo filter tree stack 
 		std::deque<FilterTree> undoFilterStack,redoFilterStack;
@@ -137,6 +141,9 @@ class VisController
 		// the wxTree control
 		std::vector<const Filter *> persistentFilters;
 
+		//Working directory for filter tree file operations
+		std::string workingDir;
+
 	public:
 		VisController();
 		~VisController();
@@ -189,7 +196,11 @@ class VisController
 
 		//!Duplicate a branch of the tree to a new position. Do not copy cache,
 		bool copyFilter(size_t toCopy, size_t newParent,bool copyToRoot=false) ;
-		
+
+		//TODO: Deprecate me - filter information should not be leaking like this!
+		//Get the ID of the filter from its actual pointer
+		size_t getIdByFilter(const Filter* f) const;
+
 		const Filter* getFilterById(size_t filterId) const; 
 
 		//!Return all of a given type of filter from the filter tree
@@ -202,6 +213,9 @@ class VisController
 		//!Make the filters safe for the end user, assuming the filter tree could have had
 		// its data initialised from anywhere
 		void stripHazardousContents() { filterTree.stripHazardousContents();};
+
+		//!Get the analysis results for the last refresh
+		void getAnalysisResults(vector<FILTERTREE_ERR> &res) { fta.getAnalysisResults(res);}
 
 		//!Return the number of filters currently in the main tree
 		size_t numFilters() const { return filterTree.size();};
@@ -291,6 +305,14 @@ class VisController
 		//!Ensure visible
 		void ensureSceneVisible(unsigned int direction);
 
+	
+
+		//!Return the current working directory for when loading/saving state file contents
+		std::string getWorkDir() const { return workingDir;};
+		
+		//!Set current working dir used when saving state files
+		void setWorkDir(const std::string &wd) { workingDir=wd;};
+
 		
 		//!Save the viscontrol state: writes an XML file containing the viscontrol state
 		bool saveState(const char *filename, std::map<string,string> &fileMapping,
@@ -299,8 +321,8 @@ class VisController
 		//!Save the viscontrol "package":this  writes an XML file containing the viscontrol state, altering the output of the filters to obtain the files it needs 
 		bool savePackage(const char *filename) const;
 
-		//!Load the viscontrol state.	
-		bool loadState(const char *filename, std::ostream &f,bool merge=false);	
+		//!Load the viscontrol state, optionally merging this tree with the currently loaded tree. Also, as an option, we can bypass updating any UI data, for debug purposes	
+		bool loadState(const char *filename, std::ostream &f,bool merge=false,bool noUpdating=false);	
 
 		//!Are we currently using relative paths due to a previous load?
 		bool usingRelPaths() const { return useRelativePathsForSave;};

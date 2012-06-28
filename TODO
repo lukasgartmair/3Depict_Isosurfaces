@@ -5,8 +5,7 @@ TODO List - worlds simplest bugtracking system
 --Main app--
 	To Implement:
 		== Next version ==
-		* Voxelisation filter should not show ions disabled in upstream range
-
+		
 		== Eventually == 
 		* Support for XY scatter plots
 		* Status bar message queue
@@ -14,7 +13,6 @@ TODO List - worlds simplest bugtracking system
 		* VTK voxel data export
 		* Binomial? (MM edition)
 		* OPS and other 3DAP formats reader?
-		* Improved resolution dialog (Easy fix, but needs time/thought)
 		* Stream information filter (Easy fix, but needs time/thought)
 		* Polynomial error estimator in graph
 		* Shear-warp volume render mode for voxels
@@ -23,7 +21,7 @@ TODO List - worlds simplest bugtracking system
 				(2) Volume render code (check out SMVIS, Author gave perm. under GPLv3+)
 		* Ion exchange/explode filter
 		* DTD (Document type descriptor) for state files, to
-		  specify a consistant statefile structure
+		  specify a consistent statefile structure
 			- How to ensure version compatibility in future
 			state files?
 		* VTK/xyzm output
@@ -44,11 +42,36 @@ TODO List - worlds simplest bugtracking system
 		* Per ion type ion display sizes?
 		* CSR fit to NN Hist in spatial analysis 
 		* NN "shift" algorithm (delta sqrmag -> value)
+		* Bounding box tick values could be improved - scientific
+		  notation, better font size control, absol. coords, etc
+		* Voxelisation filter should not show ions disabled in upstream range
+		* Range file drag/drop ignores drop coordinates; this could be useful
+		  in trying to interpret where the user wants to drop the object
+		* Should allow loading of just XYZ files, but create dummy mass & warn
+		* Plots cannot currently be updated on name change. Need to add "needUpdate" to setUserString
 
 	Outstanding bugs:
 		== Next release==
+		* Abort behaviour odd on EEEPC, shows "aborted" generic message, then waits for several seconds, then shows error
 		* File -> export image -> Height*=2, results in aspect ratio of output image being distorted
-		* Ensure getdeps does not clash with fink/homebrew, so we don't stuff a user's machine
+		* Cluster filter wont save state correctly if parent
+		  rangefile has disabled ions. It will output incorrect
+		  number of enabled ions, and get wiped during next ::initFilter
+		* Don't appear to be able to move ranges in plot
+		  below/above upper and lower bound of data, regardless
+		  of plot zoom status
+		
+		Windows:
+		* exporting ions does not work "Check destination could be written to"
+		* drag drop not working?
+		* section symbol does not display on console tab
+		OSX:
+		* cam does not translate (ctrl + mouse drag)
+		* Exporting ions causes assertion failure - "visible" radio button in dialog is broken
+		* Export ion image under 2.9 seems to throw assertion error - "fixed" in release  (non-debug) builds?
+			- Seems to be a mac specific bug relating to
+			  wxPostEvent for paint events. A minimal test
+			  case should be forwarded to the wxOSX devs.
 			
 		== Eventually==
 		* Lighting calculations on isosurfaces can be problematic. See example package
@@ -75,9 +98,9 @@ TODO List - worlds simplest bugtracking system
 		  (188.23,-0.995174,83.2904). Now press ctrl+space. Note
 		  dataset disappears until mouse motion. This is due to
 		  camera up vector not being updated, I suspect.
-		* Text bounding boxes are wrong.
-		* Range file drag/drop ignores drop coordinates; this could be useful
-		  in trying to interpret where the user wants to drop the object
+		* 3D Text bounding boxes are wrong.
+		* mac os x: icon on dock bounces very fast during some refreshes
+		* mac os x: update from rss feed crashes
 
 		== Needs reproducing ==
 		* Invalid range file being opened cause Package export to crash
@@ -87,11 +110,13 @@ TODO List - worlds simplest bugtracking system
 		* Ion transform leaking memory??
 		* Windows (32 bit on 64) crash on startup bug -- seems to happen after
 		  locale init, maybe openGL related (there was a second
-		  opengl program running at the time - context problem???). Cannot reproduce... Maybe fixed by improved glpane error code?
-
+		  opengl program running at the time - context
+		  problem???). Cannot reproduce... Maybe fixed by improved
+		  glpane error code?
 
 	Auditing:
 		== Next release ==
+		* Set keynames for property groupings
 
 	Performance:
 		* Scene is sometimes continuously refreshed during post effects, causing CPU usage
@@ -103,6 +128,7 @@ TODO List - worlds simplest bugtracking system
 		* Clustering could be paralellised, but is complex. Split & weld along KD tree lines using 
 		  cluster BB interactions.
 		* Examine performance characteristics of HULL_GRAB in ioninfo
+		* Conversion of double axis-angle rotations to single axis angle rotations - any value here?
 	
 	Misc:
 
@@ -117,8 +143,17 @@ TODO List - worlds simplest bugtracking system
 		  is different, then it should invalidate the caches for
 		  the different bits, and then force a refresh. This would allow for removal 
 		  of the callback mechanism that is currently in use
+	* Plotting code is a nightmare. Data model for plot.h is not
+	   very well thought out, leading to large duplication, and elaborate special-case-ing
+		- Plots need log/non-log axes
+		- Plots need to be connected/disconnected
+		- Plots need to be able to specify bounding boxes separate from their data
+		- Plots need to be able to set strings/legends
+		- There is little diference between plot1D and plot2D, really.
 	* work out which inline FIXMEs and TODOs are still valid, and need attention
 	* I have multiple colour classes floating about. might be an idea to unify them.
 	* K3DTree currently requires public access to members of boundcube
-
-
+-- Deprecate --
+	* On Minor version change:
+		- DataLoadFilter::readState(...) -> doSample test for statefiles without doSample.
+			- 3Depict versions prior to 1207:2a01b7e83d75

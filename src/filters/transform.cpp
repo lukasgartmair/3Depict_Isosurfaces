@@ -1343,10 +1343,7 @@ bool TransformFilter::setProperty( unsigned int set, unsigned int key,
 			if(!(stripped == "1"|| stripped == "0"))
 				return false;
 
-			if(stripped=="1")
-				showOrigin=true;
-			else
-				showOrigin=false;
+			showOrigin=(stripped=="1");
 
 			needUpdate=true;
 
@@ -1601,6 +1598,10 @@ unsigned int TransformFilter::getRefreshEmitMask() const
 		return STREAM_TYPE_IONS;
 }
 
+unsigned int TransformFilter::getRefreshUseMask() const
+{
+	return STREAM_TYPE_IONS;
+}
 
 void TransformFilter::setPropFromBinding(const SelectionBinding &b)
 {
@@ -1766,7 +1767,7 @@ bool rotateTest()
 		massCentre[0]+=d->data[ui].getPos();
 
 	for(unsigned int ui=0;ui<outData->data.size();ui++)
-		massCentre[1]+=d->data[ui].getPos();
+		massCentre[1]+=outData->data[ui].getPos();
 
 
 	TEST((massCentre[0]-massCentre[1]).sqrMag() < 

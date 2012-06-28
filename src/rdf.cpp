@@ -692,7 +692,7 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 
 			if(nearPt)
 			{
-				//Cacluate the sq of the distance to the poitn
+				//Cacluate the sq of the distance to the point
 				sqrDist = nearPt->sqrDist(sourcePoint);
 				
 				//if sqrDist is = maxSqrdist then this will cause

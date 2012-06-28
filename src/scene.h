@@ -73,8 +73,6 @@ class Scene
 		//!Objects used for drawing that will not be destroyed
 		std::vector<const DrawableObj * > refObjects;
 
-		//!Special object for holding multiple objects in order to be able to draw them
-		DrawDepthSorted depthSortDraw;
 
 		//!Bindings for interactive object properties
 		std::vector<SelectionDevice<Filter> *> selectionDevices;

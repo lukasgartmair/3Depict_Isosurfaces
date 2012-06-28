@@ -51,6 +51,7 @@ private:
 	unsigned int representation;
 public:
 	VoxeliseFilter();
+	~VoxeliseFilter() { if(rsdIncoming) delete rsdIncoming;}
 	//!Duplicate filter contents, excluding cache.
 	Filter *cloneUncached() const;
 
@@ -101,6 +102,8 @@ public:
 	//!Get the stream types that will be generated during ::refresh	
 	unsigned int getRefreshEmitMask() const;	
 
+	//!Get the stream types that will be possibly ued during ::refresh	
+	unsigned int getRefreshUseMask() const;	
 	//!Set internal property value using a selection binding  
 	void setPropFromBinding(const SelectionBinding &b) ;
 	
@@ -122,9 +125,12 @@ public:
 			else nb[i] = (unsigned long long)((high[i] - low[i])/(float)widths[i]) + 1;
 		}
 	}
+
+#ifdef DEBUG
+	bool runUnitTests();
+#endif
+
 };
-
-
 
 #endif
 

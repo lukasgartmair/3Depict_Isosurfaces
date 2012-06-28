@@ -65,6 +65,9 @@ class IonColourFilter: public Filter
 		//!Get the stream types that will be generated during ::refresh	
 		unsigned int getRefreshEmitMask() const;	
 		
+		//!Get the stream types that will be used during ::refresh	
+		unsigned int getRefreshUseMask() const;	
+		
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
 

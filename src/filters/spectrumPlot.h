@@ -17,7 +17,7 @@ class SpectrumPlotFilter : public Filter
 		//Vector of spectra. Each spectra is comprised of a sorted Y data
 		std::vector< std::vector<float > > spectraCache;
 		float r,g,b,a;
-		unsigned int plotType;
+		unsigned int plotStyle;
 	public:
 		SpectrumPlotFilter();
 		//!Duplicate filter contents, excluding cache.
@@ -59,6 +59,9 @@ class SpectrumPlotFilter : public Filter
 
 		//!Get the stream types that will be generated during ::refresh	
 		unsigned int getRefreshEmitMask() const;	
+		
+		//!Get the stream types that will be possibly used during ::refresh	
+		unsigned int getRefreshUseMask() const;	
 
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;

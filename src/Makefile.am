@@ -37,16 +37,25 @@ FILTER_HEADER_FILES = filters/allFilter.h filters/dataLoad.h filters/ionDownsamp
 		filters/clusterAnalysis.h filters/ionInfo.h \
 		filters/annotation.h
 
+DIALOG_SOURCE_FILES = dialogs/ExportPos.cpp  dialogs/ExportRngDialog.cpp dialogs/prefDialog.cpp  \
+		dialogs/resolutionDialog.cpp  dialogs/StashDialog.cpp \
+		dialogs/autosaveDialog.cpp dialogs/filterErrorDialog.cpp
+
+DIALOG_HEADER_FILES = dialogs/ExportPos.h dialogs/ExportRngDialog.h dialogs/prefDialog.h \
+		dialogs/StashDialog.h dialogs/resolutionDialog.h \
+		dialogs/autosaveDialog.h dialogs/filterErrorDialog.h
+
 #These source files should have heirachical couplings only; no cross-coupling
-BASE_SOURCE_FILES=  filtertree.cpp mathglPane.cpp plot.cpp prefDialog.cpp configFile.cpp filter.cpp \
-		     APTClasses.cpp resDialog.cpp select.cpp \
+BASE_SOURCE_FILES=  filtertreeAnalyse.cpp filtertree.cpp mathglPane.cpp \
+	  	     plot.cpp configFile.cpp filter.cpp \
+		     APTClasses.cpp select.cpp \
 		     drawables.cpp effect.cpp textures.cpp rdf.cpp \
 		     cameras.cpp isoSurface.cpp K3DTree.cpp K3DTree-mk2.cpp\
 			 xmlHelper.cpp cropPanel.cpp colourmap.cpp \
 			pngread.c mathfuncs.cpp wxcomponents.cpp wxcommon.cpp
 
-BASE_HEADER_FILES=   filtertree.h mathglPane.h plot.h prefDialog.h configFile.h filter.h \
-		     APTClasses.h resDialog.h select.h \
+BASE_HEADER_FILES=   filtertreeAnalyse.h filtertree.h mathglPane.h plot.h \
+		     configFile.h filter.h APTClasses.h select.h \
 		     drawables.h effect.h textures.h rdf.h translation.h winconsole.h \
 		     cameras.h isoSurface.h K3DTree.h K3DTree-mk2.h\
 			xmlHelper.h cropPanel.h colourmap.h \
@@ -55,13 +64,13 @@ BASE_HEADER_FILES=   filtertree.h mathglPane.h plot.h prefDialog.h configFile.h 
 
 
 #These files are inter-dependant to some extent (mostly viscontrol)
-CROSS_DEP_SOURCE_FILES=testing.cpp 3Depict.cpp basics.cpp ExportPos.cpp ExportRngDialog.cpp glPane.cpp \
-		       scene.cpp StashDialog.cpp viscontrol.cpp 
-CROSS_DEP_HEADER_FILES=testing.h 3Depict.h basics.h ExportPos.h ExportRngDialog.h glPane.h \
-			scene.h StashDialog.h viscontrol.h 
+CROSS_DEP_SOURCE_FILES=testing.cpp 3Depict.cpp basics.cpp glPane.cpp \
+		       scene.cpp viscontrol.cpp 
+CROSS_DEP_HEADER_FILES=testing.h 3Depict.h basics.h glPane.h \
+			scene.h viscontrol.h 
 
-SOURCE_FILES= $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(FILTER_FILES) $(FILTER_HEADER_FILES) \
-	      $(CROSS_DEP_SOURCE_FILES) $(CROSS_DEP_HEADER_FILES)
+SOURCE_FILES=  $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(DIALOG_SOURCE_FILES) $(DIALOG_HEADER_FILES) $(FILTER_FILES) $(FILTER_HEADER_FILES) \
+	      $(CROSS_DEP_SOURCE_FILES) $(CROSS_DEP_HEADER_FILES) 
 
 
 #Do we have or need windows-XP "resource" files for look and feel?
@@ -78,7 +87,7 @@ EXTRA_DIST = textures/ tex-source/ glade-skeleton/ myAppIcon.ico
 if USE_PRECOMPILED_HEADERS
 
 #Precompiled headers
-BUILT_SOURCES=   mathglPane.h.gch plot.h.gch prefDialog.h.gch configFile.h.gch filter.h.gch \
+BUILT_SOURCES=   mathglPane.h.gch plot.h.gch configFile.h.gch filter.h.gch \
 		     APTClasses.h.gch resDialog.h.gch select.h.gch \
 		     drawables.h.gch effect.h.gch textures.h.gch rdf.h.gch \
 		     cameras.h.gch isoSurface.h.gch K3DTree.h.gch K3DTree-mk2.h.gch\

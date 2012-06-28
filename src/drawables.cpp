@@ -150,8 +150,9 @@ void DrawPoint::draw() const
 	glEnd();
 }
 
-DrawVector::DrawVector() : origin(0.0f,0.0f,0.0f), vector(0.0f,0.0f,1.0f),arrowSize(1.0f),scaleArrow(true),
-			r(1.0f), g(1.0f), b(1.0f), a(1.0f)
+DrawVector::DrawVector() : origin(0.0f,0.0f,0.0f), vector(0.0f,0.0f,1.0f),drawArrow(true),
+			arrowSize(1.0f),scaleArrow(true),doubleEnded(false),
+			r(1.0f), g(1.0f), b(1.0f), a(1.0f), lineSize(1.0f)
 {
 }
 
@@ -173,6 +174,13 @@ void DrawVector::setColour(float rnew, float gnew, float bnew, float anew)
 	a=anew;
 }
 
+
+void DrawVector::setEnds(const Point3D &startNew, const Point3D &endNew)
+{
+	origin = startNew;
+	vector =endNew-startNew;
+}
+
 void DrawVector::setOrigin(const Point3D &pt)
 {
 	origin = pt;
@@ -185,12 +193,167 @@ void DrawVector::setVector(const Point3D &pt)
 
 void DrawVector::draw() const
 {
+	const unsigned int NUM_CONE_SEGMENTS=20;
+	const float numConeRadiiLen = 1.5f; 
+	const float radius= arrowSize;
+	
 	glColor3f(r,g,b);
-	//FIXME: Arrow head calculations?
+
+	//Disable lighting calculations for arrow stem
+	glPushAttrib(GL_LIGHTING_BIT);
+	glDisable(GL_LIGHTING);
+	float oldLineWidth;
+	glGetFloatv(GL_LINE_WIDTH,&oldLineWidth);
+
+	glLineWidth(lineSize);
 	glBegin(GL_LINES);
+	
+	if(arrowSize < sqrt(std::numeric_limits<float>::epsilon()) || !drawArrow)
+	{
 		glVertex3f(origin[0],origin[1],origin[2]);
 		glVertex3f(vector[0]+origin[0],vector[1]+origin[1],vector[2]+origin[2]);
+		glEnd();
+		
+		//restore the old line size
+		glLineWidth(oldLineWidth);
+		
+		glPopAttrib();
+		return ;
+	}
+	else
+	{
+
+		glVertex3f(origin[0],origin[1],origin[2]);
+
+		
+		glVertex3f(vector[0]+origin[0],vector[1]+origin[1],vector[2]+origin[2]);
+		glEnd();
+		//restore the old line size
+		glLineWidth(oldLineWidth);
+		
+		glPopAttrib();
+	}
+
+
+
+
+
+	//Now compute & draw the cone tip
+	//----
+
+	Point3D axis;
+	axis = vector;
+
+	if(axis.sqrMag() < sqrt(std::numeric_limits<float>::epsilon()))
+		axis=Point3D(0,0,1);
+	else
+		axis.normalise();
+
+
+	//Tilt space to align to cone axis
+	Point3D zAxis(0,0,1);
+	float tiltAngle;
+	tiltAngle = zAxis.angle(axis);
+	
+	Point3D rotAxis;
+	rotAxis=zAxis.crossProd(axis);
+	
+	Point3D *ptArray = new Point3D[NUM_CONE_SEGMENTS];
+	if(tiltAngle > sqrt(std::numeric_limits<float>::epsilon()) && 
+			rotAxis.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()))
+	{
+
+		//Draw an angled cone
+		Point3f vertex,r;	
+		rotAxis.normalise();
+
+
+		r.fx=rotAxis[0];
+		r.fy=rotAxis[1];
+		r.fz=rotAxis[2];
+
+	
+		//we have to rotate the cone points around the apex point
+		for(unsigned int ui=0; ui<NUM_CONE_SEGMENTS; ui++)
+		{
+			//Note that the ordering for theta defines the orientation
+			// for the generated triangles. CCW triangles in opengl 
+			// are required
+			float theta;
+			theta = -2.0f*M_PI*(float)ui/(float)(NUM_CONE_SEGMENTS-1);
+
+			//initial point is at r*(cos(theta),r*sin(theta),-numConeRadiiLen),
+			vertex.fx=sin(theta);
+			vertex.fy=cos(theta);
+			vertex.fz=-numConeRadiiLen;
+		
+			//rotate to new position
+			quat_rot(&vertex,&r,tiltAngle);
+
+			//store the coord
+			ptArray[ui]=Point3D(radius*vertex.fx,radius*vertex.fy,radius*vertex.fz);
+		}
+	}
+	else
+	{
+		if(tiltAngle > sqrt(std::numeric_limits<float>::epsilon()))
+		{
+			//Downwards pointing cone
+			for(unsigned int ui=0; ui<NUM_CONE_SEGMENTS; ui++)
+			{
+				float theta;
+				theta = -2.0f*M_PI*(float)ui/(float)(NUM_CONE_SEGMENTS-1);
+				ptArray[ui] =Point3D(-radius*cos(theta),
+					radius*sin(theta),numConeRadiiLen*radius);
+			}
+		}
+		else
+		{
+			//upwards pointing cone
+			for(unsigned int ui=0; ui<NUM_CONE_SEGMENTS; ui++)
+			{
+				float theta;
+				theta = -2.0f*M_PI*(float)ui/(float)(NUM_CONE_SEGMENTS-1);
+				ptArray[ui] =Point3D(radius*cos(theta),
+					radius*sin(theta),-numConeRadiiLen*radius);
+			}
+		}
+	}
+
+
+	Point3D trans;
+	trans=(origin+vector);
+	glPushMatrix();
+	glTranslatef(trans[0],trans[1],trans[2]);
+	
+	//Now, having the needed coords, we can draw the cone
+	glBegin(GL_TRIANGLE_FAN);
+	glNormal3f(axis[0],axis[1],axis[2]);
+	glVertex3f(0,0,0);
+	for(unsigned int ui=0; ui<NUM_CONE_SEGMENTS; ui++)
+	{
+		Point3D n;
+		n=ptArray[ui];
+		n.normalise();
+		glNormal3f(n[0],n[1],n[2]);
+		glVertex3f(ptArray[ui][0],ptArray[ui][1],ptArray[ui][2]);
+	}
+
 	glEnd();
+
+	//Now draw the base of the cone, to make it solid
+	// Note that traversal order of pt array is also important
+	glBegin(GL_TRIANGLE_FAN);
+	glNormal3f(-axis[0],-axis[1],-axis[2]);
+	for(unsigned int ui=NUM_CONE_SEGMENTS; ui--;) 
+		glVertex3f(ptArray[ui][0],ptArray[ui][1],ptArray[ui][2]);
+	glEnd();
+
+	glPopMatrix();
+	//----
+
+
+	delete[] ptArray;
 }
 
 void DrawVector::recomputeParams(const std::vector<Point3D> &vecs, 
@@ -224,6 +387,9 @@ void DrawVector::recomputeParams(const std::vector<Point3D> &vecs,
 			ASSERT(false);
 	}
 }
+
+
+
 DrawTriangle::DrawTriangle() : r(1.0f), g(1.0f),b(1.0f),a(1.0f)
 {
 }
@@ -695,9 +861,12 @@ void DrawDispList::draw() const
 //========
 
 
-DrawGLText::DrawGLText(std::string fontFile, unsigned int mode) : curFontMode(mode), origin(0.0f,0.0f,0.0f), r(0.0),g(0.0),b(0.0),a(1.0), up(0.0f,1.0f,0.0f),  textDir(1.0f,0.0f,0.0f), readDir(0.0f,0.0f,1.0f), isOK(true),ensureReadFromNorm(true) 
+DrawGLText::DrawGLText(std::string fontFile, unsigned int mode) :font(0),fontString(fontFile),
+	curFontMode(mode), origin(0.0f,0.0f,0.0f), 
+	r(0.0),g(0.0),b(0.0),a(1.0), up(0.0f,1.0f,0.0f),  
+	textDir(1.0f,0.0f,0.0f), readDir(0.0f,0.0f,1.0f), 
+	isOK(true),ensureReadFromNorm(true) 
 {
-	fontString = fontFile;
 
 	font=0;
 	switch(mode)
@@ -980,12 +1149,10 @@ void DrawGLText::recomputeParams(const vector<Point3D> &vecs,
 	}
 }
 
-DrawRectPrism::DrawRectPrism()
+DrawRectPrism::DrawRectPrism() : drawMode(DRAW_WIREFRAME), r(1.0f), g(1.0f), b(1.0f), a(1.0f), lineWidth(1.0f)
 {
-	r=g=b=a=1.0f;
-	drawMode=DRAW_WIREFRAME;
-	lineWidth=1.0f;
 }
+
 DrawRectPrism::~DrawRectPrism()
 {
 }
@@ -1134,14 +1301,15 @@ void DrawRectPrism::recomputeParams(const vector<Point3D> &vecs,
 	}
 }
 
-DrawTexturedQuadOverlay::DrawTexturedQuadOverlay()
+DrawTexturedQuadOverlay::DrawTexturedQuadOverlay() : texPool(0)
 {
-	texPool=0;
 }
 
 DrawTexturedQuadOverlay::~DrawTexturedQuadOverlay()
 {
+#ifdef DEBUG
 	textureOK=false;
+#endif
 }
 
 void DrawTexturedQuadOverlay::setSize(float s)
@@ -1325,10 +1493,10 @@ void DrawColourBarOverlay::getBoundingBox(BoundCube &b) const
 }
 
 
-DrawField3D::DrawField3D() : alphaVal(0.2f), pointSize(1.0f), drawBoundBox(true),volumeGrid(false), volumeRenderMode(0), field(0) 
+DrawField3D::DrawField3D() : ptsCacheOK(false), alphaVal(0.2f), pointSize(1.0f), drawBoundBox(true),
+	boxColourR(1.0f), boxColourG(1.0f), boxColourB(1.0f), boxColourA(1.0f),
+	volumeGrid(false), volumeRenderMode(0), field(0) 
 {
-	boxColourR = boxColourG = boxColourB = boxColourA = 1.0f;
-	ptsCacheOK=false;
 }
 
 DrawField3D::~DrawField3D()
@@ -1455,6 +1623,8 @@ void DrawField3D::draw() const
 			}
 			else
 			{
+				glPointSize(pointSize);
+				glBegin(GL_POINTS);
 				for(unsigned int ui=0;ui<ptsCache.size();ui++)
 				{
 					//Tell openGL about it
@@ -1464,6 +1634,7 @@ void DrawField3D::draw() const
 							1.0f);
 					glVertex3f(ptsCache[ui].first[0],ptsCache[ui].first[1],ptsCache[ui].first[2]);
 				}
+				glEnd();
 			}
 			break;
 		}
@@ -1508,17 +1679,12 @@ void DrawField3D::setBoxColours(float rNew, float gNew, float bNew, float aNew)
 }
 
 
-DrawIsoSurface::DrawIsoSurface()
+DrawIsoSurface::DrawIsoSurface() : cacheOK(false),  drawMode(DRAW_SMOOTH),
+	threshold(0.5f), r(0.5f), g(0.5f), b(0.5f), a(0.5f) 
 {
-	cacheOK=false;
-	drawMode=DRAW_SMOOTH;
-	threshold=0.5;
+#ifdef DEBUG
 	voxels=0;
-	
-	r=0.5;
-	g=0.5;
-	b=0.5;
-	a=1.0;	
+#endif
 }
 
 DrawIsoSurface::~DrawIsoSurface()
@@ -1677,6 +1843,8 @@ void DrawAxis::draw() const
 	float halfSize=size/2.0f;
 	glPushAttrib(GL_LIGHTING_BIT);
 	glDisable(GL_LIGHTING);
+	
+	glLineWidth(1.0f);
 	glBegin(GL_LINES);
 	//Draw lines
 	glColor3f(1.0f,0.0f,0.0f);
@@ -1716,9 +1884,9 @@ void DrawAxis::draw() const
 	glNormal3f(1,0,0);
 	for (unsigned int i = 0; i<=numSections; i++)
 	{
+		glNormal3f(0,cos(i*twoPi/numSections),sin(i*twoPi/numSections));
 		glVertex3f(0,radius * cos(i *  twoPi / numSections),
 		           radius* sin(i * twoPi / numSections));
-		glNormal3f(0,cos(i*twoPi/numSections),sin(i*twoPi/numSections));
 	}
 	glEnd();
 	glBegin(GL_TRIANGLE_FAN);
@@ -1728,7 +1896,6 @@ void DrawAxis::draw() const
 	{
 		glVertex3f(0,-radius * cos(i *  twoPi / numSections),
 		           radius* sin(i * twoPi / numSections));
-		glNormal3f(-1,0,0);
 	}
 	glEnd();
 	glPopMatrix();
@@ -1742,9 +1909,9 @@ void DrawAxis::draw() const
 	glNormal3f(0,1,0);
 	for (unsigned int i = 0; i<=numSections; i++)
 	{
+		glNormal3f(sin(i*twoPi/numSections),0,cos(i*twoPi/numSections));
 		glVertex3f(radius * sin(i *  twoPi / numSections),0,
 		           radius* cos(i * twoPi / numSections));
-		glNormal3f(sin(i*twoPi/numSections),0,cos(i*twoPi/numSections));
 	}
 	glEnd();
 
@@ -1755,7 +1922,6 @@ void DrawAxis::draw() const
 	{
 		glVertex3f(radius * cos(i *  twoPi / numSections),0,
 		           radius* sin(i * twoPi / numSections));
-		glNormal3f(0,-1,0);
 	}
 	glEnd();
 
@@ -1772,9 +1938,9 @@ void DrawAxis::draw() const
 	glNormal3f(0,0,1);
 	for (unsigned int i = 0; i<=numSections; i++)
 	{
+		glNormal3f(cos(i*twoPi/numSections),sin(i*twoPi/numSections),0);
 		glVertex3f(radius * cos(i *  twoPi / numSections),
 		           radius* sin(i * twoPi / numSections),0);
-		glNormal3f(cos(i*twoPi/numSections),sin(i*twoPi/numSections),0);
 	}
 	glEnd();
 
@@ -1785,7 +1951,6 @@ void DrawAxis::draw() const
 	{
 		glVertex3f(-radius * cos(i *  twoPi / numSections),
 		           radius* sin(i * twoPi / numSections),0);
-		glNormal3f(0,0,-1);
 	}
 	glEnd();
 	glPopMatrix();
@@ -1795,98 +1960,4 @@ void DrawAxis::getBoundingBox(BoundCube &b) const
 {
 	b.setInvalid();
 }
-
-
-void DrawDepthSorted::draw()  const
-{
-	bool needResort;
-	//Check to see if we need to re-sort the data
-	needResort=(!haveLastDist ||
-		       	lastCamLoc.sqrDist(curCamera->getOrigin()) >DEPTH_SORT_REORDER_EPSILON);
-
-	if(needResort)
-	{
-		//Rebuild the depthJump key data
-		std::vector<pair<std::pair<size_t,size_t> , float> > dists;
-
-		size_t size;
-		size=0;
-		for(size_t ui=0;ui<depthObjects.size(); ui++)
-			size+=dists.size();
-
-		dists.resize(size);
-		depthJumpKeys.resize(size);
-
-		//Generate the to-camera distances (negative because we want
-		//further away objects to be first)
-		#pragma omp parallel for
-		for(size_t ui=0;ui<depthObjects.size(); ui++)
-		{
-			Point3D centroid;
-			for(size_t uj=0; uj<depthObjects[ui].second.size(); uj++)
-			{
-				centroid=depthObjects[ui].second[uj]->getCentroid();
-				dists[ui+uj]=std::make_pair(std::make_pair(ui,uj),-centroid.sqrDist(curCamera->getOrigin()));
-			}
-		}
-
-		//Now we have the distance data, sort it
-		ComparePairSecond cmp;
-		std::sort(dists.begin(),dists.end(),cmp);	
-
-		//Now set the depth Jump Keys using the sorted distances
-		#pragma omp parallel for
-		for(size_t ui=0;ui<dists.size();ui++)
-			depthJumpKeys[ui]=dists[ui].first;
-
-		lastCamLoc=curCamera->getOrigin();
-	}
-
-
-	//OK, so we have to now draw our objects from back->front order
-	//as set by depthJumpKeys
-	for(size_t ui=0;ui<depthObjects.size();ui++)
-	{
-		const DrawableObj *d;
-		d=(depthObjects[depthJumpKeys[ui].first].second[depthJumpKeys[ui].second]);
-		d->draw();
-	}
-}
-
-
-void DrawDepthSorted::addObjectsAsNeeded(const DrawableObj *obj) 
-{
-	size_t off=std::numeric_limits<size_t>::max();
-	for(size_t ui=0;ui<depthObjects.size();ui++)
-	{
-		if(depthObjects[ui].first == obj)
-		{
-			if(depthObjects[ui].first->hasChanged())
-				off=ui;
-			else 
-				off=depthObjects.size();
-			
-			break;
-		}
-	}
-
-
-	if(off==depthObjects.size())
-		return; // Object exists and is up to date.
-	else if(off==std::numeric_limits<size_t>::max())
-	{
-		//Ok, so we have no object, and we need
-		//to create a new set of data
-	
-	}
-	else
-	{
-		ASSERT(off < depthObjects.size());
-		//we need to update the object
-	}
-
-
-}
-
-
 

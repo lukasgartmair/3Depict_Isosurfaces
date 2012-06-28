@@ -16,6 +16,7 @@ enum
 	KEY_COLOUR,
 	KEY_ARROW_SIZE,
 	KEY_TEXTSIZE,
+	KEY_LINESIZE,
 	KEY_REFLEXIVE,
 	KEY_SPHERE_ANGLE_SIZE,
 	KEY_ANGLE_TEXT_VISIBLE,
@@ -54,16 +55,17 @@ const char *annotationModeStrings[] =
 };
 
 
-AnnotateFilter::AnnotateFilter()
+AnnotateFilter::AnnotateFilter() : annotationMode(ANNOTATION_TEXT),
+	position(Point3D(0,0,0)), target(Point3D(1,0,0)), upVec(Point3D(0,0,1)),
+	acrossVec(Point3D(0,1,0)), textSize(1.0f), annotateSize(1.0f),
+	sphereAngleSize(1.5f),r(0),g(0),b(1),a(1),active(true),showAngleText(true), 
+	reflexAngle(true), angleFormatPreDecimal(0),angleFormatPostDecimal(0),
+	linearFixedTicks(true),linearMeasureTicks(10),linearMeasureSpacing(10.0f),
+	fontSizeLinearMeasure(5),linearMeasureMarkerSize(3)	
 {
 	COMPILE_ASSERT(ARRAYSIZE(annotationModeStrings) == ANNOTATION_MODE_END);
 
 	annotationMode=ANNOTATION_TEXT;
-
-	position=Point3D(0,0,0);
-	target=Point3D(1,0,0);
-	upVec=Point3D(0,0,1);
-	acrossVec=Point3D(0,1,0);
 
 	anglePos[0]=Point3D(0,0,0);
 	anglePos[1]=Point3D(0,5,5);
@@ -85,6 +87,7 @@ AnnotateFilter::AnnotateFilter()
 	linearFixedTicks=true;
 	linearMeasureSpacing=10.0f;
 	linearMeasureMarkerSize=3.0f;
+	lineSize=1.0f;
 	angleFormatPreDecimal=angleFormatPostDecimal=0;
 
 	cacheOK=false;
@@ -127,6 +130,7 @@ Filter *AnnotateFilter::cloneUncached() const
 	p->linearMeasureSpacing=linearMeasureSpacing;
 	p->linearMeasureTicks=linearMeasureTicks;
 	p->linearMeasureMarkerSize=linearMeasureMarkerSize;
+	p->lineSize=lineSize;
 
 	//We are copying wether to cache or not,
 	//not the cache itself
@@ -196,8 +200,10 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 		dv->setVector(target-position);
 		dv->setArrowSize(annotateSize);
 		dv->setColour(r,g,b,a);	
+		dv->setLineSize(lineSize);
 	
 		dv->canSelect=true;
+		dv->wantsLight=true;
 
 		SelectionDevice<Filter> *s = new SelectionDevice<Filter>(this);
 		SelectionBinding bind[2];
@@ -490,7 +496,6 @@ size_t AnnotateFilter::numBytesForCache(size_t nObjects) const
 	return 0;
 }
 
-
 void AnnotateFilter::getProperties(FilterProperties &propertyList) const
 {
 	vector<unsigned int> type,keys;
@@ -560,6 +565,23 @@ void AnnotateFilter::getProperties(FilterProperties &propertyList) const
 			s.push_back(make_pair(TRANS("End"),tmpStr));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			keys.push_back(KEY_TARGET);
+
+			propertyList.data.push_back(s);
+			propertyList.keys.push_back(keys);
+			propertyList.types.push_back(type);
+			s.clear();keys.clear();type.clear();
+
+			stream_cast(tmpStr,annotateSize);
+			s.push_back(make_pair(TRANS("Tip radius"),tmpStr));
+			type.push_back(PROPERTY_TYPE_REAL);
+			keys.push_back(KEY_ARROW_SIZE);
+
+			stream_cast(tmpStr,lineSize);
+			s.push_back(make_pair(TRANS("Line size"),tmpStr));
+			type.push_back(PROPERTY_TYPE_REAL);
+			keys.push_back(KEY_LINESIZE);
+			
+
 			break;
 		}
 		case ANNOTATION_TEXT_WITH_ARROW:
@@ -581,6 +603,12 @@ void AnnotateFilter::getProperties(FilterProperties &propertyList) const
 			type.push_back(PROPERTY_TYPE_STRING);
 			keys.push_back(KEY_ANNOTATE_TEXT);
 			
+			propertyList.data.push_back(s);
+			propertyList.keys.push_back(keys);
+			propertyList.types.push_back(type);
+			s.clear();keys.clear();type.clear();
+
+
 			stream_cast(tmpStr,textSize);
 			s.push_back(make_pair(TRANS("Text size"),tmpStr));
 			type.push_back(PROPERTY_TYPE_REAL);
@@ -595,6 +623,11 @@ void AnnotateFilter::getProperties(FilterProperties &propertyList) const
 			s.push_back(make_pair(TRANS("Across dir"),tmpStr));
 			type.push_back(PROPERTY_TYPE_STRING);
 			keys.push_back(KEY_ACROSSVEC);
+
+			stream_cast(tmpStr,annotateSize);
+			s.push_back(make_pair(TRANS("Tip radius"),tmpStr));
+			type.push_back(PROPERTY_TYPE_REAL);
+			keys.push_back(KEY_ARROW_SIZE);
 			break;
 		}
 		case ANNOTATION_ANGLE_MEASURE:
@@ -628,11 +661,6 @@ void AnnotateFilter::getProperties(FilterProperties &propertyList) const
 			s.push_back(make_pair(TRANS("Up dir"),tmpStr));
 			type.push_back(PROPERTY_TYPE_STRING);
 			keys.push_back(KEY_UPVEC);
-		
-			stream_cast(tmpStr,acrossVec);
-			s.push_back(make_pair(TRANS("Across dir"),tmpStr));
-			type.push_back(PROPERTY_TYPE_STRING);
-			keys.push_back(KEY_ACROSSVEC);
 
 
 			keys.push_back(KEY_REFLEXIVE);
@@ -1109,6 +1137,18 @@ bool AnnotateFilter::setProperty( unsigned int set, unsigned int key,
 
 			break;
 		}
+		case KEY_LINESIZE:
+		{
+			float tmp;
+			stream_cast(tmp,value);
+
+			if(tmp == lineSize || tmp <0)
+				return false;
+
+			lineSize=tmp;
+			needUpdate=true;
+			break;
+		}
 		
 		default:
 			ASSERT(false);
@@ -1131,6 +1171,7 @@ bool AnnotateFilter::writeState(std::ofstream &f,unsigned int format, unsigned i
 		{	
 			f << tabs(depth) <<  "<" << trueName() << ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
+			f << tabs(depth+1) << "<annotationmode value=\""<< annotationMode << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<position value=\""<<position<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<target value=\""<<target<< "\"/>"  << endl;
@@ -1147,6 +1188,7 @@ bool AnnotateFilter::writeState(std::ofstream &f,unsigned int format, unsigned i
 			f << tabs(depth+1) << "<textsize value=\""<<textSize<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<annotatesize value=\""<<annotateSize<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<sphereanglesize value=\""<<sphereAngleSize<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<linesize value=\""<<lineSize<< "\"/>"  << endl;
 			std::string colourString;
 			genColString((unsigned char)(r*255),(unsigned char)(g*255),
 				(unsigned char)(b*255),(unsigned char)(a*255),colourString);
@@ -1189,6 +1231,13 @@ bool AnnotateFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	xmlFree(xmlString);
 	//===
 
+	//Annotation mode
+	if(!XMLGetNextElemAttrib(nodePtr,annotationMode,"annotationmode","value"))
+		return false;
+
+	if(annotationMode >=ANNOTATION_MODE_END)
+		return false;
+
 	//position
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"position","value"))
 		return false;
@@ -1205,7 +1254,7 @@ bool AnnotateFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"upvec","value"))
 		return false;
 
-	if(!parsePointStr(tmpStr,target))
+	if(!parsePointStr(tmpStr,upVec))
 		return false;
 	
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"acrossvec","value"))
@@ -1250,9 +1299,19 @@ bool AnnotateFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	if(!XMLGetNextElemAttrib(nodePtr,annotateSize,"annotatesize","value"))
 		return false;
 
-	if(!XMLGetNextElemAttrib(nodePtr,sphereAngleSize,"sphereanglesize","value"))
+	if(annotateSize <0.0f)
 		return false;
 
+
+	if(!XMLGetNextElemAttrib(nodePtr,sphereAngleSize,"sphereanglesize","value"))
+		return false;
+	if(sphereAngleSize<0.0f)
+		return false;
+
+	if(!XMLGetNextElemAttrib(nodePtr,lineSize,"linesize","value"))
+		return false;
+	if(lineSize<0.0f)
+		return false;
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"colour","value"))
 		return false;
 	
@@ -1307,6 +1366,13 @@ unsigned int AnnotateFilter::getRefreshBlockMask() const
 unsigned int AnnotateFilter::getRefreshEmitMask() const
 {
 	return  STREAM_TYPE_DRAW;
+}
+
+unsigned int AnnotateFilter::getRefreshUseMask() const
+{
+	//annotate only adds to the ignore mask, so 
+	// we now essentially ignore all inputs, other than pass-through 
+	return 0;
 }
 
 void AnnotateFilter::setPropFromBinding(const SelectionBinding &b)

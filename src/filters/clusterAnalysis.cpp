@@ -5,6 +5,7 @@
 
 #include <map>
 #include <queue>
+#include <utility>
 
 #include <gsl/gsl_linalg.h>
 
@@ -22,6 +23,7 @@ enum
 	KEY_WANT_CLUSTERSIZEDIST,
 	KEY_WANT_LOGSIZEDIST,
 	KEY_WANT_COMPOSITIONDIST,
+	KEY_WANT_CLUSTERMORPHOLOGY,
 	KEY_NORMALISE_COMPOSITION,
 	KEY_CROP_SIZE,
 	KEY_SIZE_COUNT_BULK,
@@ -144,14 +146,22 @@ void makeCompositionTable(const IonStreamData *i ,const RangeFile *r,
 
 }
 
-//Compute the singular vlaues for a matrix of rows "numRows" and "cols"
-// numcols. Matrix to be stored as [curRow*numcols + curCol]
-//If the matrix is rank deficient, then resultValues will have fewer singular
-//values than the full rank matrix (ie < numCols).
+//Compute the singular values for a matrix of rows "numRows" and "cols"
+// numcols. Matrix to be stored as [curRow*rowSize + curCol]
+// Rank deficient SVs will be returned as zero at the end of the vector.
+
+// Remember that the input basis is transformed, and this function does not
+// provide the transformation vectors, so singular values only provide
+// scalar information separate from the original input basis. The first value
+// does *not* correspond to the "x" direction of your input, for example.
 void computeSingularValues(float *data, size_t numRows, size_t numCols,
-				vector<float> &resultValues)
+				vector<float> &resultValues, vector<Point3D> &resultVectors)
 {
-/*
+
+	//Although this function *mostly* works on arbitrary datasizes, the vector<Point3D> is of course
+	//fixed to being 3D..
+	ASSERT(numCols == 3);
+
 	gsl_matrix *m=gsl_matrix_alloc(numRows,numCols);
 	for(unsigned int ui=0;ui<numRows;ui++)
 	{
@@ -161,12 +171,12 @@ void computeSingularValues(float *data, size_t numRows, size_t numCols,
 
 	//Set up the output vector space, the singular result space and
 	//some scratch space for the program
-	gsl_vector *singularVals= gsl_vector_alloc(numCols);
-	gsl_vector *workspace = gsl_vector_alloc(numCols);
-	gsl_matrix *newSpace = gsl_matrix_alloc(numCols,numCols);
+	gsl_vector *singularVals= gsl_vector_alloc(numCols); //Singular value results
+	gsl_matrix *newSpace = gsl_matrix_alloc(numCols,numCols); // Singular basis vectors
+	gsl_vector *workspace = gsl_vector_alloc(numCols); //scratch space
 
 	//Transformation space set to orthogonal cartesian
-	gsl_matrix_set_identity(newSpace);
+	gsl_matrix_set_identity(newSpace); //U
 
 	//Decompose matrix. Note that input matrix is overwritten by gsl. 
 	gsl_linalg_SV_decomp(m,newSpace,
@@ -177,11 +187,19 @@ void computeSingularValues(float *data, size_t numRows, size_t numCols,
 	{
 		float v;
 		v = gsl_vector_get(singularVals,ui);
-		if(v < sqrt(std::numeric_limits<float>::epsilon()))
-			break;
 
+		ASSERT(v >=0.0f);
 		resultValues.push_back(v);
 	}
+
+	//Copy out the decomposed V matrix
+	resultVectors.resize(numCols);
+	for(size_t ui=0;ui<numCols; ui++)
+	{
+		for(size_t uj=0;uj<numCols; uj++)
+			resultVectors[ui][uj] = gsl_matrix_get(newSpace,ui,uj);
+	}
+
 
 	//Free storage space
 	gsl_vector_free(singularVals); 
@@ -189,7 +207,6 @@ void computeSingularValues(float *data, size_t numRows, size_t numCols,
 	
 	gsl_matrix_free(newSpace);
 	gsl_matrix_free(m);
-	*/
 }
 
 
@@ -227,26 +244,15 @@ void ClusterAnalysisFilter::buildRangeEnabledMap(const RangeStreamData *r,
 	ASSERT(rangeEnabledMap.size() == ionCoreEnabled.size());
 }
 
-ClusterAnalysisFilter::ClusterAnalysisFilter()
+ClusterAnalysisFilter::ClusterAnalysisFilter() : algorithm(CLUSTER_LINK_ERODE),
+	coreDist(0.0f), coreKNN(1), linkDist(0.5f), bulkLink(1), dErosion(0.25),
+	wantCropSize(false), nMin(0),nMax(std::numeric_limits<size_t>::max()),
+	sizeCountBulk(true),wantClusterSizeDist(false),logClusterSize(false),
+	wantClusterComposition(true),normaliseComposition(true),
+	wantClusterMorphology(false), haveRangeParent(false)
+
 {
-	algorithm=CLUSTER_LINK_ERODE;
-	bulkLink=1.0f;
-	linkDist=0.5f;
-	dErosion=0.25f;
-	coreDist=0;
-	coreKNN=1;
-	wantClusterSizeDist=false;
-	logClusterSize=false;
-	nMin=0;
-	nMax=std::numeric_limits<size_t>::max();
-	sizeCountBulk=true;
-
-
-
-	wantCropSize=false;
-	wantClusterComposition=true;
-	normaliseComposition=true;
-	haveRangeParent=false; //we set this to false, as required by ::initFilter
+	//haveRangeParent=false; //Initialiser sets this to false, as required by ::initFilter
 
 	cacheOK=false;
 
@@ -364,7 +370,12 @@ void ClusterAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 			{
 				//OK, its different. we will have to re-assign,
 				//but only allow the ranges enabled in the parent filter
-				ionNames.clear();
+				//
+
+
+				vector<string> oldIonNames;
+				oldIonNames.swap(ionNames);
+
 				ionNames.reserve(r->rangeFile->getNumRanges());
 				for(unsigned int uj=0;uj<r->rangeFile->getNumIons();uj++)
 				{
@@ -373,12 +384,34 @@ void ClusterAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 						ionNames.push_back(r->rangeFile->getName(uj));
 				}
 
-				//Zerou out any current data
-				ionCoreEnabled.clear(); 
-				ionBulkEnabled.clear();
+				//Create new Core enabled/size enabled maps
+				//try to preserve selection using ion naming, if possible
+				//---
+				vector<bool> oldCoreEnable,oldBulkEnable;
+				oldCoreEnable.swap(ionCoreEnabled);
+				oldBulkEnable.swap(ionBulkEnabled);
 
 				ionCoreEnabled.resize(ionNames.size(),false);
 				ionBulkEnabled.resize(ionNames.size(),true);
+
+				//TODO: Could replace double-search with keyed sort & match
+				for(size_t ui=0;ui<ionNames.size();ui++)
+				{
+					for(size_t uj=0; uj<oldIonNames.size();uj++)
+					{
+						if(ionNames[ui] == oldIonNames[uj])
+						{
+							ionCoreEnabled[ui] = oldCoreEnable[uj];
+							ionBulkEnabled[ui] = oldBulkEnable[uj];
+							break;
+						}
+					}
+
+				}
+				//---
+
+
+
 			}
 			
 			return;
@@ -413,7 +446,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	}
 
 	//OK, we actually have to do some work.
-	//-----------
+	//================
 
 	
 	//Find out how much total size we need in points vector
@@ -478,6 +511,8 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	}
 #endif
 
+	//================
+	
 	//Do the clustering 
 	//-------------
 	vector<vector<IonHit> > clusteredCore,clusteredBulk;
@@ -499,9 +534,10 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	}
 
 #ifdef DEBUG
-	/* If you are paranoid about the quality of the output, uncomment this. 
-	 * This will enable running some sanity checks that do not use the data structures
-	 * involved in the clustering; ie a secondary check.
+	/* If you are paranoid about the quality of the output, 
+	 * This will enable running some sanity checks that do 
+	 * not use the data structure involved in the clustering; 
+	 * ie a secondary check.
 	 * However this is far too slow to enable by default, even in debug mode
 	 */
 	if(wantParanoidDebug)
@@ -524,6 +560,8 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	//-------------
 
 
+	//Report the results back to the user
+	//------------
 	//Cluster reporting.
 	const RangeStreamData *r=0;
 	for(unsigned int ui=0;ui<dataIn.size();ui++)
@@ -535,6 +573,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 		}
 	}
 
+	size_t curPlotIndex=0;
 	//Generate size distribution if we need it.
 	if(wantClusterSizeDist)
 	{
@@ -543,9 +582,8 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 
 		if(d)
 		{
-			//Jump the plot index to some large number, so
-			//we don't hit the cluster size distribution index
-			d->index=1000;
+			d->index=curPlotIndex;
+			curPlotIndex++;
 			if(cache)
 			{
 				d->cached=1;
@@ -568,7 +606,8 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 
 		for(unsigned int ui=0;ui<plots.size();ui++)
 		{
-			plots[ui]->index=ui;
+			plots[ui]->index=curPlotIndex;
+			curPlotIndex++;
 
 			if(cache)
 			{
@@ -576,12 +615,150 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 				filterOutputs.push_back(plots[ui]);
 			}
 			else
-				plots[ui]->cached=1;
+				plots[ui]->cached=0;
 
 			getOut.push_back(plots[ui]);
 		}
 	}
 
+	if(wantClusterMorphology)
+	{
+		//Compute the singular values for each cluster
+		//which describe the cluster morphology, their basis vectors, and 
+		//the mass centre for the clusters
+
+		//The premise of this analysis technique is outlined in Sudbrack,2004 - to some extent.
+		// In that work, they have several methods of doing morphology analysis, including where they 
+		//  use a PCA which wraps up the SVD to do the calculations.
+		// Here we use the SVD, which is faster & more space efficient, as we don't form the covariance 
+		// matrix, but work directly on our data.
+
+		// Aside from a sqrt, we should get the same answer for the ellipsoidal fit. 
+		//
+		// Showing SVD & PCA to be equivalent enough for our use:
+		//  SVD : X=USV', PCA: XX'=WDW' ;
+		//
+		//PCA, sub-ing Xs SVD representation:
+		//  XX' = (USV')(USV')'
+		//  XX' = (USV')(VSU')
+		//  XX' = US(V'V)SU'
+		//  V is orthogonal, thus V'V =I
+		//  as transpose of orthogonal is its own inverse.
+		//  XX' = US^2U'
+		//
+		// In our case, X_i=P_i-P_bar, where P_i is the i-th point in the cluster
+		//
+		//  Thus D=S^2  and, D, being diagonal implies S=D^0.5
+		//Sudbrack, C. : Decomposition behavior in model Ni-Al-Cr-X superalloys: 
+		// emporal evolution and compositional pathways on a nanoscale (Ph.D. Thesis, 2004) 
+		//http://arc.nucapt.northwestern.edu/refbase/files/Sudbrack_Ph.D._thesis_2004_6MB.pdf 
+
+		//Singular values, 
+		//Mass centres of clusters & Singular vectors 
+		vector<vector<float> > singularVals;
+		vector<std::pair<Point3D,std::vector<Point3D> > > singularVectors;
+		getSingularValues(clusteredCore,clusteredBulk,
+					singularVals,singularVectors);
+
+		ASSERT(singularVals.size() == clusteredCore.size());
+		ASSERT(singularVectors.size() == clusteredCore.size());
+
+		//Ok, so we have the singular values, now create a 
+		//plot with the values in it
+		PlotStreamData *p = new PlotStreamData;
+		p->parent=this;
+
+		p->plotMode=PLOT_MODE_1D;
+		p->plotStyle=PLOT_TRACE_POINTS;
+		p->dataLabel=TRANS("Morphology Plot");
+		p->xLabel=TRANS("\\lambda_1:\\lambda_2 ratio");
+		p->yLabel=TRANS("\\lambda_2:\\lambda_3 ratio");
+		p->xyData.reserve(singularVals.size());
+		//the Y label makes more sense than the plot label here.
+		p->useDataLabelAsYDescriptor=false;
+
+
+#pragma omp parallel for
+		for(unsigned int ui=0; ui<singularVals.size();ui++)
+		{
+			if(singularVals[ui].size() == 3 && 
+				singularVals[ui].back() > std::numeric_limits<float>::epsilon())
+			{
+				p->xyData.push_back(make_pair(singularVals[ui][0]/singularVals[ui][1],
+						singularVals[ui][1]/singularVals[ui][2]));
+
+			}
+		}
+
+		if(p->xyData.size())
+		{
+			p->index=curPlotIndex;
+			curPlotIndex++;
+			p->autoSetHardBounds();
+
+			if(cache)
+			{
+				p->cached=1;
+				filterOutputs.push_back(p);
+			}
+			else
+				p->cached=0;
+
+			getOut.push_back(p);
+
+		}
+		else
+		{
+			consoleOutput.push_back(TRANS("No clusters had sufficient dimensionality to compute singular values"));
+			delete p;
+		}
+		
+		
+		DrawStreamData *singularVectorDraw = new DrawStreamData;
+		singularVectorDraw->parent=this;
+		singularVectorDraw->drawables.reserve(singularVectors.size()*3);
+
+		//So the next thing we do, is create mini Axes for them at their respective coordinates
+		//the length of each part of the axis shows the primary directions
+		//for that part of the cluster
+		for(unsigned int ui=0;ui<singularVectors.size();ui++)
+		{	
+
+			for(unsigned int uj=0;uj<3;uj++)
+			{
+				//Need at least j-rank on the singular vectors.
+				//to show the j-th singular vector in real space
+				if(uj >=singularVectors[ui].second.size())
+					break;
+
+				DrawVector *d;
+				d= new DrawVector;
+				d->setColour(uj ==0, uj == 1, uj ==2,1);
+				Point3D start,singVector;
+
+				//make a little cross in free space
+				singVector=singularVectors[ui].second[uj]*singularVals[ui][uj];
+				start=singularVectors[ui].first-singVector*0.5f;
+
+
+				//First in current singular pair is cluster origin
+				d->setOrigin(start);
+				//Second contains each individual  thing
+				d->setVector(singVector*0.5f);
+				singularVectorDraw->drawables.push_back(d);
+			}
+		}
+
+		if(cache)
+		{
+			WARN(false,"Drawable caching is broken now. Refusing to cache!");
+			singularVectorDraw->cached=0;
+		}
+		else
+			singularVectorDraw->cached=0;
+
+		getOut.push_back(singularVectorDraw);
+	}
 
 	//Construct the output clustered data.
 	IonStreamData *i = new IonStreamData;
@@ -606,9 +783,6 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	i->data.resize(totalSize);
 	
 
-
-	
-	
 	//copy across the core and bulk ions
 	//into the output
 	size_t copyPos=0;
@@ -698,6 +872,8 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 		
 	}	
 
+	//---------------
+	
 	return 0;
 }
 
@@ -763,20 +939,15 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	
 	s.clear(); type.clear(); keys.clear(); 
 
-	if(sizeCountBulk)
-		tmpStr="1";
-	else
-		tmpStr="0";
+	if(bulkLink > 0.0f)
+	{
+		tmpStr=boolStrEnc(sizeCountBulk);
+		s.push_back(make_pair(TRANS("Count bulk"),tmpStr));
+		type.push_back(PROPERTY_TYPE_BOOL);
+		keys.push_back(KEY_SIZE_COUNT_BULK);
+	}
 
-	s.push_back(make_pair(TRANS("Count bulk"),tmpStr));
-	type.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(KEY_SIZE_COUNT_BULK);
-
-	if(wantCropSize)
-		tmpStr="1";
-	else
-		tmpStr="0";
-
+	tmpStr=boolStrEnc(wantCropSize);
 	s.push_back(make_pair(TRANS("Size Cropping"),tmpStr));
 	type.push_back(PROPERTY_TYPE_BOOL);
 	keys.push_back(KEY_CROP_SIZE);
@@ -795,35 +966,25 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 
 	}	
 	
-	if(wantClusterSizeDist)
-		tmpStr="1";
-	else
-		tmpStr="0";
-
-
+		tmpStr=boolStrEnc(wantClusterSizeDist);
 	s.push_back(make_pair(TRANS("Size Distribution"),tmpStr));
 	type.push_back(PROPERTY_TYPE_BOOL);
 	keys.push_back(KEY_WANT_CLUSTERSIZEDIST);
 	if(wantClusterSizeDist)
 	{	
-		if(logClusterSize)
-			tmpStr="1";
-		else
-			tmpStr="0";
-
+		tmpStr=boolStrEnc(logClusterSize);
 		s.push_back(make_pair(TRANS("Log Scale"),tmpStr));
 		type.push_back(PROPERTY_TYPE_BOOL);
 		keys.push_back(KEY_WANT_LOGSIZEDIST);
 	}
 
 
+	tmpStr=boolStrEnc(wantClusterMorphology);
+	s.push_back(make_pair(TRANS("Morphology Dist."),tmpStr));
+	type.push_back(PROPERTY_TYPE_BOOL);
+	keys.push_back(KEY_WANT_CLUSTERMORPHOLOGY);
 	
-	if(wantClusterComposition)
-		tmpStr="1";
-	else
-		tmpStr="0";
-
-
+	tmpStr=boolStrEnc(wantClusterComposition);
 	s.push_back(make_pair(TRANS("Chemistry Dist."),tmpStr));
 	type.push_back(PROPERTY_TYPE_BOOL);
 	keys.push_back(KEY_WANT_COMPOSITIONDIST);
@@ -831,11 +992,7 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	
 	if(wantClusterComposition)
 	{	
-		if(normaliseComposition)
-			tmpStr="1";
-		else
-			tmpStr="0";
-
+		tmpStr=boolStrEnc(normaliseComposition);
 		s.push_back(make_pair(TRANS("Normalise"),tmpStr));
 		type.push_back(PROPERTY_TYPE_BOOL);
 		keys.push_back(KEY_NORMALISE_COMPOSITION);
@@ -1002,10 +1159,7 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 				return false;
 
 			bool lastVal=wantClusterSizeDist;
-			if(stripped=="1")
-				wantClusterSizeDist=true;
-			else
-				wantClusterSizeDist=false;
+			wantClusterSizeDist=(stripped == "1");
 
 			if(lastVal!=wantClusterSizeDist)
 			{
@@ -1054,10 +1208,8 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 				return false;
 
 			bool lastVal=logClusterSize;
-			if(stripped=="1")
-				logClusterSize=true;
-			else
-				logClusterSize=false;
+
+			logClusterSize=(stripped == "1");
 
 			//If the result is different
 			//we need to alter the output
@@ -1102,10 +1254,7 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 				return false;
 
 			bool lastVal=wantClusterComposition;
-			if(stripped=="1")
-				wantClusterComposition=true;
-			else
-				wantClusterComposition=false;
+			wantClusterComposition=(stripped=="1");
 
 			//if the result is different, e
 			//remove the filter elements we no longer want.
@@ -1157,10 +1306,7 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 				return false;
 
 			bool lastVal=normaliseComposition;
-			if(stripped=="1")
-				normaliseComposition=true;
-			else
-				normaliseComposition=false;
+			normaliseComposition=(stripped == "1");
 
 			//if the result is different, the
 			//cache should be invalidated
@@ -1180,10 +1326,7 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 				return false;
 
 			bool lastVal=wantCropSize;
-			if(stripped=="1")
-				wantCropSize=true;
-			else
-				wantCropSize=false;
+			wantCropSize=(stripped == "1");
 
 			//if the result is different, the
 			//cache should be invalidated
@@ -1244,6 +1387,26 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 			//if the result is different, the
 			//cache should be invalidated
 			if(lastVal!=sizeCountBulk)
+			{
+				needUpdate=true;
+				clearCache();
+			}
+			
+			break;
+		}
+		case KEY_WANT_CLUSTERMORPHOLOGY:
+		{
+			string stripped=stripWhite(value);
+
+			if(!(stripped == "1"|| stripped == "0"))
+				return false;
+
+			bool lastVal=wantClusterMorphology;
+			wantClusterMorphology=(stripped=="1");
+
+			//if the result is different, the
+			//cache should be invalidated
+			if(lastVal!=wantClusterMorphology)
 			{
 				needUpdate=true;
 				clearCache();
@@ -1340,6 +1503,8 @@ bool ClusterAnalysisFilter::writeState(std::ofstream &f,unsigned int format,
 					logClusterSize <<  "\" sizecountbulk=\""<<sizeCountBulk<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<wantclustercomposition value=\"" <<wantClusterComposition<< "\" normalise=\"" << 
 					normaliseComposition<< "\"/>"  << endl;
+			
+			f << tabs(depth+1) << "<wantclustermorphology value=\"" <<wantClusterMorphology	<< "\"/>"  << endl;
 
 
 			f << tabs(depth+1) << "<enabledions>"  << endl;
@@ -1439,6 +1604,18 @@ bool ClusterAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &pa
 	//===
 	xmlNodePtr tmpPtr;
 	tmpPtr=nodePtr;
+
+	if(!XMLGetNextElemAttrib(nodePtr,wantCropSize,"wantcropsize","value"))
+		return false;
+	nodePtr=tmpPtr;
+
+	if(!XMLGetNextElemAttrib(nodePtr,nMin,"nmin","value"))
+		return false;
+	nodePtr=tmpPtr;
+	if(!XMLGetNextElemAttrib(nodePtr,nMax,"nmax","value"))
+		return false;
+	nodePtr=tmpPtr;
+
 	if(!XMLGetNextElemAttrib(nodePtr,wantClusterSizeDist,"wantclustersizedist","value"))
 		return false;
 	nodePtr=tmpPtr;
@@ -1453,6 +1630,11 @@ bool ClusterAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &pa
 		return false;
 	nodePtr=tmpPtr;
 	if(!XMLGetNextElemAttrib(nodePtr,normaliseComposition,"wantclustercomposition","normalise"))
+		return false;
+	
+	
+	nodePtr=tmpPtr;
+	if(!XMLGetNextElemAttrib(nodePtr,wantClusterMorphology,"wantclustermorphology","value"))
 		return false;
 	//===
 
@@ -1506,10 +1688,15 @@ unsigned int ClusterAnalysisFilter::getRefreshBlockMask() const
 
 unsigned int ClusterAnalysisFilter::getRefreshEmitMask() const
 {
-	if(wantClusterSizeDist || wantClusterComposition)
-		return STREAM_TYPE_IONS | STREAM_TYPE_PLOT;
+	if(wantClusterSizeDist || wantClusterComposition || wantClusterMorphology)
+		return STREAM_TYPE_IONS | STREAM_TYPE_PLOT | STREAM_TYPE_DRAW;
 	else
 		return STREAM_TYPE_IONS;
+}
+
+unsigned int ClusterAnalysisFilter::getRefreshUseMask() const
+{
+	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE;	
 }
 
 std::string ClusterAnalysisFilter::getErrString(unsigned int i) const
@@ -1564,7 +1751,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	//	 strips out ions from the cluster. This is only done once (ie, not iterative)
 	//
 	// In the implementation, there are more steps, due to data structure construction
-	// and other comptuational concerns
+	// and other computational concerns
 	
 	bool needCoring=coreDist> std::numeric_limits<float>::epsilon();
 	bool needBulkLink=bulkLink > std::numeric_limits<float>::epsilon();
@@ -1591,11 +1778,11 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		//that we hope they know what they are doing.
 
 
-		if(bulkLink > linkDist)
+		if(bulkLink > linkDist/2.0)
 		{
 			consoleOutput.push_back("");
 			consoleOutput.push_back(TRANS(" --------------------------- Parameter selection notice ------------- ")  );
-			consoleOutput.push_back(TRANS("You have specified a bulk distance larger than your link distance.")  );
+			consoleOutput.push_back(TRANS("You have specified a bulk distance larger than half your link distance.")  );
 			consoleOutput.push_back(TRANS("You can do this; thats OK, but the output is no longer independent of the computational process;")  );
 			consoleOutput.push_back(TRANS("This will be a problem in the case where two or more clusters can equally lay claim to a \"bulk\" ion. ")  );
 			consoleOutput.push_back(TRANS(" If your inter-cluster distance is sufficiently large (larger than your bulk linking distance), then you can get away with this.")  );
@@ -1687,7 +1874,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 			//specified distance
 			if(pNN == (size_t)-1)
 			{
-				coreOK[ui]=false;
+				coreOK[coreTree.getOrigIndex(ui)]=false;
 				ASSERT(tagsToClear.back() == (size_t) -1);
 				tagsToClear.pop_back(); //get rid of the -1
 			}
@@ -1695,7 +1882,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 			{
 				float nnSqrDist;
 				nnSqrDist=p->sqrDist(*(coreTree.getPt(pNN)));
-				coreOK[ui] = nnSqrDist < coreDistSqr;
+				coreOK[coreTree.getOrigIndex(ui)] = nnSqrDist < coreDistSqr;
 			}
 
 
@@ -1712,7 +1899,6 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		}
 
 
-		
 		for(size_t ui=coreOK.size();ui;)
 		{
 			ui--;
@@ -1730,7 +1916,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		//Re-Build the core KD tree
 		coreTree.setCallback(callback);
 		coreTree.setProgressPointer(&(progress.filterProgress));
-		coreTree.resetPts(coreIons);
+		coreTree.resetPts(coreIons,false);
 		coreTree.build();
 
 		coreTree.getBoundCube(bCore);
@@ -1895,6 +2081,9 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		}
 	}
 
+#ifdef DEBUG
+	size_t coreClusterBeforeCount=allCoreClusters.size();
+#endif
 	//Step 3 in the  Process : Bulk inclusion : AKA envelope
 	//====
 	//If there is no bulk link step, we don't need to do that.,
@@ -2023,7 +2212,9 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	//====
 
 
-
+#ifdef DEBUG
+	size_t bulkClusterBeforeCount=allBulkClusters.size();
+#endif
 	//Step 4 in the  Process : Bulk erosion 
 	//====
 	//Check if we need the erosion step
@@ -2113,6 +2304,10 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		return ABORT_ERR;
 	clusteredCore.resize(allCoreClusters.size());
 	clusteredBulk.resize(allBulkClusters.size());
+
+	ASSERT(coreClusterBeforeCount == allCoreClusters.size()); //Must be equal, independant of erosion/bulk link steps
+	ASSERT(bulkClusterBeforeCount >= allBulkClusters.size()); //Must be <= after (optional) erosion step
+	
 
 	//Use a no-barrier construct, to avoid the 
 	//flush wait in the middle
@@ -2374,7 +2569,8 @@ PlotStreamData* ClusterAnalysisFilter::clusterSizeDistribution(const vector<vect
 	dist->dataLabel=SIZE_DIST_DATALABEL;
 	dist->logarithmic=logClusterSize;
 
-	dist->plotType=PLOT_TRACE_STEM;
+	dist->plotStyle=PLOT_TRACE_STEM;
+	dist->plotMode=PLOT_MODE_1D;
 	dist->xyData.resize(countMap.size());
 	std::copy(countMap.begin(),countMap.end(),dist->xyData.begin());
 
@@ -2583,6 +2779,7 @@ void ClusterAnalysisFilter::genCompositionVersusSize(const vector<vector<IonHit>
 		PlotStreamData *p;
 		p=new PlotStreamData;
 		p->parent=this;
+		p->plotMode=PLOT_MODE_1D;
 
 		RGBf ionColour;
 		ionColour=rng->getColour(ui);
@@ -2601,7 +2798,7 @@ void ClusterAnalysisFilter::genCompositionVersusSize(const vector<vector<IonHit>
 		p->dataLabel=string(CHEM_DIST_DATALABEL) + string(":") + rng->getName(ui);
 		p->logarithmic=logClusterSize && !normaliseComposition;
 
-		p->plotType=PLOT_TRACE_STEM;
+		p->plotStyle=PLOT_TRACE_STEM;
 
 		p->xyData.resize(countMap.size());
 
@@ -2631,70 +2828,155 @@ void ClusterAnalysisFilter::genCompositionVersusSize(const vector<vector<IonHit>
 
 }
 
-void ClusterAnalysisFilter::getSingularValues(const vector<vector<IonHit> > &clusteredCore,
-				const vector<vector<IonHit> > &clusteredBulk, vector<vector<float> > &singularValues) const
+void ClusterAnalysisFilter::getSingularValues(const vector<vector<IonHit> > &clusteredCore, 
+	const vector<vector<IonHit> > &clusteredBulk, vector<vector<float> > &singularValues,
+		vector<std::pair<Point3D,vector<Point3D> > > &singularVectors) const
 {
-	ASSERT(clusteredCore.size() == clusteredBulk.size());
+	const unsigned int DIMENSION=3;
 
-	vector<float> curSingularVals;
 	float *data=0;
 	size_t dataSize=0;
-	for(unsigned int ui=0;ui<clusteredCore.size(); ui++)
+	if(clusteredBulk.size())
+	{
+		ASSERT(clusteredCore.size() == clusteredBulk.size());
+//#pragma omp parallel for shared(singularValues,clusteredCore,clusteredBulk) private(data,dataSize)
+		for(unsigned int ui=0;ui<clusteredCore.size(); ui++)
+		{
+			vector<float> curSingularVals;
+			vector<Point3D> curSingularBases;
+
+			curSingularVals.clear();
+			curSingularBases.clear();
+			//For this cluster, compute its singular values amplitudes
+			// (ignore direction)
+			size_t numEntries = clusteredCore[ui].size() + clusteredBulk[ui].size();
+
+
+			//Check to see if we have sufficient data to compute an SVD
+			if(numEntries <=DIMENSION )
+			{
+#pragma omp critical
+				{
+				singularValues.push_back(curSingularVals);
+				singularVectors.push_back(make_pair(Point3D(0,0,0),curSingularBases));
+				}
+				continue; 
+			}
+			
+			//Allocate space, by growing as needed
+			if(numEntries*DIMENSION > dataSize)
+			{
+				//TODO: Is it faster to pre-compute the maximum cluster size?
+				//      then determine the cluster backbone from that? 
+				//      Should we be using realloc?
+				if(data)
+					delete[] data;
+				data = new float[numEntries*DIMENSION];
+				dataSize=numEntries*DIMENSION;
+			}
+
+			//Compute the cluster's centre of mass (assuming unit mass per object)
+			Point3D centroid[2];
+			getPointSum(clusteredCore[ui],centroid[0]);
+			getPointSum(clusteredBulk[ui],centroid[1]);
+		
+			Point3D clusterCentre;
+			clusterCentre= centroid[0]+centroid[1];
+			clusterCentre*=1.0f/(float)(clusteredCore[ui].size()+clusteredBulk[ui].size());
+			
+			//Fill the data array
+			float *p;
+			p=data;
+			for(size_t uj=0;uj<clusteredCore[ui].size();uj++)
+			{
+				for(size_t uk=0;uk<DIMENSION;uk++)
+				{
+					*(p) = clusteredCore[ui][uj].getPos()[uk]-clusterCentre[uk];
+					p++;
+				}
+			}
+			
+			for(size_t uj=0;uj<clusteredBulk[ui].size();uj++)
+			{
+				for(size_t uk=0;uk<DIMENSION;uk++)
+				{
+					*(p) = clusteredBulk[ui][uj].getPos()[uk]-clusterCentre[uk];
+					p++;
+				}
+			}
+
+			//Cmpute the DIMENSION-D singular value decomposition for
+			//this vector set
+			computeSingularValues(data,numEntries,
+						DIMENSION,curSingularVals,curSingularBases);
+
+#pragma omp critical
+			{
+			singularValues.push_back(curSingularVals);
+			singularVectors.push_back(make_pair(clusterCentre,curSingularBases));
+			}
+
+		}
+	}
+	else
 	{
 
-		curSingularVals.clear();
-		//For this cluster, compute its singular values amplitudes
-		// (ignore direction)
-		const unsigned int DIMENSION=3;
-		size_t numEntries = clusteredCore[ui].size() + clusteredBulk[ui].size();
-
-
-		//Check to see if we have sufficient data to compute an SVD
-		if(numEntries < DIMENSION )
+//#pragma omp parallel for shared(singularValues,clusteredCore,clusteredBulk) private(data,dataSize)
+		for(unsigned int ui=0;ui<clusteredCore.size(); ui++)
 		{
+			vector<float> curSingularVals;
+			vector<Point3D> curSingularBases;
+
+			curSingularVals.clear();
+			curSingularBases.clear();
+			//For this cluster, compute its singular values amplitudes
+			// (ignore direction)
+			size_t numEntries = clusteredCore[ui].size(); 
+
+
+			//Check to see if we have sufficient data to compute an SVD
+			if(numEntries <=DIMENSION )
+			{
+#pragma omp critical
+				{
+				singularValues.push_back(curSingularVals);
+				singularVectors.push_back(make_pair(Point3D(0,0,0),curSingularBases));
+				}
+				continue; 
+			}
+			//Compute the cluster's centre of mass (assuming unit mass per object)
+			Point3D centroid;
+			getPointSum(clusteredCore[ui],centroid);
+			centroid*=1.0f/(float)(clusteredCore[ui].size());
+			//Allocate space, by growing as needed
+			if(numEntries*DIMENSION > dataSize)
+			{
+				//TODO: Is it faster to pre-compute the maximum cluster size?
+				//      then determine the cluster backbone from that? 
+				//      Should we be using realloc?
+				if(data)
+					delete[] data;
+				data = new float[numEntries*DIMENSION];
+				dataSize=numEntries*DIMENSION;
+			}
+
+			//Fill the data array
+			for(size_t uj=0;uj<clusteredCore[ui].size();uj++)
+			{
+				for(size_t uk=0;uk<DIMENSION;uk++)
+					data[uj*DIMENSION + uk] = clusteredCore[ui][uj].getPos()[uk];
+			}
+			//Cmpute the DIMENSION-D singular value decomposition for
+			//this vector set, and the basis vectors 
+			computeSingularValues(data,numEntries,
+				DIMENSION,curSingularVals,curSingularBases);
+
+#pragma omp critical
+			{
 			singularValues.push_back(curSingularVals);
-			continue; 
-		}
-		
-		//Allocate space, by growing as needed
-		if(numEntries*DIMENSION > dataSize)
-		{
-			//TODO: Is it faster to pre-compute the maximum cluster size?
-			//      then determine the cluster backbone from that? 
-			//      Should we be usig realloc?
-			if(data)
-				delete[] data;
-			data = new float[numEntries*DIMENSION];
-			dataSize=numEntries*DIMENSION;
-		}
-
-		//Fill the data array
-		float *p;
-		p=data;
-		for(size_t uj=0;uj<clusteredCore[ui].size();uj++)
-		{
-			for(size_t uk=0;uk<DIMENSION;uk++)
-			{
-				*(p) = clusteredCore[ui][uj].getPos()[uk];
-				p++;
+			singularVectors.push_back(make_pair(centroid,curSingularBases));
 			}
 		}
-		
-		for(size_t uj=0;uj<clusteredBulk[ui].size();uj++)
-		{
-			for(size_t uk=0;uk<DIMENSION;uk++)
-			{
-				*(p) = clusteredBulk[ui][uj].getPos()[uk];
-				p++;
-			}
-		}
-
-		//Cmpute the DIMENSION-D singular value decomposition for
-		//this vector set
-		computeSingularValues(data,numEntries,
-					DIMENSION,curSingularVals);
-
-		singularValues.push_back(curSingularVals);
 	}
 
 	if(data)
@@ -2720,14 +3002,20 @@ const unsigned int CLUSTER_SIZES[]= { 15, 9};
 //Create a synthetic dataset of points for cluster
 IonStreamData *genCluster(unsigned int datasetID);
 
+//Test several isolated clusters
 bool isolatedClusterTest();
+
+//Test the core mode of the core-link clustering algorithm
+bool coreClusterTest();
 
 //Unit tests
 bool ClusterAnalysisFilter::runUnitTests()
 {
 	if(!isolatedClusterTest())
 		return false;
-	
+
+	if(!coreClusterTest())
+		return false;	
 	return true;
 }
 
@@ -2797,6 +3085,38 @@ IonStreamData *genCluster(unsigned int id)
 }
 
 
+IonStreamData *genCoreTestCluster()
+{
+	IonStreamData* d = new IonStreamData;
+	d->parent=0;
+
+	IonHit a;
+	a.setMassToCharge(1);
+	//Create two small groupings of points, 
+	//with one group of 3 linked by unit distance
+	// then a second group of two further away
+	// unit distance apart,
+	// with one in between, spaced evenly between the two
+	a.setPos(Point3D(0,0,0));
+	d->data.push_back(a);
+	a.setPos(Point3D(0,1,0));
+	d->data.push_back(a);
+	a.setPos(Point3D(1,0,0));
+	d->data.push_back(a);
+
+	a.setPos(Point3D(0,0,2));
+	d->data.push_back(a);
+
+	a.setPos(Point3D(0,0,4));
+	d->data.push_back(a);
+	a.setPos(Point3D(0,-1,4));
+	d->data.push_back(a);
+
+	return d;
+}
+//Test the "core-link + erode" algorithm
+// - no core classifcation
+//
 bool isolatedClusterTest()
 {
 
@@ -2840,6 +3160,8 @@ bool isolatedClusterTest()
 	bool needUp;
 	f->setProperty(SET_CORE_IONS,KEY_CORE_OFFSET,"1",needUp);
 	f->setProperty(SET_BULK_IONS,KEY_BULK_OFFSET+1,"1",needUp);
+
+	f->setProperty(0,KEY_CORECLASSIFYDIST,"0",needUp);
 	f->setProperty(0,KEY_LINKDIST,"1.1",needUp);
 	f->setProperty(0,KEY_BULKLINK,"1.1",needUp);
 	f->setProperty(0,KEY_ERODEDIST,"0",needUp);
@@ -2909,7 +3231,80 @@ bool isolatedClusterTest()
 	return true;
 }
 
+bool coreClusterTest()
+{
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	
+	//Create a range file with two
+	//range datasets, A and B
+	RangeFile r;
+	RGBf filler;
+	filler.red=filler.green=filler.blue=0.5f;
 
+	unsigned int ionA,ionB;
+	std::string shortName,longName;
+	shortName="A"; longName="AType";
+	ionA=r.addIon(shortName,longName,filler);
+	shortName="B"; longName="BType";
+	ionB=r.addIon(shortName,longName,filler);
+
+	r.addRange(0.5,1.5,ionA);
+	r.addRange(1.5,2.5,ionB);
+
+	//Build a rangestream data
+	RangeStreamData *rng = new RangeStreamData;
+	rng->rangeFile=&r;
+	rng->parent=0;
+	rng->enabledIons.resize(r.getNumIons(),1);
+	rng->enabledRanges.resize(r.getNumRanges(),1);
+
+	//Create a cluster analysis filter
+	ClusterAnalysisFilter *f=new ClusterAnalysisFilter;
+	f->setCaching(false);	
+	f->wantParanoidDebug=true;	
+	
+	
+	streamIn.push_back(rng);
+	f->initFilter(streamIn,streamOut);
+	streamOut.clear();	
+	
+	//Enable A as core
+	bool needUp;
+	TEST(f->setProperty(SET_CORE_IONS,KEY_CORE_OFFSET,"1",needUp),"Set core range");
+
+	TEST(f->setProperty(0,KEY_CORECLASSIFYDIST,"1.1",needUp),"Set core classification dist");
+	TEST(f->setProperty(0,KEY_CORECLASSIFYKNN,"1",needUp),"Set core classfication kNN");
+	TEST(f->setProperty(0,KEY_LINKDIST,"2.0",needUp),"set link distance");
+	TEST(f->setProperty(0,KEY_BULKLINK,"0",needUp),"set bulk distance");
+	TEST(f->setProperty(0,KEY_ERODEDIST,"0",needUp),"set erode distance");
+
+	//stop the plots
+	f->setProperty(0,KEY_WANT_CLUSTERSIZEDIST,"0",needUp);
+	f->setProperty(0,KEY_WANT_COMPOSITIONDIST,"0",needUp);
+	
+	IonStreamData *ionData = genCoreTestCluster();
+
+	streamIn.push_back(ionData);
+
+	//Do the refresh
+	ProgressData p;
+	TEST(!(f->refresh(streamIn,streamOut,p,dummyCallback)),"Refresh err code");
+	delete f;
+	delete ionData;
+	delete rng;
+
+	TEST(streamOut.size() == 1,"stream count");
+
+	const IonStreamData *outD=(const IonStreamData*)streamOut[0];;
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+	TEST(outD->data.size() == 5,"Total Cluster size");
+
+	delete outD;
+
+
+	return true;	
+}
 
 
 

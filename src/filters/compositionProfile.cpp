@@ -4,23 +4,6 @@
 
 #include "../translation.h"
 
-enum
-{
-	KEY_BINWIDTH=1,
-	KEY_FIXEDBINS,
-	KEY_NORMAL,
-	KEY_NUMBINS,
-	KEY_ORIGIN,
-	KEY_PLOTTYPE,
-	KEY_PRIMITIVETYPE,
-	KEY_RADIUS,
-	KEY_SHOWPRIMITIVE,
-	KEY_NORMALISE,
-	KEY_COLOUR,
-	KEY_ERRMODE,
-	KEY_AVGWINSIZE,
-	KEY_LOCKAXISMAG
-};
 
 //!Possible primitive types for composition profiles
 enum
@@ -37,26 +20,17 @@ enum
 	ERR_ABORT
 };
 
-CompositionProfileFilter::CompositionProfileFilter()
+CompositionProfileFilter::CompositionProfileFilter() : primitiveType(PRIMITIVE_CYLINDER),
+	showPrimitive(true), lockAxisMag(false),normalise(true), fixedBins(0),
+	nBins(1000), binWidth(0.5f), r(0.0f),g(0.0f),b(1.0f),a(1.0f), plotStyle(0)
 {
-	binWidth=0.5;
-	plotType=0;
-	fixedBins=0;
-	nBins=1000;
-	normalise=1;
 	errMode.mode=PLOT_ERROR_NONE;
 	errMode.movingAverageNum=4;
-	lockAxisMag=false;
-	//Default to blue plot
-	r=g=0;
-	b=a=1;
 	
-	primitiveType=PRIMITIVE_CYLINDER;
 	vectorParams.push_back(Point3D(0.0,0.0,0.0));
 	vectorParams.push_back(Point3D(0,20.0,0.0));
 	scalarParams.push_back(5.0);
 
-	showPrimitive=true;
 }
 
 
@@ -114,7 +88,7 @@ Filter *CompositionProfileFilter::cloneUncached() const
 	p->g=g;	
 	p->b=b;	
 	p->a=a;	
-	p->plotType=plotType;
+	p->plotStyle=plotStyle;
 	p->errMode=errMode;
 	//We are copying wether to cache or not,
 	//not the cache itself
@@ -427,7 +401,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 								//rotate ion position into cylindrical coordinates
 								quat_rot_apply_quat(&p,&q1);
 
-								//Keep ion if inside cylinder XOR inversion of the clippping (inside vs outside)
+								//Keep ion if inside cylinder 
 								if((p.fz < halfLen && p.fz > -halfLen && p.fx*p.fx+p.fy*p.fy < sqrRad))  
 								{
 									//Figure out where inside the cylinder the 
@@ -461,7 +435,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 								Point3D ptmp;
 								ptmp=it->getPosRef()-vectorParams[0];
 								
-								//Keep ion if inside cylinder XOR inversion of the clippping (inside vs outside)
+								//Keep ion if inside cylinder 
 								if((ptmp[2] < halfLen && ptmp[2] > -halfLen && ptmp[0]*ptmp[0]+ptmp[1]*ptmp[1] < sqrRad))
 								{
 									//Figure out where inside the cylinder the 
@@ -604,7 +578,8 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		else
 			plotData[ui]->cached=0;
 
-		plotData[ui]->plotType = plotType;
+		plotData[ui]->plotStyle = plotStyle;
+		plotData[ui]->plotMode=PLOT_MODE_1D;
 		getOut.push_back(plotData[ui]);
 	}
 
@@ -633,7 +608,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			
 	switch(key)
 	{
-		case KEY_BINWIDTH:
+		case COMPOSITION_KEY_BINWIDTH:
 		{
 			float newBinWidth;
 			if(stream_cast(newBinWidth,value))
@@ -647,7 +622,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_FIXEDBINS:
+		case COMPOSITION_KEY_FIXEDBINS:
 		{
 			unsigned int valueInt;
 			if(stream_cast(valueInt,value))
@@ -669,7 +644,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			needUpdate=true;	
 			break;	
 		}
-		case KEY_NORMAL:
+		case COMPOSITION_KEY_NORMAL:
 		{
 			Point3D newPt;
 			if(!parsePointStr(value,newPt))
@@ -693,7 +668,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			}
 			return true;
 		}
-		case KEY_NUMBINS:
+		case COMPOSITION_KEY_NUMBINS:
 		{
 			unsigned int newNumBins;
 			if(stream_cast(newNumBins,value))
@@ -709,7 +684,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_ORIGIN:
+		case COMPOSITION_KEY_ORIGIN:
 		{
 			Point3D newPt;
 			if(!parsePointStr(value,newPt))
@@ -724,7 +699,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 
 			return true;
 		}
-		case KEY_PRIMITIVETYPE:
+		case COMPOSITION_KEY_PRIMITIVETYPE:
 		{
 			unsigned int newPrimitive;
 			if(stream_cast(newPrimitive,value) ||
@@ -755,7 +730,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			needUpdate=true;	
 			return true;	
 		}
-		case KEY_RADIUS:
+		case COMPOSITION_KEY_RADIUS:
 		{
 			float newRad;
 			if(stream_cast(newRad,value))
@@ -769,7 +744,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			}
 			return true;
 		}
-		case KEY_SHOWPRIMITIVE:
+		case COMPOSITION_KEY_SHOWPRIMITIVE:
 		{
 			unsigned int valueInt;
 			if(stream_cast(valueInt,value))
@@ -790,46 +765,42 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			break;	
 		}
 
-		case KEY_NORMALISE:
+		case COMPOSITION_KEY_NORMALISE:
 		{
 			unsigned int valueInt;
 			if(stream_cast(valueInt,value))
 				return false;
 
-			if(valueInt ==0 || valueInt == 1)
+			if(!(valueInt ==0 || valueInt == 1))
+				return false;
+			
+			if(normalise!= valueInt)
 			{
-				if(normalise!= valueInt)
-				{
-					needUpdate=true;
-					normalise=valueInt;
-				}
-				else
-					needUpdate=false;
+				needUpdate=true;
+				normalise=valueInt;
 			}
 			else
-				return false;
+				needUpdate=false;
+		
 			clearCache();
 			needUpdate=true;	
 			break;	
 		}
-		case KEY_LOCKAXISMAG:
+		case COMPOSITION_KEY_LOCKAXISMAG:
 		{
 			string stripped=stripWhite(value);
 
 			if(!(stripped == "1"|| stripped == "0"))
 				return false;
 
-			if(stripped=="1")
-				lockAxisMag=true;
-			else
-				lockAxisMag=false;
+			lockAxisMag=(stripped=="1");
 
 			needUpdate=true;
 
 			break;
 		}
 
-		case KEY_PLOTTYPE:
+		case COMPOSITION_KEY_PLOTTYPE:
 		{
 			unsigned int tmpPlotType;
 
@@ -838,11 +809,11 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			if(tmpPlotType >= PLOT_TRACE_ENDOFENUM)
 				return false;
 
-			plotType = tmpPlotType;
+			plotStyle = tmpPlotType;
 			needUpdate=true;	
 			break;
 		}
-		case KEY_COLOUR:
+		case COMPOSITION_KEY_COLOUR:
 		{
 			unsigned char newR,newG,newB,newA;
 			parseColString(value,newR,newG,newB,newA);
@@ -855,7 +826,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;	
 		}
-		case KEY_ERRMODE:
+		case COMPOSITION_KEY_ERRMODE:
 		{
 			unsigned int tmpMode;
 			tmpMode=plotErrmodeID(value);
@@ -868,7 +839,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 
 			break;
 		}
-		case KEY_AVGWINSIZE:
+		case COMPOSITION_KEY_AVGWINSIZE:
 		{
 			unsigned int tmpNum;
 			stream_cast(tmpNum,value);
@@ -907,14 +878,14 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 		str =string(TRANS("Primitive Type (0-") + str + ")");
 		stream_cast(tmpStr,primitiveType);
 		s.push_back(make_pair(str,tmpStr));
-		keys.push_back(KEY_PRIMITIVETYPE);
+		keys.push_back(COMPOSITION_KEY_PRIMITIVETYPE);
 		type.push_back(PROPERTY_TYPE_INTEGER);
 	}
 
 	str = TRANS("Show Primitive");	
 	stream_cast(tmpStr,showPrimitive);
 	s.push_back(make_pair(str,tmpStr));
-	keys.push_back(KEY_SHOWPRIMITIVE);
+	keys.push_back(COMPOSITION_KEY_SHOWPRIMITIVE);
 	type.push_back(PROPERTY_TYPE_BOOL);
 
 	switch(primitiveType)
@@ -924,12 +895,12 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 			ASSERT(vectorParams.size() == 2);
 			ASSERT(scalarParams.size() == 1);
 			stream_cast(str,vectorParams[0]);
-			keys.push_back(KEY_ORIGIN);
+			keys.push_back(COMPOSITION_KEY_ORIGIN);
 			s.push_back(make_pair(TRANS("Origin"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 			
 			stream_cast(str,vectorParams[1]);
-			keys.push_back(KEY_NORMAL);
+			keys.push_back(COMPOSITION_KEY_NORMAL);
 			s.push_back(make_pair(TRANS("Axis"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 
@@ -937,12 +908,12 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 				str="1";
 			else
 				str="0";
-			keys.push_back(KEY_LOCKAXISMAG);
+			keys.push_back(COMPOSITION_KEY_LOCKAXISMAG);
 			s.push_back(make_pair(TRANS("Lock Axis Mag."), str));
 			type.push_back(PROPERTY_TYPE_BOOL);
 			
 			stream_cast(str,scalarParams[0]);
-			keys.push_back(KEY_RADIUS);
+			keys.push_back(COMPOSITION_KEY_RADIUS);
 			s.push_back(make_pair(TRANS("Radius"), str));
 			type.push_back(PROPERTY_TYPE_POINT3D);
 
@@ -952,7 +923,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 		}
 	}
 
-	keys.push_back(KEY_FIXEDBINS);
+	keys.push_back(COMPOSITION_KEY_FIXEDBINS);
 	stream_cast(str,fixedBins);
 	s.push_back(make_pair(TRANS("Fixed Bin Num"), str));
 	type.push_back(PROPERTY_TYPE_BOOL);
@@ -962,7 +933,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 		stream_cast(tmpStr,nBins);
 		str = TRANS("Num Bins");
 		s.push_back(make_pair(str,tmpStr));
-		keys.push_back(KEY_NUMBINS);
+		keys.push_back(COMPOSITION_KEY_NUMBINS);
 		type.push_back(PROPERTY_TYPE_INTEGER);
 	}
 	else
@@ -970,14 +941,14 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 		str = TRANS("Bin width");
 		stream_cast(tmpStr,binWidth);
 		s.push_back(make_pair(str,tmpStr));
-		keys.push_back(KEY_BINWIDTH);
+		keys.push_back(COMPOSITION_KEY_BINWIDTH);
 		type.push_back(PROPERTY_TYPE_REAL);
 	}
 
 	str = TRANS("Normalise");	
 	stream_cast(tmpStr,normalise);
 	s.push_back(make_pair(str,tmpStr));
-	keys.push_back(KEY_NORMALISE);
+	keys.push_back(COMPOSITION_KEY_NORMALISE);
 	type.push_back(PROPERTY_TYPE_BOOL);
 
 
@@ -990,7 +961,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 	keys.clear();
 	
 	//use set 2 to store the plot properties
-	stream_cast(str,plotType);
+	stream_cast(str,plotStyle);
 	//Let the user know what the valid values for plot type are
 	string tmpChoice;
 	vector<pair<unsigned int,string> > choices;
@@ -1005,10 +976,10 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 	tmpStr=plotString(PLOT_TRACE_STEM);
 	choices.push_back(make_pair((unsigned int)PLOT_TRACE_STEM,tmpStr));
 
-	tmpStr= choiceString(choices,plotType);
+	tmpStr= choiceString(choices,plotStyle);
 	s.push_back(make_pair(string(TRANS("Plot Type")),tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_PLOTTYPE);
+	keys.push_back(COMPOSITION_KEY_PLOTTYPE);
 	//Convert the colour to a hex string
 	if(!haveRangeParent)
 	{
@@ -1018,7 +989,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 
 		s.push_back(make_pair(string(TRANS("Colour")),thisCol)); 
 		type.push_back(PROPERTY_TYPE_COLOUR);
-		keys.push_back(KEY_COLOUR);
+		keys.push_back(COMPOSITION_KEY_COLOUR);
 	}
 
 	propertyList.data.push_back(s);
@@ -1039,7 +1010,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 	tmpStr= choiceString(choices,errMode.mode);
 	s.push_back(make_pair(string(TRANS("Err. Estimator")),tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_ERRMODE);
+	keys.push_back(COMPOSITION_KEY_ERRMODE);
 
 
 	if(errMode.mode == PLOT_ERROR_MOVING_AVERAGE)
@@ -1047,7 +1018,7 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 		stream_cast(tmpStr,errMode.movingAverageNum);
 		s.push_back(make_pair(string(TRANS("Avg. Window")), tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
-		keys.push_back(KEY_AVGWINSIZE);
+		keys.push_back(COMPOSITION_KEY_AVGWINSIZE);
 
 	}	
 
@@ -1096,7 +1067,7 @@ bool CompositionProfileFilter::writeState(std::ofstream &f,unsigned int format, 
 			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
 				<< "\" a=\"" << a << "\"/>" <<endl;
 
-			f << tabs(depth+1) << "<plottype value=\"" << plotType << "\"/>" << endl;
+			f << tabs(depth+1) << "<plottype value=\"" << plotStyle << "\"/>" << endl;
 			f << tabs(depth) << "</" << trueName()  << " >" << endl;
 			break;
 		}
@@ -1374,10 +1345,10 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	tmpStr=(char *)xmlString;
 
 	//convert from string to digit
-	if(stream_cast(plotType,tmpStr))
+	if(stream_cast(plotStyle,tmpStr))
 		return false;
 
-	if(plotType >= PLOT_TRACE_ENDOFENUM)
+	if(plotStyle >= PLOT_TRACE_ENDOFENUM)
 	       return false;	
 	xmlFree(xmlString);
 	//====
@@ -1397,6 +1368,11 @@ unsigned int CompositionProfileFilter::getRefreshEmitMask() const
 		return STREAM_TYPE_PLOT | STREAM_TYPE_DRAW;
 	else
 		return STREAM_TYPE_PLOT;
+}
+
+unsigned int CompositionProfileFilter::getRefreshUseMask() const
+{
+	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
 }
 
 void CompositionProfileFilter::setPropFromBinding(const SelectionBinding &b)
@@ -1443,8 +1419,110 @@ bool CompositionProfileFilter::runUnitTests()
 
 bool testCompositionCylinder()
 {
-	cerr << "FIXME: IMPLEMENT ME :" << __FUNCTION__ << endl;	
-	cerr << "Missing composition test in cylinder profile" << endl;
+	IonStreamData *d;
+	const size_t NUM_PTS=10000;
+
+	//Create a cylinder of data, forming a linear profile
+	Point3D startPt(-1.0f,-1.0f,-1.0f),endPt(1.0f,1.0f,1.0f);
+	d= synthLinearProfile(startPt,endPt,
+			0.5f, NUM_PTS);
+
+	//Generate two compositions for the test dataset
+	{
+	vector<std::pair<float,float>  > vecCompositions;
+	vecCompositions.push_back(make_pair(2.0f,0.5f));
+	vecCompositions.push_back(make_pair(3.0f,0.5f));
+	synthComposition(vecCompositions,d->data);
+	}
+
+	//Build a faux rangestream
+	RangeStreamData *rngStream;
+	rngStream = new RangeStreamData;
+	rngStream->rangeFile = new RangeFile;
+	
+	RGBf rgb; rgb.red=rgb.green=rgb.blue=1.0f;
+
+	unsigned int aIon,bIon;
+	std::string tmpStr;
+	tmpStr="A";
+	aIon=rngStream->rangeFile->addIon(tmpStr,tmpStr,rgb);
+	tmpStr="B";
+	bIon=rngStream->rangeFile->addIon(tmpStr,tmpStr,rgb);
+	rngStream->rangeFile->addRange(1.5,2.5,aIon);
+	rngStream->rangeFile->addRange(2.5,3.5,bIon);
+	rngStream->enabledIons.resize(2,true);
+	rngStream->enabledRanges.resize(2,true);
+
+	//Construct the composition filter
+	CompositionProfileFilter *f = new CompositionProfileFilter;
+
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	
+	bool needUp; std::string s;
+	stream_cast(s,Point3D((startPt+endPt)*0.5f));
+	TEST(f->setProperty(0,COMPOSITION_KEY_ORIGIN,s,needUp),"set origin");
+	
+	stream_cast(s,Point3D((endPt-startPt)*0.5f));
+	TEST(f->setProperty(0,COMPOSITION_KEY_NORMAL,s,needUp),"set direction");
+	TEST(f->setProperty(0,COMPOSITION_KEY_SHOWPRIMITIVE,"1",needUp),"Set cylinder visibility");
+	TEST(f->setProperty(0,COMPOSITION_KEY_NORMALISE,"1",needUp),"Disable normalisation");
+	TEST(f->setProperty(0,COMPOSITION_KEY_RADIUS,"5",needUp),"Set radius");
+	
+	//Inform the filter about the range stream
+	streamIn.push_back(rngStream);
+	f->initFilter(streamIn,streamOut);
+	
+	streamIn.push_back(d);
+	f->setCaching(false);
+
+
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+
+	TEST(streamOut.size() == 3, "output stream count");
+
+	delete d;
+
+	std::map<unsigned int, unsigned int> countMap;
+	countMap[STREAM_TYPE_PLOT] = 0;
+	countMap[STREAM_TYPE_DRAW] = 0;
+
+	for(unsigned int ui=0;ui<streamOut.size();ui++)
+	{
+		ASSERT(countMap.find(streamOut[ui]->getStreamType()) != countMap.end());
+		countMap[streamOut[ui]->getStreamType()]++;
+	}
+
+	TEST(countMap[STREAM_TYPE_PLOT] == 2,"Plot count");
+	TEST(countMap[STREAM_TYPE_DRAW] == 1,"Draw count");
+	
+	const PlotStreamData* plotData=0;
+	for(unsigned int ui=0;ui<streamOut.size();ui++)
+	{
+		if(streamOut[ui]->getStreamType() == STREAM_TYPE_PLOT)
+		{
+			plotData = (const PlotStreamData *)streamOut[ui];
+			break;
+		}
+	}
+
+	TEST(plotData->xyData.size(),"Plot data size");
+
+	for(size_t ui=0;ui<plotData->xyData.size(); ui++)
+	{
+		TEST(plotData->xyData[ui].second <= 1.0f && 
+			plotData->xyData[ui].second >=0.0f,"normalised data range test"); 
+	}
+
+	for(unsigned int ui=0;ui<streamOut.size();ui++)
+		delete streamOut[ui];
+
+
+	delete f;
+	delete rngStream->rangeFile;
+	delete rngStream;
+
 	return true;
 }
 
@@ -1475,15 +1553,15 @@ bool testDensityCylinder()
 	
 	bool needUp; std::string s;
 	stream_cast(s,Point3D((startPt+endPt)*0.5f));
-	TEST(f->setProperty(0,KEY_ORIGIN,s,needUp),"set origin");
+	TEST(f->setProperty(0,COMPOSITION_KEY_ORIGIN,s,needUp),"set origin");
 	
 	stream_cast(s,Point3D((endPt-startPt)*0.5f));
-	TEST(f->setProperty(0,KEY_NORMAL,s,needUp),"set direction");
+	TEST(f->setProperty(0,COMPOSITION_KEY_NORMAL,s,needUp),"set direction");
 	
-	TEST(f->setProperty(0,KEY_SHOWPRIMITIVE,"1",needUp),"Set cylinder visibility");
+	TEST(f->setProperty(0,COMPOSITION_KEY_SHOWPRIMITIVE,"1",needUp),"Set cylinder visibility");
 
-	TEST(f->setProperty(0,KEY_NORMALISE,"0",needUp),"Disable normalisation");
-	TEST(f->setProperty(0,KEY_RADIUS,"5",needUp),"Set radius");
+	TEST(f->setProperty(0,COMPOSITION_KEY_NORMALISE,"0",needUp),"Disable normalisation");
+	TEST(f->setProperty(0,COMPOSITION_KEY_RADIUS,"5",needUp),"Set radius");
 
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");

@@ -38,6 +38,52 @@ bool XMLTests();
 //!basic filter tree topology tests
 bool filterTreeTests();
 
+
+bool testFilterTree(FilterTree f)
+{
+	ASSERT(!f.hasHazardousContents());
+	std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > outData;
+	std::vector<SelectionDevice<Filter> *> devices;
+	std::vector<string> consoleMessages;
+
+	ProgressData prog;
+	if(f.refreshFilterTree(outData,devices,consoleMessages,prog,dummyCallback))
+	{
+		f.safeDeleteFilterList(outData);
+		return false;
+	}
+
+
+	typedef std::pair<Filter *, std::vector<const FilterStreamData * > > FILTER_PAIR;
+
+	for(list<FILTER_PAIR>::iterator it=outData.begin();
+			it!=outData.end();++it)
+	{
+		cerr << it->first->getUserString() << ":" << endl;
+		for(size_t ui=0;ui<it->second.size();ui++)
+		{
+			size_t streamType;
+			streamType=ilog2(it->second[ui]->getStreamType());
+			ASSERT(streamType<NUM_STREAM_TYPES);
+
+
+
+			//Print out the stream name, and the number of objects it contains
+			cerr << "\t" << STREAM_NAMES[streamType] << " " <<
+				"\t" << it->second[ui]->getNumBasicObjects() << endl;
+		}
+	}
+
+
+	//TODO: report on Xml contents
+	
+	
+	f.safeDeleteFilterList(outData);
+
+	return true;
+}
+
+
 bool basicFunctionTests()
 {
 	//Test getMaxVerStr
@@ -59,6 +105,65 @@ bool basicFunctionTests()
 	verStrs.push_back("0.0.9");
 	verStrs.push_back("0.0.blah");
 	TEST(getMaxVerStr(verStrs) == "0.0.9","version string maximum testing");
+	}
+
+	//Test singular value routines
+	{
+
+		const unsigned int NUM_PTS=5000;
+		unsigned int numPts=0;
+
+		vector<IonHit> curCluster;
+		curCluster.resize(NUM_PTS);
+		RandNumGen rng;
+		rng.initTimer();
+
+		//Build a ball of points
+		
+		WARN(false, "The ellipse test is wrong. It doesn't use an isotropic density!");
+		IonHit h;
+		h.setMassToCharge(1);
+		do
+		{
+			Point3D p;
+
+			p=Point3D(rng.genUniformDev() - 0.5f,
+					(rng.genUniformDev() -0.5f),
+					rng.genUniformDev() -0.5f);
+
+			//only allow  points inside the unit sphere
+			if(p.sqrMag() > 0.25)
+				continue;
+
+			//make it elliptical by scaling along Y axis
+			p[1]*=0.5;
+
+			h.setPos(p);
+			curCluster[numPts] = h;
+			numPts++;
+
+		}while(numPts<NUM_PTS);
+		
+		vector<vector<IonHit> > clusters,dummy;
+		clusters.push_back(curCluster);
+
+		vector<vector<float> > singularVals;
+		vector<std::pair<Point3D,vector<Point3D> > >  singularBases;
+		ClusterAnalysisFilter c;
+
+		c.getSingularValues(clusters,dummy,singularVals,singularBases);
+
+		TEST(singularVals.size() == 1,"Number of SVs should be same as input size");
+		TEST(singularVals.size() == singularBases.size(), "SVs and bases count should be same");
+
+		//SV ratio of above ellipse should be roughly 1:2 (sorted, S1/S2 = 1, S2/S3 = 2)
+		// there will be some random fluctuations, depending upon exact initial seed
+		TEST( fabs(singularVals[0][0]/singularVals[0][1] -1.0f)  < 0.2f,"Singular Value ratio 1:2");
+		TEST( fabs(singularVals[0][1]/singularVals[0][2] -2.0f) < 0.2f,"Singular Value Ration 2:3");
+
+		TEST( singularBases[0].first.sqrMag() < 0.01, "Centroid somewhere near origin");
+
+		IonVectorToPos(curCluster,"TestCluster.pos");
 	}
 
 	return true;

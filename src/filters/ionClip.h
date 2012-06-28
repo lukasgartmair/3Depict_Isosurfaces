@@ -70,6 +70,9 @@ class IonClipFilter :  public Filter
 		//!Get the stream types that will be generated during ::refresh	
 		unsigned int getRefreshEmitMask() const;	
 		
+		//!Get the stream types that will be possibly used during ::refresh	
+		unsigned int getRefreshUseMask() const;	
+		
 		
 		//!Set internal property value using a selection binding 
 		void setPropFromBinding(const SelectionBinding &b);

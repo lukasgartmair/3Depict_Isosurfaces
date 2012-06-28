@@ -21,23 +21,6 @@ const unsigned int MAX_NUM_FILE_COLS=5000;
 //Allowable text file deliminators
 const char *TEXT_DELIMINATORS = "\t ,";
 
-enum
-{
-	KEY_FILE,
-	KEY_FILETYPE,
-	KEY_SIZE,
-	KEY_COLOUR,
-	KEY_IONSIZE,
-	KEY_ENABLED,
-	KEY_VALUELABEL,
-	KEY_SELECTED_COLUMN0,
-	KEY_SELECTED_COLUMN1,
-	KEY_SELECTED_COLUMN2,
-	KEY_SELECTED_COLUMN3,
-	KEY_NUMBER_OF_COLUMNS,
-	KEY_MONITOR
-};
-
 //Supported data types
 enum
 {
@@ -52,38 +35,27 @@ const char *AVAILABLE_FILEDATA_TYPES[] = { 	NTRANS("POS Data"),
 const char *DEFAULT_LABEL="Mass-to-Charge (amu/e)";
 
 // == Pos load filter ==
-DataLoadFilter::DataLoadFilter()
+DataLoadFilter::DataLoadFilter() : fileType(FILEDATA_TYPE_POS), doSample(true), maxIons(MAX_IONS_LOAD_DEFAULT),
+	r(1.0f),g(0.0f),b(0.0f),a(1.0f),ionSize(2.0f), numColumns(4), enabled(true),
+	volumeRestrict(false), monitorTimestamp(-1),monitorSize((size_t)-1),wantMonitor(false),
+	valueLabel(TRANS(DEFAULT_LABEL))
 {
 	COMPILE_ASSERT(ARRAYSIZE(AVAILABLE_FILEDATA_TYPES) == FILEDATA_TYPE_ENUM_END);
 	cache=true;
-	maxIons=MAX_IONS_LOAD_DEFAULT;
-	fileType=FILEDATA_TYPE_POS;
-	//default ion colour is red.
-	r=a=1.0f;
-	g=b=0.0f;
-	//Default label is user locale string for m/c
-	valueLabel=TRANS(DEFAULT_LABEL);
 
-	enabled=true;
-	volumeRestrict=false;
 	bound.setInverseLimits();
-	//Ion size (rel. size)..
-	ionSize=2.0;
-
-	numColumns = 4;
+	
 	for (unsigned int i  = 0; i < numColumns; i++) {
 		index[i] = i;
 	}
 
-	monitorTimestamp=-1;
-	monitorSize=(size_t)-1;
-	wantMonitor=false;
 }
 
 Filter *DataLoadFilter::cloneUncached() const
 {
 	DataLoadFilter *p=new DataLoadFilter;
 	p->ionFilename=ionFilename;
+	p->doSample=doSample;
 	p->maxIons=maxIons;
 	p->ionSize=ionSize;
 	p->fileType=fileType;
@@ -172,7 +144,7 @@ size_t DataLoadFilter::numBytesForCache(size_t nObjects) const
 	size_t result;
 	getFilesize(ionFilename.c_str(),result);
 
-	if(maxIons)
+	if(doSample)
 		return std::min(maxIons*sizeof(float)*4,result);
 
 
@@ -268,7 +240,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	{
 		case FILEDATA_TYPE_POS:
 		{
-			if(maxIons)
+			if(doSample)
 			{
 				//Load the pos file, limiting how much you pull from it
 				if((uiErr = LimitLoadPosFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
@@ -297,7 +269,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 		{
 
 		
-			if(maxIons)
+			if(doSample)
 			{
 				//TODO: Migrate to using a generic text data loading routine
 				//	rather than an IonHit specific one, to avoid need for separate error strings
@@ -414,7 +386,7 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 	// ------
 	s.push_back(std::make_pair(TRANS("File"), ionFilename));
 	type.push_back(PROPERTY_TYPE_STRING);
-	keys.push_back(KEY_FILE);
+	keys.push_back(DATALOAD_KEY_FILE);
 
 	vector<pair<unsigned int,string> > choices;
 	string strChoice;
@@ -425,7 +397,7 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 	strChoice=choiceString(choices,fileType);
 	s.push_back(std::make_pair(TRANS("File type"),strChoice));
 	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_FILETYPE);
+	keys.push_back(DATALOAD_KEY_FILETYPE);
 
 	//---------
 	propertyList.data.push_back(s);
@@ -440,7 +412,7 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 		{
 			stream_cast(colStr,numColumns);
 			s.push_back(std::make_pair(TRANS("Number of columns"), colStr));
-			keys.push_back(KEY_NUMBER_OF_COLUMNS);
+			keys.push_back(DATALOAD_KEY_NUMBER_OF_COLUMNS);
 			type.push_back(PROPERTY_TYPE_INTEGER);
 			break;
 		}
@@ -462,26 +434,26 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 	
 	colStr= choiceString(choices,index[0]);
 	s.push_back(std::make_pair("X", colStr));
-	keys.push_back(KEY_SELECTED_COLUMN0);
+	keys.push_back(DATALOAD_KEY_SELECTED_COLUMN0);
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
 	colStr= choiceString(choices,index[1]);
 	s.push_back(std::make_pair("Y", colStr));
-	keys.push_back(KEY_SELECTED_COLUMN1);
+	keys.push_back(DATALOAD_KEY_SELECTED_COLUMN1);
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
 	colStr= choiceString(choices,index[2]);
 	s.push_back(std::make_pair("Z", colStr));
-	keys.push_back(KEY_SELECTED_COLUMN2);
+	keys.push_back(DATALOAD_KEY_SELECTED_COLUMN2);
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
 	colStr= choiceString(choices,index[3]);
 	s.push_back(std::make_pair(TRANS("Value"), colStr));
-	keys.push_back(KEY_SELECTED_COLUMN3);
+	keys.push_back(DATALOAD_KEY_SELECTED_COLUMN3);
 	type.push_back(PROPERTY_TYPE_CHOICE);
 	
 	s.push_back(std::make_pair(TRANS("Value Label"), valueLabel));
-	keys.push_back(KEY_VALUELABEL);
+	keys.push_back(DATALOAD_KEY_VALUELABEL);
 	type.push_back(PROPERTY_TYPE_STRING);
 
 
@@ -493,22 +465,35 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 	string tmpStr;
 	stream_cast(tmpStr,enabled);
 	s.push_back(std::make_pair(TRANS("Enabled"), tmpStr));
-	keys.push_back(KEY_ENABLED);
+	keys.push_back(DATALOAD_KEY_ENABLED);
 	type.push_back(PROPERTY_TYPE_BOOL);
 
 	if(enabled)
 	{
 		std::string tmpStr;
-		stream_cast(tmpStr,maxIons*sizeof(float)*4/(1024*1024));
-		s.push_back(std::make_pair(TRANS("Load Limit (MB)"),tmpStr));
-		type.push_back(PROPERTY_TYPE_INTEGER);
-		keys.push_back(KEY_SIZE);
+		
+		stream_cast(tmpStr,doSample);
+		s.push_back(std::make_pair(TRANS("Sample data"),tmpStr));
+		type.push_back(PROPERTY_TYPE_BOOL);
+		keys.push_back(DATALOAD_KEY_SAMPLE);
+
+		if(doSample)
+		{
+			stream_cast(tmpStr,maxIons*sizeof(float)*4/(1024*1024));
+			s.push_back(std::make_pair(TRANS("Load Limit (MB)"),tmpStr));
+			type.push_back(PROPERTY_TYPE_INTEGER);
+			keys.push_back(DATALOAD_KEY_SIZE);
+		}
 	
 		stream_cast(tmpStr,wantMonitor);
 		s.push_back(std::make_pair(TRANS("Monitor"), tmpStr));
-		keys.push_back(KEY_MONITOR);
+		keys.push_back(DATALOAD_KEY_MONITOR);
 		type.push_back(PROPERTY_TYPE_BOOL);
 		
+		propertyList.data.push_back(s);
+		propertyList.types.push_back(type);
+		propertyList.keys.push_back(keys);
+		s.clear();type.clear();keys.clear();
 		string thisCol;
 		//Convert the ion colour to a hex string	
 		genColString((unsigned char)(r*255),(unsigned char)(g*255),
@@ -516,12 +501,12 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 
 		s.push_back(make_pair(string(TRANS("Default colour ")),thisCol)); 
 		type.push_back(PROPERTY_TYPE_COLOUR);
-		keys.push_back(KEY_COLOUR);
+		keys.push_back(DATALOAD_KEY_COLOUR);
 
 		stream_cast(tmpStr,ionSize);
 		s.push_back(make_pair(string(TRANS("Draw Size")),tmpStr)); 
 		type.push_back(PROPERTY_TYPE_REAL);
-		keys.push_back(KEY_IONSIZE);
+		keys.push_back(DATALOAD_KEY_IONSIZE);
 	}
 
 	propertyList.data.push_back(s);
@@ -536,7 +521,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
-		case KEY_FILETYPE:
+		case DATALOAD_KEY_FILETYPE:
 		{
 			unsigned int ltmp;
 			ltmp=(unsigned int)-1;
@@ -557,7 +542,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_FILE:
+		case DATALOAD_KEY_FILE:
 		{
 			//ensure that the new file can be found
 			//Try to open the file
@@ -573,7 +558,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_ENABLED:
+		case DATALOAD_KEY_ENABLED:
 		{
 			string stripped=stripWhite(value);
 
@@ -581,11 +566,8 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 				return false;
 
 			bool lastVal=enabled;
-			if(stripped=="1")
-				enabled=true;
-			else
-				enabled=false;
-
+			enabled=(stripped == "1");
+			
 			//if the result is different, the
 			//cache should be invalidated
 			if(lastVal!=enabled)
@@ -594,7 +576,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 			clearCache();
 			break;
 		}
-		case KEY_MONITOR:
+		case DATALOAD_KEY_MONITOR:
 		{
 			string stripped=stripWhite(value);
 
@@ -602,10 +584,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 				return false;
 
 			bool lastVal=wantMonitor;
-			if(stripped=="1")
-				wantMonitor=true;
-			else
-				wantMonitor=false;
+			wantMonitor=(stripped=="1");
 
 			//if the result is different, the
 			//cache should be invalidated
@@ -615,7 +594,26 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 			clearCache();
 			break;
 		}
-		case KEY_SIZE:
+		
+		case DATALOAD_KEY_SAMPLE:
+		{
+			string stripped=stripWhite(value);
+
+			if(!(stripped == "1"|| stripped == "0"))
+				return false;
+
+			bool lastVal=doSample;
+			doSample=(stripped == "1");
+			
+			//if the result is different, the
+			//cache should be invalidated
+			if(lastVal!=doSample)
+				needUpdate=true;
+			
+			clearCache();
+			break;
+		}
+		case DATALOAD_KEY_SIZE:
 		{
 			size_t ltmp;
 			if(stream_cast(ltmp,value))
@@ -631,7 +629,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_COLOUR:
+		case DATALOAD_KEY_COLOUR:
 		{
 			unsigned char newR,newG,newB,newA;
 
@@ -669,7 +667,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 
 			break;
 		}
-		case KEY_IONSIZE:
+		case DATALOAD_KEY_IONSIZE:
 		{
 			float ltmp;
 			if(stream_cast(ltmp,value))
@@ -697,7 +695,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 
 			break;
 		}
-		case KEY_VALUELABEL:
+		case DATALOAD_KEY_VALUELABEL:
 		{
 			if(value !=valueLabel)
 			{
@@ -722,7 +720,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 
 			break;
 		}
-		case KEY_SELECTED_COLUMN0:
+		case DATALOAD_KEY_SELECTED_COLUMN0:
 		{
 			unsigned int ltmp;
 			if(stream_cast(ltmp,value))
@@ -737,7 +735,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 			
 			break;
 		}
-		case KEY_SELECTED_COLUMN1:
+		case DATALOAD_KEY_SELECTED_COLUMN1:
 		{
 			unsigned int ltmp;
 			if(stream_cast(ltmp,value))
@@ -752,7 +750,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 			
 			break;
 		}
-		case KEY_SELECTED_COLUMN2:
+		case DATALOAD_KEY_SELECTED_COLUMN2:
 		{
 			unsigned int ltmp;
 			if(stream_cast(ltmp,value))
@@ -767,7 +765,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 			
 			break;
 		}
-		case KEY_SELECTED_COLUMN3:
+		case DATALOAD_KEY_SELECTED_COLUMN3:
 		{
 			unsigned int ltmp;
 			if(stream_cast(ltmp,value))
@@ -782,7 +780,7 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 			
 			break;
 		}
-		case KEY_NUMBER_OF_COLUMNS:
+		case DATALOAD_KEY_NUMBER_OF_COLUMNS:
 		{
 			unsigned int ltmp;
 			if(stream_cast(ltmp,value))
@@ -925,12 +923,32 @@ bool DataLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 
 	//--
 
+
+	//Get sampling enabled/disabled
+	//---
+	//TODO: Remove me:
+	// Note, in 3Depict-0.0.10 and lower, we did not have this option,
+	// so some statefiles will exist without this. In the case it is not
+	// found, we need to make it up
+	{
+	nodeTmp=nodePtr;
+	bool needSampleState=false;
+	if(!XMLGetNextElemAttrib(nodePtr,doSample,"dosample","value"))
+	{
+		nodePtr=nodeTmp;
+		needSampleState=true;
+	}
+	//---
+
 	//Get max Ions
 	//--
 	if(!XMLGetNextElemAttrib(nodePtr,maxIons,"maxions","value"))
 		return false;
+
+	if(needSampleState) 
+		doSample=maxIons;
 	//--
-	
+	}
 	//Retrieve colour
 	//====
 	if(XMLHelpFwdToElem(nodePtr,"colour"))
@@ -963,6 +981,11 @@ unsigned int DataLoadFilter::getRefreshEmitMask() const
 	return STREAM_TYPE_IONS;
 }
 
+unsigned int DataLoadFilter::getRefreshUseMask() const
+{
+	return 0;
+}
+
 std::string  DataLoadFilter::getErrString(unsigned int code) const
 {
 	ASSERT(errStr.size());
@@ -985,6 +1008,7 @@ bool DataLoadFilter::writeState(std::ofstream &f,unsigned int format, unsigned i
 			f << tabs(depth+1) << "<enabled value=\"" << enabled<< "\"/>" << endl;
 			f << tabs(depth+1) << "<monitor value=\"" << wantMonitor<< "\"/>"<< endl; 
 			f << tabs(depth+1) << "<valuetype value=\"" << escapeXML(valueLabel)<< "\"/>"<< endl; 
+			f << tabs(depth+1) << "<dosample value=\"" << doSample << "\"/>" << endl;
 			f << tabs(depth+1) << "<maxions value=\"" << maxIons << "\"/>" << endl;
 
 			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
@@ -1115,8 +1139,8 @@ bool posFileTest()
 	d->setCaching(false);
 
 	bool needUp;
-	d->setProperty(0,KEY_FILE,posName,needUp);
-	d->setProperty(0,KEY_SIZE,"0",needUp);
+	d->setProperty(0,DATALOAD_KEY_FILE,posName,needUp);
+	d->setProperty(0,DATALOAD_KEY_SAMPLE,"0",needUp);
 	//---------
 
 	vector<const FilterStreamData*> streamIn,streamOut;
@@ -1196,10 +1220,10 @@ bool textFileTest()
 	d->setCaching(false);
 
 	bool needUp;
-	d->setProperty(0,KEY_FILE,FILENAME,needUp);
-	d->setProperty(0,KEY_SIZE,"0",needUp); //load all data
+	d->setProperty(0,DATALOAD_KEY_FILE,FILENAME,needUp);
+	d->setProperty(0,DATALOAD_KEY_SAMPLE,"0",needUp); //load all data
 	//Load data as text file
-	d->setProperty(0,KEY_FILETYPE,
+	d->setProperty(0,DATALOAD_KEY_FILETYPE,
 			AVAILABLE_FILEDATA_TYPES[FILEDATA_TYPE_TEXT],needUp); 
 	//---------
 

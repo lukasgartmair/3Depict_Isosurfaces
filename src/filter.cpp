@@ -72,10 +72,13 @@ const char *FILTER_NAMES[] = { "posload",
 void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f)
 {
 
+	ASSERT(f);
+	ASSERT(g);
+	
 	FilterProperties p;
 	f->getProperties(p);
 #ifdef DEBUG
-	//If debugging, rtest self consistency
+	//If debugging, test self consistency
 	p.checkConsistent();
 #endif	
 	g->clearKeys();
@@ -336,23 +339,129 @@ DrawStreamData::~DrawStreamData()
 	clear();
 }
 
-PlotStreamData::PlotStreamData()
+#ifdef DEBUG
+void DrawStreamData::checkSelfConsistent() const
+{
+	//Drawable pointers should be unique
+	for(unsigned int ui=0;ui<drawables.size();ui++)
+	{
+		for(unsigned int uj=0;uj<drawables.size();uj++)
+		{
+			if(ui==uj)
+				continue;
+			//Pointers must be unique
+			ASSERT(drawables[ui] != drawables[uj]);
+		}
+	}
+}
+#endif
+
+PlotStreamData::PlotStreamData() :  r(1.0f),g(0.0f),b(0.0f),a(1.0f),
+	plotStyle(PLOT_TRACE_LINES), logarithmic(false) , useDataLabelAsYDescriptor(true), 
+	index((unsigned int)-1)
 {
 	streamType=STREAM_TYPE_PLOT;
-	plotType=PLOT_TRACE_LINES;
 	errDat.mode=PLOT_ERROR_NONE;
-	r=1.0,g=0.0,b=0.0,a=1.0;
-	logarithmic=false;
-	index=(unsigned int)-1;
 
 	hardMinX=hardMinY=-std::numeric_limits<float>::max();
 	hardMaxX=hardMaxY=std::numeric_limits<float>::max();
 }
 
-Filter::Filter()
+void PlotStreamData::autoSetHardBounds()
 {
-	cacheOK=false;
-	cache=true;
+	if(xyData.size())
+	{
+		hardMinX=std::numeric_limits<float>::max();
+		hardMinY=std::numeric_limits<float>::max();
+		hardMaxX=-std::numeric_limits<float>::max();
+		hardMaxY=-std::numeric_limits<float>::max();
+
+		for(size_t ui=0;ui<xyData.size();ui++)
+		{
+			hardMinX=std::min(hardMinX,xyData[ui].first);
+			hardMinY=std::min(hardMinY,xyData[ui].second);
+			hardMaxX=std::max(hardMinX,xyData[ui].first);
+			hardMaxY=std::max(hardMaxY,xyData[ui].second);
+		}
+	}
+	else
+	{
+		hardMinX=hardMinY=-1;
+		hardMaxX=hardMaxY=1;
+	}
+}
+
+#ifdef DEBUG
+void PlotStreamData::checkSelfConsistent() const
+{
+	//Colour vectors should be the same size
+	ASSERT(regionR.size() == regionB.size() && regionB.size() ==regionG.size());
+
+	//region's should have a colour and ID vector of same size
+	ASSERT(regionID.size() ==regionR.size());
+
+	//log plots should have hardmin >=0
+	ASSERT(!(logarithmic && hardMinY < 0) );
+
+	//hardMin should be <=hardMax
+	//--
+	ASSERT(hardMinX<=hardMaxX);
+
+	ASSERT(hardMinY<=hardMaxY);
+	//--
+
+	//If we have regions that can be interacted with, need to have parent
+	ASSERT(!(regionID.size() && !regionParent));
+
+	//Must have valid trace style
+	ASSERT(plotStyle<PLOT_TRACE_ENDOFENUM);
+	//Must have valid error bar style
+	ASSERT(errDat.mode<PLOT_ERROR_ENDOFENUM);
+
+	ASSERT(plotMode <PLOT_MODE_ENUM_END);
+
+	//Must set the "index" for this plot 
+	ASSERT(index != (unsigned int)-1);
+}
+#endif
+
+#ifdef DEBUG
+void RangeStreamData::checkSelfConsistent() const
+{
+	if(!rangeFile)
+		return;
+
+	ASSERT(rangeFile->getNumIons() == enabledIons.size());
+
+	ASSERT(rangeFile->getNumRanges() == enabledIons.size());
+
+}
+#endif
+
+FilterStreamData::FilterStreamData() : parent(0),cached((unsigned int)-1)
+{
+}
+
+IonStreamData::IonStreamData() : representationType(ION_REPRESENT_POINTS), 
+	r(1.0f), g(0.0f), b(0.0f), a(1.0f), 
+	ionSize(2.0f), valueType("Mass-to-Charge (amu/e)")
+{
+	streamType=STREAM_TYPE_IONS;
+}
+
+VoxelStreamData::VoxelStreamData() : representationType(VOXEL_REPRESENT_POINTCLOUD),
+	r(1.0f),g(0.0f),b(0.0f),a(0.3f), splatSize(2.0f),isoLevel(0.5f)
+{
+	streamType=STREAM_TYPE_VOXEL;
+}
+
+RangeStreamData::RangeStreamData() : rangeFile(0)
+{
+	streamType = STREAM_TYPE_RANGE;
+}
+
+Filter::Filter() : cache(true), cacheOK(false)
+{
 	for(unsigned int ui=0;ui<NUM_STREAM_TYPES;ui++)
 		numStreamsLastRefresh[ui]=0;
 }

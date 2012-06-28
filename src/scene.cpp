@@ -1,5 +1,5 @@
 /*
- *	scene.cpp  - OPengl scene implementation
+ *	scene.cpp  - OpenGL 3D static scene implementation
  *	Copyright (C) 2011, D Haley 
 
  *	This program is free software: you can redistribute it and/or modify

@@ -81,7 +81,7 @@ extern const char *FILTER_NAMES[];
 //Current bitmask using functions are
 //	VisController::safeDeleteFilterList
 const unsigned int NUM_STREAM_TYPES=5;
-const unsigned int STREAMTYPE_MASK_ALL= (1<<(NUM_STREAM_TYPES+1)) -1;
+const unsigned int STREAMTYPE_MASK_ALL= (1<<(NUM_STREAM_TYPES)) -1;
 enum
 {
 	STREAM_TYPE_IONS=1,
@@ -165,14 +165,19 @@ class FilterStreamData
 		//are debug traps to tell us if this is not set by looking for non-boolean values.
 		unsigned int cached;
 
-		FilterStreamData() { cached=(unsigned int) -1; parent=0;}
+		FilterStreamData();
 		virtual ~FilterStreamData() {}; 
 		virtual size_t getNumBasicObjects() const =0;
 		//!Returns an integer unique to the clas to identify type (yes rttid...)
 		virtual unsigned int getStreamType() const {return streamType;} ;
-		//!Returns true if filter is potentially misuable by third parties if loaded from external source
 		//!Free mem held by objects
 		virtual void clear()=0;
+
+#ifdef DEBUG
+		//Cross-checks fields to determine if (best guess)
+		///data structure has a sane combination of values
+		virtual void checkSelfConsistent() const {}
+#endif
 
 };
 
@@ -199,9 +204,7 @@ class FilterProperties
 class IonStreamData : public FilterStreamData
 {
 public:
-	IonStreamData(){ streamType=STREAM_TYPE_IONS;
-		representationType = ION_REPRESENT_POINTS; 
-		r=1.0,g=0.0,b=0.0,a=1.0;ionSize=2.0;valueType=("Mass-to-Charge (amu/e)");};
+	IonStreamData();
 	void clear();
 	size_t getNumBasicObjects() const  { return data.size();};
 	
@@ -220,9 +223,7 @@ public:
 class VoxelStreamData : public FilterStreamData
 {
 public:
-	VoxelStreamData(){ streamType=STREAM_TYPE_VOXEL;
-		representationType = VOXEL_REPRESENT_POINTCLOUD; 
-		r=1.0,g=0.0,b=0.0,a=0.3;splatSize=2.0;isoLevel=0.5;};
+	VoxelStreamData();
 	size_t getNumBasicObjects() const { return data.getSize();};
 	void clear();
 	
@@ -240,17 +241,32 @@ class PlotStreamData : public FilterStreamData
 {
 	public:
 		PlotStreamData();
+	
+		//erase plot contents	
 		void clear() {xyData.clear();};
+		//Get data size
 		size_t getNumBasicObjects() const { return xyData.size();};
+
+		//Use the contained XY data to set hard plot bounds
+		void autoSetHardBounds();
+		//plot colour
 		float r,g,b,a;
-		//Type
-		unsigned int plotType;
+		//plot trace mode - enum PLOT_TRACE
+		unsigned int plotStyle;
+		//plot mode - enum PLOT_MODE
+		unsigned int plotMode;
+
 		//use logarithmic mode?
 		bool logarithmic;
 		//title for data
 		std::string dataLabel;
 		//Label for X, Y axes
 		std::string xLabel,yLabel;
+
+		//!When showing raw XY data, is the data 
+		// label a better descriptor of Y than the y-label?
+		bool useDataLabelAsYDescriptor;
+
 		//!XY data pairs for plotting curve
 		std::vector<std::pair<float,float> > xyData;
 		//!Rectangular marked regions
@@ -261,7 +277,8 @@ class PlotStreamData : public FilterStreamData
 		//!Region indicies from parent region
 		vector<unsigned int> regionID;
 
-		//!Region parent filter pointer, used for matching interaction with region to parent property
+		//!Region parent filter pointer, used for matching interaction 
+		// with region to parent property
 		Filter *regionParent;
 		//!Parent filter index
 		unsigned int index;
@@ -270,6 +287,13 @@ class PlotStreamData : public FilterStreamData
 		
 		//!Hard bounds that cannot be exceeded when drawing plot
 		float hardMinX,hardMaxX,hardMinY,hardMaxY;
+
+#ifdef DEBUG
+		//Cross-checks fields to determine if (best guess)
+		///data structure has a sane combination of values
+		virtual void checkSelfConsistent() const; 
+#endif
+
 };
 
 //!Drawable objects, for 3D decoration. 
@@ -287,6 +311,11 @@ class DrawStreamData: public FilterStreamData
 
 		//!Erase the drawing vector, deleting its componets
 		void clear();
+#ifdef DEBUG
+		//Cross-checks fields to determine if (best guess)
+		///data structure has a sane combination of values
+		void checkSelfConsistent() const; 
+#endif
 };
 
 //!Range file propagation
@@ -302,7 +331,7 @@ class RangeStreamData :  public FilterStreamData
 		vector<char> enabledIons;
 
 		//!constructor
-		RangeStreamData(){ rangeFile=0;streamType=STREAM_TYPE_RANGE;};
+		RangeStreamData();
 		//!Destructor
 		~RangeStreamData() {};
 		//!Returns 0, as this does not store basic object types -- i.e. is not for data storage per se.
@@ -311,6 +340,9 @@ class RangeStreamData :  public FilterStreamData
 		//!Unlink the pointer
 		void clear() { rangeFile=0;enabledRanges.clear();enabledIons.clear();};
 
+#ifdef DEBUG
+		void checkSelfConsistent() const ; 
+#endif
 };
 
 //FIXME: Lookup how to use static members. cant remember of top of my head. no interwebs.
@@ -398,6 +430,11 @@ class Filter
 		// This MUST always be consistent with ::refresh for filters current state.
 		virtual unsigned int getRefreshEmitMask() const = 0;
 
+
+		//!Mask of filter streams that will not examined by the filter in its computation.
+		// note that these *may* be emitted as a pass-through - check emitmask if needed
+		virtual unsigned int getRefreshUseMask() const =0;
+
 		//====
 	
 		//!Return the unique name for a given filter -- DO NOT TRANSLATE	
@@ -417,7 +454,7 @@ class Filter
 
 		//!Enable/disable caching for this filter
 		void setCaching(bool enableCache) {cache=enableCache;};
-
+		
 		//!Have cached output data?
 		bool haveCache() const;
 		
@@ -473,6 +510,8 @@ class Filter
 #ifdef DEBUG
 		//!Run all the registered unit tests for this filter
 		virtual bool runUnitTests() { cerr << "No test for " << typeString() << endl; return true;} ;
+		//!Is the filter caching?
+		bool cacheEnabled() const {return cache;};
 #endif
 
 };

@@ -1,0 +1,12 @@
+235c235
+< 	if(gz)	gzprintf(fp, "%s", buf);
+---
+> 	if(gz)	gzprintf((gzFile_s*)fp, "%s", buf);
+246c246
+< 	void *fp = gz ? gzopen(fname,"wt") : fopen(fname,"wt");
+---
+> 	void *fp = gz ? gzopen(fname,"wt") : (void*)fopen(fname,"wt");
+258c258
+< 	if(gz)	gzclose(fp);	else	fclose((FILE *)fp);
+---
+> 	if(gz)	gzclose((gzFile_s*)fp);	else	fclose((FILE *)fp);

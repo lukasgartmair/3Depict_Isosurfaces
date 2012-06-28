@@ -26,7 +26,7 @@
 #include <wx/listctrl.h>
 // end wxGlade
 
-#include "viscontrol.h"
+#include "../viscontrol.h"
 class ExportRngDialog: public wxDialog {
 public:
     // begin wxGlade: ExportRngDialog::ids

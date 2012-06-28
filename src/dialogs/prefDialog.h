@@ -30,14 +30,15 @@
 
 #include <vector>
 
-#include "filter.h"
+#include "../filter.h"
 
 // begin wxGlade: ::extracode
 // end wxGlade
 
 //As a courtesy, we do not allow online update checking under linux
 //its pointless, as linux systems usually have proper package management
-#ifdef __linux__
+// apple crashes wx
+#if defined( __linux__) || defined(__APPLE__)
 	#define DISABLE_ONLINE_UPDATE
 #endif
 

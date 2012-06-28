@@ -21,13 +21,11 @@ enum
 	IONCOLOUR_ABORT_ERR
 };
 
-IonColourFilter::IonColourFilter()
+IonColourFilter::IonColourFilter() : colourMap(0), nColours(MAX_NUM_COLOURS),
+	showColourBar(true)
 {
-	colourMap=0;
-	showColourBar=true;
 	mapBounds[0] = 0.0f;
 	mapBounds[1] = 100.0f;
-	nColours=MAX_NUM_COLOURS; //Full 8 bit indexed colour. very swish
 
 	cacheOK=false;
 	cache=true; //By default, we should cache, but decision is made higher up
@@ -390,10 +388,7 @@ bool IonColourFilter::setProperty( unsigned int set, unsigned int key,
 				return false;
 
 			bool lastVal=showColourBar;
-			if(stripped=="1")
-				showColourBar=true;
-			else
-				showColourBar=false;
+			showColourBar=(stripped == "1");
 
 			//Only need update if changed
 			if(lastVal!=showColourBar)
@@ -563,6 +558,10 @@ unsigned int IonColourFilter::getRefreshEmitMask() const
 	return  STREAM_TYPE_DRAW | STREAM_TYPE_IONS;
 }
 
+unsigned int IonColourFilter::getRefreshUseMask() const
+{
+	return  STREAM_TYPE_IONS;
+}
 #ifdef DEBUG
 
 IonStreamData *sythIonCountData(unsigned int numPts, float mStart, float mEnd)

@@ -839,22 +839,18 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 
 }
 
-IonHit::IonHit() : massToCharge(0.0f), pos(0,0,0)
+IonHit::IonHit() 
 {
 	//At this point i deliberately dont initialise the point class
 	//as in DEBUG mode, the point class will catch failure to init
 }
 
-IonHit::IonHit(const IonHit &obj2)
+IonHit::IonHit(const IonHit &obj2) : massToCharge(obj2.massToCharge), pos(obj2.pos)
 {
-	massToCharge=obj2.massToCharge;
-	pos = obj2.pos;
 }
 
-IonHit::IonHit(Point3D p, float newMass)
+IonHit::IonHit(const Point3D &p, float newMass) : massToCharge(newMass), pos(p)
 {
-	massToCharge=newMass;
-	pos=p;
 }
 
 void IonHit::setMassToCharge(float newMass)
@@ -928,9 +924,8 @@ bool IonHit::hasNaN()
 
 
 
-RangeFile::RangeFile()
+RangeFile::RangeFile() : errState(0)
 {
-	errState=0;
 }
 
 unsigned int RangeFile::write(std::ostream &f) const
@@ -2652,7 +2647,13 @@ void RangeFile::setIonID(unsigned int range, unsigned int newIonId)
 }
 
 
-
+void getPointSum(const std::vector<IonHit> &points,Point3D &centroid)
+{
+	//TODO: Paralellise me
+	centroid=Point3D(0,0,0);
+	for(unsigned int ui=0;ui<points.size();ui++)
+		centroid+=points[ui].getPos();
+}
 
 BoundCube getIonDataLimits(const std::vector<IonHit> &points)
 {

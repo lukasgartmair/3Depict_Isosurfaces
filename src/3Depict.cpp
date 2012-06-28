@@ -22,7 +22,7 @@
 #include <fenv.h>
 #include <sys/cdefs.h>
 void trapfpe () {
-//  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
+  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
 }
 #endif
 #endif
@@ -37,16 +37,14 @@ void trapfpe () {
 #if defined(__WXMAC__) || defined(__WXGTK20__)
 	       
 	#include <wx/version.h>
-	#if (wxCHECK_VERSION(2,8,0) )
-		#if (wxCHECK_VERSION(2,9,0))
-		//Sorted combos not supported under gtk in 2.8 series 
-		// http://trac.wxwidgets.org/ticket/4398
-		//and not supported in mac.
-		// http://trac.wxwidgets.org/ticket/12419
-			#define SAFE_CB_SORT 0 
-		#else
-			#define SAFE_CB_SORT wxCB_SORT
-		#endif
+    #if wxCHECK_VERSION(2,9,0)
+    //Sorted combos not supported under gtk in 2.8 series 
+    // http://trac.wxwidgets.org/ticket/4398
+    //and not supported in mac.
+    // http://trac.wxwidgets.org/ticket/12419
+        #define SAFE_CB_SORT 0 
+    #else
+        #define SAFE_CB_SORT wxCB_SORT
 	#endif
 #else
 	#define SAFE_CB_SORT wxCB_SORT
@@ -95,20 +93,22 @@ winconsole winC;
 #include <wx/process.h>
 #include <wx/dir.h>
 #include <wx/choicdlg.h>
+#include <wx/imaglist.h>
 
-
-#if (wxMAJOR_VERSION >= 2) && (wxMINOR_VERSION > 8)
+#if wxCHECK_VERSION(2, 9, 0)
 	#include <wx/utils.h>  // Needed for wxLaunchDefaultApplication
 #else
 	#include <wx/mimetype.h> //Needed for GetOpenCommand
 #endif
 
 //Custom program dialog windows
-#include "StashDialog.h" //Stash editor
-#include "resDialog.h" // resolution selection dialog
-#include "ExportRngDialog.h" // Range export dialog
-#include "ExportPos.h" // Ion export dialog
-#include "prefDialog.h" // Preferences dialog
+#include "dialogs/StashDialog.h" //Stash editor
+#include "dialogs/resolutionDialog.h" // resolution selection dialog
+#include "dialogs/ExportRngDialog.h" // Range export dialog
+#include "dialogs/ExportPos.h" // Ion export dialog
+#include "dialogs/prefDialog.h" // Preferences dialog
+#include "dialogs/autosaveDialog.h" // startup autosave dialog for multiple load options
+#include "dialogs/filterErrorDialog.h" // Dialog for displaying details for filter analysis error messages
 
 #include "translation.h"
 
@@ -178,7 +178,7 @@ const char * comboFilters_choices[FILTER_DROP_COUNT] =
 	NTRANS("Ion Colour"),
 	NTRANS("Ion Info"),
 	NTRANS("Ion Transform"),
-	NTRANS("Mass Spectrum"),
+	NTRANS("Spectrum"),
 	NTRANS("Range File"),
 	NTRANS("Spat. Analysis"),
 	NTRANS("Voxelisation")
@@ -279,6 +279,7 @@ enum {
     ID_BUTTON_REFRESH,
     ID_BTN_EXPAND,
     ID_BTN_COLLAPSE,
+    ID_BTN_FILTERTREE_ERRS,
 
     //Effects panel
     ID_EFFECT_ENABLE,
@@ -314,8 +315,73 @@ enum {
 };
 
 
+void setWxTreeImages(wxTreeCtrl *t, const map<size_t, wxArtID> &artFilters)
+{
+	wxImageList *imList = new wxImageList;
 
- 
+	//map to map wxArtIDs to position in the image list
+	map<wxArtID,size_t> artMap;
+
+	size_t offset=0;
+	//Construct an image list for the tree
+	for(map<size_t,wxArtID>::const_iterator it=artFilters.begin();it!=artFilters.end();it++)
+	{
+		imList->Add(wxArtProvider::GetBitmap(it->second));
+
+		artMap[it->second] = offset;
+		offset++;
+	}
+
+	//Assign the image list - note wx will delete the image list here - we don't need to.
+	t->AssignImageList(imList);
+
+	//Now do a DFS run through the tree, checking to see if any of the elements need
+	// a particular image
+	std::stack<wxTreeItemId> items;
+	if (t->GetRootItem().IsOk())
+		items.push(t->GetRootItem());
+
+	while (!items.empty())
+	{
+		wxTreeItemId next = items.top();
+		items.pop();
+
+		//Get the filter pointer
+		//--
+		size_t tItemVal;
+		wxTreeItemData *tData;
+		
+		tData=t->GetItemData(next);
+		tItemVal=((wxTreeUint *)tData)->value;
+		//--
+
+
+		map<size_t,wxArtID>::const_iterator it;
+		it = artFilters.find(tItemVal);
+
+		if (next != t->GetRootItem() && it!=artFilters.end())
+			t->SetItemImage(next,artMap[it->second]);
+		else
+		{
+			t->SetItemImage(next,-1);
+		}
+
+		wxTreeItemIdValue cookie;
+		wxTreeItemId nextChild = t->GetFirstChild(next, cookie);
+		while (nextChild.IsOk())
+		{
+			items.push(nextChild);
+			nextChild = t->GetNextSibling(nextChild);
+		}
+	}
+
+	return;
+}
+
+void clearWxTreeImages(wxTreeCtrl *t)
+{
+	t->AssignImageList(NULL);
+}
 
 MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
     wxFrame(parent, id, title, pos, size, style)
@@ -388,7 +454,7 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 #endif
 
 	if(!glPanelOK)
-    {
+	{
 		wxMessageDialog *wxD  =new wxMessageDialog(this,
 				wxTRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please check your video drivers.") 
 			,wxTRANS("OpenGL Failed"),wxICON_ERROR|wxOK);
@@ -398,7 +464,7 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 
 		cerr << wxTRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please check your video drivers.") << endl;
 		return;
-    }
+	}
 
     panelLeft = new wxPanel(splitLeftRight, wxID_ANY);
     notebookControl = new wxNotebook(panelLeft, ID_NOTEBOOK_CONTROL, wxDefaultPosition, wxDefaultSize, wxNB_RIGHT);
@@ -539,6 +605,8 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     refreshButton = new wxButton(filterTreePane, wxID_REFRESH, wxEmptyString);
     btnFilterTreeExpand= new wxButton(filterTreePane, ID_BTN_EXPAND, wxT("▼"),wxDefaultPosition,wxSize(30,30));
     btnFilterTreeCollapse = new wxButton(filterTreePane, ID_BTN_COLLAPSE, wxT("▲"),wxDefaultPosition,wxSize(30,30));
+    btnFilterTreeErrs = new wxBitmapButton(filterTreePane,ID_BTN_FILTERTREE_ERRS,wxArtProvider::GetBitmap(wxART_INFORMATION),wxDefaultPosition,wxSize(40,40));
+
     propGridLabel = new wxStaticText(filterPropertyPane, wxID_ANY, wxTRANS("Filter settings"));
     gridFilterProperties = new wxPropertyGrid(filterPropertyPane, ID_GRID_FILTER_PROPERTY);
     labelCameraName = new wxStaticText(noteCamera, wxID_ANY, wxTRANS("Camera Name"));
@@ -709,9 +777,6 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 
 		panelTop->setMouseZoomFactor((float)zoomRate/100.0f);
 		panelTop->setMouseMoveFactor((float)moveRate/100.0f);
-
-		
-
 		
 	}
 	else
@@ -839,7 +904,11 @@ MainWindowFrame::~MainWindowFrame()
 
 	//wxwidgets can crash if objects are ->Connect-ed  in 
 	// wxWindowBase::DestroyChildren(), so Disconnect before destructing
-#if (wxMAJOR_VERSION <= 2) && (wxMINOR_VERSION <= 8)
+#if wxCHECK_VERSION(2, 9, 0)
+    comboCamera->Unbind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboCameraSetFocus, this);
+    comboStash->Unbind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboStashSetFocus, this);
+    noteDataView->Unbind(wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED, &MainWindowFrame::OnNoteDataView, this);
+#else
     // this part does not work in my build of mac os x lion & wx Widgets 2.9
     // crashes at OnSinkDestroyed
 	noteDataView->Disconnect();
@@ -863,6 +932,7 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_SPLITTER_UNSPLIT(ID_SPLIT_SPECTRA, MainWindowFrame::OnSpectraUnsplit) 
     EVT_SPLITTER_DCLICK(ID_SPLIT_FILTERPROP, MainWindowFrame::OnFilterPropDoubleClick) 
     EVT_SPLITTER_DCLICK(ID_SPLIT_LEFTRIGHT, MainWindowFrame::OnControlUnsplit) 
+    EVT_SPLITTER_SASH_POS_CHANGED(ID_SPLIT_LEFTRIGHT, MainWindowFrame::OnControlSplitMove) 
     // begin wxGlade: MainWindowFrame::event_table
     EVT_MENU(ID_FILE_OPEN, MainWindowFrame::OnFileOpen)
     EVT_MENU(ID_FILE_MERGE, MainWindowFrame::OnFileMerge)
@@ -900,13 +970,13 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_TEXT_ENTER(ID_COMBO_STASH, MainWindowFrame::OnComboStashEnter)
     EVT_COMBOBOX(ID_COMBO_STASH, MainWindowFrame::OnComboStash)
     EVT_TREE_END_DRAG(ID_TREE_FILTERS, MainWindowFrame::OnTreeEndDrag)
-    EVT_TREE_ITEM_GETTOOLTIP(ID_TREE_FILTERS, MainWindowFrame::OnTreeItemTooltip)
     EVT_TREE_KEY_DOWN(ID_TREE_FILTERS, MainWindowFrame::OnTreeKeyDown)
     EVT_TREE_SEL_CHANGED(ID_TREE_FILTERS, MainWindowFrame::OnTreeSelectionChange)
     EVT_TREE_DELETE_ITEM(ID_TREE_FILTERS, MainWindowFrame::OnTreeDeleteItem)
     EVT_TREE_BEGIN_DRAG(ID_TREE_FILTERS, MainWindowFrame::OnTreeBeginDrag)
     EVT_BUTTON(ID_BTN_EXPAND, MainWindowFrame::OnBtnExpandTree)
     EVT_BUTTON(ID_BTN_COLLAPSE, MainWindowFrame::OnBtnCollapseTree)
+    EVT_BUTTON(ID_BTN_FILTERTREE_ERRS, MainWindowFrame::OnBtnFilterTreeErrs)
     EVT_GRID_CMD_CELL_CHANGE(ID_GRID_FILTER_PROPERTY, MainWindowFrame::OnGridFilterPropertyChange)
     EVT_GRID_CMD_CELL_CHANGE(ID_GRID_CAMERA_PROPERTY, MainWindowFrame::OnGridCameraPropertyChange)
     EVT_TEXT(ID_COMBO_CAMERA, MainWindowFrame::OnComboCameraText)
@@ -924,6 +994,7 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_LISTBOX(ID_LIST_PLOTS, MainWindowFrame::OnSpectraListbox)
     EVT_CLOSE(MainWindowFrame::OnClose)
     EVT_TREE_END_LABEL_EDIT(ID_TREE_FILTERS,MainWindowFrame::OnTreeEndLabelEdit)
+    EVT_TREE_BEGIN_LABEL_EDIT(ID_TREE_FILTERS,MainWindowFrame::OnTreeBeginLabelEdit)
    
     //Post-processing stuff	
     EVT_CHECKBOX(ID_EFFECT_ENABLE, MainWindowFrame::OnCheckPostProcess)
@@ -1135,7 +1206,7 @@ void MainWindowFrame::OnDropFiles(const wxArrayString &files, int x, int y)
 	}
 
 
-	if(!wxm.CmdDown() && files.Count())
+    if(!wxm.CmdDown() && files.Count())
 	{
 #ifdef __APPLE__    
 		statusMessage(TRANS("Tip: You can use ⌘ (command) to merge"),MESSAGE_HINT);
@@ -1195,6 +1266,20 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 			wxD->Destroy();
 			return false;
 		}
+
+		//Try to restore the working directory as needed
+		if(!(visControl.getWorkDir().size()))
+		{
+			wxString wd;
+			wd = wxGetCwd();
+			visControl.setWorkDir(stlStr(wd));
+		}
+		else
+		{
+			if(wxDirExists(wxStr(visControl.getWorkDir())))
+				wxSetWorkingDirectory(wxStr(visControl.getWorkDir()));
+		}
+
 
 
 		if(visControl.hasHazardousContents())
@@ -1333,7 +1418,11 @@ void MainWindowFrame::OnRecentFile(wxCommandEvent &event)
 	if (!f.empty())
 	{
 		textConsoleOut->Clear();
-		if(loadFile(f))
+
+		bool loadOK=false;
+		if(!wxFileExists(f))
+			statusMessage("File does not exist",MESSAGE_ERROR);
+		else if(loadFile(f))
 		{
 			//If we are using the default camera,
 			//move it to make sure that it is visible
@@ -1344,21 +1433,20 @@ void MainWindowFrame::OnRecentFile(wxCommandEvent &event)
 			visControl.updateWxTreeCtrl(treeFilters);
 			refreshButton->Enable(visControl.numFilters());
 
-			bool updateOK;	
-			updateOK =doSceneUpdate();
+			loadOK  =doSceneUpdate();
 			//If we are using the default camera,
 			//move it to make sure that it is visible
-			if(updateOK)
+			if(loadOK)
 			{
 				if(visControl.numCams() == 1)
 					visControl.ensureSceneVisible(3);
 
 					statusMessage(TRANS("Loaded file."),MESSAGE_INFO);
 			}
-
 			panelTop->Refresh();
 		}
-		else
+		
+		if(!loadOK)
 		{
 			//Didn't load?  We don't want it.
 			recentHistory->RemoveFileFromHistory(event.GetId()-wxID_FILE1);
@@ -1455,11 +1543,11 @@ void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
 	else if (strExt == "png")
 	{
 		//Show a resolution chooser dialog
-		ResDialog d(this,wxID_ANY,wxTRANS("Choose resolution"));
+		ResolutionDialog d(this,wxID_ANY,wxTRANS("Choose resolution"));
 
 		int plotW,plotH;
 		panelSpectra->GetClientSize(&plotW,&plotH);
-		d.setRes(plotW,plotH);
+		d.setRes(plotW,plotH,true);
 		if(d.ShowModal() == wxID_CANCEL)
 			return;
 
@@ -1508,12 +1596,12 @@ void MainWindowFrame::OnFileExportImage(wxCommandEvent &event)
 	std::string dataFile = stlStr(wxF->GetPath());
 	
 	//Show a resolution chooser dialog
-	ResDialog d(this,wxID_ANY,wxTRANS("Choose resolution"));
+	ResolutionDialog d(this,wxID_ANY,wxTRANS("Choose resolution"));
 
 	//Use the current res as the dialog default
 	int w,h;
 	panelTop->GetClientSize(&w,&h);
-	d.setRes(w,h);
+	d.setRes(w,h,true);
 
 	//Show dialog, skip save if user cancels dialog
 	if(d.ShowModal() == wxID_CANCEL)
@@ -1565,12 +1653,12 @@ void MainWindowFrame::OnFileExportVideo(wxCommandEvent &event)
 
 	
 	//Show a resolution chooser dialog
-	ResDialog d(this,wxID_ANY,wxTRANS("Choose resolution"));
+	ResolutionDialog d(this,wxID_ANY,wxTRANS("Choose resolution"));
 
 	//Use the current res as the dialog default
 	int w,h;
 	panelTop->GetClientSize(&w,&h);
-	d.setRes(w,h);
+	d.setRes(w,h,true);
 
 	//Show dialog, skip save if user cancels dialo
 	if(d.ShowModal() == wxID_CANCEL)
@@ -1798,12 +1886,17 @@ void MainWindowFrame::OnFileExportIons(wxCommandEvent &event)
 			exportDialog->swapFilterTree(f);
 			visControl.swapFilterTree(f);
 			exportDialog->Destroy();
+			
+			//Need this to reset the ID values
+			visControl.updateWxTreeCtrl(treeFilters);
 			return;	
 		}
 		
 	}
 	while( (wxF->ShowModal() == wxID_CANCEL)); //Check for user abort in file chooser
+
 	
+
 	//Check file already exists (no overwrite without asking)
 	if(wxFileExists(wxF->GetPath()))
 	{
@@ -1818,6 +1911,8 @@ void MainWindowFrame::OnFileExportIons(wxCommandEvent &event)
 			exportDialog->swapFilterTree(f);
 			visControl.swapFilterTree(f);
 			
+			//Need this to reset the ID values
+			visControl.updateWxTreeCtrl(treeFilters);
 			exportDialog->Destroy();
 			return;
 		}
@@ -1892,7 +1987,7 @@ void MainWindowFrame::OnFileSaveAs(wxCommandEvent &event)
 {
 	//Show a file save dialog
 	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Save state..."), wxT(""),
-		wxT(""),wxT("XML state file (*.xml)|*.xml|All Files (*)|*"),wxFD_SAVE);
+		wxT(""),wxTRANS("XML state file (*.xml)|*.xml|All Files (*)|*"),wxFD_SAVE);
 
 	//Show, then check for user cancelling dialog
 	if( (wxF->ShowModal() == wxID_CANCEL))
@@ -2255,7 +2350,7 @@ void MainWindowFrame::OnHelpHelp(wxCommandEvent &event)
 	if( wxFileExists(wxStr(s))  && s.size())
 	{
 		//we found the manual. Launch the default handler.
-#if (wxMAJOR_VERSION >= 2) && (wxMINOR_VERSION > 8)
+#if wxCHECK_VERSION(2, 9, 0)
 		launchedOK=wxLaunchDefaultApplication(wxStr(s));
 #else
 		//its a bit more convoluted for earlier versions of wx.
@@ -2477,7 +2572,7 @@ void MainWindowFrame::OnComboStashEnter(wxCommandEvent &event)
 
 			statusMessage("",MESSAGE_NONE);
 			if(checkAutoUpdate->GetValue())
-				doSceneUpdate();	
+				doSceneUpdate();
 
 		}
 	
@@ -2510,7 +2605,8 @@ void MainWindowFrame::OnComboStash(wxCommandEvent &event)
 						parentFilter);
 
 		if(checkAutoUpdate->GetValue())
-			doSceneUpdate();	
+			doSceneUpdate();
+
 
 	}
 	
@@ -2522,12 +2618,17 @@ void MainWindowFrame::OnComboStash(wxCommandEvent &event)
 
 void MainWindowFrame::OnTreeEndDrag(wxTreeEvent &event)
 {
+
+	if(visControl.isRefreshing() )
+	{
+		event.Veto();
+		return;
+	}
+
 	//Should be enforced by ::Allow() in start drag.
 	ASSERT(filterTreeDragSource && filterTreeDragSource->IsOk()); 
 	//Allow tree to be manhandled, so you can move filters around
-	int testType=wxTREE_HITTEST_ONITEMLABEL;
-	wxTreeItemId newParent = treeFilters->HitTest(event.GetPoint(),
-						testType);
+	wxTreeItemId newParent = event.GetItem();
 
 	bool needRefresh=false;
 	size_t sId;
@@ -2577,19 +2678,11 @@ void MainWindowFrame::OnTreeEndDrag(wxTreeEvent &event)
 		//We have finished the drag	
 		statusMessage("",MESSAGE_NONE);
 		if(checkAutoUpdate->GetValue())
-			doSceneUpdate();	
+			doSceneUpdate();
 	}
 	delete filterTreeDragSource;
 	filterTreeDragSource=0;	
 }
-
-
-void MainWindowFrame::OnTreeItemTooltip(wxTreeEvent &event)
-{
-    event.Skip();
-    wxLogDebug(wxT("Event handler (MainWindowFrame::OnTreeItemTooltip) not implemented yet")); //notify the user that he hasn't implemented the event handler yet
-}
-
 
 
 void MainWindowFrame::OnTreeSelectionChange(wxTreeEvent &event)
@@ -2661,8 +2754,23 @@ void MainWindowFrame::updateLastRefreshBox()
 
 void MainWindowFrame::OnTreeDeleteItem(wxTreeEvent &event)
 {
+	if(visControl.isRefreshing() )
+	{
+		event.Veto();
+		return;
+	}
 	//This event is only generated programatically, 
-	//Currently it *purposely* does nothing
+	//Currently it *purposely* does nothing in the
+	//not updating case
+}
+
+void MainWindowFrame::OnTreeBeginLabelEdit(wxTreeEvent &event)
+{
+	if(visControl.isRefreshing() )
+	{
+		event.Veto();
+		return;
+	}
 }
 
 void MainWindowFrame::OnTreeEndLabelEdit(wxTreeEvent &event)
@@ -2707,14 +2815,21 @@ void MainWindowFrame::OnTreeEndLabelEdit(wxTreeEvent &event)
 
 void MainWindowFrame::OnTreeBeginDrag(wxTreeEvent &event)
 {
-	if(treeFilters->GetEditControl() )
+	if(visControl.isRefreshing() )
 	{
-		//No dragging if editing
+		event.Veto();
 		return;
 	}
-	int testType=wxTREE_HITTEST_ONITEMLABEL;
+
+	//No dragging if editing, or if no filters
+	if(treeFilters->GetEditControl() || event.GetItem() == treeFilters->GetRootItem())
+	{
+		event.Veto();
+		return;
+	}
+	
 	//Record the drag source
-	wxTreeItemId t = treeFilters->HitTest(event.GetPoint(),testType);
+	wxTreeItemId t = event.GetItem();
 
 	if(t.IsOk())
 	{
@@ -2740,6 +2855,57 @@ void MainWindowFrame::OnBtnExpandTree(wxCommandEvent &event)
 void MainWindowFrame::OnBtnCollapseTree(wxCommandEvent &event)
 {
 	treeFilters->CollapseAll();
+}
+
+void MainWindowFrame::OnBtnFilterTreeErrs(wxCommandEvent &event)
+{
+
+	//Grab the error strings
+	vector<FILTERTREE_ERR> res;
+	visControl.getAnalysisResults(res);
+
+	ASSERT(res.size());
+
+	vector<string> errStrings;
+
+	for(unsigned int ui=0;ui<res.size();ui++)
+	{
+		std::string s;
+
+		switch(res[ui].severity)
+		{
+			case SEVERITY_WARNING:
+				s += "Warning:\n";
+				break;
+			case SEVERITY_ERROR:
+				s+="Error:\n" ;
+				break;
+			default:
+				ASSERT(false);
+		}
+		
+		s=  res[ui].shortReportMessage + "\n";
+		s+= "\t" +  res[ui].verboseReportMessage +"\n";
+		if(res[ui].reportedFilters.size())
+		{
+			s+="\tImplicated Filters:\n"; 
+			for(unsigned int uj=0;uj<res[ui].reportedFilters.size(); uj++)
+				s+="\t\t->" + res[ui].reportedFilters[uj]->getUserString() + "\n";
+		}
+
+		errStrings.push_back(s);
+		s.clear();
+
+	}
+	res.clear();
+
+	FilterErrorDialog *f= new FilterErrorDialog(this);
+	f->SetText(errStrings);
+
+	f->ShowModal();
+
+	delete f;
+
 }
 
 void MainWindowFrame::OnTreeKeyDown(wxTreeEvent &event)
@@ -2818,7 +2984,6 @@ void MainWindowFrame::OnTreeKeyDown(wxTreeEvent &event)
 
 			break;
 		}
-
 		default:
 			event.Skip();
 	}
@@ -2875,6 +3040,9 @@ void MainWindowFrame::OnGridFilterPropertyChange(wxGridEvent &event)
 
 	if(needUpdate && checkAutoUpdate->GetValue())
 		doSceneUpdate();
+	else 
+		clearWxTreeImages(treeFilters);
+
 	visControl.updateFilterPropGrid(gridFilterProperties,filterId);
 	
 	editUndoMenuItem->Enable(visControl.getUndoSize());
@@ -3191,18 +3359,16 @@ bool MainWindowFrame::doSceneUpdate()
 	noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,wxTRANS("Cons."));
 
 	//Disable tree filters,refresh button and undo
-	treeFilters->Enable(false);
 	comboFilters->Enable(false);
 	refreshButton->Enable(false);
 	editUndoMenuItem->Enable(false);
 	editRedoMenuItem->Enable(false);
 	gridFilterProperties->Enable(false);
 	comboStash->Enable(false);
-	
+
 	panelSpectra->limitInteraction();
 	panelSpectra->Refresh();
 
-	panelTop->setSceneInteractionAllowed(false);
 
 	if(!requireFirstUpdate)
 		textConsoleOut->Clear();	
@@ -3240,10 +3406,7 @@ bool MainWindowFrame::doSceneUpdate()
 	visControl.resetProgress();
 
 	//Restore the UI elements to their interactive state
-	panelTop->setSceneInteractionAllowed(true);
 	panelSpectra->limitInteraction(false);
-	
-	treeFilters->Enable(true);
 	refreshButton->Enable(true);
 	gridFilterProperties->Enable(true);
 	comboFilters->Enable(true);
@@ -3261,12 +3424,69 @@ bool MainWindowFrame::doSceneUpdate()
 	if(textConsoleOut->IsEmpty() || noteDataView->GetSelection()==NOTE_CONSOLE_PAGE_OFFSET)
 		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,wxTRANS("Cons."));
 	else
+	{
+#if defined(_WIN32) || defined(_WIN64)
+		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,wxTRANS("*Cons."));
+#else
 		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,wxTRANS("§Cons."));
+#endif
+	}
+
+
+	setFilterTreeAnalysisImages();
 
 
 	//Return a value dependant upon whether we successfully loaded 
 	//the data or not
 	return errCode == 0;
+}
+
+void MainWindowFrame::setFilterTreeAnalysisImages()
+{
+	vector<FILTERTREE_ERR> lastErrs;
+	visControl.getAnalysisResults(lastErrs);
+
+	//Show the error button if required
+	btnFilterTreeErrs->Show(!lastErrs.empty());
+
+	//Maps filters to their maximal severity level
+	map<const Filter*,unsigned int> severityMapping;
+
+	for(size_t ui=0;ui<lastErrs.size();ui++)
+	{
+		vector<size_t> ids;
+		for(size_t uj=0;uj<lastErrs[ui].reportedFilters.size();uj++)
+		{
+			const Filter *filt;
+			filt=lastErrs[ui].reportedFilters[uj];
+
+			//Find the last entry
+			map<const Filter*,unsigned int>::iterator it;
+			it = severityMapping.find(filt);
+
+		
+			//If doesn't exist, put one in. If it does exist, keep only max. severity msg
+			if(it == severityMapping.end())
+				severityMapping[filt] = lastErrs[ui].severity;
+			else
+				it->second = std::max(lastErrs[ui].severity,severityMapping[filt]);
+		}
+	}
+	
+	//Map filters into icons
+	map<size_t, wxArtID> iconSettings;
+	{
+		//Maps particular severity values into icons
+		map<unsigned int, wxArtID> severityIconMapping;
+		severityIconMapping[SEVERITY_ERROR] = wxART_ERROR;
+		severityIconMapping[SEVERITY_WARNING] =wxART_WARNING;
+
+		for(map<const Filter*,unsigned int>::const_iterator it=severityMapping.begin();it!=severityMapping.end(); it++)
+			iconSettings[visControl.getIdByFilter(it->first)] = severityIconMapping[it->second];
+	}
+
+	//apply the filter->icon mapping
+	setWxTreeImages(treeFilters,iconSettings);
 }
 
 void MainWindowFrame::OnStatusBarTimer(wxTimerEvent &event)
@@ -3301,7 +3521,7 @@ void MainWindowFrame::OnAutosaveTimer(wxTimerEvent &event)
 	std::string pidStr;
 	stream_cast(pidStr,pid);
 
-	filePath+=wxCStr("/") + wxCStr(AUTOSAVE_PREFIX) + wxStr(pidStr) +
+	filePath+=wxFileName::GetPathSeparator()+ wxCStr(AUTOSAVE_PREFIX) + wxStr(pidStr) +
 				wxCStr(AUTOSAVE_SUFFIX);
 	//Save to the autosave file
 	std::string s;
@@ -3522,7 +3742,7 @@ void MainWindowFrame::updateProgressStatus()
 	}
 
 	MainFrame_statusbar->SetBackgroundColour(wxNullColour);
-    MainFrame_statusbar->SetStatusText(wxT(""),0);
+	MainFrame_statusbar->SetStatusText(wxT(""),0);
 	MainFrame_statusbar->SetStatusText(wxStr(progressString),1);
 	MainFrame_statusbar->SetStatusText(wxStr(filterProg),2);
 }
@@ -3789,7 +4009,6 @@ void MainWindowFrame::OnViewFullscreen(wxCommandEvent &event)
 	fullscreenState%=4;
 #elif __LINUX__
 
-	//This does not work under non-apple platforms. :(
 	switch(fullscreenState)
 	{
 		case 0:
@@ -3811,7 +4030,6 @@ void MainWindowFrame::OnViewFullscreen(wxCommandEvent &event)
 	fullscreenState%=3;
 #else
 	
-	//This does not work under non-apple platforms. :(
 	switch(fullscreenState)
 	{
 		case 0:
@@ -3858,6 +4076,12 @@ void MainWindowFrame::OnFilterPropDoubleClick(wxSplitterEvent &event)
 	event.Veto();
 }
 
+void MainWindowFrame::OnControlSplitMove(wxSplitterEvent &event)
+{
+	wxGridEvent gridEvent(ID_GRID_RAW_DATA,wxEVT_GRID_LABEL_LEFT_DCLICK,NULL);
+	wxPostEvent(gridFilterProperties,gridEvent);
+}
+
 void MainWindowFrame::OnControlUnsplit(wxSplitterEvent &event)
 {
 	//Make sure that the LHS panel is removed, rather than the default (right)
@@ -3893,6 +4117,9 @@ void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 
 	item=gridFilterProperties->getProperty(set,key);
 
+	//Remove any icons that show filter errors or warning state
+	clearWxTreeImages(treeFilters);
+
 	bool needUpdate=false;
 
 #ifdef DEBUG
@@ -3901,12 +4128,16 @@ void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 
 	ASSERT(treeFilters->GetSelection() != treeFilters->GetRootItem());
 
-	//Get the filter ID value (long song and dance that it is)
+	//If this occurs at run-time, then just abort
+	if(treeFilters->GetSelection() == treeFilters->GetRootItem())
+		return;
+
+	//Get the filter ID value 
+	size_t filterId;
 	wxTreeItemId tId = treeFilters->GetSelection();
 	if(!tId.IsOk())
 		return;
 
-	size_t filterId;
 	wxTreeItemData *tData=treeFilters->GetItemData(tId);
 	filterId = ((wxTreeUint *)tData)->value;
 
@@ -3978,6 +4209,8 @@ void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 		editRedoMenuItem->Enable(visControl.getRedoSize());
 		if(checkAutoUpdate->GetValue())
 			doSceneUpdate();
+		else
+			clearWxTreeImages(treeFilters);
 	}
 }
 
@@ -4508,10 +4741,10 @@ void MainWindowFrame::OnCheckUpdatesThread(wxCommandEvent &evt)
 
 void MainWindowFrame::checkReloadAutosave()
 {
-	wxString filePath =wxStr(configFile.getConfigDir());
-	filePath+=wxCStr("/") ;
+	wxString configDirPath =wxStr(configFile.getConfigDir());
+	configDirPath+=wxCStr("/") ;
 
-	if(!wxDirExists(filePath))
+	if(!wxDirExists(configDirPath))
 		return;
 
 	//obtain a list of autosave xml files
@@ -4522,7 +4755,7 @@ void MainWindowFrame::checkReloadAutosave()
 			std::string("*") + std::string(AUTOSAVE_SUFFIX);
 	wxString fileMask = wxStr(s);
 
-	wxDir::GetAllFiles(filePath,dirListing,fileMask,wxDIR_FILES);
+	wxDir::GetAllFiles(configDirPath,dirListing,fileMask,wxDIR_FILES);
 
 	if(!dirListing->GetCount())
 	{
@@ -4533,7 +4766,7 @@ void MainWindowFrame::checkReloadAutosave()
 
 
 	unsigned int prefixLen;
-	prefixLen = stlStr(filePath).size() + strlen(AUTOSAVE_PREFIX) + 1;
+	prefixLen = stlStr(configDirPath).size() + strlen(AUTOSAVE_PREFIX) + 1;
 
 	//For convenience, Construct a mapping to the PIDs from the string
 	//--
@@ -4569,12 +4802,21 @@ void MainWindowFrame::checkReloadAutosave()
 		else
 			++it;
 	}
-	//---
+	//--
+	
 
+	//A little messy, but handles two cases of dialog
+	// one, where one file is either loaded, or deleted
+	// two, where one of multiple files are either loaded, all deleted or none deleted
+	vector<string> removeFiles;
+
+	//Do we want to full erase the files in removeFiles (true)
+	// or move (false)
+	bool doErase=false;
 	if(autosaveNamePIDMap.size() == 1)
 	{
 		//If we have exactly one autosave, ask the user about loading it
-		filePath=wxStr(autosaveNamePIDMap.begin()->first);
+		wxString filePath=wxStr(autosaveNamePIDMap.begin()->first);
 		wxMessageDialog *wxD  =new wxMessageDialog(this,
 			wxTRANS("An auto-save state was found, would you like to restore it?.") 
 			,wxTRANS("Autosave"),wxCANCEL|wxOK|wxICON_QUESTION|wxYES_DEFAULT );
@@ -4582,81 +4824,142 @@ void MainWindowFrame::checkReloadAutosave()
 		if(wxD->ShowModal()!= wxID_CANCEL)
 		{
 			if(!loadFile(filePath))
+			{
+				doErase=true;
 				statusMessage(TRANS("Unable to load autosave file.."),MESSAGE_ERROR);
+			}
 			else
 			{
+				doErase=false;
 				requireFirstUpdate=true;
 				//Prevent the program from allowing save menu usage
 				//into autosave file
 				currentFile.clear();
 				fileSave->Enable(false);		
 			}
-		}
-		else
-		{
-			//No file to remove
-			filePath=wxT("");
+
+		
+			removeFiles.push_back(stlStr(filePath));
 		}
 	}
 	else if(autosaveNamePIDMap.size() > 1)
 	{	
 		//OK, so we have more than one autosave, from dead 3depict processes. 
 		//ask the user which one they would like to load
-		wxArrayString autoSaveChoices;
-		vector<string> filenames;
+		vector<std::pair<time_t,string> > filenamesAndTimes;
+
+
 		for(map<string,unsigned int>::iterator it=autosaveNamePIDMap.begin();
 			it!=autosaveNamePIDMap.end();++it)
 		{
-
-			//Get the timestamp for the file
-		
 			time_t timeStamp=wxFileModificationTime(wxStr(it->first));
-			time_t now = wxDateTime::Now().GetTicks();
-
-			string s;
-			s=veryFuzzyTimeSince(timeStamp,now);
-		
-			s=it->first + string(", ") + s;  //format like "filename.xml, a few seconds ago"
-			autoSaveChoices.Add(wxStr(s));
-			filenames.push_back(it->first);
+			filenamesAndTimes.push_back(make_pair(timeStamp,it->first));
 		}
+
+		//Sort filenamesAndTimes by decreasing age, so that newest appears at
+		// top of dialog
+		ComparePairFirstReverse cmp;
+		std::sort(filenamesAndTimes.begin(),filenamesAndTimes.end(),cmp);
+
+		vector<string> autoSaveChoices;
+		time_t now = wxDateTime::Now().GetTicks();
+		for(size_t ui=0;ui<filenamesAndTimes.size();ui++)
+		{
+			string s;
+			//Get the timestamp for the file
+			s=veryFuzzyTimeSince(filenamesAndTimes[ui].first,now);
+			s=filenamesAndTimes[ui].second + string(", ") + s;  //format like "filename.xml, a few seconds ago"
+			autoSaveChoices.push_back(s);
+		}
+
 		//OK, looks like we have multiple selection options.
 		//populate a list to ask the user to choose from.
 		//User may only pick a single thing to restore.
-		wxSingleChoiceDialog *dlg= new wxSingleChoiceDialog(this,
-			wxTRANS("Multiple auto-save states were found; would you like to restore one?"),
-			wxTRANS("Restore auto-save?"),autoSaveChoices,NULL, wxCANCEL|wxOK|wxICON_QUESTION);
+		AutosaveDialog *dlg= new AutosaveDialog(this);
+		dlg->setItems(autoSaveChoices);
+	
+		bool wantLoad = false;
+
+		int dlgResult;
+		dlgResult=dlg->ShowModal();
 
 		//Show the dialog to get a choice from the user
-		if(dlg->ShowModal()==wxID_OK)
+		//We need to load a file if, and only if,
+		// autosaves were not purged
+		if(dlgResult==wxID_OK)
+			wantLoad = !dlg->removedItems();
+		if(dlgResult == wxID_OK)
 		{
-			requireFirstUpdate=true;
-
-			filePath=wxStr(filenames[dlg->GetSelection()]);
-
-			if(loadFile(filePath))
+			if(wantLoad)
 			{
-				//Prevent the program from allowing save menu usage
-				//into autosave file
-				currentFile.clear();
-				fileSave->Enable(false);
+				requireFirstUpdate=true;
+
+				std::string tmpStr;
+				tmpStr =filenamesAndTimes[dlg->getSelectedItem()].second;
+
+				if(loadFile(wxStr(tmpStr)))
+				{
+					//Prevent the program from allowing save menu usage
+					//into autosave file
+					currentFile.clear();
+					fileSave->Enable(false);
+					doErase=true;
+				}
+				else 
+					doErase=false;
+
+				//If it either does, or doesn't work,
+				//there is little point in keeping it
+				removeFiles.push_back(tmpStr);
 
 			}
-
+			else 
+			{
+				for(unsigned int ui=0;ui<filenamesAndTimes.size();ui++)
+					removeFiles.push_back(filenamesAndTimes[ui].second);
+				doErase=true;
+			}
+	
 		}
-		else
-		{
-			//No file to delete
-			filePath=wxT("");
-		}
-
 	}
-	
 
-	//delete the selected file after loading it
-	if(filePath != wxT(""))	
-		wxRemoveFile(filePath);	
+	std::string tmpDir;
+	tmpDir = configFile.getConfigDir()  + stlStr(wxFileName::GetPathSeparator())
+		+string("oldAutosave");
+	wxString wxtmpDir=wxStr(tmpDir);
 	
+	//Build the old autosave dir if needed
+	if(removeFiles.size() && !doErase)
+	{
+		if(!wxDirExists(wxtmpDir))
+		{
+			if(!wxMkdir(wxtmpDir))
+			{
+				//well, the folder cannot be created,
+				//so there is no neat way to move the 
+				//autosave somewhere safe. Instead, lets
+				// just delete it
+				doErase=true;
+			}
+	
+		}
+	}
+
+	for(unsigned int ui=0; ui<removeFiles.size(); ui++)
+	{
+		//move the autosave file elsewhere after loading it
+		std::string baseDir = tmpDir+ stlStr(wxFileName::GetPathSeparator()); 
+		wxtmpDir=wxStr(baseDir);
+
+		//make a backup if needed 
+		if(!doErase)
+		{
+			wxFileName fileNaming(wxStr(removeFiles[ui]));
+			wxCopyFile(wxStr(removeFiles[ui]),wxtmpDir+fileNaming.GetFullName()); 
+		}
+		//if the copy works or not, just delete the autsave anyway
+		wxRemoveFile(wxStr(removeFiles[ui]));	
+	}
 }
 wxSize MainWindowFrame::getNiceWindowSize() const
 {
@@ -4767,6 +5070,11 @@ void MainWindowFrame::set_properties()
 
 
     refreshButton->Enable(false);
+#if wxCHECK_VERSION(2, 9, 0)
+    comboCamera->Bind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboCameraSetFocus, this);
+    comboStash->Bind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboStashSetFocus, this);
+    noteDataView->Bind(wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED, &MainWindowFrame::OnNoteDataView, this);
+#else
     comboCamera->Connect(wxID_ANY,
                  wxEVT_SET_FOCUS,
 		   wxFocusEventHandler(MainWindowFrame::OnComboCameraSetFocus), NULL, this);
@@ -4775,7 +5083,7 @@ void MainWindowFrame::set_properties()
 		   wxFocusEventHandler(MainWindowFrame::OnComboStashSetFocus), NULL, this);
     noteDataView->Connect(wxID_ANY, wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED,
 		    wxNotebookEventHandler(MainWindowFrame::OnNoteDataView),NULL,this);
-
+#endif
     gridCameraProperties->clear();
     int widths[] = {-4,-2,-1};
     MainFrame_statusbar->SetStatusWidths(3,widths);
@@ -4828,6 +5136,9 @@ void MainWindowFrame::do_layout()
     filterRightOfTreeSizer->Add(20, 20, 0, 0, 0);
     filterRightOfTreeSizer->Add(btnFilterTreeCollapse, 0, wxLEFT, 6);
     filterRightOfTreeSizer->Add(btnFilterTreeExpand, 0, wxLEFT, 6);
+    filterRightOfTreeSizer->Add(10, 10, 0, 0, 0);
+    filterRightOfTreeSizer->Add(btnFilterTreeErrs,0,wxLEFT,6);
+    btnFilterTreeErrs->Show(false);
     filterTreeLeftRightSizer->Add(filterRightOfTreeSizer, 2, wxEXPAND, 0);
     filterTreePane->SetSizer(filterTreeLeftRightSizer);
     filterPropGridSizer->Add(propGridLabel, 0, 0, 0);
@@ -4949,7 +5260,7 @@ private:
 
 public:
 
-    threeDepictApp() { MainFrame=0;usrLocale=0;};
+    threeDepictApp() ;
     ~threeDepictApp() { if(usrLocale) delete usrLocale;}
     bool OnInit();
     virtual void OnInitCmdLine(wxCmdLineParser& parser);
@@ -4978,15 +5289,30 @@ static const wxCmdLineEntryDesc g_cmdLineDesc [] =
 	//Unit testing system
 #ifdef DEBUG
 #if wxCHECK_VERSION(2,9,0) 
-	{ wxCMD_LINE_SWITCH, ("t"), ("test"), ("run debug unit tests, returns nonzero on test failure, zero on success"), wxCMD_LINE_VAL_NONE, wxCMD_LINE_SWITCH},
+	{ wxCMD_LINE_SWITCH, ("t"), ("test"), ("Run debug unit tests, returns nonzero on test failure, zero on success.\n\t\t"
+		       "XML files may be passed to run , instead of default tests"), wxCMD_LINE_VAL_NONE, wxCMD_LINE_SWITCH},
 #else
-	{ wxCMD_LINE_SWITCH, wxT("t"), wxT("test"), wxNTRANS("run debug unit tests, returns nonzero on test failure, zero on success"), wxCMD_LINE_VAL_NONE, wxCMD_LINE_SWITCH},
+	{ wxCMD_LINE_SWITCH, wxT("t"), wxT("test"), 
+	wxNTRANS("Run debug unit tests, returns nonzero on test failure, zero on success.\n\t\t" 
+			"XML files may be passed to run, instead of default tests"), wxCMD_LINE_VAL_NONE, wxCMD_LINE_SWITCH},
 #endif
 #endif
 	{ wxCMD_LINE_NONE }
 };
 
 IMPLEMENT_APP(threeDepictApp)
+
+threeDepictApp::threeDepictApp()
+{
+       	MainFrame=0;usrLocale=0;
+#ifndef DEBUG
+#if wxCHECK_VERSION(2,9,0) && defined(__APPLE__)
+	//Macports wx seems to be built with assertions enabled? Disable for release builds
+	wxSetAssertHandler(NULL);
+#endif
+#endif
+}
+
 
 void threeDepictApp::initLanguageSupport()
 {
@@ -4997,7 +5323,7 @@ void threeDepictApp::initLanguageSupport()
 	{
 		//Wx 2.9 and above are now unicode, so locale encoding
 		//conversion is deprecated.
-#if (wxMAJOR_VERSION <= 2) && (wxMINOR_VERSION <= 8)
+#if !wxCHECK_VERSION(2, 9, 0)
 		usrLocale = new wxLocale( language, wxLOCALE_CONV_ENCODING | wxLOCALE_LOAD_DEFAULT);
 #else
 		usrLocale = new wxLocale( language, wxLOCALE_LOAD_DEFAULT);
@@ -5113,15 +5439,13 @@ int threeDepictApp::FilterEvent(wxEvent& event)
 #ifdef DEBUG
 			//Determine if control or meta key is down (dep. platform)
 			bool commandDown;
-#ifdef __APPLE__
-			commandDown=keyEvent.MetaDown();
-#else
 			commandDown=keyEvent.ControlDown();
-#endif
-			//If the user presses ctrl+insert, this activates hidden
+			//If the user presses ctrl+insert, or alt+f5 
+	                //(ctrl+f5 doesn't work on mac, nor does it have an insert key) 
+            		//this activates hidden
 			//functionality to create autosave from filtertree
-			if(keyEvent.GetKeyCode()==WXK_INSERT
-						&& commandDown)
+			if((keyEvent.GetKeyCode()==WXK_INSERT && commandDown)
+              		  || (keyEvent.GetKeyCode()==WXK_F5 && keyEvent.AltDown()) )
 			{
 				wxTimerEvent evt;
 				MainFrame->OnAutosaveTimer(evt);
@@ -5160,16 +5484,70 @@ bool threeDepictApp::OnCmdLineParsed(wxCmdLineParser& parser)
 #ifdef DEBUG
 	if( parser.Found(wxT("test"))) 
 	{
-		//Unit tests failed
- 		if(!runUnitTests()) 
+		//If we were given arguments, try to load them
+		//otherwise use the inbuilt test files
+		if(parser.GetParamCount())
 		{
-			cerr << "Unit tests failed" <<endl;
-			exit(1);
+			for(unsigned int ui=0;ui<parser.GetParamCount();ui++)
+			{
+				wxFileName f;
+				f.Assign(parser.GetParam(ui));
+
+				std::string strFile;
+				strFile=stlStr(f.GetFullPath());
+				if( !f.FileExists() )
+				{
+					cerr << "Unable to locate file:" << strFile << endl;
+					continue;
+				}
+
+				cerr << "Loading :" << strFile << endl ;
+
+				{
+				VisController visControl;
+				if(!visControl.loadState(strFile.c_str(),cerr,false,true))
+				{
+					cerr << "Error loading state file:" << endl;
+					exit(1);
+				}
+
+				//Run a refresh over the filter tree as a test
+				FilterTree f;
+				visControl.cloneFilterTree(f);
+				if(f.hasHazardousContents())
+				{
+					f.stripHazardousContents();
+					cerr << "For security reasons, the tree was pruned prior to execution." << endl;
+				}
+				
+				if(!testFilterTree(f))
+				{
+					cerr << "Failed loading :" << strFile << " , aborting" << endl;
+					exit(1);
+				}
+				}
+
+				cerr << "OK" << endl; 
+
+			}
+			
+			 
+			cerr << "Test XML File(s) Loaded OK" << endl;	
+			exit(0);
 		}
 		else
 		{
-			cerr << "Unit tests succeeded!" <<endl;
-			exit(0);
+			//Unit tests failed
+			if(!runUnitTests()) 
+			{
+				cerr << "Unit tests failed" <<endl;
+				exit(1);
+			}
+			else
+			{
+				cerr << "Unit tests succeeded!" <<endl;
+				exit(0);
+			}
 		}
 	}
 #endif

@@ -67,7 +67,8 @@ class RangeFileFilter : public Filter
 		//Types that are emitted by filer during ::refrash
 		unsigned int getRefreshEmitMask() const;
 
-	
+		//Types that are possibly used by filer during ::refrash
+		unsigned int getRefreshUseMask() const;
 
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
 		void getProperties(FilterProperties &propertyList) const;

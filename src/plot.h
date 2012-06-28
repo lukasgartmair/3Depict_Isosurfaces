@@ -48,16 +48,10 @@
 
 
 
-enum{
-	EDGE_MODE_HOLD,
-};
-
-
 enum
 {
 	PLOT_TYPE_ONED,
-	PLOT_TYPE_TWOD,
-	PLOT_TYPE_MIXED, //When multiple plots are visible of different types
+	PLOT_TYPE_MIXED,
 	PLOT_TYPE_ENUM_END //not a plot, just end of enum
 };
 
@@ -127,8 +121,9 @@ class PlotBase
 		//The type of plot (ie what class is it?)	
 		unsigned int plotType;
 		
-		//!Bounding box for data
+		//!Bounding box for plot -  may exceed plot data area
 		float minX,maxX,minY,maxY;
+
 		//!Colour of trace
 		float r,g,b;
 		//!Is trace visible?
@@ -141,6 +136,11 @@ class PlotBase
 		std::wstring yLabel;
 		//!Plot title
 		std::wstring title;
+
+		//!Use the plot title for Y data label when exporting raw data
+		// (true), or use the yLabel
+		bool titleAsRawDataLabel;
+
 		//!Pointer to some constant object that generated this plot
 		const void *parentObject;
 
@@ -182,7 +182,8 @@ class PlotBase
 
 };
 
-//1D Plot with ranges
+//!1D Function f(x) Plot with ranges
+// data must be a pure Function.
 class Plot1D : public PlotBase
 {
 	private: 	
@@ -192,10 +193,12 @@ class Plot1D : public PlotBase
 		//!Data
 		std::vector<float> xValues,yValues,errBars;
 		
-		void getBounds(float &xMin,float &xMax,float &yMin,float &yMax) const;
 		
 	public:
 		Plot1D();
+		
+		
+		void getBounds(float &xMin,float &xMax,float &yMin,float &yMax) const;
 
 		//!Set the plot data from a pair and symmetric Y error
 		void setData(const vector<std::pair<float,float> > &v);
@@ -253,38 +256,6 @@ class Plot1D : public PlotBase
 		void setLogarithmic(bool p){logarithmic=p;};
 };
 
-//2D (value-value pair) 
-class Plot2D : public PlotBase
-{
-	private: 	
-		//!Data
-		std::vector<float> xValues,yValues,xErrBars,yErrBars;
-		//Retrieve the bounds on the plot
-		void getBounds(float &xMin,float &xMax,float &yMin,float &yMax) const;
-
-	public:
-		//Draw the plot onto a given MGL graph
-		virtual void drawPlot(mglGraph *graph,MGLColourFixer &fixer) const;
-
-		//Retrieve the raw data associated with this plot.
-		virtual void getRawData(vector<vector<float> > &f,
-				std::vector<std::wstring> &labels) const;
-
-		//!Retrieve the ID of the non-overlapping region in X-Y space
-		virtual bool getRegionIdAtPosition(float x, float y, unsigned int &id) const;
-		//!Retrieve a region using its unique ID
-		virtual void getRegion(unsigned int id, PlotRegion &r) const;
-		
-		//!Pass the region movement information to the parent filter object
-		virtual void moveRegion(unsigned int regionId, unsigned int method, 
-							float newX, float newY) const;
-
-		//!Obtain limit of motion for a given region movement type
-		virtual void moveRegionLimit(unsigned int regionId,
-				unsigned int movementType, float &maxX, float &maxY) const;
-	
-};
-
 //Wrapper class for containing multiple plots 
 class PlotWrapper
 {
@@ -333,7 +304,7 @@ class PlotWrapper
 
 		//!Get the bounds for the plot
 		void scanBounds(float &xMin,float &xMax,float &yMin,float &yMax) const;
-		//Draw the plot onto a given MGL graph
+		//Draw the plot onto a given MGL graph. Only one type (1D,2D etc) of plot may be visible
 		void drawPlot(mglGraph *graph) const;
 
 		//!Set the X Y and title strings

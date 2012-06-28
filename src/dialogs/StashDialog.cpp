@@ -18,9 +18,8 @@
 
 #include "StashDialog.h"
 
-#include "wxcommon.h"
-
-#include "translation.h"
+#include "../wxcommon.h"
+#include "../translation.h"
 
 #include <utility>
 #include <string>
@@ -44,12 +43,12 @@ StashDialog::StashDialog(wxWindow* parent, int id, const wxString& title, const 
     wxDialog(parent, id, title, pos, size, style)
 {
     // begin wxGlade: StashDialog::StashDialog
-    label_5 = new wxStaticText(this, wxID_ANY, wxT("Stashes"));
+    label_5 = new wxStaticText(this, wxID_ANY, wxTRANS("Stashes"));
     listStashes = new wxListCtrl(this, ID_LIST_STASH, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxSUNKEN_BORDER);
     btnRemove = new wxButton(this, wxID_REMOVE, wxEmptyString);
-    label_6 = new wxStaticText(this, wxID_ANY, wxT("Stashed Tree"));
+    label_6 = new wxStaticText(this, wxID_ANY, wxTRANS("Stashed Tree"));
     treeFilters = new wxTreeCtrl(this, ID_TREE_FILTERS, wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER|wxTR_HIDE_ROOT);
-    label_7 = new wxStaticText(this, wxID_ANY, wxT("Properties"));
+    label_7 = new wxStaticText(this, wxID_ANY, wxTRANS("Properties"));
     gridProperties = new wxPropertyGrid(this, ID_GRID_FILTER);
     btnOK = new wxButton(this, wxID_OK, wxEmptyString);
 

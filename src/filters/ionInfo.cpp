@@ -176,16 +176,10 @@ bool getRectilinearBounds(const std::vector<const FilterStreamData *> &dataIn, B
 	return true;
 }
 
-IonInfoFilter::IonInfoFilter()
+IonInfoFilter::IonInfoFilter() : wantIonCounts(true), wantNormalise(false),
+	range(0), wantVolume(false), volumeAlgorithm(VOLUME_MODE_RECTILINEAR),
+	cubeSideLen(1.0f)
 {
-	volumeAlgorithm=VOLUME_MODE_RECTILINEAR;
-	wantIonCounts=true;
-	wantVolume=false;
-	wantNormalise=false;
-	range=0;
-
-	cubeSideLen=1.0;
-
 	cacheOK=false;
 	cache=true; //By default, we should cache, but decision is made higher up
 }
@@ -365,7 +359,12 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 			for(size_t ui=0;ui<numIons.size();ui++)
 			{
 				if(wantNormalise)
-					stream_cast(str,((float)numIons[ui])/(float)totalRanged);
+				{
+					if(totalRanged)
+						stream_cast(str,((float)numIons[ui])/(float)totalRanged);
+					else
+						str=TRANS("n/a");
+				}
 				else
 					stream_cast(str,numIons[ui]);
 			
@@ -967,6 +966,10 @@ unsigned int IonInfoFilter::getRefreshEmitMask() const
 	return  0;
 }
 
+unsigned int IonInfoFilter::getRefreshUseMask() const
+{
+	return  STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
+}
 
 #ifdef DEBUG
 

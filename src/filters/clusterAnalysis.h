@@ -81,14 +81,17 @@ class ClusterAnalysisFilter : public Filter
 				const vector<vector<IonHit> > &clusteredBulk, const RangeFile *rng,
 							vector<PlotStreamData *> &plots) const;
 
-
-		//COmpute the singular values that area associated with each cluster
-		void getSingularValues(const vector<vector<IonHit> > &clusteredCore,
-				const vector<vector<IonHit> > &clusteredBulk, vector<vector<float> > &singularValues) const;
 #ifdef DEBUG
 		bool paranoidDebugAssert(const std::vector<std::vector<IonHit > > &core, 
 				const std::vector<std::vector<IonHit> > &bulk) const;
 #endif
+#ifdef DEBUG
+	public:
+#endif
+		//COmpute the singular values that area associated with each cluster
+		void getSingularValues(const vector<vector<IonHit> > &clusteredCore,
+				const vector<vector<IonHit> > &clusteredBulk, vector<vector<float> > &singularValues,
+				vector<std::pair<Point3D,vector<Point3D> > > &singularVectors) const;
 	public:
 		ClusterAnalysisFilter(); 
 		//!Duplicate filter contents, excluding cache.
@@ -130,6 +133,9 @@ class ClusterAnalysisFilter : public Filter
 
 		//!Get the stream types that will be generated during ::refresh	
 		unsigned int getRefreshEmitMask() const;	
+		
+		//!Get the stream types that will be generated during ::refresh	
+		unsigned int getRefreshUseMask() const;	
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
 

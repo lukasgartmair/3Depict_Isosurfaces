@@ -18,9 +18,9 @@
 
 
 #include "ExportPos.h"
-#include "wxcommon.h"
+#include "../wxcommon.h"
 
-#include "translation.h"
+#include "../translation.h"
 // begin wxGlade: ::extracode
 
 // end wxGlade
@@ -150,6 +150,10 @@ void ExportPosDialog::initialiseData(FilterTree &f)
 	std::vector<SelectionDevice<Filter> *> dummyDevices;
 	std::vector<string> consoleStrings;
 	filterTree.refreshFilterTree(outputData,dummyDevices,consoleStrings,p,yieldCallback);
+
+	//Delete all filter items that came out of refresh, other than ion streams
+	filterTree.safeDeleteFilterList(outputData,STREAM_TYPE_IONS,true);
+
 	haveRefreshed=true;
 }
 
@@ -447,6 +451,7 @@ void ExportPosDialog::set_properties()
 	btnAddAll->SetToolTip(wxTRANS("Add all data from all filters"));
 	btnAddNode->SetToolTip(wxTRANS("Add all data from currently selected filter"));
 	btnAddData->SetToolTip(wxTRANS("Add selected data from currently selected filter"));
+    radioVisible->SetValue(TRUE);
 }
 
 void ExportPosDialog::enableSelectionControls(bool enabled)

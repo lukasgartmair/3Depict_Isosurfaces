@@ -26,6 +26,7 @@
 #include <wx/listctrl.h>
 #include <wx/docview.h>
 #include <wx/dnd.h>
+#include <wx/bmpbuttn.h>
 // end wxGlade
 
 //Local stuff
@@ -66,7 +67,7 @@ private:
     void do_layout();
     // end wxGlade
    
-   	//!Give  a  
+   	//!Give a message in the satus bar
     	void statusMessage(const char *message, unsigned int messageType=MESSAGE_ERROR); 
 
 	//!Update the progress information in the status bar
@@ -79,6 +80,8 @@ private:
 	//!Load a file into the panel given the full path to the file
 	bool loadFile(const wxString &dataFile,bool merge=false);
 
+	//!Load any errors that were detected in the last refresh into the filter tree
+	void setFilterTreeAnalysisImages(); 
 
 	//!Update the effects UI from some effects vector
 	void updateFxUI(const vector<const Effect *> &fx);
@@ -157,6 +160,7 @@ protected:
     wxButton* refreshButton;
     wxButton* btnFilterTreeExpand;
     wxButton* btnFilterTreeCollapse;
+    wxBitmapButton* btnFilterTreeErrs;
     wxPanel* filterTreePane;
     wxStaticText* propGridLabel;
     wxPropertyGrid* gridFilterProperties;
@@ -240,15 +244,15 @@ public:
     virtual void OnComboStashEnter(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnComboStash(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeEndDrag(wxTreeEvent &event); // wxGlade: <event_handler>
-    virtual void OnTreeItemTooltip(wxTreeEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeKeyDown(wxTreeEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeSelectionChange(wxTreeEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeDeleteItem(wxTreeEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeBeginDrag(wxTreeEvent &event); // wxGlade: <event_handler>
     virtual void OnBtnExpandTree(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnBtnCollapseTree(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnBtnFilterTreeErrs(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnComboCameraText(wxCommandEvent &event); // wxGlade: <event_handler>
 
-    virtual void OnBtnCollapseTree(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnGridFilterPropertyChange(wxGridEvent &event); // wxGlade: <event_handler>
     virtual void OnComboCameraEnter(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnComboCamera(wxCommandEvent &event); // wxGlade: <event_handler>
@@ -295,6 +299,7 @@ public:
     virtual void OnRawDataUnsplit(wxSplitterEvent &event);
     virtual void OnFilterPropDoubleClick(wxSplitterEvent &event);
     virtual void OnControlUnsplit(wxSplitterEvent &event);
+    virtual void OnControlSplitMove(wxSplitterEvent &event);
     virtual void OnSpectraUnsplit(wxSplitterEvent &event);
     virtual void OnViewSpectraList(wxCommandEvent &event); 
     virtual void OnViewPlotLegend(wxCommandEvent &event); 
@@ -314,6 +319,7 @@ public:
     virtual void OnFileExportPackage(wxCommandEvent &event);
     virtual void OnRecentFile(wxCommandEvent &event); // wxGlade: <event_handler>
 
+    virtual void OnTreeBeginLabelEdit(wxTreeEvent &evt);
     virtual void OnTreeEndLabelEdit(wxTreeEvent &evt);
     virtual void OnUpdateTimer(wxTimerEvent &evt);
     virtual void OnAutosaveTimer(wxTimerEvent &evt);

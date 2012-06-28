@@ -33,10 +33,9 @@ enum
 };
 
 //=== External program filter === 
-ExternalProgramFilter::ExternalProgramFilter()
+ExternalProgramFilter::ExternalProgramFilter() : alwaysCache(false),
+		cleanInput(true)
 {
-	alwaysCache=false;
-	cleanInput=true;
 	cacheOK=false;
 	cache=false; 
 }
@@ -595,12 +594,8 @@ bool ExternalProgramFilter::setProperty( unsigned int set, unsigned int key,
 
 			if(!(stripped == "1"|| stripped == "0"))
 				return false;
-
-			if(stripped=="1")
-				cleanInput=true;
-			else
-				cleanInput=false;
-			
+			cleanInput=(stripped=="1");
+			needUpdate=true;
 			break;
 		}
 		default:
@@ -735,6 +730,11 @@ unsigned int ExternalProgramFilter::getRefreshBlockMask() const
 unsigned int ExternalProgramFilter::getRefreshEmitMask() const
 {
 	//Can only generate ion streams and plot streams
+	return STREAM_TYPE_IONS | STREAM_TYPE_PLOT;
+}
+
+unsigned int ExternalProgramFilter::getRefreshUseMask() const
+{
 	return STREAM_TYPE_IONS | STREAM_TYPE_PLOT;
 }
 

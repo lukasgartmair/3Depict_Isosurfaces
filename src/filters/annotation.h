@@ -28,7 +28,7 @@ class AnnotateFilter : public Filter
 		//annotation text string
 		std::string annotateText;
 		//Text display style, arrow annotation size, handle size for angle spheres
-		float textSize,annotateSize,sphereAngleSize;
+		float textSize,annotateSize,sphereAngleSize,lineSize;
 
 		//Annotation colour
 		float r,g,b,a;
@@ -114,6 +114,9 @@ class AnnotateFilter : public Filter
 		// This MUST always be consistent with ::refresh for filters current state.
 		unsigned int getRefreshEmitMask() const;
 
+		//!Get the refresh's ignore mask - filter streams that will not be considered
+		// as part of the computation
+		unsigned int getRefreshUseMask() const;
 #ifdef DEBUG
 		bool runUnitTests();
 #endif

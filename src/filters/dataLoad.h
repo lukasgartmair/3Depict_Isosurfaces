@@ -11,6 +11,24 @@ enum
 	DATALOAD_TEXT_FILE
 };
 
+enum
+{
+	DATALOAD_KEY_FILE,
+	DATALOAD_KEY_FILETYPE,
+	DATALOAD_KEY_SAMPLE,
+	DATALOAD_KEY_SIZE,
+	DATALOAD_KEY_COLOUR,
+	DATALOAD_KEY_IONSIZE,
+	DATALOAD_KEY_ENABLED,
+	DATALOAD_KEY_VALUELABEL,
+	DATALOAD_KEY_SELECTED_COLUMN0,
+	DATALOAD_KEY_SELECTED_COLUMN1,
+	DATALOAD_KEY_SELECTED_COLUMN2,
+	DATALOAD_KEY_SELECTED_COLUMN3,
+	DATALOAD_KEY_NUMBER_OF_COLUMNS,
+	DATALOAD_KEY_MONITOR
+};
+
 class DataLoadFilter:public Filter
 {
 	protected:
@@ -23,7 +41,11 @@ class DataLoadFilter:public Filter
 		//!Try our best to guess the file type?
 		bool guessType;
 
-		//!Maximum number of ions to load, 0 if ion limiting disabled
+
+		//!Whether to randomly sample dataset during load or not
+		bool doSample;
+
+		//!Maximum number of ions to load, if performing sampling
 		size_t maxIons;
 
 		//!Default ion colour vars
@@ -115,6 +137,9 @@ class DataLoadFilter:public Filter
 		virtual unsigned int getRefreshBlockMask() const; 
 		//!Get the refresh mask for this filter (bitmaks of streams emitted during ::refresh)
 		virtual unsigned int getRefreshEmitMask() const; 
+		
+		//!Get the refresh use mask for this filter (bitmaks of streams possibly used during ::refresh)
+		virtual unsigned int getRefreshUseMask() const; 
 	
 		//!Pos filter has state overrides	
 		virtual void getStateOverrides(std::vector<string> &overrides) const; 

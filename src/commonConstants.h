@@ -28,6 +28,15 @@ enum
   PLOT_TRACE_ENDOFENUM
 };
 
+//Plot types
+enum
+{
+	PLOT_MODE_1D,
+	PLOT_MODE_2D,
+	PLOT_MODE_ENUM_END
+};
+
+
 //Plot error types
 enum
 {

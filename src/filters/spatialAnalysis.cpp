@@ -13,6 +13,8 @@ enum
 	KEY_NUMBINS,
 	KEY_REMOVAL,
 	KEY_REDUCTIONDIST,
+	KEY_RETAIN_UPPER,
+	KEY_CUTOFF,
 	KEY_COLOUR,
 	KEY_ENABLE_SOURCE,
 	KEY_ENABLE_TARGET,
@@ -20,6 +22,7 @@ enum
 
 enum {
 	ALGORITHM_DENSITY, //Local density analysis
+	ALGORITHM_DENSITY_FILTER, //Local density filtering
 	ALGORITHM_RDF, //Radial Distribution Function
 	ALGORITHM_ENUM_END,
 };
@@ -39,8 +42,10 @@ enum
 // == NN analysis filter ==
 
 
+//User visible names for the different algorithms
 const char *SPATIAL_ALGORITHMS[] = {
 	NTRANS("Local Density"),
+	NTRANS("Density Filtering"),
 	NTRANS("Radial Distribution")
 	};
 
@@ -49,24 +54,44 @@ const char *STOP_MODES[] = {
 	NTRANS("Fixed Radius")
 };
 
+//Switch to determine if algorithms need range propagation or not
+const bool WANT_RANGE_PROPAGATION[] = { false, 
+					true,
+					false
+					};
+
+template<class T>
+bool xorFunc(const T a, const T b)
+{
+  return (a || b) && !(a && b);
+}
+
 
 
 SpatialAnalysisFilter::SpatialAnalysisFilter()
 {
 	COMPILE_ASSERT(ARRAYSIZE(STOP_MODES) == STOP_MODE_ENUM_END);
 	COMPILE_ASSERT(ARRAYSIZE(SPATIAL_ALGORITHMS) == ALGORITHM_ENUM_END);
+	COMPILE_ASSERT(ARRAYSIZE(WANT_RANGE_PROPAGATION) == ALGORITHM_ENUM_END);
 	algorithm=ALGORITHM_DENSITY;
 	nnMax=1;
 	distMax=1;
 	stopMode=STOP_MODE_NEIGHBOUR;
 
+	haveRangeParent=false;
+	
 	//Default colour is red
 	r=a=1.0f;
 	g=b=0.0f;
 
-	haveRangeParent=false;
+	//RDF params
 	numBins=100;
 	excludeSurface=false;
+
+	//Density filtering params
+	densityCutoff=1.0f;
+	keepDensityUpper=true;
+
 	reductionDistance=distMax;
 
 	cacheOK=false;
@@ -78,10 +103,23 @@ Filter *SpatialAnalysisFilter::cloneUncached() const
 {
 	SpatialAnalysisFilter *p=new SpatialAnalysisFilter;
 
+	p->r=r;
+	p->g=g;
+	p->b=b;
+	p->a=a;
+	
 	p->algorithm=algorithm;
 	p->stopMode=stopMode;
 	p->nnMax=nnMax;
 	p->distMax=distMax;
+
+	p->numBins=numBins;
+	p->excludeSurface=excludeSurface;
+	p->reductionDistance=reductionDistance;
+	
+	p->keepDensityUpper=keepDensityUpper;
+	p->densityCutoff=densityCutoff;
+
 
 	//We are copying wether to cache or not,
 	//not the cache itself
@@ -106,6 +144,9 @@ void SpatialAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 		{
 			const RangeStreamData *r;
 			r = (const RangeStreamData *)dataIn[ui];
+
+			if(WANT_RANGE_PROPAGATION[algorithm])
+				dataOut.push_back(dataIn[ui]);
 
 			bool different=false;
 			if(!haveRangeParent)
@@ -172,9 +213,13 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 	{
 		for(unsigned int ui=0;ui<dataIn.size();ui++)
 		{
-			if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS &&
-				dataIn[ui]->getStreamType() !=STREAM_TYPE_RANGE)
-				getOut.push_back(dataIn[ui]);
+			if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
+			{
+				//Only propagate ranges if we want range propagation
+				if(dataIn[ui]->getStreamType() !=STREAM_TYPE_RANGE
+					|| WANT_RANGE_PROPAGATION[algorithm])
+					getOut.push_back(dataIn[ui]);
+			}
 		}
 		for(unsigned int ui=0;ui<filterOutputs.size();ui++)
 			getOut.push_back(filterOutputs[ui]);
@@ -308,7 +353,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 					newD->parent=this;
 
 					//Adjust this number to provide more update thanusual, because we
-					//are not doing an o(1) task between updates; yes, it is  hack
+					//are not doing an o(1) task between updates; yes, it is a hack
 					unsigned int curProg=NUM_CALLBACK/(10*nnMax);
 					newD->data.resize(d->data.size());
 					if(stopMode == STOP_MODE_NEIGHBOUR)
@@ -474,29 +519,31 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 					newD->data.resize(newD->data.size()-badPts.size());
 
 
-					//Use default colours
-					newD->r=d->r;
-					newD->g=d->g;
-					newD->b=d->b;
-					newD->a=d->a;
-					newD->ionSize=d->ionSize;
-					newD->representationType=d->representationType;
-					newD->valueType=TRANS("Number Density (\\#/Vol^3)");
-
-					//Cache result as needed
-					if(cache)
+					if(newD->data.size())
 					{
-						newD->cached=1;
-						filterOutputs.push_back(newD);
-						cacheOK=true;
+						//Use default colours
+						newD->r=d->r;
+						newD->g=d->g;
+						newD->b=d->b;
+						newD->a=d->a;
+						newD->ionSize=d->ionSize;
+						newD->representationType=d->representationType;
+						newD->valueType=TRANS("Number Density (\\#/Vol^3)");
+
+						//Cache result as needed
+						if(cache)
+						{
+							newD->cached=1;
+							filterOutputs.push_back(newD);
+							cacheOK=true;
+						}
+						else
+							newD->cached=0;
+						getOut.push_back(newD);
 					}
-					else
-						newD->cached=0;
-					getOut.push_back(newD);
 				}
 				break;	
 				case STREAM_TYPE_RANGE: 
-					//Do not propagate ranges
 				break;
 				default:
 					getOut.push_back(dataIn[ui]);
@@ -792,6 +839,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 					plotData[ui] = new PlotStreamData;
 					plotData[ui]->index=ui;
 					plotData[ui]->parent=this;
+					plotData[ui]->plotMode=PLOT_MODE_1D;
 					plotData[ui]->xLabel=TRANS("Radial Distance");
 					plotData[ui]->yLabel=TRANS("Count");
 					std::string tmpStr;
@@ -827,6 +875,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 					getOut.push_back(plotData[ui]);
 				}
 
+				delete[] binWidth;
 				break;
 			}
 
@@ -861,6 +910,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 				PlotStreamData *plotData = new PlotStreamData;
 
 				plotData = new PlotStreamData;
+				plotData->plotMode=PLOT_MODE_1D;
 				plotData->index=0;
 				plotData->parent=this;
 				plotData->xLabel=TRANS("Radial Distance");
@@ -880,6 +930,8 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 					plotData->xyData[uj] = std::make_pair(dist,
 							histogram[uj]);
 				}
+
+				delete[] histogram;
 
 				if(cache)
 				{
@@ -913,6 +965,334 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 				ASSERT(false);
 		}
 	}
+	else if (algorithm == ALGORITHM_DENSITY_FILTER)
+	{
+		//Build monolithic point set
+		//---
+		vector<Point3D> p;
+		p.resize(totalDataSize);
+
+		size_t dataSize=0;
+		size_t n=0;
+
+		progress.step=1;
+		progress.stepName=TRANS("Collate");
+		progress.maxStep=3;
+		progress.filterProgress=0;
+		if(!(*callback)(true))
+			return ABORT_ERR;
+
+		for(unsigned int ui=0;ui<dataIn.size() ;ui++)
+		{
+			switch(dataIn[ui]->getStreamType())
+			{
+				case STREAM_TYPE_IONS: 
+				{
+					const IonStreamData *d;
+					d=((const IonStreamData *)dataIn[ui]);
+
+					if(extendPointVector(p,d->data,
+							callback,progress.filterProgress,
+							dataSize))
+						return ABORT_ERR;
+
+					dataSize+=d->data.size();
+				}
+				break;	
+				default:
+					break;
+			}
+		}
+		//---
+
+		progress.step=2;
+		progress.stepName=TRANS("Build");
+		progress.filterProgress=0;
+		if(!(*callback)(true))
+			return ABORT_ERR;
+
+		BoundCube treeDomain;
+		treeDomain.setBounds(p);
+
+		//Build the tree (its roughly nlogn timing, but worst case n^2)
+		K3DTree kdTree;
+		kdTree.setCallbackMethod(callback);
+		kdTree.setProgressPointer(&(progress.filterProgress));
+		
+		kdTree.buildByRef(p);
+
+
+		//Update progress & User interface by calling callback
+		if(!(*callback)(false))
+			return ABORT_ERR;
+		p.clear(); //We don't need pts any more, as tree *is* a copy.
+
+
+		//Its algorithim time!
+		//----
+		//Update progress stuff
+		n=0;
+		progress.step=3;
+		progress.stepName=TRANS("Analyse");
+		progress.filterProgress=0;
+		if(!(*callback)(true))
+			return ABORT_ERR;
+
+		//List of points for which there was a failure
+		//first entry is the point Id, second is the 
+		//dataset id.
+		std::list<std::pair<size_t,size_t> > badPts;
+		for(size_t ui=0;ui<dataIn.size() ;ui++)
+		{
+			switch(dataIn[ui]->getStreamType())
+			{
+				case STREAM_TYPE_IONS: 
+				{
+					const IonStreamData *d;
+					d=((const IonStreamData *)dataIn[ui]);
+					IonStreamData *newD = new IonStreamData;
+					newD->parent=this;
+
+					//Adjust this number to provide more update thanusual, because we
+					//are not doing an o(1) task between updates; yes, it is a hack
+					unsigned int curProg=NUM_CALLBACK/(10*nnMax);
+					newD->data.reserve(d->data.size());
+					if(stopMode == STOP_MODE_NEIGHBOUR)
+					{
+						bool spin=false;
+						#pragma omp parallel for shared(spin)
+						for(size_t uj=0;uj<d->data.size();uj++)
+						{
+							if(spin)
+								continue;
+							Point3D r;
+							vector<const Point3D *> res;
+							r=d->data[uj].getPosRef();
+							
+							//Assign the mass to charge using nn density estimates
+							kdTree.findKNearest(r,treeDomain,nnMax,res);
+
+							if(res.size())
+							{	
+								float maxSqrRad;
+
+								//Get the radius as the furtherst object
+								maxSqrRad= (res[res.size()-1]->sqrDist(r));
+
+
+								float density;
+								density = res.size()/(4.0/3.0*M_PI*powf(maxSqrRad,3.0/2.0));
+
+								if(xorFunc((density <=densityCutoff), keepDensityUpper))
+								{
+#pragma omp critical
+									newD->data.push_back(d->data[uj]);
+								}
+	
+							}
+							else
+							{
+								#pragma omp critical
+								badPts.push_back(make_pair(uj,ui));
+							}
+
+							res.clear();
+							
+							//Update callback as needed
+							if(!curProg--)
+							{
+								#pragma omp critical 
+								{
+								n+=NUM_CALLBACK/(nnMax);
+								progress.filterProgress= (unsigned int)(((float)n/(float)totalDataSize)*100.0f);
+								if(!(*callback)(false))
+									spin=true;
+								curProg=NUM_CALLBACK/(nnMax);
+								}
+							}
+						}
+
+						if(spin)
+						{
+							delete newD;
+							return ABORT_ERR;
+						}
+
+
+					}
+					else if(stopMode == STOP_MODE_RADIUS)
+					{
+#ifdef _OPENMP
+						bool spin=false;
+#endif
+						float maxSqrRad = distMax*distMax;
+						float vol = 4.0/3.0*M_PI*maxSqrRad*distMax; //Sphere volume=4/3 Pi R^3
+						#pragma omp parallel for shared(spin) firstprivate(treeDomain,curProg)
+						for(size_t uj=0;uj<d->data.size();uj++)
+						{
+							Point3D r;
+							const Point3D *res;
+							float deadDistSqr;
+							unsigned int numInRad;
+#ifdef _OPENMP
+							if(spin)
+								continue;
+#endif	
+							r=d->data[uj].getPosRef();
+							numInRad=0;
+							deadDistSqr=0;
+
+							//Assign the mass to charge using nn density estimates
+							do
+							{
+								res=kdTree.findNearest(r,treeDomain,deadDistSqr);
+
+								//Check to see if we found something
+								if(!res)
+								{
+#pragma omp critical
+									badPts.push_back(make_pair(uj, ui));
+									break;
+								}
+								
+								if(res->sqrDist(r) >maxSqrRad)
+									break;
+								numInRad++;
+								//Advance ever so slightly beyond the next ion
+								deadDistSqr = res->sqrDist(r)+std::numeric_limits<float>::epsilon();
+								//Update callback as needed
+								if(!curProg--)
+								{
+#pragma omp critical
+									{
+									progress.filterProgress= (unsigned int)((float)n/(float)totalDataSize*100.0f);
+									if(!(*callback)(false))
+									{
+#ifdef _OPENMP
+										spin=true;
+#else
+										delete newD;
+										return ABORT_ERR;
+#endif
+									}
+									}
+#ifdef _OPENMP
+									if(spin)
+										break;
+#endif
+									curProg=NUM_CALLBACK/(10*nnMax);
+								}
+							}while(true);
+							
+							n++;
+							float density;
+							density = numInRad/vol;
+
+							if(xorFunc((density <=densityCutoff), keepDensityUpper))
+							{
+#pragma omp critical
+								newD->data.push_back(d->data[uj]);
+							}
+							
+						}
+
+#ifdef _OPENMP
+						if(spin)
+						{
+							delete newD;
+							return ABORT_ERR;
+						}
+#endif
+					}
+					else
+					{
+						//Should not get here.
+						ASSERT(false);
+					}
+
+
+					//move any bad points from the array to the end, then drop them
+					//To do this, we have to reverse sort the array, then
+					//swap the output ion vector entries with the end,
+					//then do a resize.
+					ComparePairFirst cmp;
+					badPts.sort(cmp);
+					badPts.reverse();
+
+					//Do some swappage
+					size_t pos=1;
+					for(std::list<std::pair<size_t,size_t> >::iterator it=badPts.begin(); it!=badPts.end();++it)
+					{
+						newD->data[(*it).first]=newD->data[newD->data.size()-pos];
+					}
+
+					//Trim the tail of bad points, leaving only good points
+					newD->data.resize(newD->data.size()-badPts.size());
+
+
+					if(newD->data.size())
+					{
+						//Use default colours
+						newD->r=d->r;
+						newD->g=d->g;
+						newD->b=d->b;
+						newD->a=d->a;
+						newD->ionSize=d->ionSize;
+						newD->representationType=d->representationType;
+						newD->valueType=TRANS("Number Density (\\#/Vol^3)");
+
+						//Cache result as needed
+						if(cache)
+						{
+							newD->cached=1;
+							filterOutputs.push_back(newD);
+							cacheOK=true;
+						}
+						else
+							newD->cached=0;
+						getOut.push_back(newD);
+					}
+				}
+				break;	
+				default:
+					getOut.push_back(dataIn[ui]);
+					break;
+			}
+		}
+		//If we have bad points, let the user know.
+		if(!badPts.empty())
+		{
+			std::string sizeStr;
+			stream_cast(sizeStr,badPts.size());
+			consoleOutput.push_back(std::string(TRANS("Warning,")) + sizeStr + 
+					TRANS(" points were un-analysable. These have been dropped"));
+
+			//Print out a list of points if we can
+
+			size_t maxPrintoutSize=std::min(badPts.size(),(size_t)200);
+			list<pair<size_t,size_t> >::iterator it;
+			it=badPts.begin();
+			while(maxPrintoutSize--)
+			{
+				std::string s;
+				const IonStreamData *d;
+				d=((const IonStreamData *)dataIn[it->second]);
+
+				Point3D getPos;
+				getPos=	d->data[it->first].getPosRef();
+				stream_cast(s,getPos);
+				consoleOutput.push_back(s);
+				++it;
+			}
+
+			if(badPts.size() > 200)
+			{
+				consoleOutput.push_back(TRANS("And so on..."));
+			}
+
+
+		}	
+	}
 
 	return 0;
 }
@@ -928,12 +1308,13 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 
 	string tmpStr;
 	vector<pair<unsigned int,string> > choices;
-	
-	tmpStr=TRANS(SPATIAL_ALGORITHMS[ALGORITHM_DENSITY]);
-	choices.push_back(make_pair((unsigned int)ALGORITHM_DENSITY,tmpStr));
-	tmpStr=TRANS(SPATIAL_ALGORITHMS[ALGORITHM_RDF]);
-	choices.push_back(make_pair((unsigned int)ALGORITHM_RDF,tmpStr));
 
+	for(unsigned int ui=0;ui<ALGORITHM_ENUM_END;ui++)
+	{
+		tmpStr=TRANS(SPATIAL_ALGORITHMS[ui]);
+		choices.push_back(make_pair(ui,tmpStr));
+	}	
+	
 	tmpStr= choiceString(choices,algorithm);
 	s.push_back(make_pair(string(TRANS("Algorithm")),tmpStr));
 	choices.clear();
@@ -949,8 +1330,12 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	s.clear(); type.clear(); keys.clear(); 
 
 	//Get the options for the current algorithm
+	//---
+
+	//common options between several algorithms
 	if(algorithm ==  ALGORITHM_RDF
-		||  algorithm == ALGORITHM_DENSITY)
+		||  algorithm == ALGORITHM_DENSITY 
+		|| algorithm == ALGORITHM_DENSITY_FILTER)
 	{
 		tmpStr=TRANS(STOP_MODES[STOP_MODE_NEIGHBOUR]);
 
@@ -977,8 +1362,13 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 			keys.push_back(KEY_DISTMAX);
 		}
 
-		//Extra options for RDF
-		if(algorithm == ALGORITHM_RDF)
+	}
+	
+	
+	//Extra options for specific algorithms 
+	switch(algorithm)
+	{
+		case ALGORITHM_RDF:
 		{
 			stream_cast(tmpStr,numBins);
 			s.push_back(make_pair(string(TRANS("Num Bins")),tmpStr));
@@ -1081,8 +1471,34 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 				}
 
 			}
+			break;
 		}	
+		case ALGORITHM_DENSITY_FILTER:
+		{
+		
+			stream_cast(tmpStr,densityCutoff);	
+			s.push_back(make_pair(string(TRANS("Cutoff")),tmpStr));
+			type.push_back(PROPERTY_TYPE_REAL);
+			keys.push_back(KEY_CUTOFF);
+			
+			
+			if(keepDensityUpper)
+				tmpStr="1";
+			else
+				tmpStr="0";
+
+			s.push_back(make_pair(string(TRANS("Retain Upper")),tmpStr));
+			type.push_back(PROPERTY_TYPE_BOOL);
+			keys.push_back(KEY_RETAIN_UPPER);
+			
+			break;
+		}
+		case ALGORITHM_DENSITY:
+			break;
+		default:
+			ASSERT(false);
 	}
+	//---
 
 	propertyList.data.push_back(s);
 	propertyList.types.push_back(type);
@@ -1123,6 +1539,7 @@ bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
 			switch(algorithm)
 			{
 				case ALGORITHM_DENSITY:
+				case ALGORITHM_DENSITY_FILTER:
 				case ALGORITHM_RDF:
 				{
 					size_t ltmp=STOP_MODE_ENUM_END;
@@ -1221,10 +1638,7 @@ bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
 				return false;
 
 			bool lastVal=excludeSurface;
-			if(stripped=="1")
-				excludeSurface=true;
-			else
-				excludeSurface=false;
+			excludeSurface=(stripped=="1");
 
 			//if the result is different, the
 			//cache should be invalidated
@@ -1250,8 +1664,23 @@ bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
 				b=newB/255.0;
 				a=newA/255.0;
 
+				if(cacheOK)
+				{
+					for(size_t ui=0;ui<filterOutputs.size();ui++)
+					{
+						if(filterOutputs[ui]->getStreamType() == STREAM_TYPE_PLOT)
+						{
+							PlotStreamData *p;
+							p =(PlotStreamData*)filterOutputs[ui];
 
-				clearCache();
+							p->r=r;
+							p->g=g;
+							p->b=b;
+						}
+					}
+
+				}
+
 				needUpdate=true;
 			}
 
@@ -1300,6 +1729,47 @@ bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
 
 			needUpdate=true;
 			clearCache();
+			break;
+		}
+		case KEY_CUTOFF:
+		{
+			string stripped=stripWhite(value);
+
+			float ltmp;
+			if(stream_cast(ltmp,value))
+				return false;
+
+			if(ltmp<= 0.0)
+				return false;
+		
+			if(ltmp != densityCutoff)
+			{	
+				densityCutoff=ltmp;
+				needUpdate=true;
+				clearCache();
+			}
+			else
+				needUpdate=false;
+			break;
+		}
+		case KEY_RETAIN_UPPER:
+		{
+			string stripped=stripWhite(value);
+
+			if(!(stripped == "1"|| stripped == "0"))
+				return false;
+
+			bool lastVal=keepDensityUpper;
+			keepDensityUpper=(stripped=="1");
+
+			//if the result is different, the
+			//cache should be invalidated
+			if(lastVal!=keepDensityUpper)
+			{
+				needUpdate=true;
+				clearCache();
+			}
+			
 			break;
 		}
 		default:
@@ -1396,13 +1866,26 @@ std::string  SpatialAnalysisFilter::getErrString(unsigned int code) const
 unsigned int SpatialAnalysisFilter::getRefreshBlockMask() const
 {
 	//Anything but ions and ranges can go through this filter.
-	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
+	if(!WANT_RANGE_PROPAGATION[algorithm])
+		return STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
+	else
+		return STREAM_TYPE_IONS;
+
 }
 
 unsigned int SpatialAnalysisFilter::getRefreshEmitMask() const
 {
-	return STREAM_TYPE_IONS | STREAM_TYPE_PLOT;
+	if(algorithm == ALGORITHM_RDF)
+		return STREAM_TYPE_IONS | STREAM_TYPE_PLOT;
+	else
+		return STREAM_TYPE_IONS;
 }
+
+unsigned int SpatialAnalysisFilter::getRefreshUseMask() const
+{
+	return STREAM_TYPE_IONS;
+}
+
 bool SpatialAnalysisFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
@@ -1421,6 +1904,8 @@ bool SpatialAnalysisFilter::writeState(std::ofstream &f,unsigned int format, uns
 			f << tabs(depth+1) << "<reductiondistance value=\""<<reductionDistance<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
 				<< "\" a=\"" << a << "\"/>" <<endl;
+			f << tabs(depth+1) << "<densitycutoff value=\""<<densityCutoff<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<keepdensityupper value=\""<<(int)keepDensityUpper<< "\"/>"  << endl;
 			f << tabs(depth) << "</" << trueName() << ">" << endl;
 			break;
 		}
@@ -1519,6 +2004,24 @@ bool SpatialAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 		return false;
 	//====
 
+
+	//Retrieve density cutoff & upper 
+	if(!XMLGetNextElemAttrib(nodePtr,densityCutoff,"densitycutoff","value"))
+		return false;
+	if(densityCutoff< 0.0f)
+		return false;
+
+	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"keepdensityupper","value"))
+		return false;
+	//check that new value makes sense 
+	if(tmpStr == "1")
+		keepDensityUpper=true;
+	else if( tmpStr == "0")
+		keepDensityUpper=false;
+	else
+		return false;
+	
+	
 	return true;
 }
 
@@ -1580,6 +2083,7 @@ bool densityPairTest()
 	//Do the refresh
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh OK");
+	delete f;
 	//Kill the input ion stream
 	delete d; 
 	streamIn.clear();
@@ -1657,6 +2161,8 @@ bool nnHistogramTest()
 	//Kill the input ion stream
 	delete d; 
 
+	delete dPlot;
+
 	return true;
 }
 
@@ -1693,6 +2199,8 @@ bool rdfPlotTest()
 	//Do the refresh
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh OK");
+	delete f;
+
 
 	streamIn.clear();
 

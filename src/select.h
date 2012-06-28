@@ -183,9 +183,8 @@ public:
 };
 
 template<class T>
-SelectionDevice<T>::SelectionDevice(const T *p)
+SelectionDevice<T>::SelectionDevice(const T *p) : target(p)
 {
-	target=p;
 }
 
 template<class T>
@@ -247,7 +246,7 @@ void SelectionDevice<T>::getModifiedBindings(vector<std::pair<const T *,Selectio
 template<class T>
 bool SelectionDevice<T>::getAvailBindings(const DrawableObj *d,vector<const SelectionBinding*> &b) const
 {
-	ASSERT(!b.size());
+	ASSERT(b.empty());
 	for(unsigned int ui=0;ui<bindingVec.size();ui++)
 	{
 		if(bindingVec[ui].matchesDrawable(d))

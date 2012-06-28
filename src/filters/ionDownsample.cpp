@@ -5,16 +5,6 @@
 
 #include "ionDownsample.h"
 
-enum
-{
-	KEY_IONDOWNSAMPLE_FRACTION=1,
-	KEY_IONDOWNSAMPLE_FIXEDOUT,
-	KEY_IONDOWNSAMPLE_COUNT,
-	KEY_IONDOWNSAMPLE_PERSPECIES,
-	KEY_IONDOWNSAMPLE_ENABLE,
-	//Dynamic area for this filter class. May validly use any index after this value
-	KEY_IONDOWNSAMPLE_DYNAMIC, 
-};
 
 //!Downsampling filter
 enum
@@ -51,6 +41,7 @@ void IonDownsampleFilter::initFilter(const std::vector<const FilterStreamData *>
 		{
 			c=(const RangeStreamData *)dataIn[i];
 
+			dataOut.push_back(dataIn[i]);
 			break;
 		}
 	}
@@ -247,6 +238,12 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 						return IONDOWNSAMPLE_BAD_ALLOC;
 					}
 
+					//skip ion output sets wth no ions in them
+					if(!d->data.size())
+					{
+						delete d;
+						continue;
+					}
 
 					//Copy over other attributes
 					d->r = ((IonStreamData *)dataIn[ui])->r;
@@ -534,10 +531,7 @@ bool IonDownsampleFilter::setProperty( unsigned int set, unsigned int key,
 				return false;
 
 			bool lastVal=fixedNumOut;
-			if(stripped=="1")
-				fixedNumOut=true;
-			else
-				fixedNumOut=false;
+			fixedNumOut=(stripped=="1");
 
 			//if the result is different, the
 			//cache should be invalidated
@@ -597,10 +591,8 @@ bool IonDownsampleFilter::setProperty( unsigned int set, unsigned int key,
 				return false;
 
 			bool lastVal=perSpecies;
-			if(stripped=="1")
-				perSpecies=true;
-			else
-				perSpecies=false;
+
+			perSpecies=(stripped=="1");
 
 			//if the result is different, the
 			//cache should be invalidated
@@ -621,6 +613,13 @@ bool IonDownsampleFilter::setProperty( unsigned int set, unsigned int key,
 
 			unsigned int offset;
 			offset=key-KEY_IONDOWNSAMPLE_DYNAMIC;
+
+			//TODO: Disable this test -
+			// offset >=ionLimits.size()  did happen, but should not have. 
+			// Can't reproduce bug - something to do with wrong filter being given selected properties in UI
+			ASSERT( offset < ionLimits.size());
+			if(offset >= ionLimits.size())
+				return false;
 
 			//Dynamically generated list of downsamples
 			if(fixedNumOut)
@@ -791,6 +790,10 @@ unsigned int IonDownsampleFilter::getRefreshEmitMask() const
 	return  STREAM_TYPE_IONS;
 }
 
+unsigned int IonDownsampleFilter::getRefreshUseMask() const
+{
+	return  STREAM_TYPE_RANGE  | STREAM_TYPE_IONS;
+}
 //----------
 
 

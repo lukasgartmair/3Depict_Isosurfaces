@@ -515,20 +515,6 @@ void PlotWrapper::getRawData(vector<vector<vector<float> > > &data,
 			}
 			break;
 		}
-		case PLOT_TYPE_TWOD:
-		{
-			//Try to retrieve the raw data from the visible plots
-			for(unsigned int ui=0;ui<plottingData.size();ui++)
-			{
-				if(plottingData[ui]->visible)
-				{
-					//FIXME: IMPLEMENT ME
-					ASSERT(false);
-				}
-			}
-			break;
-		}
-		case PLOT_TYPE_MIXED:
 		case PLOT_TYPE_ENUM_END:
 			return;
 		default:
@@ -565,7 +551,13 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 	unsigned int visType = getVisibleType();
 	if(visType == PLOT_TYPE_ENUM_END || 
 		visType == PLOT_TYPE_MIXED)
+	{
+		//We don't handle the drawing case well here, so assert this.
+		// calling code should check this case and ensure that it draws something
+		// meaningful
+		ASSERT(false);
 		return;
+	}
 
 	//Un-fudger for mathgl plots
 	MGLColourFixer colourFixer;
@@ -580,10 +572,12 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 
 	//Compute the bounding box in data coordinates	
 	std::wstring xLabel,yLabel,plotTitle;
+
 	for(unsigned int ui=0;ui<plottingData.size(); ui++)
 	{
 		if(plottingData[ui]->visible)
 		{
+
 			minX=std::min(minX,plottingData[ui]->minX);
 			maxX=std::max(maxX,plottingData[ui]->maxX);
 			minY=std::min(minY,plottingData[ui]->minY);
@@ -596,7 +590,7 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 			{
 
 				if(xLabel!=plottingData[ui]->xLabel)
-					xLabel=stlStrToStlWStr(TRANS("Multiple types"));
+					xLabel=stlStrToStlWStr(TRANS("Multiple data types"));
 			}
 			if(!yLabel.size())
 				yLabel=plottingData[ui]->yLabel;
@@ -604,7 +598,7 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 			{
 
 				if(yLabel!=plottingData[ui]->yLabel)
-					yLabel=stlStrToStlWStr(TRANS("Multiple types"));
+					yLabel=stlStrToStlWStr(TRANS("Multiple data types"));
 			}
 			if(!haveMultiTitles && !plotTitle.size())
 				plotTitle=plottingData[ui]->title;
@@ -622,6 +616,8 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 		}
 	}
 
+
+
 	string sX,sY;
 	sX.assign(xLabel.begin(),xLabel.end()); //unicode conversion
 	sY.assign(yLabel.begin(),yLabel.end()); //unicode conversion
@@ -630,14 +626,12 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 	sT.assign(plotTitle.begin(), plotTitle.end()); //unicode conversion
 	gr->Title(sT.c_str());
 	
-
-	unsigned int type;
-	type=plottingData[0]->plotType;
-	switch(type)
+	
+	switch(visType)
 	{
 		case PLOT_TYPE_ONED:
 		{
-			//OneD line plot
+			//OneD connected value line plot f(x)
 			bool useLogPlot=false;
 			bool notLog=false;
 
@@ -686,7 +680,7 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 					max.y=maxY;
 
 				axisCross.x = minX;
-				axisCross.y = 0;
+				axisCross.y=min.y;
 				
 				gr->Org=axisCross;
 			}
@@ -694,8 +688,10 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 			//tell mathgl about the bounding box	
 			gr->Axis(min,max,axisCross);
 
-			WARN((fabs(min.x-max.x) > sqrt(std::numeric_limits<float>::epsilon())), "WARNING: Mgl limits (X) too Close! Due to limitiations in MGL, This may inf. loop!");
-			WARN((fabs(min.y-max.y) > sqrt(std::numeric_limits<float>::epsilon())), "WARNING: Mgl limits (Y) too Close! Due to limitiations in MGL, This may inf. loop!");
+			WARN((fabs(min.x-max.x) > sqrt(std::numeric_limits<float>::epsilon())), 
+					"WARNING: Mgl limits (X) too Close! Due to limitiations in MGL, This may inf. loop!");
+			WARN((fabs(min.y-max.y) > sqrt(std::numeric_limits<float>::epsilon())), 
+					"WARNING: Mgl limits (Y) too Close! Due to limitiations in MGL, This may inf. loop!");
 
 
 			//"Push" bounds around to prevent min == max
@@ -712,8 +708,7 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 			gr->SetXTT("%g"); //Set the tick type
 			gr->Axis("xy"); //Build an X-Y crossing axis
 
-			//Draw regions as faces perp to z.
-			//this will colour in a region of the graph as a rectangle
+			//Loop through the plots, drawing them as needed
 			for(unsigned int ui=0;ui<plottingData.size();ui++)
 			{
 				Plot1D *curPlot;
@@ -741,7 +736,7 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 
 			//Prevent mathgl from dropping lines that straddle the plot bound.
 			gr->SetCut(false);
-		
+			
 			if(useLogPlot && !notLog)
 				sY = string("\\log_{10}(") + sY + ")";
 			else if (useLogPlot && notLog)
@@ -984,7 +979,7 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 	{
 		for(unsigned int uj=0;uj<xValues.size(); uj++)
 		{
-			bufferX[uj] = xValues[uj];
+		bufferX[uj] = xValues[uj];
 			
 			if(yValues[uj] > 0.0)
 				bufferY[uj] = log10(yValues[uj]);
@@ -1069,6 +1064,7 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 
 		case PLOT_TRACE_POINTS:
 		{
+#ifdef MGL_GTE_1_10
 			std::string s;
 			s = colourCode;
 			//Mathgl uses strings to manipulate line styles
@@ -1076,7 +1072,6 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 				//space means "no line"
 			s+="x"; //x shaped point markers
 
-#ifdef MGL_GTE_1_10
 			gr->SetCut(true);
 				
 			gr->Plot(xDat,yDat,s.c_str());
@@ -1190,7 +1185,10 @@ void Plot1D::getRawData(std::vector<std::vector< float> > &rawData,
 	rawData.back().swap(tmp);
 
 	labels.push_back(xLabel);
-	labels.push_back(title);
+	if(titleAsRawDataLabel)
+		labels.push_back(title);
+	else
+		labels.push_back(yLabel);
 	
 	
 	if(errBars.size())
@@ -1365,209 +1363,4 @@ void Plot1D::getRegion(unsigned int id, PlotRegion &r) const
 	r = regions[regionIDHandler.getPos(id)];
 }
 
-
-//---------
-
-
-//Draw the plot onto a given MGL graph
-void Plot2D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
-{
-	bool showErrs;
-	mglData xDat,yDat,exDat,eyDat;
-	
-	ASSERT(visible);
-	ASSERT(xValues.size() == yValues.size());
-	
-	//Allocate buffers for XY data and error bars (as needed)
-	float *bufferX,*bufferY,*bufferErrX,*bufferErrY;
-	bufferX = new float[xValues.size()];
-	bufferY = new float[yValues.size()];
-
-	ASSERT(xErrBars.size() == yErrBars.size() || !xErrBars.size() || !yErrBars.size());	
-	if(xErrBars.size())
-		bufferErrX = new float[xErrBars.size()];
-	if(yErrBars.size())
-		bufferErrY = new float[yErrBars.size()];
-
-	//Copy data into buffers for mgl
-	for(unsigned int uj=0;uj<xValues.size(); uj++)
-	{
-		bufferX[uj] = xValues[uj];
-		bufferY[uj] = yValues[uj];
-	}
-	if(xErrBars.size())
-	{
-		for(unsigned int uj=0;uj<xErrBars.size(); uj++)
-			bufferErrX[uj] = xErrBars[uj];
-		exDat.Set(bufferErrX,xErrBars.size());
-	}
-
-	if(yErrBars.size())
-	{
-		for(unsigned int uj=0;uj<yErrBars.size(); uj++)
-			bufferErrY[uj] = yErrBars[uj];
-		eyDat.Set(bufferErrY,yErrBars.size());
-	}
-
-	xDat.Set(bufferX,xValues.size());
-	yDat.Set(bufferY,yValues.size());
-
-	//Mathgl palette colour name
-	char colourCode[2];
-	colourCode[0]= fixer.getNextBestColour(r,g,b); 
-	colourCode[1]='\0';
-	
-	//Plot the appropriate form	
-	switch(traceType)
-	{
-		case PLOT_TRACE_LINES:
-			//Unfortunately, when using line plots, mathgl moves the data points to the plot boundary,
-			//rather than linear interpolating them back along their paths. I have emailed the author.
-			//for now, we shall have to put up with missing lines :( Absolute worst case, I may have to draw them myself.
-#ifdef MGL_GTE_1_10
-			gr->SetCut(true);
-			
-			gr->Plot(xDat,yDat,colourCode);
-			if(xErrBars.size() && yErrBars.size())
-				gr->Error(xDat,yDat,exDat,eyDat,colourCode);
-			else if(xErrBars.size())
-			{
-				gr->Error(xDat,yDat,exDat,colourCode);
-			}
-			else if(yErrBars.size())
-			{
-				//FIXME: Implement me?
-				ASSERT(false);
-			}
-			
-			gr->SetCut(false);
-#else
-			gr->Plot(xDat,yDat);
-#endif
-			break;
-		default:
-			ASSERT(false);
-	}
-}
-
-//!Scan for the data bounds.
-void Plot2D::getBounds(float &xMin,float &xMax,
-			       float &yMin,float &yMax) const
-{
-	//OK, we are going to have to scan for max/min
-	xMin=minX;
-	xMax=maxX;
-	yMin=minY;
-	yMax=maxY;
-}
-
-//Retrieve the raw data associated with this plot.
-void Plot2D::getRawData(vector<vector<float> > &rawData,
-                        std::vector<std::wstring> &labels) const
-{
-
-	vector<float> tmp,dummy;
-
-	tmp.resize(xValues.size());
-	std::copy(xValues.begin(),xValues.end(),tmp.begin());
-	rawData.push_back(dummy);
-	rawData.back().swap(tmp);
-
-	tmp.resize(yValues.size());
-	std::copy(yValues.begin(),yValues.end(),tmp.begin());
-	rawData.push_back(dummy);
-	rawData.back().swap(tmp);
-
-	labels.push_back(xLabel);
-	labels.push_back(title);
-	
-	
-	ASSERT(xErrBars.size() == yErrBars.size()  || !xErrBars.size() || !yErrBars.size());
-	
-	if(xErrBars.size())
-	{
-		tmp.resize(xErrBars.size());
-		std::copy(xErrBars.begin(),xErrBars.end(),tmp.begin());
-		
-		rawData.push_back(dummy);
-		rawData.back().swap(tmp);
-		labels.push_back(stlStrToStlWStr(TRANS("x error")));
-	}
-	
-	if(yErrBars.size())
-	{
-		tmp.resize(yErrBars.size());
-		std::copy(yErrBars.begin(),yErrBars.end(),tmp.begin());
-		
-		rawData.push_back(dummy);
-		rawData.back().swap(tmp);
-		labels.push_back(stlStrToStlWStr(TRANS("y error")));
-	}
-}
-
-//!Retrieve the ID of the non-overlapping region in X-Y space
-bool Plot2D::getRegionIdAtPosition(float x, float y, unsigned int &id) const
-{
-	for(unsigned int ui=0;ui<regions.size();ui++)
-	{
-		ASSERT(regions[ui].boundAxis.size() == regions[ui].bounds.size())
-
-		bool containedInThis;
-		containedInThis=true;
-
-		for(unsigned int uj=0; uj<regions[ui].bounds.size();uj++)
-		{
-			unsigned int axis;
-			axis = regions[ui].boundAxis[uj];
-			if(axis == 0)
-			{
-				if(regions[ui].bounds[uj].first < x &&
-					regions[ui].bounds[uj].second > x )
-				{
-					containedInThis=false;
-					break;
-				}
-			}
-			else
-			{
-				if(regions[ui].bounds[uj].first < y &&
-					regions[ui].bounds[uj].second > y )
-				{
-					containedInThis=false;
-					break;
-
-				}
-			}
-		}	
-
-		
-		if(containedInThis)	
-		{
-			id=ui;
-			return true;
-		}
-	}
-
-	return false;
-}
-//!Retrieve a region using its unique ID
-void Plot2D::getRegion(unsigned int id, PlotRegion &r) const
-{
-	r = regions[regionIDHandler.getPos(id)];
-}
-
-//!Pass the region movement information to the parent filter object
-void Plot2D::moveRegion(unsigned int regionId, unsigned int method,
-                        float newX, float newY) const
-{
-	ASSERT(false);
-}
-
-//!Obtain limit of motion for a given region movement type
-void Plot2D::moveRegionLimit(unsigned int regionId,
-                             unsigned int movementType, float &maxX, float &maxY) const
-{
-	ASSERT(false);
-}
-	
 

@@ -33,6 +33,7 @@
 
 #include "translation.h"
 
+
 using std::list;
 using std::stack;
 
@@ -135,6 +136,8 @@ void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
 	t->GetParent()->Layout();
 
 }
+
+
 //A callback function for yielding the window bound to viscontrol.
 // Calling the callback will only cause a yield if sufficient time has passed
 // the parameter describes whtehr or not to allow for overriding of the timer
@@ -167,7 +170,6 @@ VisController::VisController()
 	pendingUpdates=false;
 	useRelativePathsForSave=false;
 	curProg.reset();
-
 	//Assign global variable its init value
 	ASSERT(!delayTime); //Should not have been inited yet.
 
@@ -274,6 +276,18 @@ const Filter* VisController::getFilterById(size_t filterId) const
 	return filterMap.at(filterId);
 }
 
+size_t VisController::getIdByFilter(const Filter *f) const 
+{
+	for(map<size_t,Filter *>::const_iterator it=filterMap.begin();it!=filterMap.end();it++)
+	{
+		if(it->second == f)
+			return it->first;
+
+	}
+
+	ASSERT(false);
+	return -1; //keep gcc quiet
+}
 
 void VisController::getFiltersByType(std::vector<const Filter *> &filters, unsigned int type)  const
 {
@@ -283,6 +297,8 @@ void VisController::getFiltersByType(std::vector<const Filter *> &filters, unsig
 
 void VisController::removeFilterSubtree(size_t filterId)
 {
+	//Save current filter state to undo stack
+	pushUndoStack();
        	filterTree.removeSubtree(filterMap[filterId]);
 	//Delete the filtermap, as the current data is not valid anymore
 	filterMap.clear();
@@ -293,14 +309,17 @@ bool VisController::setFilterProperty(size_t filterId, unsigned int set,
 				unsigned int key, const std::string &value, bool &needUpdate)
 {
 	//Save current filter state to undo stack
+	//for the case where the property change is good
 	pushUndoStack();
 	bool setOK;
 	setOK=filterTree.setFilterProperty(filterMap[filterId],set,key,value,needUpdate);
 
 	if(!setOK)
 	{
-		WARN(false,"need some kinda undo top pop w/o restore function");
-		//popUndoStack(false);
+		//Didn't work, so we need to discard the undo
+		//Pop the undo stack, but don't restore it -
+		// restoring would destroy the cache
+		popUndoStack(false);
 	}
 
 	return setOK;
@@ -308,6 +327,14 @@ bool VisController::setFilterProperty(size_t filterId, unsigned int set,
 
 unsigned int VisController::refreshFilterTree(bool doUpdateScene)
 {
+	ASSERT(!amRefreshing);
+
+	//Analyse the fitler tree structure for any errors
+	//--	
+	fta.clear();
+	fta.analyse(filterTree);
+	//--
+
 	doProgressAbort=false;
 	amRefreshing=true;
 	delayTime->Start();
@@ -555,14 +582,12 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 				}
 				case STREAM_TYPE_PLOT:
 				{
-					
-					//Draw plot
 					const PlotStreamData *plotData;
 					plotData=((PlotStreamData *)((*it)[ui]));
 					
 					//The plot should have some data in it.
 					ASSERT(plotData->getNumBasicObjects());
-					//The plto should have a parent filter
+					//The plot should have a parent filter
 					ASSERT(plotData->parent);
 					//The plot should have an index, so we can keep
 					//filter choices between refreshes (where possible)
@@ -570,30 +595,41 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 					//Construct a new plot
 					unsigned int plotID;
 
-					//Create a 1D plot
-					Plot1D *oneDPlot = new Plot1D;
-
-					oneDPlot->setData(plotData->xyData);
-					oneDPlot->setLogarithmic(plotData->logarithmic);
-
-					//Construct any regions that the plot may have
-					for(unsigned int ui=0;ui<plotData->regions.size();ui++)
+					switch(plotData->plotMode)
 					{
-						//add a region to the plot,
-						//using the region data stored
-						//in the plot stream
-						oneDPlot->addRegion(plotID,
-							plotData->regionID[ui],
-							plotData->regions[ui].first,
-							plotData->regions[ui].second,
-							plotData->regionR[ui],
-							plotData->regionG[ui],
-							plotData->regionB[ui],plotData->regionParent);
+						case PLOT_MODE_1D:
+						{
+							//Create a 1D plot
+							Plot1D *plotNew= new Plot1D;
+
+							plotNew->setData(plotData->xyData);
+							plotNew->setLogarithmic(plotData->logarithmic);
+							plotNew->titleAsRawDataLabel=plotData->useDataLabelAsYDescriptor;
+							
+							//Construct any regions that the plot may have
+							for(unsigned int ui=0;ui<plotData->regions.size();ui++)
+							{
+								//add a region to the plot,
+								//using the region data stored
+								//in the plot stream
+								plotNew->addRegion(plotID,
+									plotData->regionID[ui],
+									plotData->regions[ui].first,
+									plotData->regions[ui].second,
+									plotData->regionR[ui],
+									plotData->regionG[ui],
+									plotData->regionB[ui],plotData->regionParent);
+							}
+
+							plotID=targetPlots->addPlot(plotNew);
+							break;
+						}
+						default:
+							ASSERT(false);
 					}
 
-					plotID=targetPlots->addPlot(oneDPlot);
 					
-					targetPlots->setTraceStyle(plotID,plotData->plotType);
+					targetPlots->setTraceStyle(plotID,plotData->plotStyle);
 					targetPlots->setColours(plotID,plotData->r,
 								plotData->g,plotData->b);
 
@@ -633,17 +669,33 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 					const std::vector<DrawableObj *> *drawObjs;
 					drawObjs = &(drawData->drawables);
 					//Loop through vector, Adding each object to the scene
-					for(unsigned int ui=0;ui<drawObjs->size();ui++)
-						targetScene->addDrawable((*drawObjs)[ui]);
+					if(drawData->cached)
+					{
+						//Create a *copy* for scene. Filter still holds
+						//originals, and will dispose of the pointers accordingly
 
-					//Although we do not delete the drawable objects
-					//themselves, we do delete the container
-					ASSERT(!drawData->cached);
-					//Zero-size the internal vector to 
-					//prevent destructor from deleting pointers
-					//we have transferrred ownership of to scene
-					drawData->drawables.clear();
-					delete drawData;
+
+						//FIXME: Call Clone, Do *not* use directly!
+						WARN(false,"Cached drawables not supported. Implement me!");
+						ASSERT(false);
+
+						for(unsigned int ui=0;ui<drawObjs->size();ui++)
+							targetScene->addDrawable((*drawObjs)[ui]);
+					}
+					else
+					{
+						for(unsigned int ui=0;ui<drawObjs->size();ui++)
+							targetScene->addDrawable((*drawObjs)[ui]);
+
+						//Although we do not delete the drawable objects
+						//themselves, we do delete the container
+						
+						//Zero-size the internal vector to 
+						//prevent vector destructor from deleting pointers
+						//we have transferrred ownership of to scene
+						drawData->drawables.clear();
+						delete drawData;
+					}
 					break;
 				}
 				case STREAM_TYPE_RANGE:
@@ -949,12 +1001,30 @@ bool VisController::saveState(const char *cpFilename, std::map<string,string> &f
 	f<< "\"/>"  << endl;
 
 
-	if(writePackage || useRelativePathsForSave)
+	if(useRelativePathsForSave)
 	{
-		//Are we saving the sate as a package, if so
-		//make sure we let other 3depict loaders know
-		//that we want to use relative paths
-		f << tabs(1) << "<userelativepaths/>"<< endl;
+		//Save path information
+		//Note: When writing packages, 
+		//- we don't want to leak path names to remote systems 
+		//and
+		//- we cannot assume that directory structures are preserved between systems
+		//
+		//so don't keep working directory in this case.
+		if(writePackage || workingDir.empty() )
+		{
+			//Are we saving the sate as a package, if so
+			//make sure we let other 3depict loaders know
+			//that we want to use relative paths
+			f << tabs(1) << "<userelativepaths/>"<< endl;
+		}
+		else
+		{
+			//Not saving a package, however we could be, 
+			//for example, be autosaving a load-from-package. 
+			//We want to keep relative paths, but
+			//want to be able to find files if something goes askew
+			f << tabs(1) << "<userelativepaths origworkdir=\"" << workingDir << "\"/>"<< endl;
+		}
 	}
 
 	//---------------
@@ -1030,7 +1100,7 @@ bool VisController::saveState(const char *cpFilename, std::map<string,string> &f
 	return true;
 }
 
-bool VisController::loadState(const char *cpFilename, std::ostream &errStream, bool merge) 
+bool VisController::loadState(const char *cpFilename, std::ostream &errStream, bool merge,bool noUpdating) 
 {
 	//Load the state from an XML file
 	
@@ -1190,14 +1260,21 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 			errStream<< TRANS("\"backcolour\"s rgb values must be in range [0,1]") << endl;
 			throw 1;
 		}
-		targetScene->setBackgroundColour(rTmp,gTmp,bTmp);
+		if(!noUpdating)
+			targetScene->setBackgroundColour(rTmp,gTmp,bTmp);
 		xmlFree(xmlString);
 
 		nodeStack.push(nodePtr);
 
 
 		if(!XMLHelpFwdToElem(nodePtr,"userelativepaths"))
-			useRelativePathsForSave|=true;
+		{
+			useRelativePathsForSave=true;
+
+			//Try to load the original working directory, if possible
+			if(!XMLGetAttrib(nodePtr,workingDir,"origworkdir"))
+				workingDir.clear();
+		}
 		
 		nodePtr=nodeStack.top();
 
@@ -1210,7 +1287,8 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 			errStream << TRANS("Unable to find or interpret \"showaxis\" node") << endl;
 			throw 1;
 		}
-		targetScene->setWorldAxisVisible(axisIsVis==1);
+		if(!noUpdating)
+			targetScene->setWorldAxisVisible(axisIsVis==1);
 
 		//find filtertree data
 		if(XMLHelpFwdToElem(nodePtr,"filtertree"))
@@ -1438,6 +1516,9 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 		filterMap.clear();
 	}
 
+	filterTree.initFilterTree();
+	
+	
 	//NOTE: We must be careful about :return: at this point
 	// as we now have mixed in the new filter data.
 
@@ -1445,6 +1526,9 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 	stashUniqueIDs.clear();
 	for(unsigned int ui=0;ui<stashedFilters.size();ui++)
 		stashUniqueIDs.genId(ui);
+
+	if(noUpdating)
+		return true;
 
 	//Wipe the existing cameras, and then put the new cameras in place
 	if(!merge)
@@ -1491,7 +1575,6 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 		}
 	}
 
-	filterTree.initFilterTree();
 	//Perform sanitisation on results
 	return true;
 }

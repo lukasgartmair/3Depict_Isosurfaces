@@ -26,6 +26,7 @@
 #include "assertion.h"
 #include "endianTest.h"
 
+
 //!A 3D point data class storage
 /*! A  3D point data class
  * contains operator overloads and some basic
@@ -244,4 +245,11 @@ inline float dotProduct(float a1, float a2, float a3,
 	return a1*b1 + a2*b2 + a3* b3;
 }
 
+inline unsigned int ilog2(unsigned int value)
+{
+	unsigned int l = 0;
+	while( (value >> l) > 1 ) 
+		++l;
+	return l;
+}
 #endif

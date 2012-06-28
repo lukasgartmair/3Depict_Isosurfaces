@@ -3,6 +3,23 @@
 #include "../filter.h"
 #include "../translation.h"
 
+enum
+{
+	COMPOSITION_KEY_BINWIDTH=1,
+	COMPOSITION_KEY_FIXEDBINS,
+	COMPOSITION_KEY_NORMAL,
+	COMPOSITION_KEY_NUMBINS,
+	COMPOSITION_KEY_ORIGIN,
+	COMPOSITION_KEY_PLOTTYPE,
+	COMPOSITION_KEY_PRIMITIVETYPE,
+	COMPOSITION_KEY_RADIUS,
+	COMPOSITION_KEY_SHOWPRIMITIVE,
+	COMPOSITION_KEY_NORMALISE,
+	COMPOSITION_KEY_COLOUR,
+	COMPOSITION_KEY_ERRMODE,
+	COMPOSITION_KEY_AVGWINSIZE,
+	COMPOSITION_KEY_LOCKAXISMAG
+};
 //!Filter that does composition profiles for various primitives
 class CompositionProfileFilter : public Filter
 {
@@ -36,7 +53,7 @@ class CompositionProfileFilter : public Filter
 		//Vector of spectra. Each spectra is comprised of a sorted Y data
 		std::vector< std::vector<float > > spectraCache;
 		float r,g,b,a;
-		unsigned int plotType;
+		unsigned int plotStyle;
 	
 		PLOT_ERROR errMode;
 
@@ -88,6 +105,10 @@ class CompositionProfileFilter : public Filter
 
 		//!Get the stream types that will be generated during ::refresh	
 		unsigned int getRefreshEmitMask() const;	
+		
+		//!Get the stream types that may be utilised in computation during ::refresh
+		unsigned int getRefreshUseMask() const;	
+	
 		//!Set internal property value using a selection binding  
 		void setPropFromBinding(const SelectionBinding &b) ;
 

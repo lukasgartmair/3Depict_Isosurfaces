@@ -5,45 +5,56 @@
 
 enum
 {
-	KEY_BOUNDINGBOX_VISIBLE=1,
-	KEY_BOUNDINGBOX_COUNT_X,
-	KEY_BOUNDINGBOX_COUNT_Y,
-	KEY_BOUNDINGBOX_COUNT_Z,
-	KEY_BOUNDINGBOX_FONTSIZE,
-	KEY_BOUNDINGBOX_FONTCOLOUR,
-	KEY_BOUNDINGBOX_FIXEDOUT,
-	KEY_BOUNDINGBOX_LINECOLOUR,
-	KEY_BOUNDINGBOX_LINEWIDTH,
-	KEY_BOUNDINGBOX_SPACING_X,
-	KEY_BOUNDINGBOX_SPACING_Y,
-	KEY_BOUNDINGBOX_SPACING_Z
+	KEY_VISIBLE=1,
+	KEY_COUNT_X,
+	KEY_COUNT_Y,
+	KEY_COUNT_Z,
+	KEY_FONTSIZE,
+	KEY_FONTCOLOUR,
+	KEY_FIXEDOUT,
+	KEY_LINECOLOUR,
+	KEY_LINEWIDTH,
+	KEY_SPACING_X,
+	KEY_SPACING_Y,
+	KEY_SPACING_Z,
+	KEY_STYLE
 };
 
 enum
 {
 	BOUNDINGBOX_ABORT_ERR,
 };
+
+
+enum
+{
+	BOUND_STYLE_BOX_ONLY,
+	BOUND_STYLE_TICKS,
+	BOUND_STYLE_DIMENSION,
+	BOUND_STYLE_ENUM_END
+};
+
+const char *BOUND_STYLE[] = 
+{
+	NTRANS("Box only"),
+	NTRANS("Tick"),
+	NTRANS("Dimension")
+};
+
+
 //=== Bounding box filter ==
 
 
-BoundingBoxFilter::BoundingBoxFilter()
+BoundingBoxFilter::BoundingBoxFilter() : isVisible(true), boundStyle(BOUND_STYLE_TICKS),
+	fixedNumTicks(true), fontSize(5), rLine(0.0f), gLine(0.0f), bLine(1.0f), aLine(1.0f),
+	lineWidth(2.0f), threeDText(true)
 {
-	fixedNumTicks=true;
-	threeDText=true;
 	for(unsigned int ui=0;ui<3;ui++)
 	{
 		numTicks[ui]=12;
 		tickSpacing[ui]=5.0f;
 	}
-	fontSize=5;
 
-	rLine=gLine=0.0f;
-	aLine=bLine=1.0f;
-	
-
-
-	lineWidth=2.0f;
-	isVisible=true;
 
 	cacheOK=false;
 	cache=false; 
@@ -60,6 +71,9 @@ Filter *BoundingBoxFilter::cloneUncached() const
 	}
 
 	p->isVisible=isVisible;
+	p->boundStyle=boundStyle;
+
+
 	p->rLine=rLine;
 	p->gLine=gLine;
 	p->bLine=bLine;
@@ -81,6 +95,253 @@ size_t BoundingBoxFilter::numBytesForCache(size_t nObjects) const
 {
 	//Say we don't know, we are not going to cache anyway.
 	return (size_t)-1;
+}
+
+void BoundingBoxFilter::drawTicks(const BoundCube &bTotal, DrawStreamData *d) const
+{
+
+	//Add the rectangle drawable
+	DrawRectPrism *dP = new DrawRectPrism;
+	dP->setAxisAligned(bTotal);
+	dP->setColour(rLine,gLine,bLine,aLine);
+	dP->setLineWidth(lineWidth);
+	d->drawables.push_back(dP);
+
+	//Add the tick drawables
+	Point3D tickOrigin,tickEnd;
+	bTotal.getBounds(tickOrigin,tickEnd);
+
+	float tmpTickSpacing[3];
+	float tmpTickCount[3];
+	if(fixedNumTicks)
+	{
+		for(unsigned int ui=0; ui<3;ui++)
+		{
+			ASSERT(numTicks[ui]);
+			tmpTickSpacing[ui]=( (tickEnd[ui] - tickOrigin[ui])/(float)(numTicks[ui]-1));
+			tmpTickCount[ui]=numTicks[ui];
+		}
+	}
+	else
+	{
+		for(unsigned int ui=0; ui<3;ui++)
+		{
+			ASSERT(numTicks[ui]);
+			tmpTickSpacing[ui]= tickSpacing[ui];
+			tmpTickCount[ui]=(unsigned int)((tickEnd[ui] - tickOrigin[ui])/tickSpacing[ui])+1;
+		}
+	}
+
+	//Draw the ticks on the box perimeter.
+	for(unsigned int ui=0;ui<3;ui++)
+	{
+		Point3D tickVector;
+		Point3D tickPosition;
+		Point3D textVector,upVector;
+
+		tickPosition=tickOrigin;
+		switch(ui)
+		{
+			case 0:
+				tickVector=Point3D(0,-1,-1);
+				textVector=Point3D(0,1,0);
+				break;
+			case 1:
+				tickVector=Point3D(-1,0,-1);
+				textVector=Point3D(1,0,0);
+				break;
+			case 2:
+				tickVector=Point3D(-1,-1,0);
+				textVector=Point3D(1,1,0);
+				break;
+		}
+
+		//TODO: This would be more efficient if we made some kind of 
+		//"comb" class?
+		DrawVector *dV;
+		DrawGLText *dT;
+		//Allow up to  128 chars
+		char buffer[128];
+		for(unsigned int uj=0;uj<tmpTickCount[ui];uj++)
+		{
+			tickPosition[ui]=tmpTickSpacing[ui]*uj + tickOrigin[ui];
+			dV = new DrawVector;
+	
+			dV->setDrawArrow(false);
+			dV->setOrigin(tickPosition);
+			dV->setVector(tickVector);
+			dV->setColour(rLine,gLine,bLine,aLine);
+
+			d->drawables.push_back(dV);
+	
+
+			//Don't draw the 0 value, as this gets repeated. 
+			//we will handle this separately
+			if(uj)
+			{
+				//Draw the tick text
+				if( threeDText)	
+					dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_POLYGON);
+				else
+					dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_BITMAP);
+				float f;
+				f = tmpTickSpacing[ui]*uj;
+				snprintf(buffer,127,"%2.0f",f);
+				dT->setString(buffer);
+				dT->setSize(fontSize);
+				
+				dT->setColour(rLine,gLine,bLine,aLine);
+				dT->setOrigin(tickPosition + tickVector*2);	
+				dT->setUp(Point3D(0,0,1));	
+				dT->setTextDir(textVector);
+				dT->setAlignment(DRAWTEXT_ALIGN_RIGHT);
+
+				d->drawables.push_back(dT);
+			}
+		}
+
+	}
+
+	DrawGLText *dT; 
+	if(threeDText)
+		dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_POLYGON);
+	else
+		dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_BITMAP);
+	//Handle "0" text value
+	dT->setString("0");
+	
+	dT->setColour(rLine,gLine,bLine,aLine);
+	dT->setSize(fontSize);
+	dT->setOrigin(tickOrigin+ Point3D(-1,-1,-1));
+	dT->setAlignment(DRAWTEXT_ALIGN_RIGHT);
+	dT->setUp(Point3D(0,0,1));	
+	dT->setTextDir(Point3D(-1,-1,0));
+	d->drawables.push_back(dT);
+
+}
+
+void BoundingBoxFilter::drawDimension(const BoundCube &bTotal, DrawStreamData *d) const
+{
+	//Add the rectangle drawable
+	DrawRectPrism *dP = new DrawRectPrism;
+	dP->setAxisAligned(bTotal);
+	dP->setColour(rLine,gLine,bLine,aLine);
+	dP->setLineWidth(lineWidth);
+	d->drawables.push_back(dP);
+
+
+
+	//Add the arrows from the start ot the end
+	//Create the position from which to draw the tick origins
+	Point3D tickOrigin,tickEnd;
+	bTotal.getBounds(tickOrigin,tickEnd);
+
+
+
+	const float ARROW_SCALE_FACTOR =0.03f;
+	const float OFFSET=0.07f;
+
+	Point3D halfPt;
+	halfPt=(tickEnd-tickOrigin)*0.5f + tickOrigin;
+
+	
+	float maxLen;
+	{
+		Point3D delta;
+		delta=tickEnd-tickOrigin;
+		maxLen=std::max(std::max(delta[0],delta[1]),delta[2]);
+	}
+
+	float offset;
+	offset=maxLen*OFFSET;
+
+	Point3D centrePt[3];
+		
+	centrePt[0] = Point3D(halfPt[0],tickOrigin[1]-offset,tickOrigin[2]-OFFSET);
+	centrePt[1] = Point3D(tickOrigin[0]-offset,halfPt[1],tickOrigin[2]-OFFSET);
+	centrePt[2] = Point3D(tickOrigin[0]-offset,tickOrigin[1] -OFFSET , halfPt[2]);
+
+
+	//Draw the arrows around the edge of the box
+	for(size_t ui=0;ui<3;ui++)
+	{
+		float len;
+		len=(tickEnd[ui]-tickOrigin[ui])*0.5f;
+		
+		for(unsigned int uj=0;uj<2;uj++)
+		{
+			DrawVector *dV;
+		        dV= new DrawVector;
+
+			dV->setColour(rLine,gLine,bLine,aLine);	
+			dV->wantsLight=true;
+			dV->setOrigin(centrePt[ui]);
+			
+			switch(ui)
+			{
+				case 0:
+					dV->setVector(Point3D(2.0*len*(float)(uj-0.5f),0,0));
+					break;
+				case 1:
+					dV->setVector(Point3D(0,2.0*len*(float)(uj-0.5f),0));
+					break;
+				case 2:
+					dV->setVector(Point3D(0,0,2.0*len*(float)(uj-0.5f)));
+					break;
+			}
+
+
+			dV->setArrowSize(maxLen*ARROW_SCALE_FACTOR);
+
+			d->drawables.push_back(dV);
+		}
+
+	}
+
+
+
+
+	//Draw the values for the box dimensions, as text
+	char *buffer=new char[128];
+	for(size_t ui=0;ui<3;ui++)
+	{
+		BoundCube textCube;
+		DrawGLText *dT;
+		dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_POLYGON);
+
+		float len;
+		len=(tickEnd[ui]-tickOrigin[ui]);
+
+		snprintf(buffer,127,"%5.1f",len);
+		dT->setString(buffer);
+		dT->setSize(fontSize);
+
+		dT->setColour(rLine,gLine,bLine,aLine);
+		dT->setOrigin(centrePt[ui]);	
+		switch(ui)
+		{
+			case 0:
+
+				dT->setUp(Point3D(0,0,1));	
+				dT->setTextDir(Point3D(1,0,0));
+				break;
+			case 1:
+				dT->setUp(Point3D(1,0,0));	
+				dT->setTextDir(Point3D(0,-1,0));
+				break;
+			case 2:
+				dT->setUp(Point3D(0,1,0));	
+				dT->setTextDir(Point3D(0,0,1));
+				break;
+		}
+
+		dT->setAlignment(DRAWTEXT_ALIGN_CENTRE);
+
+		d->drawables.push_back(dT);
+	}
+	
+
+
 }
 
 unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
@@ -202,125 +463,32 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 	//Append the bounding box if it is valid
 	if(bTotal.isValid() && isVisible)
 	{
+
+
 		DrawStreamData *d = new DrawStreamData;
 		d->parent=this;
 
-		//Add the rectangle drawable
-		DrawRectPrism *dP = new DrawRectPrism;
-		dP->setAxisAligned(bTotal);
-		dP->setColour(rLine,gLine,bLine,aLine);
-		dP->setLineWidth(lineWidth);
-		d->drawables.push_back(dP);
-
-		//Add the tick drawables
-		Point3D tickOrigin,tickEnd;
-		bTotal.getBounds(tickOrigin,tickEnd);
-
-		float tmpTickSpacing[3];
-		float tmpTickCount[3];
-		if(fixedNumTicks)
+		switch(boundStyle)
 		{
-			for(unsigned int ui=0; ui<3;ui++)
+			case BOUND_STYLE_BOX_ONLY:
 			{
-				ASSERT(numTicks[ui]);
-				tmpTickSpacing[ui]=( (tickEnd[ui] - tickOrigin[ui])/(float)(numTicks[ui]-1));
-				tmpTickCount[ui]=numTicks[ui];
+				//Add the rectangle drawable
+				DrawRectPrism *dP = new DrawRectPrism;
+				dP->setAxisAligned(bTotal);
+				dP->setColour(rLine,gLine,bLine,aLine);
+				dP->setLineWidth(lineWidth);
+				d->drawables.push_back(dP);
+				break;
 			}
+			case BOUND_STYLE_TICKS:
+				drawTicks(bTotal,d);
+				break;
+			case BOUND_STYLE_DIMENSION:
+				drawDimension(bTotal,d);
+				break;
+			default:
+				ASSERT(false);
 		}
-		else
-		{
-			for(unsigned int ui=0; ui<3;ui++)
-			{
-				ASSERT(numTicks[ui]);
-				tmpTickSpacing[ui]= tickSpacing[ui];
-				tmpTickCount[ui]=(unsigned int)((tickEnd[ui] - tickOrigin[ui])/tickSpacing[ui])+1;
-			}
-		}
-
-		//Draw the ticks on the box perimeter.
-		for(unsigned int ui=0;ui<3;ui++)
-		{
-			Point3D tickVector;
-			Point3D tickPosition;
-			Point3D textVector,upVector;
-
-			tickPosition=tickOrigin;
-			switch(ui)
-			{
-				case 0:
-					tickVector=Point3D(0,-1,-1);
-					textVector=Point3D(0,1,0);
-					break;
-				case 1:
-					tickVector=Point3D(-1,0,-1);
-					textVector=Point3D(1,0,0);
-					break;
-				case 2:
-					tickVector=Point3D(-1,-1,0);
-					textVector=Point3D(1,1,0);
-					break;
-			}
-
-			//TODO: This would be more efficient if we made some kind of 
-			//"comb" class?
-			DrawVector *dV;
-			DrawGLText *dT;
-			//Allow up to  128 chars
-			char buffer[128];
-			for(unsigned int uj=0;uj<tmpTickCount[ui];uj++)
-			{
-				tickPosition[ui]=tmpTickSpacing[ui]*uj + tickOrigin[ui];
-				dV = new DrawVector;
-			
-				dV->setOrigin(tickPosition);
-				dV->setVector(tickVector);
-				dV->setColour(rLine,gLine,bLine,aLine);
-
-				d->drawables.push_back(dV);
-		
-
-				//Don't draw the 0 value, as this gets repeated. 
-				//we will handle this separately
-				if(uj)
-				{
-					//Draw the tick text
-					if( threeDText)	
-						dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_POLYGON);
-					else
-						dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_BITMAP);
-					float f;
-					f = tmpTickSpacing[ui]*uj;
-					snprintf(buffer,127,"%2.0f",f);
-					dT->setString(buffer);
-					dT->setSize(fontSize);
-					
-					dT->setColour(rLine,gLine,bLine,aLine);
-					dT->setOrigin(tickPosition + tickVector*2);	
-					dT->setUp(Point3D(0,0,1));	
-					dT->setTextDir(textVector);
-					dT->setAlignment(DRAWTEXT_ALIGN_RIGHT);
-
-					d->drawables.push_back(dT);
-				}
-			}
-
-		}
-
-		DrawGLText *dT; 
-		if(threeDText)
-			dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_POLYGON);
-		else
-			dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_BITMAP);
-		//Handle "0" text value
-		dT->setString("0");
-		
-		dT->setColour(rLine,gLine,bLine,aLine);
-		dT->setSize(fontSize);
-		dT->setOrigin(tickOrigin+ Point3D(-1,-1,-1));
-		dT->setAlignment(DRAWTEXT_ALIGN_RIGHT);
-		dT->setUp(Point3D(0,0,1));	
-		dT->setTextDir(Point3D(-1,-1,0));
-		d->drawables.push_back(dT);
 		d->cached=0;
 		
 		getOut.push_back(d);
@@ -341,82 +509,112 @@ void BoundingBoxFilter::getProperties(FilterProperties &propertyList) const
 	string tmpStr;
 	stream_cast(tmpStr,isVisible);
 	s.push_back(std::make_pair(TRANS("Visible"), tmpStr));
-	keys.push_back(KEY_BOUNDINGBOX_VISIBLE);
+	keys.push_back(KEY_VISIBLE);
 	type.push_back(PROPERTY_TYPE_BOOL);
 
-	
-	//Properties are X Y and Z counts on ticks
-	stream_cast(tmpStr,fixedNumTicks);
-	s.push_back(std::make_pair(TRANS("Fixed Tick Num"), tmpStr));
-	keys.push_back(KEY_BOUNDINGBOX_FIXEDOUT);
-	type.push_back(PROPERTY_TYPE_BOOL);
-	if(fixedNumTicks)
+	if(isVisible)
 	{
-		//Properties are X Y and Z counts on ticks
-		stream_cast(tmpStr,numTicks[0]);
-		keys.push_back(KEY_BOUNDINGBOX_COUNT_X);
-		s.push_back(make_pair(TRANS("Num X"), tmpStr));
-		type.push_back(PROPERTY_TYPE_INTEGER);
+		vector<pair<unsigned int,string> > choices;
+		for(size_t ui=0;ui<BOUND_STYLE_ENUM_END; ui++)
+		{
+			tmpStr=TRANS(BOUND_STYLE[ui]);
+			choices.push_back(make_pair(ui,tmpStr));
+		}
+
+		tmpStr= choiceString(choices,boundStyle);
+		s.push_back(make_pair(string(TRANS("Style")),tmpStr));
+		type.push_back(PROPERTY_TYPE_CHOICE);
+		keys.push_back(KEY_STYLE);
+
+
+		propertyList.data.push_back(s);
+		propertyList.types.push_back(type);
+		propertyList.keys.push_back(keys);
 		
-		stream_cast(tmpStr,numTicks[1]);
-		keys.push_back(KEY_BOUNDINGBOX_COUNT_Y);
-		s.push_back(make_pair(TRANS("Num Y"), tmpStr));
-		type.push_back(PROPERTY_TYPE_INTEGER);
 		
-		stream_cast(tmpStr,numTicks[2]);
-		keys.push_back(KEY_BOUNDINGBOX_COUNT_Z);
-		s.push_back(make_pair(TRANS("Num Z"), tmpStr));
-		type.push_back(PROPERTY_TYPE_INTEGER);
+		if(boundStyle == BOUND_STYLE_TICKS)
+		{
+			type.clear();
+			keys.clear();
+			s.clear();
+		
+			//Properties are X Y and Z counts on ticks
+			stream_cast(tmpStr,fixedNumTicks);
+			s.push_back(std::make_pair(TRANS("Fixed Tick Num"), tmpStr));
+			keys.push_back(KEY_FIXEDOUT);
+			type.push_back(PROPERTY_TYPE_BOOL);
+
+			if(fixedNumTicks)
+			{
+				//Properties are X Y and Z counts on ticks
+				stream_cast(tmpStr,numTicks[0]);
+				keys.push_back(KEY_COUNT_X);
+				s.push_back(make_pair(TRANS("Num X"), tmpStr));
+				type.push_back(PROPERTY_TYPE_INTEGER);
+				
+				stream_cast(tmpStr,numTicks[1]);
+				keys.push_back(KEY_COUNT_Y);
+				s.push_back(make_pair(TRANS("Num Y"), tmpStr));
+				type.push_back(PROPERTY_TYPE_INTEGER);
+				
+				stream_cast(tmpStr,numTicks[2]);
+				keys.push_back(KEY_COUNT_Z);
+				s.push_back(make_pair(TRANS("Num Z"), tmpStr));
+				type.push_back(PROPERTY_TYPE_INTEGER);
+			}
+			else
+			{
+				stream_cast(tmpStr,tickSpacing[0]);
+				s.push_back(make_pair(TRANS("Spacing X"), tmpStr));
+				keys.push_back(KEY_SPACING_X);
+				type.push_back(PROPERTY_TYPE_REAL);
+
+				stream_cast(tmpStr,tickSpacing[1]);
+				s.push_back(make_pair(TRANS("Spacing Y"), tmpStr));
+				keys.push_back(KEY_SPACING_Y);
+				type.push_back(PROPERTY_TYPE_REAL);
+
+				stream_cast(tmpStr,tickSpacing[2]);
+				s.push_back(make_pair(TRANS("Spacing Z"), tmpStr));
+				keys.push_back(KEY_SPACING_Z);
+				type.push_back(PROPERTY_TYPE_REAL);
+			}
+
+			propertyList.data.push_back(s);
+			propertyList.types.push_back(type);
+			propertyList.keys.push_back(keys);
+		}
+
+		//Box Line properties 
+		type.clear();
+		keys.clear();
+		s.clear();
+
+		//Colour
+		genColString((unsigned char)(rLine*255.0),(unsigned char)(gLine*255.0),
+			(unsigned char)(bLine*255),(unsigned char)(aLine*255),tmpStr);
+		s.push_back(std::make_pair(TRANS("Box Colour"), tmpStr));
+		keys.push_back(KEY_LINECOLOUR);
+		type.push_back(PROPERTY_TYPE_COLOUR);
+
+
+		
+		//Line thickness
+		stream_cast(tmpStr,lineWidth);
+		s.push_back(std::make_pair(TRANS("Line thickness"), tmpStr));
+		keys.push_back(KEY_LINEWIDTH);
+		type.push_back(PROPERTY_TYPE_REAL);
+
+		//Font size	
+		if(boundStyle != BOUND_STYLE_BOX_ONLY)
+		{
+			stream_cast(tmpStr,fontSize);
+			keys.push_back(KEY_FONTSIZE);
+			s.push_back(make_pair(TRANS("Font Size"), tmpStr));
+			type.push_back(PROPERTY_TYPE_INTEGER);
+		}
 	}
-	else
-	{
-		stream_cast(tmpStr,tickSpacing[0]);
-		s.push_back(make_pair(TRANS("Spacing X"), tmpStr));
-		keys.push_back(KEY_BOUNDINGBOX_SPACING_X);
-		type.push_back(PROPERTY_TYPE_REAL);
-
-		stream_cast(tmpStr,tickSpacing[1]);
-		s.push_back(make_pair(TRANS("Spacing Y"), tmpStr));
-		keys.push_back(KEY_BOUNDINGBOX_SPACING_Y);
-		type.push_back(PROPERTY_TYPE_REAL);
-
-		stream_cast(tmpStr,tickSpacing[2]);
-		s.push_back(make_pair(TRANS("Spacing Z"), tmpStr));
-		keys.push_back(KEY_BOUNDINGBOX_SPACING_Z);
-		type.push_back(PROPERTY_TYPE_REAL);
-	}
-
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
-
-	//Second set -- Box Line properties 
-	type.clear();
-	keys.clear();
-	s.clear();
-
-	//Colour
-	genColString((unsigned char)(rLine*255.0),(unsigned char)(gLine*255.0),
-		(unsigned char)(bLine*255),(unsigned char)(aLine*255),tmpStr);
-	s.push_back(std::make_pair(TRANS("Box Colour"), tmpStr));
-	keys.push_back(KEY_BOUNDINGBOX_LINECOLOUR);
-	type.push_back(PROPERTY_TYPE_COLOUR);
-
-
 	
-	//Line thickness
-	stream_cast(tmpStr,lineWidth);
-	s.push_back(std::make_pair(TRANS("Line thickness"), tmpStr));
-	keys.push_back(KEY_BOUNDINGBOX_LINEWIDTH);
-	type.push_back(PROPERTY_TYPE_REAL);
-
-	//Font size	
-	stream_cast(tmpStr,fontSize);
-	keys.push_back(KEY_BOUNDINGBOX_FONTSIZE);
-	s.push_back(make_pair(TRANS("Font Size"), tmpStr));
-	type.push_back(PROPERTY_TYPE_INTEGER);
-
-
 	propertyList.data.push_back(s);
 	propertyList.types.push_back(type);
 	propertyList.keys.push_back(keys);
@@ -429,7 +627,7 @@ bool BoundingBoxFilter::setProperty( unsigned int set, unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
-		case KEY_BOUNDINGBOX_VISIBLE:
+		case KEY_VISIBLE:
 		{
 			string stripped=stripWhite(value);
 
@@ -437,18 +635,42 @@ bool BoundingBoxFilter::setProperty( unsigned int set, unsigned int key,
 				return false;
 
 			bool lastVal=isVisible;
-			if(stripped=="1")
-				isVisible=true;
-			else
-				isVisible=false;
-
+			isVisible=(stripped == "1");
+			
 			//if the result is different, the
 			//cache should be invalidated
 			if(lastVal!=isVisible)
 				needUpdate=true;
 			break;
 		}	
-		case KEY_BOUNDINGBOX_FIXEDOUT:
+		case KEY_STYLE:
+		{
+			string stripped=stripWhite(value);
+			size_t ltmp=BOUND_STYLE_ENUM_END;
+			for(unsigned int ui=0;ui<BOUND_STYLE_ENUM_END;ui++)
+			{
+				if(value == TRANS(BOUND_STYLE[ui]))
+				{
+					ltmp=ui;
+					break;
+				}
+			}
+			
+			if(ltmp>=BOUND_STYLE_ENUM_END)
+				return false;
+			
+			if(ltmp == boundStyle)
+				needUpdate=false;
+			else
+			{
+				boundStyle=ltmp;
+				needUpdate=true;
+				clearCache();
+			}
+
+			break;
+		}	
+		case KEY_FIXEDOUT:
 		{
 			string stripped=stripWhite(value);
 
@@ -456,10 +678,7 @@ bool BoundingBoxFilter::setProperty( unsigned int set, unsigned int key,
 				return false;
 
 			bool lastVal=fixedNumTicks;
-			if(stripped=="1")
-				fixedNumTicks=true;
-			else
-				fixedNumTicks=false;
+			fixedNumTicks=(stripped=="1");
 
 			//if the result is different, the
 			//cache should be invalidated
@@ -467,9 +686,9 @@ bool BoundingBoxFilter::setProperty( unsigned int set, unsigned int key,
 				needUpdate=true;
 			break;
 		}	
-		case KEY_BOUNDINGBOX_COUNT_X:
-		case KEY_BOUNDINGBOX_COUNT_Y:
-		case KEY_BOUNDINGBOX_COUNT_Z:
+		case KEY_COUNT_X:
+		case KEY_COUNT_Y:
+		case KEY_COUNT_Z:
 		{
 			ASSERT(fixedNumTicks);
 			unsigned int newCount;
@@ -480,11 +699,11 @@ bool BoundingBoxFilter::setProperty( unsigned int set, unsigned int key,
 			if(newCount < 2)
 				return false;
 
-			numTicks[key-KEY_BOUNDINGBOX_COUNT_X]=newCount;
+			numTicks[key-KEY_COUNT_X]=newCount;
 			needUpdate=true;
 			break;
 		}
-		case KEY_BOUNDINGBOX_LINECOLOUR:
+		case KEY_LINECOLOUR:
 		{
 			unsigned char newR,newG,newB,newA;
 
@@ -501,7 +720,7 @@ bool BoundingBoxFilter::setProperty( unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_BOUNDINGBOX_LINEWIDTH:
+		case KEY_LINEWIDTH:
 		{
 			float newWidth;
 			if(stream_cast(newWidth,value))
@@ -514,9 +733,9 @@ bool BoundingBoxFilter::setProperty( unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_BOUNDINGBOX_SPACING_X:
-		case KEY_BOUNDINGBOX_SPACING_Y:
-		case KEY_BOUNDINGBOX_SPACING_Z:
+		case KEY_SPACING_X:
+		case KEY_SPACING_Y:
+		case KEY_SPACING_Z:
 		{
 			ASSERT(!fixedNumTicks);
 			float newSpacing;
@@ -526,11 +745,11 @@ bool BoundingBoxFilter::setProperty( unsigned int set, unsigned int key,
 			if(newSpacing <= 0.0f)
 				return false;
 
-			tickSpacing[key-KEY_BOUNDINGBOX_SPACING_X]=newSpacing;
+			tickSpacing[key-KEY_SPACING_X]=newSpacing;
 			needUpdate=true;
 			break;
 		}
-		case KEY_BOUNDINGBOX_FONTSIZE:
+		case KEY_FONTSIZE:
 		{
 			unsigned int newCount;
 			if(stream_cast(newCount,value))
@@ -564,6 +783,7 @@ bool BoundingBoxFilter::writeState(std::ofstream &f,unsigned int format, unsigne
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 			f << tabs(depth+1) << "<visible value=\"" << isVisible << "\"/>" << endl;
+			f << tabs(depth+1) << "<boundstyle value=\"" << boundStyle<< "\"/>" << endl;
 			f << tabs(depth+1) << "<fixedticks value=\"" << fixedNumTicks << "\"/>" << endl;
 			f << tabs(depth+1) << "<ticknum x=\""<<numTicks[0]<< "\" y=\"" 
 				<< numTicks[1] << "\" z=\""<< numTicks[2] <<"\"/>"  << endl;
@@ -618,6 +838,23 @@ bool BoundingBoxFilter::readState(xmlNodePtr &nodePtr, const std::string &stateF
 
 	xmlFree(xmlString);
 	//====
+	
+	//Retrieve box style 
+	//====
+	if(XMLHelpFwdToElem(nodePtr,"boundstyle"))
+		return false;
+
+	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
+	if(!xmlString)
+		return false;
+	tmpStr=(char *)xmlString;
+
+	if(stream_cast(boundStyle,tmpStr))
+		return false;
+
+	xmlFree(xmlString);
+	//====
+	
 	
 	//Retrieve fixed tick num
 	//====
@@ -774,7 +1011,18 @@ unsigned int BoundingBoxFilter::getRefreshBlockMask() const
 
 unsigned int BoundingBoxFilter::getRefreshEmitMask() const
 {
-	return  STREAM_TYPE_DRAW;
+	if(isVisible)
+		return STREAM_TYPE_DRAW;
+	else
+		return 0;
+}
+
+unsigned int BoundingBoxFilter::getRefreshUseMask() const
+{
+	if(isVisible)
+		return  STREAM_TYPE_IONS;
+	else
+		return 0;
 }
 
 #ifdef DEBUG
@@ -821,7 +1069,7 @@ bool boxVolumeTest()
 	b->setCaching(false);
 
 	bool needUp;
-	b->setProperty(0,KEY_BOUNDINGBOX_VISIBLE,"1",needUp);
+	b->setProperty(0,KEY_VISIBLE,"1",needUp);
 
 
 	ProgressData p;

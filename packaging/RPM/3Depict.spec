@@ -1,5 +1,5 @@
 Name:		3Depict
-Version:	0.0.10
+Version:	0.0.11
 Release:	1%{?dist}
 Summary:	Valued 3D point cloud visualization and analysis
 Group:		Applications/Engineering

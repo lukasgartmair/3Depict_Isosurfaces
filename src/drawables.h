@@ -189,6 +189,9 @@ class DrawableObj
 
 		//!Get the centre of the object. Only valid if object is simple
 		virtual Point3D getCentroid() const {ASSERT(!isExplodable());} ;
+
+	//	virtual DrawableObj *clone() const;
+
 };
 
 //A single point drawing class 
@@ -277,14 +280,23 @@ class DrawVector: public DrawableObj
 		Point3D origin;
 		Point3D vector;
 
-		//!Arrow head size 
+		//!Do we draw the arrow head?
+		bool drawArrow; 
+
+		//!Radius of tail of arrow
 		float arrowSize;
 
 		//!Scale arrow head by vector size
 		bool scaleArrow;
 
+		//!Whether to draw the arrow head at both ends
+		bool doubleEnded;
+
 		//!Vector colour (r,g,b,a) range: [0.0f,1.0f]
 		float r,g,b,a;
+
+		//!Size of "tail" line to draw
+		float lineSize;
 	public:
 		//!Constructor
 		DrawVector();
@@ -292,7 +304,9 @@ class DrawVector: public DrawableObj
 		virtual ~DrawVector();
 	
 		virtual unsigned int getType() const {return DRAW_TYPE_VECTOR;};	
-		
+	
+		//!Set if we want to draw the arrow or not
+		bool setDrawArrow(bool wantDraw) { drawArrow=wantDraw;}
 		//!Sets the color of the point to be drawn
 		void setColour(float r, float g, float b, float alpha);
 		//!Draws the points
@@ -301,6 +315,13 @@ class DrawVector: public DrawableObj
 		void setOrigin(const Point3D &);
 		//!Sets the location of the poitns
 		void setVector(const Point3D &);
+
+		//Set the start/end of vector in one go
+		void setEnds(const Point3D &start, const Point3D &end);
+
+		//Set to draw both ends
+		void setDoubleEnded(bool wantDoubleEnd=true);
+
 		//!Gets the arrow axis direction
 		Point3D getVector() const { return vector;};
 
@@ -310,6 +331,8 @@ class DrawVector: public DrawableObj
 		//!Set the arrowhead size
 		void setArrowSize(float size) { arrowSize=size;}
 
+		//!Set the "tail" line size
+		void setLineSize(float size) { lineSize=size;}
 		void getBoundingBox(BoundCube &b) const; 
 
 
@@ -501,30 +524,6 @@ class DrawCylinder : public DrawableObj
 
 		//!Lock (or unlock) the radius to the start radius (i.e. synch the two)
 		void lockRadii(bool doLock=true) {radiiLocked=doLock;};
-};
-
-
-//FIXME: It seemed like a good idea at the time to make this a drawable. Now I don't know why.
-//!Special class for holding references to other objects, where we
-//need to depth sort them
-class DrawDepthSorted: public DrawableObj
-{
-	private:
-		bool haveLastDist;
-		//Objects that need to be depth sorted
-		std::vector<std::pair<const DrawableObj *,std::vector<DrawableObj *> > > depthObjects;
-
-		//Vector that tells us where in the depthObjects array to go to when displaying sorted elements
-		mutable vector<std::pair<size_t,size_t> > depthJumpKeys;
-		
-		//!camera location at last draw
-		mutable Point3D lastCamLoc;
-	public:
-		DrawDepthSorted() { haveLastDist=false;};
-		virtual unsigned int getType() const {return -1; ASSERT(false);};	
-		void addObjectsAsNeeded(const DrawableObj *);
-		void draw() const; 
-		void getBoundingBox(BoundCube &b) const { ASSERT(false);};
 };
 
 //!Drawing mode enumeration for scalar field

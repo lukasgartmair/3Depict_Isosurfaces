@@ -21,6 +21,7 @@
 
 #include <wx/xml/xml.h>
 #include <wx/event.h>
+#include <wx/filename.h>
 #include <vector>
 #include <string>
 
@@ -276,8 +277,34 @@ bool processMatchesName(size_t processID, const std::string &procName)
 
 		//FIXME: This is a little lax. finding the proc name should
 		//check the position of the found string more heavily
-		if(s.find(pidStr) == 0 && s.find(procName) != std::string::npos)
-			return true;
+		// however, we run the risk of differing ps
+		//implementations, causing false negatives.
+		// - probably should use the kernel?
+		std::vector<std::string> strVec;
+		s=stripWhite(s);
+		splitStrsRef(s.c_str()," \t",strVec);
+
+
+
+		//Return true if *any* field returns true
+		bool pidFound,procNameFound;
+		procNameFound=pidFound=false;
+		for(unsigned int ui=0;ui<strVec.size(); ui++)
+		{
+			wxFileName fName(wxStr(strVec[ui]));
+			std::string maybeProcName;
+			maybeProcName = stlStr(fName.GetFullName());
+			
+			
+			if( pidStr == strVec[ui])
+				pidFound=true;
+			else if(procName == maybeProcName)
+				procNameFound=true;
+
+			if(procNameFound && pidFound)
+				return true;
+		}
+
 	}
 	return false;
 }
@@ -340,6 +367,7 @@ bool processMatchesName(size_t processID, const std::string &procName)
 			GetProcAddress (GetModuleHandle(TEXT("ntdll.dll")), "NtQuerySystemInformation");
 		NTSTATUS status;
 
+				
 		//Grab the process ID stuff, expanding the buffer until we can do the job we need.
 		while (TRUE) {
 			status = pfnNtQuerySystemInformation (SystemProcessInformation, (PVOID)pspid,
@@ -357,19 +385,31 @@ bool processMatchesName(size_t processID, const std::string &procName)
 		PSYSTEM_PROCESS_INFORMATION_DETAILD pspidBase;
 		pspidBase=pspid;
 		
-	
+		
+		//FIXME: Hack. Program name under windows is PROGRAM_NAME + ".exe"
+		const char *EXENAME="3Depict.exe";
+		
 		//Loop through the linked list of process data strcutures
-		while(pspid=(PSYSTEM_PROCESS_INFORMATION_DETAILD)(pspid->NextEntryOffset + (PBYTE)pspid) )
+		while( (pspid=(PSYSTEM_PROCESS_INFORMATION_DETAILD)(pspid->NextEntryOffset + (PBYTE)pspid)) && pspid->NextEntryOffset)
 		{
-			//If the name exists and is not null
-			if(pspid->ImageName.Length && pspid->ImageName.Buffer)
+			
+			
+			//If the name exists, is not null, and its the  PID we are looking for
+			if(pspid->ImageName.Length && pspid->ImageName.Buffer && (size_t)pspid->UniqueProcessId  == processID )
 			{
-				//Check to see if the result matches
-				if((size_t)pspid->UniqueProcessId  == processID &&  !strcmp(procName.c_str(),(char *)pspid->ImageName.Buffer) ) 
+				//FIXME: I am unsure about the multibyte handling here. I think this *only* works if the program name is within the ASCII region of the codepage
+				wchar_t *name = new wchar_t[pspid->ImageName.Length+1];
+				sprintf((char*)name,"%ls",pspid->ImageName.Buffer);
+				if(!strcmp(EXENAME,(char*)name))
 				{
+			
+					delete[] name;
+					
 					free(pspidBase);
 					return true;
 				}
+				delete[] name;
+
 			}
 			
 		}

@@ -1,0 +1,22 @@
+306,308c306,308
+< 
+< 	bool gz = fname[strlen(fname)-1]=='z';
+< 	void *fp = gz ? gzopen(fname,"wt") : fopen(fname,"wt");
+---
+> 
+> 	bool gz = fname[strlen(fname)-1]=='z';
+> 	void *fp =  ( gz ? gzopen(fname,"wt") : (void *)fopen(fname,"wt"));
+456c456
+< 	if(gz)	gzclose(fp);	else	fclose((FILE *)fp);
+---
+> 	if(gz)	gzclose((gzFile_s*)fp);	else	fclose((FILE *)fp);
+466,467c466,467
+< 	bool gz = fname[strlen(fname)-1]=='z';
+< 	void *fp = gz ? gzopen(fname,"wt") : fopen(fname,"wt");
+---
+> 	bool gz = fname[strlen(fname)-1]=='z';
+> 	void *fp =  (gz ? gzopen(fname,"wt") : (void *)fopen(fname,"wt"));
+623c623
+< 	if(gz)	gzclose(fp);	else	fclose((FILE *)fp);
+---
+> 	if(gz)	gzclose((gzFile_s*)fp);	else	fclose((FILE *)fp);

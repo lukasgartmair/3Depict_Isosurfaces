@@ -6,25 +6,25 @@
 
 enum
 {
-	KEY_VOXELISE_FIXEDWIDTH,
-	KEY_VOXELISE_NBINSX,
-	KEY_VOXELISE_NBINSY,
-	KEY_VOXELISE_NBINSZ,
-	KEY_VOXELISE_WIDTHBINSX,
-	KEY_VOXELISE_WIDTHBINSY,
-	KEY_VOXELISE_WIDTHBINSZ,
-	KEY_VOXELISE_COUNT_TYPE,
-	KEY_VOXELISE_NORMALISE_TYPE,
-	KEY_VOXELISE_SPOTSIZE,
-	KEY_VOXELISE_TRANSPARANCY,
-	KEY_VOXELISE_COLOUR,
-	KEY_VOXELISE_ISOLEVEL,
+	KEY_FIXEDWIDTH,
+	KEY_NBINSX,
+	KEY_NBINSY,
+	KEY_NBINSZ,
+	KEY_WIDTHBINSX,
+	KEY_WIDTHBINSY,
+	KEY_WIDTHBINSZ,
+	KEY_COUNT_TYPE,
+	KEY_NORMALISE_TYPE,
+	KEY_SPOTSIZE,
+	KEY_TRANSPARANCY,
+	KEY_COLOUR,
+	KEY_ISOLEVEL,
 	KEY_VOXEL_REPRESENTATION_MODE,
-	KEY_VOXELISE_FILTER_MODE,
-	KEY_VOXELISE_FILTER_BOUNDARY_MODE,
-	KEY_VOXELISE_FILTER_BINS,
-	KEY_VOXELISE_ENABLE_NUMERATOR,
-	KEY_VOXELISE_ENABLE_DENOMINATOR
+	KEY_FILTER_MODE,
+	KEY_FILTER_BOUNDARY_MODE,
+	KEY_FILTER_BINS,
+	KEY_ENABLE_NUMERATOR,
+	KEY_ENABLE_DENOMINATOR
 };
 
 //!Normalisation method
@@ -102,8 +102,7 @@ int countPoints(Voxels<float> &v, const std::vector<IonHit> &points,
 				return 1;
 			downSample=MAX_CALLBACK;
 		}
-		v.getIndex(x,y,z,points[ui].getPos());
-
+		v.getIndexWithUpper(x,y,z,points[ui].getPos());
 		//Ensure it lies within the dataset
 		if (x < binCount[0] && y < binCount[1] && z< binCount[2])
 		{
@@ -572,40 +571,40 @@ void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
 	string tmpStr;
 	stream_cast(tmpStr, fixedWidth);
 	s.push_back(std::make_pair(TRANS("Fixed width"), tmpStr));
-	keys.push_back(KEY_VOXELISE_FIXEDWIDTH);
+	keys.push_back(KEY_FIXEDWIDTH);
 	type.push_back(PROPERTY_TYPE_BOOL);
 	
 	if(fixedWidth)
 	{
 		stream_cast(tmpStr,binWidth[0]);
-		keys.push_back(KEY_VOXELISE_WIDTHBINSX);
+		keys.push_back(KEY_WIDTHBINSX);
 		s.push_back(make_pair(TRANS("Bin width x"), tmpStr));
 		type.push_back(PROPERTY_TYPE_REAL);
 
 		stream_cast(tmpStr,binWidth[1]);
-		keys.push_back(KEY_VOXELISE_WIDTHBINSY);
+		keys.push_back(KEY_WIDTHBINSY);
 		s.push_back(make_pair(TRANS("Bin width y"), tmpStr));
 		type.push_back(PROPERTY_TYPE_REAL);
 
 		stream_cast(tmpStr,binWidth[2]);
-		keys.push_back(KEY_VOXELISE_WIDTHBINSZ);
+		keys.push_back(KEY_WIDTHBINSZ);
 		s.push_back(make_pair(TRANS("Bin width z"), tmpStr));
 		type.push_back(PROPERTY_TYPE_REAL);
 	}
 	else
 	{
 		stream_cast(tmpStr,nBins[0]);
-		keys.push_back(KEY_VOXELISE_NBINSX);
+		keys.push_back(KEY_NBINSX);
 		s.push_back(make_pair(TRANS("Num bins x"), tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
 		
 		stream_cast(tmpStr,nBins[1]);
-		keys.push_back(KEY_VOXELISE_NBINSY);
+		keys.push_back(KEY_NBINSY);
 		s.push_back(make_pair(TRANS("Num bins y"), tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
 		
 		stream_cast(tmpStr,nBins[2]);
-		keys.push_back(KEY_VOXELISE_NBINSZ);
+		keys.push_back(KEY_NBINSZ);
 		s.push_back(make_pair(TRANS("Num bins z"), tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
 	}
@@ -629,7 +628,7 @@ void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
 	tmpStr= choiceString(choices,normaliseType);
 	s.push_back(make_pair(string(TRANS("Normalise by")),tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_VOXELISE_NORMALISE_TYPE);
+	keys.push_back(KEY_NORMALISE_TYPE);
 	
 	
 	
@@ -646,7 +645,7 @@ void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
 	if (rsdIncoming) {
 		s.push_back(make_pair(TRANS("Numerator"), numeratorAll ? "1" : "0"));
 		type.push_back(PROPERTY_TYPE_BOOL);
-		keys.push_back(KEY_VOXELISE_ENABLE_NUMERATOR);
+		keys.push_back(KEY_ENABLE_NUMERATOR);
 
 		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[0].size());	
 		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[1].size());	
@@ -664,7 +663,7 @@ void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
 			s.push_back(make_pair(
 				rsdIncoming->rangeFile->getName(ui), str));
 			type.push_back(PROPERTY_TYPE_BOOL);
-			keys.push_back(KEY_VOXELISE_ENABLE_NUMERATOR*1000+ui);
+			keys.push_back(KEY_ENABLE_NUMERATOR*1000+ui);
 		}
 		propertyList.types.push_back(type);
 		propertyList.data.push_back(s);
@@ -679,7 +678,7 @@ void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
 		// denominator
 		s.push_back(make_pair(TRANS("Denominator"), denominatorAll ? "1" : "0"));
 		type.push_back(PROPERTY_TYPE_BOOL);
-		keys.push_back(KEY_VOXELISE_ENABLE_DENOMINATOR);
+		keys.push_back(KEY_ENABLE_DENOMINATOR);
 
 		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
 		{			
@@ -694,7 +693,7 @@ void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
 				rsdIncoming->rangeFile->getName(ui), str));
 
 			type.push_back(PROPERTY_TYPE_BOOL);
-			keys.push_back(KEY_VOXELISE_ENABLE_DENOMINATOR*1000+ui);
+			keys.push_back(KEY_ENABLE_DENOMINATOR*1000+ui);
 		}
 		propertyList.types.push_back(type);
 		propertyList.data.push_back(s);
@@ -720,7 +719,7 @@ void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
 	tmpStr= choiceString(choices,filterMode);
 	s.push_back(make_pair(TRANS("Filtering"), tmpStr));
 	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_VOXELISE_FILTER_MODE);
+	keys.push_back(KEY_FILTER_MODE);
 	
 	if(filterMode != VOXELISE_FILTERTYPE_NONE)
 	{
@@ -729,7 +728,7 @@ void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
 		stream_cast(tmpStr,filterBins);
 		s.push_back(make_pair(TRANS("Kernel Bins"), tmpStr));
 		type.push_back(PROPERTY_TYPE_INTEGER);
-		keys.push_back(KEY_VOXELISE_FILTER_BINS);
+		keys.push_back(KEY_FILTER_BINS);
 
 		//Boundary wrapping mode selection
 		choices.clear();
@@ -742,7 +741,7 @@ void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
 	
 		s.push_back(make_pair(TRANS("Exterior values"), tmpStr));
 		type.push_back(PROPERTY_TYPE_CHOICE);
-		keys.push_back(KEY_VOXELISE_FILTER_MODE);
+		keys.push_back(KEY_FILTER_MODE);
 
 	}
 
@@ -778,12 +777,12 @@ void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
 			stream_cast(tmpStr,splatSize);
 			s.push_back(make_pair(TRANS("Spot size"),tmpStr));
 			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_VOXELISE_SPOTSIZE);
+			keys.push_back(KEY_SPOTSIZE);
 
 			stream_cast(tmpStr,1.0-a);
 			s.push_back(make_pair(TRANS("Transparency"),tmpStr));
 			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_VOXELISE_TRANSPARANCY);
+			keys.push_back(KEY_TRANSPARANCY);
 			break;
 		}
 		case VOXEL_REPRESENT_ISOSURF:
@@ -791,7 +790,7 @@ void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
 			stream_cast(tmpStr,isoLevel);
 			s.push_back(make_pair(TRANS("Isovalue"),tmpStr));
 			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_VOXELISE_ISOLEVEL);
+			keys.push_back(KEY_ISOLEVEL);
 		
 				
 
@@ -800,12 +799,12 @@ void VoxeliseFilter::getProperties(FilterProperties &propertyList) const
 					(unsigned char)(b*255),(unsigned char)(a*255),tmpStr);
 			s.push_back(make_pair(TRANS("Colour"),tmpStr));
 			type.push_back(PROPERTY_TYPE_COLOUR);
-			keys.push_back(KEY_VOXELISE_COLOUR);
+			keys.push_back(KEY_COLOUR);
 
 			stream_cast(tmpStr,1.0-a);
 			s.push_back(make_pair(TRANS("Transparency"),tmpStr));
 			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_VOXELISE_TRANSPARANCY);
+			keys.push_back(KEY_TRANSPARANCY);
 			
 			break;
 		}
@@ -828,7 +827,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
-		case KEY_VOXELISE_FIXEDWIDTH: 
+		case KEY_FIXEDWIDTH: 
 		{
 			bool b;
 			if(stream_cast(b,value))
@@ -844,7 +843,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}	
-		case KEY_VOXELISE_NBINSX:
+		case KEY_NBINSX:
 		{
 			 unsigned int i;
 			if(stream_cast(i,value))
@@ -865,7 +864,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_VOXELISE_NBINSY:
+		case KEY_NBINSY:
 		{
 			 unsigned int i;
 			if(stream_cast(i,value))
@@ -884,7 +883,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_VOXELISE_NBINSZ:
+		case KEY_NBINSZ:
 		{
 			 unsigned int i;
 			if(stream_cast(i,value))
@@ -903,7 +902,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_VOXELISE_WIDTHBINSX:
+		case KEY_WIDTHBINSX:
 		{
 			float f;
 			if(stream_cast(f,value))
@@ -920,7 +919,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_VOXELISE_WIDTHBINSY:
+		case KEY_WIDTHBINSY:
 		{
 			float f;
 			if(stream_cast(f,value))
@@ -937,7 +936,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_VOXELISE_WIDTHBINSZ:
+		case KEY_WIDTHBINSZ:
 		{
 			float f;
 			if(stream_cast(f,value))
@@ -953,7 +952,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_VOXELISE_NORMALISE_TYPE:
+		case KEY_NORMALISE_TYPE:
 		{
 			unsigned int i;
 			for(i = 0; i < VOXELISE_NORMALISETYPE_MAX; i++)
@@ -968,7 +967,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_VOXELISE_SPOTSIZE:
+		case KEY_SPOTSIZE:
 		{
 			float f;
 			if(stream_cast(f,value))
@@ -996,7 +995,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_VOXELISE_TRANSPARANCY:
+		case KEY_TRANSPARANCY:
 		{
 			float f;
 			if(stream_cast(f,value))
@@ -1020,7 +1019,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_VOXELISE_ISOLEVEL:
+		case KEY_ISOLEVEL:
 		{
 			float f;
 			if(stream_cast(f,value))
@@ -1043,7 +1042,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_VOXELISE_COLOUR:
+		case KEY_COLOUR:
 		{
 			unsigned char newR,newG,newB,newA;
 
@@ -1094,7 +1093,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_VOXELISE_ENABLE_NUMERATOR:
+		case KEY_ENABLE_NUMERATOR:
 		{
 			bool b;
 			if(stream_cast(b,value))
@@ -1107,7 +1106,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			clearCache();
 			break;
 		}
-		case KEY_VOXELISE_ENABLE_DENOMINATOR:
+		case KEY_ENABLE_DENOMINATOR:
 		{
 			bool b;
 			if(stream_cast(b,value))
@@ -1122,7 +1121,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			clearCache();
 			break;
 		}
-		case KEY_VOXELISE_FILTER_MODE:
+		case KEY_FILTER_MODE:
 		{
 			 unsigned int i;
 			for (i = 0; i < VOXEL_REPRESENT_END; i++)
@@ -1137,7 +1136,7 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_VOXELISE_FILTER_BOUNDARY_MODE:
+		case KEY_FILTER_BOUNDARY_MODE:
 		{
 			 unsigned int i;
 			for (i = 0; i < VOXELISE_FILTERBOUNDMODE_MAX; i++)
@@ -1153,13 +1152,13 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 			}
 			break;
 		}
-		case KEY_VOXELISE_FILTER_BINS:
+		case KEY_FILTER_BINS:
 		{
 			 unsigned int i;
 			if(stream_cast(i,value))
 				return false;
 
-			//FIXME: Min restriction is artificial and imposed due to incomplete separerable convolution filter implementation
+			//FIXME: Min restriction is artificial and imposed due to incomplete separable convolution filter implementation
 			if(i == 0 || i > std::min(nBins[0],std::min(nBins[1],nBins[2])))
 				return false;
 			if(i != filterBins)
@@ -1172,27 +1171,27 @@ bool VoxeliseFilter::setProperty( unsigned int set, unsigned int key,
 		}
 		default:
 		{
-			if (key >= KEY_VOXELISE_ENABLE_DENOMINATOR*1000) {
+			if (key >= KEY_ENABLE_DENOMINATOR*1000) {
 				bool b;
 				if(stream_cast(b,value))
 					return false;
-//				if (b && !rsdIncoming->enabledIons[key - KEY_VOXELISE_ENABLE_DENOMINATOR*1000]) {
+//				if (b && !rsdIncoming->enabledIons[key - KEY_ENABLE_DENOMINATOR*1000]) {
 //					return false;
 //				}
-				enabledIons[1][key - KEY_VOXELISE_ENABLE_DENOMINATOR*1000]=b;
+				enabledIons[1][key - KEY_ENABLE_DENOMINATOR*1000]=b;
 				if (!b) {
 					denominatorAll = false;
 				}
 				needUpdate=true;			
 				clearCache();
-			} else if (key >= KEY_VOXELISE_ENABLE_NUMERATOR*1000) {
+			} else if (key >= KEY_ENABLE_NUMERATOR*1000) {
 				bool b;
 				if(stream_cast(b,value))
 					return false;
-//				if (b && !rsdIncoming->enabledIons[key - KEY_VOXELISE_ENABLE_NUMERATOR*1000]) {
+//				if (b && !rsdIncoming->enabledIons[key - KEY_ENABLE_NUMERATOR*1000]) {
 //					return false;
 //				}
-				enabledIons[0][key - KEY_VOXELISE_ENABLE_NUMERATOR*1000]=b;
+				enabledIons[0][key - KEY_ENABLE_NUMERATOR*1000]=b;
 				if (!b) {
 					numeratorAll = false;
 				}
@@ -1449,8 +1448,191 @@ unsigned int VoxeliseFilter::getRefreshEmitMask() const
 	return STREAM_TYPE_VOXEL | STREAM_TYPE_DRAW;
 }
 
+unsigned int VoxeliseFilter::getRefreshUseMask() const
+{
+	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
+}
 
 void VoxeliseFilter::setPropFromBinding(const SelectionBinding &b)
 {
 }	
 
+#ifdef DEBUG
+bool voxelSingleCountTest()
+{
+	//Test counting a single vector
+	
+	vector<IonHit> ionVec;
+
+	ionVec.resize(5);
+	ionVec[0].setPos(Point3D(0.1,0.1,0.1));
+	ionVec[1].setPos(Point3D(0.1,0.0,0.1));
+	ionVec[2].setPos(Point3D(0.0,0.1,0.1));
+	ionVec[3].setPos(Point3D(0.1,0.1,0.0));
+	ionVec[4].setPos(Point3D(0.0,0.1,0.0));
+
+	for(unsigned int ui=0;ui<ionVec.size();ui++)
+		ionVec[ui].setMassToCharge(1);
+
+	IonStreamData *ionData = new IonStreamData;
+	std::swap(ionData->data,ionVec);
+	
+	size_t numIons=ionData->data.size();
+	
+	VoxeliseFilter *f = new VoxeliseFilter;
+	f->setCaching(false);
+
+	bool needUpdate;
+	TEST(f->setProperty(0,KEY_NBINSX,"4",needUpdate),"num bins x");
+	TEST(f->setProperty(0,KEY_NBINSY,"4",needUpdate),"num bins y");
+	TEST(f->setProperty(0,KEY_NBINSZ,"4",needUpdate),"num bins z");
+
+
+	vector<const FilterStreamData*> streamIn,streamOut;
+	streamIn.push_back(ionData);
+
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	delete f;
+
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_VOXEL,"Stream type");
+
+
+	const VoxelStreamData *v= (const VoxelStreamData*)streamOut[0];
+
+	TEST(v->data.max() <=numIons,
+			"voxel max less than input stream")
+
+	TEST(v->data.min() >= 0.0f,"voxel counting minimum sanity");
+
+	
+	float dataSum;
+	sumVoxels(v->data,dataSum);
+	TEST(fabs(dataSum - (float)numIons ) < 
+		sqrt(std::numeric_limits<float>::epsilon()),"voxel counting all input ions ");
+
+	delete ionData;
+	delete streamOut[0];
+
+	return true;
+}
+
+bool voxelMultiCountTest()
+{
+	//Test counting multiple data streams containing ranged data 
+	
+	vector<const FilterStreamData*> streamIn,streamOut;
+	vector<IonHit> ionVec;
+
+	ionVec.resize(5);
+	ionVec[0].setPos(Point3D(0.1,0.1,0.1));
+	ionVec[1].setPos(Point3D(0.1,0.0,0.1));
+	ionVec[2].setPos(Point3D(0.0,0.1,0.1));
+	ionVec[3].setPos(Point3D(0.1,0.1,0.0));
+	ionVec[4].setPos(Point3D(0.0,0.1,0.0));
+
+	IonStreamData *ionData[2];
+	RangeStreamData *rngStream;
+	rngStream = new RangeStreamData;
+	rngStream->rangeFile= new RangeFile;
+
+	RGBf col; col.red=col.green=col.blue=1.0f;
+
+	const unsigned int MAX_NUM_RANGES=2;
+	for(unsigned int ui=0;ui<MAX_NUM_RANGES;ui++)
+	{
+		size_t ionNum;
+
+		//Add a new ion "a1, a2... etc"
+		string sTmp,sTmp2;
+		sTmp="a";
+		stream_cast(sTmp2,ui);
+		sTmp+=sTmp2;
+		ionNum=rngStream->rangeFile->addIon(sTmp,sTmp,col);
+		rngStream->rangeFile->addRange((float)ui-0.5f,(float)ui+0.5f,ionNum);
+
+		//Change m/c value for ion
+		for(unsigned int uj=0;uj<ionVec.size();uj++)
+			ionVec[uj].setMassToCharge(ui);
+		
+		ionData[ui]= new IonStreamData;
+		ionData[ui]->data.resize(ionVec.size());
+		std::copy(ionVec.begin(),ionVec.end(),ionData[ui]->data.begin());
+		streamIn.push_back(ionData[ui]);
+	}
+
+	rngStream->enabledIons.resize(rngStream->rangeFile->getNumIons());
+	rngStream->enabledRanges.resize(rngStream->rangeFile->getNumRanges());
+
+	streamIn.push_back(rngStream);
+
+	VoxeliseFilter *f = new VoxeliseFilter;
+
+	//Initialise range data
+	f->initFilter(streamIn,streamOut);
+
+
+	f->setCaching(false);
+	
+	bool needUpdate;
+	TEST(f->setProperty(0,KEY_NBINSX,"4",needUpdate),"num bins x");
+	TEST(f->setProperty(0,KEY_NBINSY,"4",needUpdate),"num bins y");
+	TEST(f->setProperty(0,KEY_NBINSZ,"4",needUpdate),"num bins z");
+
+
+	TEST(f->setProperty(0,KEY_NORMALISE_TYPE,
+		TRANS(NORMALISE_TYPE_STRING[VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL]),needUpdate), 
+				"Set normalise mode");
+
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	delete f;
+	TEST(streamOut.size() == 2,"stream count");
+	TEST(streamOut[1]->getStreamType() == STREAM_TYPE_VOXEL,"Stream type");
+	
+	const VoxelStreamData *v= (const VoxelStreamData*)streamOut[1];
+
+	TEST(v->data.max() <=1.0f,
+			"voxel max less than input stream")
+	TEST(v->data.min() >= 0.0f,"voxel counting minimum sanity");
+
+
+	for(unsigned int ui=0;ui<v->data.getSize();ui++)
+	{
+		float delta;
+		delta=(v->data.getData(ui) - v->data.getData(0) );
+		ASSERT( v->data.getData(ui) == 0 || delta < std::numeric_limits<float>::epsilon());
+	}
+
+	delete v;
+
+	delete rngStream->rangeFile;
+	delete rngStream;
+
+	return true;
+}
+
+bool voxelConvolveTest()
+{
+	WARN(false,"Voxel convolve test not implemented");
+	return true;
+}
+
+bool VoxeliseFilter::runUnitTests()
+{
+
+	if(!voxelSingleCountTest())
+		return false;
+
+	if(!voxelMultiCountTest())
+		return false;
+
+
+	if(!voxelConvolveTest())
+		return false;
+
+	return true;
+}
+
+#endif

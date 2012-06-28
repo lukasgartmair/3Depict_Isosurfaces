@@ -10,6 +10,9 @@ class BoundingBoxFilter : public Filter
 	private:
 		//!visibility
 		bool isVisible;
+
+		//!visual representation mode
+		unsigned int boundStyle;
 		//!Should tick positions be computed using fixed tick counts or spacing?
 		bool fixedNumTicks;
 		//!Number of ticks (XYZ) if using fixed num ticks
@@ -23,9 +26,17 @@ class BoundingBoxFilter : public Filter
 		float rLine,gLine,bLine,aLine;
 		//!Line width 
 		float lineWidth;
-	
 		//!Use 3D text?
 		bool threeDText;
+
+
+		//!Draw tick-style bounding box and associated annotations
+		void drawTicks(const BoundCube &bTotal,DrawStreamData *d) const;
+
+
+		//!Draw  "dimension" style bounding box and associated annotation
+		void drawDimension(const BoundCube &bTotal, DrawStreamData *d) const;
+
 	public:
 		BoundingBoxFilter(); 
 		//!Duplicate filter contents, excluding cache.
@@ -64,7 +75,10 @@ class BoundingBoxFilter : public Filter
 
 		//!Get the stream types that will be generated during ::refresh	
 		unsigned int getRefreshEmitMask() const;	
-		
+
+		//!Refresh ignore mask, for filter streams that will not be utilised in the computation (except for pass-through)
+		unsigned int getRefreshUseMask() const;
+
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b) {ASSERT(false);} ;
 
