@@ -1,0 +1,13 @@
+Index: 3depict-0.0.11/configure
+===================================================================
+--- 3depict-0.0.11.orig/configure	2012-06-18 03:56:03.000000000 +0100
++++ 3depict-0.0.11/configure	2012-06-18 03:56:31.000000000 +0100
+@@ -5786,7 +5786,7 @@
+ if test "x$ftgl_prefix" != "x" ; then
+ 	#use the supplied CFLAGS. assume LIBS
+ 	FTGL_CFLAGS="-I$ftgl_prefix/include/ -L$ftgl_prefix/lib/"
+-	FTGL_LIBS="-lFTGL"
++	FTGL_LIBS="-lftgl"
+ else
+ 	if test "x$ftgl_dont_use_pkg" = "xyes" ; then
+ 
