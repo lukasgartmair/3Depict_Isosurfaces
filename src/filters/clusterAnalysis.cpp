@@ -2563,8 +2563,8 @@ PlotStreamData* ClusterAnalysisFilter::clusterSizeDistribution(const vector<vect
 	dist->b=0;
 
 
-	dist->xLabel="Cluster Size";
-	dist->yLabel="Frequency";
+	dist->xLabel=TRANS("Cluster Size");
+	dist->yLabel=TRANS("Frequency");
 
 	dist->dataLabel=SIZE_DIST_DATALABEL;
 	dist->logarithmic=logClusterSize;
@@ -2789,11 +2789,11 @@ void ClusterAnalysisFilter::genCompositionVersusSize(const vector<vector<IonHit>
 		p->g=ionColour.green;
 		p->b=ionColour.blue;
 
-		p->xLabel="Cluster Size";
+		p->xLabel=TRANS("Cluster Size");
 		if(normaliseComposition)
-			p->yLabel="Composition";
+			p->yLabel=TRANS("Composition");
 		else
-			p->yLabel="Frequency";
+			p->yLabel=TRANS("Frequency");
 
 		p->dataLabel=string(CHEM_DIST_DATALABEL) + string(":") + rng->getName(ui);
 		p->logarithmic=logClusterSize && !normaliseComposition;

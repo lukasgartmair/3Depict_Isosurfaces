@@ -22,7 +22,7 @@ public:
     // begin wxGlade: FilterErrorDialog::ids
     // end wxGlade
 
-    FilterErrorDialog(wxWindow* parent, int id=wxID_ANY, const wxString& title=_("Filter Errors"), const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_DIALOG_STYLE);
+    FilterErrorDialog(wxWindow* parent, int id=wxID_ANY, const wxString& title=wxT(""), const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_DIALOG_STYLE);
 
     void SetText(const std::vector<std::string> &text);
 private:

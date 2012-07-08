@@ -22,6 +22,7 @@ FilterErrorDialog::FilterErrorDialog(wxWindow* parent, int id, const wxString& t
     labelWarning = new wxStaticText(this, wxID_ANY, wxTRANS("Warning"));
     btnOK = new wxButton(this, wxID_OK, wxEmptyString);
 
+    SetTitle(wxTRANS("Filter Errors"));
     set_properties();
     do_layout();
     // end wxGlade

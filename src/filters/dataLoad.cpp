@@ -248,7 +248,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 				{
 					consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
 					delete ionData;
-					errStr=POS_ERR_STRINGS[uiErr];
+					errStr=TRANS(POS_ERR_STRINGS[uiErr]);
 					return uiErr;
 				}
 			}	
@@ -259,7 +259,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 				{
 					consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
 					delete ionData;
-					errStr=POS_ERR_STRINGS[uiErr];
+					errStr=TRANS(POS_ERR_STRINGS[uiErr]);
 					return uiErr;
 				}
 			}	

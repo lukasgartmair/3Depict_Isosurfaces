@@ -1023,9 +1023,9 @@ std::string IonClipFilter::getErrString(unsigned int code) const
 	switch(code)
 	{
 		case BAD_ALLOC:
-			return std::string("Insufficient mem. for Ionclip");
+			return std::string(TRANS("Insufficient memory for clip"));
 		case CALLBACK_FAIL:
-			return std::string("Ionclip Aborted");
+			return std::string(TRANS("Clip Aborted"));
 	}
 	ASSERT(false);
 }

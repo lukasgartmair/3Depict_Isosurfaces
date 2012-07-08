@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2012-06-24 18:29+0100\n"
+"POT-Creation-Date: 2012-07-08 22:21+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,23 +17,23 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Language: \n"
 
-#: ../src/configFile.cpp:190
+#: ../src/configFile.cpp:194
 msgid "Config file present, but is not valid (root node test)"
 msgstr ""
 
-#: ../src/configFile.cpp:231
+#: ../src/configFile.cpp:235
 msgid "Unable to interpret recent file entry"
 msgstr ""
 
-#: ../src/configFile.cpp:271
+#: ../src/configFile.cpp:275
 msgid "Unable to determine filter type in defaults listing."
 msgstr ""
 
-#: ../src/configFile.cpp:575
+#: ../src/configFile.cpp:579
 msgid "Online access for non win32/apple platforms is intentionally disabled, "
 msgstr ""
 
-#: ../src/configFile.cpp:576
+#: ../src/configFile.cpp:580
 msgid ""
 "regardless of the settings you use here. Use your package manager to keep up-"
 "to-date"
@@ -296,493 +296,493 @@ msgstr ""
 msgid "Voxelisation"
 msgstr ""
 
-#: ../src/3Depict.cpp:459 ../src/3Depict.cpp:465
+#: ../src/3Depict.cpp:469 ../src/3Depict.cpp:475
 msgid ""
 "Unable to initialise the openGL (3D) panel. Program cannot start. Please "
 "check your video drivers."
 msgstr ""
 
-#: ../src/3Depict.cpp:460
+#: ../src/3Depict.cpp:470
 msgid "OpenGL Failed"
 msgstr ""
 
-#: ../src/3Depict.cpp:484
+#: ../src/3Depict.cpp:494
 msgid "&Open...\tCtrl+O"
 msgstr ""
 
-#: ../src/3Depict.cpp:484
+#: ../src/3Depict.cpp:494
 msgid "Open state file"
 msgstr ""
 
-#: ../src/3Depict.cpp:485
+#: ../src/3Depict.cpp:495
 msgid "&Merge...\tCtrl+Shift+O"
 msgstr ""
 
-#: ../src/3Depict.cpp:485
+#: ../src/3Depict.cpp:495
 msgid "Merge other file"
 msgstr ""
 
-#: ../src/3Depict.cpp:489
+#: ../src/3Depict.cpp:499
 msgid "&Recent"
 msgstr ""
 
-#: ../src/3Depict.cpp:490
+#: ../src/3Depict.cpp:500
 msgid "&Save\tCtrl+S"
 msgstr ""
 
-#: ../src/3Depict.cpp:490
+#: ../src/3Depict.cpp:500
 msgid "Save state to file"
 msgstr ""
 
-#: ../src/3Depict.cpp:492
+#: ../src/3Depict.cpp:502
 msgid "Save &As...\tCtrl+Shift+S"
 msgstr ""
 
-#: ../src/3Depict.cpp:492
+#: ../src/3Depict.cpp:502
 msgid "Save current state to new file"
 msgstr ""
 
-#: ../src/3Depict.cpp:495
+#: ../src/3Depict.cpp:505
 msgid "&Plot...\tCtrl+P"
 msgstr ""
 
-#: ../src/3Depict.cpp:495
+#: ../src/3Depict.cpp:505
 msgid "Export Current Plot"
 msgstr ""
 
-#: ../src/3Depict.cpp:496
+#: ../src/3Depict.cpp:506
 msgid "&Image...\tCtrl+I"
 msgstr ""
 
-#: ../src/3Depict.cpp:496
+#: ../src/3Depict.cpp:506
 msgid "Export Current 3D View"
 msgstr ""
 
-#: ../src/3Depict.cpp:497
+#: ../src/3Depict.cpp:507
 msgid "Ion&s...\tCtrl+N"
 msgstr ""
 
-#: ../src/3Depict.cpp:497
+#: ../src/3Depict.cpp:507
 msgid "Export Ion Data"
 msgstr ""
 
-#: ../src/3Depict.cpp:498
+#: ../src/3Depict.cpp:508
 msgid "Ran&ges...\tCtrl+G"
 msgstr ""
 
-#: ../src/3Depict.cpp:498
+#: ../src/3Depict.cpp:508
 msgid "Export Range Data"
 msgstr ""
 
-#: ../src/3Depict.cpp:499
+#: ../src/3Depict.cpp:509
 msgid "Ani&mation...\tCtrl+M"
 msgstr ""
 
-#: ../src/3Depict.cpp:499
+#: ../src/3Depict.cpp:509
 msgid "Export Animation"
 msgstr ""
 
-#: ../src/3Depict.cpp:500
+#: ../src/3Depict.cpp:510
 msgid "Pac&kage...\tCtrl+K"
 msgstr ""
 
-#: ../src/3Depict.cpp:500
+#: ../src/3Depict.cpp:510
 msgid "Export analysis package"
 msgstr ""
 
-#: ../src/3Depict.cpp:502
+#: ../src/3Depict.cpp:512
 msgid "&Export"
 msgstr ""
 
-#: ../src/3Depict.cpp:505
+#: ../src/3Depict.cpp:515
 msgid "&Quit\tCtrl+Q"
 msgstr ""
 
-#: ../src/3Depict.cpp:505 ../src/3Depict.cpp:507
+#: ../src/3Depict.cpp:515 ../src/3Depict.cpp:517
 msgid "Exit Program"
 msgstr ""
 
-#: ../src/3Depict.cpp:507
+#: ../src/3Depict.cpp:517
 msgid "E&xit"
 msgstr ""
 
-#: ../src/3Depict.cpp:509
+#: ../src/3Depict.cpp:519
 msgid "&File"
 msgstr ""
 
-#: ../src/3Depict.cpp:512
+#: ../src/3Depict.cpp:522
 msgid "&Background Colour...\tCtrl+B"
 msgstr ""
 
-#: ../src/3Depict.cpp:512
+#: ../src/3Depict.cpp:522
 msgid "Change background colour"
 msgstr ""
 
-#: ../src/3Depict.cpp:516
+#: ../src/3Depict.cpp:526
 msgid "&Control Pane\tF3"
 msgstr ""
 
-#: ../src/3Depict.cpp:516 ../src/3Depict.cpp:519
+#: ../src/3Depict.cpp:526 ../src/3Depict.cpp:529
 msgid "Toggle left control pane"
 msgstr ""
 
-#: ../src/3Depict.cpp:519
+#: ../src/3Depict.cpp:529
 msgid "&Control Pane\tAlt+C"
 msgstr ""
 
-#: ../src/3Depict.cpp:525
+#: ../src/3Depict.cpp:535
 msgid "&Raw Data Pane\tF4"
 msgstr ""
 
-#: ../src/3Depict.cpp:525 ../src/3Depict.cpp:528
+#: ../src/3Depict.cpp:535 ../src/3Depict.cpp:538
 msgid "Toggle raw data  pane (bottom)"
 msgstr ""
 
-#: ../src/3Depict.cpp:528
+#: ../src/3Depict.cpp:538
 msgid "&Raw Data Pane\tAlt+R"
 msgstr ""
 
-#: ../src/3Depict.cpp:532
+#: ../src/3Depict.cpp:542
 msgid "&Plot List\tF5"
 msgstr ""
 
-#: ../src/3Depict.cpp:532 ../src/3Depict.cpp:534
+#: ../src/3Depict.cpp:542 ../src/3Depict.cpp:544
 msgid "Toggle plot list"
 msgstr ""
 
-#: ../src/3Depict.cpp:534
+#: ../src/3Depict.cpp:544
 msgid "&Plot List\tAlt+P"
 msgstr ""
 
-#: ../src/3Depict.cpp:540
+#: ../src/3Depict.cpp:550
 msgid "&Legend\tCtrl+L"
 msgstr ""
 
-#: ../src/3Depict.cpp:540
+#: ../src/3Depict.cpp:550
 msgid "Toggle Legend display"
 msgstr ""
 
-#: ../src/3Depict.cpp:542
+#: ../src/3Depict.cpp:552
 msgid "P&lot..."
 msgstr ""
 
-#: ../src/3Depict.cpp:543
+#: ../src/3Depict.cpp:553
 msgid "&Axis\tCtrl+Shift+I"
 msgstr ""
 
-#: ../src/3Depict.cpp:543
+#: ../src/3Depict.cpp:553
 msgid "Toggle World Axis display"
 msgstr ""
 
-#: ../src/3Depict.cpp:548
+#: ../src/3Depict.cpp:558
 msgid "&Fullscreen mode\tF11"
 msgstr ""
 
-#: ../src/3Depict.cpp:548 ../src/3Depict.cpp:550
+#: ../src/3Depict.cpp:558 ../src/3Depict.cpp:560
 msgid "Next fullscreen mode: with toolbars"
 msgstr ""
 
-#: ../src/3Depict.cpp:550
+#: ../src/3Depict.cpp:560
 msgid "&Fullscreen mode\tCtrl+Shift+F"
 msgstr ""
 
-#: ../src/3Depict.cpp:555
+#: ../src/3Depict.cpp:565
 msgid "&Undo\tCtrl+Z"
 msgstr ""
 
-#: ../src/3Depict.cpp:557
+#: ../src/3Depict.cpp:567
 msgid "&Redo\tCtrl+Y"
 msgstr ""
 
-#: ../src/3Depict.cpp:560
+#: ../src/3Depict.cpp:570
 msgid "&Preferences"
 msgstr ""
 
-#: ../src/3Depict.cpp:562
+#: ../src/3Depict.cpp:572
 msgid "&Edit"
 msgstr ""
 
-#: ../src/3Depict.cpp:565
+#: ../src/3Depict.cpp:575
 msgid "&View"
 msgstr ""
 
-#: ../src/3Depict.cpp:567
+#: ../src/3Depict.cpp:577
 msgid "&Help...\tCtrl+H"
 msgstr ""
 
-#: ../src/3Depict.cpp:567
+#: ../src/3Depict.cpp:577
 msgid "Show help files and documentation"
 msgstr ""
 
-#: ../src/3Depict.cpp:568
+#: ../src/3Depict.cpp:578
 msgid "&Contact..."
 msgstr ""
 
-#: ../src/3Depict.cpp:568
+#: ../src/3Depict.cpp:578
 msgid "Open contact page"
 msgstr ""
 
-#: ../src/3Depict.cpp:570
+#: ../src/3Depict.cpp:580
 msgid "&About..."
 msgstr ""
 
-#: ../src/3Depict.cpp:570
+#: ../src/3Depict.cpp:580
 msgid "Information about this program"
 msgstr ""
 
-#: ../src/3Depict.cpp:571
+#: ../src/3Depict.cpp:581
 msgid "&Help"
 msgstr ""
 
-#: ../src/3Depict.cpp:573
+#: ../src/3Depict.cpp:583
 msgid "Stashed Filters"
 msgstr ""
 
-#: ../src/3Depict.cpp:578
+#: ../src/3Depict.cpp:588
 msgid "Data Filtering"
 msgstr ""
 
-#: ../src/3Depict.cpp:602
+#: ../src/3Depict.cpp:612
 msgid "Last Outputs"
 msgstr ""
 
-#: ../src/3Depict.cpp:604
+#: ../src/3Depict.cpp:614
 msgid "Auto Refresh"
 msgstr ""
 
-#: ../src/3Depict.cpp:610
+#: ../src/3Depict.cpp:620
 msgid "Filter settings"
 msgstr ""
 
-#: ../src/3Depict.cpp:612
+#: ../src/3Depict.cpp:622
 msgid "Camera Name"
 msgstr ""
 
-#: ../src/3Depict.cpp:618
+#: ../src/3Depict.cpp:628
 msgid "3D Post-processing"
 msgstr ""
 
-#: ../src/3Depict.cpp:620
+#: ../src/3Depict.cpp:630
 msgid "Enable Cropping"
 msgstr ""
 
-#: ../src/3Depict.cpp:622 ../src/3Depict.cpp:633
+#: ../src/3Depict.cpp:632 ../src/3Depict.cpp:643
 msgid "x-y"
 msgstr ""
 
-#: ../src/3Depict.cpp:623 ../src/3Depict.cpp:634
+#: ../src/3Depict.cpp:633 ../src/3Depict.cpp:644
 msgid "x-z"
 msgstr ""
 
-#: ../src/3Depict.cpp:624 ../src/3Depict.cpp:635
+#: ../src/3Depict.cpp:634 ../src/3Depict.cpp:645
 msgid "y-x"
 msgstr ""
 
-#: ../src/3Depict.cpp:625 ../src/3Depict.cpp:636
+#: ../src/3Depict.cpp:635 ../src/3Depict.cpp:646
 msgid "y-z"
 msgstr ""
 
-#: ../src/3Depict.cpp:626 ../src/3Depict.cpp:637
+#: ../src/3Depict.cpp:636 ../src/3Depict.cpp:647
 msgid "z-x"
 msgstr ""
 
-#: ../src/3Depict.cpp:627 ../src/3Depict.cpp:638
+#: ../src/3Depict.cpp:637 ../src/3Depict.cpp:648
 msgid "z-y"
 msgstr ""
 
-#: ../src/3Depict.cpp:642
+#: ../src/3Depict.cpp:652
 msgid "Use camera coordinates"
 msgstr ""
 
-#: ../src/3Depict.cpp:643
+#: ../src/3Depict.cpp:653
 msgid "dX"
 msgstr ""
 
-#: ../src/3Depict.cpp:645
+#: ../src/3Depict.cpp:655
 msgid "dY"
 msgstr ""
 
-#: ../src/3Depict.cpp:647
+#: ../src/3Depict.cpp:657
 msgid "dZ"
 msgstr ""
 
-#: ../src/3Depict.cpp:649
+#: ../src/3Depict.cpp:659
 msgid "Enable Anaglyphic Stereo"
 msgstr ""
 
-#: ../src/3Depict.cpp:650
+#: ../src/3Depict.cpp:660
 msgid "Flip Channels"
 msgstr ""
 
-#: ../src/3Depict.cpp:651
+#: ../src/3Depict.cpp:661
 msgid "Anaglyph Mode"
 msgstr ""
 
-#: ../src/3Depict.cpp:653
+#: ../src/3Depict.cpp:663
 msgid "Red-Blue"
 msgstr ""
 
-#: ../src/3Depict.cpp:654
+#: ../src/3Depict.cpp:664
 msgid "Red-Green"
 msgstr ""
 
-#: ../src/3Depict.cpp:655
+#: ../src/3Depict.cpp:665
 msgid "Red-Cyan"
 msgstr ""
 
-#: ../src/3Depict.cpp:656
+#: ../src/3Depict.cpp:666
 msgid "Green-Magenta"
 msgstr ""
 
-#: ../src/3Depict.cpp:660
+#: ../src/3Depict.cpp:670
 msgid "Baseline Separation"
 msgstr ""
 
-#: ../src/3Depict.cpp:662
+#: ../src/3Depict.cpp:672
 msgid "Smooth && translucent objects"
 msgstr ""
 
-#: ../src/3Depict.cpp:664
+#: ../src/3Depict.cpp:674
 msgid "3D lighting"
 msgstr ""
 
-#: ../src/3Depict.cpp:666
+#: ../src/3Depict.cpp:676
 msgid "Fast and weak randomisation."
 msgstr ""
 
-#: ../src/3Depict.cpp:668
+#: ../src/3Depict.cpp:678
 msgid "Filter caching"
 msgstr ""
 
-#: ../src/3Depict.cpp:670
+#: ../src/3Depict.cpp:680
 msgid "Max. Ram usage (%)"
 msgstr ""
 
-#: ../src/3Depict.cpp:674 ../src/dialogs/prefDialog.cpp:88
+#: ../src/3Depict.cpp:684 ../src/dialogs/prefDialog.cpp:88
 msgid "Plot List"
 msgstr ""
 
-#: ../src/3Depict.cpp:724 ../src/filters/transform.cpp:1061
+#: ../src/3Depict.cpp:734 ../src/filters/transform.cpp:1061
 msgid "Type"
 msgstr ""
 
-#: ../src/3Depict.cpp:725
+#: ../src/3Depict.cpp:735
 msgid "Num"
 msgstr ""
 
-#: ../src/3Depict.cpp:790
+#: ../src/3Depict.cpp:800
 msgid "Warning: Your configuration file appears to be invalid:\n"
 msgstr ""
 
-#: ../src/3Depict.cpp:791
+#: ../src/3Depict.cpp:801
 msgid "\tConfig Load: "
 msgstr ""
 
-#: ../src/3Depict.cpp:1025 ../src/3Depict.cpp:1075
+#: ../src/3Depict.cpp:1035 ../src/3Depict.cpp:1085
 msgid "Select Data or State File..."
 msgstr ""
 
-#: ../src/3Depict.cpp:1026
+#: ../src/3Depict.cpp:1036
 msgid ""
 "Readable files (*.xml, *.pos, *.txt,*.csv)|*.xml;*.pos;*.txt;*.csv|POS File "
 "(*.pos)|*.pos|XML State File (*.xml)|*.xml|Text Data Files (*.txt/csv)|*.txt;"
 "*.csv|All Files (*)|*"
 msgstr ""
 
-#: ../src/3Depict.cpp:1060 ../src/3Depict.cpp:1449
+#: ../src/3Depict.cpp:1070 ../src/3Depict.cpp:1454
 msgid "Loaded file."
 msgstr ""
 
-#: ../src/3Depict.cpp:1076
+#: ../src/3Depict.cpp:1086
 msgid ""
 "3Depict file (*.xml, *.pos,*.txt)|*.xml;*.pos;*.txt|POS File (*.pos)|*.pos|"
 "XML State File (*.xml)|*.xml|All Files (*)|*"
 msgstr ""
 
-#: ../src/3Depict.cpp:1095
+#: ../src/3Depict.cpp:1105
 msgid "Merged file."
 msgstr ""
 
-#: ../src/3Depict.cpp:1220
+#: ../src/3Depict.cpp:1222
 msgid "Tip: You can use ⌘ (command) to merge"
 msgstr ""
 
-#: ../src/3Depict.cpp:1222
+#: ../src/3Depict.cpp:1224
 msgid "Tip: You can use ctrl to merge"
 msgstr ""
 
-#: ../src/3Depict.cpp:1271
+#: ../src/3Depict.cpp:1273
 msgid ""
 "Error loading state file.\n"
 "See console for more info."
 msgstr ""
 
-#: ../src/3Depict.cpp:1272
+#: ../src/3Depict.cpp:1274
 msgid "Load error"
 msgstr ""
 
-#: ../src/3Depict.cpp:1296
+#: ../src/3Depict.cpp:1298
 msgid ""
 "This state file contains filters that can be unsafe to run\n"
 "Do you wish to remove these before continuing?."
 msgstr ""
 
-#: ../src/3Depict.cpp:1297
+#: ../src/3Depict.cpp:1299
 msgid "Security warning"
 msgstr ""
 
-#: ../src/3Depict.cpp:1484 ../src/3Depict.cpp:1635 ../src/3Depict.cpp:1728
-#: ../src/3Depict.cpp:1820 ../src/3Depict.cpp:1937 ../src/3Depict.cpp:2059
+#: ../src/3Depict.cpp:1489 ../src/3Depict.cpp:1640 ../src/3Depict.cpp:1733
+#: ../src/3Depict.cpp:1825 ../src/3Depict.cpp:1942 ../src/3Depict.cpp:2064
 #: ../src/dialogs/ExportRngDialog.cpp:167
 msgid "Unable to save. Check output destination can be written to."
 msgstr ""
 
-#: ../src/3Depict.cpp:1487 ../src/3Depict.cpp:1582 ../src/3Depict.cpp:1638
-#: ../src/3Depict.cpp:1731 ../src/3Depict.cpp:1823 ../src/3Depict.cpp:1840
-#: ../src/3Depict.cpp:1940 ../src/3Depict.cpp:2062
+#: ../src/3Depict.cpp:1492 ../src/3Depict.cpp:1587 ../src/3Depict.cpp:1643
+#: ../src/3Depict.cpp:1736 ../src/3Depict.cpp:1828 ../src/3Depict.cpp:1845
+#: ../src/3Depict.cpp:1945 ../src/3Depict.cpp:2067
 #: ../src/dialogs/ExportRngDialog.cpp:170 ../src/wxcomponents.cpp:497
 msgid "Save error"
 msgstr ""
 
-#: ../src/3Depict.cpp:1512
+#: ../src/3Depict.cpp:1517
 msgid "No plot available. Please create a plot before exporting."
 msgstr ""
 
-#: ../src/3Depict.cpp:1514 ../src/3Depict.cpp:1568
+#: ../src/3Depict.cpp:1519 ../src/3Depict.cpp:1573
 msgid "Unable to save"
 msgstr ""
 
-#: ../src/3Depict.cpp:1521
+#: ../src/3Depict.cpp:1526
 msgid "Save plot..."
 msgstr ""
 
-#: ../src/3Depict.cpp:1522
+#: ../src/3Depict.cpp:1527
 msgid ""
 "By Extension (svg,png)|*.svg;*.png|Scalable Vector Graphics File (*.svg)|*."
 "svg|PNG File (*.png)|*.png|All Files (*)|*"
 msgstr ""
 
-#: ../src/3Depict.cpp:1551 ../src/3Depict.cpp:1604 ../src/3Depict.cpp:1661
+#: ../src/3Depict.cpp:1556 ../src/3Depict.cpp:1609 ../src/3Depict.cpp:1666
 msgid "Choose resolution"
 msgstr ""
 
-#: ../src/3Depict.cpp:1566
+#: ../src/3Depict.cpp:1571
 msgid "Unknown file extension. Please use \"svg\" or \"png\""
 msgstr ""
 
-#: ../src/3Depict.cpp:1588
+#: ../src/3Depict.cpp:1593
 msgid "Saved plot: "
 msgstr ""
 
-#: ../src/3Depict.cpp:1595 ../src/3Depict.cpp:1653
+#: ../src/3Depict.cpp:1600 ../src/3Depict.cpp:1658
 msgid "Save Image..."
 msgstr ""
 
-#: ../src/3Depict.cpp:1596 ../src/3Depict.cpp:1654
+#: ../src/3Depict.cpp:1601 ../src/3Depict.cpp:1659
 msgid "PNG File (*.png)|*.png|All Files (*)|*"
 msgstr ""
 
-#: ../src/3Depict.cpp:1619
+#: ../src/3Depict.cpp:1624
 msgid ""
 "Limitation on the screenshot dimension; please ensure that both width and "
 "height exceed the initial values,\n"
@@ -790,15 +790,15 @@ msgid ""
 " If this bothers you, please submit a bug."
 msgstr ""
 
-#: ../src/3Depict.cpp:1620 ../src/3Depict.cpp:1680
+#: ../src/3Depict.cpp:1625 ../src/3Depict.cpp:1685
 msgid "Program limitation"
 msgstr ""
 
-#: ../src/3Depict.cpp:1644 ../src/3Depict.cpp:1738
+#: ../src/3Depict.cpp:1649 ../src/3Depict.cpp:1743
 msgid "Saved 3D View :"
 msgstr ""
 
-#: ../src/3Depict.cpp:1679
+#: ../src/3Depict.cpp:1684
 msgid ""
 "Limitation on the screenshot dimension; please ensure that both width and "
 "height exceed the initial values,\n"
@@ -806,332 +806,336 @@ msgid ""
 " If this bothers, please submit a bug."
 msgstr ""
 
-#: ../src/3Depict.cpp:1702
+#: ../src/3Depict.cpp:1707
 msgid "Number of frames"
 msgstr ""
 
-#: ../src/3Depict.cpp:1702
+#: ../src/3Depict.cpp:1707
 msgid "Frame count"
 msgstr ""
 
-#: ../src/3Depict.cpp:1749 ../src/3Depict.cpp:1865 ../src/3Depict.cpp:1967
+#: ../src/3Depict.cpp:1754 ../src/3Depict.cpp:1870 ../src/3Depict.cpp:1972
 msgid "No filters means no data to export"
 msgstr ""
 
-#: ../src/3Depict.cpp:1755
+#: ../src/3Depict.cpp:1760
 msgid "Package name"
 msgstr ""
 
-#: ../src/3Depict.cpp:1756
+#: ../src/3Depict.cpp:1761
 msgid "Package directory name"
 msgstr ""
 
-#: ../src/3Depict.cpp:1758
+#: ../src/3Depict.cpp:1763
 msgid "AnalysisPackage"
 msgstr ""
 
-#: ../src/3Depict.cpp:1770
+#: ../src/3Depict.cpp:1775
 msgid "Package folder already exists, won't overwrite."
 msgstr ""
 
-#: ../src/3Depict.cpp:1771
+#: ../src/3Depict.cpp:1776
 msgid "Not available"
 msgstr ""
 
-#: ../src/3Depict.cpp:1802
+#: ../src/3Depict.cpp:1807
 msgid ""
 "Package folder creation failed\n"
 "check writing to this location is possible."
 msgstr ""
 
-#: ../src/3Depict.cpp:1803
+#: ../src/3Depict.cpp:1808
 msgid "Folder creation failed"
 msgstr ""
 
-#: ../src/3Depict.cpp:1830
+#: ../src/3Depict.cpp:1835
 msgid "Copying"
 msgstr ""
 
-#: ../src/3Depict.cpp:1831
+#: ../src/3Depict.cpp:1836
 msgid "Copying referenced files"
 msgstr ""
 
-#: ../src/3Depict.cpp:1839
+#: ../src/3Depict.cpp:1844
 msgid "Error copying file"
 msgstr ""
 
-#: ../src/3Depict.cpp:1854
+#: ../src/3Depict.cpp:1859
 msgid "Saved package: "
 msgstr ""
 
-#: ../src/3Depict.cpp:1875
+#: ../src/3Depict.cpp:1880
 msgid "Export"
 msgstr ""
 
-#: ../src/3Depict.cpp:1879 ../src/dialogs/ExportRngDialog.cpp:151
+#: ../src/3Depict.cpp:1884 ../src/dialogs/ExportRngDialog.cpp:151
 msgid "Save pos..."
 msgstr ""
 
-#: ../src/3Depict.cpp:1880
+#: ../src/3Depict.cpp:1885
 msgid "POS Data (*.pos)|*.pos|All Files (*)|*"
 msgstr ""
 
-#: ../src/3Depict.cpp:1908 ../src/3Depict.cpp:2012
+#: ../src/3Depict.cpp:1913 ../src/3Depict.cpp:2017
 msgid "File already exists, overwrite?"
 msgstr ""
 
-#: ../src/3Depict.cpp:1909 ../src/3Depict.cpp:2013 ../src/3Depict.cpp:2039
+#: ../src/3Depict.cpp:1914 ../src/3Depict.cpp:2018 ../src/3Depict.cpp:2044
 msgid "Overwrite?"
 msgstr ""
 
-#: ../src/3Depict.cpp:1946
+#: ../src/3Depict.cpp:1951
 msgid "Saved ions: "
 msgstr ""
 
-#: ../src/3Depict.cpp:1971
+#: ../src/3Depict.cpp:1976
 msgid "Export Ranges"
 msgstr ""
 
-#: ../src/3Depict.cpp:1994
+#: ../src/3Depict.cpp:1999
 msgid "Save state..."
 msgstr ""
 
-#: ../src/3Depict.cpp:1995
+#: ../src/3Depict.cpp:2000
 msgid "XML state file (*.xml)|*.xml|All Files (*)|*"
 msgstr ""
 
-#: ../src/3Depict.cpp:2038
+#: ../src/3Depict.cpp:2043
 msgid "Files have been referred to using relative paths. Keep relative paths?"
 msgstr ""
 
-#: ../src/3Depict.cpp:2075
+#: ../src/3Depict.cpp:2080
 msgid "Saved state: "
 msgstr ""
 
-#: ../src/3Depict.cpp:2411
+#: ../src/3Depict.cpp:2416
 msgid "Manual not found locally. Launching web browser"
 msgstr ""
 
-#: ../src/3Depict.cpp:2420
+#: ../src/3Depict.cpp:2425
 msgid "Opening contact page in external web browser"
 msgstr ""
 
-#: ../src/3Depict.cpp:2432
+#: ../src/3Depict.cpp:2437
 msgid "No filter stashes to edit."
 msgstr ""
 
-#: ../src/3Depict.cpp:2436
+#: ../src/3Depict.cpp:2441
 msgid "Filter Stashes"
 msgstr ""
 
-#: ../src/3Depict.cpp:2465
+#: ../src/3Depict.cpp:2470
 msgid "Quick and dirty analysis for point data."
 msgstr ""
 
-#: ../src/3Depict.cpp:2475
+#: ../src/3Depict.cpp:2480
 msgid "Compiled with wx Version: "
 msgstr ""
 
-#: ../src/3Depict.cpp:2496
+#: ../src/3Depict.cpp:2501
 msgid "Press enter to store new stash"
 msgstr ""
 
-#: ../src/3Depict.cpp:2502
+#: ../src/3Depict.cpp:2507
 msgid "Press enter to restore stash"
 msgstr ""
 
-#: ../src/3Depict.cpp:2540
+#: ../src/3Depict.cpp:2545
 msgid "Unable to create stash, selection invalid"
 msgstr ""
 
-#: ../src/3Depict.cpp:2552
+#: ../src/3Depict.cpp:2557
 msgid "Created new filter tree stash"
 msgstr ""
 
-#: ../src/3Depict.cpp:2675
+#: ../src/3Depict.cpp:2680
 msgid "Filter type not a data source - can't be at tree base"
 msgstr ""
 
-#: ../src/3Depict.cpp:2846
+#: ../src/3Depict.cpp:2851
 msgid "Moving - Hold ⌘ (command) to copy"
 msgstr ""
 
-#: ../src/3Depict.cpp:2848
+#: ../src/3Depict.cpp:2853
 msgid "Moving - Hold control to copy"
 msgstr ""
 
-#: ../src/3Depict.cpp:3119
+#: ../src/3Depict.cpp:3124
 msgid "Press enter to store new camera"
 msgstr ""
 
-#: ../src/3Depict.cpp:3121
+#: ../src/3Depict.cpp:3126
 msgid "Press enter to restore camera"
 msgstr ""
 
-#: ../src/3Depict.cpp:3146 ../src/3Depict.cpp:3183
+#: ../src/3Depict.cpp:3151 ../src/3Depict.cpp:3188
 msgid "Restored camera: "
 msgstr ""
 
-#: ../src/3Depict.cpp:3164
+#: ../src/3Depict.cpp:3169
 msgid "Stored camera: "
 msgstr ""
 
-#: ../src/3Depict.cpp:3245
+#: ../src/3Depict.cpp:3250
 msgid "Select an item from the filter tree before choosing a new filter"
 msgstr ""
 
-#: ../src/3Depict.cpp:3247
+#: ../src/3Depict.cpp:3252
 msgid "Load data source (file->open) before choosing a new filter"
 msgstr ""
 
-#: ../src/3Depict.cpp:3268
+#: ../src/3Depict.cpp:3273
 msgid "Select RNG File..."
 msgstr ""
 
-#: ../src/3Depict.cpp:3269
+#: ../src/3Depict.cpp:3274
 msgid ""
 "Range Files (*rng; *env; *rrng)|*rng;*env;*rrng|RNG File (*.rng)|*.rng|"
 "Environment File (*.env)|*.env|RRNG Files (*.rrng)|*.rrng|All Files (*)|*"
 msgstr ""
 
-#: ../src/3Depict.cpp:3289
+#: ../src/3Depict.cpp:3294
 msgid "Failed reading range file."
 msgstr ""
 
-#: ../src/3Depict.cpp:3294
+#: ../src/3Depict.cpp:3299
 msgid "Error loading file"
 msgstr ""
 
-#: ../src/3Depict.cpp:3364 ../src/3Depict.cpp:3431 ../src/3Depict.cpp:4699
-#: ../src/3Depict.cpp:5229
+#: ../src/3Depict.cpp:3369 ../src/3Depict.cpp:3435 ../src/3Depict.cpp:4718
+#: ../src/3Depict.cpp:5248
 msgid "Cons."
 msgstr ""
 
-#: ../src/3Depict.cpp:3402
+#: ../src/3Depict.cpp:3406
 msgid "Refresh Aborted."
 msgstr ""
 
-#: ../src/3Depict.cpp:3433
+#: ../src/3Depict.cpp:3439
+msgid "*Cons."
+msgstr ""
+
+#: ../src/3Depict.cpp:3441
 msgid "§Cons."
 msgstr ""
 
-#: ../src/3Depict.cpp:3531
+#: ../src/3Depict.cpp:3552
 msgid "Autosave complete."
 msgstr ""
 
-#: ../src/3Depict.cpp:3691
+#: ../src/3Depict.cpp:3712
 msgid "Aborted."
 msgstr ""
 
-#: ../src/3Depict.cpp:3717 ../src/3Depict.cpp:3721 ../src/3Depict.cpp:3734
-#: ../src/glPane.cpp:894 ../src/glPane.cpp:1059
+#: ../src/3Depict.cpp:3738 ../src/3Depict.cpp:3742 ../src/3Depict.cpp:3755
+#: ../src/glPane.cpp:890 ../src/glPane.cpp:1055
 msgid " of "
 msgstr ""
 
-#: ../src/3Depict.cpp:3732
+#: ../src/3Depict.cpp:3753
 msgid "Updated."
 msgstr ""
 
-#: ../src/3Depict.cpp:3738
+#: ../src/3Depict.cpp:3759
 msgid "\\% Done (Esc aborts)"
 msgstr ""
 
-#: ../src/3Depict.cpp:3740
+#: ../src/3Depict.cpp:3761
 msgid "\\% Done"
 msgstr ""
 
-#: ../src/3Depict.cpp:3989 ../src/3Depict.cpp:3996
+#: ../src/3Depict.cpp:4010 ../src/3Depict.cpp:4017
 msgid "Next Fullscreen mode: none"
 msgstr ""
 
-#: ../src/3Depict.cpp:3992
+#: ../src/3Depict.cpp:4013
 msgid "Next Fullscreen mode: complete"
 msgstr ""
 
-#: ../src/3Depict.cpp:4000
+#: ../src/3Depict.cpp:4021
 msgid "Next Fullscreen mode: with toolbars"
 msgstr ""
 
-#: ../src/3Depict.cpp:4017
+#: ../src/3Depict.cpp:4037
 msgid "Next Mode: No fullscreen"
 msgstr ""
 
-#: ../src/3Depict.cpp:4021
+#: ../src/3Depict.cpp:4041
 msgid "Next Mode: fullscreen w/o toolbar"
 msgstr ""
 
-#: ../src/3Depict.cpp:4025
+#: ../src/3Depict.cpp:4045
 msgid "Next Mode: fullscreen with toolbar"
 msgstr ""
 
-#: ../src/3Depict.cpp:4064
+#: ../src/3Depict.cpp:4083
 msgid "Use shift-click to force full refresh"
 msgstr ""
 
-#: ../src/3Depict.cpp:4327
+#: ../src/3Depict.cpp:4346
 msgid "No data to save"
 msgstr ""
 
-#: ../src/3Depict.cpp:4438
+#: ../src/3Depict.cpp:4457
 msgid "Aborting..."
 msgstr ""
 
-#: ../src/3Depict.cpp:4444
+#: ../src/3Depict.cpp:4463
 msgid ""
 "Waiting for refresh to abort. Exiting could lead to the program "
 "backgrounding. Exit anyway? "
 msgstr ""
 
-#: ../src/3Depict.cpp:4445 ../src/3Depict.cpp:4465
+#: ../src/3Depict.cpp:4464 ../src/3Depict.cpp:4484
 msgid "Confirmation request"
 msgstr ""
 
-#: ../src/3Depict.cpp:4464
+#: ../src/3Depict.cpp:4483
 msgid "Are you sure you wish to exit 3Depict?"
 msgstr ""
 
-#: ../src/3Depict.cpp:4727
+#: ../src/3Depict.cpp:4746
 msgid "Update Notice: New version "
 msgstr ""
 
-#: ../src/3Depict.cpp:4727
+#: ../src/3Depict.cpp:4746
 msgid " found online."
 msgstr ""
 
-#: ../src/3Depict.cpp:4731
+#: ../src/3Depict.cpp:4750
 msgid "Online Check: "
 msgstr ""
 
-#: ../src/3Depict.cpp:4731
+#: ../src/3Depict.cpp:4750
 msgid " is up-to-date."
 msgstr ""
 
-#: ../src/3Depict.cpp:4823
+#: ../src/3Depict.cpp:4842
 msgid "An auto-save state was found, would you like to restore it?."
 msgstr ""
 
-#: ../src/3Depict.cpp:4824
+#: ../src/3Depict.cpp:4843
 msgid "Autosave"
 msgstr ""
 
-#: ../src/3Depict.cpp:4831
+#: ../src/3Depict.cpp:4850
 msgid "Unable to load autosave file.."
 msgstr ""
 
-#: ../src/3Depict.cpp:5009
+#: ../src/3Depict.cpp:5028
 msgid "List of available filters"
 msgstr ""
 
-#: ../src/3Depict.cpp:5010
+#: ../src/3Depict.cpp:5029
 msgid "Tree of data filters"
 msgstr ""
 
-#: ../src/3Depict.cpp:5011
+#: ../src/3Depict.cpp:5030
 msgid ""
 "Enable/Disable automatic updates of data when filter change takes effect"
 msgstr ""
 
-#: ../src/3Depict.cpp:5014
+#: ../src/3Depict.cpp:5033
 msgid ""
 "Enable/Disable \"Alpha blending\" (transparency) in rendering system. This "
 "is used to smooth objects (avoids artefacts known as \"jaggies\") and to "
@@ -1139,14 +1143,14 @@ msgid ""
 "more blocky"
 msgstr ""
 
-#: ../src/3Depict.cpp:5015
+#: ../src/3Depict.cpp:5034
 msgid ""
 "Enable/Disable lighting calculations in rendering, for objects that request "
 "this. Lighting provides important depth cues for objects comprised of 3D "
 "surfaces. Disabling may allow faster rendering in complex scenes"
 msgstr ""
 
-#: ../src/3Depict.cpp:5016
+#: ../src/3Depict.cpp:5035
 msgid ""
 "Enable/Disable weak randomisation (Galois linear feedback shift register). "
 "Strong randomisation uses a much slower random selection method, but "
@@ -1154,155 +1158,155 @@ msgid ""
 "recommended for final analyses"
 msgstr ""
 
-#: ../src/3Depict.cpp:5017
+#: ../src/3Depict.cpp:5036
 msgid ""
 "Enable/Disable caching of intermediate results during filter updates. This "
 "will use less system RAM, though changes to any filter property will cause "
 "the entire filter tree to be recomputed, greatly slowing computations"
 msgstr ""
 
-#: ../src/3Depict.cpp:5021 ../src/3Depict.cpp:5026
+#: ../src/3Depict.cpp:5040 ../src/3Depict.cpp:5045
 msgid "Property"
 msgstr ""
 
-#: ../src/3Depict.cpp:5022 ../src/3Depict.cpp:5027
-#: ../src/filters/dataLoad.cpp:450 ../src/dialogs/ExportRngDialog.cpp:89
+#: ../src/3Depict.cpp:5041 ../src/3Depict.cpp:5046
+#: ../src/filters/dataLoad.cpp:451 ../src/dialogs/ExportRngDialog.cpp:89
 #: ../src/dialogs/prefDialog.cpp:106 ../src/wxcomponents.cpp:267
 msgid "Value"
 msgstr ""
 
-#: ../src/3Depict.cpp:5028
+#: ../src/3Depict.cpp:5047
 msgid "Camera data information"
 msgstr ""
 
-#: ../src/3Depict.cpp:5032
+#: ../src/3Depict.cpp:5051
 msgid "Enable/disable visual effects on final 3D output"
 msgstr ""
 
-#: ../src/3Depict.cpp:5034
+#: ../src/3Depict.cpp:5053
 msgid "Enable cropping post-process effect"
 msgstr ""
 
-#: ../src/3Depict.cpp:5037
+#: ../src/3Depict.cpp:5056
 msgid ""
 "Colour based 3D effect enable/disable - requires appropriate colour filter "
 "3D glasses."
 msgstr ""
 
-#: ../src/3Depict.cpp:5038
+#: ../src/3Depict.cpp:5057
 msgid "Glasses colour mode"
 msgstr ""
 
-#: ../src/3Depict.cpp:5040
+#: ../src/3Depict.cpp:5059
 msgid ""
 "Level of separation between left and right images, which sets 3D depth to "
 "visual distortion tradeoff"
 msgstr ""
 
-#: ../src/3Depict.cpp:5044
+#: ../src/3Depict.cpp:5063
 msgid "X"
 msgstr ""
 
-#: ../src/3Depict.cpp:5045
+#: ../src/3Depict.cpp:5064
 msgid "Y"
 msgstr ""
 
-#: ../src/3Depict.cpp:5046
+#: ../src/3Depict.cpp:5065
 msgid "Save raw data to file"
 msgstr ""
 
-#: ../src/3Depict.cpp:5047
+#: ../src/3Depict.cpp:5066
 msgid "Copy raw data to clipboard"
 msgstr ""
 
-#: ../src/3Depict.cpp:5048
+#: ../src/3Depict.cpp:5067
 msgid "Manage \"stashed\" data."
 msgstr ""
 
-#: ../src/3Depict.cpp:5049
+#: ../src/3Depict.cpp:5068
 msgid "Program text output"
 msgstr ""
 
-#: ../src/3Depict.cpp:5050
+#: ../src/3Depict.cpp:5069
 msgid "Select active camera, or type to create new named camera"
 msgstr ""
 
-#: ../src/3Depict.cpp:5051
+#: ../src/3Depict.cpp:5070
 msgid "Remove the selected camera"
 msgstr ""
 
-#: ../src/3Depict.cpp:5052
+#: ../src/3Depict.cpp:5071
 msgid "Perform cropping from coordinate frame of camera"
 msgstr ""
 
-#: ../src/3Depict.cpp:5053
+#: ../src/3Depict.cpp:5072
 msgid ""
 "Set the maximum amount of RAM to use in order to speed repeat computations"
 msgstr ""
 
-#: ../src/3Depict.cpp:5054
+#: ../src/3Depict.cpp:5073
 msgid "Collapse the filter tree"
 msgstr ""
 
-#: ../src/3Depict.cpp:5055
+#: ../src/3Depict.cpp:5074
 msgid "Expand the filter tree"
 msgstr ""
 
-#: ../src/3Depict.cpp:5056
+#: ../src/3Depict.cpp:5075
 msgid "Process the filter tree, hold shift to purge cached filter data"
 msgstr ""
 
-#: ../src/3Depict.cpp:5195
+#: ../src/3Depict.cpp:5214
 msgid "Crop"
 msgstr ""
 
-#: ../src/3Depict.cpp:5196
+#: ../src/3Depict.cpp:5215
 msgid "Stereo"
 msgstr ""
 
-#: ../src/3Depict.cpp:5207
+#: ../src/3Depict.cpp:5226
 msgid "Data"
 msgstr ""
 
-#: ../src/3Depict.cpp:5208
+#: ../src/3Depict.cpp:5227
 msgid "Cam"
 msgstr ""
 
-#: ../src/3Depict.cpp:5209
+#: ../src/3Depict.cpp:5228
 msgid "Post"
 msgstr ""
 
-#: ../src/3Depict.cpp:5210
+#: ../src/3Depict.cpp:5229
 msgid "Tools"
 msgstr ""
 
-#: ../src/3Depict.cpp:5227
+#: ../src/3Depict.cpp:5246
 msgid "Spec."
 msgstr ""
 
-#: ../src/3Depict.cpp:5228
+#: ../src/3Depict.cpp:5247
 msgid "Raw"
 msgstr ""
 
-#: ../src/3Depict.cpp:5287
+#: ../src/3Depict.cpp:5306
 msgid "displays this message"
 msgstr ""
 
-#: ../src/3Depict.cpp:5289
+#: ../src/3Depict.cpp:5308
 msgid "inputfile"
 msgstr ""
 
-#: ../src/3Depict.cpp:5298
+#: ../src/3Depict.cpp:5317
 msgid ""
 "Run debug unit tests, returns nonzero on test failure, zero on success.\n"
 "\t\tXML files may be passed to run, instead of default tests"
 msgstr ""
 
-#: ../src/3Depict.cpp:5557
+#: ../src/3Depict.cpp:5584
 msgid "File : "
 msgstr ""
 
-#: ../src/3Depict.cpp:5557
+#: ../src/3Depict.cpp:5584
 msgid " does not exist. Skipping"
 msgstr ""
 
@@ -1322,11 +1326,11 @@ msgstr ""
 msgid "Out Fraction"
 msgstr ""
 
-#: ../src/filters/ionDownsample.cpp:654
+#: ../src/filters/ionDownsample.cpp:661
 msgid "Downsample Aborted"
 msgstr ""
 
-#: ../src/filters/ionDownsample.cpp:656
+#: ../src/filters/ionDownsample.cpp:663
 msgid "Insuffient memory for downsample"
 msgstr ""
 
@@ -1378,6 +1382,14 @@ msgstr ""
 
 #: ../src/filters/ionClip.cpp:758
 msgid "Corner offset"
+msgstr ""
+
+#: ../src/filters/ionClip.cpp:1026
+msgid "Insufficient memory for clip"
+msgstr ""
+
+#: ../src/filters/ionClip.cpp:1028
+msgid "Clip Aborted"
 msgstr ""
 
 #: ../src/filters/compositionProfile.cpp:485
@@ -1463,7 +1475,7 @@ msgstr ""
 msgid "Range"
 msgstr ""
 
-#: ../src/filters/rangeFile.cpp:497 ../src/filters/dataLoad.cpp:386
+#: ../src/filters/rangeFile.cpp:497 ../src/filters/dataLoad.cpp:387
 msgid "File"
 msgstr ""
 
@@ -1773,16 +1785,30 @@ msgstr ""
 msgid "Core"
 msgstr ""
 
-#: ../src/filters/clusterAnalysis.cpp:2093
+#: ../src/filters/clusterAnalysis.cpp:2096
 msgid "Bulk"
 msgstr ""
 
-#: ../src/filters/clusterAnalysis.cpp:2220
+#: ../src/filters/clusterAnalysis.cpp:2225
 msgid "Erode"
 msgstr ""
 
-#: ../src/filters/clusterAnalysis.cpp:2294
+#: ../src/filters/clusterAnalysis.cpp:2299
 msgid "Re-Collate"
+msgstr ""
+
+#: ../src/filters/clusterAnalysis.cpp:2566
+#: ../src/filters/clusterAnalysis.cpp:2792
+msgid "Cluster Size"
+msgstr ""
+
+#: ../src/filters/clusterAnalysis.cpp:2567
+#: ../src/filters/clusterAnalysis.cpp:2796
+msgid "Frequency"
+msgstr ""
+
+#: ../src/filters/clusterAnalysis.cpp:2794
+msgid "Composition"
 msgstr ""
 
 #: ../src/filters/dataLoad.cpp:32
@@ -1793,63 +1819,67 @@ msgstr ""
 msgid "Text Data"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:211
+#: ../src/filters/dataLoad.cpp:212
 msgid " does not exist"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:248 ../src/filters/dataLoad.cpp:259
-#: ../src/filters/dataLoad.cpp:279 ../src/filters/dataLoad.cpp:291
+#: ../src/filters/dataLoad.cpp:249 ../src/filters/dataLoad.cpp:260
+#: ../src/filters/dataLoad.cpp:280 ../src/filters/dataLoad.cpp:292
 msgid "Error loading file: "
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:305
+#: ../src/filters/dataLoad.cpp:306
 msgid "Data file contained incorrect number of columns -- should be 4, was "
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:348
+#: ../src/filters/dataLoad.cpp:349
 msgid ""
 "Warning:One or more bounds of the loaded data approaches the limits of "
 "numerical stability for the internal data type(magnitude too large). "
 "Consider rescaling data before loading"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:355
+#: ../src/filters/dataLoad.cpp:356
 msgid "Loaded "
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:355
+#: ../src/filters/dataLoad.cpp:356
 msgid " Points"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:397
+#: ../src/filters/dataLoad.cpp:398
 msgid "File type"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:413
+#: ../src/filters/dataLoad.cpp:414
 msgid "Number of columns"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:454
+#: ../src/filters/dataLoad.cpp:455
 msgid "Value Label"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:466
+#: ../src/filters/dataLoad.cpp:467
 msgid "Enabled"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:474
+#: ../src/filters/dataLoad.cpp:476
+msgid "Sample data"
+msgstr ""
+
+#: ../src/filters/dataLoad.cpp:483
 msgid "Load Limit (MB)"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:479
+#: ../src/filters/dataLoad.cpp:489
 msgid "Monitor"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:488
+#: ../src/filters/dataLoad.cpp:502
 msgid "Default colour "
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:493
+#: ../src/filters/dataLoad.cpp:507
 msgid "Draw Size"
 msgstr ""
 
@@ -1865,51 +1895,51 @@ msgstr ""
 msgid "Dimension"
 msgstr ""
 
-#: ../src/filters/boundingBox.cpp:511 ../src/dialogs/ExportPos.cpp:72
+#: ../src/filters/boundingBox.cpp:512 ../src/dialogs/ExportPos.cpp:72
 msgid "Visible"
 msgstr ""
 
-#: ../src/filters/boundingBox.cpp:525
+#: ../src/filters/boundingBox.cpp:526
 msgid "Style"
 msgstr ""
 
-#: ../src/filters/boundingBox.cpp:543
+#: ../src/filters/boundingBox.cpp:544
 msgid "Fixed Tick Num"
 msgstr ""
 
-#: ../src/filters/boundingBox.cpp:552
+#: ../src/filters/boundingBox.cpp:553
 msgid "Num X"
 msgstr ""
 
-#: ../src/filters/boundingBox.cpp:557
+#: ../src/filters/boundingBox.cpp:558
 msgid "Num Y"
 msgstr ""
 
-#: ../src/filters/boundingBox.cpp:562
+#: ../src/filters/boundingBox.cpp:563
 msgid "Num Z"
 msgstr ""
 
-#: ../src/filters/boundingBox.cpp:568
+#: ../src/filters/boundingBox.cpp:569
 msgid "Spacing X"
 msgstr ""
 
-#: ../src/filters/boundingBox.cpp:573
+#: ../src/filters/boundingBox.cpp:574
 msgid "Spacing Y"
 msgstr ""
 
-#: ../src/filters/boundingBox.cpp:578
+#: ../src/filters/boundingBox.cpp:579
 msgid "Spacing Z"
 msgstr ""
 
-#: ../src/filters/boundingBox.cpp:596
+#: ../src/filters/boundingBox.cpp:597
 msgid "Box Colour"
 msgstr ""
 
-#: ../src/filters/boundingBox.cpp:604
+#: ../src/filters/boundingBox.cpp:605
 msgid "Line thickness"
 msgstr ""
 
-#: ../src/filters/boundingBox.cpp:613 ../src/filters/annotation.cpp:736
+#: ../src/filters/boundingBox.cpp:614 ../src/filters/annotation.cpp:736
 msgid "Font Size"
 msgstr ""
 
@@ -2212,6 +2242,14 @@ msgstr ""
 
 #: ../src/filters/transform.cpp:1386
 msgid "Unable to allocate memory"
+msgstr ""
+
+#: ../src/filters/transform.cpp:1630
+msgid "White"
+msgstr ""
+
+#: ../src/filters/transform.cpp:1632
+msgid "Gaussian"
 msgstr ""
 
 #: ../src/filters/spatialAnalysis.cpp:47
@@ -2726,19 +2764,19 @@ msgstr ""
 #: ../src/filtertreeAnalyse.cpp:297
 msgid ""
 "Filters and settings selected that could alter reported results that depend "
-"upon density, check to see if spatial sampling may be happening in the "
-"filter tree"
+"upon density. Check to see if spatial sampling may be happening in the "
+"filter tree - this warning is provisional only."
 msgstr ""
 
-#: ../src/filtertree.cpp:905
+#: ../src/filtertree.cpp:902
 msgid "WARNING: Skipping node "
 msgstr ""
 
-#: ../src/filtertree.cpp:905
+#: ../src/filtertree.cpp:902
 msgid " as it was not recognised"
 msgstr ""
 
-#: ../src/filtertree.cpp:943
+#: ../src/filtertree.cpp:940
 msgid "Error processing node: "
 msgstr ""
 
@@ -2862,31 +2900,31 @@ msgstr ""
 msgid "Range file appears to be inconsistent (eg, overlapping ranges)"
 msgstr ""
 
-#: ../src/glPane.cpp:620
+#: ../src/glPane.cpp:616
 msgid "Use shift/ctrl-space or double tap to alter reset axis"
 msgstr ""
 
-#: ../src/glPane.cpp:877
+#: ../src/glPane.cpp:873
 msgid "Image progress"
 msgstr ""
 
-#: ../src/glPane.cpp:878
+#: ../src/glPane.cpp:874
 msgid "Rendering tiles..."
 msgstr ""
 
-#: ../src/glPane.cpp:894
+#: ../src/glPane.cpp:890
 msgid "Tile "
 msgstr ""
 
-#: ../src/glPane.cpp:1026
+#: ../src/glPane.cpp:1022
 msgid "Animation progress"
 msgstr ""
 
-#: ../src/glPane.cpp:1027
+#: ../src/glPane.cpp:1023
 msgid "Rendering sequence..."
 msgstr ""
 
-#: ../src/glPane.cpp:1059
+#: ../src/glPane.cpp:1055
 msgid "Saving Image "
 msgstr ""
 
@@ -2959,7 +2997,8 @@ msgstr ""
 msgid "Warning"
 msgstr ""
 
-#: ../src/dialogs/filterErrorDialog.cpp:34
+#: ../src/dialogs/filterErrorDialog.cpp:25
+#: ../src/dialogs/filterErrorDialog.cpp:35
 msgid "Filter Errors"
 msgstr ""
 
@@ -3083,7 +3122,7 @@ msgstr ""
 msgid "Reset All"
 msgstr ""
 
-#: ../src/dialogs/prefDialog.cpp:79 ../src/dialogs/resolutionDialog.cpp:37
+#: ../src/dialogs/prefDialog.cpp:79 ../src/dialogs/resolutionDialog.cpp:38
 msgid "Reset"
 msgstr ""
 
@@ -3185,15 +3224,15 @@ msgstr ""
 msgid "Camera"
 msgstr ""
 
-#: ../src/dialogs/resolutionDialog.cpp:29
+#: ../src/dialogs/resolutionDialog.cpp:30
 msgid "Width :"
 msgstr ""
 
-#: ../src/dialogs/resolutionDialog.cpp:31
+#: ../src/dialogs/resolutionDialog.cpp:32
 msgid "Height :"
 msgstr ""
 
-#: ../src/dialogs/resolutionDialog.cpp:33
+#: ../src/dialogs/resolutionDialog.cpp:34
 msgid "Lock Aspect"
 msgstr ""
 
@@ -3259,7 +3298,7 @@ msgstr ""
 msgid "Ion Sampler"
 msgstr ""
 
-#: ../src/filters/dataLoad.h:109
+#: ../src/filters/dataLoad.h:114
 msgid "Pos Data"
 msgstr ""
 

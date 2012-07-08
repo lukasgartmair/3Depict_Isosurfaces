@@ -1627,9 +1627,9 @@ std::string TransformFilter::getNoiseTypeString(unsigned int i) const
 	switch(i)
 	{
 		case NOISETYPE_WHITE:
-			return std::string("White");
+			return std::string(TRANS("White"));
 		case NOISETYPE_GAUSSIAN:
-			return std::string("Gaussian");
+			return std::string(TRANS("Gaussian"));
 	}
 	ASSERT(false);
 }
