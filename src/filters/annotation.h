@@ -117,6 +117,9 @@ class AnnotateFilter : public Filter
 		//!Get the refresh's ignore mask - filter streams that will not be considered
 		// as part of the computation
 		unsigned int getRefreshUseMask() const;
+		
+		//Can we be a useful filter, even if given no input specified by the Use mask?
+		virtual bool isUsefulAsAppend() const { return true;}
 #ifdef DEBUG
 		bool runUnitTests();
 #endif

@@ -507,6 +507,9 @@ class Filter
 
 		//Are we a pure data source  - i.e. can function with no input
 		virtual bool isPureDataSource() const { return false;};
+
+		//Can we be a useful filter, even if given no input specified by the Use mask?
+		virtual bool isUsefulAsAppend() const { return false;}
 #ifdef DEBUG
 		//!Run all the registered unit tests for this filter
 		virtual bool runUnitTests() { cerr << "No test for " << typeString() << endl; return true;} ;

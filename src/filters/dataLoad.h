@@ -155,6 +155,9 @@ class DataLoadFilter:public Filter
 		
 		//Are we a pure data source  - i.e. can function with no input
 		virtual bool isPureDataSource() const { return true;};
+		
+		//Can we be a useful filter, even if given no input specified by the Use mask?
+		virtual bool isUsefulAsAppend() const { return true;}
 
 #ifdef DEBUG
 		bool runUnitTests();
