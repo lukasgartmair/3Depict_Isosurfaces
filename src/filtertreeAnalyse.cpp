@@ -91,7 +91,7 @@ void FilterTreeAnalyse::blockingPairError(const FilterTree &f)
 				treeErr.reportedFilters.push_back(*it);
 				treeErr.verboseReportMessage = TRANS("Parent filter has no output, but filter requires input -- there is no point in placing a child filter here.");
 				treeErr.shortReportMessage = TRANS("Leaf-only filter with child");
-				treeErr.severity=SEVERITY_ERROR; //This is definitely a bad thing.
+				treeErr.severity=ANALYSE_SEVERITY_ERROR; //This is definitely a bad thing.
 			
 				analysisResults.push_back(treeErr);
 			}
@@ -102,21 +102,21 @@ void FilterTreeAnalyse::blockingPairError(const FilterTree &f)
 				treeErr.reportedFilters.push_back(*it);
 				treeErr.verboseReportMessage = TRANS("Parent filters' output will be blocked by child, without use. Parent results will be dropped.");
 				treeErr.shortReportMessage = TRANS("Bad parent->child pair");
-				treeErr.severity=SEVERITY_ERROR; //This is definitely a bad thing.
+				treeErr.severity=ANALYSE_SEVERITY_ERROR; //This is definitely a bad thing.
 			
 				analysisResults.push_back(treeErr);
 			}
 			//If the parent does not emit a useable objects 
 			//for the child filter, this is bad too.
 			// - else if, so we don't double up on warnings
-			else if( !(parentEmit & curUse))
+			else if( !(parentEmit & curUse) && !childFilter->isUsefulAsAppend())
 			{
 				FILTERTREE_ERR treeErr;
 				treeErr.reportedFilters.push_back(childFilter);
 				treeErr.reportedFilters.push_back(*it);
 				treeErr.verboseReportMessage = TRANS("First filter does not output anything useable by child filter. Child filter not useful.");
 				treeErr.shortReportMessage = TRANS("Bad parent->child pair");
-				treeErr.severity=SEVERITY_ERROR; //This is definitely a bad thing.
+				treeErr.severity=ANALYSE_SEVERITY_ERROR; //This is definitely a bad thing.
 			
 				analysisResults.push_back(treeErr);
 
@@ -294,7 +294,7 @@ void FilterTreeAnalyse::spatialSampling(const FilterTree &f)
 						treeErr.reportedFilters.push_back(*it);
 						treeErr.reportedFilters.push_back(*itJ);
 						treeErr.shortReportMessage=TRANS("Spatial results possibly altered");
-						treeErr.verboseReportMessage=TRANS("Filters and settings selected that could alter reported results that depend upon density. Check to see if spatial sampling may be happening in the filter tree - this warning is provisional only.");						treeErr.severity=SEVERITY_WARNING;
+						treeErr.verboseReportMessage=TRANS("Filters and settings selected that could alter reported results that depend upon density. Check to see if spatial sampling may be happening in the filter tree - this warning is provisional only.");						treeErr.severity=ANALYSE_SEVERITY_WARNING;
 
 						analysisResults.push_back(treeErr);
 					}

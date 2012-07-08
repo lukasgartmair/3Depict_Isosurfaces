@@ -317,8 +317,12 @@ enum {
 
 void setWxTreeImages(wxTreeCtrl *t, const map<size_t, wxArtID> &artFilters)
 {
+#if defined(__WIN32) || defined(__WIN64)
+	const int winTreeIconSize=9;
+	wxImageList *imList = new wxImageList(winTreeIconSize,winTreeIconSize);
+#else
 	wxImageList *imList = new wxImageList;
-
+#endif
 	//map to map wxArtIDs to position in the image list
 	map<wxArtID,size_t> artMap;
 
@@ -326,7 +330,13 @@ void setWxTreeImages(wxTreeCtrl *t, const map<size_t, wxArtID> &artFilters)
 	//Construct an image list for the tree
 	for(map<size_t,wxArtID>::const_iterator it=artFilters.begin();it!=artFilters.end();it++)
 	{
-		imList->Add(wxArtProvider::GetBitmap(it->second));
+		#if defined(__WIN32) || defined(__WIN64)
+
+			imList->Add(wxBitmap(wxBitmap(wxArtProvider::GetBitmap(it->second)).
+						ConvertToImage().Rescale(winTreeIconSize, winTreeIconSize)));
+		#else
+			imList->Add(wxArtProvider::GetBitmap(it->second));
+		#endif
 
 		artMap[it->second] = offset;
 		offset++;
@@ -2874,10 +2884,10 @@ void MainWindowFrame::OnBtnFilterTreeErrs(wxCommandEvent &event)
 
 		switch(res[ui].severity)
 		{
-			case SEVERITY_WARNING:
+			case ANALYSE_SEVERITY_WARNING:
 				s += "Warning:\n";
 				break;
-			case SEVERITY_ERROR:
+			case ANALYSE_SEVERITY_ERROR:
 				s+="Error:\n" ;
 				break;
 			default:
@@ -3425,7 +3435,7 @@ bool MainWindowFrame::doSceneUpdate()
 		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,wxTRANS("Cons."));
 	else
 	{
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(__WIN32) || defined(__WIN64)
 		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,wxTRANS("*Cons."));
 #else
 		noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,wxTRANS("§Cons."));
@@ -3449,6 +3459,12 @@ void MainWindowFrame::setFilterTreeAnalysisImages()
 	//Show the error button if required
 	btnFilterTreeErrs->Show(!lastErrs.empty());
 
+	if(lastErrs.empty())
+	{
+		treeFilters->AssignImageList(NULL);
+		return;
+	}
+	
 	//Maps filters to their maximal severity level
 	map<const Filter*,unsigned int> severityMapping;
 
@@ -3478,8 +3494,8 @@ void MainWindowFrame::setFilterTreeAnalysisImages()
 	{
 		//Maps particular severity values into icons
 		map<unsigned int, wxArtID> severityIconMapping;
-		severityIconMapping[SEVERITY_ERROR] = wxART_ERROR;
-		severityIconMapping[SEVERITY_WARNING] =wxART_WARNING;
+		severityIconMapping[ANALYSE_SEVERITY_ERROR] = wxART_ERROR;
+		severityIconMapping[ANALYSE_SEVERITY_WARNING] =wxART_WARNING;
 
 		for(map<const Filter*,unsigned int>::const_iterator it=severityMapping.begin();it!=severityMapping.end(); it++)
 			iconSettings[visControl.getIdByFilter(it->first)] = severityIconMapping[it->second];
@@ -3487,6 +3503,11 @@ void MainWindowFrame::setFilterTreeAnalysisImages()
 
 	//apply the filter->icon mapping
 	setWxTreeImages(treeFilters,iconSettings);
+	
+#if defined(__WIN32) || defined(__WIN64)
+	//HACK: Under MSW, force button to correct positioning, by forcing a relayout
+	treeFilters->GetParent()->Layout();
+#endif
 }
 
 void MainWindowFrame::OnStatusBarTimer(wxTimerEvent &event)
@@ -5356,7 +5377,7 @@ void threeDepictApp::initLanguageSupport()
 			setlocale (LC_ALL, "");
 #ifdef __WXMAC__
 			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
-#elif defined(WIN32) || defined(WIN64)
+#elif defined(__WIN32) || defined(__WIN64)
 			cerr << paths->GetResourcesDir().mb_str(wxConvUTF8) << endl;
 			std::string s;
 			s =  paths->GetResourcesDir().mb_str(wxConvUTF8);

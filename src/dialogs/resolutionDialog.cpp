@@ -227,12 +227,6 @@ void ResolutionDialog::OnBtnReset(wxCommandEvent &event)
 		aspect=(float)resOrigHeight/(float)resOrigWidth;
 	else
 		aspect=0;
-
-	wxDC *paintDC = new wxClientDC(panelImage);
-    
-	drawImageRectangle(paintDC);
-	
-	delete paintDC;
 }
 
 
@@ -338,8 +332,11 @@ void ResolutionDialog::OnMouseWheelHeight(wxMouseEvent &event)
 
 void ResolutionDialog::OnPaint(wxPaintEvent &event)
 {
+#ifdef __APPLE__
 	wxDC *dialogDC = new wxClientDC(this);
-
+#else
+	wxDC *dialogDC = new wxAutoBufferedPaintDC(this);
+#endif
 
 	int  widthLabelY,heightLabelY,checkBoxY,joinLineX, connectorX;
 	int tmpY,tmpX,tmp;
@@ -372,7 +369,11 @@ void ResolutionDialog::OnPaint(wxPaintEvent &event)
 
 	delete dialogDC;
 
+#ifdef __APPLE__
 	wxDC *paintDC = new wxClientDC(panelImage);
+#else
+	wxDC *paintDC = new wxAutoBufferedPaintDC(panelImage);
+#endif
 
 	drawImageRectangle(paintDC);
 	

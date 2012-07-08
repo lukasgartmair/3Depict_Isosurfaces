@@ -27,9 +27,9 @@
 
 enum 
 {
-	SEVERITY_WARNING, // Probable warning
-	SEVERITY_ERROR, // definite error
-	SEVERITY_END_ENUM // Not a severity, just end of enum
+	ANALYSE_SEVERITY_WARNING, // Probable warning
+	ANALYSE_SEVERITY_ERROR, // definite error
+	ANALYSE_SEVERITY_END_ENUM // Not a severity, just end of enum
 };
 
 struct FILTERTREE_ERR
