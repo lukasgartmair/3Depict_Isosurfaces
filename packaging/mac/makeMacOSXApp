@@ -16,10 +16,9 @@ if [ $1 = '--update-config=yes' ]; then
 		DISABLE_DEBUG="--enable-no-debug-checks"
 	fi
 
-	CXXFLAGS=" -Dqh_QHpointer $CXXFLAGS" \
 	./configure $SHOULD_PARALLEL $DISABLE_DEBUG \
 		--with-libqhull-link=" -L/opt/local/lib -lqhull" \
-		--with-libqhull-flags="-I/opt/local/include -Dqh_QHpointer " \
+		--with-libqhull-flags="-I/opt/local/include " \
 		--with-mgl-libs="-L/usr/local/lib -lmgl" \
 		--with-mgl-flags="-I/usr/local/include -I/opt/local/include" \
 		--with-freetype=/opt/local \

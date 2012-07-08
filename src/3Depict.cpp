@@ -328,7 +328,7 @@ void setWxTreeImages(wxTreeCtrl *t, const map<size_t, wxArtID> &artFilters)
 
 	size_t offset=0;
 	//Construct an image list for the tree
-	for(map<size_t,wxArtID>::const_iterator it=artFilters.begin();it!=artFilters.end();it++)
+	for(map<size_t,wxArtID>::const_iterator it=artFilters.begin();it!=artFilters.end();++it)
 	{
 		#if defined(__WIN32) || defined(__WIN64)
 
@@ -3497,7 +3497,7 @@ void MainWindowFrame::setFilterTreeAnalysisImages()
 		severityIconMapping[ANALYSE_SEVERITY_ERROR] = wxART_ERROR;
 		severityIconMapping[ANALYSE_SEVERITY_WARNING] =wxART_WARNING;
 
-		for(map<const Filter*,unsigned int>::const_iterator it=severityMapping.begin();it!=severityMapping.end(); it++)
+		for(map<const Filter*,unsigned int>::const_iterator it=severityMapping.begin();it!=severityMapping.end(); ++it)
 			iconSettings[visControl.getIdByFilter(it->first)] = severityIconMapping[it->second];
 	}
 

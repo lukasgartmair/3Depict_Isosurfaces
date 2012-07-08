@@ -233,8 +233,8 @@ void FilterTree::initFilterTree() const
 	popPointerStack(pointerTrackList,inDataStack,0);
 	
 	//Pointer tracking list should be empty.
-	ASSERT(pointerTrackList.size() == 0);
-	ASSERT(inDataStack.size() ==0);
+	ASSERT(pointerTrackList.empty());
+	ASSERT(inDataStack.empty());
 
 	//mop up the output
 	list<const FilterStreamData *> deletedPtrs;
@@ -643,8 +643,8 @@ unsigned int FilterTree::refreshFilterTree(
 			{
 				//clear any intermediary pointers
 				popPointerStack(pointerTrackList,inDataStack,0);
-				ASSERT(pointerTrackList.size() == 0);
-				ASSERT(inDataStack.size() ==0);
+				ASSERT(pointerTrackList.empty());
+				ASSERT(inDataStack.empty());
 				return errCode;
 			}
 
@@ -730,8 +730,8 @@ unsigned int FilterTree::refreshFilterTree(
 	
 	
 	//Pointer tracking list should be empty.
-	ASSERT(pointerTrackList.size() == 0);
-	ASSERT(inDataStack.size() ==0);
+	ASSERT(pointerTrackList.empty());
+	ASSERT(inDataStack.empty());
 
 	//====Output scrubbing ===
 

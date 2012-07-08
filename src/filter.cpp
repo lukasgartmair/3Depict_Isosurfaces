@@ -84,7 +84,7 @@ void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f)
 	g->clearKeys();
 	g->setNumSets(p.data.size());
 
-	ASSERT(!p.keyNames.size() || p.keyNames.size() == p.data.size());
+	ASSERT(p.keyNames.empty() || p.keyNames.size() == p.data.size());
 
 	//Create the keys for the property grid to do its thing
 	for(unsigned int ui=0;ui<p.data.size();ui++)

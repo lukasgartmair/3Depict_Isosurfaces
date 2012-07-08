@@ -226,7 +226,7 @@ void ClusterAnalysisFilter::buildRangeEnabledMap(const RangeStreamData *r,
 {
 
 	//should be empty...
-	ASSERT(!rangeEnabledMap.size());
+	ASSERT(rangeEnabledMap.empty());
 
 	//"Lagging" counter to track the mapping from ionID->enabled Ion ID.
 	size_t count=0;

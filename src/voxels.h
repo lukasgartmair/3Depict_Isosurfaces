@@ -1931,7 +1931,7 @@ void Voxels<T>::makeSphericalKernel(size_t sideLen, float bound, const T &val, u
 
 						//Level 0 corresponds to 1/8th of the original voxel. Level n = 1/(2^3(n+1)) 
 						//each voxel has side lenght L_v = originalLen/(2^(level+1))
-						while(positionStack.size())
+						while(!positionStack.empty())
 						{
 							thisCentre = positionStack.top().first;
 							thisLevel = positionStack.top().second;

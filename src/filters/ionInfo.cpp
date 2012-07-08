@@ -795,7 +795,7 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 
 
 	//maybe we didn't have any points to hull?
-	if(!curHull.size())
+	if(curHull.empty())
 	{	
 		free(buffer);
 		return 0;
@@ -1053,7 +1053,7 @@ bool volumeBoxTest()
 	f->refresh(streamIn,streamOut,p,dummyCallback);
 
 	//No ions come out of the info
-	TEST(streamOut.size() == 0,"stream size test");
+	TEST(streamOut.empty(),"stream size test");
 
 	vector<string> consoleStrings;
 	f->getConsoleStrings(consoleStrings); 
@@ -1119,7 +1119,7 @@ bool volumeSphereTest()
 	f->refresh(streamIn,streamOut,p,dummyCallback);
 
 	//No ions come out of the info
-	TEST(streamOut.size() == 0,"stream size test");
+	TEST(streamOut.empty(),"stream size test");
 
 	vector<string> consoleStrings;
 	f->getConsoleStrings(consoleStrings); 

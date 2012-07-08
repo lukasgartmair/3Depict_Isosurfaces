@@ -169,8 +169,8 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 	}
 
 	//Nothing to do.
-	if(!(plotOutputNames.size() ||
-		ionOutputNames.size()))
+	if(plotOutputNames.empty() &&
+		ionOutputNames.empty())
 		return 0;
 
 

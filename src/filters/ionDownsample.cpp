@@ -317,7 +317,7 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 					input=(const IonStreamData*)dataIn[ui];
 			
 					//Don't process ionstreams that are empty	
-					if(!input->data.size())
+					if(input->data.empty())
 						continue;
 
 					//FIXME: Allow processing of unranged data
