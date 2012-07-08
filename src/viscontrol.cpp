@@ -355,15 +355,26 @@ unsigned int VisController::refreshFilterTree(bool doUpdateScene)
 	//using safedelete so we ca free memory as we go.
 	unsigned int errCode=0;
 	vector<SelectionDevice<Filter> *> devices;
-	vector<string> consoleMessages;
+	vector<pair<const Filter*, string> > consoleMessages;
 	errCode=filterTree.refreshFilterTree(refreshData,devices,
 			consoleMessages,curProg,wxYieldCallback);
 
+
+	const Filter *lastFilt=0;
 	for(size_t ui=0;ui<consoleMessages.size(); ui++)
 	{
-		textConsole->AppendText(wxStr(consoleMessages[ui]));
+		if(lastFilt !=consoleMessages[ui].first)
+		{
+			lastFilt=consoleMessages[ui].first;
+			textConsole->AppendText(wxStr(lastFilt->getUserString()));
+			textConsole->AppendText(wxT("\n------------\n"));
+		}
+		textConsole->AppendText(wxStr(consoleMessages[ui].second));
 		textConsole->AppendText(wxT("\n"));
 	}
+
+	if(consoleMessages.size())
+		textConsole->AppendText(wxT("\n"));
 
 
 	if(errCode)
@@ -395,7 +406,7 @@ unsigned int VisController::refreshFilterTree(
 		list<std::pair<Filter *,vector<const FilterStreamData * > > > &outData)
 {
 	vector<SelectionDevice<Filter> *> devices;
-	vector<string> consoleStrs;
+	vector<pair<const Filter *, string> > consoleStrs;
 	return filterTree.refreshFilterTree(outData,devices,
 			consoleStrs,curProg,wxYieldCallback);
 }

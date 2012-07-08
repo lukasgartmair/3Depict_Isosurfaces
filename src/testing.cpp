@@ -44,7 +44,7 @@ bool testFilterTree(FilterTree f)
 	ASSERT(!f.hasHazardousContents());
 	std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > outData;
 	std::vector<SelectionDevice<Filter> *> devices;
-	std::vector<string> consoleMessages;
+	std::vector<std::pair<const Filter *, string > > consoleMessages;
 
 	ProgressData prog;
 	if(f.refreshFilterTree(outData,devices,consoleMessages,prog,dummyCallback))

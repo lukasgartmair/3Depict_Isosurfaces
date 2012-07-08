@@ -482,7 +482,7 @@ void FilterTree::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propS
 
 unsigned int FilterTree::refreshFilterTree(
 		list<std::pair<Filter *,vector<const FilterStreamData * > > > &outData,
-		std::vector<SelectionDevice<Filter> *> &devices,vector<string> &consoleMessages,
+		std::vector<SelectionDevice<Filter> *> &devices,vector<pair<const Filter* , string> > &consoleMessages,
 	       	ProgressData &curProg, bool (*callback)(bool))
 {
 	
@@ -636,7 +636,7 @@ unsigned int FilterTree::refreshFilterTree(
 			//Accumulate the messages
 			consoleMessages.reserve(consoleMessages.size()+tmpMessages.size());
 			for(size_t ui=0;ui<tmpMessages.size();ui++)
-				consoleMessages.push_back(tmpMessages[ui]);
+				consoleMessages.push_back(make_pair(*filtIt,tmpMessages[ui]));
 
 			//check for any error in filter update (including user abort)
 			if(errCode)

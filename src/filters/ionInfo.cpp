@@ -299,6 +299,13 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 	size_t numTotalPoints = numElements(dataIn,STREAM_TYPE_IONS);
 	size_t numRanged=0;
 
+
+	if(!numTotalPoints)
+	{
+		consoleOutput.push_back((TRANS("No ions")));
+		return 0;
+	}
+
 	//Compute ion counts/composition as needed
 	if(wantIonCounts)
 	{
