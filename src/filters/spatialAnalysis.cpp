@@ -786,7 +786,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		progress.stepName=TRANS("Analyse");
 
 		//If there is no data, there is nothing to do.
-		if(!p.size() || !kdTree.nodeCount())
+		if(p.empty() || !kdTree.nodeCount())
 			return	0;
 		//OK, at this point, the KD tree contains the target points
 		//of interest, and the vector "p" contains the source points

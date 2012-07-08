@@ -338,7 +338,7 @@ void ResolutionDialog::OnPaint(wxPaintEvent &event)
 	wxDC *dialogDC = new wxAutoBufferedPaintDC(this);
 #endif
 
-	int  widthLabelY,heightLabelY,checkBoxY,joinLineX, connectorX;
+	int widthLabelY,heightLabelY,checkBoxY,connectorX;
 	int tmpY,tmpX,tmp;
 	
 	labelWidth->GetPosition(&connectorX,&tmpY);
@@ -407,7 +407,6 @@ void ResolutionDialog::drawImageRectangle(wxDC *paintDC)
 	height*=scaleFactor;
 
 	int startX,startY;
-	int endX,endY;
 
 	startX = (int)((float)(panelWidth - width)*0.5f);
 	startY = (int)((float)(panelHeight - height)*0.5f);

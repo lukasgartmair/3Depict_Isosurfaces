@@ -493,7 +493,7 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 			//Only update as needed
 			if(valueInt ==0 || valueInt == 1)
 			{
-				if(autoExtrema != valueInt)
+				if((int)autoExtrema != valueInt)
 				{
 					needUpdate=true;
 					autoExtrema=valueInt;
@@ -557,7 +557,7 @@ bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key,
 			//Only update as needed
 			if(valueInt ==0 || valueInt == 1)
 			{
-				if(logarithmic != valueInt)
+				if((int)logarithmic != valueInt)
 				{
 					needUpdate=true;
 					logarithmic=valueInt;

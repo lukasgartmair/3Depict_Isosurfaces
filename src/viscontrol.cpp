@@ -278,7 +278,7 @@ const Filter* VisController::getFilterById(size_t filterId) const
 
 size_t VisController::getIdByFilter(const Filter *f) const 
 {
-	for(map<size_t,Filter *>::const_iterator it=filterMap.begin();it!=filterMap.end();it++)
+	for(map<size_t,Filter *>::const_iterator it=filterMap.begin();it!=filterMap.end();++it)
 	{
 		if(it->second == f)
 			return it->first;
@@ -1682,7 +1682,7 @@ void VisController::getStashTree(unsigned int stashId, FilterTree &f) const
 
 void VisController::getStashes(std::vector<std::pair<std::string,unsigned int > > &stashList) const
 {
-	ASSERT(stashList.size() == 0); // should be empty	
+	ASSERT(stashList.empty()); // should be empty	
 	//Duplicate the stash list, but replace the filter tree ID
 	//with the ID value that corresponds to that position
 	stashList.reserve(stashedFilters.size());	

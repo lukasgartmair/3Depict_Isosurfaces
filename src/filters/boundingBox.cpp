@@ -423,6 +423,7 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 					if(spin)
 					{			
 						delete d;
+						delete[] newBounds;
 						return BOUNDINGBOX_ABORT_ERR;
 					}
 

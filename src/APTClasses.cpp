@@ -1075,8 +1075,8 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 					if(peekVal== '\r')
 						fgetc(fpRange);
 				}
-				//Read the input for long name (max 256 chars)
-				if(!fscanf(fpRange, " %256s", inBuffer))
+				//Read the input for long name (max 255 chars)
+				if(!fscanf(fpRange, " %255s", inBuffer))
 				{
 					errState=RANGE_ERR_FORMAT_LONGNAME;
 					fclose(fpRange);
@@ -1090,7 +1090,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 
 
 				//Read short name
-				if(!fscanf(fpRange, " %256s", inBuffer))
+				if(!fscanf(fpRange, " %255s", inBuffer))
 				{
 					errState=RANGE_ERR_FORMAT_SHORTNAME;
 					fclose(fpRange);
@@ -2059,7 +2059,7 @@ bool RangeFile::openGuessFormat(const char *rangeFilename)
 	vector<string> sVec;
 	splitStrsRef(s.c_str(),'.',sVec);
 
-	if(!sVec.size())
+	if(sVec.empty())
 		assumedFileFormat=RANGE_FORMAT_ORNL;
 	else if(lowercase(sVec[sVec.size()-1]) == "rrng")
 		assumedFileFormat=RANGE_FORMAT_RRNG;
