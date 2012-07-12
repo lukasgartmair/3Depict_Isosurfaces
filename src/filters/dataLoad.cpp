@@ -339,7 +339,17 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	ionData->a = a;
 	ionData->ionSize=ionSize;
 	ionData->valueType=valueLabel;
-	
+
+
+	if(!ionData->data.size())
+	{
+		//Shouldn't get here...
+		ASSERT(false);
+		delete ionData;
+		return	0;
+	}
+
+
 	BoundCube dataCube;
 	dataCube = getIonDataLimits(ionData->data);
 
@@ -617,6 +627,9 @@ bool DataLoadFilter::setProperty( unsigned int set, unsigned int key,
 		{
 			size_t ltmp;
 			if(stream_cast(ltmp,value))
+				return false;
+
+			if(!ltmp)
 				return false;
 
 			if(ltmp*(1024*1024/(sizeof(float)*4)) != maxIons)
@@ -942,6 +955,8 @@ bool DataLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 
 	//Get max Ions
 	//--
+	//TODO: Forbid zero values - don't do it now, as we previously used this
+	// for disabling sampling, so some users' XML files will still have this
 	if(!XMLGetNextElemAttrib(nodePtr,maxIons,"maxions","value"))
 		return false;
 
