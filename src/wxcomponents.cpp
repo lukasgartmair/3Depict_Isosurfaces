@@ -538,15 +538,8 @@ void CopyGrid::OnKey(wxKeyEvent &event)
 
 
 
-#ifndef __APPLE__
-        // If Ctrl+C is pressed...
-        if (event.ControlDown() && event.GetKeyCode() == 67)
+        if (event.CmdDown() && event.GetKeyCode() == 67)
 	{
-#else
-	//Apple is special and uses the meta key...
-        if (event.MetaDown() && event.GetKeyCode() == 67)
-	{
-#endif
 	
             copyData();
 	    return;

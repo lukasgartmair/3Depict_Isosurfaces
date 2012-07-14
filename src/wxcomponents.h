@@ -74,7 +74,7 @@ protected:
 class wxTreeUint : public wxTreeItemData
 {
 	public:
-		wxTreeUint(unsigned int v) { value=v;};
+		wxTreeUint(unsigned int v) : value(v) {};
 		unsigned int value;
 };
 
@@ -126,9 +126,6 @@ class wxPropertyGrid : public wxGrid
 		//Set the names for each set. (sorry :()
 		void setSetName(unsigned int set, const std::string &name) {ASSERT(set < sectionNames.size()); sectionNames[set]=name;};
 
-		//!Retreive the position of a cell, given key and set
-		void getPropertyCell(unsigned int set, unsigned int key,
-					unsigned int &xPos, unsigned int &yPos) const ;
 		//!This adds the item to the property key vector of a specified set
 		//!	key must be unique within a given set.
 		void addKey(const std::string &name, unsigned int set,

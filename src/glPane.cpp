@@ -319,11 +319,7 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 	//Decide camera movement mode
 	bool translateMode;
 
-	#ifdef __APPLE__
-		translateMode=event.MetaDown();
-	#else
-		translateMode=event.ControlDown();
-	#endif
+    translateMode=event.CmdDown();
 
 	bool swingMode;
 	#if defined(WIN32) || defined(WIN64) || defined(__APPLE__)
@@ -552,8 +548,17 @@ void BasicGLPane::keyPressed(wxKeyEvent& event)
 			//Use modifier keys to alter the direction of visiblity
 			//First compute the part of the keymask that does not
 			//reflect the double tap
+            // needs to be control in apple as cmd-space open spotlight
 			unsigned int keyMask;
+#ifdef __APPLE__
+    #if wxCHECK_VERSION(2,9,0)
+			keyMask = (event.RawControlDown() ? 1 : 0);
+    #else
+			keyMask = (event.ControlDown() ? 1 : 0);
+    #endif
+#else
 			keyMask = (event.CmdDown() ? 1 : 0);
+#endif
 			keyMask |= (event.ShiftDown() ?  2 : 0);
 
 			//Now determine if we are the same mask as last time

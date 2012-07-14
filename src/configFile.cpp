@@ -46,16 +46,12 @@ using std::endl;
 using std::string;
 
 
-ConfigFile::ConfigFile()
-{ 
-	panelMode=CONFIG_PANELMODE_REMEMBER;
-	mouseZoomRatePercent=mouseMoveRatePercent=100;
-	allowOnline=true;
-	allowOnlineVerCheck=true;
-	haveIntialAppSize=false;
-	configLoadOK=false;
+ConfigFile::ConfigFile() : configLoadOK(false), panelMode(CONFIG_PANELMODE_REMEMBER),
+	haveIntialAppSize(false), mouseZoomRatePercent(100),mouseMoveRatePercent(100),
+	allowOnline(true), allowOnlineVerCheck(true), leftRightSashPos(0),
+	topBottomSashPos(0),filterSashPos(0),plotListSashPos(0)
 
-	leftRightSashPos=topBottomSashPos=plotListSashPos=filterSashPos=0;
+{ 
 }
 
 
@@ -406,10 +402,11 @@ unsigned int ConfigFile::read()
 			if(xmlString)
 			{
 				tmpStr=(char *)xmlString;
-				if(tmpStr == "1")
-					allowOnline=true;
-				else
-					allowOnline=false;
+
+				if(!(tmpStr == "1" || tmpStr == "0"))
+					throw 1;
+
+				allowOnline = (tmpStr == "1");
 				xmlFree(xmlString);
 			}
 			
@@ -425,11 +422,10 @@ unsigned int ConfigFile::read()
 					if(xmlString)
 					{
 						tmpStr=(char *)xmlString;
-						if(tmpStr == "1")
-							allowOnlineVerCheck=true;
-						else
-							allowOnlineVerCheck=false;
+						if(!(tmpStr == "1" || tmpStr == "0"))
+							throw 1;
 
+						allowOnlineVerCheck = (tmpStr == "1");
 						xmlFree(xmlString);
 					}
 
@@ -476,13 +472,11 @@ nodeptrEndJump:
 	catch (int)
 	{
 		//Code threw an error, just say "bad parse" and be done with it
-		//delete paths;
 		xmlFreeDoc(doc);
 		return CONFIG_ERR_BADFILE;
 	}
 
 
-	//delete paths;
 	xmlFreeDoc(doc);
 
 	configLoadOK=true;
@@ -505,7 +499,6 @@ bool ConfigFile::createConfigDir() const
 		SetFileAttributes(filePath.wc_str(),FILE_ATTRIBUTE_HIDDEN);
 #endif
 	}
-//	delete  paths;
 	
 	return true;
 }
@@ -655,8 +648,8 @@ unsigned int ConfigFile::getStartupPanelMode() const
 
 bool ConfigFile::getAllowOnlineVersionCheck() const
 {
-	#if defined( __APPLE__) || defined(WIN32)
-		//Apple and windows don't have good package
+	#if defined(WIN32)
+		//apple crashes wx, and windows don't have good package
 		//management systems as yet, so we check,
 		//iff the user opts in
 		return allowOnlineVerCheck;
@@ -679,9 +672,9 @@ void ConfigFile::setAllowOnline(bool v)
 void ConfigFile::setAllowOnlineVersionCheck(bool v)
 {
 	//Do not allow this setting to
-	//be modified from the default for non-apple-non windows 
+	//be modified from the default for non windows  and apple crashes wx
 	//platforms
-	#if defined( __APPLE__) || defined(WIN32)
+	#if defined(WIN32)
 		allowOnlineVerCheck=v;
 	#endif
 }
