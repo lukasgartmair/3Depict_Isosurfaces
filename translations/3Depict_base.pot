@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2012-07-08 22:21+0100\n"
+"POT-Creation-Date: 2012-07-16 01:27+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,23 +17,23 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Language: \n"
 
-#: ../src/configFile.cpp:194
+#: ../src/configFile.cpp:190
 msgid "Config file present, but is not valid (root node test)"
 msgstr ""
 
-#: ../src/configFile.cpp:235
+#: ../src/configFile.cpp:231
 msgid "Unable to interpret recent file entry"
 msgstr ""
 
-#: ../src/configFile.cpp:275
+#: ../src/configFile.cpp:271
 msgid "Unable to determine filter type in defaults listing."
 msgstr ""
 
-#: ../src/configFile.cpp:579
+#: ../src/configFile.cpp:572
 msgid "Online access for non win32/apple platforms is intentionally disabled, "
 msgstr ""
 
-#: ../src/configFile.cpp:580
+#: ../src/configFile.cpp:573
 msgid ""
 "regardless of the settings you use here. Use your package manager to keep up-"
 "to-date"
@@ -111,7 +111,7 @@ msgstr ""
 msgid "View size"
 msgstr ""
 
-#: ../src/basics.cpp:56 ../src/APTClasses.cpp:183
+#: ../src/basics.cpp:56 ../src/APTClasses.cpp:187
 msgid "Error opening file"
 msgstr ""
 
@@ -119,7 +119,7 @@ msgstr ""
 msgid "Error whilst reading file contents"
 msgstr ""
 
-#: ../src/basics.cpp:58 ../src/APTClasses.cpp:187
+#: ../src/basics.cpp:58 ../src/APTClasses.cpp:191
 msgid "Error interpreting field in file"
 msgstr ""
 
@@ -1028,7 +1028,7 @@ msgid "Aborted."
 msgstr ""
 
 #: ../src/3Depict.cpp:3738 ../src/3Depict.cpp:3742 ../src/3Depict.cpp:3755
-#: ../src/glPane.cpp:890 ../src/glPane.cpp:1055
+#: ../src/glPane.cpp:895 ../src/glPane.cpp:1060
 msgid " of "
 msgstr ""
 
@@ -1170,7 +1170,7 @@ msgid "Property"
 msgstr ""
 
 #: ../src/3Depict.cpp:5041 ../src/3Depict.cpp:5046
-#: ../src/filters/dataLoad.cpp:451 ../src/dialogs/ExportRngDialog.cpp:89
+#: ../src/filters/dataLoad.cpp:461 ../src/dialogs/ExportRngDialog.cpp:89
 #: ../src/dialogs/prefDialog.cpp:106 ../src/wxcomponents.cpp:267
 msgid "Value"
 msgstr ""
@@ -1445,7 +1445,7 @@ msgid "Bin width"
 msgstr ""
 
 #: ../src/filters/compositionProfile.cpp:948
-#: ../src/filters/clusterAnalysis.cpp:996 ../src/filters/ionInfo.cpp:514
+#: ../src/filters/clusterAnalysis.cpp:996 ../src/filters/ionInfo.cpp:521
 msgid "Normalise"
 msgstr ""
 
@@ -1475,7 +1475,7 @@ msgstr ""
 msgid "Range"
 msgstr ""
 
-#: ../src/filters/rangeFile.cpp:497 ../src/filters/dataLoad.cpp:387
+#: ../src/filters/rangeFile.cpp:497 ../src/filters/dataLoad.cpp:397
 msgid "File"
 msgstr ""
 
@@ -1636,7 +1636,7 @@ msgstr ""
 
 #: ../src/filters/clusterAnalysis.cpp:895
 #: ../src/filters/clusterAnalysis.cpp:903
-#: ../src/filters/spatialAnalysis.cpp:1319 ../src/filters/ionInfo.cpp:539
+#: ../src/filters/spatialAnalysis.cpp:1319 ../src/filters/ionInfo.cpp:546
 msgid "Algorithm"
 msgstr ""
 
@@ -1832,54 +1832,54 @@ msgstr ""
 msgid "Data file contained incorrect number of columns -- should be 4, was "
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:349
+#: ../src/filters/dataLoad.cpp:359
 msgid ""
 "Warning:One or more bounds of the loaded data approaches the limits of "
 "numerical stability for the internal data type(magnitude too large). "
 "Consider rescaling data before loading"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:356
+#: ../src/filters/dataLoad.cpp:366
 msgid "Loaded "
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:356
+#: ../src/filters/dataLoad.cpp:366
 msgid " Points"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:398
+#: ../src/filters/dataLoad.cpp:408
 msgid "File type"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:414
+#: ../src/filters/dataLoad.cpp:424
 msgid "Number of columns"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:455
+#: ../src/filters/dataLoad.cpp:465
 msgid "Value Label"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:467
+#: ../src/filters/dataLoad.cpp:477
 msgid "Enabled"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:476
+#: ../src/filters/dataLoad.cpp:486
 msgid "Sample data"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:483
+#: ../src/filters/dataLoad.cpp:493
 msgid "Load Limit (MB)"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:489
+#: ../src/filters/dataLoad.cpp:499
 msgid "Monitor"
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:502
+#: ../src/filters/dataLoad.cpp:512
 msgid "Default colour "
 msgstr ""
 
-#: ../src/filters/dataLoad.cpp:507
+#: ../src/filters/dataLoad.cpp:517
 msgid "Draw Size"
 msgstr ""
 
@@ -2092,7 +2092,7 @@ msgid "Map end"
 msgstr ""
 
 #: ../src/filters/ionColour.cpp:409 ../src/filters/transform.cpp:1383
-#: ../src/filters/ionInfo.cpp:642
+#: ../src/filters/ionInfo.cpp:649
 msgid "Aborted"
 msgstr ""
 
@@ -2385,71 +2385,75 @@ msgstr ""
 msgid "Convex hull"
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:336
+#: ../src/filters/ionInfo.cpp:305
+msgid "No ions"
+msgstr ""
+
+#: ../src/filters/ionInfo.cpp:343
 msgid "--Counts--"
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:348
+#: ../src/filters/ionInfo.cpp:355
 msgid "Total Ranged\t"
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:353
+#: ../src/filters/ionInfo.cpp:360
 msgid "Total (incl. unranged)\t"
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:366
+#: ../src/filters/ionInfo.cpp:373
 msgid "n/a"
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:376
+#: ../src/filters/ionInfo.cpp:383
 msgid "Unranged"
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:392
+#: ../src/filters/ionInfo.cpp:399
 msgid "Number of points : "
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:421
+#: ../src/filters/ionInfo.cpp:428
 msgid "Rectilinear Bounds : "
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:426
+#: ../src/filters/ionInfo.cpp:433
 msgid "Volume (len^3): "
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:442
+#: ../src/filters/ionInfo.cpp:449
 msgid "Convex Volume (len^3): "
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:444
+#: ../src/filters/ionInfo.cpp:451
 msgid "Unable to compute volume"
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:473
+#: ../src/filters/ionInfo.cpp:480
 msgid "Ranged Density (pts/vol):"
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:478
+#: ../src/filters/ionInfo.cpp:485
 msgid "Total Density (pts/vol):"
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:505
+#: ../src/filters/ionInfo.cpp:512
 msgid "Compositions"
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:507
+#: ../src/filters/ionInfo.cpp:514
 msgid "Counts"
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:527
+#: ../src/filters/ionInfo.cpp:534
 msgid "Volume"
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:640
+#: ../src/filters/ionInfo.cpp:647
 msgid "Insufficient memory for operation"
 msgstr ""
 
-#: ../src/filters/ionInfo.cpp:644
+#: ../src/filters/ionInfo.cpp:651
 msgid "Bug? Problem with qhull library, cannot run convex hull."
 msgstr ""
 
@@ -2562,134 +2566,134 @@ msgstr ""
 msgid "Voxel"
 msgstr ""
 
-#: ../src/viscontrol.cpp:976
+#: ../src/viscontrol.cpp:987
 msgid ""
 "This file is a \"state\" file for the 3Depict program, and stores "
 "information about a particular analysis session. This file should be a valid "
 "\"XML\" file"
 msgstr ""
 
-#: ../src/viscontrol.cpp:1118
+#: ../src/viscontrol.cpp:1129
 msgid "Failed to allocate parser"
 msgstr ""
 
-#: ../src/viscontrol.cpp:1154
+#: ../src/viscontrol.cpp:1165
 msgid ""
 "Unable to retrieve root node in input state file... Is this really a non-"
 "empty XML file?"
 msgstr ""
 
-#: ../src/viscontrol.cpp:1161
+#: ../src/viscontrol.cpp:1172
 msgid "Base state node missing. Is this really a state XML file??"
 msgstr ""
 
-#: ../src/viscontrol.cpp:1190
+#: ../src/viscontrol.cpp:1201
 msgid "State was created by a newer version of this program.. "
 msgstr ""
 
-#: ../src/viscontrol.cpp:1191
+#: ../src/viscontrol.cpp:1202
 msgid "file reading will continue, but may fail."
 msgstr ""
 
-#: ../src/viscontrol.cpp:1196
+#: ../src/viscontrol.cpp:1207
 msgid ""
 "Warning, unparseable version number in state file. File reading will "
 "continue, but may fail"
 msgstr ""
 
-#: ../src/viscontrol.cpp:1203
+#: ../src/viscontrol.cpp:1214
 msgid "Unable to find the \"writer\" node"
 msgstr ""
 
-#: ../src/viscontrol.cpp:1213
+#: ../src/viscontrol.cpp:1224
 msgid "Unable to find the \"backcolour\" node."
 msgstr ""
 
-#: ../src/viscontrol.cpp:1220
+#: ../src/viscontrol.cpp:1231
 msgid "\"backcolour\" node missing \"r\" value."
 msgstr ""
 
-#: ../src/viscontrol.cpp:1225
+#: ../src/viscontrol.cpp:1236
 msgid "Unable to interpret \"backColour\" node's \"r\" value."
 msgstr ""
 
-#: ../src/viscontrol.cpp:1233
+#: ../src/viscontrol.cpp:1244
 msgid "\"backcolour\" node missing \"g\" value."
 msgstr ""
 
-#: ../src/viscontrol.cpp:1239
+#: ../src/viscontrol.cpp:1250
 msgid "Unable to interpret \"backColour\" node's \"g\" value."
 msgstr ""
 
-#: ../src/viscontrol.cpp:1247
+#: ../src/viscontrol.cpp:1258
 msgid "\"backcolour\" node missing \"b\" value."
 msgstr ""
 
-#: ../src/viscontrol.cpp:1253
+#: ../src/viscontrol.cpp:1264
 msgid "Unable to interpret \"backColour\" node's \"b\" value."
 msgstr ""
 
-#: ../src/viscontrol.cpp:1260
+#: ../src/viscontrol.cpp:1271
 msgid "\"backcolour\"s rgb values must be in range [0,1]"
 msgstr ""
 
-#: ../src/viscontrol.cpp:1287
+#: ../src/viscontrol.cpp:1298
 msgid "Unable to find or interpret \"showaxis\" node"
 msgstr ""
 
-#: ../src/viscontrol.cpp:1296
+#: ../src/viscontrol.cpp:1307
 msgid "Unable to locate \"filtertree\" node."
 msgstr ""
 
-#: ../src/viscontrol.cpp:1312
+#: ../src/viscontrol.cpp:1323
 msgid "Cameras section missing \"active\" node."
 msgstr ""
 
-#: ../src/viscontrol.cpp:1320
+#: ../src/viscontrol.cpp:1331
 msgid "Unable to find property \"value\"  for \"cameras->active\" node."
 msgstr ""
 
-#: ../src/viscontrol.cpp:1326
+#: ../src/viscontrol.cpp:1337
 msgid "Unable to interpret property \"value\"  for \"cameras->active\" node."
 msgstr ""
 
-#: ../src/viscontrol.cpp:1348
+#: ../src/viscontrol.cpp:1359
 msgid "Unable to interpret the camera type"
 msgstr ""
 
-#: ../src/viscontrol.cpp:1383
+#: ../src/viscontrol.cpp:1394
 msgid "Unable to locate stash name for stash "
 msgstr ""
 
-#: ../src/viscontrol.cpp:1390
+#: ../src/viscontrol.cpp:1401
 msgid "Empty stash name for stash "
 msgstr ""
 
-#: ../src/viscontrol.cpp:1396
+#: ../src/viscontrol.cpp:1407
 msgid "For stash "
 msgstr ""
 
-#: ../src/viscontrol.cpp:1424
+#: ../src/viscontrol.cpp:1435
 msgid "Unrecognised effect :"
 msgstr ""
 
-#: ../src/viscontrol.cpp:1434
+#: ../src/viscontrol.cpp:1445
 msgid "Duplicate effect found"
 msgstr ""
 
-#: ../src/viscontrol.cpp:1434
+#: ../src/viscontrol.cpp:1445
 msgid " cannot use."
 msgstr ""
 
-#: ../src/viscontrol.cpp:1444
+#: ../src/viscontrol.cpp:1455
 msgid "Error reading effect : "
 msgstr ""
 
-#: ../src/viscontrol.cpp:1505
+#: ../src/viscontrol.cpp:1516
 msgid "-merge"
 msgstr ""
 
-#: ../src/viscontrol.cpp:1510
+#: ../src/viscontrol.cpp:1521
 msgid ""
 " Unable to merge stashes correctly. This is improbable, so please report "
 "this."
@@ -2780,151 +2784,155 @@ msgstr ""
 msgid "Error processing node: "
 msgstr ""
 
-#: ../src/APTClasses.cpp:161
+#: ../src/APTClasses.cpp:165
 msgid "Memory allocation failure on POS load"
 msgstr ""
 
-#: ../src/APTClasses.cpp:162
+#: ../src/APTClasses.cpp:166
 msgid "Error opening pos file"
 msgstr ""
 
-#: ../src/APTClasses.cpp:163
+#: ../src/APTClasses.cpp:167
 msgid "Pos file empty"
 msgstr ""
 
-#: ../src/APTClasses.cpp:164
+#: ../src/APTClasses.cpp:168
 msgid "Pos file size appears to have non-integer number of entries"
 msgstr ""
 
-#: ../src/APTClasses.cpp:165
+#: ../src/APTClasses.cpp:169
 msgid "Error reading from pos file (after open)"
 msgstr ""
 
-#: ../src/APTClasses.cpp:166
+#: ../src/APTClasses.cpp:170
 msgid "Error - Found NaN in pos file"
 msgstr ""
 
-#: ../src/APTClasses.cpp:167
+#: ../src/APTClasses.cpp:171
 msgid "Pos load aborted by interrupt."
 msgstr ""
 
-#: ../src/APTClasses.cpp:184
+#: ../src/APTClasses.cpp:188
 msgid "No numerical data found"
 msgstr ""
 
-#: ../src/APTClasses.cpp:185
+#: ../src/APTClasses.cpp:189
 msgid "Error re-opening file, after first scan"
 msgstr ""
 
-#: ../src/APTClasses.cpp:186
+#: ../src/APTClasses.cpp:190
 msgid "Unable to read file contents after open"
 msgstr ""
 
-#: ../src/APTClasses.cpp:188
+#: ../src/APTClasses.cpp:192
 msgid "Incorrect number of fields in file"
 msgstr ""
 
-#: ../src/APTClasses.cpp:189
+#: ../src/APTClasses.cpp:193
 msgid "Unable to allocate memory to store data"
 msgstr ""
 
-#: ../src/APTClasses.cpp:194
+#: ../src/APTClasses.cpp:198
 msgid "Error opening file, check name and permissions."
 msgstr ""
 
-#: ../src/APTClasses.cpp:195
+#: ../src/APTClasses.cpp:199
 msgid ""
 "Error interpreting range file header, expecting ion count and range count, "
 "respectively."
 msgstr ""
 
-#: ../src/APTClasses.cpp:196
+#: ../src/APTClasses.cpp:200
 msgid ""
 "Range file appears to be empty, check file is a proper range file and is not "
 "empty."
 msgstr ""
 
-#: ../src/APTClasses.cpp:197
+#: ../src/APTClasses.cpp:201
 msgid "Error reading the long name for ion."
 msgstr ""
 
-#: ../src/APTClasses.cpp:198
+#: ../src/APTClasses.cpp:202
 msgid "Error reading the short name for ion."
 msgstr ""
 
-#: ../src/APTClasses.cpp:199
+#: ../src/APTClasses.cpp:203
 msgid ""
 "Error reading colour data in the file, expecting 3 decimal values, space "
 "separated."
 msgstr ""
 
-#: ../src/APTClasses.cpp:200
+#: ../src/APTClasses.cpp:204
 msgid ""
 "Tried skipping to table separator line (line with dashes), but did not find "
 "it."
 msgstr ""
 
-#: ../src/APTClasses.cpp:201
+#: ../src/APTClasses.cpp:205
 msgid ""
 "Unexpected failure whilst trying to skip over range lead-in data (bit before "
 "range start value)"
 msgstr ""
 
-#: ../src/APTClasses.cpp:202
+#: ../src/APTClasses.cpp:206
 msgid "Unable to read range start and end values"
 msgstr ""
 
-#: ../src/APTClasses.cpp:203
+#: ../src/APTClasses.cpp:207
 msgid "Unable to read range table entry"
 msgstr ""
 
-#: ../src/APTClasses.cpp:204
+#: ../src/APTClasses.cpp:208
 msgid ""
 "Error reading file, unexpected format, are you sure it is a proper range "
 "file?"
 msgstr ""
 
-#: ../src/APTClasses.cpp:205
+#: ../src/APTClasses.cpp:209
 msgid ""
 "Too many ranges appeared to have range entries with no usable data (eg, all "
 "blank)"
 msgstr ""
 
-#: ../src/APTClasses.cpp:206
+#: ../src/APTClasses.cpp:210
 msgid ""
 "Range file appears to contain malformed data, check things like start and "
 "ends of m/c are not equal or flipped."
 msgstr ""
 
-#: ../src/APTClasses.cpp:207
+#: ../src/APTClasses.cpp:211
 msgid "Range file appears to be inconsistent (eg, overlapping ranges)"
 msgstr ""
 
-#: ../src/glPane.cpp:616
+#: ../src/APTClasses.cpp:212
+msgid "No ion name mapping found  for multiple ion."
+msgstr ""
+
+#: ../src/glPane.cpp:621
 msgid "Use shift/ctrl-space or double tap to alter reset axis"
 msgstr ""
 
-#: ../src/glPane.cpp:873
+#: ../src/glPane.cpp:878
 msgid "Image progress"
 msgstr ""
 
-#: ../src/glPane.cpp:874
+#: ../src/glPane.cpp:879
 msgid "Rendering tiles..."
 msgstr ""
 
-#: ../src/glPane.cpp:890
+#: ../src/glPane.cpp:895
 msgid "Tile "
 msgstr ""
 
-#: ../src/glPane.cpp:1022
+#: ../src/glPane.cpp:1027
 msgid "Animation progress"
 msgstr ""
 
-#: ../src/glPane.cpp:1023
+#: ../src/glPane.cpp:1028
 msgid "Rendering sequence..."
 msgstr ""
 
-#: ../src/glPane.cpp:1055
+#: ../src/glPane.cpp:1060
 msgid "Saving Image "
 msgstr ""
 
