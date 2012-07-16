@@ -20,16 +20,20 @@
 
 #include "translation.h"
 
+#include <algorithm>
 #include <limits>
 #include <cstring>
 #include <clocale>
+#include <map>
+#include <set>
+#include <numeric>
 
 using std::pair;
 using std::string;
 using std::vector;
 using std::ifstream;
-using std::cerr;
-
+using std::make_pair;
+using std::map;
 
 //No two entries in table may match. NUM_ELEMENTS contains number of entries
 const char *cpAtomNaming[][2] = { 
@@ -204,7 +208,8 @@ const char *rangeErrStrings[] =
 	NTRANS("Error reading file, unexpected format, are you sure it is a proper range file?"),
 	NTRANS("Too many ranges appeared to have range entries with no usable data (eg, all blank)"),
 	NTRANS("Range file appears to contain malformed data, check things like start and ends of m/c are not equal or flipped."),
-	NTRANS("Range file appears to be inconsistent (eg, overlapping ranges)")
+	NTRANS("Range file appears to be inconsistent (eg, overlapping ranges)"),
+	NTRANS("No ion name mapping found  for multiple ion."),
 };	
 //!Create an pos file from a vector of IonHits
 unsigned int IonVectorToPos(const vector<IonHit> &ionVec, const string &filename)
@@ -222,7 +227,7 @@ unsigned int IonVectorToPos(const vector<IonHit> &ionVec, const string &filename
 	}
 	return 0;
 }
-//
+
 
 
 void appendPos(const vector<IonHit> &points, const char *name)
@@ -236,6 +241,200 @@ void appendPos(const vector<IonHit> &points, const char *name)
 		points[ui].makePosData(data);
 		posFile.write((char *)data, 4*sizeof(float));
 	}
+}
+
+bool decomposeIonNames(const std::string &name,
+		std::vector<pair<string,size_t> > &fragments)
+{
+	size_t lastMarker=0;
+	size_t digitMarker=0;
+
+	if(!name.size())
+		return true;
+
+	//Atomic naming systems use uppercase ascii
+	// letters, like "A" in Au, or Ag as delimiters.
+	//
+	// numerals are multipliers, and are forbidden
+	// for the first char...
+	if(!isascii(name[0]) || 
+		isdigit(name[0]) || islower(name[0]))
+		return false;
+
+	//true - was last, or now am on ion name
+	//false - am still on multiplier
+	int nameMode=true;
+	for(size_t ui=1;ui<name.size();ui++)
+	{
+		if(!isascii(name[ui]))
+			return false;
+		
+		if(nameMode)
+		{	
+			//If we hit a digit, 
+			//this means that we 
+			//are now on a multiplier
+			if(isdigit(name[ui]))
+			{
+				digitMarker=ui;
+				nameMode=false;
+				continue;
+			}
+
+			if(isupper(name[ui]))
+			{
+				//Looks like we hit another
+				// ion name, without hittingany
+				// specification for the number.
+				// This means unitary spec.
+				std::string s;
+				s=name.substr(lastMarker,ui-lastMarker);
+				fragments.push_back(make_pair(s,1));
+				lastMarker=ui;
+			}
+		}
+		else
+		{
+			//OK, we still have a digit.
+			// keep moving
+			if(isdigit(name[ui]))
+				continue;				
+
+			if(isalpha(name[ui]))
+			{
+				//OK, this looks like a new ion
+				//but we need to record multiplicity
+				std::string s,sDigit;
+				s=name.substr(lastMarker,digitMarker-lastMarker);
+
+				sDigit=name.substr(digitMarker,ui-digitMarker);
+				
+				size_t multiplicity;
+				stream_cast(multiplicity,sDigit);
+
+				fragments.push_back(make_pair(s,multiplicity));
+				
+				lastMarker=ui;
+				nameMode=true;
+			}
+
+		}
+	}
+
+	if(nameMode)
+	{
+		//Hit end of string.
+		//record framgent
+		std::string s;
+		s=name.substr(lastMarker,name.size()-lastMarker);
+		fragments.push_back(make_pair(s,1));
+	}
+	else
+	{
+		std::string s,sDigit;
+		s=name.substr(lastMarker,digitMarker-lastMarker);
+		sDigit=name.substr(digitMarker,name.size()-digitMarker);
+		
+		size_t multiplicity;
+		stream_cast(multiplicity,sDigit);
+		
+		fragments.push_back(make_pair(s,multiplicity));
+	}
+
+	return true;
+}
+
+//Given the name-frequency pairing vector, see if there
+// is a match in the map of composed names
+bool matchComposedName(const std::map<string,size_t> &composedNames,
+	       
+		const vector<pair<string,size_t> > &nameFreq, size_t &offset)
+{
+	std::map<size_t,size_t> offsetMap;
+	std::vector<vector<pair<string,size_t> > > fragmentVec;
+
+	fragmentVec.reserve(composedNames.size());
+	for(std::map<string,size_t>::const_iterator it=composedNames.begin();
+			it!=composedNames.end();it++)
+	{
+		vector<pair<string,size_t> > frags;
+		if(!decomposeIonNames(it->first,frags))
+			frags.clear();
+	
+		offsetMap[fragmentVec.size()] = it->second; 	
+		fragmentVec.push_back(frags);
+
+
+
+		frags.clear();
+	}
+
+
+	//Try to match each group of fragments (name-frequency pairings) 
+	//from the fragments of the decomposed composed names (fragmentVec entries)
+	//against the "master" list of possible fragments, nameFreq
+
+	//If the decomposed fragments wholly constitute the
+	//master list, then thats good, and we have a match.
+	//Note that the master list will not neccesarily be in
+	//the same order as the fragment list
+
+	//match tally for fragments
+	
+
+	vector<int> validFragments;
+
+	std::set<pair<size_t,size_t> > usedFragments;
+
+	validFragments.resize(fragmentVec.size(),1);
+	for(size_t ui=0;ui<nameFreq.size();ui++)
+	{
+		for(size_t uj=0;uj<fragmentVec.size();uj++)
+		{
+			size_t curOffset=(size_t)-1;
+			for(size_t uk=0;uk<fragmentVec[uj].size();uk++)
+			{
+				pair<size_t,size_t> fragmentOff;
+				fragmentOff=make_pair(uj,uk);
+		
+				//Skip over used fragments	
+				if(std::find(usedFragments.begin(),usedFragments.end(),fragmentOff)
+					!= usedFragments.end())
+					continue;
+
+				if(nameFreq[ui] == fragmentVec[uj][uk])
+				{
+					curOffset = uk;
+					usedFragments.insert(make_pair(uj,uk));
+					break;
+				}
+			}
+
+			if(curOffset == (size_t)-1)
+			{
+				validFragments[uj]=false;
+			}
+		}
+
+	}
+
+	bool haveMatch=false;
+
+	for(size_t ui=0;ui<validFragments.size();ui++)
+	{
+		if(validFragments[ui])
+		{
+			if(!haveMatch)
+			{
+				offset=offsetMap.at(ui);
+				haveMatch=true;
+			}
+			else
+				return false; //non-unique match
+		}
+	}
+
+	return haveMatch;
 }
 
 unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumcols, unsigned int index[], vector<IonHit> &posIons,const char *posFile, size_t limitCount,
@@ -544,6 +743,7 @@ unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int output
 	
 	return 0;
 }
+
 
 //TODO: Add progress
 unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedCols[], 
@@ -1015,7 +1215,6 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 		{
 			char inBuffer[256];
 			unsigned int tempInt;
-			unsigned int assignedFlag;
 
 			unsigned int numRanges;
 			unsigned int numIons;	
@@ -1132,10 +1331,12 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 				return errState;
 			}
 
+			vector<unsigned int > frequencyEntries;
+			frequencyEntries.clear();
+			frequencyEntries.resize(numRanges*numIons,0);
 			//Load in each range file line
 			tempInt=0;
 			pair<float,float> massPair;
-			unsigned int badRanges=0;	
 			for(unsigned int i=0; i<numRanges; i++)
 			{
 				//Read dummy chars until we hit a digit
@@ -1180,7 +1381,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 
 				ranges.push_back(massPair);	
 				//Load the range data line
-				assignedFlag=0;
+
 				for(unsigned int j=0; j<numIons; j++)
 				{
 					if(!fscanf(fpRange, "%64u",&tempInt))
@@ -1194,30 +1395,19 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 					}
 					
 					
-					if(tempInt == 1)
-					{
-						assignedFlag=1;
-						ionIDs.push_back(j);
-					}
-				}
-
-				if(!assignedFlag)
-				{
-					//OK, so that range was useless
-					//the range file had a null line. 
-
-					//In a nice world no sane program would ever make
-					//a range file like this.
-					ranges.pop_back();
-					badRanges++;
+					if(tempInt)
+						frequencyEntries[numIons*i + j]=tempInt;
+					
 				}
 
 			}
-				
-
+			
+			//Do some post-processing on the range table
+			//
 			//Prevent rangefiles that have no valid ranges
 			//from being loaded
-			if(badRanges >= numRanges)
+			size_t nMax=std::accumulate(frequencyEntries.begin(),frequencyEntries.end(),0);
+			if(!nMax)
 			{
 				errState=RANGE_ERR_DATA_TOO_MANY_USELESS_RANGES;
 				fclose(fpRange);
@@ -1229,7 +1419,151 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 
 			}
 
-			numRanges-=badRanges;
+
+			//Because of a certain software's output
+			//it can generate a range listing like this (table +example colour line only)
+			//
+			// these are invalid according to white book
+			//  and the "Atom Probe Microscopy", (Springer series in Materials Science
+			//   vol. 160) descriptions
+			//
+			// Cu2 1.0 1.0 1.0 (Cu2)
+			// ------------Cu Ni Mg Si CuNi4 Mg3Si2 Cu2
+			// . 12.3 23.5 1 4 0 0 0 0 0
+			// . 32.1 43.2 0 0 3 2 0 0 0
+			// . 56.7 89.0 2 0 0 0 0 0 0
+			//
+			// which we get blamed for not supporting :(
+			//
+			//So, we have to scan the lists of ions, and create
+			//tentative "combined" ion names, from the list of ions at the top.
+			//
+			//However, this violates the naming system in the "white book" (Miller, Atom probe: Analysis at the atomic scale)
+			// scheme, which might allow something like
+			// U235U238
+			// as a single range representing a single ion. So they bastardise it by placing the zero columns
+			// as a hint marker. Technically speaking, the zero column entries should not exist
+			// in the format - as they would correspond to a non-existant species (or rather, an unreferenced species).
+			// To check the case of certain programs using cluster ions like this, we have to engage in some
+			// hacky-heuristics, check for 
+			// 	- Columns with only zero entries, 
+			// 	- which have combined numerical headers
+			//
+			// 	Then handle this as a separate case. FFS.
+
+			//-- Build a sparse vector of composed ions
+			std::map<string,size_t> composeMap;
+
+			for(size_t uj=0;uj<numIons;uj++)
+			{
+				bool maybeComposed;
+				maybeComposed=true;
+				for(size_t ui=0; ui<numRanges;ui++)
+				{
+					//Scan through the range listing to try to
+					//find a non-zero entries
+					if(frequencyEntries[numIons*ui + uj])
+					{
+						maybeComposed=false;
+						break;
+					}
+				}
+
+				//If the ion has a column full of zeroes, and
+				//the ion looks like its composable, then
+				//decompose it for later references
+				if(maybeComposed)
+					composeMap.insert(make_pair(ionNames[uj].first,uj));
+			}
+			//--
+
+
+			//Loop through each range's freq table entries, to determine if
+			// the ion is composed (has more than one "1" in multiplicity listing)
+			for(size_t ui=0;ui<numRanges;ui++)
+			{
+				std::map<size_t,size_t > freqEntries;
+				size_t freq;
+
+				freqEntries.clear();
+				freq=0;
+				for(size_t uj=0;uj<numIons;uj++)
+				{
+					size_t thisEntry;
+					thisEntry=frequencyEntries[numIons*ui+uj];
+					freq+=thisEntry;
+					if(thisEntry)
+						freqEntries.insert(make_pair(uj,thisEntry));
+				}
+
+				if(freq ==1)
+				{
+					//Simple case - we only had a single [1] in
+					//a row for the 
+					ASSERT(freqEntries.size() == 1);
+					ionIDs.push_back( freqEntries.begin()->first);
+				}
+				else if (freq > 1)
+				{
+					//More complex case
+					// ion appears to be composed of multiple fragments.
+					//First entry is the ion name, second is the number of times it occurs 
+					// (ie value in freq table, on this range line)
+					vector<pair<string,size_t> > entries;
+
+					for(map<size_t,size_t>::iterator it=freqEntries.begin();it!=freqEntries.end();++it)
+						entries.push_back(make_pair(ionNames[it->first].first,it->second));
+
+					//try to match the composed name to the
+					size_t offset;
+					if(!matchComposedName(composeMap,entries,offset))
+					{
+						//We failed to match the ion against a composed name.
+						// cannot deal with this case.
+						//
+						// we can't just build a new ion name,
+						// as we don't have a colour specification for this.
+						//
+						// We can't use the regular ion name, without 
+						// tracking multiplicity (and then what to do with it in every case - 
+						// seems only a special case for composition? eg. 
+						// Is it a sep. species when clustering? Who knows!)
+						errState=RANGE_ERR_DATA_NOMAPPED_IONNAME;
+						fclose(fpRange);
+
+						if(strcmp(oldLocale,"C"))
+							setlocale(LC_NUMERIC,oldLocale);
+						free(oldLocale);
+						return errState;
+					}
+
+
+
+
+					ASSERT(offset < ionNames.size());
+					ionIDs.push_back( offset);
+				}
+				else //0
+				{
+					//Range was useless - had no nonzero values
+					//in frequency table.
+					//Set to bad ionID - we will kill this later.
+					ionIDs.push_back(-1);
+				}
+			}
+
+			//Loop through any ranges with a bad ionID (== -1), then delete them by popping
+			for(size_t ui=0;ui<ionIDs.size();ui++)
+			{
+				if(ionIDs[ui] == (size_t)-1)
+				{
+					std::swap(ranges[ui],ranges.back());
+					ranges.pop_back();
+
+					std::swap(ionIDs[ui],ionIDs.back());
+					ionIDs.pop_back();
+				}
+			}
 		
 			break;	
 		}

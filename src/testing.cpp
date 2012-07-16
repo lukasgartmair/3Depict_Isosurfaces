@@ -404,6 +404,7 @@ bool rangeFileLoadTests()
 
 	ionCountMap["test1.rng"]=10; rangeCountMap["test1.rng"]=6;
 	ionCountMap["test2.rng"]=7; rangeCountMap["test2.rng"]=9;
+	ionCountMap["test3.rng"]=19; rangeCountMap["test3.rng"]=59;
 
 	ionCountMap["test1.rrng"]=1; rangeCountMap["test1.rrng"]=1;
 	ionCountMap["test2.rrng"]=3; rangeCountMap["test2.rrng"]=6;
