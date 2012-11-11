@@ -20,10 +20,16 @@ enum
 	ERR_ABORT
 };
 
+const char *PRIMITIVE_NAME[]={
+	NTRANS("Cylinder")
+};
+
 CompositionProfileFilter::CompositionProfileFilter() : primitiveType(PRIMITIVE_CYLINDER),
 	showPrimitive(true), lockAxisMag(false),normalise(true), fixedBins(0),
 	nBins(1000), binWidth(0.5f), r(0.0f),g(0.0f),b(1.0f),a(1.0f), plotStyle(0)
 {
+	COMPILE_ASSERT(ARRAYSIZE(PRIMITIVE_NAME) == PRIMITIVE_END);
+	
 	errMode.mode=PLOT_ERROR_NONE;
 	errMode.movingAverageNum=4;
 	
@@ -31,12 +37,13 @@ CompositionProfileFilter::CompositionProfileFilter() : primitiveType(PRIMITIVE_C
 	vectorParams.push_back(Point3D(0,20.0,0.0));
 	scalarParams.push_back(5.0);
 
+	haveRangeParent=false;
 }
 
 
 void CompositionProfileFilter::binIon(unsigned int targetBin, const RangeStreamData* rng, 
 	const map<unsigned int,unsigned int> &ionIDMapping,
-	vector<vector<size_t> > &frequencyTable, float massToCharge) const
+	vector<vector<size_t> > &frequencyTable, float massToCharge) 
 {
 	//if we have no range data, then simply increment its position in a 1D table
 	//which will later be used as "count" data (like some kind of density plot)
@@ -118,7 +125,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 								bool (*callback)(bool))
 {
 	//Clear selection devices
-	devices.clear();
+	clearDevices();
 	
 	if(showPrimitive)
 	{
@@ -601,7 +608,7 @@ std::string  CompositionProfileFilter::getErrString(unsigned int code) const
 	return std::string("BUG: (CompositionProfileFilter::getErrString) Shouldn't see this!");
 }
 
-bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key, 
+bool CompositionProfileFilter::setProperty( unsigned int key, 
 					const std::string &value, bool &needUpdate) 
 {
 
@@ -630,7 +637,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 
 			if(valueInt ==0 || valueInt == 1)
 			{
-				if(fixedBins!= valueInt)
+				if(fixedBins!= (bool)valueInt)
 				{
 					needUpdate=true;
 					fixedBins=valueInt;
@@ -752,7 +759,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 
 			if(valueInt ==0 || valueInt == 1)
 			{
-				if(showPrimitive!= valueInt)
+				if(showPrimitive!= (bool)valueInt)
 				{
 					needUpdate=true;
 					showPrimitive=valueInt;
@@ -774,7 +781,7 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 			if(!(valueInt ==0 || valueInt == 1))
 				return false;
 			
-			if(normalise!= valueInt)
+			if(normalise!= (bool)valueInt)
 			{
 				needUpdate=true;
 				normalise=valueInt;
@@ -860,33 +867,39 @@ bool CompositionProfileFilter::setProperty(unsigned int set, unsigned int key,
 	return true;
 }
 
-void CompositionProfileFilter::getProperties(FilterProperties &propertyList) const
+void CompositionProfileFilter::getProperties(FilterPropGroup &propertyList) const
 {
-	propertyList.data.clear();
-	propertyList.keys.clear();
-	propertyList.types.clear();
-
-	vector<unsigned int> type,keys;
-	vector<pair<string,string> > s;
-
 	string str,tmpStr;
+	FilterProperty p;
+	size_t curGroup=0;
 
 	//Allow primitive selection if we have more than one primitive
 	if(PRIMITIVE_END > 1)
 	{
-		stream_cast(str,(int)PRIMITIVE_END-1);
-		str =string(TRANS("Primitive Type (0-") + str + ")");
-		stream_cast(tmpStr,primitiveType);
-		s.push_back(make_pair(str,tmpStr));
-		keys.push_back(COMPOSITION_KEY_PRIMITIVETYPE);
-		type.push_back(PROPERTY_TYPE_INTEGER);
+		//Choices for primitive type
+		vector<pair<unsigned int,string> > choices;
+		for(unsigned int ui=0;ui<PRIMITIVE_END;ui++)
+		{
+			str =TRANS(PRIMITIVE_NAME[ui]);
+			choices.push_back(make_pair(ui,str));
+		}
+		p.name=TRANS("Primitive type");
+		p.data=choiceString(choices,primitiveType);
+		p.key=COMPOSITION_KEY_PRIMITIVETYPE;
+		p.type=PROPERTY_TYPE_INTEGER;
+		p.helpText=TRANS("Basic shape to use for profile");
+		propertyList.addProperty(p,curGroup);
+		curGroup++;
 	}
 
-	str = TRANS("Show Primitive");	
+	
 	stream_cast(tmpStr,showPrimitive);
-	s.push_back(make_pair(str,tmpStr));
-	keys.push_back(COMPOSITION_KEY_SHOWPRIMITIVE);
-	type.push_back(PROPERTY_TYPE_BOOL);
+	p.name=TRANS("Show Primitive");	
+	p.data=tmpStr;
+	p.key=COMPOSITION_KEY_SHOWPRIMITIVE;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Display the 3D composition profile interaction object");
+	propertyList.addProperty(p,curGroup);
 
 	switch(primitiveType)
 	{
@@ -895,75 +908,87 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 			ASSERT(vectorParams.size() == 2);
 			ASSERT(scalarParams.size() == 1);
 			stream_cast(str,vectorParams[0]);
-			keys.push_back(COMPOSITION_KEY_ORIGIN);
-			s.push_back(make_pair(TRANS("Origin"), str));
-			type.push_back(PROPERTY_TYPE_POINT3D);
+			p.key=COMPOSITION_KEY_ORIGIN;
+			p.name=TRANS("Origin");
+			p.data=str;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.helpText=TRANS("Position for centre of cylinder");
+			propertyList.addProperty(p,curGroup);
 			
 			stream_cast(str,vectorParams[1]);
-			keys.push_back(COMPOSITION_KEY_NORMAL);
-			s.push_back(make_pair(TRANS("Axis"), str));
-			type.push_back(PROPERTY_TYPE_POINT3D);
+			p.key=COMPOSITION_KEY_NORMAL;
+			p.name=TRANS("Axis");
+			p.data=str;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.helpText=TRANS("Vector between centre and end of cylinder");
+			propertyList.addProperty(p,curGroup);
 
 			if(lockAxisMag)
 				str="1";
 			else
 				str="0";
-			keys.push_back(COMPOSITION_KEY_LOCKAXISMAG);
-			s.push_back(make_pair(TRANS("Lock Axis Mag."), str));
-			type.push_back(PROPERTY_TYPE_BOOL);
+			p.key=COMPOSITION_KEY_LOCKAXISMAG;
+			p.name=TRANS("Lock Axis Mag.");
+			p.data= str;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Prevent length of cylinder changing during interaction");
+			propertyList.addProperty(p,curGroup);
 			
 			stream_cast(str,scalarParams[0]);
-			keys.push_back(COMPOSITION_KEY_RADIUS);
-			s.push_back(make_pair(TRANS("Radius"), str));
-			type.push_back(PROPERTY_TYPE_POINT3D);
-
-
-
+			p.key=COMPOSITION_KEY_RADIUS;
+			p.name=TRANS("Radius");
+			p.data= str;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.helpText=TRANS("Radius of cylinder");
+			propertyList.addProperty(p,curGroup);
 			break;
 		}
 	}
 
-	keys.push_back(COMPOSITION_KEY_FIXEDBINS);
+	p.key=COMPOSITION_KEY_FIXEDBINS;
 	stream_cast(str,fixedBins);
-	s.push_back(make_pair(TRANS("Fixed Bin Num"), str));
-	type.push_back(PROPERTY_TYPE_BOOL);
+	p.name=TRANS("Fixed Bin Num");
+	p.data=str;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("If true, use a fixed number of bins for profile, otherwise use fixed step size");
+	propertyList.addProperty(p,curGroup);
 
 	if(fixedBins)
 	{
 		stream_cast(tmpStr,nBins);
 		str = TRANS("Num Bins");
-		s.push_back(make_pair(str,tmpStr));
-		keys.push_back(COMPOSITION_KEY_NUMBINS);
-		type.push_back(PROPERTY_TYPE_INTEGER);
+		p.name=str;
+		p.data=tmpStr;
+		p.key=COMPOSITION_KEY_NUMBINS;
+		p.type=PROPERTY_TYPE_INTEGER;
+		p.helpText=TRANS("Number of bins to use for profile");
+		propertyList.addProperty(p,curGroup);
 	}
 	else
 	{
 		str = TRANS("Bin width");
 		stream_cast(tmpStr,binWidth);
-		s.push_back(make_pair(str,tmpStr));
-		keys.push_back(COMPOSITION_KEY_BINWIDTH);
-		type.push_back(PROPERTY_TYPE_REAL);
+		p.name=str;
+		p.data=tmpStr;
+		p.key=COMPOSITION_KEY_BINWIDTH;
+		p.type=PROPERTY_TYPE_REAL;
+		p.helpText=TRANS("Size of each bin in profile");
+		propertyList.addProperty(p,curGroup);
 	}
 
-	str = TRANS("Normalise");	
 	stream_cast(tmpStr,normalise);
-	s.push_back(make_pair(str,tmpStr));
-	keys.push_back(COMPOSITION_KEY_NORMALISE);
-	type.push_back(PROPERTY_TYPE_BOOL);
+	p.name= TRANS("Normalise");	
+	p.data=tmpStr;
+	p.key=COMPOSITION_KEY_NORMALISE;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Convert bin counts into relative frequencies in each bin");
+	propertyList.addProperty(p,curGroup);
 
-
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
-
-	s.clear();
-	type.clear();
-	keys.clear();
+	curGroup++;
 	
 	//use set 2 to store the plot properties
 	stream_cast(str,plotStyle);
 	//Let the user know what the valid values for plot type are
-	string tmpChoice;
 	vector<pair<unsigned int,string> > choices;
 
 
@@ -977,9 +1002,12 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 	choices.push_back(make_pair((unsigned int)PLOT_TRACE_STEM,tmpStr));
 
 	tmpStr= choiceString(choices,plotStyle);
-	s.push_back(make_pair(string(TRANS("Plot Type")),tmpStr));
-	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(COMPOSITION_KEY_PLOTTYPE);
+	p.name=TRANS("Plot Type");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Visual style for plot");
+	p.key=COMPOSITION_KEY_PLOTTYPE;
+	propertyList.addProperty(p,curGroup);
 	//Convert the colour to a hex string
 	if(!haveRangeParent)
 	{
@@ -987,19 +1015,17 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 		genColString((unsigned char)(r*255.0),(unsigned char)(g*255.0),
 		(unsigned char)(b*255.0),(unsigned char)(a*255.0),thisCol);
 
-		s.push_back(make_pair(string(TRANS("Colour")),thisCol)); 
-		type.push_back(PROPERTY_TYPE_COLOUR);
-		keys.push_back(COMPOSITION_KEY_COLOUR);
+		p.name=TRANS("Colour");
+		p.data=thisCol; 
+		p.type=PROPERTY_TYPE_COLOUR;
+		p.helpText=TRANS("Colour of plot");
+		p.key=COMPOSITION_KEY_COLOUR;
+		propertyList.addProperty(p,curGroup);
 	}
 
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
-	
-	s.clear();
-	type.clear();
-	keys.clear();
 
+	propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
+	curGroup++;
 	
 	choices.clear();
 	tmpStr=plotErrmodeString(PLOT_ERROR_NONE);
@@ -1008,23 +1034,24 @@ void CompositionProfileFilter::getProperties(FilterProperties &propertyList) con
 	choices.push_back(make_pair((unsigned int) PLOT_ERROR_MOVING_AVERAGE,tmpStr));
 
 	tmpStr= choiceString(choices,errMode.mode);
-	s.push_back(make_pair(string(TRANS("Err. Estimator")),tmpStr));
-	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(COMPOSITION_KEY_ERRMODE);
-
+	p.name=TRANS("Err. Estimator");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Method of estimating error associated with each bin");
+	p.key=COMPOSITION_KEY_ERRMODE;
+	propertyList.addProperty(p,curGroup);
 
 	if(errMode.mode == PLOT_ERROR_MOVING_AVERAGE)
 	{
 		stream_cast(tmpStr,errMode.movingAverageNum);
-		s.push_back(make_pair(string(TRANS("Avg. Window")), tmpStr));
-		type.push_back(PROPERTY_TYPE_INTEGER);
-		keys.push_back(COMPOSITION_KEY_AVGWINSIZE);
-
+		p.name=TRANS("Avg. Window");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_INTEGER;
+		p.helpText=TRANS("Number of bins to include in moving average filter");
+		p.key=COMPOSITION_KEY_AVGWINSIZE;
+		propertyList.addProperty(p,curGroup);
 	}	
-
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
+	propertyList.setGroupTitle(curGroup,TRANS("Error analysis"));
 }
 
 //!Get approx number of bytes for caching output
@@ -1034,7 +1061,7 @@ size_t CompositionProfileFilter::numBytesForCache(size_t nObjects) const
 	return (unsigned int)(-1);
 }
 
-bool CompositionProfileFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+bool CompositionProfileFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -1461,13 +1488,13 @@ bool testCompositionCylinder()
 	
 	bool needUp; std::string s;
 	stream_cast(s,Point3D((startPt+endPt)*0.5f));
-	TEST(f->setProperty(0,COMPOSITION_KEY_ORIGIN,s,needUp),"set origin");
+	TEST(f->setProperty(COMPOSITION_KEY_ORIGIN,s,needUp),"set origin");
 	
 	stream_cast(s,Point3D((endPt-startPt)*0.5f));
-	TEST(f->setProperty(0,COMPOSITION_KEY_NORMAL,s,needUp),"set direction");
-	TEST(f->setProperty(0,COMPOSITION_KEY_SHOWPRIMITIVE,"1",needUp),"Set cylinder visibility");
-	TEST(f->setProperty(0,COMPOSITION_KEY_NORMALISE,"1",needUp),"Disable normalisation");
-	TEST(f->setProperty(0,COMPOSITION_KEY_RADIUS,"5",needUp),"Set radius");
+	TEST(f->setProperty(COMPOSITION_KEY_NORMAL,s,needUp),"set direction");
+	TEST(f->setProperty(COMPOSITION_KEY_SHOWPRIMITIVE,"1",needUp),"Set cylinder visibility");
+	TEST(f->setProperty(COMPOSITION_KEY_NORMALISE,"1",needUp),"Disable normalisation");
+	TEST(f->setProperty(COMPOSITION_KEY_RADIUS,"5",needUp),"Set radius");
 	
 	//Inform the filter about the range stream
 	streamIn.push_back(rngStream);
@@ -1553,15 +1580,15 @@ bool testDensityCylinder()
 	
 	bool needUp; std::string s;
 	stream_cast(s,Point3D((startPt+endPt)*0.5f));
-	TEST(f->setProperty(0,COMPOSITION_KEY_ORIGIN,s,needUp),"set origin");
+	TEST(f->setProperty(COMPOSITION_KEY_ORIGIN,s,needUp),"set origin");
 	
 	stream_cast(s,Point3D((endPt-startPt)*0.5f));
-	TEST(f->setProperty(0,COMPOSITION_KEY_NORMAL,s,needUp),"set direction");
+	TEST(f->setProperty(COMPOSITION_KEY_NORMAL,s,needUp),"set direction");
 	
-	TEST(f->setProperty(0,COMPOSITION_KEY_SHOWPRIMITIVE,"1",needUp),"Set cylinder visibility");
+	TEST(f->setProperty(COMPOSITION_KEY_SHOWPRIMITIVE,"1",needUp),"Set cylinder visibility");
 
-	TEST(f->setProperty(0,COMPOSITION_KEY_NORMALISE,"0",needUp),"Disable normalisation");
-	TEST(f->setProperty(0,COMPOSITION_KEY_RADIUS,"5",needUp),"Set radius");
+	TEST(f->setProperty(COMPOSITION_KEY_NORMALISE,"0",needUp),"Disable normalisation");
+	TEST(f->setProperty(COMPOSITION_KEY_RADIUS,"5",needUp),"Set radius");
 
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");

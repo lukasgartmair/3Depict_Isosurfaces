@@ -10,12 +10,12 @@ enum
 	KEY_DROP_UNRANGED,
 	KEY_RANGE_FILENAME,
 	KEY_RANGE_IONID,
-	KEY_RANGE_START,
-	KEY_ENABLE_ALL_IONS,
-	KEY_ENABLE_ALL_RANGES,
-	KEY_RANGE_END
+	KEY_ENABLE_ALL_IONS, //Limited to ~100K ions
+	KEY_ENABLE_ALL_RANGES=100000,
 };
 
+const unsigned int NUM_ROWS_ION=3;
+const unsigned int NUM_ROWS_RANGE=4;
 //!Error codes
 enum
 {
@@ -475,28 +475,24 @@ size_t RangeFileFilter::numBytesForCache(size_t nObjects) const
 }
 
 
-void RangeFileFilter::getProperties(FilterProperties &p) const
+void RangeFileFilter::getProperties(FilterPropGroup &p) const
 {
 	using std::string;
-	p.data.clear();
-	p.types.clear();
-	p.keys.clear();
 
+	FilterProperty prop;
 	//Ensure that the file is specified
 	if(!rngName.size())
 		return;
 
-	//Should/be loaded
-	ASSERT(enabledRanges.size())
-	
-	string suffix;
-	vector<pair<string, string> > strVec;
-	vector<unsigned int> types,keys;
+	size_t curGroup=0;
 
-	//SET 0
-	strVec.push_back(make_pair(TRANS("File"),rngName));
-	types.push_back(PROPERTY_TYPE_STRING);
-	keys.push_back(KEY_RANGE_FILENAME);
+	prop.name=TRANS("File");
+	prop.type=PROPERTY_TYPE_STRING;
+	prop.helpText=TRANS("File to use for range data");
+	prop.key=KEY_RANGE_FILENAME;
+	prop.data=rngName;
+
+	p.addProperty(prop,curGroup);	
 
 	std::string tmpStr;
 	if(dropUnranged)
@@ -504,20 +500,15 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 	else
 		tmpStr="0";
 
-	strVec.push_back(make_pair(TRANS("Drop unranged"),tmpStr));
-	types.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(KEY_DROP_UNRANGED);
+	prop.name=TRANS("Drop unranged");
+	prop.type=PROPERTY_TYPE_BOOL;
+	prop.helpText=TRANS("Remove unranged points when generating output");
+	prop.key=KEY_DROP_UNRANGED;
+	prop.data=tmpStr;
 
-	p.data.push_back(strVec);
-	p.types.push_back(types);
-	p.keys.push_back(keys);
+	p.addProperty(prop,curGroup);
 
-	keys.clear();
-	types.clear();
-	strVec.clear();
-
-
-	//SET 1
+	curGroup++;
 	//---
 	//Option to disable/enable all ions
 	if(rng.getNumIons())
@@ -531,31 +522,45 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 				break;
 			}
 		}
-		strVec.push_back(make_pair(string(TRANS("All Ions")),str));
-		types.push_back(PROPERTY_TYPE_BOOL);
-		keys.push_back(KEY_ENABLE_ALL_IONS);
+		prop.name=TRANS("All Ions");
+		prop.helpText=TRANS("Enable/disable all ions at once");
+		prop.data=str;
+		prop.type=PROPERTY_TYPE_BOOL;
+		prop.key=KEY_ENABLE_ALL_IONS;
+
+		p.addProperty(prop,1);
 	}
 
+	
+	p.setGroupTitle(curGroup,TRANS("Species"));
 	//Ions themselves
 	for(unsigned int ui=0;ui<rng.getNumIons(); ui++)
 	{
+		std::string suffix;
 		//Get the ion ID
 		stream_cast(suffix,ui);
-		strVec.push_back(make_pair(string(TRANS("IonID ") +suffix),rng.getName(ui)));
-		types.push_back(PROPERTY_TYPE_STRING);
-		keys.push_back(3*ui+1+KEY_ENABLE_ALL_IONS);
+		prop.name=TRANS("IonID ") +suffix;
+		prop.helpText=TRANS("Enable/disable specified ion");
+		prop.data=rng.getName(ui);
+		prop.type=PROPERTY_TYPE_STRING;
+		prop.key=NUM_ROWS_ION*ui+1+KEY_ENABLE_ALL_IONS;
 
+		p.addProperty(prop,curGroup);
 
 		string str;	
 		if(enabledIons[ui])
 			str="1";
 		else
 			str="0";
-		strVec.push_back(make_pair(string(TRANS("Active Ion "))
-						+ suffix,str));
-		types.push_back(PROPERTY_TYPE_BOOL);
-		keys.push_back(3*ui+2+KEY_ENABLE_ALL_IONS);
 		
+		prop.name=TRANS("Active Ion ") + suffix;
+		prop.type=PROPERTY_TYPE_BOOL;
+		prop.helpText=TRANS("If true, ion is used in ouput");
+		prop.data=str;
+		prop.key=NUM_ROWS_ION*ui+2+KEY_ENABLE_ALL_IONS;
+	
+		p.addProperty(prop,curGroup);
+
 		RGBf col;
 		string thisCol;
 	
@@ -564,20 +569,20 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 		genColString((unsigned char)(col.red*255),(unsigned char)(col.green*255),
 				(unsigned char)(col.blue*255),255,thisCol);
 
-		strVec.push_back(make_pair(string(TRANS("Colour ")) + suffix,thisCol)); 
-		types.push_back(PROPERTY_TYPE_COLOUR);
-		keys.push_back(3*ui+3+KEY_ENABLE_ALL_IONS);
+		prop.name=TRANS("Colour ") + suffix;
+		prop.data=thisCol;
+		prop.type=PROPERTY_TYPE_COLOUR;
+		prop.helpText=TRANS("Colour used to represent ion");
+		prop.key=NUM_ROWS_ION*ui+3+KEY_ENABLE_ALL_IONS;
 
-
+		p.addProperty(prop,curGroup);
 	}
 
-	p.data.push_back(strVec);
-	p.types.push_back(types);
-	p.keys.push_back(keys);
-	strVec.clear();types.clear();keys.clear();
 	//----
 
-	//Set 2
+
+	curGroup++;
+
 	//----
 	if(rng.getNumRanges())
 	{
@@ -590,24 +595,20 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 				break;
 			}
 		}
-		strVec.push_back(make_pair(string(TRANS("All Ranges")),str));
-		types.push_back(PROPERTY_TYPE_BOOL);
-		keys.push_back(KEY_ENABLE_ALL_RANGES);
-		
-		p.data.push_back(strVec);
-		p.types.push_back(types);
-		p.keys.push_back(keys);
+		prop.name=TRANS("All Ranges");
+		prop.helpText=TRANS("Enable/disable all ranges");
+		prop.data=str;
+		prop.type=PROPERTY_TYPE_BOOL;
+		prop.key=KEY_ENABLE_ALL_RANGES;
+	
+		p.addProperty(prop,curGroup);
 	}
-	strVec.clear();types.clear();keys.clear();
 	//----
-	//SET 3->N
+	
 	//----
 	for(unsigned  int ui=0; ui<rng.getNumRanges(); ui++)
 	{
-		strVec.clear();
-		types.clear();
-		keys.clear();
-
+		std::string suffix;
 		stream_cast(suffix,ui);
 
 		string str;	
@@ -616,335 +617,323 @@ void RangeFileFilter::getProperties(FilterProperties &p) const
 		else
 			str="0";
 
-		strVec.push_back(make_pair(string(TRANS("Active Rng "))
-						+ suffix,str));
-		types.push_back(PROPERTY_TYPE_BOOL);
-		keys.push_back(KEY_RANGE_ACTIVE);
+		prop.name=TRANS("Active Rng ")+suffix;
+		prop.data=str;
+		prop.type=PROPERTY_TYPE_BOOL;
+		prop.helpText=TRANS("Enable/disable specified range (ion must also be enabled to activiate range)");
+		prop.key=KEY_ENABLE_ALL_RANGES+NUM_ROWS_RANGE*ui+1;
+		p.addProperty(prop,curGroup);
 
-		strVec.push_back(make_pair(string(TRANS("Ion ")) + suffix, 
-					rng.getName(rng.getIonID(ui))));
-		types.push_back(PROPERTY_TYPE_STRING);
-		keys.push_back(KEY_RANGE_IONID);
+		prop.name=string(TRANS("Ion ")) + suffix;
+		prop.data=rng.getName(rng.getIonID(ui));
+		prop.type=PROPERTY_TYPE_STRING;
+		prop.helpText=TRANS("Name of ion associate to this range");
+		prop.key=KEY_ENABLE_ALL_RANGES+NUM_ROWS_RANGE*ui+2;
+		p.addProperty(prop,curGroup);
 
 		std::pair<float,float > thisRange;
-	
 		thisRange = rng.getRange(ui);
-
-		string mass;
-		stream_cast(mass,thisRange.first);
-		strVec.push_back(make_pair(string(TRANS("Start rng "))+suffix,mass));
-		types.push_back(PROPERTY_TYPE_REAL);
-		keys.push_back(KEY_RANGE_START);
+		string rangeVal;
+		stream_cast(rangeVal,thisRange.first);
 		
-		stream_cast(mass,thisRange.second);
-		strVec.push_back(make_pair(string(TRANS("End rng "))+suffix,mass));
-		types.push_back(PROPERTY_TYPE_REAL);
-		keys.push_back(KEY_RANGE_END);
-
-		p.types.push_back(types);
-		p.data.push_back(strVec);
-		p.keys.push_back(keys);
+		prop.name=string(TRANS("Start rng "))+suffix;
+		prop.data=rangeVal;
+		prop.type=PROPERTY_TYPE_REAL;
+		prop.helpText=TRANS("Start value for range");
+		prop.key=KEY_ENABLE_ALL_RANGES + NUM_ROWS_RANGE*ui +3;
+		p.addProperty(prop,curGroup);
+	
+		stream_cast(rangeVal,thisRange.second);
+		prop.name=string(TRANS("End rng "))+suffix;
+		prop.data=rangeVal;
+		prop.type=PROPERTY_TYPE_REAL;
+		prop.helpText=TRANS("Stopping value for range`");
+		prop.key=KEY_ENABLE_ALL_RANGES+NUM_ROWS_RANGE*ui+4;
+		p.addProperty(prop,curGroup);
 	}
+	p.setGroupTitle(curGroup,TRANS("Ranges"));
 	//----
+	
 }
 
-bool RangeFileFilter::setProperty(unsigned int set, unsigned int key, 
+bool RangeFileFilter::setProperty(unsigned int key, 
 					const std::string &value, bool &needUpdate)
 {
 	using std::string;
 	needUpdate=false;
 
 
-	switch(set)
+	switch(key)
 	{
-		case 0:
+		case KEY_RANGE_FILENAME:
 		{
-			switch(key)
+			//Check to see if the new file can actually be opened
+			RangeFile rngTwo;
+
+			if(value != rngName)
 			{
-				case KEY_RANGE_FILENAME:
-				{
-					//Check to see if the new file can actually be opened
-					RangeFile rngTwo;
-
-					if(value != rngName)
-					{
-						if(!rngTwo.open(value.c_str()))
-							return false;
-						else
-						{
-							rng.swap(rngTwo);
-							rngName=value;
-							needUpdate=true;
-						}
-
-					}
-					else
-						return false;
-
-					break;
-				}
-				case KEY_DROP_UNRANGED: //Enable/disable unranged dropping
-				{
-					unsigned int valueInt;
-					if(stream_cast(valueInt,value))
-						return false;
-
-					if(valueInt ==0 || valueInt == 1)
-					{
-						if(dropUnranged!= (char)valueInt)
-						{
-							needUpdate=true;
-							dropUnranged=(char)valueInt;
-						}
-						else
-							needUpdate=false;
-					}
-					else
-						return false;		
-			
-					break;
-				}	
-				default:
-					ASSERT(false);
-					break;
-			}
-			if(needUpdate)
-				clearCache();
-
-			break;
-		}
-		case 1:
-		{
-			if(key== KEY_ENABLE_ALL_IONS)
-			{
-
-				bool allEnable;
-				if(value == "1")
-					allEnable=true;
-				else if ( value == "0")
-					allEnable=false;
-				else
+				if(!rngTwo.open(value.c_str()))
 					return false;
-
-				//set them to the opposite of whatever we have now
-				//if any single one needs a change, then we need to
-				//update
-				for(unsigned int ui=0;ui<rng.getNumIons();ui++)
+				else
 				{
-					if(enabledIons[ui]!=allEnable)
-						needUpdate=true;
-				
-					enabledIons[ui]=allEnable;
+					rng.swap(rngTwo);
+					rngName=value;
+					needUpdate=true;
 				}
 
-				if(needUpdate)
-					clearCache();
-				break;
 			}
-		
-			//Each property is stored in the same
-			//structured group, each with NUM_ROWS per grouping.
-			//The ion ID is simply the row number/NUM_ROWS.
-			//similarly the element is given by remainder 
-			const unsigned int NUM_ROWS=3;
-			unsigned int ionID=((key-1)-KEY_ENABLE_ALL_IONS)/NUM_ROWS;
-			ASSERT(ionID < rng.getNumIons());
-			ASSERT(key <=NUM_ROWS*rng.getNumIons()+KEY_ENABLE_ALL_IONS);
-			unsigned int prop = ((key-1)-KEY_ENABLE_ALL_IONS)-ionID*NUM_ROWS;
-
-			switch(prop)
-			{
-				case 0://Ion name
-				{
-					//only allow english alphabet, upper and lowercase, as well as 0->9
-					for(unsigned int ui=0;ui<value.size();ui++)
-					{
-
-						if(!(isalpha(value[ui]) || isdigit(value[ui])))
-							return false;
-
-					}
-					//TODO: At some point I should work out a 
-					//nice way of setting the short and long names.
-					rng.setIonShortName(ionID,value);
-					rng.setIonLongName(ionID,value);
-					needUpdate=true;
-					break;
-				}
-				case 1: //Enable/disable ion
-				{
-					unsigned int valueInt;
-					if(stream_cast(valueInt,value))
-						return false;
-
-					if(valueInt ==0 || valueInt == 1)
-					{
-						if(enabledIons[ionID] != (char)valueInt)
-						{
-							needUpdate=true;
-							enabledIons[ionID]=(char)valueInt;
-						}
-						else
-							needUpdate=false;
-					}
-					else
-						return false;		
+			else
+				return false;
 			
-					break;
-				}	
-				case 2: //Colour of the ion
+			if(needUpdate)
+				clearCache();
+
+			break;
+		}
+		case KEY_DROP_UNRANGED: //Enable/disable unranged dropping
+		{
+			unsigned int valueInt;
+			if(stream_cast(valueInt,value))
+				return false;
+
+			if(valueInt ==0 || valueInt == 1)
+			{
+				if((int)dropUnranged!= valueInt)
 				{
-					unsigned char r,g,b,a;
-					parseColString(value,r,g,b,a);
-
-					RGBf newCol;
-					newCol.red=(float)r/255.0f;
-					newCol.green=(float)g/255.0f;
-					newCol.blue=(float)b/255.0f;
-
-					rng.setColour(ionID,newCol);
 					needUpdate=true;
-					break;
+					dropUnranged=valueInt;
 				}
-				default:
-					ASSERT(false);
+				else
+					needUpdate=false;
+			}
+			else
+				return false;		
+			
+			if(needUpdate)
+				clearCache();
+
+			break;
+		}	
+		case KEY_ENABLE_ALL_RANGES:
+		{
+
+			bool allEnable;
+			if(value == "1")
+				allEnable=true;
+			else if ( value == "0")
+				allEnable=false;
+			else
+				return false;
+
+			//set them to the opposite of whatever we have now
+			//if any single one needs a change, then we need to
+			//update
+			for(unsigned int ui=0;ui<rng.getNumRanges();ui++)
+			{
+				if(enabledRanges[ui]!=allEnable)
+					needUpdate=true;
+			
+				enabledRanges[ui]=allEnable;
+			}
+			
+			if(needUpdate)
+				clearCache();
+
+			break;
+		}
+		case KEY_ENABLE_ALL_IONS:
+		{
+
+			bool allEnable;
+			if(value == "1")
+				allEnable=true;
+			else if ( value == "0")
+				allEnable=false;
+			else
+				return false;
+
+			//set them to the opposite of whatever we have now
+			//if any single one needs a change, then we need to
+			//update
+			for(unsigned int ui=0;ui<rng.getNumIons();ui++)
+			{
+				if(enabledIons[ui]!=allEnable)
+					needUpdate=true;
+			
+				enabledIons[ui]=allEnable;
 			}
 
 			if(needUpdate)
 				clearCache();
-			break;
-		}
-		case 2:
-		{
-			switch(key)
-			{
-				case KEY_ENABLE_ALL_RANGES:
-				{
-
-					bool allEnable;
-					if(value == "1")
-						allEnable=true;
-					else if ( value == "0")
-						allEnable=false;
-					else
-						return false;
-
-					//set them to the opposite of whatever we have now
-					//if any single one needs a change, then we need to
-					//update
-					for(unsigned int ui=0;ui<rng.getNumRanges();ui++)
-					{
-						if(enabledRanges[ui]!=allEnable)
-							needUpdate=true;
-					
-						enabledRanges[ui]=allEnable;
-					}
-					
-					if(needUpdate)
-						clearCache();
-
-					break;
-				}
-				default:
-					ASSERT(false);
-			}
 			break;
 		}
 		default:
 		{
-			unsigned int rangeId=set-3;
-			switch(key)
+			if(key < KEY_ENABLE_ALL_RANGES)
 			{
-				//Range active
-				case KEY_RANGE_ACTIVE:
-				{
-					unsigned int valueInt;
-					if(stream_cast(valueInt,value))
-						return false;
+				//structured group, each with NUM_ROWS_ION per grouping.
+				//The ion ID is simply the row number/NUM_ROWS_ION.
+				//similarly the element is given by remainder 
+				unsigned int ionID=((key-1)-KEY_ENABLE_ALL_IONS)/NUM_ROWS_ION;
+				ASSERT(ionID < rng.getNumIons());
+				ASSERT(key <=NUM_ROWS_ION*rng.getNumIons()+KEY_ENABLE_ALL_IONS);
+				unsigned int prop = ((key-1)-KEY_ENABLE_ALL_IONS)-ionID*NUM_ROWS_ION;
 
-					if(valueInt ==0 || valueInt == 1)
+				switch(prop)
+				{
+					case 0://Ion name
 					{
-						if(enabledRanges[rangeId] != (char)valueInt)
+						//only allow english alphabet, upper and lowercase, as well as 0->9
+						for(unsigned int ui=0;ui<value.size();ui++)
 						{
-							needUpdate=true;
-							enabledRanges[rangeId]=(char)valueInt;
+
+							if(!(isalpha(value[ui]) || isdigit(value[ui])))
+								return false;
+
+						}
+						//TODO: At some point I should work out a 
+						//nice way of setting the short and long names.
+						rng.setIonShortName(ionID,value);
+						rng.setIonLongName(ionID,value);
+						needUpdate=true;
+						break;
+					}
+					case 1: //Enable/disable ion
+					{
+						unsigned int valueInt;
+						if(stream_cast(valueInt,value))
+							return false;
+
+						if(valueInt ==0 || valueInt == 1)
+						{
+							if(enabledIons[ionID] != (char)valueInt)
+							{
+								needUpdate=true;
+								enabledIons[ionID]=(char)valueInt;
+							}
+							else
+								needUpdate=false;
 						}
 						else
-							needUpdate=false;
+							return false;		
+				
+						break;
+					}	
+					case 2: //Colour of the ion
+					{
+						unsigned char r,g,b,a;
+						parseColString(value,r,g,b,a);
+
+						RGBf newCol;
+						newCol.red=(float)r/255.0f;
+						newCol.green=(float)g/255.0f;
+						newCol.blue=(float)b/255.0f;
+
+						rng.setColour(ionID,newCol);
+						needUpdate=true;
+						break;
 					}
-					else
-						return false;		
+					default:
+						ASSERT(false);
+				}
 			
-					break;
-				}	
-				case KEY_RANGE_IONID: 
-				{
-					unsigned int newID;
-
-					if(stream_cast(newID,value))
-						return false;
-
-					if(newID == rng.getIonID(rangeId))
-						return false;
-
-					if(newID > rng.getNumRanges())
-						return false;
-
-					rng.setIonID(rangeId,newID);
-					needUpdate=true;
-					break;
-				}
-				//Range start
-				case KEY_RANGE_START:
-				{
-
-					//Check for valid data type conversion
-					float newMass;
-					if(stream_cast(newMass,value))
-						return false;
-
-					//Ensure that it has actually changed
-					if(newMass == rng.getRange(rangeId).first)
-						return false;
-
-					//Attempt to move the range to a new position
-					if(!rng.moveRange(rangeId,0,newMass))
-						return false;
-
-					needUpdate=true;
-					
-					break;
-				}
-				//Range end
-				case KEY_RANGE_END:
-				{
-
-					//Check for valid data type conversion
-					float newMass;
-					if(stream_cast(newMass,value))
-						return false;
-
-					//Ensure that it has actually changed
-					if(newMass == rng.getRange(rangeId).second)
-						return false;
-
-					//Attempt to move the range to a new position
-					if(!rng.moveRange(rangeId,1,newMass))
-						return false;
-
-					needUpdate=true;
-					
-					break;
-				}
-
-
+				if(needUpdate)
+					clearCache();
 			}
+			else
+			{
+				unsigned int rangeId=((key-1)-KEY_ENABLE_ALL_RANGES)/NUM_ROWS_RANGE;
+				unsigned int prop = ((key-1)-KEY_ENABLE_ALL_RANGES)-rangeId*NUM_ROWS_RANGE;
+				switch(prop)
+				{
+					//Range active
+					case 0:
+					{
+						unsigned int valueInt;
+						if(stream_cast(valueInt,value))
+							return false;
 
-			if(needUpdate)
-				clearCache();
+						if(valueInt ==0 || valueInt == 1)
+						{
+							if(enabledRanges[rangeId] != (char)valueInt)
+							{
+								needUpdate=true;
+								enabledRanges[rangeId]=(char)valueInt;
+							}
+							else
+								needUpdate=false;
+						}
+						else
+							return false;		
+				
+						break;
+					}	
+					//Ion ID
+					case 1: 
+					{
+						unsigned int newID;
+
+						if(stream_cast(newID,value))
+							return false;
+
+						if(newID == rng.getIonID(rangeId))
+							return false;
+
+						if(newID > rng.getNumRanges())
+							return false;
+
+						rng.setIonID(rangeId,newID);
+						needUpdate=true;
+						break;
+					}
+					//Range start
+					case 2:
+					{
+
+						//Check for valid data type conversion
+						float newMass;
+						if(stream_cast(newMass,value))
+							return false;
+
+						//Ensure that it has actually changed
+						if(newMass == rng.getRange(rangeId).first)
+							return false;
+
+						//Attempt to move the range to a new position
+						if(!rng.moveRange(rangeId,0,newMass))
+							return false;
+
+						needUpdate=true;
+						
+						break;
+					}
+					//Range end
+					case 3:
+					{
+
+						//Check for valid data type conversion
+						float newMass;
+						if(stream_cast(newMass,value))
+							return false;
+
+						//Ensure that it has actually changed
+						if(newMass == rng.getRange(rangeId).second)
+							return false;
+
+						//Attempt to move the range to a new position
+						if(!rng.moveRange(rangeId,1,newMass))
+							return false;
+
+						needUpdate=true;
+						
+						break;
+					}
+				}
+
+				if(needUpdate)
+					clearCache();
+			}
 		}
-
-
 	}
 		
 	return true;
@@ -971,7 +960,7 @@ void RangeFileFilter::setFormat(unsigned int format)
 	assumedFileFormat=format;
 }
 
-bool RangeFileFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+bool RangeFileFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -1238,7 +1227,7 @@ void RangeFileFilter::setPropFromRegion(unsigned int method, unsigned int region
 	clearCache();
 }
 
-bool RangeFileFilter::writePackageState(std::ofstream &f, unsigned int format,
+bool RangeFileFilter::writePackageState(std::ostream &f, unsigned int format,
 			const std::vector<std::string> &valueOverrides, unsigned int depth) const
 {
 	ASSERT(valueOverrides.size() == 1);

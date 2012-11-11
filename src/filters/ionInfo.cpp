@@ -21,13 +21,6 @@ extern "C"
 //grab size when doing convex hull calculations
 const unsigned int HULL_GRAB_SIZE=4096;
 
-enum
-{
-	KEY_TOTALS=1,
-	KEY_NORMALISE,
-	KEY_VOLUME,
-	KEY_VOLUME_ALGORITHM,
-};
 
 
 enum
@@ -497,42 +490,53 @@ size_t IonInfoFilter::numBytesForCache(size_t nObjects) const
 }
 
 
-void IonInfoFilter::getProperties(FilterProperties &propertyList) const
+void IonInfoFilter::getProperties(FilterPropGroup &propertyList) const
 {
-	vector<unsigned int> type,keys;
-	vector<pair<string,string> > s;
 	string str;
+	FilterProperty p;
+	size_t curGroup=0;
 
 	vector<pair<unsigned int,string> > choices;
-	string tmpChoice,tmpStr;
+	string tmpStr;
 
 	stream_cast(str,wantIonCounts);
-	keys.push_back(KEY_TOTALS);
+	p.key=IONINFO_KEY_TOTALS;
 	if(range)
-		s.push_back(make_pair(TRANS("Compositions"), str));
+	{
+		p.name=TRANS("Compositions");
+		p.helpText=TRANS("Display compositional data for points in console");
+	}
 	else
-		s.push_back(make_pair(TRANS("Counts"), str));
+	{
+		p.name=TRANS("Counts");
+		p.helpText=TRANS("Display count data for points in console");
+	}
+	p.data= str;
+	p.type=PROPERTY_TYPE_BOOL;
+	propertyList.addProperty(p,curGroup);
 
-	type.push_back(PROPERTY_TYPE_BOOL);
 
 	if(wantIonCounts && range)
 	{
 		stream_cast(str,wantNormalise);
-		s.push_back(make_pair(TRANS("Normalise"),str));
-		keys.push_back(KEY_NORMALISE);
-		type.push_back(PROPERTY_TYPE_BOOL);
+		p.name=TRANS("Normalise");
+		p.data=str;
+		p.key=IONINFO_KEY_NORMALISE;
+		p.type=PROPERTY_TYPE_BOOL;
+		p.helpText=TRANS("Normalise count data");
 
+		propertyList.addProperty(p,curGroup);
 	}
 
-	propertyList.data.push_back(s);
-	propertyList.keys.push_back(keys);
-	propertyList.types.push_back(type);
-	s.clear(); keys.clear(); type.clear();
+	curGroup++;
 
 	stream_cast(str,wantVolume);
-	keys.push_back(KEY_VOLUME);
-	s.push_back(make_pair(TRANS("Volume"), str));
-	type.push_back(PROPERTY_TYPE_BOOL);
+	p.key=IONINFO_KEY_VOLUME;
+	p.name=TRANS("Volume");
+	p.data= str;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Compute volume for point data");
+	propertyList.addProperty(p,curGroup);
 
 	if(wantVolume)
 	{
@@ -543,9 +547,12 @@ void IonInfoFilter::getProperties(FilterProperties &propertyList) const
 		}
 		
 		tmpStr= choiceString(choices,volumeAlgorithm);
-		s.push_back(make_pair(string(TRANS("Algorithm")),tmpStr));
-		type.push_back(PROPERTY_TYPE_CHOICE);
-		keys.push_back(KEY_VOLUME_ALGORITHM);
+		p.name=TRANS("Algorithm");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_CHOICE;
+		p.helpText=TRANS("Select volume counting technique");
+		p.key=IONINFO_KEY_VOLUME_ALGORITHM;
+		propertyList.addProperty(p,curGroup);
 
 
 		switch(volumeAlgorithm)
@@ -556,21 +563,16 @@ void IonInfoFilter::getProperties(FilterProperties &propertyList) const
 		}
 	
 	}
-
-	propertyList.data.push_back(s);
-	propertyList.keys.push_back(keys);
-	propertyList.types.push_back(type);
-
 }
 
 
-bool IonInfoFilter::setProperty( unsigned int set, unsigned int key,
+bool IonInfoFilter::setProperty(  unsigned int key,
 					const std::string &value, bool &needUpdate)
 {
 	string stripped=stripWhite(value);
 	switch(key)
 	{
-		case KEY_TOTALS:
+		case IONINFO_KEY_TOTALS:
 		{
 			if(!(stripped == "1"|| stripped == "0"))
 				return false;
@@ -584,7 +586,7 @@ bool IonInfoFilter::setProperty( unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_NORMALISE:
+		case IONINFO_KEY_NORMALISE:
 		{
 			if(!(stripped == "1"|| stripped == "0"))
 				return false;
@@ -598,7 +600,7 @@ bool IonInfoFilter::setProperty( unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_VOLUME:
+		case IONINFO_KEY_VOLUME:
 		{
 			if(!(stripped == "1"|| stripped == "0"))
 				return false;
@@ -612,7 +614,7 @@ bool IonInfoFilter::setProperty( unsigned int set, unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_VOLUME_ALGORITHM:
+		case IONINFO_KEY_VOLUME_ALGORITHM:
 		{
 			unsigned int newAlg=VOLUME_MODE_END;
 
@@ -650,6 +652,7 @@ std::string  IonInfoFilter::getErrString(unsigned int code) const
 		case ERR_BAD_QHULL:
 			return string(TRANS("Bug? Problem with qhull library, cannot run convex hull."));
 	}
+	ASSERT(false);
 }
 
 unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStreamData*> &data, 
@@ -659,7 +662,7 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 	//into GRAB_SIZE lots before processing hull.
 
 	volume=0;
-	double *buffer=0;
+	double *buffer;
 	double *tmp;
 	//Use malloc so we can re-alloc
 	buffer =(double*) malloc(HULL_GRAB_SIZE*3*sizeof(double));
@@ -862,7 +865,7 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 	return 0;
 }
 
-bool IonInfoFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+bool IonInfoFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -1047,10 +1050,10 @@ bool volumeBoxTest()
 
 	//activate volume measurement
 	bool needUp;
-	f->setProperty(0,KEY_VOLUME,"1",needUp);
+	f->setProperty(IONINFO_KEY_VOLUME,"1",needUp);
 	string s;
 	stream_cast(s,(int)VOLUME_MODE_RECTILINEAR);
-	f->setProperty(0,KEY_VOLUME_ALGORITHM, s,needUp);
+	f->setProperty(IONINFO_KEY_VOLUME_ALGORITHM, s,needUp);
 	
 	
 	vector<const FilterStreamData*> streamIn,streamOut;
@@ -1082,7 +1085,7 @@ bool volumeBoxTest()
 	
 	//Try again, but with convex hull
 	stream_cast(s,(int)VOLUME_MODE_CONVEX);
-	f->setProperty(0,KEY_VOLUME_ALGORITHM, s,needUp);
+	f->setProperty(IONINFO_KEY_VOLUME_ALGORITHM, s,needUp);
 	f->refresh(streamIn,streamOut,p,dummyCallback);
 	volMeasure=f->getLastVolume();
 
@@ -1113,9 +1116,9 @@ bool volumeSphereTest()
 
 	//activate volume measurement
 	bool needUp;
-	f->setProperty(0,KEY_VOLUME,"1",needUp);
+	f->setProperty(IONINFO_KEY_VOLUME,"1",needUp);
 	
-	f->setProperty(0,KEY_VOLUME_ALGORITHM, 
+	f->setProperty(IONINFO_KEY_VOLUME_ALGORITHM, 
 		volumeModeString[VOLUME_MODE_RECTILINEAR],needUp);
 	
 	
@@ -1143,7 +1146,7 @@ bool volumeSphereTest()
 
 	
 	//Try again, but with convex hull
-	f->setProperty(0,KEY_VOLUME_ALGORITHM,
+	f->setProperty(IONINFO_KEY_VOLUME_ALGORITHM,
 		volumeModeString[VOLUME_MODE_CONVEX],needUp);
 	
 	vector<string> dummy;

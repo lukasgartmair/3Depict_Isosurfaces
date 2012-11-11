@@ -52,7 +52,7 @@ TODO List - worlds simplest bugtracking system
 
 	Outstanding bugs:
 		== Next release==
-		* Abort behaviour odd on EEEPC, shows "aborted" generic message, then waits for several seconds, then shows error
+		* Abort behaviour odd, shows "aborted" generic message, then waits for several seconds, then shows error
 		* File -> export image -> Height*=2, results in aspect ratio of output image being distorted
 		* Cluster filter wont save state correctly if parent
 		  rangefile has disabled ions. It will output incorrect
@@ -62,16 +62,10 @@ TODO List - worlds simplest bugtracking system
 		  of plot zoom status
 		
 		Windows:
-		* exporting ions does not work "Check destination could be written to"
-		* drag drop not working?
 		* section symbol does not display on console tab
+		
 		OSX:
-		* cam does not translate (ctrl + mouse drag)
-		* Exporting ions causes assertion failure - "visible" radio button in dialog is broken
-		* Export ion image under 2.9 seems to throw assertion error - "fixed" in release  (non-debug) builds?
-			- Seems to be a mac specific bug relating to
-			  wxPostEvent for paint events. A minimal test
-			  case should be forwarded to the wxOSX devs.
+		* drag drop not working?
 			
 		== Eventually==
 		* Lighting calculations on isosurfaces can be problematic. See example package
@@ -104,7 +98,6 @@ TODO List - worlds simplest bugtracking system
 
 		== Needs reproducing ==
 		* Invalid range file being opened cause Package export to crash
-		* Windows appears to have weird front-back drawing behaviour for point clouds.
 		* Duplicate range at end when exporting range
 		* Large datasets causing crash?
 		* Ion transform leaking memory??
@@ -116,7 +109,6 @@ TODO List - worlds simplest bugtracking system
 
 	Auditing:
 		== Next release ==
-		* Set keynames for property groupings
 
 	Performance:
 		* Scene is sometimes continuously refreshed during post effects, causing CPU usage
@@ -137,22 +129,17 @@ TODO List - worlds simplest bugtracking system
 	* updateFilterPropertyGrid is in a bad location, need new
 	  file that knows about filters and wx at the same time,
 	  but is not viscontrol ;)
-	* Interaction code needs to be cleaned up. Currently it is a substatiative hack.
-		- Viscontrol should store a copy of the original tree,
-		  then periodicially compare it to the current tree. if it
-		  is different, then it should invalidate the caches for
-		  the different bits, and then force a refresh. This would allow for removal 
-		  of the callback mechanism that is currently in use
+	* Refactor wxMessageDialog *... to wxErrMsg(..)
 	* Plotting code is a nightmare. Data model for plot.h is not
 	   very well thought out, leading to large duplication, and elaborate special-case-ing
 		- Plots need log/non-log axes
 		- Plots need to be connected/disconnected
 		- Plots need to be able to specify bounding boxes separate from their data
 		- Plots need to be able to set strings/legends
-		- There is little diference between plot1D and plot2D, really.
 	* work out which inline FIXMEs and TODOs are still valid, and need attention
 	* I have multiple colour classes floating about. might be an idea to unify them.
 	* K3DTree currently requires public access to members of boundcube
+
 -- Deprecate --
 	* On Minor version change:
 		- DataLoadFilter::readState(...) -> doSample test for statefiles without doSample.

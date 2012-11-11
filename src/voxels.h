@@ -291,7 +291,7 @@ template<class T> class Voxels
 		 * a value greater than that of thresh. This behaviour can by reversed to "lesser than"
 		 * by setting lowerEq to false
 		 */
-		void thresholdForPosition(std::vector<Point3D> &p, const T &thresh, bool lowerEq=false);
+		void thresholdForPosition(std::vector<Point3D> &p, const T &thresh, bool lowerEq=false) const;
 
 
 
@@ -308,7 +308,7 @@ template<class T> class Voxels
 		//!Return the sizeof value for the T type
 		/*! Maybe there is a better way to do this, I don't know
 		 */
-		size_t sizeofType() const { return sizeof(T);}; 
+		static size_t sizeofType() { return sizeof(T);}; 
 
 
 		//!Binarise the data into a result vector
@@ -1678,7 +1678,7 @@ void Voxels<T>::secondDifference(Voxels<T> &result, size_t boundMode) const
 }
 
 template<class T>
-void Voxels<T>::thresholdForPosition(std::vector<Point3D> &p, const T &thresh, bool lowerEq)
+void Voxels<T>::thresholdForPosition(std::vector<Point3D> &p, const T &thresh, bool lowerEq) const
 {
 	p.clear();
 

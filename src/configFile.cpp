@@ -61,7 +61,7 @@ ConfigFile::~ConfigFile()
 		delete filterDefaults[ui];
 }
 
-unsigned int ConfigFile::getMaxHistory() const
+unsigned int ConfigFile::getMaxHistory()
 {
 	return MAX_RECENT;
 }
@@ -484,7 +484,7 @@ nodeptrEndJump:
 
 }
 
-bool ConfigFile::createConfigDir() const
+bool ConfigFile::createConfigDir()
 {
 	wxString filePath = wxStr(getConfigDir());
 
@@ -503,7 +503,7 @@ bool ConfigFile::createConfigDir() const
 	return true;
 }
 
-std::string ConfigFile::getConfigDir() const
+std::string ConfigFile::getConfigDir() 
 {
  	wxStandardPaths *paths = new wxStandardPaths;
 	wxString filePath = paths->GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);

@@ -9,27 +9,8 @@
 #include "filters/dataLoad.h"
 #include "filters/ionDownsample.h"
 #include "filters/compositionProfile.h"
-
+#include "filters/ionInfo.h"
 //----
-
-bool findKey( const vector<vector<unsigned int > > &keys, unsigned int targetKey,
-		size_t &i, size_t &j)
-{
-	for(size_t ui=0;ui<keys.size();ui++)
-	{
-		for(size_t uj=0;uj<keys[ui].size();uj++)
-		{
-			if(keys[ui][uj] == targetKey)
-			{
-				i=ui;
-			       	j=uj;
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
 
 void FilterTreeAnalyse::getAnalysisResults(std::vector<FILTERTREE_ERR> &errs) const
 {
@@ -41,10 +22,15 @@ void FilterTreeAnalyse::analyse(const FilterTree &f)
 {
 	f.getAccumulatedPropagationMaps(emitTypes,blockTypes);
 
+	//Check for a data pair where the output is entirely blocked,
+	// rendering computation of filter useless
 	blockingPairError(f);
 
+	//Check for spatial sampling altering some results in later analyses
 	spatialSampling(f);
-
+	
+	//Check for compositional biasing altering some later anaylsis
+	compositionAltered(f);
 
 	emitTypes.clear();
 	blockTypes.clear();
@@ -61,7 +47,7 @@ void FilterTreeAnalyse::blockingPairError(const FilterTree &f)
 	// a particular input, but the parent cannot generate it
 
 	const tree<Filter *> &treeFilt=f.getTree();
-	for(tree<Filter*>::pre_order_iterator it = treeFilt.begin(); it!=treeFilt.end(); it++)
+	for(tree<Filter*>::pre_order_iterator it = treeFilt.begin(); it!=treeFilt.end(); ++it)
 	{
 
 		tree_node_<Filter*> *myNode=it.node->first_child;
@@ -134,51 +120,51 @@ void FilterTreeAnalyse::blockingPairError(const FilterTree &f)
 
 bool filterIsSampling(const Filter *f)
 {
-
 	bool affectsSampling=false;
 
 
-	FilterProperties props;
+	FilterPropGroup props;
 	f->getProperties(props);
 
 
 
-	size_t ui,uj;
 	switch(f->getType())
 	{
-		case FILTER_TYPE_POSLOAD:
+		case FILTER_TYPE_DATALOAD:
 		{
-			if(findKey(props.keys,DATALOAD_KEY_SAMPLE,ui,uj))
-			{
-				//Check if load limiting is on
-				//Not strictly true. If data file is smaller (in MB) than this number
-				// (which we don't know here), then this will be false.
-				affectsSampling = (props.data[ui][uj].second != "0");
-			}
-
-
-			break;
+			//Check if load limiting is on
+			//Not strictly true. If data file is smaller (in MB) than this number
+			// (which we don't know here), then this will be false.
+			if(props.hasProp(DATALOAD_KEY_SAMPLE))
+				affectsSampling = (props.getPropValue(DATALOAD_KEY_SAMPLE).data!= "0");
+			else
+				affectsSampling=false;
 		}
 		case FILTER_TYPE_IONDOWNSAMPLE:
 		{
-			findKey(props.keys,KEY_IONDOWNSAMPLE_FIXEDOUT,ui,uj);
-			
-			if(props.data[ui][uj].second == "1")
+			FilterProperty p;
+			if(props.hasProp(KEY_IONDOWNSAMPLE_FIXEDOUT))
 			{
+				p=props.getPropValue(KEY_IONDOWNSAMPLE_FIXEDOUT);
 				//If using  fixed output mode, then
 				// we may affect the output ion density
 				// if the count is low. How low? 
 				// We don't know with the information to hand...
-				affectsSampling=true;
+				affectsSampling=(p.data== "1");
 			}
 			else
 			{
 				//If randomly sampling, then we are definitely affecting the results
 				//if we are not including every ion
-				findKey(props.keys,KEY_IONDOWNSAMPLE_FRACTION,ui,uj);
-				float sampleFrac;
-				stream_cast(sampleFrac,props.data[ui][uj].second);
-				affectsSampling=(sampleFrac < 1.0f);
+				if(props.hasProp(KEY_IONDOWNSAMPLE_FRACTION))
+				{
+					p=props.getPropValue(KEY_IONDOWNSAMPLE_FRACTION);
+					float sampleFrac;
+					stream_cast(sampleFrac,p.data);
+					affectsSampling=(sampleFrac < 1.0f);
+				}
+				else
+					affectsSampling=false;
 			}
 
 			break;
@@ -187,12 +173,11 @@ bool filterIsSampling(const Filter *f)
 
 
 	return affectsSampling;
-
 }
 
 bool affectedBySampling(const Filter *f, bool haveRngParent)
 {
-	FilterProperties props;
+	FilterPropGroup props;
 	f->getProperties(props);
 	
 	bool affected;
@@ -206,20 +191,13 @@ bool affectedBySampling(const Filter *f, bool haveRngParent)
 		}
 		case FILTER_TYPE_COMPOSITION:
 		{
-			for(unsigned int ui=0;ui<props.keys.size();ui++)
-			{
-				for(unsigned int uj=0;uj<props.keys[ui].size();uj++)
-				{
-					if( props.keys[ui][uj] == COMPOSITION_KEY_NORMALISE)
-					{
-						//If using normalise mode, and we do not have a range parent
-						//then filter is in "density" plotting mode, which is affected by
-						//this analysis
-						affected= (props.data[ui][uj].second == "1" && !haveRngParent);
-						break;
-					}
-				}
-			}
+			FilterProperty p;
+			p=props.getPropValue(COMPOSITION_KEY_NORMALISE);
+
+			//If using normalise mode, and we do not have a range parent
+			//then filter is in "density" plotting mode, which is affected by
+			//this analysis
+			affected= (p.data== "1" && !haveRngParent);
 			break;
 		}
 		case FILTER_TYPE_SPATIAL_ANALYSIS:
@@ -311,4 +289,163 @@ void FilterTreeAnalyse::spatialSampling(const FilterTree &f)
 }
 
 
+bool filterAltersComposition(const Filter *f)
+{
+	bool affectsComposition=false;
 
+
+	FilterPropGroup props;
+	f->getProperties(props);
+
+
+
+	switch(f->getType())
+	{
+		case FILTER_TYPE_IONDOWNSAMPLE:
+		{
+			FilterProperty p;
+			if(!props.hasProp(KEY_IONDOWNSAMPLE_PERSPECIES))
+				return false;
+
+			p=props.getPropValue(KEY_IONDOWNSAMPLE_PERSPECIES);
+
+			
+			if(p.data== "1")
+			{
+				vector<FilterProperty> propVec;
+				const int GROUP_SAMPLING=1;
+				props.getGroup(GROUP_SAMPLING,propVec);
+
+				//If using per-species mode, then
+				// we may affect the output ion composition
+				// if we have differing values
+				for(size_t ui=1;ui<propVec.size(); ui++)
+				{
+					if(propVec[ui-1].data != propVec[ui].data)
+					{
+						affectsComposition=true;
+						break;
+					}
+
+				}
+			}
+			break;
+		}
+	}
+
+
+	return affectsComposition;
+}
+
+bool filterAffectedByComposition(const Filter *f, bool haveRngParent)
+{
+	FilterPropGroup props;
+	f->getProperties(props);
+	
+	bool affected=false;
+	//See if filter is configured to affect spatial analysis
+	switch(f->getType())
+	{
+		case FILTER_TYPE_CLUSTER_ANALYSIS:
+		{
+			affected=haveRngParent;
+			break;
+		}
+		case FILTER_TYPE_COMPOSITION:
+		{
+			FilterProperty p;
+			p=props.getPropValue(COMPOSITION_KEY_NORMALISE);
+
+			//Affected if using normalise mode, and we do have a range parent
+			affected= (p.data== "1" && haveRngParent);
+			break;
+		}
+		case FILTER_TYPE_SPATIAL_ANALYSIS:
+		{
+			affected=true;
+			break;
+		}
+	}
+
+	return affected;
+}
+
+//FIXME: This is largely a cut and paste of ::spatialSampling - could be unified through
+// function pointers and friends
+void FilterTreeAnalyse::compositionAltered(const FilterTree &f)
+{
+	//True if composition biasing is (probably) happening for children of 
+	//filter. 
+	vector<int> affectedFilters;
+	affectedFilters.push_back(FILTER_TYPE_CLUSTER_ANALYSIS); //If have range parent
+	affectedFilters.push_back(FILTER_TYPE_COMPOSITION); //By definition
+	affectedFilters.push_back(FILTER_TYPE_IONINFO); //If using composition 
+
+	const tree<Filter *> &treeFilt=f.getTree();
+	for(tree<Filter*>::pre_order_iterator it(treeFilt.begin()); it!=treeFilt.end(); it++)
+	{
+		//Check to see if we have a filter that can cause sampling
+		if(filterAltersComposition(*it))
+		{
+			tree_node_<Filter*> *childNode=it.node->first_child;
+
+			if(childNode)
+			{		
+
+				//TODO: Not the most efficient method of doing this...
+				//shouldn't need to continually compute depth to iterate over children	
+				size_t minDepth=treeFilt.depth(it);	
+				for(tree<Filter*>::pre_order_iterator itJ(childNode); treeFilt.depth(itJ) > minDepth;itJ++)
+				{
+					//ignore filters that are not affected by spatial sampling
+					size_t filterType;
+					filterType=(*itJ)->getType();
+					if(std::find(affectedFilters.begin(),affectedFilters.end(),filterType)== affectedFilters.end())
+						continue;
+
+					childNode=itJ.node;
+
+					//Check to see if we have a "range" type ancestor
+					// - we will need to know this in a second
+					bool haveRngParent=false;
+					{
+						tree_node_<Filter*> *ancestor;
+						ancestor = childNode->parent;
+						while(true) 
+						{
+							if(ancestor->data->getType() == FILTER_TYPE_RANGEFILE)
+							{
+								haveRngParent=true;
+								break;
+							}
+
+							if(!ancestor->parent)
+								break;
+
+							ancestor=ancestor->parent;
+
+						}
+					}
+
+					if(filterAffectedByComposition(*itJ,haveRngParent))
+					{
+						FILTERTREE_ERR treeErr;
+						treeErr.reportedFilters.push_back(*it);
+						treeErr.reportedFilters.push_back(*itJ);
+						treeErr.shortReportMessage=TRANS("Composition results possibly altered");
+						treeErr.verboseReportMessage=TRANS("Filters and settings selected that could bias reported composition. Check to see if species biasing may occcur in the filter tree - this warning is provisional only.");						
+						treeErr.severity=ANALYSE_SEVERITY_WARNING;
+
+						analysisResults.push_back(treeErr);
+					}
+				}
+			}
+
+			//No need to walk child nodes	
+			it.skip_children();
+		}
+		
+
+
+	}
+}

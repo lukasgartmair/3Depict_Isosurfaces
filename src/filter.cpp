@@ -28,7 +28,7 @@
 #include <limits>
 #include <fstream>
 #include <algorithm>
-
+#include <set>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -75,30 +75,38 @@ void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f)
 	ASSERT(f);
 	ASSERT(g);
 	
-	FilterProperties p;
+	FilterPropGroup p;
 	f->getProperties(p);
 #ifdef DEBUG
 	//If debugging, test self consistency
 	p.checkConsistent();
 #endif	
 	g->clearKeys();
-	g->setNumSets(p.data.size());
+	g->setNumGroups(p.numGroups());
 
-	ASSERT(p.keyNames.empty() || p.keyNames.size() == p.data.size());
-
-	//Create the keys for the property grid to do its thing
-	for(unsigned int ui=0;ui<p.data.size();ui++)
+	
+	//Create the keys to add to the grid
+	for(size_t ui=0;ui<p.numGroups();ui++)
 	{
-		if(p.keyNames.size())
-			g->setSetName(ui,p.keyNames[ui]);
+		vector<FilterProperty> propGrouping;
+		p.getGroup(ui,propGrouping);
 
-		for(unsigned int uj=0;uj<p.data[ui].size();uj++)
+		for(size_t uj=0;uj<propGrouping.size();uj++)
 		{
-			g->addKey(p.data[ui][uj].first, ui,p.keys[ui][uj],
-					p.types[ui][uj],p.data[ui][uj].second);
+			g->addKey(propGrouping[uj].name,ui,
+				propGrouping[uj].key,
+				propGrouping[uj].type,
+				propGrouping[uj].data,
+				propGrouping[uj].helpText);
 		}
-	}
 
+		//Set the name that is to be displayed for this grouping
+		// of properties
+		std::string title;
+		p.getGroupTitle(ui,title);
+		g->setGroupName(ui,title);
+	}
+	
 	//Let the property grid layout what it needs to
 	g->propertyLayout();
 }
@@ -301,23 +309,145 @@ unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<Ion
 
 	return 0;
 }
-
 #ifdef DEBUG
-void FilterProperties::checkConsistent() const
-{
-	//Check that the key numbers from the refresh are in fact unique,
-	//across each set
-	for(size_t ui=0;ui<keys.size(); ui++)
-	{
-		vector<unsigned int> keyCopy;
-		keyCopy=keys[ui];
+bool FilterProperty::checkSelfConsistent() const
+{	
+	//Filter data type must be known
+	ASSERT(type < PROPERTY_TYPE_ENUM_END);
+	ASSERT(name.size());
 
-		std::sort(keyCopy.begin(),keyCopy.end());
-		ASSERT(std::unique(keyCopy.begin(),keyCopy.end()) == keyCopy.end());
+	switch(type)
+	{
+		case PROPERTY_TYPE_BOOL:
+		{
+			if(data != "0"  && data != "1")
+				return false;
+			break;
+		}
+		case PROPERTY_TYPE_REAL:
+		{
+			//TODO: Check if numerical
+			break;
+		}
+		case PROPERTY_TYPE_COLOUR:
+		{
+			unsigned char r,g,b,a;
+			if(!parseColString(data,r,g,b,a))
+				return false;
+		}
+		case PROPERTY_TYPE_CHOICE:
+		{
+			if(!isMaybeChoiceString(data))
+				return false;
+		}
 
 	}
+
+	return true;
 }
 #endif
+
+
+void FilterPropGroup::addProperty(const FilterProperty &prop, size_t group)
+{
+#ifdef DEBUG
+	prop.checkSelfConsistent();
+#endif
+	if(group >=groupCount)
+	{
+#ifdef DEBUG
+		WARN(!(group > (groupCount+1)),"Appeared to add multiple groups in one go - not wrong, just unusual.");
+#endif
+		groupCount=std::max(group+1,groupCount);
+		groupNames.resize(groupCount,string(""));
+	}	
+
+	keyGroupings.push_back(make_pair(prop.key,group));
+	properties.push_back(prop);
+}
+
+void FilterPropGroup::setGroupTitle(size_t group, const std::string &str)
+{
+	ASSERT(group <numGroups());
+	groupNames[group]=str;
+}
+
+void FilterPropGroup::getGroup(size_t targetGroup, vector<FilterProperty> &vec) const
+{
+	ASSERT(targetGroup<groupCount);
+	for(size_t ui=0;ui<keyGroupings.size();ui++)
+	{
+		if(keyGroupings[ui].second==targetGroup)
+		{
+			vec.push_back(properties[ui]);
+		}
+	}
+
+#ifdef DEBUG
+	checkConsistent();
+#endif
+}
+
+void FilterPropGroup::getGroupTitle(size_t group, std::string &s) const
+{
+	ASSERT(group < groupNames.size());
+	s = groupNames[group];	
+}
+
+const FilterProperty &FilterPropGroup::getPropValue(size_t key) const
+{
+	for(size_t ui=0;ui<keyGroupings.size();ui++)
+	{
+		if(keyGroupings[ui].first == key)
+			return properties[ui];
+	}
+
+	ASSERT(false);
+}
+
+bool FilterPropGroup::hasProp(size_t key) const
+{
+	for(size_t ui=0;ui<keyGroupings.size();ui++)
+	{
+		if(keyGroupings[ui].first == key)
+			return true;
+	}
+
+	return false;
+}
+
+#ifdef DEBUG
+void FilterPropGroup::checkConsistent() const
+{
+	ASSERT(keyGroupings.size() == properties.size());
+	std::set<size_t> s;
+
+	//Check that each key is unique in the keyGroupings list
+	for(size_t ui=0;ui<keyGroupings.size();ui++)
+	{
+		ASSERT(std::find(s.begin(),s.end(),keyGroupings[ui].first) == s.end());
+		s.insert(keyGroupings[ui].first);
+	}
+
+	//Check that each key in the properties is also unique
+	s.clear();
+	for(size_t ui=0;ui<properties.size(); ui++)
+	{
+		ASSERT(std::find(s.begin(),s.end(),properties[ui].key) == s.end());
+		s.insert(properties[ui].key);
+	}
+
+	for(size_t ui=0;ui<properties.size(); ui++)
+	{
+		ASSERT(properties[ui].helpText.size());	
+	}
+
+	//Check that the group names are the same as the number of groups
+	ASSERT(groupNames.size() ==groupCount);
+
+}
+#endif
+
 void IonStreamData::clear()
 {
 	data.clear();
@@ -391,6 +521,48 @@ void PlotStreamData::autoSetHardBounds()
 	}
 }
 
+bool PlotStreamData::save(const char *filename) const
+{
+
+	std::ofstream f(filename);
+
+	if(!f)
+		return false;
+
+	bool pendingEndl = false;
+	if(xLabel.size())
+	{
+		f << xLabel;
+		pendingEndl=true;
+	}
+	if(yLabel.size())
+	{
+		f << "\t" << yLabel;
+		pendingEndl=true;
+	}
+
+	if(errDat.mode==PLOT_ERROR_NONE)
+	{
+		if(pendingEndl)
+			f << endl;
+		for(size_t ui=0;ui<xyData.size();ui++)
+			f << xyData[ui].first << "\t" << xyData[ui].second << endl;
+	}
+	else
+	{
+		if(pendingEndl)
+		{
+			f << "\t" << TRANS("Error") << endl;
+		}
+		else
+			f << "\t\t" << TRANS("Error") << endl;
+		for(size_t ui=0;ui<xyData.size();ui++)
+			f << xyData[ui].first << "\t" << xyData[ui].second << endl;
+	}
+
+	return true;
+}
+
 #ifdef DEBUG
 void PlotStreamData::checkSelfConsistent() const
 {
@@ -460,6 +632,11 @@ RangeStreamData::RangeStreamData() : rangeFile(0)
 	streamType = STREAM_TYPE_RANGE;
 }
 
+bool RangeStreamData::save(const char *filename, size_t format) const
+{
+	return !rangeFile->write(filename,format);
+}
+
 Filter::Filter() : cache(true), cacheOK(false)
 {
 	for(unsigned int ui=0;ui<NUM_STREAM_TYPES;ui++)
@@ -471,10 +648,16 @@ Filter::~Filter()
     if(cacheOK)
 	    clearCache();
 
-    for(unsigned int ui=0;ui<devices.size();ui++)
-	    delete devices[ui];
+    clearDevices();
+}
 
-    devices.clear();
+void Filter::clearDevices()
+{
+	for(unsigned int ui=0; ui<devices.size(); ui++)
+	{
+		delete devices[ui];
+	}
+	devices.clear();
 }
 
 void Filter::clearCache()

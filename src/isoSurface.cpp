@@ -29,7 +29,7 @@ bool mapUnique(const std::map<T1,T2> &m)
 	vector<T2> vec;
 	vec.reserve(m.size());
 
-	for(typename std::map<T1,T2>::const_iterator it = m.begin(); it!=m.end(); it++)
+	for(typename std::map<T1,T2>::const_iterator it = m.begin(); it!=m.end(); ++it)
 	{
 		if(std::find(vec.begin(),vec.end(),it->second) != vec.end())
 			return false;
@@ -672,7 +672,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 	removeElements(popTris,tVec);
 	removeElements(popTris,indexedTriVec);
 
-	if(!tVec.size())
+	if(tVec.empty())
 		return;
 	
 	//set all triangle edge normals by inverse face area weighting.

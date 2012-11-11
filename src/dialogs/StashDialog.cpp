@@ -215,18 +215,24 @@ void StashDialog::updateGrid()
 	
 	ASSERT(targetFilter);	
 	
-	FilterProperties p;
+	FilterPropGroup p;
 	targetFilter->getProperties(p);
 
 	gridProperties->clearKeys();
-	gridProperties->setNumSets(p.data.size());
+	gridProperties->setNumGroups(p.numGroups());
 	//Create the keys for the property grid to do its thing
-	for(unsigned int ui=0;ui<p.data.size();ui++)
+	for(unsigned int ui=0;ui<p.numGroups();ui++)
 	{
-		for(unsigned int uj=0;uj<p.data[ui].size();uj++)
+		vector<FilterProperty> propGrouping;
+		p.getGroup(ui,propGrouping);
+
+		for(size_t uj=0;uj<propGrouping.size();uj++)
 		{
-			gridProperties->addKey(p.data[ui][uj].first, ui,p.keys[ui][uj],
-				p.types[ui][uj],p.data[ui][uj].second);
+			gridProperties->addKey(propGrouping[uj].name,ui,
+				propGrouping[uj].key,
+				propGrouping[uj].type,
+				propGrouping[uj].data,
+				propGrouping[uj].helpText);
 		}
 	}
 
@@ -302,7 +308,7 @@ void StashDialog::updateTree()
 	//Depth first  add
 	unsigned int pos=0;
 	for(tree<Filter * >::pre_order_iterator filtIt=curTree.depthBegin();
-					filtIt!=curTree.depthEnd(); filtIt++)
+					filtIt!=curTree.depthEnd(); ++filtIt)
 	{
 		//Push or pop the stack to make it match the iterator position
 		if( lastDepth > curTree.depth(filtIt))

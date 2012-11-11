@@ -63,8 +63,8 @@ class ClusterAnalysisFilter : public Filter
 		//Check to see if there are any core or bulk ions enabled respectively.
 		void checkIonEnabled(bool &core, bool &bulk) const;
 
-		void buildRangeEnabledMap(const RangeStreamData *r,
-					map<size_t,size_t> &rangeEnabledMap) const;
+		static void buildRangeEnabledMap(const RangeStreamData *r,
+					map<size_t,size_t> &rangeEnabledMap);
 
 		//Strip out clusters with a given number of elements
 		bool stripClusterBySize(vector<vector<IonHit> > &clusteredCore,
@@ -115,14 +115,14 @@ class ClusterAnalysisFilter : public Filter
 		std::string getErrString(unsigned int i) const;
 
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
-		void getProperties(FilterProperties &propertyList) const;
+		void getProperties(FilterPropGroup &propertyList) const;
 
 		//!Set the properties for the nth filter
-		bool setProperty(unsigned int set,unsigned int key, 
+		bool setProperty(unsigned int key, 
 				const std::string &value, bool &needUpdate);
 		
 		//!Dump state to output stream, using specified format
-		bool writeState(std::ofstream &f,unsigned int format,
+		bool writeState(std::ostream &f,unsigned int format,
 						unsigned int depth=0) const;
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.

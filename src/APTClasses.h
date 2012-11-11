@@ -158,7 +158,7 @@ class IonHit
 };	
 
 
-//!Data storage and retrieval class for .rng files
+//!Data storage and retrieval class for various range files
 class RangeFile
 {
 	private:
@@ -174,12 +174,31 @@ class RangeFile
 		//
 		//This holds the min and max masses for the range
 		std::vector<std::pair<float,float> > ranges;
-		//The ion ID number for each range FIXME: Convert to proper uniqueID system
-		std::vector<unsigned int> ionIDs;
+		//The ion ID number for each range 
+		//FIXME: Convert to proper uniqueID system
+		std::vector<size_t> ionIDs;
+	
 		unsigned int errState;
+		//Warning messages, used when loading rangefiles
+		std::vector<std::string> warnMessages;
+
+
+		//!Erase the contents of the rangefile
+		void clear();
 
 		//!Performs limited checks for self consistency.
 		bool isSelfConsistent() const;
+
+		//!Load an ORNL formatted "RNG" rangefile
+		// caller must supply and release file pointer
+		unsigned int openRNG(FILE *fp);
+		//!Load an RRNG file
+		// caller must supply and release file pointer
+		unsigned int openRRNG(FILE *fp);
+		//!Load an ENV file
+		// caller must supply and release file pointer
+		unsigned int openENV(FILE *fp);
+
 	public:
 		RangeFile();
 		//!Open a specified range file
@@ -268,10 +287,10 @@ class RangeFile
 		 */
 		bool isRanged(std::string shortName, bool caseSensitive=true);
 
-		//!Write the rangefile to the specified output stream (ORNL format)
-		unsigned int write(std::ostream &o) const;
+		//!Write the rangefile to the specified output stream (default ORNL format)
+		unsigned int write(std::ostream &o,size_t format=RANGE_FORMAT_ORNL) const;
 		//!WRite the rangefile to a file (ORNL format)
-		unsigned int write(const char *datafile) const;
+		unsigned int write(const char *datafile, size_t format=RANGE_FORMAT_ORNL) const;
 
 		//!Return the atomic number of the element from either the long or short version of the atomic name 
 		/*

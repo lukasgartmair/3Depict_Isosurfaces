@@ -257,7 +257,6 @@ void PrefDialog::OnFilterCellChange(wxGridEvent &event)
 		event.Veto();
 		return;
 	}
-	
 
 	//Grab the changed value	
 	std::string value; 
@@ -267,8 +266,8 @@ void PrefDialog::OnFilterCellChange(wxGridEvent &event)
 	programmaticEvent=true;
 
 	bool needUpdate;
-	curFilter->setProperty(filterGridProperties->getSetFromRow(row),
-			filterGridProperties->getKeyFromRow(row),value,needUpdate);
+	curFilter->setProperty(filterGridProperties->getKeyFromRow(row),
+							value,needUpdate);
 
 	if(find(filterDefaults.begin(),filterDefaults.end(),
 				curFilter) == filterDefaults.end())
@@ -288,11 +287,10 @@ void PrefDialog::OnFilterGridCellEditorShow(wxGridEvent &event)
 	//Find where the event occured (cell & property)
 	const GRID_PROPERTY *item=0;
 
-	unsigned int key,set;
+	unsigned int key;
 	key=filterGridProperties->getKeyFromRow(event.GetRow());
-	set=filterGridProperties->getSetFromRow(event.GetRow());
 
-	item=filterGridProperties->getProperty(set,key);
+	item=filterGridProperties->getProperty(key);
 
 	bool needUpdate;
 	switch(item->type)
@@ -305,7 +303,7 @@ void PrefDialog::OnFilterGridCellEditorShow(wxGridEvent &event)
 				s= "1";
 			else
 				s="0";
-			curFilter->setProperty(set,key,s,needUpdate);
+			curFilter->setProperty(key,s,needUpdate);
 
 			event.Veto();
 
@@ -335,7 +333,7 @@ void PrefDialog::OnFilterGridCellEditorShow(wxGridEvent &event)
 			
 				//Pass the new colour to the viscontrol system, which updates
 				//the filters	
-				curFilter->setProperty(set,key,s,needUpdate);
+				curFilter->setProperty(key,s,needUpdate);
 			}
 
 			//Set the filter property
@@ -357,7 +355,6 @@ void PrefDialog::OnFilterGridCellEditorShow(wxGridEvent &event)
 	if(find(filterDefaults.begin(),filterDefaults.end(),
 				curFilter) == filterDefaults.end())
 		filterDefaults.push_back(curFilter);
-
 }
 
 void PrefDialog::OnResetFilterButton(wxCommandEvent &evt)

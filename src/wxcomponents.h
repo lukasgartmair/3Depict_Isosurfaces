@@ -30,6 +30,23 @@
 #include <vector>
 #include <string>
 
+//Shut wxwidgets assertion errors up by defining a "safe" cb_sort wrapper macro
+#if defined(__WXMAC__) || defined(__WXGTK20__)
+	       
+    #include <wx/version.h>
+    #if wxCHECK_VERSION(2,9,0)
+    //Sorted combos not supported under gtk in 2.8 series 
+    // http://trac.wxwidgets.org/ticket/4398
+    //and not supported in mac.
+    // http://trac.wxwidgets.org/ticket/12419
+        #define SAFE_CB_SORT 0 
+    #else
+        #define SAFE_CB_SORT wxCB_SORT
+	#endif
+#else
+	#define SAFE_CB_SORT wxCB_SORT
+#endif
+
 #include "assertion.h"
 #include "commonConstants.h"
 
@@ -93,6 +110,7 @@ struct GRID_PROPERTY
 	int renderPosition;
 	std::string name;
 	std::string data; //String version of data stored
+	std::string helpText; //Hover tool-tip help text
 };
 
 class wxPropertyGrid;
@@ -111,25 +129,38 @@ class wxPropertyGrid : public wxGrid
 		std::vector<std::vector<GRID_PROPERTY> > propertyKeys;
 		//Names of each of the grouped keys in propertyKeys
 		std::vector<std::string> sectionNames;
+
+		//Fit the columns to the specified size
 		void fitCols(wxSize &size);
+
+		//Rows used for separators
+		std::vector<int> sepRows;
+		//The last coordinates of mouse hovering 
+		size_t lastGridHoverCol,lastGridHoverRow;
+
+		//Is the nth row a separator row?
+		bool isSeparatorRow(int row) const;
 	public:
 		wxPropertyGrid(wxWindow* parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition, 
 					const wxSize& size = wxDefaultSize, long style = wxWANTS_CHARS);
+		~wxPropertyGrid();
+		
 		void OnSize(wxSizeEvent &size);
 		void OnLabelDClick(wxGridEvent &size);
-		~wxPropertyGrid();
+		void OnMouseMove(wxMouseEvent &mouse);
 		void clearKeys();
 
-		//!Set the number of, er, sets.
-		void setNumSets(unsigned int newSetCount){propertyKeys.resize(newSetCount); sectionNames.resize(newSetCount);};
+		//!Set the number of separator groups to use 
+		void setNumGroups(unsigned int newGroupCount){propertyKeys.resize(newGroupCount); sectionNames.resize(newGroupCount);};
 
-		//Set the names for each set. (sorry :()
-		void setSetName(unsigned int set, const std::string &name) {ASSERT(set < sectionNames.size()); sectionNames[set]=name;};
+		//Set the names for each group. This will appear as a small text in the blank rows
+		void setGroupName(unsigned int set, const std::string &name) {ASSERT(set < sectionNames.size()); sectionNames[set]=name;};
 
-		//!This adds the item to the property key vector of a specified set
-		//!	key must be unique within a given set.
-		void addKey(const std::string &name, unsigned int set,
-				unsigned int newKey, unsigned int type, const std::string &data);
+		//!This adds the item to the property key vector of a specified group 
+		//!	key must be unique 
+		void addKey(const std::string &name, unsigned int group,
+				unsigned int newKey, unsigned int type, 
+				const std::string &data,const std::string &helpText);
 		
 		//!Click event
 		virtual void OnCellLeftClick(wxGridEvent &e);
@@ -137,17 +168,14 @@ class wxPropertyGrid : public wxGrid
 		//!Cause grid to layout its elements
 		void propertyLayout();
 
-		//!Get the set from the row
-		unsigned int getSetFromRow(int row) const;
-
 		//!Get the key from the row
 		unsigned int getKeyFromRow(int row) const;
 
-		//!Get the type form the row
+		//!Get the type from the row
 		unsigned int getTypeFromRow(int row) const;
 
 		//!Get the property from key and set 
-		const GRID_PROPERTY* getProperty(unsigned int set, unsigned int key) const;
+		const GRID_PROPERTY* getProperty(unsigned int key) const;
 
 		//!Clear the grid
 		void clear();
@@ -170,12 +198,11 @@ public:
 
 	void currentCell();
 	void selectData();
-	//!Copy data to the clipboard (not working? GTK???)
+	//!Copy data to the clipboard (TODO: not working under GTK???)
 	void copyData();
-	//!Prompts user to save data to file, and then saves it. pops up error dialog box  if there is a problem. Data is tab deliminated
+	//!Prompts user to save data to file, and then saves it. pops up error 
+	// dialog box if there is a problem. Data is tab deliminated
 	void saveData();
-//	void pasteData();
-//	void deleteData();
 
 	virtual void OnKey(wxKeyEvent &evt);
 
@@ -197,20 +224,20 @@ class TTFFinder
 {
 	private:
 		//*n?x (FHS compliant) searching
-		std::string nxFindFont(const char *fontFile) const;
+		static std::string nxFindFont(const char *fontFile);
 		//MS win. searching
-		std::string winFindFont(const char *fontFile) const;
+		static std::string winFindFont(const char *fontFile);
 		//Mac OS X searching
-		std::string macFindFont(const char *fontFile) const;
+		static std::string macFindFont(const char *fontFile);
 	public:
 		//Given a ttf file name, search for it in several common paths
-		std::string findFont(const char *fontFile) const;
+		static std::string findFont(const char *fontFile);
 
 		//!Given an font type (Sans, serif etc) suggest a font name. 
 		//As long as function does not return empty std::string,, then index+1 is a valid
 		//query (which may return empty std::string). Font names returned are a suggestion
 		//only. Pass to findFont to confirm that a font file exists.
-		std::string suggestFontName(unsigned int fontType, unsigned int index) const ;
+		static std::string suggestFontName(unsigned int fontType, unsigned int index) ;
 
 		//!Returns a valid file that points to an installed ttf file, or an empty string
 		//NOTE: TTF file is not checked for content validity!

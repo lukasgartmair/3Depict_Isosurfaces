@@ -26,6 +26,13 @@ bool filterTests();
 //!Try cloning the filter from itself, and checking the filter
 // clone is identical
 bool filterCloneTests();
+//!Try setting/unsetting all visible boolean properties
+// in each filter
+bool filterBoolToggleTests();
+
+//!Check each visible property has help text
+bool filterHelpStringTests();
+
 //!Try loading each range file in the testing folder
 bool rangeFileLoadTests();
 
@@ -166,11 +173,38 @@ bool basicFunctionTests()
 		IonVectorToPos(curCluster,"TestCluster.pos");
 	}
 
+	//Test point parsing routines
+	{
+	std::string testStr;
+	testStr="0.0,1.0,1";
+	Point3D p;
+	bool res=parsePointStr(testStr,p);
+	ASSERT(res);
+	ASSERT(p.sqrDist(Point3D(0,1,1)) < 0.1f);
+
+
+	//test case causes segfault : found 30/9/12
+	testStr="0,0,,";
+	res=parsePointStr(testStr,p);
+	ASSERT(!res);
+
+	testStr="(0,0,0)";
+	res=parsePointStr(testStr,p);
+	ASSERT(res);
+	ASSERT(p.sqrDist(Point3D(0,0,0))<0.01f);
+
+	}
 	return true;
 }
 
 bool runUnitTests()
 {
+	if(!filterBoolToggleTests())
+		return false;
+	
+	if(!filterHelpStringTests())
+		return false;
+
 	if(!basicFunctionTests())
 		return false;
 	
@@ -385,9 +419,13 @@ bool rangeFileLoadTests()
 	RangeFile::getAllExts(rangeExts);
 	for(unsigned int ui=0;ui<rangeExts.size();ui++)
 	{
-		wxDir::GetAllFiles(testDir,&tmpArr,wxStr(rangeExts[ui]));
+		std::string tmp;
+		tmp = std::string("*.") + rangeExts[ui];
+		
+		wxDir::GetAllFiles(testDir,&tmpArr,wxStr(tmp));
 		for(unsigned int uj=0;uj<tmpArr.GetCount();uj++)
 			arrayStr.Add(tmpArr[uj]);
+		tmpArr.clear();
 	}
 
 	if(!arrayStr.GetCount())
@@ -401,18 +439,29 @@ bool rangeFileLoadTests()
 	//Map names of file (without dir) to number of ions/range
 	map<string,unsigned int> ionCountMap;
 	map<string,unsigned int> rangeCountMap;
+	//set that contains list of entries that should fail
+	set<string> failSet;
 
 	ionCountMap["test1.rng"]=10; rangeCountMap["test1.rng"]=6;
-	ionCountMap["test2.rng"]=7; rangeCountMap["test2.rng"]=9;
+	ionCountMap["test2.rng"]=7; rangeCountMap["test2.rng"]=9; 
 	ionCountMap["test3.rng"]=19; rangeCountMap["test3.rng"]=59;
+	failSet.insert("test4.rng");
+	ionCountMap["test5.rng"]=4; rangeCountMap["test5.rng"]=2;
+	//After discussion with a sub-author of 
+	// "Atom Probe Microscopy". ISBN 1461434351
+	// and author of the RNG entry in the book,
+	// it was agreed that the file shown in the book is invalid.
+	// Multiple ions cannot be assigned in this fashion,
+	// as there is no naming or colour data to match to
+	failSet.insert("test6.rng");
 
 	ionCountMap["test1.rrng"]=1; rangeCountMap["test1.rrng"]=1;
-	ionCountMap["test2.rrng"]=3; rangeCountMap["test2.rrng"]=6;
-	ionCountMap["test3.rrng"]=8; rangeCountMap["test3.rrng"]=42;
-	ionCountMap["test4.rrng"]=14; rangeCountMap["test4.rrng"]=15;
-	ionCountMap["test5.rrng"]=1; rangeCountMap["test5.rrng"]=1;
+	ionCountMap["test2.rrng"]=3; rangeCountMap["test2.rrng"]=6; 
+	ionCountMap["test3.rrng"]=8; rangeCountMap["test3.rrng"]=42; 
+	ionCountMap["test4.rrng"]=14; rangeCountMap["test4.rrng"]=15; 
+	ionCountMap["test5.rrng"]=1; rangeCountMap["test5.rrng"]=1; 
 	
-	ionCountMap["test1.env"]=1; rangeCountMap["test1.env"]=1;
+	ionCountMap["test1.env"]=1; rangeCountMap["test1.env"]=1; 
 
 	cerr << endl;
 	//Sort the array before we go any further, so that the output
@@ -422,33 +471,49 @@ bool rangeFileLoadTests()
 	//Now, check to see if each file is in fact a valid, loadable range file
 	for(unsigned int ui=0;ui<arrayStr.GetCount();ui++)
 	{
-		std::string s;
-		s=stlStr(arrayStr[ui]);
+		std::string fileLongname, fileShortname;
+		fileLongname=stlStr(arrayStr[ui]);
+
+		wxFileName filename;
+		filename=wxStr(fileLongname);
+		//This returns the short name of the file. Yes, its badly named.
+		fileShortname=stlStr(filename.GetFullName());
 		{
 			RangeFile f;
-			cerr << "\t" << s.c_str() << "...";
-			if(!f.openGuessFormat(s.c_str()))
+			cerr << "\t" << fileShortname.c_str() << "...";
+
+			bool shouldSucceed;
+
+			//check to see if we have a failure entry for this rangefile
+			// if its not in the set, it should load successfully
+			shouldSucceed=(failSet.find(fileShortname)==failSet.end());
+				
+			if((!f.openGuessFormat(fileLongname.c_str())) == shouldSucceed)
 			{
 				cerr << f.getErrString() << endl;
 				TEST(false,"range file load test"); 
 			}
 
-			//Check against the hand-made map of ion and range counts
-			wxFileName filename;
-			filename=wxStr(s);
-			s=stlStr(filename.GetFullName());
-			if(ionCountMap.find(s)!=ionCountMap.end())
+
+			if(!shouldSucceed)
 			{
-				TEST(ionCountMap[s] == f.getNumIons(),"ion count test");
+				cerr << "OK" <<endl;
+				continue;
+			}
+
+			//Check against the hand-made map of ion and range counts
+			if(ionCountMap.find(fileShortname)!=ionCountMap.end())
+			{
+				TEST(ionCountMap[fileShortname] == f.getNumIons(),"ion count test");
 			}
 			else
 			{
 				WARN(false,"Did not know how many ions file was supposed to have. Test inconclusive");
 			}
 			
-			if(rangeCountMap.find(s)!=rangeCountMap.end())
+			if(rangeCountMap.find(fileShortname)!=rangeCountMap.end())
 			{
-				TEST(rangeCountMap[s] == f.getNumRanges(),"range count test");
+				TEST(rangeCountMap[fileShortname] == f.getNumRanges(),"range count test");
 			}
 			else
 			{
@@ -573,6 +638,101 @@ bool filterTreeTests()
 	//swap working back
 	fTree.swap(fSpareTree);
 	TEST(fTree.maxDepth() == fTmp.maxDepth(),"filtertree swap");
+	return true;
+}
+
+//TODO: Refactor into filter base class.
+bool filterBoolToggleTests()
+{
+	//Each filter should allow user to toggle any boolean value
+	// here we just test the default visible ones
+	for(unsigned int ui=0;ui<FILTER_TYPE_ENUM_END;ui++)
+	{
+		Filter *f;
+		f=makeFilter(ui);
+		
+		FilterPropGroup propGroupOrig;
+
+		//Grab all the default properties
+		f->getProperties(propGroupOrig);
+
+
+		for(size_t ui=0;ui<propGroupOrig.numProps();ui++)
+		{
+			FilterProperty p;
+			p=propGroupOrig.getNthProp(ui);
+			//Only consider boolean values 
+			if( p.type != PROPERTY_TYPE_BOOL )
+				continue;
+
+			//Toggle value to other status
+			if(p.data== "0")
+				p.data= "1";
+			else if (p.data== "1")
+				p.data= "0";
+			else
+			{
+				ASSERT(false);
+			}
+
+
+			//set value to toggled version
+			bool needUp;
+			f->setProperty(p.key,p.data,needUp);
+
+			//Re-get properties to find altered property 
+			FilterPropGroup propGroup;
+			f->getProperties(propGroup);
+			
+			FilterProperty p2;
+			p2 = propGroup.getPropValue(p.key);
+			//Check the property values
+			TEST(p2.data == p.data,"displayed bool property can't be toggled");
+			
+			//Toggle value back to original status
+			if(p2.data== "0")
+				p2.data= "1";
+			else 
+				p2.data= "0";
+			//re-set value to toggled version
+			f->setProperty(p2.key,p2.data,needUp);
+		
+			//Re-get properties to see if orginal value is restored
+			FilterPropGroup fp2;
+			f->getProperties(fp2);
+			p = fp2.getPropValue(p2.key);
+
+			TEST(p.data== p2.data,"failed trying to set bool value back to original after toggle");
+		}
+		delete f;
+	}
+
+	return true;
+}
+
+//TODO: Refactor into filter base class.
+bool filterHelpStringTests()
+{
+	//Each filter should provide help text for each property
+	// here we just test the default visible ones
+	for(unsigned int ui=0;ui<FILTER_TYPE_ENUM_END;ui++)
+	{
+		Filter *f;
+		f=makeFilter(ui);
+
+
+		
+		FilterPropGroup propGroup;
+		f->getProperties(propGroup);
+		for(size_t ui=0;ui<propGroup.numProps();ui++)
+		{
+			FilterProperty p;
+			p=propGroup.getNthProp(ui);
+			TEST(p.helpText.size(),"Property help text must not be empty");
+		}
+		delete f;
+	}
+
 	return true;
 }
 

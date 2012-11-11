@@ -733,6 +733,7 @@ void DrawManyPoints::addPoints(const vector<Point3D> &vp)
 {
 	pts.reserve(pts.size()+vp.size());
 	std::copy(vp.begin(),vp.end(),pts.begin());
+	haveCachedBounds=false;
 }
 
 /*
@@ -749,11 +750,17 @@ void DrawManyPoints::shuffle()
 	std::random_shuffle(pts.begin(),pts.end());
 }
 
-
-void DrawManyPoints::addPoint(const Point3D &p)
+void DrawManyPoints::resize(size_t resizeVal)
 {
-	pts.push_back(p);
+	pts.resize(resizeVal);
 	haveCachedBounds=false;
+}
+
+
+void DrawManyPoints::setPoint(size_t offset,const Point3D &p)
+{
+	ASSERT(!haveCachedBounds);
+	pts[offset]=p;
 }
 
 void DrawManyPoints::setColour(float rnew, float gnew, float bnew, float anew)
@@ -771,6 +778,10 @@ void DrawManyPoints::setSize(float f)
 
 void DrawManyPoints::draw() const
 {
+	//Don't draw transparent objects
+	if(a < std::numeric_limits<float>::epsilon())
+		return;
+
 	const Point3D *p;
 	glPointSize(size); 
 	glBegin(GL_POINTS);
@@ -910,6 +921,53 @@ DrawGLText::DrawGLText(std::string fontFile, unsigned int mode) :font(0),fontStr
 	font->CharMap(ft_encoding_unicode);
 
 	alignMode = DRAWTEXT_ALIGN_LEFT;
+}
+
+DrawGLText::DrawGLText(const DrawGLText &oth) : font(0), fontString(oth.fontString),
+	curFontMode(oth.curFontMode), origin(oth.origin), r(oth.r),
+	g(oth.g), b(oth.b), a(oth.a), up(oth.up), textDir(oth.textDir),
+	readDir(oth.readDir),isOK(oth.isOK), ensureReadFromNorm(oth.ensureReadFromNorm)
+{
+
+	font=0;
+	switch(curFontMode)
+	{
+		case FTGL_BITMAP:
+			font = new FTGLBitmapFont(fontString.c_str());
+			break;
+		case FTGL_PIXMAP:
+			font = new FTGLPixmapFont(fontString.c_str());
+			break;
+		case FTGL_OUTLINE:
+			font = new FTGLOutlineFont(fontString.c_str());
+			break;
+		case FTGL_POLYGON:
+			font = new FTGLPolygonFont(fontString.c_str());
+			break;
+		case FTGL_EXTRUDE:
+			font = new FTGLExtrdFont(fontString.c_str());
+			break;
+		case FTGL_TEXTURE:
+			font = new FTGLTextureFont(fontString.c_str());
+			break;
+		default:
+			//Don't do this. Use valid font numbers
+			ASSERT(false);
+			font=0; 
+	}
+
+	//In case of allocation failure or invalid font num
+	if(!font || font->Error())
+	{
+		isOK=false;
+		return;
+	}
+
+	//Try to make it 100 point
+	font->FaceSize(5);
+	font->Depth(20);
+	//Use unicode
+	font->CharMap(ft_encoding_unicode);
 }
 
 void DrawGLText::draw() const
@@ -1385,6 +1443,24 @@ DrawColourBarOverlay::DrawColourBarOverlay()
 	font = new FTGLPolygonFont(f.c_str());
 };
 
+DrawColourBarOverlay::DrawColourBarOverlay(const DrawColourBarOverlay &oth) 
+{
+	string f;
+	f=getDefaultFontFile();
+	
+	font = new FTGLPolygonFont(f.c_str());
+	a=oth.a;
+
+	rgb=oth.rgb;
+	min=oth.min;
+	max=oth.max;
+	
+	height=oth.height;
+	width=oth.width;
+	
+	tlX=oth.tlX;
+	tlY=oth.tlY;
+};
 
 void DrawColourBarOverlay::draw() const
 {

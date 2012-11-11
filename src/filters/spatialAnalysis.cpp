@@ -245,9 +245,17 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		}
 	}
 
-	//Nothing to do.
+	//Nothing to do, but propagate inputs
 	if(!totalDataSize)
+	{
+		//Propagate any inputs that we don't normally block
+		for(size_t ui=0;ui<dataIn.size();ui++)
+		{
+			if(!(dataIn[ui]->getStreamType() & getRefreshBlockMask()))
+				getOut.push_back(dataIn[ui]);
+		}
 		return 0;
+	}
 
 	const RangeFile *rngF=0;
 	if(haveRangeParent)
@@ -909,7 +917,6 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 
 				PlotStreamData *plotData = new PlotStreamData;
 
-				plotData = new PlotStreamData;
 				plotData->plotMode=PLOT_MODE_1D;
 				plotData->index=0;
 				plotData->parent=this;
@@ -1297,14 +1304,10 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 	return 0;
 }
 
-void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
+void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 {
-	propertyList.data.clear();
-	propertyList.keys.clear();
-	propertyList.types.clear();
-
-	vector<unsigned int> type,keys;
-	vector<pair<string,string> > s;
+	FilterProperty p;
+	size_t curGroup=0;
 
 	string tmpStr;
 	vector<pair<unsigned int,string> > choices;
@@ -1316,19 +1319,16 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	}	
 	
 	tmpStr= choiceString(choices,algorithm);
-	s.push_back(make_pair(string(TRANS("Algorithm")),tmpStr));
+	p.name=TRANS("Algorithm");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Spatial analysis algorithm to use");
+	p.key=KEY_ALGORITHM;
+	propertyList.addProperty(p,curGroup);
 	choices.clear();
-	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_ALGORITHM);
 
-
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
-
-
-	s.clear(); type.clear(); keys.clear(); 
-
+	curGroup++;
+	
 	//Get the options for the current algorithm
 	//---
 
@@ -1343,24 +1343,32 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		tmpStr=TRANS(STOP_MODES[STOP_MODE_RADIUS]);
 		choices.push_back(make_pair((unsigned int)STOP_MODE_RADIUS,tmpStr));
 		tmpStr= choiceString(choices,stopMode);
-		s.push_back(make_pair(string(TRANS("Stop Mode")),tmpStr));
-		type.push_back(PROPERTY_TYPE_CHOICE);
-		keys.push_back(KEY_STOPMODE);
+		p.name=TRANS("Stop Mode");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_CHOICE;
+		p.helpText=TRANS("Method to use to terminate algorithm when examining each point");
+		p.key=KEY_STOPMODE;
+		propertyList.addProperty(p,curGroup);
 
 		if(stopMode == STOP_MODE_NEIGHBOUR)
 		{
 			stream_cast(tmpStr,nnMax);
-			s.push_back(make_pair(string(TRANS("NN Max")),tmpStr));
-			type.push_back(PROPERTY_TYPE_INTEGER);
-			keys.push_back(KEY_NNMAX);
+			p.name=TRANS("NN Max");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_INTEGER;
+			p.helpText=TRANS("Maximum number of neighbours to examine");
+			p.key=KEY_NNMAX;
 		}
 		else
 		{
 			stream_cast(tmpStr,distMax);
-			s.push_back(make_pair(string(TRANS("Dist Max")),tmpStr));
-			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_DISTMAX);
+			p.name=TRANS("Dist Max");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_REAL;
+			p.helpText=TRANS("Maximum distance from each point for search");
+			p.key=KEY_DISTMAX;
 		}
+		propertyList.addProperty(p,curGroup);
 
 	}
 	
@@ -1371,25 +1379,34 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		case ALGORITHM_RDF:
 		{
 			stream_cast(tmpStr,numBins);
-			s.push_back(make_pair(string(TRANS("Num Bins")),tmpStr));
-			type.push_back(PROPERTY_TYPE_INTEGER);
-			keys.push_back(KEY_NUMBINS);
+			p.name=TRANS("Num Bins");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_INTEGER;
+			p.helpText=TRANS("Number of bins for output 1D RDF plot");
+			p.key=KEY_NUMBINS;
+			propertyList.addProperty(p,curGroup);
 
 			if(excludeSurface)
 				tmpStr="1";
 			else
 				tmpStr="0";
 
-			s.push_back(make_pair(string(TRANS("Surface Remove")),tmpStr));
-			type.push_back(PROPERTY_TYPE_BOOL);
-			keys.push_back(KEY_REMOVAL);
+			p.name=TRANS("Surface Remove");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Exclude surface as part of source to minimise bias in RDF (at cost of increased noise)");
+			p.key=KEY_REMOVAL;
+			propertyList.addProperty(p,curGroup);
 			
 			if(excludeSurface)
 			{
 				stream_cast(tmpStr,reductionDistance);
-				s.push_back(make_pair(string(TRANS("Remove Dist")),tmpStr));
-				type.push_back(PROPERTY_TYPE_REAL);
-				keys.push_back(KEY_REDUCTIONDIST);
+				p.name=TRANS("Remove Dist");
+				p.data=tmpStr;
+				p.type=PROPERTY_TYPE_REAL;
+				p.helpText=TRANS("Minimum distance to remove from surface");
+				p.key=KEY_REDUCTIONDIST;
+				propertyList.addProperty(p,curGroup);
 
 			}
 				
@@ -1398,20 +1415,18 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 			genColString((unsigned char)(r*255),(unsigned char)(g*255),
 					(unsigned char)(b*255),(unsigned char)(a*255),thisCol);
 
-			s.push_back(make_pair(string(TRANS("Plot colour ")),thisCol)); 
-			type.push_back(PROPERTY_TYPE_COLOUR);
-			keys.push_back(KEY_COLOUR);
+			p.name=TRANS("Plot colour ");
+			p.data=thisCol; 
+			p.type=PROPERTY_TYPE_COLOUR;
+			p.helpText=TRANS("Colour of output plot");
+			p.key=KEY_COLOUR;
+			propertyList.addProperty(p,curGroup);
 
 			if(haveRangeParent)
 			{
-				propertyList.data.push_back(s);
-				propertyList.types.push_back(type);
-				propertyList.keys.push_back(keys);
-				
-				s.clear();type.clear();keys.clear();
-
 				ASSERT(ionSourceEnabled.size() == ionNames.size());
 				ASSERT(ionNames.size() == ionTargetEnabled.size());
+				curGroup++;
 
 				
 				string sTmp;
@@ -1422,9 +1437,12 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 				else
 					sTmp="0";
 
-				s.push_back(make_pair(TRANS("Source"),sTmp));
-				type.push_back(PROPERTY_TYPE_BOOL);
-				keys.push_back(KEY_ENABLE_SOURCE);
+				p.name=TRANS("Source");
+				p.data=sTmp;
+				p.type=PROPERTY_TYPE_BOOL;
+				p.helpText=TRANS("Ions to use for initiating RDF search");
+				p.key=KEY_ENABLE_SOURCE;
+				propertyList.addProperty(p,curGroup);
 
 					
 				//Loop over the possible incoming ranges,
@@ -1435,26 +1453,29 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 						sTmp="1";
 					else
 						sTmp="0";
-					s.push_back(make_pair(ionNames[ui],sTmp));
-					type.push_back(PROPERTY_TYPE_BOOL);
+					p.name=ionNames[ui];
+					p.data=sTmp;
+					p.type=PROPERTY_TYPE_BOOL;
+					p.helpText=TRANS("Enable/disable ion as source");
 					//FIXME: This is a hack...
-					keys.push_back(KEY_ENABLE_SOURCE*1000+ui);
+					p.key=KEY_ENABLE_SOURCE*1000+ui;
+					propertyList.addProperty(p,curGroup);
 				}
 
-				propertyList.data.push_back(s);
-				propertyList.types.push_back(type);
-				propertyList.keys.push_back(keys);
+				curGroup++;
 				
-				s.clear();type.clear();keys.clear();
 				if(std::count(ionTargetEnabled.begin(),
 					ionTargetEnabled.end(),true) == ionTargetEnabled.size())
 					sTmp="1";
 				else
 					sTmp="0";
 				
-				s.push_back(make_pair(TRANS("Target"),sTmp));
-				type.push_back(PROPERTY_TYPE_BOOL);
-				keys.push_back(KEY_ENABLE_TARGET);
+				p.name=TRANS("Target");
+				p.data=sTmp;
+				p.type=PROPERTY_TYPE_BOOL;
+				p.helpText=TRANS("Enable/disable all ions as target");
+				p.key=KEY_ENABLE_TARGET;
+				propertyList.addProperty(p,curGroup);
 				
 				//Loop over the possible incoming ranges,
 				//once to set sources, once to set targets
@@ -1464,10 +1485,13 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 						sTmp="1";
 					else
 						sTmp="0";
-					s.push_back(make_pair(ionNames[ui],sTmp));
-					type.push_back(PROPERTY_TYPE_BOOL);
+					p.name=ionNames[ui];
+					p.data=sTmp;
+					p.type=PROPERTY_TYPE_BOOL;
+					p.helpText=TRANS("Enable/disable this ion as target");
 					//FIXME: This is a hack...
-					keys.push_back(KEY_ENABLE_TARGET*1000+ui);
+					p.key=KEY_ENABLE_TARGET*1000+ui;
+					propertyList.addProperty(p,curGroup);
 				}
 
 			}
@@ -1477,9 +1501,12 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		{
 		
 			stream_cast(tmpStr,densityCutoff);	
-			s.push_back(make_pair(string(TRANS("Cutoff")),tmpStr));
-			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_CUTOFF);
+			p.name=TRANS("Cutoff");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_REAL;
+			p.helpText=TRANS("Remove points with local density above/below this value");
+			p.key=KEY_CUTOFF;
+			propertyList.addProperty(p,curGroup);
 			
 			
 			if(keepDensityUpper)
@@ -1487,9 +1514,12 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 			else
 				tmpStr="0";
 
-			s.push_back(make_pair(string(TRANS("Retain Upper")),tmpStr));
-			type.push_back(PROPERTY_TYPE_BOOL);
-			keys.push_back(KEY_RETAIN_UPPER);
+			p.name=TRANS("Retain Upper");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Retain either points with density above (enabled) or below cutoff");
+			p.key=KEY_RETAIN_UPPER;
+			propertyList.addProperty(p,curGroup);
 			
 			break;
 		}
@@ -1498,14 +1528,11 @@ void SpatialAnalysisFilter::getProperties(FilterProperties &propertyList) const
 		default:
 			ASSERT(false);
 	}
+	propertyList.setGroupTitle(curGroup,TRANS("Alg. Params."));
 	//---
-
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
 }
 
-bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
+bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 					const std::string &value, bool &needUpdate)
 {
 
@@ -1736,7 +1763,7 @@ bool SpatialAnalysisFilter::setProperty( unsigned int set, unsigned int key,
 			string stripped=stripWhite(value);
 
 			float ltmp;
-			if(stream_cast(ltmp,value))
+			if(stream_cast(ltmp,stripped))
 				return false;
 
 			if(ltmp<= 0.0)
@@ -1886,7 +1913,7 @@ unsigned int SpatialAnalysisFilter::getRefreshUseMask() const
 	return STREAM_TYPE_IONS;
 }
 
-bool SpatialAnalysisFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+bool SpatialAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -2075,9 +2102,9 @@ bool densityPairTest()
 	bool needUp;
 	string s;
 	stream_cast(s,STOP_MODES[STOP_MODE_NEIGHBOUR]);
-	f->setProperty(0,KEY_STOPMODE,s,needUp);
+	f->setProperty(KEY_STOPMODE,s,needUp);
 	stream_cast(s,SPATIAL_ALGORITHMS[ALGORITHM_DENSITY]);
-	f->setProperty(0,KEY_ALGORITHM,s,needUp);
+	f->setProperty(KEY_ALGORITHM,s,needUp);
 
 
 	//Do the refresh
@@ -2132,12 +2159,11 @@ bool nnHistogramTest()
 	f->setCaching(false);	
 	//Set it to do an NN terminated density computation
 	bool needUp;
-	string s;
-	TEST(f->setProperty(0,KEY_STOPMODE,
+	TEST(f->setProperty(KEY_STOPMODE,
 		STOP_MODES[STOP_MODE_NEIGHBOUR],needUp),"set stop mode");
-	TEST(f->setProperty(0,KEY_ALGORITHM,
+	TEST(f->setProperty(KEY_ALGORITHM,
 			SPATIAL_ALGORITHMS[ALGORITHM_RDF],needUp),"set Algorithm");
-	TEST(f->setProperty(0,KEY_NNMAX,"1",needUp),"Set NNmax");
+	TEST(f->setProperty(KEY_NNMAX,"1",needUp),"Set NNmax");
 	
 	//Do the refresh
 	ProgressData p;
@@ -2189,12 +2215,11 @@ bool rdfPlotTest()
 	f->setCaching(false);	
 	//Set it to do an NN terminated density computation
 	bool needUp;
-	string s;
-	TEST(f->setProperty(0,KEY_STOPMODE,
+	TEST(f->setProperty(KEY_STOPMODE,
 		STOP_MODES[STOP_MODE_RADIUS],needUp),"set stop mode");
-	TEST(f->setProperty(0,KEY_ALGORITHM,
+	TEST(f->setProperty(KEY_ALGORITHM,
 			SPATIAL_ALGORITHMS[ALGORITHM_RDF],needUp),"set Algorithm");
-	TEST(f->setProperty(0,KEY_DISTMAX,"2",needUp),"Set NNmax");
+	TEST(f->setProperty(KEY_DISTMAX,"2",needUp),"Set NNmax");
 	
 	//Do the refresh
 	ProgressData p;

@@ -45,17 +45,96 @@ inline std::string stlStr(const wxString& s){
 	return s2;
 }
 
-#include <string>
+//--------
+//Perform validation of a wx text control, adjusting appearance as needed
+// can pass an additonal constraint function that needs to be satistfied (return true)
+// in order for validation to succeed
+template<class T> 
+bool validateTextAsStream(wxTextCtrl *t, T &i, bool (*conditionFunc)(const T&))
+{
+	bool isOK;
+	std::string s; 
+	s= stlStr(t->GetValue());
+
+	//string cannot be empty
+	bool condition;
+	condition = s.empty() || stream_cast(i,s);
+
+	if(condition && conditionFunc)
+		condition&=(*conditionFunc)(i);
+
+	if(condition)
+	{
+		//OK, so bad things happened. Prevent the user from doing this
+		isOK=false;
+
+		//if it is bad and non-empty, highlight it as such
+		// if it is empty, then just set it to normal colour
+		if(s.empty())
+			t->SetBackgroundColour(wxNullColour);
+		else
+			t->SetBackgroundColour(*wxCYAN);
+	}
+	else
+	{
+		t->SetBackgroundColour(wxNullColour);
+		isOK=true;
+	}
+
+
+	return isOK;
+}
+
+template<class T> 
+bool validateTextAsStream(wxTextCtrl *t, T &i)
+{
+	bool isOK;
+	std::string s; 
+	s= stlStr(t->GetValue());
+
+	//string cannot be empty
+	bool condition;
+	condition = s.empty() || stream_cast(i,s);
+
+	if(condition)
+	{
+		//OK, so bad things happened. Prevent the user from doing this
+		isOK=false;
+
+		//if it is bad and non-empty, highlight it as such
+		// if it is empty, then just set it to normal colour
+		if(s.empty())
+			t->SetBackgroundColour(wxNullColour);
+		else
+			t->SetBackgroundColour(*wxCYAN);
+	}
+	else
+	{
+		t->SetBackgroundColour(wxNullColour);
+		isOK=true;
+	}
+
+
+	return isOK;
+}
+
+//--------
+
+void wxErrMsg(wxWindow *, const std::string &title,
+		const std::string &mesg);
+
 //locate the file we are looking for in OS specfic paths
 std::string locateDataFile(const char *name);
 
+//Custom event for remote update thread posting
 extern wxEventType RemoteUpdateAvailEvent; 
-
 
 //Return true IFF process ID and process name match running process
 bool processMatchesName(size_t processID, const std::string &procName);
 
 
+//!Remote version thread checker, downloads rss file from remote system and then
+// parses the file for the latest remote version number
 class VersionCheckThread : public wxThread
 {
 	private:

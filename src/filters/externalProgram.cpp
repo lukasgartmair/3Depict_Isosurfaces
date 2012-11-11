@@ -366,7 +366,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			unsigned int index2[] = {
 					0, 1, 2, 3
 					};
-			if(GenericLoadFloatFile(4, 4, index2, d->data,sTmp.c_str(),dummy,0))
+			if(GenericLoadFloatFile(4, 4, index2, d->data,sTmp.c_str(),dummy,dummyCallback))
 				return READPOS_FAIL;
 
 
@@ -490,54 +490,54 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 }
 
 
-void ExternalProgramFilter::getProperties(FilterProperties &propertyList) const
+void ExternalProgramFilter::getProperties(FilterPropGroup &propertyList) const
 {
-	propertyList.data.clear();
-	propertyList.keys.clear();
-	propertyList.types.clear();
-
-	vector<unsigned int> type,keys;
-	vector<pair<string,string> > s;
-
 	std::string tmpStr;
-	
-	s.push_back(make_pair(TRANS("Command"), commandLine));
-	type.push_back(PROPERTY_TYPE_STRING);
-	keys.push_back(KEY_COMMAND);		
-	
-	s.push_back(make_pair(TRANS("Work Dir"), workingDir));
-	type.push_back(PROPERTY_TYPE_STRING);
-	keys.push_back(KEY_WORKDIR);		
-	
-	propertyList.types.push_back(type);
-	propertyList.data.push_back(s);
-	propertyList.keys.push_back(keys);
+	size_t curGroup=0;
+	FilterProperty p;
 
-	type.clear();s.clear();keys.clear();
+	p.name=TRANS("Command");
+	p.data= commandLine;
+	p.type=PROPERTY_TYPE_STRING;
+	p.helpText=TRANS("Full command to send to operating system. See manual for escape sequence meanings");
+	p.key=KEY_COMMAND;
+	propertyList.addProperty(p,curGroup);
+	
+	p.name=TRANS("Work Dir");
+	p.data= workingDir;
+	p.type=PROPERTY_TYPE_STRING;
+	p.helpText=TRANS("Directory to run the command in");
+	p.key=KEY_WORKDIR;		
+	propertyList.addProperty(p,curGroup);
+	
 
 	if(cleanInput)
 		tmpStr="1";
 	else
 		tmpStr="0";
 
-	s.push_back(make_pair(TRANS("Cleanup input"),tmpStr));
-	type.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(KEY_CLEANUPINPUT);		
+	p.name=TRANS("Cleanup input");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Erase input files when command completed");
+	p.key=KEY_CLEANUPINPUT;		
+	propertyList.addProperty(p,curGroup);
+	
 	if(alwaysCache)
 		tmpStr="1";
 	else
 		tmpStr="0";
 	
-	s.push_back(make_pair(TRANS("Cache"),tmpStr));
-	type.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(KEY_ALWAYSCACHE);		
+	p.name=TRANS("Cache");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Assume program does not alter its output, unless inputs from 3Depict are altered");
+	p.key=KEY_ALWAYSCACHE;		
+	propertyList.addProperty(p,curGroup);
 
-	propertyList.types.push_back(type);
-	propertyList.data.push_back(s);
-	propertyList.keys.push_back(keys);
 }
 
-bool ExternalProgramFilter::setProperty( unsigned int set, unsigned int key,
+bool ExternalProgramFilter::setProperty(  unsigned int key,
 					const std::string &value, bool &needUpdate)
 {
 	needUpdate=false;
@@ -638,7 +638,7 @@ std::string  ExternalProgramFilter::getErrString(unsigned int code) const
 	}
 }
 
-bool ExternalProgramFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+bool ExternalProgramFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -763,7 +763,7 @@ bool echoTest()
 	wxString tmpFilename;
 	tmpFilename=wxFileName::CreateTempFileName(wxT(""));
 	s = string(" echo test > ") + stlStr(tmpFilename);
-	f->setProperty(0,KEY_COMMAND,s,needUp);
+	f->setProperty(KEY_COMMAND,s,needUp);
 
 	//Simulate some data to send to the filter
 	vector<const FilterStreamData*> streamIn,streamOut;
@@ -829,8 +829,8 @@ bool posTest()
 
 	ASSERT(tmpFilename.size());
 	
-	f->setProperty(0,KEY_COMMAND,s,needUp);
-	f->setProperty(0,KEY_WORKDIR,stlStr(tmpDir),needUp);
+	f->setProperty(KEY_COMMAND,s,needUp);
+	f->setProperty(KEY_WORKDIR,stlStr(tmpDir),needUp);
 	//Simulate some data to send to the filter
 	vector<const FilterStreamData*> streamIn,streamOut;
 	streamIn.push_back(someData);

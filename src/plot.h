@@ -89,7 +89,7 @@ class MGLColourFixer
 		// and mgl pallette size
 		char getNextBestColour(float r, float g, float b);
 
-		unsigned int getMaxColours() const;
+		static unsigned int getMaxColours();
 };
 
 //!Data class  for holding info about non-overlapping 
@@ -280,13 +280,25 @@ class PlotWrapper
 		//!User maximum  bounds
 		float xUserMax,yUserMax;
 
-		//!Swtich to enable or disable drawing of the plot legend
+		//!Switch to enable or disable drawing of the plot legend
 		bool drawLegend;	
+
+		//!is user interaction with the plot supposed to be locked?
+		// - is used to ensure that when updating plot, UI control
+		//  will be hinted to take correct action
+		bool interactionLocked;
 
 	public:
 		//!Constructor
 		PlotWrapper();
 
+		//!Destructor must delete target plots
+		~PlotWrapper();
+
+
+		bool isInteractionLocked() const { return interactionLocked;};
+
+		bool lockInteraction(bool lock=true) {interactionLocked=lock;};
 
 		//!Has the contents of the plot changed since the last call to resetChange?
 		bool hasChanged() const { return plotChanged;};

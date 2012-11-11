@@ -9,11 +9,11 @@ MSYS_PATH=/c/msys/1.0/local/include/
 
 3Depict_CXXFLAGS=$(CXXFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) $(WX_CPPFLAGS) \
 	$(GL_FLAGS) $(GSL_CFLAGS) $(MGL_CFLAGS) $(XML_CFLAGS) $(PNG_CFLAGS)  \
-	$(OPENMP_FLAGS) $(DEBUG_FLAGS)
+	$(OPENMP_FLAGS) $(DEBUG_FLAGS) -pipe 
 
 3Depict_CFLAGS=$(CFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) \
 	       $(XML_CFLAGS) $(GSL_CFLAGS)  $(MGL_CFLAGS) $(PNG_CFLAGS) $(QHULL_CFLAGS) \
-	      $(OPENMP_FLAGS) $(DEBUG_FLAGS) 
+	      $(OPENMP_FLAGS) $(DEBUG_FLAGS) -pipe
 
 
 3Depict_LDADD=$(LIBS) $(GETTEXT_LIBS) $(WX_LIBS) $(MGL_LIBS)  $(FTGL_LIBS) \
@@ -39,22 +39,32 @@ FILTER_HEADER_FILES = filters/allFilter.h filters/dataLoad.h filters/ionDownsamp
 
 DIALOG_SOURCE_FILES = dialogs/ExportPos.cpp  dialogs/ExportRngDialog.cpp dialogs/prefDialog.cpp  \
 		dialogs/resolutionDialog.cpp  dialogs/StashDialog.cpp \
-		dialogs/autosaveDialog.cpp dialogs/filterErrorDialog.cpp
+		dialogs/autosaveDialog.cpp dialogs/filterErrorDialog.cpp \
+		dialogs/animateFilterDialog.cpp \
+		dialogs/animateSubDialogs/colourKeyFrameDialog.cpp \
+		dialogs/animateSubDialogs/stringKeyFrameDialog.cpp \
+		dialogs/animateSubDialogs/choiceKeyFrameDialog.cpp
+
 
 DIALOG_HEADER_FILES = dialogs/ExportPos.h dialogs/ExportRngDialog.h dialogs/prefDialog.h \
 		dialogs/StashDialog.h dialogs/resolutionDialog.h \
-		dialogs/autosaveDialog.h dialogs/filterErrorDialog.h
+		dialogs/autosaveDialog.h dialogs/filterErrorDialog.h \
+		dialogs/animateFilterDialog.h \
+		dialogs/animateSubDialogs/realKeyFrameDialog.h \
+		dialogs/animateSubDialogs/colourKeyFrameDialog.h \
+		dialogs/animateSubDialogs/stringKeyFrameDialog.h \
+		dialogs/animateSubDialogs/choiceKeyFrameDialog.h
 
 #These source files should have heirachical couplings only; no cross-coupling
-BASE_SOURCE_FILES=  filtertreeAnalyse.cpp filtertree.cpp mathglPane.cpp \
+BASE_SOURCE_FILES=  animator.cpp eventlogger.cpp filtertreeAnalyse.cpp filtertree.cpp mathglPane.cpp \
 	  	     plot.cpp configFile.cpp filter.cpp \
 		     APTClasses.cpp select.cpp \
 		     drawables.cpp effect.cpp textures.cpp rdf.cpp \
 		     cameras.cpp isoSurface.cpp K3DTree.cpp K3DTree-mk2.cpp\
 			 xmlHelper.cpp cropPanel.cpp colourmap.cpp \
-			pngread.c mathfuncs.cpp wxcomponents.cpp wxcommon.cpp
+			pngread.c mathfuncs.cpp wxcomponents.cpp wxcommon.cpp 
 
-BASE_HEADER_FILES=   filtertreeAnalyse.h filtertree.h mathglPane.h plot.h \
+BASE_HEADER_FILES=   animator.h eventlogger.h filtertreeAnalyse.h filtertree.h mathglPane.h plot.h \
 		     configFile.h filter.h APTClasses.h select.h \
 		     drawables.h effect.h textures.h rdf.h translation.h winconsole.h \
 		     cameras.h isoSurface.h K3DTree.h K3DTree-mk2.h\

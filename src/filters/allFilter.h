@@ -1,12 +1,12 @@
 #ifndef ALLFILTER_H
 #define ALLFILTER_H
 #include "boundingBox.h"
+#include "ionDownsample.h"
+#include "dataLoad.h"
 #include "compositionProfile.h"
 #include "externalProgram.h"
 #include "ionClip.h"
 #include "ionColour.h"
-#include "ionDownsample.h"
-#include "dataLoad.h"
 #include "rangeFile.h"
 #include "clusterAnalysis.h"
 #include "spatialAnalysis.h"

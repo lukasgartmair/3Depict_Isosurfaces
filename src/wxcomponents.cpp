@@ -76,12 +76,21 @@ std::string wxChoiceParamString(std::string choiceString)
 BEGIN_EVENT_TABLE(wxPropertyGrid, wxGrid)
 	EVT_GRID_CELL_LEFT_CLICK(wxPropertyGrid::OnCellLeftClick )
 	EVT_GRID_LABEL_LEFT_DCLICK(wxPropertyGrid::OnLabelDClick) 
+	EVT_MOTION(wxPropertyGrid::OnMouseMove) 
 END_EVENT_TABLE()
 
 wxPropertyGrid::wxPropertyGrid(wxWindow* parent, wxWindowID id, 
 		const wxPoint& pos , const wxSize& size , long style ) :
 					wxGrid(parent, id, pos, size , style)
 {
+	lastGridHoverCol=lastGridHoverRow=-1;
+	//Perform wx event connecting/binding
+#if wxCHECK_VERSION(2, 9, 0)
+	GetGridWindow()->Bind(wxEVT_MOTION, &wxPropertyGrid::OnMouseMove, this);
+#else
+    	GetGridWindow()->Connect(wxID_ANY,
+                 wxEVT_MOTION, wxMouseEventHandler(wxPropertyGrid::OnMouseMove), NULL, this);
+#endif
 }
 
 void wxPropertyGrid::OnSize(wxSizeEvent &event)
@@ -107,6 +116,11 @@ void wxPropertyGrid::fitCols(wxSize &size)
 
 wxPropertyGrid::~wxPropertyGrid()
 {
+#if wxCHECK_VERSION(2, 9, 0)
+   GetGridWindow()->Unbind(wxEVT_MOTION, &wxPropertyGrid::OnMouseMove, this);
+#else
+   GetGridWindow()->Disconnect();
+#endif
 }
 
 //Function adapted from nomadsync.sourceforge.net (GPL)
@@ -181,6 +195,52 @@ void wxGridCellChoiceRenderer::Draw(wxGrid& grid, wxGridCellAttr& attr, wxDC& dc
 	}
 }
 
+bool wxPropertyGrid::isSeparatorRow(int row) const
+{
+	//TODO: Consider moving to map, this does not scale well.
+	// for now we have usually five or six items tho
+	return std::find(sepRows.begin(),sepRows.end(),row)!=sepRows.end();
+}
+
+void wxPropertyGrid::OnMouseMove(wxMouseEvent &event)
+{
+
+	int xPos,yPos;
+	int xMouse,yMouse;
+	event.GetPosition(&xMouse,&yMouse);
+
+	CalcUnscrolledPosition(xMouse,yMouse,&xPos,&yPos);
+
+	int row,col;
+	row=YToRow(yPos);
+	col=XToCol(xPos);
+
+	//Check if the column or row was different
+	if(col != lastGridHoverCol || row != lastGridHoverRow)
+	{
+		lastGridHoverRow = row;
+		lastGridHoverCol = col;
+
+		//If we are hovering over a "spacer" row,
+		//the null row, or not on the prop
+		//column, then bail out
+		if(isSeparatorRow(row) || row == -1  || col == 1)
+		{
+			SetToolTip(NULL); //Hide the tooltip
+			event.Skip();
+			return;
+		}
+
+		//Set the help text based upon the group property
+		const GRID_PROPERTY *p;
+		p=getProperty(getKeyFromRow(row));
+	
+		SetToolTip(wxStr(p->helpText));
+	}
+
+	event.Skip();
+}
+
 //Function adapted from nomadsync.sourceforge.net (GPL)
 void wxPropertyGrid::OnCellLeftClick(wxGridEvent &ev)
 {
@@ -208,6 +268,9 @@ void wxPropertyGrid::clear()
 	
 	propertyKeys.clear();
 	this->EndBatch();
+
+	SetToolTip(wxT(""));
+	lastGridHoverRow=lastGridHoverCol=-1;
 }
 
 bool wxPropertyGrid::isComboEditing() 
@@ -237,8 +300,9 @@ void  wxPropertyGrid::clearKeys()
 	sectionNames.clear();
 }
 
-void wxPropertyGrid::addKey(const std::string &name, unsigned int set,
-		unsigned int newKey, unsigned int type, const std::string &data)
+void wxPropertyGrid::addKey(const std::string &name, unsigned int group,
+		unsigned int newKey, unsigned int type, const std::string &data,
+		const std::string &helpText)
 {
 
 	GRID_PROPERTY newProp;
@@ -246,9 +310,8 @@ void wxPropertyGrid::addKey(const std::string &name, unsigned int set,
 	newProp.type=type;
 	newProp.name=name;
 	newProp.data=data;
-
-	propertyKeys[set].push_back(newProp);
-
+	newProp.helpText = helpText;
+	propertyKeys[group].push_back(newProp);
 }
 
 //Layout the property vector
@@ -266,7 +329,7 @@ void wxPropertyGrid::propertyLayout()
 	this->SetColLabelValue(0,wxTRANS("Param"));
 	this->SetColLabelValue(1,wxTRANS("Value"));
 
-	vector<int> sepRows;
+	sepRows.clear();
 	sepRows.resize(propertyKeys.size());
 	int rows=0;
 	for (unsigned int ui=0; ui<propertyKeys.size(); ui++)
@@ -282,7 +345,7 @@ void wxPropertyGrid::propertyLayout()
 		rows++;
 	}
 
-//Remove last separator row.
+	//Remove last separator row.
 	if (rows)
 		rows--;
 	this->AppendRows(rows);
@@ -376,7 +439,7 @@ void wxPropertyGrid::propertyLayout()
 				this->SetCellValue(sepRows[ui],0,wxStr(sectionNames[ui+1]));
 				wxFont f;
 				f.SetStyle(wxFONTSTYLE_ITALIC);
-				f.SetPointSize(f.GetPointSize()*FONT_HEADING_SCALEFACTOR);
+				f.SetPointSize((int)(f.GetPointSize()*FONT_HEADING_SCALEFACTOR));
 				this->SetCellFont(sepRows[ui],0,f);
 			}
 
@@ -388,21 +451,22 @@ void wxPropertyGrid::propertyLayout()
 		}
 	}
 
+	//First column is read only
 	wxGridCellAttr *readOnlyGridAttr=new wxGridCellAttr;
 	readOnlyGridAttr->SetReadOnly(true);
 	SetColAttr(0,readOnlyGridAttr);
+	//Remove labels for column lead-in
 	SetRowLabelSize(0);
 	SetMargins(0,0);
 
 	AutoSizeColumn(0,true);
 	EndBatch();
 
-	//Expand the column contents	
+	//Expand the column contents to fit current size	
 	wxSize s;
 	s=GetSize();
 	fitCols(s);
 }
-
 
 unsigned int  wxPropertyGrid::getKeyFromRow(int row) const
 {
@@ -420,31 +484,16 @@ unsigned int  wxPropertyGrid::getKeyFromRow(int row) const
 	return 0; // Shut gcc up
 }
 
-unsigned int wxPropertyGrid::getSetFromRow(int row) const
+const GRID_PROPERTY *wxPropertyGrid::getProperty(unsigned int key) const
 {
-	for(unsigned int ui=0;ui<propertyKeys.size();ui++)
+	for(unsigned int group=0;group<propertyKeys.size();group++)
 	{
-
-		for(unsigned int uj=0;uj<propertyKeys[ui].size();uj++)
+		for(unsigned int ui=0;ui<propertyKeys[group].size(); ui++)
 		{
-			if(propertyKeys[ui][uj].renderPosition == row)
-				return ui;
+			if(propertyKeys[group][ui].key == key)
+				return &(propertyKeys[group][ui]);
 		}
 	}
-
-	ASSERT(false);
-	return 0; // Shut gcc up
-}
-
-const GRID_PROPERTY *wxPropertyGrid::getProperty(unsigned int set,unsigned int key) const
-{
-	ASSERT(set < propertyKeys.size());
-	for(unsigned int ui=0;ui<propertyKeys[set].size(); ui++)
-	{
-		if(propertyKeys[set][ui].key == key)
-			return &(propertyKeys[set][ui]);
-	}
-
 	return 0;
 }
 
@@ -612,7 +661,7 @@ void CopyGrid::copyData()
 }
 
 
-std::string TTFFinder::findFont(const char *fontFile) const
+std::string TTFFinder::findFont(const char *fontFile)
 {
 	//Action is OS dependant
 	
@@ -628,7 +677,7 @@ std::string TTFFinder::findFont(const char *fontFile) const
 }
 
 
-std::string TTFFinder::nxFindFont(const char *fontFile) const
+std::string TTFFinder::nxFindFont(const char *fontFile) 
 {
 	//This is a list of possible target dirs to search
 	//(Oh look Ma, I'm autoconf!)
@@ -671,7 +720,7 @@ std::string TTFFinder::nxFindFont(const char *fontFile) const
 	return res;
 }
 
-std::string TTFFinder::winFindFont(const char *fontFile) const
+std::string TTFFinder::winFindFont(const char *fontFile)
 {
             //This is a list of possible target dirs to search
 	//(Oh look Ma, I'm autoconf!)
@@ -711,7 +760,7 @@ std::string TTFFinder::winFindFont(const char *fontFile) const
 
 }
 
-std::string TTFFinder::macFindFont(const char *fontFile) const
+std::string TTFFinder::macFindFont(const char *fontFile) 
 {
 	//This is a list of possible target dirs to search
 	//(Oh look Ma, I'm autoconf!)
@@ -747,7 +796,7 @@ std::string TTFFinder::macFindFont(const char *fontFile) const
 	return res;
 }
 
-std::string TTFFinder::suggestFontName(unsigned int fontType, unsigned int index) const
+std::string TTFFinder::suggestFontName(unsigned int fontType, unsigned int index) 
 {
 	//Possible font names
 	const char *sansFontNames[] = {

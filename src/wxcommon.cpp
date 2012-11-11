@@ -113,7 +113,6 @@ std::string locateDataFile(const char *name)
 
 VersionCheckThread::VersionCheckThread(wxWindow *target) : wxThread(wxTHREAD_JOINABLE)
 {
-	targetWindow=0; 
 	complete=false;
 	retrieveOK=false;
 	targetWindow=target; 
@@ -141,7 +140,6 @@ void *VersionCheckThread::Entry()
 	wxURI uri(wxStr(strUrl));
 	rssUrl = uri.BuildURI();
 
-	rssUrl = wxStr(strUrl);
 	url.SetURL(rssUrl); 
 
 	//If the URL could not be downloaded, tough.
@@ -246,6 +244,14 @@ void *VersionCheckThread::Entry()
 	wxPostEvent(targetWindow,event);
 
 	return 0;
+}
+
+void wxErrMsg(wxWindow *win, const std::string &title, const std::string &mesg)
+{
+	wxMessageDialog *wxMesD  =new wxMessageDialog(win,wxStr(mesg)
+					,wxStr(title),wxOK|wxICON_ERROR);
+	wxMesD->ShowModal();
+	wxMesD->Destroy();
 }
 
 

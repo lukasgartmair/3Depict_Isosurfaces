@@ -260,30 +260,31 @@ esac
 #Check for Mathgl
 dnl ----------
 CFLAGS_ORIG="$CFLAGS"
-LIBS_ORIG="$LIBS"
+LDFLAGS_ORIG="$LDFLAGS"
 
 AC_ARG_WITH(mgl-flags,
   [  --with-mgl-flags=PATH : specify compiler flags for mathgl])
 if test x"$with_mgl_flags" != x"" ; then
-	CFLAGS="$CFLAGS $with_mgl_flags"
-	MGL_CFLAGS=$CFLAGS
+	MGL_CFLAGS="$with_mgl_flags"
 	AC_SUBST(MGL_CFLAGS)
 fi
+CFLAGS="$CFLAGS $MGL_CFLAGS"
 
 AC_ARG_WITH(mgl-libs,
   [  --with-mgl-libs=PATH : specify linker flag (library) for mathgl])
 if test x"$with_mgl_libs" != x"" ; then
-	LIBS="$LDFLAGS $with_mgl_libs"
+	MGL_LIBS="$with_mgl_libs"
 else
-	LIBS="$LDFLAGS -lmgl"
+	MGL_LIBS="-lmgl"
 fi
-	MGL_LIBS=$LIBS
-	AC_SUBST(MGL_LIBS)
+AC_SUBST(MGL_LIBS)
+LDFLAGS="$LDFLAGS $MGL_LIBS"
 
 AC_CHECK_HEADER([mgl/mgl_c.h],[AC_DEFINE(HAVE_MGL_H,[],[Have got mathgl headers])],
-	[AC_MSG_ERROR([Required MathGL headers not found (looking for mgl/mgl_c.h) - is mathgl developement scode installed?])])
+	[AC_MSG_ERROR([Required MathGL headers not found (looking for mgl/mgl_c.h) - is mathgl development code installed?])])
+AC_CHECK_LIB(mgl, mgl_set_def_param, [AC_DEFINE(HAVE_MGL,[],[MathGL compilation OK])] , AC_MSG_ERROR([Required MathGL libraries not found]), -lmgl)
 CFLAGS="$CFLAGS_ORIG"
-LIBS="$LIBS_ORIG"
+LDFLAGS="$LDFLAGS_ORIG"
 
 dnl -------
 
@@ -363,10 +364,25 @@ then
 	then
 		#Note that GLIBCXX_DEBUG cannot exist with GLIBCXX_PARALLEL
 		DEBUG_FLAGS="-DDEBUG"
+
+
 	else
 		DEBUG_FLAGS="-DDEBUG -D_GLIBCXX_DEBUG"
 	fi
+
 	AC_SUBST(DEBUG_FLAGS)
+
+	if test x"$GCC" = xyes; then
+		# Strip optimsation flags from debug build
+		changequote({,})
+		CFLAGS=`echo "$CFLAGS" | sed -e 's/-O[0-9s]*//g'`
+		CXXFLAGS=`echo "$CXXFLAGS" | sed -e 's/-O[0-9s]*//g'`
+		changequote([,])
+		CFLAGS="$CFLAGS -g"
+		CXXFLAGS="$CXXFLAGS -g"
+
+	fi
+
 else 
 	if test x"$enable_debug_checks" !=x"yes" ;
 	then

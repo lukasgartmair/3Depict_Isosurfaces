@@ -33,23 +33,6 @@ void trapfpe () {
 #define APPLE_EFFECTS_WORKAROUND  1
 #endif
 
-//Shut wxwidgets assertion errors up by defining a "safe" cb_sort wrapper macro
-#if defined(__WXMAC__) || defined(__WXGTK20__)
-	       
-	#include <wx/version.h>
-    #if wxCHECK_VERSION(2,9,0)
-    //Sorted combos not supported under gtk in 2.8 series 
-    // http://trac.wxwidgets.org/ticket/4398
-    //and not supported in mac.
-    // http://trac.wxwidgets.org/ticket/12419
-        #define SAFE_CB_SORT 0 
-    #else
-        #define SAFE_CB_SORT wxCB_SORT
-	#endif
-#else
-	#define SAFE_CB_SORT wxCB_SORT
-#endif
-
 
 enum
 {
@@ -58,6 +41,12 @@ enum
 	MESSAGE_HINT,
 	MESSAGE_NONE_BUT_HINT,
 	MESSAGE_NONE
+};
+
+enum
+{ 
+	WINDOW_LOCK_REFRESH,
+	WINDOW_LOCK_NONE
 };
 
 #ifdef __WXMSW__
@@ -109,6 +98,7 @@ winconsole winC;
 #include "dialogs/prefDialog.h" // Preferences dialog
 #include "dialogs/autosaveDialog.h" // startup autosave dialog for multiple load options
 #include "dialogs/filterErrorDialog.h" // Dialog for displaying details for filter analysis error messages
+#include "dialogs/animateFilterDialog.h" // Dialog for performing property sweeps on filters
 
 #include "translation.h"
 
@@ -165,7 +155,9 @@ const char *AUTOSAVE_SUFFIX=".xml";
 //--- These settings must be modified concomitantly.
 const unsigned int FILTER_DROP_COUNT=14;
 
-
+#ifdef DEBUG
+EventLogger evtlog(10, &std::cerr);
+#endif
 const char * comboFilters_choices[FILTER_DROP_COUNT] =
 {
 	NTRANS("Annotation"),
@@ -219,6 +211,7 @@ enum {
     ID_FILE_EXPORT_IONS,
     ID_FILE_EXPORT_RANGE,
     ID_FILE_EXPORT_ANIMATION,
+    ID_FILE_EXPORT_FILTER_ANIMATION,
     ID_FILE_EXPORT_PACKAGE,
 
     //Edit menu
@@ -506,7 +499,8 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     FileExport->Append(ID_FILE_EXPORT_IMAGE, wxTRANS("&Image...\tCtrl+I"), wxTRANS("Export Current 3D View"), wxITEM_NORMAL);
     FileExport->Append(ID_FILE_EXPORT_IONS, wxTRANS("Ion&s...\tCtrl+N"), wxTRANS("Export Ion Data"), wxITEM_NORMAL);
     FileExport->Append(ID_FILE_EXPORT_RANGE, wxTRANS("Ran&ges...\tCtrl+G"), wxTRANS("Export Range Data"), wxITEM_NORMAL);
-    FileExport->Append(ID_FILE_EXPORT_ANIMATION, wxTRANS("Ani&mation...\tCtrl+M"), wxTRANS("Export Animation"), wxITEM_NORMAL);
+    FileExport->Append(ID_FILE_EXPORT_FILTER_ANIMATION, wxTRANS("&Animate Filters...\tCtrl+A"), wxTRANS("Export Animated Filter"), wxITEM_NORMAL);
+    FileExport->Append(ID_FILE_EXPORT_ANIMATION, wxTRANS("Ani&mate Camera...\tCtrl+M"), wxTRANS("Export Animated Camera"), wxITEM_NORMAL);
     FileExport->Append(ID_FILE_EXPORT_PACKAGE, wxTRANS("Pac&kage...\tCtrl+K"), wxTRANS("Export analysis package"), wxITEM_NORMAL);
 
     File->AppendSubMenu(FileExport,wxTRANS("&Export"));
@@ -618,7 +612,7 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     btnFilterTreeErrs = new wxBitmapButton(filterTreePane,ID_BTN_FILTERTREE_ERRS,wxArtProvider::GetBitmap(wxART_INFORMATION),wxDefaultPosition,wxSize(40,40));
 
     propGridLabel = new wxStaticText(filterPropertyPane, wxID_ANY, wxTRANS("Filter settings"));
-    gridFilterProperties = new wxPropertyGrid(filterPropertyPane, ID_GRID_FILTER_PROPERTY);
+    gridFilterPropGroup = new wxPropertyGrid(filterPropertyPane, ID_GRID_FILTER_PROPERTY);
     labelCameraName = new wxStaticText(noteCamera, wxID_ANY, wxTRANS("Camera Name"));
     comboCamera = new wxComboBox(noteCamera, ID_COMBO_CAMERA, wxT(""), wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_DROPDOWN|wxTE_PROCESS_ENTER );
     buttonRemoveCam = new wxButton(noteCamera, wxID_REMOVE, wxEmptyString);
@@ -911,6 +905,7 @@ MainWindowFrame::~MainWindowFrame()
 
 	//delete the file history  pointer
 	delete recentHistory;
+    
 
 	//wxwidgets can crash if objects are ->Connect-ed  in 
 	// wxWindowBase::DestroyChildren(), so Disconnect before destructing
@@ -919,8 +914,6 @@ MainWindowFrame::~MainWindowFrame()
     comboStash->Unbind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboStashSetFocus, this);
     noteDataView->Unbind(wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED, &MainWindowFrame::OnNoteDataView, this);
 #else
-    // this part does not work in my build of mac os x lion & wx Widgets 2.9
-    // crashes at OnSinkDestroyed
 	noteDataView->Disconnect();
 	comboStash->Disconnect();
 	comboCamera->Disconnect();
@@ -943,6 +936,7 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_SPLITTER_DCLICK(ID_SPLIT_FILTERPROP, MainWindowFrame::OnFilterPropDoubleClick) 
     EVT_SPLITTER_DCLICK(ID_SPLIT_LEFTRIGHT, MainWindowFrame::OnControlUnsplit) 
     EVT_SPLITTER_SASH_POS_CHANGED(ID_SPLIT_LEFTRIGHT, MainWindowFrame::OnControlSplitMove) 
+    EVT_SPLITTER_SASH_POS_CHANGED(ID_SPLIT_TOP_BOTTOM, MainWindowFrame::OnTopBottomSplitMove) 
     // begin wxGlade: MainWindowFrame::event_table
     EVT_MENU(ID_FILE_OPEN, MainWindowFrame::OnFileOpen)
     EVT_MENU(ID_FILE_MERGE, MainWindowFrame::OnFileMerge)
@@ -953,6 +947,7 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_MENU(ID_FILE_EXPORT_IONS, MainWindowFrame::OnFileExportIons)
     EVT_MENU(ID_FILE_EXPORT_RANGE, MainWindowFrame::OnFileExportRange)
     EVT_MENU(ID_FILE_EXPORT_ANIMATION, MainWindowFrame::OnFileExportVideo)
+    EVT_MENU(ID_FILE_EXPORT_FILTER_ANIMATION, MainWindowFrame::OnFileExportFilterVideo)
     EVT_MENU(ID_FILE_EXPORT_PACKAGE, MainWindowFrame::OnFileExportPackage)
     EVT_MENU(ID_FILE_EXIT, MainWindowFrame::OnFileExit)
 
@@ -1379,7 +1374,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 			ASSERT(comboStash->GetClientObject(comboStash->GetCount()-1));
 		}
 
-		gridFilterProperties->clear();
+		gridFilterPropGroup->clear();
 
 	}
 	else 
@@ -1388,7 +1383,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 		FilterTree fTree;
 
 		Filter *posFilter,*downSampleFilter;
-		posFilter= configFile.getDefaultFilter(FILTER_TYPE_POSLOAD);
+		posFilter= configFile.getDefaultFilter(FILTER_TYPE_DATALOAD);
 		downSampleFilter= configFile.getDefaultFilter(FILTER_TYPE_IONDOWNSAMPLE);
 
 		//Bastardise the default settings such that it knows to use the correct
@@ -1722,6 +1717,8 @@ void MainWindowFrame::OnFileExportVideo(wxCommandEvent &event)
 		strTmp = stlStr(teD->GetValue());
 	}while(stream_cast(numFrames,strTmp));
 
+	teD->Destroy();
+
 
 	bool saveOK=panelTop->saveImageSequence(d.getWidth(),d.getHeight(),
 							numFrames,path,name,ext);
@@ -1744,6 +1741,312 @@ void MainWindowFrame::OnFileExportVideo(wxCommandEvent &event)
 		statusMessage(dataFile.c_str(),MESSAGE_INFO);
 	}
 	wxF->Destroy();
+
+}
+
+
+void MainWindowFrame::setLockUI(bool locking=true,
+		unsigned int lockMode=WINDOW_LOCK_REFRESH)
+{
+	switch(lockMode)
+	{
+		case WINDOW_LOCK_REFRESH:
+		{
+			comboFilters->Enable(!locking);
+			refreshButton->Enable(!locking);
+			editUndoMenuItem->Enable(!locking);
+			editRedoMenuItem->Enable(!locking);
+			gridFilterPropGroup->Enable(!locking);
+			comboStash->Enable(!locking);
+
+			panelSpectra->limitInteraction(!locking);
+			break;
+		}
+		default:
+			ASSERT(false);
+	}
+}
+
+void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
+
+{
+	ExportAnimationDialog *exportDialog = 
+		new ExportAnimationDialog(this, wxID_ANY, wxEmptyString);
+
+	int w, h;
+	panelTop->GetClientSize(&w,&h);
+	FilterTree origTree;
+
+	//Steal the filter tree, and give the pointer to the export dialog
+	// viscontrol now has an empty tree, so watch out.
+	visControl.swapFilterTree(origTree);
+	exportDialog->setTree(origTree);
+	exportDialog->prepare();
+	visControl.swapFilterTree(origTree);
+
+	//Animate dialog
+	if( (exportDialog->ShowModal() == wxID_CANCEL))
+	{
+		exportDialog->Destroy();
+		return;
+	}
+
+
+	setLockUI();
+	panelTop->Enable(false);
+
+	size_t numFrames;
+	numFrames=exportDialog->getNumFrames();
+
+
+	currentlyUpdatingScene=true;
+	//Modify the tree.
+	for(size_t ui=0;ui<=numFrames;ui++)
+	{
+		bool needsUp;
+		//steal tree from viscontrol
+		visControl.swapFilterTree(origTree);
+		
+		//Modify the tree, as needed
+		if(!exportDialog->getModifiedTree(ui,origTree,needsUp))
+		{
+			std::string s;
+			stream_cast(ui,s);
+			s = TRANS("Filter property change failed") + s;
+			wxMessageDialog *wxMesD  =new wxMessageDialog(this,wxStr(s),
+					wxTRANS("Filter change error"),wxOK|wxICON_ERROR);
+			wxMesD->ShowModal();
+
+			wxMesD->Destroy();
+			setLockUI(false);
+			panelTop->Enable(true);
+			return;
+		}
+
+		//restore tree to viscontrol
+		visControl.swapFilterTree(origTree);
+	
+		if(needsUp || !exportDialog->wantsOnlyChanges())
+		{
+			typedef std::pair<Filter *, std::vector<const FilterStreamData * > >  PAIR_STREAMOUT;
+			typedef std::vector<const FilterStreamData * >  STREAMOUT;
+			std::list<PAIR_STREAMOUT> outData;
+			std::list<STREAMOUT> outStreams;
+
+			//First try to refresh the tree
+			if(visControl.refreshFilterTree(outData))
+			{
+				std::string errMesg,tmpStr;
+				stream_cast(tmpStr,ui);
+				errMesg=TRANS("Refresh failed on frame :") + tmpStr;
+				
+				wxErrMsg(this,TRANS("Refresh failed"),errMesg);
+
+				currentlyUpdatingScene=false;
+				setLockUI(false);
+				panelTop->Enable(true);
+				return;
+			}
+			
+		
+			//Now update the scene, if needed
+			for(list<PAIR_STREAMOUT>::iterator it=outData.begin();
+					it!=outData.end();it++)
+				outStreams.push_back(it->second);
+
+
+			try
+			{
+				if(exportDialog->wantsImages())
+				{
+					//update the output streams, but do not release
+					// the contents.
+					if(visControl.doUpdateScene(outStreams,false))
+					{
+						pair<string,string> errMsg;
+						string tmpStr;
+						stream_cast(tmpStr,ui);
+						errMsg.first=TRANS("Scene generation failed");
+						errMsg.second = TRANS("Unable to generate scene for frame ");
+						errMsg.second+=tmpStr;
+						throw errMsg;
+					}
+					else
+					{
+						if(!panelTop->saveImage(exportDialog->getImageWidth(),
+							exportDialog->getImageHeight(),
+							exportDialog->getFilename(ui,FILENAME_IMAGE).c_str()))
+						{
+							pair<string,string> errMsg;
+							string tmpStr;
+							stream_cast(tmpStr,ui);
+							errMsg.first=TRANS("Unable to save");
+							errMsg.second = TRANS("Image save failed for frame ");
+							errMsg.second+=tmpStr;
+							throw errMsg;
+						}
+					}
+				}
+
+				if(exportDialog->wantsIons())
+				{
+					//merge all the output streams into one
+					vector<const FilterStreamData *> mergedStreams;
+					for(list<STREAMOUT>::iterator it=outStreams.begin();
+							it!=outStreams.end();it++)
+					{
+						size_t origSize;
+						origSize=mergedStreams.size();
+						mergedStreams.resize( origSize+ it->size());
+						std::copy(it->begin(),it->end(),mergedStreams.begin() +origSize);
+					}
+
+					if(visControl.exportIonStreams(mergedStreams,exportDialog->getFilename(ui,FILENAME_IONS)))
+					{
+						pair<string,string> errMsg;
+						string tmpStr;
+						stream_cast(tmpStr,ui);
+						errMsg.first=TRANS("Ion save failed");
+						errMsg.second = TRANS("Unable to save ions for frame ");
+						errMsg.second+=tmpStr;
+						throw errMsg;
+					}
+				}
+
+				if(exportDialog->wantsPlots())
+				{
+
+					size_t plotNumber=0;
+					//Save each plot by name, where possible
+					for(list<STREAMOUT>::iterator it=outStreams.begin(); it!=outStreams.end();it++)
+					{
+						for(size_t uj=0;uj<it->size();uj++)
+						{
+							//Skip non plot output
+							if((*it)[uj]->getStreamType() != STREAM_TYPE_PLOT ) 
+								continue;
+
+							//Save the plot output
+							std::string filename;
+							const PlotStreamData* p = (const PlotStreamData*)(*it)[uj];
+							filename = exportDialog->getFilename(ui,FILENAME_PLOT,plotNumber);
+						
+							plotNumber++;
+
+							if(!p->save(filename.c_str()))
+							{
+								pair<string,string> errMsg;
+								string tmpStr;
+								stream_cast(tmpStr,ui);
+								errMsg.first=TRANS("Plot save failed");
+								errMsg.second = TRANS("Unable to save plot or frame ");
+								errMsg.second+=tmpStr;
+								throw errMsg;
+
+							}
+
+						}
+
+					}
+				}
+
+				if(exportDialog->wantsRanges())
+				{
+					size_t rangeNum=0;
+
+					//TODO: Integrate enums for rangefiles?
+					map<unsigned int,unsigned int> rangeEnumMap;
+					rangeEnumMap[RANGE_OAKRIDGE] = RANGE_FORMAT_ORNL;
+					rangeEnumMap[RANGE_AMETEK_RRNG] = RANGE_FORMAT_RRNG;
+					rangeEnumMap[RANGE_AMETEK_ENV] = RANGE_FORMAT_ENV;
+					//Save each range
+					for(list<STREAMOUT>::iterator it=outStreams.begin(); it!=outStreams.end();it++)
+					{
+						for(size_t uj=0;uj<it->size();uj++)
+						{
+							//Skip non plot output
+							if((*it)[uj]->getStreamType() != STREAM_TYPE_RANGE) 
+								continue;
+
+							//Save the plot output
+							std::string filename;
+							const RangeStreamData* p = (const RangeStreamData*)(*it)[uj];
+							filename = exportDialog->getFilename(ui,FILENAME_RANGE,rangeNum);
+
+							size_t format;
+							format=rangeEnumMap.at(exportDialog->getRangeFormat());
+
+							if(!p->save(filename.c_str(),format))
+							{	pair<string,string> errMsg;
+								string tmpStr;
+								stream_cast(tmpStr,ui);
+								errMsg.first=TRANS("Range save failed");
+								errMsg.second = TRANS("Unable to save range for frame ");
+						
+								throw errMsg;
+							}
+
+						}
+					}
+				}
+			
+
+				if(exportDialog->wantsVoxels())
+				{
+					size_t offset=0;
+					for(list<STREAMOUT>::iterator it=outStreams.begin(); it!=outStreams.end();it++)
+					{
+						for(size_t uj=0;uj<it->size();uj++)
+						{
+							if( ((*it)[uj])->getStreamType() != STREAM_TYPE_VOXEL)
+								continue;
+
+							const VoxelStreamData *v;
+							v=(const VoxelStreamData*)(*it)[uj];
+							
+							std::string filename = exportDialog->getFilename(ui,FILENAME_VOXEL,offset);
+							if(v->data.writeFile(filename.c_str()))
+							{
+								pair<string,string> errMsg;
+								string tmpStr;
+								stream_cast(tmpStr,ui);
+								errMsg.first=TRANS("Voxel save failed");
+								errMsg.second = TRANS("Unable to save voxels for frame ");
+								errMsg.second+=tmpStr;
+								throw errMsg;
+							}
+				
+							offset++;
+						}
+					}
+				}
+			}
+			catch(std::pair<string,string> errMsg)
+			{
+				//Display an error dialog to the user
+				wxErrMsg(this,errMsg.first,errMsg.second);
+				
+				//clean up data
+				visControl.safeDeleteFilterList(outData);
+				exportDialog->Destroy();
+				currentlyUpdatingScene=false;
+				setLockUI(false);
+				panelTop->Enable(true);
+
+				return;
+			}
+
+			//Clean up date from this run, releasing stream pointers.
+			visControl.safeDeleteFilterList(outData);
+			outStreams.clear();
+		}
+
+	}
+	
+	currentlyUpdatingScene=false;
+	exportDialog->Destroy();
+	setLockUI(false);
+	panelTop->Enable(true);
 
 }
 
@@ -2106,13 +2409,13 @@ void MainWindowFrame::OnEditUndo(wxCommandEvent &event)
 		//Get the parent filter pointer	
 		wxTreeItemData *parentData=treeFilters->GetItemData(id);
 		//Update property grid	
-		visControl.updateFilterPropGrid(gridFilterProperties,
+		visControl.updateFilterPropGrid(gridFilterPropGroup,
 						((wxTreeUint *)parentData)->value);
 
 	}
 	else
 	{
-		gridFilterProperties->clear();
+		gridFilterPropGroup->clear();
 		updateLastRefreshBox();
 	}
 
@@ -2135,13 +2438,13 @@ void MainWindowFrame::OnEditRedo(wxCommandEvent &event)
 		//Get the parent filter pointer	
 		wxTreeItemData *parentData=treeFilters->GetItemData(id);
 		//Update property grid	
-		visControl.updateFilterPropGrid(gridFilterProperties,
+		visControl.updateFilterPropGrid(gridFilterPropGroup,
 						((wxTreeUint *)parentData)->value);
 
 	}
 	else
 	{
-		gridFilterProperties->clear();
+		gridFilterPropGroup->clear();
 		updateLastRefreshBox();
 	}
 
@@ -2708,14 +3011,14 @@ void MainWindowFrame::OnTreeSelectionChange(wxTreeEvent &event)
 
 	if(!id.IsOk() || id == treeFilters->GetRootItem())
 	{
-		gridFilterProperties->clear();
+		gridFilterPropGroup->clear();
 		return;
 	}
 
 	//Tree data contains unique identifier for vis control to do matching
 	wxTreeItemData *tData=treeFilters->GetItemData(id);
 
-	visControl.updateFilterPropGrid(gridFilterProperties,
+	visControl.updateFilterPropGrid(gridFilterPropGroup,
 					((wxTreeUint *)tData)->value);
 
 
@@ -2961,7 +3264,7 @@ void MainWindowFrame::OnTreeKeyDown(wxTreeEvent &event)
 			//Remove the item from the Tree 
 			visControl.removeFilterSubtree(((wxTreeUint *)tData)->value);
 			//Clear property grid
-			gridFilterProperties->clear();
+			gridFilterPropGroup->clear();
 			if(parent !=treeFilters->GetRootItem())
 			{
 				ASSERT(parent.IsOk()); // should be - base node should always exist.
@@ -2980,7 +3283,7 @@ void MainWindowFrame::OnTreeKeyDown(wxTreeEvent &event)
 
 
 				//Update the filter property grid with the parent's data
-				visControl.updateFilterPropGrid(gridFilterProperties,
+				visControl.updateFilterPropGrid(gridFilterPropGroup,
 							((wxTreeUint *)parentData)->value);
 			}
 			else
@@ -3019,7 +3322,7 @@ void MainWindowFrame::OnGridFilterPropertyChange(wxGridEvent &event)
 	ASSERT(event.GetCol()==1);
 
 	std::string value; 
-	value = stlStr(gridFilterProperties->GetCellValue(
+	value = stlStr(gridFilterPropGroup->GetCellValue(
 					event.GetRow(),1));
 
 	//Get the filter ID value (long song and dance that it is)
@@ -3039,8 +3342,8 @@ void MainWindowFrame::OnGridFilterPropertyChange(wxGridEvent &event)
 
 	bool needUpdate;
 	int row=event.GetRow();
-	if(!visControl.setFilterProperty(filterId,gridFilterProperties->getSetFromRow(row),
-					gridFilterProperties->getKeyFromRow(row),value,needUpdate))
+	if(!visControl.setFilterProperty(filterId,
+		gridFilterPropGroup->getKeyFromRow(row),value,needUpdate))
 	{
 		event.Veto();
 		programmaticEvent=false;
@@ -3053,7 +3356,7 @@ void MainWindowFrame::OnGridFilterPropertyChange(wxGridEvent &event)
 	else 
 		clearWxTreeImages(treeFilters);
 
-	visControl.updateFilterPropGrid(gridFilterProperties,filterId);
+	visControl.updateFilterPropGrid(gridFilterPropGroup,filterId);
 	
 	editUndoMenuItem->Enable(visControl.getUndoSize());
 	editRedoMenuItem->Enable(visControl.getRedoSize());
@@ -3369,16 +3672,9 @@ bool MainWindowFrame::doSceneUpdate()
 	noteDataView->SetPageText(NOTE_CONSOLE_PAGE_OFFSET,wxTRANS("Cons."));
 
 	//Disable tree filters,refresh button and undo
-	comboFilters->Enable(false);
-	refreshButton->Enable(false);
-	editUndoMenuItem->Enable(false);
-	editRedoMenuItem->Enable(false);
-	gridFilterProperties->Enable(false);
-	comboStash->Enable(false);
+	setLockUI(true);
 
-	panelSpectra->limitInteraction();
 	panelSpectra->Refresh();
-
 
 	if(!requireFirstUpdate)
 		textConsoleOut->Clear();	
@@ -3416,14 +3712,8 @@ bool MainWindowFrame::doSceneUpdate()
 	visControl.resetProgress();
 
 	//Restore the UI elements to their interactive state
-	panelSpectra->limitInteraction(false);
-	refreshButton->Enable(true);
-	gridFilterProperties->Enable(true);
-	comboFilters->Enable(true);
-	comboStash->Enable(true);
-	editUndoMenuItem->Enable(visControl.getUndoSize());
-	editRedoMenuItem->Enable(visControl.getRedoSize());
-	
+	setLockUI(false);
+
 	panelTop->Refresh(false);
 	panelSpectra->Refresh(false);	
 
@@ -3470,7 +3760,6 @@ void MainWindowFrame::setFilterTreeAnalysisImages()
 
 	for(size_t ui=0;ui<lastErrs.size();ui++)
 	{
-		vector<size_t> ids;
 		for(size_t uj=0;uj<lastErrs[ui].reportedFilters.size();uj++)
 		{
 			const Filter *filt;
@@ -3651,7 +3940,7 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 		{
 			//Tree data contains unique identifier for vis control to do matching
 			wxTreeItemData *tData=treeFilters->GetItemData(id);
-			visControl.updateFilterPropGrid(gridFilterProperties,
+			visControl.updateFilterPropGrid(gridFilterPropGroup,
 							((wxTreeUint *)tData)->value);
 			editUndoMenuItem->Enable(visControl.getUndoSize());
 			editRedoMenuItem->Enable(visControl.getRedoSize());
@@ -4070,6 +4359,9 @@ void MainWindowFrame::OnViewFullscreen(wxCommandEvent &event)
 
 void MainWindowFrame::OnButtonRefresh(wxCommandEvent &event)
 {
+	if(currentlyUpdatingScene)
+		return;
+
 	//dirty hack to get keyboard state.
 	wxMouseState wxm = wxGetMouseState();
 	if(wxm.ShiftDown())
@@ -4100,7 +4392,12 @@ void MainWindowFrame::OnFilterPropDoubleClick(wxSplitterEvent &event)
 void MainWindowFrame::OnControlSplitMove(wxSplitterEvent &event)
 {
 	wxGridEvent gridEvent(ID_GRID_RAW_DATA,wxEVT_GRID_LABEL_LEFT_DCLICK,NULL);
-	wxPostEvent(gridFilterProperties,gridEvent);
+	wxPostEvent(gridFilterPropGroup,gridEvent);
+}
+
+void MainWindowFrame::OnTopBottomSplitMove(wxSplitterEvent &event)
+{
+	Refresh();
 }
 
 void MainWindowFrame::OnControlUnsplit(wxSplitterEvent &event)
@@ -4130,22 +4427,17 @@ void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 		return;
 	}
 	//Find where the event occurred (cell & property)
-	const GRID_PROPERTY *item=0;
+	const GRID_PROPERTY *item;
 
-	unsigned int key,set;
-	key=gridFilterProperties->getKeyFromRow(event.GetRow());
-	set=gridFilterProperties->getSetFromRow(event.GetRow());
+	unsigned int key;
+	key=gridFilterPropGroup->getKeyFromRow(event.GetRow());
 
-	item=gridFilterProperties->getProperty(set,key);
+	item=gridFilterPropGroup->getProperty(key);
 
 	//Remove any icons that show filter errors or warning state
 	clearWxTreeImages(treeFilters);
 
 	bool needUpdate=false;
-
-#ifdef DEBUG
-	visControl.checkTree(treeFilters);
-#endif
 
 	ASSERT(treeFilters->GetSelection() != treeFilters->GetRootItem());
 
@@ -4173,7 +4465,7 @@ void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 				s= "1";
 			else
 				s="0";
-			visControl.setFilterProperty(filterId,set,key,s,needUpdate);
+			visControl.setFilterProperty(filterId,key,s,needUpdate);
 
 			event.Veto();
 			break;
@@ -4201,7 +4493,7 @@ void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 			
 				//Pass the new colour to the viscontrol system, which updates
 				//the filters	
-				visControl.setFilterProperty(filterId,set,key,s,needUpdate);
+				visControl.setFilterProperty(filterId,key,s,needUpdate);
 			}
 
 			//Set the filter property
@@ -4223,7 +4515,7 @@ void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 
 	if(needUpdate)
 	{
-		visControl.updateFilterPropGrid(gridFilterProperties,
+		visControl.updateFilterPropGrid(gridFilterPropGroup,
 						((wxTreeUint *)tData)->value);
 
 		editUndoMenuItem->Enable(visControl.getUndoSize());
@@ -4252,13 +4544,12 @@ void MainWindowFrame::OnCameraGridCellEditorShow(wxGridEvent &event)
 		return;
 	}
 	//Find where the event occurred (cell & property)
-	const GRID_PROPERTY *item=0;
+	const GRID_PROPERTY *item;
 
-	unsigned int key,set;
+	unsigned int key;
 	key=gridCameraProperties->getKeyFromRow(event.GetRow());
-	set=gridCameraProperties->getSetFromRow(event.GetRow());
 
-	item=gridCameraProperties->getProperty(set,key);
+	item=gridCameraProperties->getProperty(key);
 
 	//Get the camera ID
 	wxListUint *l;
@@ -4524,9 +4815,10 @@ void MainWindowFrame::OnClose(wxCloseEvent &event)
 	configFile.setTopBottomSashPos(frac);
 	frac= (float)filterSplitter->GetSashPosition()/winSize.GetHeight();
 	configFile.setFilterSashPos(frac);
+	frac = (float)splitterSpectra->GetSashPosition()/winSize.GetWidth();
+	configFile.setPlotListSashPos(frac);
 
 	winSize=noteDataView->GetSize();
-	frac = (float)splitterSpectra->GetSashPosition()/winSize.GetWidth();
 
 	//Try to save the configuration
 	configFile.write();
@@ -5035,10 +5327,10 @@ void MainWindowFrame::set_properties()
     checkWeakRandom->SetToolTip(wxTRANS("Enable/Disable weak randomisation (Galois linear feedback shift register). Strong randomisation uses a much slower random selection method, but provides better protection against inadvertent correlations, and is recommended for final analyses"));
     checkCaching->SetToolTip(wxTRANS("Enable/Disable caching of intermediate results during filter updates. This will use less system RAM, though changes to any filter property will cause the entire filter tree to be recomputed, greatly slowing computations"));
 
-    gridFilterProperties->CreateGrid(0, 2);
-    gridFilterProperties->EnableDragRowSize(false);
-    gridFilterProperties->SetColLabelValue(0, wxTRANS("Property"));
-    gridFilterProperties->SetColLabelValue(1, wxTRANS("Value"));
+    gridFilterPropGroup->CreateGrid(0, 2);
+    gridFilterPropGroup->EnableDragRowSize(false);
+    gridFilterPropGroup->SetColLabelValue(0, wxTRANS("Property"));
+    gridFilterPropGroup->SetColLabelValue(1, wxTRANS("Value"));
     gridCameraProperties->CreateGrid(4, 2);
     gridCameraProperties->EnableDragRowSize(false);
     gridCameraProperties->SetSelectionMode(wxGrid::wxGridSelectRows);
@@ -5163,7 +5455,7 @@ void MainWindowFrame::do_layout()
     filterTreeLeftRightSizer->Add(filterRightOfTreeSizer, 2, wxEXPAND, 0);
     filterTreePane->SetSizer(filterTreeLeftRightSizer);
     filterPropGridSizer->Add(propGridLabel, 0, 0, 0);
-    filterPropGridSizer->Add(gridFilterProperties, 1, wxLEFT|wxEXPAND, 4);
+    filterPropGridSizer->Add(gridFilterPropGroup, 1, wxLEFT|wxEXPAND, 4);
     filterPropertyPane->SetSizer(filterPropGridSizer);
 //    filterSplitter->SplitHorizontally(filterTreePane, filterPropertyPane);//DISABLED This has to be done later to get the window to work.
     filterPaneSizer->Add(filterSplitter, 1, wxEXPAND, 0);
@@ -5243,7 +5535,7 @@ void MainWindowFrame::do_layout()
     noteRaw->SetSizer(rawDataGridSizer);
     textConsoleSizer->Add(textConsoleOut, 1, wxEXPAND, 0);
     noteDataViewConsole->SetSizer(textConsoleSizer);
-    noteDataView->AddPage(splitterSpectra, wxTRANS("Spec."));
+    noteDataView->AddPage(splitterSpectra, wxTRANS("Plot"));
     noteDataView->AddPage(noteRaw, wxTRANS("Raw"));
     noteDataView->AddPage(noteDataViewConsole, wxTRANS("Cons."));
     splitTopBottom->SplitHorizontally(panelTop, noteDataView);
@@ -5268,6 +5560,15 @@ void MainWindowFrame::do_layout()
 	comboStash->SetValue(wxCStr(TRANS(stashIntroString)));
 
 }
+
+#ifdef DEBUG
+void MainWindowFrame::setEventloggerFile()
+{
+    fs.open((configFile.getConfigDir()+stlStr(wxFileName::GetPathSeparator())+string("eventlog.txt")).c_str());
+    if (fs)
+        evtlog.setostream(&fs);
+}
+#endif
 
 class threeDepictApp: public wxApp {
 private:
@@ -5318,7 +5619,9 @@ static const wxCmdLineEntryDesc g_cmdLineDesc [] =
 			"XML files may be passed to run, instead of default tests"), wxCMD_LINE_VAL_NONE, wxCMD_LINE_SWITCH},
 #endif
 #endif
-	{ wxCMD_LINE_NONE }
+
+  { wxCMD_LINE_NONE,NULL,NULL,NULL,wxCMD_LINE_VAL_NONE,0 }
+
 };
 
 IMPLEMENT_APP(threeDepictApp)
@@ -5421,7 +5724,9 @@ void threeDepictApp::initLanguageSupport()
 //Catching key events globally.
 int threeDepictApp::FilterEvent(wxEvent& event)
 {
-
+#ifdef DEBUG    
+	evtlog.insert(event);
+#endif
 	//Process global keyboard (non-accellerator) events
 	if ( event.GetEventType()==wxEVT_KEY_DOWN )
 	{
@@ -5641,6 +5946,7 @@ bool threeDepictApp::OnInit()
 #ifdef __linux__
    trapfpe(); //Under Linux, enable  segfault on invalid floating point operations
 #endif
+    MainFrame->setEventloggerFile(); //Enable event logging
 #endif
 
 #ifdef __APPLE__    
@@ -5662,8 +5968,6 @@ bool threeDepictApp::OnInit()
 
     if(commandLineFiles.GetCount())
     	MainFrame->SetCommandLineFiles(commandLineFiles);
-
-
 
     MainFrame->Show();
     MainFrame->fixSplitterWindow();

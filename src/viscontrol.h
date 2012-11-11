@@ -131,7 +131,7 @@ class VisController
 		void updateConsole(const std::vector<std::string> &v, const Filter *f) const;
 
 		//!Force an update to the scene. 
-		unsigned int updateScene(std::list<vector<const FilterStreamData *> > &outputData);
+		unsigned int updateScene(std::list<vector<const FilterStreamData *> > &outputData,bool releaseData=true);
 		
 		//!ID handler that assigns each filter its own ID that
 		// is guaranteed to be unique for the life of the filter in the filterTree	
@@ -150,13 +150,14 @@ class VisController
 
 		//Filter tree access functions
 		//-----------------
-		//!Run a refresh of the underlying tree
-		//Overall progress give the progress for all filters, as a numeral (1 of n)
-		//filterprogress gives the progress within a filter, as a percentage
-		//curFilter gives the current filter, or the latest filter if exiting
-		//on error. if == 0, then scene update has been initiated
+		//!Run a refresh of the underlying tree. Returns 0 on success
+		// iff return value == 0, then scene update has been initiated
 		unsigned int refreshFilterTree(bool doUpdateScene=true);
 
+		
+		
+		//!Force an update to the scene. 
+		unsigned int doUpdateScene(std::list<vector<const FilterStreamData *> > &outputData, bool releaseData=true);
 
 		//obtain the outputs from the filter tree's refresh. 
 		// The outputs *must* be deleted with safeDeleteFilterList
@@ -174,7 +175,7 @@ class VisController
 
 
 		//!Add a new filter to the tree. set isbase=false and parentID for not
-		//setting a parent (ie makeing filter base)
+		//setting a parent (ie making filter base)
 		void addFilter(Filter *f, bool isBase, size_t parentId);
 		
 		
@@ -188,10 +189,13 @@ class VisController
 		//!Grab the filter tree from the internal one, and swap the 
 		// internal with a cloned copy. Can be used eg, to steal the cache
 		// Note that the passed filter tree will be destroyed.
+		//  -> This implies the tree comes *OUT* of viscontrol,
+		//     and a tree  cannot be inserted in via this function
 		void switchoutFilterTree(FilterTree &f);
 
 		//Perform a swap operation on the filter tree. 
 		// - *must* have same topology, or you must call updateWxTreeCtrl
+		// - can be used to *insert* a tree into this function
 		void swapFilterTree(FilterTree &f) { f.swap(filterTree);}
 
 		//!Duplicate a branch of the tree to a new position. Do not copy cache,
@@ -215,7 +219,7 @@ class VisController
 		void stripHazardousContents() { filterTree.stripHazardousContents();};
 
 		//!Get the analysis results for the last refresh
-		void getAnalysisResults(vector<FILTERTREE_ERR> &res) { fta.getAnalysisResults(res);}
+		void getAnalysisResults(vector<FILTERTREE_ERR> &res) const { fta.getAnalysisResults(res);}
 
 		//!Return the number of filters currently in the main tree
 		size_t numFilters() const { return filterTree.size();};
@@ -234,8 +238,8 @@ class VisController
 		 * The return code tells whether to reject or accept the change. 
 		 * need update tells us if the change to the filter resulted in a change to the scene
 		 */
-		bool setFilterProperty(size_t filterId, unsigned int set,
-				unsigned int key, const std::string &value, bool &needUpdate);
+		bool setFilterProperty(size_t filterId,unsigned int key,
+				const std::string &value, bool &needUpdate);
 	
 		//!Set the filter's string	
 		bool setFilterString(size_t id, const std::string &s);
@@ -275,7 +279,7 @@ class VisController
 		//!Write out the filters into a wxtreecontrol.
 		void updateWxTreeCtrl(wxTreeCtrl *t,const Filter *f=0);
 		//!Update a wxtGrid with the properties for a given filter
-		void updateFilterPropGrid(wxPropertyGrid *g,size_t filterId);
+		void updateFilterPropGrid(wxPropertyGrid *g,size_t filterId) const;
 			
 
 
@@ -290,7 +294,7 @@ class VisController
 		unsigned int addCam(const std::string &camName);
 
 		//!Update a wxtGrid with the properties for a given filter
-		void updateCamPropertyGrid(wxPropertyGrid *g,unsigned int camUniqueId);
+		void updateCamPropertyGrid(wxPropertyGrid *g,unsigned int camUniqueId) const;
 		
 		//!Return the number of cameras
 		unsigned int numCams() const ;
@@ -339,8 +343,8 @@ class VisController
 		unsigned int getActiveCamId() const;
 
 		//!export given filterstream data pointers
-		unsigned int exportIonStreams(const std::vector<const FilterStreamData *> &selected, 
-								const std::string &outFile, unsigned int format=IONFORMAT_POS) const;
+		static unsigned int exportIonStreams(const std::vector<const FilterStreamData *> &selected, 
+								const std::string &outFile, unsigned int format=IONFORMAT_POS);
 		
 		//!Returns true if the filter is in the midst of a refresh
 		bool isRefreshing() const {return amRefreshing; }
@@ -400,7 +404,7 @@ class VisController
 		void resetProgress() { curProg.reset();};
 
 		//!Return the scene's world axis visibility
-		bool getAxisVisible();
+		bool getAxisVisible() const;
 
 		//!Set whether filter should use strong or weak randomisation
 		void setStrongRandom(bool strongRand);

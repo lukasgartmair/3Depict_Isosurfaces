@@ -40,9 +40,6 @@ private:
 	wxPoint draggingStart;
 	bool lastMoveShiftDown;
 	
-	//Is scene interaction OK?
-	bool disableSceneInteraction;
-
 	//True if an object has been mouse-overed for selection
 	bool selectionMode;
 	//The scene ID value for the currently selected object
@@ -55,11 +52,11 @@ private:
 
 	//Test for a object selection. Returns -1 if no selection
 	//or object ID if selection OK. Also sets lastSelected & scene
-	unsigned int selectionTest(wxPoint &p,  bool &shouldRedraw);
+	unsigned int selectionTest(const wxPoint &p,  bool &shouldRedraw);
 
 	//Test for a object hover under cursor Returns -1 if no selection
 	//or object ID if selection OK. Also sets last hover and scene
-	unsigned int hoverTest(wxPoint &p,  bool &shouldRedraw);
+	unsigned int hoverTest(const wxPoint &p,  bool &shouldRedraw);
 
 	//!Are there updates to the camera Properties due to camera motion?
 	bool haveCameraUpdates;

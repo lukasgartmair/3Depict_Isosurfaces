@@ -180,6 +180,7 @@ std::string onlyDir( const std::string& path)
 	return path.substr(0, path.find_last_of( '/' ) +1 );
 #endif
 }
+
 void setDefaultFontFile(const std::string &font)
 {
 	defaultFontFile=font;
@@ -209,8 +210,6 @@ bool parsePointStr(const std::string &str,Point3D &pt)
 	if(str.size()< 5)
 		return false;
 
-	//GCC might bitch about this. Ignore gcc.
-	bool usingBrackets;
 	string tmpStr;
 	tmpStr=stripWhite(str);
 
@@ -220,91 +219,55 @@ bool parsePointStr(const std::string &str,Point3D &pt)
 	allowableStartChars="([{<'";
 	allowableEndChars=")]}>'";
 
-	unsigned int nSeparators=0;
-	unsigned int separatorPos[2];
-	//GCC might bitch about this. Ignore gcc.
-	unsigned int nStart,nEnd;
-
 	size_t startPos,endPos;
 	startPos=allowableStartChars.find(tmpStr[0]);
 	endPos=allowableEndChars.find(tmpStr[tmpStr.size()-1]);
 
+	//Strip the start/end chars 
+	if(startPos !=std::string::npos && endPos != std::string::npos)
+		tmpStr=tmpStr.substr(1,tmpStr.size()-1);
+	else if (startPos !=endPos)
+		return false; //we had one start bracket, but not the other...
 
-	std::string allowableSeparators=",; \t|_";
+	//First try splitting with non-whitespace separators,
+	// there should be exactly 3 components
+	vector<string> components;
+	const char *NONWHITE_SEPARATOR=",;|_";
+	splitStrsRef(tmpStr.c_str(),NONWHITE_SEPARATOR,
+			components);
+	if(components.size()!=3)
+		return false;
+	components.clear();
 
-	if(startPos ==endPos && startPos !=std::string::npos) 
-	{
-		//Could be:
-		//(#,#,#) format; where ( and ) are any of the allowable start/ends
-		if(str.size()< 7)
-			return false;
-		nStart=1;
-		nEnd=tmpStr.size()-1;
-		usingBrackets=true;
-	}
-	else if(startPos== std::string::npos && endPos == std::string::npos)
-	{
-		//Possible allowable format:
-		//(-)#,(-)#,(-)# format : brackets( ) denote optional
-		if(!(isdigit(tmpStr[0]) || tmpStr[0] == '-') || 
-			!isdigit(tmpStr[tmpStr.size()-1]))
-		       return false;
+	//Now try splitting with whitespace components, dropping empty
+	// strings. As we have already cheked the non-whitespace components
+	// additional components muts be whitespace only, which is fine.
 
-		nStart=0;
-		nEnd=tmpStr.size();
-		usingBrackets=false;
-	}
+	const char *ALLOWABLE_SEPARATORS=",; \t|_";
 
+	splitStrsRef(tmpStr.c_str(),ALLOWABLE_SEPARATORS,
+			components);
+	for(size_t ui=0;ui<components.size();ui++)
+		components[ui]=stripWhite(components[ui]);
+	
+	//Drop the blank bits from the field
+	vector<string>::iterator rmIt;
+	rmIt=std::remove(components.begin(),components.end(),string(""));
+	components.erase(rmIt,components.end());
 
-	size_t curSep=std::numeric_limits<size_t>::max();
-	for(unsigned int ui=nStart; ui<nEnd; ui++)
-	{
-		size_t separatorTypeIdx;
-		//Look through our list of allowable separators
-		separatorTypeIdx=allowableSeparators.find(tmpStr[ui]);
-		if(separatorTypeIdx != std::string::npos) 
-		{
-			if(curSep != std::numeric_limits<size_t>::max()) 
-			{
-				//Check we have been using the same separator each time
-				if(curSep != separatorTypeIdx)
-					return false;
-			}
-			else
-				curSep=separatorTypeIdx;
-
-			separatorPos[nSeparators]=ui;
-			nSeparators++;
-			if(nSeparators > 2)
-				return false;
-		}
-	}
-	if(nSeparators!=2)
+	if(components.size()!=3)
 		return false;
 
-	unsigned int length;
-	if(usingBrackets)
-		length= separatorPos[0]-1;
-	else
-		length= separatorPos[0];
-	string tmpStrTwo;
-	tmpStrTwo =tmpStr.substr(nStart,length);
-	
 	float p[3];
-	if(stream_cast(p[0],tmpStrTwo))
-		return false;
+	for(size_t ui=0;ui<3;ui++)
+	{
+		if(stream_cast(p[ui],components[ui]))
+			return false;
+	}
 
-
-	tmpStrTwo =tmpStr.substr(separatorPos[0]+1,separatorPos[1]-(separatorPos[0]+1));
-	if(stream_cast(p[1],tmpStrTwo))
-		return false;
-	
-	tmpStrTwo =tmpStr.substr(separatorPos[1]+1,nEnd-(separatorPos[1]));
-	if(stream_cast(p[2],tmpStrTwo))
-		return false;
 
 	pt.setValueArr(p);
-
+	
 	return true;
 }
 
@@ -353,6 +316,11 @@ void hexStrToUChar(const std::string &s, unsigned char &c)
 		low = s[1] -(int)'a' + 10;	
 
 	c = 16*high + low;
+}
+
+bool intIsPositive(const size_t &pos)
+{
+	return pos >=0;
 }
 
 std::string convertFileStringToCanonical(const std::string &s)
@@ -433,9 +401,27 @@ std::string choiceString(std::vector<std::pair<unsigned int, std::string> > comb
 	return s;
 }
 
+#ifdef DEBUG
+
+//Returns false if string fails heuristic test for being a choice string
+// failure indicates definitely not a choice string, success guarantees nothing
+bool isMaybeChoiceString(const std::string &s)
+{
+	if(s.size() < 3)
+		return false;
+
+	if(!isdigit(s[0]))
+		return false;
+
+	if(s[1] == '|')
+		return false;
+
+	return true;
+}
+#endif
 //!Returns Choice ID from string (see choiceString(...) for string format)
 //FIXME: Does not work if the choicestring starts from a number other than zero...
-std::string getActiveChoice(std::string choiceString)
+std::string getActiveChoice(const std::string &choiceString)
 {
 	size_t colonPos;
 	colonPos = choiceString.find(":");
@@ -448,14 +434,43 @@ std::string getActiveChoice(std::string choiceString)
 	stream_cast(activeChoice,tmpStr);
 
 	//Convert ID1|string 1, .... IDN|string n to vectors
-	choiceString=choiceString.substr(colonPos,choiceString.size()-colonPos);
+	std::string s;
+	s=choiceString.substr(colonPos,choiceString.size()-colonPos);
 	vector<string> choices;
-	splitStrsRef(choiceString.c_str(),',',choices);
+	splitStrsRef(s.c_str(),',',choices);
 
 	ASSERT(activeChoice < choices.size());
 	tmpStr = choices[activeChoice];
 
 	return tmpStr.substr(tmpStr.find("|")+1,tmpStr.size()-1);
+}
+
+void choiceStringToVector(const std::string &choiceString,
+		std::vector<std::string> &choices, unsigned int &selected)
+{
+	ASSERT(isMaybeChoiceString(choiceString));
+
+	//Convert ID1|string 1, .... IDN|string n to vectors,
+	// stripping off the ID value
+	size_t colonPos;
+	colonPos = choiceString.find(":");
+
+	std::string s;
+	s=choiceString.substr(colonPos,choiceString.size()-colonPos);
+	splitStrsRef(s.c_str(),',',choices);
+
+	for(size_t ui=0;ui<choices.size();ui++)
+	{
+		choices[ui]=choices[ui].substr(
+			choices[ui].find("|")+1,choices[ui].size()-1);
+
+	}
+
+	string tmpStr;	
+	tmpStr=choiceString.substr(0,colonPos);
+	stream_cast(selected,tmpStr);
+
+	ASSERT(selected < choices.size());
 }
 
 
@@ -667,7 +682,7 @@ void tickSpacingsFromInterspace(float start, float end,
 	if(end < start)
 		std::swap(end,start);
 
-	nTicks=(end-start)/interSpacing;
+	nTicks=(unsigned int)((end-start)/interSpacing);
 	if(!nTicks)
 	{
 		ASSERT(!spacings.size());
@@ -1333,8 +1348,8 @@ int getTotalRAM()
 
 size_t getAvailRAM()
 {
-    int ret = 0;
 #if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)   
+	int ret ;
 	MEMORYSTATUS MemStat;
 	// Zero structure
 	memset(&MemStat, 0, sizeof(MemStat));
@@ -1342,8 +1357,10 @@ size_t getAvailRAM()
 	// Get RAM snapshot
 	::GlobalMemoryStatus(&MemStat);
 	ret= MemStat.dwAvailPhys / (1024*1024);
+	return ret;
 
 #elif __APPLE__ || __FreeBSD__
+	int ret ;
 	uint64_t        memsize;
 	
 	size_t                  pagesize;
@@ -1356,17 +1373,15 @@ size_t getAvailRAM()
 	pagesize = (unsigned long)sysconf(_SC_PAGESIZE);
 	memsize = (vm.free_count + vm.inactive_count) * pagesize;//(vm.wire_count + vm.active_count + vm.inactive_count + vm.free_count + vm.zero_fill_count ) * pagesize;
 	ret = (size_t)(memsize/(1024*1024));
+	return ret;
 #elif __linux__
-	{
-		struct sysinfo sysInf;
-		sysinfo(&sysInf);
+	struct sysinfo sysInf;
+	sysinfo(&sysInf);
 
-		return ((size_t)(sysInf.freeram + sysInf.bufferram)*(size_t)(sysInf.mem_unit)/(1024*1024));
-	}
+	return ((size_t)(sysInf.freeram + sysInf.bufferram)*(size_t)(sysInf.mem_unit)/(1024*1024));
 #else
 	#error Unknown platform, no getAvailRAM function defined.
 #endif
-    return ret;
 }
 
 bool strhas(const char *cpTest, const char *cpPossible)
@@ -1425,7 +1440,7 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 
 	
 		//Skip blank lines or lines that are only spaces
-		if(!strVec.size() ||
+		if(strVec.empty() ||
 			(strVec.size() == 1 && strVec[0] == "") )
 			continue;
 
@@ -1533,6 +1548,46 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 	return 0;
 }
 
+unsigned int loadTextStringData(const char *cpFilename, vector<vector<string> > &dataVec,const char *delim)
+{
+	const unsigned int BUFFER_SIZE=4096;
+	
+	unsigned int num_fields=0;
+
+	dataVec.clear();
+	//Open a file in text mode
+	std::ifstream CFile(cpFilename);
+
+	if(!CFile)
+		return ERR_FILE_OPEN;
+
+	char *inBuffer= new char[BUFFER_SIZE];
+	//Grab a line from the file
+	CFile.getline(inBuffer,BUFFER_SIZE);
+	while(!CFile.eof())
+	{
+		vector<string> strVec;
+		strVec.clear();
+		
+		//Split the strings around the tab char
+		splitStrsRef(inBuffer,delim,strVec);	
+		stripZeroEntries(strVec);
+		
+		//Check the number of fields	
+		//=========
+		if(strVec.size())
+			dataVec.push_back(strVec);
+		//=========
+			
+		//Grab a line from the file
+		CFile.getline(inBuffer,BUFFER_SIZE);
+		
+		if(!CFile.good() && !CFile.eof())
+			return ERR_FILE_FORMAT;
+	}
+
+	return 0;
+}
 
 #ifdef DEBUG
 bool isValidXML(const char *filename)

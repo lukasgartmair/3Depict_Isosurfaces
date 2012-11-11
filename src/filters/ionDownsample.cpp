@@ -239,7 +239,7 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 					}
 
 					//skip ion output sets wth no ions in them
-					if(!d->data.size())
+					if(d->data.empty())
 					{
 						delete d;
 						continue;
@@ -435,39 +435,35 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 }
 
 
-void IonDownsampleFilter::getProperties(FilterProperties &propertyList) const
+void IonDownsampleFilter::getProperties(FilterPropGroup &propertyList) const
 {
-	propertyList.data.clear();
-	propertyList.keys.clear();
-	propertyList.types.clear();
 
-	vector<unsigned int> type,keys;
-	vector<pair<string,string> > s;
+	FilterProperty p;
+	size_t curGroup=0;
 
 	string tmpStr;
 	stream_cast(tmpStr,fixedNumOut);
-	s.push_back(std::make_pair(TRANS("By Count"), tmpStr));
-	keys.push_back(KEY_IONDOWNSAMPLE_FIXEDOUT);
-	type.push_back(PROPERTY_TYPE_BOOL);
+	p.data=tmpStr;
+	p.name=TRANS("By Count");
+	p.key=KEY_IONDOWNSAMPLE_FIXEDOUT;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Sample up to a fixed number of ions");
+	propertyList.addProperty(p,curGroup);
 
 	if(rsdIncoming)
 	{
 		stream_cast(tmpStr,perSpecies);
-		s.push_back(std::make_pair(TRANS("Per Species"), tmpStr));
-		keys.push_back(KEY_IONDOWNSAMPLE_PERSPECIES);
-		type.push_back(PROPERTY_TYPE_BOOL);
+		p.name=TRANS("Per Species");
+		p.data=tmpStr;
+		p.key=KEY_IONDOWNSAMPLE_PERSPECIES;
+		p.type=PROPERTY_TYPE_BOOL;
+		p.helpText=TRANS("Use species specific (from ranging) sampling values");
+		propertyList.addProperty(p,curGroup);
 	}	
 
 
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
-
-	//Start a new section
-	s.clear();
-	type.clear();
-	keys.clear();
-
+	propertyList.setGroupTitle(curGroup,TRANS("Sampling rates"));
+	curGroup++;
 	if(rsdIncoming && perSpecies)
 	{
 		unsigned int typeVal;
@@ -486,10 +482,12 @@ void IonDownsampleFilter::getProperties(FilterProperties &propertyList) const
 				else
 					stream_cast(tmpStr,ionFractions[ui]);
 
-				s.push_back(make_pair(
-					rsdIncoming->rangeFile->getName(ui), tmpStr));
-				type.push_back(typeVal);
-				keys.push_back(KEY_IONDOWNSAMPLE_DYNAMIC+ui);
+				p.name=rsdIncoming->rangeFile->getName(ui);
+				p.data=tmpStr;
+				p.type=typeVal;
+				p.helpText=TRANS("Sampling value for species");
+				p.key=KEY_IONDOWNSAMPLE_DYNAMIC+ui;
+				propertyList.addProperty(p,curGroup);
 			}
 		}
 	}
@@ -498,26 +496,27 @@ void IonDownsampleFilter::getProperties(FilterProperties &propertyList) const
 		if(fixedNumOut)
 		{
 			stream_cast(tmpStr,maxAfterFilter);
-			keys.push_back(KEY_IONDOWNSAMPLE_COUNT);
-			s.push_back(make_pair(TRANS("Output Count"), tmpStr));
-			type.push_back(PROPERTY_TYPE_INTEGER);
+			p.key=KEY_IONDOWNSAMPLE_COUNT;
+			p.name=TRANS("Output Count");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_INTEGER;
+			p.helpText=TRANS("Sample up to this value of points");
 		}
 		else
 		{
 			stream_cast(tmpStr,fraction);
-			s.push_back(make_pair(TRANS("Out Fraction"), tmpStr));
-			keys.push_back(KEY_IONDOWNSAMPLE_FRACTION);
-			type.push_back(PROPERTY_TYPE_REAL);
-
+			p.name=TRANS("Out Fraction");
+			p.data=tmpStr;
+			p.key=KEY_IONDOWNSAMPLE_FRACTION;
+			p.type=PROPERTY_TYPE_REAL;
+			p.helpText=TRANS("Sample this fraction of points");
 
 		}
+		propertyList.addProperty(p,curGroup);
 	}
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
 }
 
-bool IonDownsampleFilter::setProperty( unsigned int set, unsigned int key,
+bool IonDownsampleFilter::setProperty(  unsigned int key,
 					const std::string &value, bool &needUpdate)
 {
 	needUpdate=false;
@@ -666,7 +665,7 @@ std::string  IonDownsampleFilter::getErrString(unsigned int code) const
 	return std::string("BUG! Should not see this (IonDownsample)");
 }
 
-bool IonDownsampleFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+bool IonDownsampleFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -802,7 +801,8 @@ unsigned int IonDownsampleFilter::getRefreshUseMask() const
 #ifdef DEBUG
 
 //Create a synthetic dataset of points
-// returned pointer *must* be deleted. Span must have 3 elements, and for best results sould be co-prime with one another; eg all prime numbers
+// returned pointer *must* be deleted. Span must have 3 elements, 
+// and for best results sould be co-prime with one another; eg all prime numbers
 IonStreamData *synthDataPts(unsigned int span[],unsigned int numPts);
 
 //Test for fixed number of output ions
@@ -848,9 +848,9 @@ bool fixedSampleTest()
 	string s;
 	unsigned int numOutput=NUM_PTS/10;
 	
-	f->setProperty(0,KEY_IONDOWNSAMPLE_FIXEDOUT,"1",needUp);
+	f->setProperty(KEY_IONDOWNSAMPLE_FIXEDOUT,"1",needUp);
 	stream_cast(s,numOutput);
-	f->setProperty(0,KEY_IONDOWNSAMPLE_COUNT,s,needUp);
+	f->setProperty(KEY_IONDOWNSAMPLE_COUNT,s,needUp);
 
 	//Do the refresh
 	ProgressData p;
@@ -886,8 +886,8 @@ bool variableSampleTest()
 	f->setCaching(false);	
 	
 	bool needUp;
-	f->setProperty(0,KEY_IONDOWNSAMPLE_FIXEDOUT,"0",needUp);
-	f->setProperty(0,KEY_IONDOWNSAMPLE_FRACTION,"0.1",needUp);
+	f->setProperty(KEY_IONDOWNSAMPLE_FIXEDOUT,"0",needUp);
+	f->setProperty(KEY_IONDOWNSAMPLE_FRACTION,"0.1",needUp);
 
 	//Do the refresh
 	ProgressData p;

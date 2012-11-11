@@ -71,6 +71,8 @@ private:
 		std::vector<std::pair<std::string,texture> > openTextures;
 
 	public:
+		TexturePool() {} ;
+		~TexturePool();
 		//Open the texture specified by the following file, and
 		//then return the texture ID; or just return the texture 
 		//if already loaded. Return true on success.

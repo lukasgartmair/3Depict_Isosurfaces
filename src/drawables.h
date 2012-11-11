@@ -248,8 +248,12 @@ class DrawManyPoints : public DrawableObj
 		void clear();
 		//!Add points into the drawing vector
 		void addPoints(const std::vector<Point3D> &);
-		//!Add a single point into the drawing vector
-		void addPoint(const Point3D &);
+		//!Add a single point into the drawing vector, at a particular offset
+		// *must call resize first*
+		void setPoint(size_t offset,const Point3D &);
+
+		//!Reset the number of many points to draw
+		void resize(size_t newSize);
 		//! set the color of the points to be drawn
 		void setColour(float r, float g, float b, float alpha);
 		//!Set the display size of the drawn poitns
@@ -643,6 +647,7 @@ class DrawGLText : public DrawableObj
 		 */
 		DrawGLText(std::string fontFile,
 					unsigned int ftglTextMode);
+		DrawGLText(const DrawGLText &other);
 
 		//!Destructor
 		virtual ~DrawGLText();
@@ -778,8 +783,10 @@ class DrawColourBarOverlay : public DrawableObj
 	public:
 	
 		DrawColourBarOverlay();
+		DrawColourBarOverlay(const DrawColourBarOverlay &o);
 		~DrawColourBarOverlay(){delete font;};
 		
+
 		virtual unsigned int getType() const {return DRAW_TYPE_COLOURBAR;}
 	
 		void getBoundingBox(BoundCube &b) const ;

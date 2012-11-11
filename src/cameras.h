@@ -22,9 +22,14 @@
 #include "basics.h"
 
 //libxml2 headers
-#undef ATTRIBUTE_PRINTF
-#include <libxml/xmlreader.h>
-#undef ATTRIBUTE_PRINTF
+#ifdef ATTRIBUTE_PRINTF
+	#pragma push_macro("ATTRIBUTE_PRINTF")
+	#include <libxml/xmlreader.h>
+	#pragma pop_macro(" ATTRIBUTE_PRINTF")
+#else
+	#include <libxml/xmlreader.h>
+	#undef ATTRIBUTE_PRINTF
+#endif
 
 enum CAM_ENUM
 {

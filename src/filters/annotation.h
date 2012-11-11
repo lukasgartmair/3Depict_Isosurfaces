@@ -81,11 +81,11 @@ class AnnotateFilter : public Filter
 		std::string typeString() const { return std::string(TRANS("Annotation"));};
 
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
-		void getProperties(FilterProperties &propertyList) const;
+		void getProperties(FilterPropGroup &propertyList) const;
 
 		//!Set the properties for the nth filter,
 		//!needUpdate tells us if filter output changes due to property set
-		bool setProperty(unsigned int set, unsigned int key,
+		bool setProperty( unsigned int key,
 					const std::string &value, bool &needUpdate);
 
 
@@ -97,7 +97,7 @@ class AnnotateFilter : public Filter
 		//!Dump state to output stream, using specified format
 		/* Current supported formats are STATE_FORMAT_XML
 		 */
-		bool writeState(std::ofstream &f, unsigned int format,
+		bool writeState(std::ostream &f, unsigned int format,
 							unsigned int depth) const;
 
 		//!Read state from XML  stream, using xml format

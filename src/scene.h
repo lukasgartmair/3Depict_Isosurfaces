@@ -113,6 +113,8 @@ class Scene
 		BoundCube boundCube;
 
 
+		//!True if user interaction (selection/hovering) is forbidden
+		bool lockInteract;
 		//!Tells the scene if we are in selection mode or not
 		bool selectionMode;
 
@@ -158,6 +160,7 @@ class Scene
 
 		//!Draw a specified vector of objects
 		void drawObjectVector(const std::vector<const DrawableObj*> &objects, bool &lightsOn, bool drawOpaques=true) const;
+
 				
 	public:
 		//!Constructor
@@ -284,6 +287,10 @@ class Scene
 					float curX, float curY,unsigned int keyFlags, 
 					unsigned int mouseflags,bool permanent=true);
 
+		// is interaction currently locked?
+		bool isInteractionLocked()  const { return lockInteract;}
+		//!Prevent user interactoin
+		bool lockInteraction(bool amLocking=true) { lockInteract=amLocking;};
 		//!Set selection mode true=select on, false=select off.
 		//All this does internally is modify how drawing works.
 		void setSelectionMode(bool selMode) { selectionMode=selMode;};

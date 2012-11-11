@@ -144,8 +144,8 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
 
-	//Clear devices
-	devices.clear();
+	//Clear selection devices, first deleting any we have
+	clearDevices();
 
 	//Pipe everything through
 	getOut.resize(dataIn.size());
@@ -268,12 +268,14 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 		dv->setOrigin(anglePos[0]);
 		dv->setVector(anglePos[1]-anglePos[0]);
 		dv->setColour(r,g,b,a);
+		dv->setDrawArrow(false);
 		d->drawables.push_back(dv);
 
 		dv=new DrawVector;
 		dv->setOrigin(anglePos[0]);
 		dv->setVector(anglePos[2]-anglePos[0]);
 		dv->setColour(r,g,b,a);
+		dv->setDrawArrow(false);
 		d->drawables.push_back(dv);
 
 
@@ -375,6 +377,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 		dv->setOrigin(position);
 		dv->setColour(r,g,b,a);
 		dv->setVector(target-position);
+		dv->setDrawArrow(false);
 
 		d->drawables.push_back(dv);
 
@@ -496,14 +499,14 @@ size_t AnnotateFilter::numBytesForCache(size_t nObjects) const
 	return 0;
 }
 
-void AnnotateFilter::getProperties(FilterProperties &propertyList) const
+void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 {
-	vector<unsigned int> type,keys;
-	vector<pair<string,string> > s;
 	string str;
+	FilterProperty p;
+	size_t curGroup=0;
 
 	vector<pair<unsigned int,string> > choices;
-	string tmpChoice,tmpStr;
+	string tmpStr;
 	
 	for(unsigned int ui=0;ui<ANNOTATION_MODE_END; ui++)
 	{
@@ -512,74 +515,97 @@ void AnnotateFilter::getProperties(FilterProperties &propertyList) const
 	}
 
 	tmpStr=choiceString(choices,annotationMode);
-	s.push_back(make_pair(TRANS("Mode"), tmpStr));
-	keys.push_back(KEY_MODE);
-	type.push_back(PROPERTY_TYPE_CHOICE);
+	p.name=TRANS("Mode");
+	p.data=tmpStr;
+	p.key=KEY_MODE;
+	p.helpText=TRANS("Type or style of annotation");
+	p.type=PROPERTY_TYPE_CHOICE;
+	propertyList.addProperty(p,curGroup);
+	curGroup++;
 
-	propertyList.data.push_back(s);
-	propertyList.keys.push_back(keys);
-	propertyList.types.push_back(type);
-	s.clear();keys.clear();type.clear();
-	
 	switch(annotationMode)
 	{
 		case ANNOTATION_TEXT:
 		{
 			//Note to translators, this is short for "annotation text",
 			// or similar
-			s.push_back(make_pair(TRANS("Annotation"),annotateText));
-			type.push_back(PROPERTY_TYPE_STRING);
-			keys.push_back(KEY_ANNOTATE_TEXT);
+			p.name=TRANS("Annotation");
+			p.data=annotateText;
+			p.type=PROPERTY_TYPE_STRING;
+			p.key=KEY_ANNOTATE_TEXT;
+			p.helpText=TRANS("Text of annotation");
+			propertyList.addProperty(p,curGroup);
 		
 			stream_cast(tmpStr,position);
-			s.push_back(make_pair(TRANS("Origin"),tmpStr));
-			type.push_back(PROPERTY_TYPE_POINT3D);
-			keys.push_back(KEY_POSITION);
+			p.name=TRANS("Origin");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.key=KEY_POSITION;
+			p.helpText=TRANS("Position of annotation");
+			propertyList.addProperty(p,curGroup);
 			
 			stream_cast(tmpStr,upVec);
-			s.push_back(make_pair(TRANS("Up dir"),tmpStr));
-			type.push_back(PROPERTY_TYPE_STRING);
-			keys.push_back(KEY_UPVEC);
+			p.name=TRANS("Up dir");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_STRING;
+			p.key=KEY_UPVEC;
+			p.helpText=TRANS("Vector for up direction of annotation text");
+			propertyList.addProperty(p,curGroup);
 		
 			stream_cast(tmpStr,acrossVec);
-			s.push_back(make_pair(TRANS("Across dir"),tmpStr));
-			type.push_back(PROPERTY_TYPE_STRING);
-			keys.push_back(KEY_ACROSSVEC);
+			p.name=TRANS("Across dir");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_STRING;
+			p.key=KEY_ACROSSVEC;
+			p.helpText=TRANS("Reading direction for annotation");
+			propertyList.addProperty(p,curGroup);
 
 
 			stream_cast(tmpStr,textSize);
-			s.push_back(make_pair(TRANS("Text size"),tmpStr));
-			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_TEXTSIZE);
+			p.name=TRANS("Text size");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_REAL;
+			p.key=KEY_TEXTSIZE;
+			p.helpText=TRANS("Relative size of annotation text");
+			propertyList.addProperty(p,curGroup);
 
 			break;
 		}
 		case ANNOTATION_ARROW:
 		{
 			stream_cast(tmpStr,position);
-			s.push_back(make_pair(TRANS("Start"),tmpStr));
-			type.push_back(PROPERTY_TYPE_POINT3D);
-			keys.push_back(KEY_POSITION);
+			p.name=TRANS("Start");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.key=KEY_POSITION;
+			p.helpText=TRANS("3D position for tail of arrow");
+			propertyList.addProperty(p,curGroup);
 		
 			stream_cast(tmpStr,target);
-			s.push_back(make_pair(TRANS("End"),tmpStr));
-			type.push_back(PROPERTY_TYPE_POINT3D);
-			keys.push_back(KEY_TARGET);
+			p.name=TRANS("End");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.key=KEY_TARGET;
+			p.helpText=TRANS("3D Position to which arrow points");
+			propertyList.addProperty(p,curGroup);
 
-			propertyList.data.push_back(s);
-			propertyList.keys.push_back(keys);
-			propertyList.types.push_back(type);
-			s.clear();keys.clear();type.clear();
+			curGroup++;
 
 			stream_cast(tmpStr,annotateSize);
-			s.push_back(make_pair(TRANS("Tip radius"),tmpStr));
-			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_ARROW_SIZE);
+			p.name=TRANS("Tip radius");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_REAL;
+			p.key=KEY_ARROW_SIZE;
+			p.helpText=TRANS("Size of the arrow head");
+			propertyList.addProperty(p,curGroup);
 
 			stream_cast(tmpStr,lineSize);
-			s.push_back(make_pair(TRANS("Line size"),tmpStr));
-			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_LINESIZE);
+			p.name=TRANS("Line size");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_REAL;
+			p.key=KEY_LINESIZE;
+			p.helpText=TRANS("Thickness of line used to draw arrow stem");
+			propertyList.addProperty(p,curGroup);
 			
 
 			break;
@@ -587,97 +613,132 @@ void AnnotateFilter::getProperties(FilterProperties &propertyList) const
 		case ANNOTATION_TEXT_WITH_ARROW:
 		{
 			stream_cast(tmpStr,position);
-			s.push_back(make_pair(TRANS("Start"),tmpStr));
-			type.push_back(PROPERTY_TYPE_POINT3D);
-			keys.push_back(KEY_POSITION);
+			p.name=TRANS("Start");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.key=KEY_POSITION;
+			p.helpText=TRANS("3D position for tail of arrow");
+			propertyList.addProperty(p,curGroup);
 			
 
 			stream_cast(tmpStr,target);
-			s.push_back(make_pair(TRANS("End"),tmpStr));
-			type.push_back(PROPERTY_TYPE_POINT3D);
-			keys.push_back(KEY_TARGET);
+			p.name=TRANS("End");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.key=KEY_TARGET;
+			p.helpText=TRANS("3D Position to which arrow points");
+			propertyList.addProperty(p,curGroup);
 			
 			//Note to translators, this is short for "annotation text",
 			// or similar
-			s.push_back(make_pair(TRANS("Annotation"),annotateText));
-			type.push_back(PROPERTY_TYPE_STRING);
-			keys.push_back(KEY_ANNOTATE_TEXT);
+			p.name=TRANS("Annotation"),annotateText;
+			p.type=PROPERTY_TYPE_STRING;
+			p.key=KEY_ANNOTATE_TEXT;
+			p.helpText=TRANS("Text of annotation");
+			propertyList.addProperty(p,curGroup);
 			
-			propertyList.data.push_back(s);
-			propertyList.keys.push_back(keys);
-			propertyList.types.push_back(type);
-			s.clear();keys.clear();type.clear();
-
+			curGroup++;
 
 			stream_cast(tmpStr,textSize);
-			s.push_back(make_pair(TRANS("Text size"),tmpStr));
-			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_TEXTSIZE);
+			p.name=TRANS("Text size");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_REAL;
+			p.key=KEY_TEXTSIZE;
+			p.helpText=TRANS("Relative size of annotation text");
+			propertyList.addProperty(p,curGroup);
 			
 			stream_cast(tmpStr,upVec);
-			s.push_back(make_pair(TRANS("Up dir"),tmpStr));
-			type.push_back(PROPERTY_TYPE_STRING);
-			keys.push_back(KEY_UPVEC);
+			p.name=TRANS("Up dir");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_STRING;
+			p.key=KEY_UPVEC;
+			propertyList.addProperty(p,curGroup);
 		
 			stream_cast(tmpStr,acrossVec);
-			s.push_back(make_pair(TRANS("Across dir"),tmpStr));
-			type.push_back(PROPERTY_TYPE_STRING);
-			keys.push_back(KEY_ACROSSVEC);
+			p.name=TRANS("Across dir");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_STRING;
+			p.key=KEY_ACROSSVEC;
+			propertyList.addProperty(p,curGroup);
 
 			stream_cast(tmpStr,annotateSize);
-			s.push_back(make_pair(TRANS("Tip radius"),tmpStr));
-			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_ARROW_SIZE);
+			p.name=TRANS("Tip radius");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_REAL;
+			p.key=KEY_ARROW_SIZE;
+			propertyList.addProperty(p,curGroup);
 			break;
 		}
 		case ANNOTATION_ANGLE_MEASURE:
 		{
 			stream_cast(tmpStr,anglePos[0]);
-			s.push_back(make_pair(TRANS("Position A"),tmpStr));
-			type.push_back(PROPERTY_TYPE_POINT3D);
-			keys.push_back(KEY_ANGLE_POS_ZERO);
+			p.name=TRANS("Position A");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.key=KEY_ANGLE_POS_ZERO;
+			p.helpText=TRANS("Location of first non-central vertex");
+			propertyList.addProperty(p,curGroup);
 
 			stream_cast(tmpStr,anglePos[1]);
-			s.push_back(make_pair(TRANS("Origin "),tmpStr));
-			type.push_back(PROPERTY_TYPE_POINT3D);
-			keys.push_back(KEY_ANGLE_POS_ONE);
+			p.name=TRANS("Origin ");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.key=KEY_ANGLE_POS_ONE;
+			p.helpText=TRANS("Location of central vertex");
+			propertyList.addProperty(p,curGroup);
 			
 			stream_cast(tmpStr,anglePos[2]);
-			s.push_back(make_pair(TRANS("Position B"),tmpStr));
-			type.push_back(PROPERTY_TYPE_POINT3D);
-			keys.push_back(KEY_ANGLE_POS_TWO);
+			p.name=TRANS("Position B");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.key=KEY_ANGLE_POS_TWO;
+			p.helpText=TRANS("Location of second non-central vertex");
+			propertyList.addProperty(p,curGroup);
 			
-			propertyList.data.push_back(s);
-			propertyList.keys.push_back(keys);
-			propertyList.types.push_back(type);
-			s.clear();keys.clear();type.clear();
-
+			curGroup++;
+			
 			stream_cast(tmpStr,acrossVec);
-			s.push_back(make_pair(TRANS("Across dir"),tmpStr));
-			type.push_back(PROPERTY_TYPE_STRING);
-			keys.push_back(KEY_ACROSSVEC);
+			p.name=TRANS("Across dir");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_STRING;
+			p.key=KEY_ACROSSVEC;
+			p.helpText=TRANS("Reading direction for angle text");
+			propertyList.addProperty(p,curGroup);
 
 			stream_cast(tmpStr,upVec);
-			s.push_back(make_pair(TRANS("Up dir"),tmpStr));
-			type.push_back(PROPERTY_TYPE_STRING);
-			keys.push_back(KEY_UPVEC);
+			p.name=TRANS("Up dir");
+			p.helpText=TRANS("Vector for up direction of angle text");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_STRING;
+			p.key=KEY_UPVEC;
+			propertyList.addProperty(p,curGroup);
 
 
-			keys.push_back(KEY_REFLEXIVE);
-			s.push_back(make_pair(TRANS("Reflexive"),reflexAngle? "1":"0"));
-			type.push_back(PROPERTY_TYPE_BOOL);
+			p.key=KEY_REFLEXIVE;
+			p.name=TRANS("Reflexive");
+			p.data=reflexAngle? "1":"0";
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Measure interor (enabled) or exterior angle (disabled)");
+			propertyList.addProperty(p,curGroup);
 		
 			
-			s.push_back(make_pair(TRANS("Show Angle"),showAngleText? "1":"0"));
-			type.push_back(PROPERTY_TYPE_BOOL);
-			keys.push_back(KEY_ANGLE_TEXT_VISIBLE);
+
+			p.name=TRANS("Show Angle");
+			p.data=showAngleText? "1":"0";
+			p.type=PROPERTY_TYPE_BOOL;
+			p.key=KEY_ANGLE_TEXT_VISIBLE;
+			p.helpText=TRANS("Display angle text (when enabled)");
+			propertyList.addProperty(p,curGroup);
 		
 			if(showAngleText)
 			{
 				stream_cast(tmpStr,textSize);
-				s.push_back(make_pair(TRANS("Text size"),tmpStr));
-				type.push_back(PROPERTY_TYPE_REAL);
-				keys.push_back(KEY_TEXTSIZE);
+				p.name=TRANS("Text size");
+				p.data=tmpStr;
+				p.type=PROPERTY_TYPE_REAL;
+				p.key=KEY_TEXTSIZE;
+				p.helpText=TRANS("Size of angle text");
+				propertyList.addProperty(p,curGroup);
 
 
 				std::string tmp2;
@@ -694,16 +755,22 @@ void AnnotateFilter::getProperties(FilterProperties &propertyList) const
 					tmpStr+=std::string(".") + tmp2;
 				}
 
-				s.push_back(make_pair(TRANS("Digit format"),tmpStr));
-				type.push_back(PROPERTY_TYPE_STRING);
-				keys.push_back(KEY_ANGLE_FORMAT_STRING);
+				p.name=TRANS("Digit format");
+				p.data=tmpStr;
+				p.type=PROPERTY_TYPE_STRING;
+				p.key=KEY_ANGLE_FORMAT_STRING;
+				p.helpText=TRANS("Format of angle text; # for numeral position, \'.\' for separator, eg ##.## gives 12.34");
+				propertyList.addProperty(p,curGroup);
 
 			}
 			
 			stream_cast(tmpStr,sphereAngleSize);
-			s.push_back(make_pair(TRANS("Sphere size"),tmpStr));
-			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_SPHERE_ANGLE_SIZE);
+			p.name=TRANS("Sphere size");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_REAL;
+			p.key=KEY_SPHERE_ANGLE_SIZE;
+			p.helpText=TRANS("Marker sphere size for manipulating tool");
+			propertyList.addProperty(p,curGroup);
 
 		
 
@@ -712,52 +779,76 @@ void AnnotateFilter::getProperties(FilterProperties &propertyList) const
 		case ANNOTATION_LINEAR_MEASURE:
 		{
 			stream_cast(tmpStr,position);
-			s.push_back(make_pair(TRANS("Start"),tmpStr));
-			type.push_back(PROPERTY_TYPE_POINT3D);
-			keys.push_back(KEY_POSITION);
+			p.name=TRANS("Start");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.key=KEY_POSITION;
+			p.helpText=TRANS("Ruler beginning 3D location");
+			propertyList.addProperty(p,curGroup);
 		
 			stream_cast(tmpStr,target);
-			s.push_back(make_pair(TRANS("End"),tmpStr));
-			type.push_back(PROPERTY_TYPE_POINT3D);
-			keys.push_back(KEY_TARGET);
+			p.name=TRANS("End");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.key=KEY_TARGET;
+			p.helpText=TRANS("Ruler finish 3D location");
+			propertyList.addProperty(p,curGroup);
 
 			stream_cast(tmpStr,upVec);
-			s.push_back(make_pair(TRANS("Up dir"),tmpStr));
-			type.push_back(PROPERTY_TYPE_STRING);
-			keys.push_back(KEY_UPVEC);
+			p.name=TRANS("Up dir");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_STRING;
+			p.key=KEY_UPVEC;
+			p.helpText=TRANS("Vector for up direction of annotation text");
+			propertyList.addProperty(p,curGroup);
 		
 			stream_cast(tmpStr,acrossVec);
-			s.push_back(make_pair(TRANS("Across dir"),tmpStr));
-			type.push_back(PROPERTY_TYPE_STRING);
-			keys.push_back(KEY_ACROSSVEC);
+			p.name=TRANS("Across dir");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_STRING;
+			p.key=KEY_ACROSSVEC;
+			p.helpText=TRANS("Reading direction for annotation");
+			propertyList.addProperty(p,curGroup);
 			
 			stream_cast(tmpStr,fontSizeLinearMeasure);
-			keys.push_back(KEY_LINEAR_FONTSIZE);
-			s.push_back(make_pair(TRANS("Font Size"), tmpStr));
-			type.push_back(PROPERTY_TYPE_INTEGER);
+			p.key=KEY_LINEAR_FONTSIZE;
+			p.name=TRANS("Font Size");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_INTEGER;
+			p.helpText=TRANS("Relative size of annotation text");
+			propertyList.addProperty(p,curGroup);
 			
 			
 			if(linearFixedTicks)
 				tmpStr="1";
 			else
 				tmpStr="0";
-			keys.push_back(KEY_LINEAR_FIXED_TICKS);
-			s.push_back(make_pair(TRANS("Fixed ticks"), tmpStr));
-			type.push_back(PROPERTY_TYPE_BOOL);
+			p.key=KEY_LINEAR_FIXED_TICKS;
+			p.name=TRANS("Fixed ticks");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Use fixed (enabled) number of text markers, or one every fixed distance (disabled)");
+			propertyList.addProperty(p,curGroup);
 
 			if(linearFixedTicks)
 			{
 				stream_cast(tmpStr,linearMeasureTicks);
-				keys.push_back(KEY_LINEAR_NUMTICKS);
-				s.push_back(make_pair(TRANS("Num Ticks"), tmpStr));
-				type.push_back(PROPERTY_TYPE_INTEGER);
+				p.key=KEY_LINEAR_NUMTICKS;
+				p.name=TRANS("Num Ticks");
+				p.data=tmpStr;
+				p.type=PROPERTY_TYPE_INTEGER;
+				p.helpText=TRANS("Number of tick marks along ruler");
+				propertyList.addProperty(p,curGroup);
 			}
 			else
 			{
 				stream_cast(tmpStr,linearMeasureSpacing);
-				keys.push_back(KEY_LINEAR_TICKSPACING);
-				s.push_back(make_pair(TRANS("Tick Spacing"), tmpStr));
-				type.push_back(PROPERTY_TYPE_REAL);
+				p.key=KEY_LINEAR_TICKSPACING;
+				p.name=TRANS("Tick Spacing");
+				p.data=tmpStr;
+				p.type=PROPERTY_TYPE_REAL;
+				p.helpText=TRANS("Distance between tick marks along ruler");
+				propertyList.addProperty(p,curGroup);
 			}
 
 			break;
@@ -769,17 +860,16 @@ void AnnotateFilter::getProperties(FilterProperties &propertyList) const
 
 	genColString((unsigned char)(r*255.0),(unsigned char)(g*255.0),
 		(unsigned char)(b*255),(unsigned char)(a*255),str);
-	keys.push_back(KEY_COLOUR);
-	s.push_back(make_pair(TRANS("Colour"), str));
-	type.push_back(PROPERTY_TYPE_COLOUR);
-
-	propertyList.data.push_back(s);
-	propertyList.keys.push_back(keys);
-	propertyList.types.push_back(type);
+	p.key=KEY_COLOUR;
+	p.name=TRANS("Colour");
+	p.data=str;
+	p.type=PROPERTY_TYPE_COLOUR;
+	p.helpText=TRANS("Colour for ruler and ticks");
+	propertyList.addProperty(p,curGroup);
 
 }
 
-bool AnnotateFilter::setProperty( unsigned int set, unsigned int key,
+bool AnnotateFilter::setProperty(  unsigned int key,
 					const std::string &value, bool &needUpdate)
 {
 	string stripped=stripWhite(value);
@@ -1045,8 +1135,6 @@ bool AnnotateFilter::setProperty( unsigned int set, unsigned int key,
 
 		case KEY_ANGLE_FORMAT_STRING:
 		{
-			string preDecimal, postDecimal;
-
 			//Must contain only #,[0-9]
 			if(value.find_first_not_of("#,.0123456789")!=std::string::npos)
 				return false;
@@ -1162,7 +1250,7 @@ std::string  AnnotateFilter::getErrString(unsigned int code) const
 	ASSERT(false);
 }
 
-bool AnnotateFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+bool AnnotateFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -1455,14 +1543,14 @@ bool rulerTest()
 	
 	bool needUp; std::string s;
 	//Set linear ruler mode
-	f->setProperty(0,KEY_MODE,annotationModeStrings[ANNOTATION_LINEAR_MEASURE],needUp);
+	f->setProperty(KEY_MODE,annotationModeStrings[ANNOTATION_LINEAR_MEASURE],needUp);
 	//Set ruler position & length
 	stream_cast(s,Point3D(0,0,0));
-	f->setProperty(0,KEY_POSITION,s,needUp);
+	f->setProperty(KEY_POSITION,s,needUp);
 	stream_cast(s,Point3D(1,1,1));
-	f->setProperty(0,KEY_TARGET,s,needUp);
+	f->setProperty(KEY_TARGET,s,needUp);
 	stream_cast(s,sqrt(2)/10);
-	f->setProperty(0,KEY_LINEAR_TICKSPACING,s,needUp);
+	f->setProperty(KEY_LINEAR_TICKSPACING,s,needUp);
 	
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
@@ -1528,17 +1616,17 @@ bool angleTest()
 	
 	bool needUp; std::string s;
 	//Set arrow annotation mode
-	f->setProperty(0,KEY_MODE,annotationModeStrings[ANNOTATION_ANGLE_MEASURE],needUp);
+	f->setProperty(KEY_MODE,annotationModeStrings[ANNOTATION_ANGLE_MEASURE],needUp);
 	//Set position & target for arrow
 	const Point3D ANGLE_ORIGIN(0,0,0);
 	const Point3D ANGLE_A(0,0,1);
 	const Point3D ANGLE_B(0,1,0);
 	stream_cast(s,ANGLE_ORIGIN);
-	f->setProperty(0,KEY_ANGLE_POS_ONE,s,needUp);
+	f->setProperty(KEY_ANGLE_POS_ONE,s,needUp);
 	stream_cast(s,ANGLE_A);
-	f->setProperty(0,KEY_ANGLE_POS_ZERO,s,needUp);
+	f->setProperty(KEY_ANGLE_POS_ZERO,s,needUp);
 	stream_cast(s,ANGLE_B);
-	f->setProperty(0,KEY_ANGLE_POS_TWO,s,needUp);
+	f->setProperty(KEY_ANGLE_POS_TWO,s,needUp);
 	
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
@@ -1606,14 +1694,14 @@ bool arrowTest()
 	
 	bool needUp; std::string s;
 	//Set arrow annotation mode
-	f->setProperty(0,KEY_MODE,annotationModeStrings[ANNOTATION_ARROW],needUp);
+	f->setProperty(KEY_MODE,annotationModeStrings[ANNOTATION_ARROW],needUp);
 	//Set position & target for arrow
 	const Point3D ARROW_ORIGIN(-1,-1,-1);
 	const Point3D ARROW_TARGET(1,1,1);
 	stream_cast(s,ARROW_ORIGIN);
-	f->setProperty(0,KEY_POSITION,s,needUp);
+	f->setProperty(KEY_POSITION,s,needUp);
 	stream_cast(s,ARROW_TARGET);
-	f->setProperty(0,KEY_TARGET,s,needUp);
+	f->setProperty(KEY_TARGET,s,needUp);
 	
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
@@ -1680,14 +1768,14 @@ bool textArrowTest()
 	
 	bool needUp; std::string s;
 	//Set linear ruler mode
-	f->setProperty(0,KEY_MODE,annotationModeStrings[ANNOTATION_TEXT_WITH_ARROW],needUp);
+	f->setProperty(KEY_MODE,annotationModeStrings[ANNOTATION_TEXT_WITH_ARROW],needUp);
 	//Set ruler position & length
 	const Point3D ARROW_ORIGIN(-1,-1,-1);
 	const Point3D ARROW_TARGET(1,1,1);
 	stream_cast(s,ARROW_ORIGIN);
-	f->setProperty(0,KEY_POSITION,s,needUp);
+	f->setProperty(KEY_POSITION,s,needUp);
 	stream_cast(s,ARROW_TARGET);
-	f->setProperty(0,KEY_TARGET,s,needUp);
+	f->setProperty(KEY_TARGET,s,needUp);
 	
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");

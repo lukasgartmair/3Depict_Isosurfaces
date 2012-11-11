@@ -38,6 +38,10 @@ const char *TEST_OVERLAY_PNG[] = {
 				"textures/keyboard-shift.png",
 			};
 
+TexturePool::~TexturePool()
+{
+	closeAll();
+}
 
 bool TexturePool::openTexture(const char *texName,unsigned int &texID, unsigned int &uniqID)
 {
@@ -118,7 +122,7 @@ int pngTexture(texture* dest, const char* filename, GLenum type) {
   z=0;
   dest->width = width;
   dest->height = height;
-  dest->data = (unsigned char *)malloc(4*width*height);
+  dest->data = new unsigned char[4*width*height];
   for (y=0; y<height; y++) {
     for (x=0; x<4*(width); x++) {
       dest->data[z++] = texture_rows[y][x];

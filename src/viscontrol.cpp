@@ -82,7 +82,7 @@ void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
 	std::map<const Filter*,wxTreeItemId> reverseFilterMap;
 	//Depth first  add
 	for(tree<Filter * >::pre_order_iterator filtIt=filterTree.depthBegin();
-					filtIt!=filterTree.depthEnd(); filtIt++)
+					filtIt!=filterTree.depthEnd(); ++filtIt)
 	{	
 		//Push or pop the stack to make it match the iterator position
 		if( lastDepth > filterTree.depth(filtIt))
@@ -230,10 +230,10 @@ void VisController::switchoutFilterTree(FilterTree &f)
 	tree<Filter*>::pre_order_iterator itB;
 	itB=filterTree.depthBegin();
 	std::map<Filter*,Filter*> filterRemap;
-	for(tree<Filter*>::pre_order_iterator itA=f.depthBegin(); itA!=f.depthEnd(); itA++)
+	for(tree<Filter*>::pre_order_iterator itA=f.depthBegin(); itA!=f.depthEnd(); ++itA)
 	{
 		filterRemap[*itA]=*itB;	
-		itB++;
+		++itB;
 	}
 
 	//Overwrite the internal map
@@ -305,14 +305,14 @@ void VisController::removeFilterSubtree(size_t filterId)
 }
 
 
-bool VisController::setFilterProperty(size_t filterId, unsigned int set,
+bool VisController::setFilterProperty(size_t filterId, 
 				unsigned int key, const std::string &value, bool &needUpdate)
 {
 	//Save current filter state to undo stack
 	//for the case where the property change is good
 	pushUndoStack();
 	bool setOK;
-	setOK=filterTree.setFilterProperty(filterMap[filterId],set,key,value,needUpdate);
+	setOK=filterTree.setFilterProperty(filterMap[filterId],key,value,needUpdate);
 
 	if(!setOK)
 	{
@@ -351,9 +351,7 @@ unsigned int VisController::refreshFilterTree(bool doUpdateScene)
 	targetScene->clearBindings();
 
 	//Run the tree refresh system.
-	//we will delete the pointers ourselves, rather than
-	//using safedelete so we ca free memory as we go.
-	unsigned int errCode=0;
+	unsigned int errCode;
 	vector<SelectionDevice<Filter> *> devices;
 	vector<pair<const Filter*, string> > consoleMessages;
 	errCode=filterTree.refreshFilterTree(refreshData,devices,
@@ -387,7 +385,11 @@ unsigned int VisController::refreshFilterTree(bool doUpdateScene)
 	//convenience in this routine
 	list<vector<const FilterStreamData *> > outData;
 	for(list<filterOutputData>::iterator it=refreshData.begin(); it!=refreshData.end(); ++it)
+	{
+		ASSERT(it->second.size());
+		
 		outData.push_back(it->second);
+	}
 	
 	
 	targetScene->clearObjs();
@@ -443,7 +445,7 @@ void VisController::updateWxTreeCtrl(wxTreeCtrl *t, const Filter *visibleFilt)
 	upWxTreeCtrl(filterTree,t,filterMap,persistentFilters,visibleFilt);
 }
 
-void VisController::updateFilterPropGrid(wxPropertyGrid *g,size_t filterId)
+void VisController::updateFilterPropGrid(wxPropertyGrid *g,size_t filterId) const	
 {
 	//The filterID can never be set to zero,
 	//except for the root item, as set by
@@ -452,7 +454,7 @@ void VisController::updateFilterPropGrid(wxPropertyGrid *g,size_t filterId)
 	ASSERT(filterMap.size() == filterTree.size());
 
 	Filter *targetFilter;
-	targetFilter=filterMap[filterId];
+	targetFilter=filterMap.at(filterId);
 
 	ASSERT(targetFilter);
 	
@@ -519,51 +521,78 @@ void VisController::getFilterUpdates()
 	pendingUpdates=false;
 }
 
-unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > &sceneData)
+//public interface to updateScene
+unsigned int VisController::doUpdateScene(list<vector<const FilterStreamData *> > &sceneData,
+		bool releaseData)
 {
+	amRefreshing=true;
+	unsigned int errCode=updateScene(sceneData,releaseData);
+	amRefreshing=false;
+	return errCode;
 
-
-	// -- Build target scene --- 
-	targetScene->clearObjs();
-	targetScene->clearRefObjs();
-	
-	//Construct a new drawing object for ions
-	vector<DrawManyPoints *> drawIons;
-
-	//erase the contents of each plot in turn
+}
+unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > &sceneData,
+				bool releaseData)
+{
+	//Plot wrapper should be set
 	ASSERT(targetPlots);
-	targetPlots->clear(true); //Clear, but preserve visibity information.
+	//Plot window should be set
+	ASSERT(plotSelList)
 
+	//Should be called from a viscontrol refresh
 	ASSERT(amRefreshing);
-	plotSelList->Clear();
 
+	//Lock the opengl scene interaction,
+	// to prevent user interaction (eg devices) during callbacks
+	targetScene->lockInteraction();
+	targetPlots->lockInteraction();
 
-	//Loop through the outputs from the filters to construct the input
-	//to the scene & plot windows
+	//Buffer to transfer to scene
+	vector<DrawableObj *> sceneDrawables;
+	
+	//erase the contents of each plot 
+	targetPlots->clear(true); //Clear, but preserve selection information.
+
+	vector<std::pair<size_t,string> > plotLabels;
+	
+	//-- Build buffer of new objects to send to scene
+
 	for(list<vector<const FilterStreamData *> > ::iterator it=sceneData.begin(); 
 							it!=sceneData.end(); ++it)
 	{
+
+		ASSERT(it->size());
 		for(unsigned int ui=0;ui<it->size(); ui++)
 		{
 			//Filter must specify whether it is cached or not. other values
 			//are inadmissible, but useful to catch uninitialised values
 			ASSERT((*it)[ui]->cached == 0 || (*it)[ui]->cached == 1);
+
 			switch((*it)[ui]->getStreamType())
 			{
 				case STREAM_TYPE_IONS:
 				{
-					//Create a new group for this stream. We have to have individual groups because of colouring.
+					//Create a new group for this stream. 
+					// We have to have individual groups 
+					// because of colouring/sizing concerns.
 					DrawManyPoints *curIonDraw;
 					curIonDraw=new DrawManyPoints;
-					//Iterator points to vector. Typecast elements in vector to IonStreamData s
+
+
+					//Obtain the ion data pointer
 					const IonStreamData *ionData;
 					ionData=((const IonStreamData *)((*it)[ui]));
 
-					//ASSERT(ionData->data.size());
-					//Can't just do a swap, as we need to strip the m/c value.
-					for(size_t ui=0;ui<ionData->data.size();ui++)
-						curIonDraw->addPoint(ionData->data[ui].getPosRef());
 
+					curIonDraw->resize(ionData->data.size());
+					//Slice out just the coordinate data for the 
+					// ion pointer, run callback immediately 
+					// after, as its a long operation
+					#pragma omp parallel for shared(curIonDraw,ionData)
+					for(size_t ui=0;ui<ionData->data.size();ui++)
+						curIonDraw->setPoint(ui,ionData->data[ui].getPosRef());
+					(*wxYieldCallback)(true);
+					
 					//Set the colour from the ionstream data
 					curIonDraw->setColour(ionData->r,
 								ionData->g,
@@ -571,24 +600,15 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 								ionData->a);
 					//set the size from the ionstream data
 					curIonDraw->setSize(ionData->ionSize);
-				
-					(*wxYieldCallback)(true);
 					//Randomly shuffle the ion data before we draw it
 					curIonDraw->shuffle();
-					
+					//Run callback to update as needed, as shuffle is slow.
 					(*wxYieldCallback)(true);
-
-					
-					drawIons.push_back(curIonDraw);
-
-					ASSERT(ionData->cached == 1 ||
-						ionData->cached == 0);
-
-					if(!ionData->cached)
-						delete ionData;
-
-
-
+				
+					//place in special holder for ions,
+					// as we need to accumulate for display-listing
+					// later.
+					sceneDrawables.push_back(curIonDraw);
 					break;
 				}
 				case STREAM_TYPE_PLOT:
@@ -639,7 +659,9 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 							ASSERT(false);
 					}
 
-					
+				
+					//set the appearance of the plot
+					// -----
 					targetPlots->setTraceStyle(plotID,plotData->plotStyle);
 					targetPlots->setColours(plotID,plotData->r,
 								plotData->g,plotData->b);
@@ -656,18 +678,13 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 					t=stlWStrToStlStr(titleW);
 
 					targetPlots->setStrings(plotID,x,y,t);
+					// -----
+				
+					//set the data origin
 					targetPlots->setParentData(plotID,plotData->parent,
 								plotData->index);
-					
 
-					//Append the plot to the list in the user interface
-					wxListUint *l = new wxListUint(plotID);
-					plotSelList->Append(wxStr(plotData->dataLabel),l);
-
-					ASSERT(plotData->cached == 1 ||
-						plotData->cached == 0);
-					if(!plotData->cached)
-						delete plotData;
+					plotLabels.push_back(make_pair(plotID,plotData->dataLabel));
 					
 					break;
 				}
@@ -682,21 +699,19 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 					//Loop through vector, Adding each object to the scene
 					if(drawData->cached)
 					{
+						ASSERT(false);
+						//FIXME: IMPLEMENT ME
 						//Create a *copy* for scene. Filter still holds
 						//originals, and will dispose of the pointers accordingly
-
-
-						//FIXME: Call Clone, Do *not* use directly!
-						WARN(false,"Cached drawables not supported. Implement me!");
-						ASSERT(false);
-
-						for(unsigned int ui=0;ui<drawObjs->size();ui++)
-							targetScene->addDrawable((*drawObjs)[ui]);
+						//for(unsigned int ui=0;ui<drawObjs->size();ui++)
+						//	sceneDrawables.push_back((*drawObjs)[ui]->clone());
 					}
 					else
 					{
+						//Place the *pointers* to the drawables in the scene
+						// list, to avoid copying
 						for(unsigned int ui=0;ui<drawObjs->size();ui++)
-							targetScene->addDrawable((*drawObjs)[ui]);
+							sceneDrawables.push_back((*drawObjs)[ui]);
 
 						//Although we do not delete the drawable objects
 						//themselves, we do delete the container
@@ -705,11 +720,11 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 						//prevent vector destructor from deleting pointers
 						//we have transferrred ownership of to scene
 						drawData->drawables.clear();
-						delete drawData;
 					}
 					break;
 				}
 				case STREAM_TYPE_RANGE:
+					//silently drop rangestreams
 					break;
 				case STREAM_TYPE_VOXEL:
 				{
@@ -737,7 +752,7 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 							d->setAlpha(vSrc->a);
 							d->wantsLight=false;
 
-							targetScene->addDrawable(d);
+							sceneDrawables.push_back(d);
 							break;
 						}
 						case VOXEL_REPRESENT_ISOSURF:
@@ -751,7 +766,7 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 
 							d->wantsLight=true;
 
-							targetScene->addDrawable(d);
+							sceneDrawables.push_back(d);
 							break;
 						}
 						default:
@@ -761,24 +776,48 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 
 					break;
 				}
-				default:
-					ASSERT(false);
-
-				
-
-				
+			}
+			
+			//delete drawables as needed
+			if(!(*it)[ui]->cached && releaseData)
+			{
+				delete (*it)[ui];
+				(*it)[ui]=0;	
 			}
 			
 			//Run the callback to update the window as needed
 			(*wxYieldCallback)(true);
 
 		}
-	
+			
 	}
-
-
-	sceneData.clear();	
 	//---
+
+	//Construct an OpenGL display list from the dataset
+
+	//Check how many points we have. Too many can cause the display list to crash
+	size_t totalIonCount=0;
+	for(unsigned int ui=0;ui<sceneDrawables.size();ui++)
+	{
+		if(sceneDrawables[ui]->getType() == DRAW_TYPE_MANYPOINT)
+			totalIonCount+=((const DrawManyPoints*)(sceneDrawables[ui]))->getNumPts();
+	}
+	
+	
+	//Must lock UI controls, or not run callback from here on in!
+	//==========
+
+	//Update the plotting UI contols
+	//-----------
+	plotSelList->Clear(); // erase wx list
+
+	for(size_t ui=0;ui<plotLabels.size();ui++)
+	{
+		//Append the plot to the list in the user interface
+		wxListUint *l = new wxListUint(plotLabels[ui].first);
+		plotSelList->Append(wxStr(plotLabels[ui].second),l);
+	}
+	plotLabels.clear();
 
 	//If there is only one spectrum, select it
 	if(plotSelList->GetCount() == 1 )
@@ -807,22 +846,28 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 				plotSelList->SetSelection(ui);
 		}
 	}
+	targetPlots->lockInteraction(false);
+	//-----------
+		
 
+	
+	targetScene->clearObjs();
+	targetScene->clearRefObjs();
 
-	updateRawGrid();
-	//Construct an OpenGL display list from the dataset
+	//For speed, we have to treat ions specially.
+	// for now, use a display list (these are no longer recommended in opengl, 
+	// but they are much easier to use than extensions)
+	vector<DrawManyPoints *> drawIons;
+	for(size_t ui=0;ui<sceneDrawables.size();ui++)
+	{
+		if(sceneDrawables[ui]->getType() == DRAW_TYPE_MANYPOINT)
+			drawIons.push_back((DrawManyPoints*)sceneDrawables[ui]);
+	}
 
-	//Check how many points we have. Too many can cause the display list to crash
-	size_t totalIonCount=0;
-	for(unsigned int ui=0;ui<drawIons.size();ui++)
-		totalIonCount+=drawIons[ui]->getNumPts();
-
-	//OK, we can only create a display list if
-	//there is a valid bounding box
 	if(totalIonCount < MAX_NUM_DRAWABLE_POINTS && drawIons.size() >1)
 	{
 		//Try to use a display list where we can.
-		//note that the display list reuqires a valid bounding box,
+		//note that the display list requires a valid bounding box,
 		//so single point entities, or overlapped points can
 		//produce an invalid bounding box
 		DrawDispList *displayList;
@@ -859,24 +904,25 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 		for(unsigned int ui=0;ui<drawIons.size(); ui++)
 			targetScene->addDrawable(drawIons[ui]);
 	}
-
-	//clean up uncached data
-	for(list<vector<const FilterStreamData *> > ::iterator it=sceneData.begin(); 
-							it!=sceneData.end(); ++it)
+	
+	for(size_t ui=0;ui<sceneDrawables.size();ui++)
 	{
-		//iterator points to a vector of pointers, which are the filter stream 
-		//data. We need to delete any uncached items before we quit
-		for(unsigned int ui=0;ui<it->size(); ui++)
-		{
-			if(!((*it)[ui])->cached)
-				delete ((*it)[ui]);
-		}
+		//We handled the ion case above.
+		if(sceneDrawables[ui]->getType() != STREAM_TYPE_IONS)
+			targetScene->addDrawable(sceneDrawables[ui]);
 	}
 
+	sceneDrawables.clear();
 	targetScene->computeSceneLimits();
-	amRefreshing=false;
+	targetScene->lockInteraction(false);
+	//===============
+
+
 	return 0;
 }
+
+
+
 
 unsigned int VisController::addCam(const std::string &camName)
 {
@@ -901,7 +947,7 @@ bool VisController::setCam(unsigned int uniqueID)
 	return true;
 }
 
-void VisController::updateCamPropertyGrid(wxPropertyGrid *g,unsigned int camID)
+void VisController::updateCamPropertyGrid(wxPropertyGrid *g,unsigned int camID) const
 {
 
 	g->clearKeys();
@@ -912,14 +958,14 @@ void VisController::updateCamPropertyGrid(wxPropertyGrid *g,unsigned int camID)
 	
 	targetScene->getCamProperties(camID,p);
 
-	g->setNumSets(p.data.size());
+	g->setNumGroups(p.data.size());
 	//Create the keys for the property grid to do its thing
 	for(unsigned int ui=0;ui<p.data.size();ui++)
 	{
 		for(unsigned int uj=0;uj<p.data[ui].size();uj++)
 		{
 			g->addKey(p.data[ui][uj].first, ui,p.keys[ui][uj],
-				p.types[ui][uj],p.data[ui][uj].second);
+				p.types[ui][uj],p.data[ui][uj].second,string(""));
 		}
 	}
 
@@ -1611,7 +1657,7 @@ unsigned int VisController::getActiveCamId() const
 }
 
 unsigned int VisController::exportIonStreams(const std::vector<const FilterStreamData * > &selectedStreams,
-		const std::string &outFile, unsigned int format) const
+		const std::string &outFile, unsigned int format)
 {
 
 	//test file open, and truncate file to zero bytes
@@ -1833,7 +1879,7 @@ void VisController::updateConsole(const std::vector<std::string> &v, const Filte
 }
 
 
-bool VisController::getAxisVisible()
+bool VisController::getAxisVisible() const
 {
 	return targetScene->getWorldAxisVisible();
 }
@@ -1882,43 +1928,3 @@ void VisController:: safeDeleteFilterList(std::list<std::pair<Filter *, std::vec
 }
 //---------------
 
-#ifdef DEBUG
-void VisController::checkTree(wxTreeCtrl *t)
-{
-/*
-	//spin through the non-root items in the tree,
-	//and check they have a valid ID & map
-	wxTreeItemIdValue cookie;
-	wxTreeItemId debugId;
-
-
-	stack<wxTreeItemId> itemStack;
-	itemStack.push(t->GetRootItem());
-	while(itemStack.size())
-	{
-		wxTreeItemData *tData;
-		size_t mapVal;
-	
-		if(debugId.IsOk() && debugId!=t->GetRootItem())
-		{	
-			tData=t->GetItemData(debugId);
-			mapVal=((wxTreeUint *)tData)->value;
-			ASSERT(mapVal);
-			ASSERT(filterMap.find(mapVal)!=filterMap.end());
-		}
-
-		debugId=t->GetNextSibling(debugId);
-		if(debugId.IsOk())
-		{
-			itemStack.push(debugId);
-			debugId=t->GetNextChild(debugId,cookie);
-		}
-		else
-		{
-			debugId=itemStack.top();
-			itemStack.pop();
-		}
-	}
-*/
-}
-#endif

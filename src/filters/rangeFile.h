@@ -71,10 +71,10 @@ class RangeFileFilter : public Filter
 		unsigned int getRefreshUseMask() const;
 
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
-		void getProperties(FilterProperties &propertyList) const;
+		void getProperties(FilterPropGroup &propertyList) const;
 
 		//!Set the properties for the nth filter
-		bool setProperty(unsigned int set,unsigned int key, 
+		bool setProperty(unsigned int key, 
 				const std::string &value, bool &needUpdate);
 		
 		//!Set a region update
@@ -83,12 +83,12 @@ class RangeFileFilter : public Filter
 		std::string getErrString(unsigned int code) const;
 		
 		//!Dump state to output stream, using specified format
-		bool writeState(std::ofstream &f,unsigned int format,
+		bool writeState(std::ostream &f,unsigned int format,
 						unsigned int depth=0) const;
 		
 		//!Modified version of writeState for packaging. By default simply calls writeState.
 		//value overrides override the values returned by getStateOverrides. In order.	
-		virtual bool writePackageState(std::ofstream &f, unsigned int format,
+		virtual bool writePackageState(std::ostream &f, unsigned int format,
 				const std::vector<std::string> &valueOverrides,unsigned int depth=0) const;
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.

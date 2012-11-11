@@ -61,6 +61,10 @@ public:
 
     wxSize getNiceWindowSize() const ;
 
+#ifdef DEBUG    
+    void setEventloggerFile();
+#endif
+
 private:
     // begin wxGlade: MainWindowFrame::methods
     void set_properties();
@@ -85,6 +89,8 @@ private:
 
 	//!Update the effects UI from some effects vector
 	void updateFxUI(const vector<const Effect *> &fx);
+
+	void setLockUI(bool amlocking,unsigned int lockMode);
 
 	//!Scene - user interaction interface "visualisation control"
 	VisController visControl;
@@ -127,7 +133,11 @@ private:
 
 	//Map to convert filter drop down choices to IDs
 	map<std::string,size_t> filterMap;
+    
 
+#ifdef DEBUG
+    ofstream fs; // file for writing the event log
+#endif
 protected:
     wxTimer *statusTimer;
     wxTimer *progressTimer;
@@ -163,7 +173,7 @@ protected:
     wxBitmapButton* btnFilterTreeErrs;
     wxPanel* filterTreePane;
     wxStaticText* propGridLabel;
-    wxPropertyGrid* gridFilterProperties;
+    wxPropertyGrid* gridFilterPropGroup;
     wxPanel* filterPropertyPane;
     wxSplitterWindow* filterSplitter;
     wxPanel* noteData;
@@ -300,6 +310,7 @@ public:
     virtual void OnFilterPropDoubleClick(wxSplitterEvent &event);
     virtual void OnControlUnsplit(wxSplitterEvent &event);
     virtual void OnControlSplitMove(wxSplitterEvent &event);
+    virtual void OnTopBottomSplitMove(wxSplitterEvent &event);
     virtual void OnSpectraUnsplit(wxSplitterEvent &event);
     virtual void OnViewSpectraList(wxCommandEvent &event); 
     virtual void OnViewPlotLegend(wxCommandEvent &event); 
@@ -316,6 +327,7 @@ public:
     virtual void OnFileExportIons(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnFileExportRange(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnFileExportVideo(wxCommandEvent &event);
+    virtual void OnFileExportFilterVideo(wxCommandEvent &event);
     virtual void OnFileExportPackage(wxCommandEvent &event);
     virtual void OnRecentFile(wxCommandEvent &event); // wxGlade: <event_handler>
 

@@ -132,10 +132,18 @@ int read_png(FILE *fp, unsigned int sig_read, png_bytep **row_pointers,
    /* Expand grayscale images to the full 8 bits from 1, 2, or 4 bits/pixel */
    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
    {
-#if defined(__APPLE__) || defined(__WIN32) || defined(__WIN64)
-	   png_set_expand_gray_1_2_4_to_8(png_ptr);
+	//From libpng-manual.txt:
+	//
+	// The function png_set_expand_gray_1_2_4_to_8() was added at libpng-1.2.9.
+	// ...
+	// The png_set_gray_1_2_4_to_8() function is deprecated.
+	// ..
+	// If you need to support versions prior to libpng-1.5.4 test the version number
+	//  as illustrated below using "PNG_LIBPNG_VER >= 10504" 
+#if PNG_LIBPNG_VER >= 10209
+	png_set_expand_gray_1_2_4_to_8(png_ptr);
 #else
-      png_set_gray_1_2_4_to_8(png_ptr);
+	png_set_gray_1_2_4_to_8(png_ptr);
 #endif
 	}
 	

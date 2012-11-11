@@ -349,8 +349,6 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 	if(scaleFactor < 0.0f)
 		return RDF_ERR_NEGATIVE_SCALE_FACT;
 
-	//update mindist such that it is still valid after scaling
-	minDist=minDist*scaleFactor; 
 	
 #ifdef DEBUG
 	cerr << "Scale Factor : " << scaleFactor << endl;
@@ -669,15 +667,12 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 			continue;
 #endif
 
-		std::pair<unsigned int,unsigned int> thisPair;	
 		float sqrDist,deadDistSqr;
 		Point3D sourcePoint;
 		const Point3D *nearPt=0;
 		//Go through each point and grab up to the maximum distance
 		//that we need
 		
-		thisPair = std::make_pair(0,0);
-	
 		//Loop from this ion, up to its max	
 		//disable exact matching, by requiring d^2 > epsilon
 		deadDistSqr=std::numeric_limits<float>::epsilon();
@@ -714,6 +709,7 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 			else
 			{		
 				//Oh no, we had a problem, somehow we couldn't find enough
+#pragma omp critical
 				warnBiasCount++;
 				break;
 			}

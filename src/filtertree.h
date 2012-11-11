@@ -49,7 +49,7 @@ class FilterTree
 		
 #ifdef DEBUG
 		//!Check that the output of filter refresh functions
-		void checkRefreshValidity(const vector< const FilterStreamData *> curData, 
+		void checkRefreshValidity(const vector< const FilterStreamData *> &curData, 
 					const Filter *refreshFilter) const;
 #endif
 		
@@ -58,13 +58,13 @@ class FilterTree
 		//!Returns true if the testChild is a child of testParent.
 		// returns false if testchild == testParent, or if the testParent
 		// is not a parent of testChild.
-		bool isChild(const tree<Filter *> &treeInst,
+		static bool isChild(const tree<Filter *> &treeInst,
 				tree<Filter *>::iterator testParent,
-				tree<Filter *>::iterator testChild) const;
+				tree<Filter *>::iterator testChild);
 
 
-		size_t countChildFilters(const tree<Filter *> &treeInst,
-					const vector<tree<Filter *>::iterator> &nodes) const;
+		static size_t countChildFilters(const tree<Filter *> &treeInst,
+					const vector<tree<Filter *>::iterator> &nodes);
 	public:
 		FilterTree();
 		~FilterTree();
@@ -102,8 +102,8 @@ class FilterTree
 		//!Run the initialisation stage of the filter processing
 		void initFilterTree() const;
 
-		bool setFilterProperty(Filter *f, unsigned int set, 
-						unsigned int key, const std::string &value, bool &needUpdate);
+		bool setFilterProperty(Filter *f, unsigned int key,
+				const std::string &value, bool &needUpdate);
 		
 		//!Refresh the entire filter tree. Whilst this is public, great care must be taken in
 		// deleting the filterstream data correctly. To do this, use the "safeDeleteFilterList" function.

@@ -341,7 +341,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	ionData->valueType=valueLabel;
 
 
-	if(!ionData->data.size())
+	if(ionData->data.empty())
 	{
 		//Shouldn't get here...
 		ASSERT(false);
@@ -383,37 +383,35 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	return 0;
 }
 
-void DataLoadFilter::getProperties(FilterProperties &propertyList) const
+void DataLoadFilter::getProperties(FilterPropGroup &propertyList) const
 {
-	propertyList.data.clear();
-	propertyList.types.clear();
-	propertyList.keys.clear();
+	FilterProperty p;
 
-	vector<pair<string,string> > s;
-	vector<unsigned int> type,keys;
+	size_t curGroup=0;
 
-	//Set up the  file  name and type data
-	// ------
-	s.push_back(std::make_pair(TRANS("File"), ionFilename));
-	type.push_back(PROPERTY_TYPE_STRING);
-	keys.push_back(DATALOAD_KEY_FILE);
+	p.type=PROPERTY_TYPE_STRING;
+	p.key=DATALOAD_KEY_FILE;
+	p.name=TRANS("File");
+	p.helpText=TRANS("File from which to load data");
+	p.data=ionFilename;
+
+	propertyList.addProperty(p,curGroup);
 
 	vector<pair<unsigned int,string> > choices;
-	string strChoice;
 
 	for(unsigned int ui=0;ui<FILEDATA_TYPE_ENUM_END; ui++)
 		choices.push_back(make_pair(ui,AVAILABLE_FILEDATA_TYPES[ui]));	
 					
-	strChoice=choiceString(choices,fileType);
-	s.push_back(std::make_pair(TRANS("File type"),strChoice));
-	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(DATALOAD_KEY_FILETYPE);
+	p.data=choiceString(choices,fileType);
+	p.name=TRANS("File type");
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Type of file to be loaded");
+	p.key=DATALOAD_KEY_FILETYPE;
+	
+	propertyList.addProperty(p,curGroup);
 
 	//---------
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
-	s.clear(); type.clear(); keys.clear();
+	curGroup++;	
 	
 	string colStr;
 	switch(fileType)
@@ -421,9 +419,12 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 		case FILEDATA_TYPE_POS:
 		{
 			stream_cast(colStr,numColumns);
-			s.push_back(std::make_pair(TRANS("Number of columns"), colStr));
-			keys.push_back(DATALOAD_KEY_NUMBER_OF_COLUMNS);
-			type.push_back(PROPERTY_TYPE_INTEGER);
+			p.name=TRANS("Entries per point");
+			p.helpText=TRANS("Number of decimal values in file per 3D point (normally 4)");
+			p.data=colStr;
+			p.key=DATALOAD_KEY_NUMBER_OF_COLUMNS;
+			p.type=PROPERTY_TYPE_INTEGER;
+			propertyList.addProperty(p,curGroup);
 			break;
 		}
 		case FILEDATA_TYPE_TEXT:
@@ -443,88 +444,117 @@ void DataLoadFilter::getProperties(FilterProperties &propertyList) const
 	}
 	
 	colStr= choiceString(choices,index[0]);
-	s.push_back(std::make_pair("X", colStr));
-	keys.push_back(DATALOAD_KEY_SELECTED_COLUMN0);
-	type.push_back(PROPERTY_TYPE_CHOICE);
+	p.name="X";
+	p.data=colStr;
+	p.key=DATALOAD_KEY_SELECTED_COLUMN0;
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Relative offset of each entry in file for point's X position");
+	propertyList.addProperty(p,curGroup);
 	
 	colStr= choiceString(choices,index[1]);
-	s.push_back(std::make_pair("Y", colStr));
-	keys.push_back(DATALOAD_KEY_SELECTED_COLUMN1);
-	type.push_back(PROPERTY_TYPE_CHOICE);
+	p.name="Y";
+	p.data=colStr;
+	p.key=DATALOAD_KEY_SELECTED_COLUMN1;
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Relative offset of each entry in file for point's Y position");
+	propertyList.addProperty(p,curGroup);
 	
 	colStr= choiceString(choices,index[2]);
-	s.push_back(std::make_pair("Z", colStr));
-	keys.push_back(DATALOAD_KEY_SELECTED_COLUMN2);
-	type.push_back(PROPERTY_TYPE_CHOICE);
+	p.name="Z";
+	p.data=colStr;
+	p.key=DATALOAD_KEY_SELECTED_COLUMN2;
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Relative offset of each entry in file for point's Z position");
+	propertyList.addProperty(p,curGroup);
 	
 	colStr= choiceString(choices,index[3]);
-	s.push_back(std::make_pair(TRANS("Value"), colStr));
-	keys.push_back(DATALOAD_KEY_SELECTED_COLUMN3);
-	type.push_back(PROPERTY_TYPE_CHOICE);
+	p.name=TRANS("Value");
+	p.data=colStr;
+	p.key=DATALOAD_KEY_SELECTED_COLUMN3;
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Relative offset of each entry in file to use for scalar value of 3D point");
+	propertyList.addProperty(p,curGroup);
 	
-	s.push_back(std::make_pair(TRANS("Value Label"), valueLabel));
-	keys.push_back(DATALOAD_KEY_VALUELABEL);
-	type.push_back(PROPERTY_TYPE_STRING);
+	p.name=TRANS("Value Label");
+	p.data=valueLabel;
+	p.key=DATALOAD_KEY_VALUELABEL;
+	p.type=PROPERTY_TYPE_STRING;
+	p.helpText=TRANS("Name for the scalar value associated with each point");
+	propertyList.addProperty(p,curGroup);
+	
+	propertyList.setGroupTitle(curGroup,TRANS("Format params."));
 
-
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
-	s.clear();type.clear();keys.clear();
+	curGroup++;
 
 	string tmpStr;
 	stream_cast(tmpStr,enabled);
-	s.push_back(std::make_pair(TRANS("Enabled"), tmpStr));
-	keys.push_back(DATALOAD_KEY_ENABLED);
-	type.push_back(PROPERTY_TYPE_BOOL);
+	p.name=TRANS("Enabled");
+	p.data=tmpStr;
+	p.key=DATALOAD_KEY_ENABLED;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Load this file?");
+	propertyList.addProperty(p,curGroup);
 
 	if(enabled)
 	{
 		std::string tmpStr;
 		
 		stream_cast(tmpStr,doSample);
-		s.push_back(std::make_pair(TRANS("Sample data"),tmpStr));
-		type.push_back(PROPERTY_TYPE_BOOL);
-		keys.push_back(DATALOAD_KEY_SAMPLE);
+		p.name=TRANS("Sample data");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_BOOL;
+		p.helpText=TRANS("Perform random selection on file contents, instead of loading entire file");
+		p.key=DATALOAD_KEY_SAMPLE;
+		propertyList.addProperty(p,curGroup);
 
 		if(doSample)
 		{
 			stream_cast(tmpStr,maxIons*sizeof(float)*4/(1024*1024));
-			s.push_back(std::make_pair(TRANS("Load Limit (MB)"),tmpStr));
-			type.push_back(PROPERTY_TYPE_INTEGER);
-			keys.push_back(DATALOAD_KEY_SIZE);
+			p.name=TRANS("Load Limit (MB)");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_INTEGER;
+			p.helpText=TRANS("Limit for size of data to load");
+			p.key=DATALOAD_KEY_SIZE;
+			propertyList.addProperty(p,curGroup);
 		}
 	
 		stream_cast(tmpStr,wantMonitor);
-		s.push_back(std::make_pair(TRANS("Monitor"), tmpStr));
-		keys.push_back(DATALOAD_KEY_MONITOR);
-		type.push_back(PROPERTY_TYPE_BOOL);
+		p.name=TRANS("Monitor");
+		p.data=tmpStr;
+		p.key=DATALOAD_KEY_MONITOR;
+		p.type=PROPERTY_TYPE_BOOL;
+		p.helpText=TRANS("Watch file timestamp to track changes to file contents from other programs");
+		propertyList.addProperty(p,curGroup);
+		propertyList.setGroupTitle(curGroup,TRANS("Load params."));
+
 		
-		propertyList.data.push_back(s);
-		propertyList.types.push_back(type);
-		propertyList.keys.push_back(keys);
-		s.clear();type.clear();keys.clear();
+		curGroup++;
+
 		string thisCol;
 		//Convert the ion colour to a hex string	
 		genColString((unsigned char)(r*255),(unsigned char)(g*255),
 				(unsigned char)(b*255),(unsigned char)(a*255),thisCol);
 
-		s.push_back(make_pair(string(TRANS("Default colour ")),thisCol)); 
-		type.push_back(PROPERTY_TYPE_COLOUR);
-		keys.push_back(DATALOAD_KEY_COLOUR);
+		p.name=TRANS("Default colour ");
+		p.data=thisCol; 
+		p.type=PROPERTY_TYPE_COLOUR;
+		p.helpText=TRANS("Default colour for points, if not overridden by other filters");
+		p.key=DATALOAD_KEY_COLOUR;
+		propertyList.addProperty(p,curGroup);
 
 		stream_cast(tmpStr,ionSize);
-		s.push_back(make_pair(string(TRANS("Draw Size")),tmpStr)); 
-		type.push_back(PROPERTY_TYPE_REAL);
-		keys.push_back(DATALOAD_KEY_IONSIZE);
+		p.name=TRANS("Draw Size");
+		p.data=tmpStr; 
+		p.type=PROPERTY_TYPE_REAL;
+		p.helpText=TRANS("Default size for points, if not overridden by other filters");
+		p.key=DATALOAD_KEY_IONSIZE;
+		propertyList.addProperty(p,curGroup);
+		propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
 	}
 
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
 }
 
-bool DataLoadFilter::setProperty( unsigned int set, unsigned int key, 
+bool DataLoadFilter::setProperty(  unsigned int key, 
 					const std::string &value, bool &needUpdate)
 {
 	
@@ -1007,7 +1037,7 @@ std::string  DataLoadFilter::getErrString(unsigned int code) const
 	return errStr;
 }
 
-bool DataLoadFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+bool DataLoadFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -1042,7 +1072,7 @@ bool DataLoadFilter::writeState(std::ofstream &f,unsigned int format, unsigned i
 
 }
 
-bool DataLoadFilter::writePackageState(std::ofstream &f, unsigned int format,
+bool DataLoadFilter::writePackageState(std::ostream &f, unsigned int format,
 			const std::vector<std::string> &valueOverrides, unsigned int depth) const
 {
 	ASSERT(valueOverrides.size() == 1);
@@ -1154,8 +1184,8 @@ bool posFileTest()
 	d->setCaching(false);
 
 	bool needUp;
-	d->setProperty(0,DATALOAD_KEY_FILE,posName,needUp);
-	d->setProperty(0,DATALOAD_KEY_SAMPLE,"0",needUp);
+	d->setProperty(DATALOAD_KEY_FILE,posName,needUp);
+	d->setProperty(DATALOAD_KEY_SAMPLE,"0",needUp);
 	//---------
 
 	vector<const FilterStreamData*> streamIn,streamOut;
@@ -1235,10 +1265,10 @@ bool textFileTest()
 	d->setCaching(false);
 
 	bool needUp;
-	d->setProperty(0,DATALOAD_KEY_FILE,FILENAME,needUp);
-	d->setProperty(0,DATALOAD_KEY_SAMPLE,"0",needUp); //load all data
+	d->setProperty(DATALOAD_KEY_FILE,FILENAME,needUp);
+	d->setProperty(DATALOAD_KEY_SAMPLE,"0",needUp); //load all data
 	//Load data as text file
-	d->setProperty(0,DATALOAD_KEY_FILETYPE,
+	d->setProperty(DATALOAD_KEY_FILETYPE,
 			AVAILABLE_FILEDATA_TYPES[FILEDATA_TYPE_TEXT],needUp); 
 	//---------
 

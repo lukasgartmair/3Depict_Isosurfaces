@@ -256,67 +256,67 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 }
 
 
-void IonColourFilter::getProperties(FilterProperties &propertyList) const
+void IonColourFilter::getProperties(FilterPropGroup &propertyList) const
 {
-	propertyList.data.clear();
-	propertyList.keys.clear();
-	propertyList.types.clear();
 
-	vector<unsigned int> type,keys;
-	vector<pair<string,string> > s;
-
-	string str,tmpStr;
-
-
+	FilterProperty p;
+	string tmpStr;
 	vector<pair<unsigned int, string> > choices;
+
+	size_t curGroup=0;
 
 	for(unsigned int ui=0;ui<NUM_COLOURMAPS; ui++)
 		choices.push_back(make_pair(ui,getColourMapName(ui)));
 
 	tmpStr=choiceString(choices,colourMap);
 	
-	str =string(TRANS("Colour Map")); 
-
-	s.push_back(make_pair(str,tmpStr));
-	keys.push_back(KEY_IONCOLOURFILTER_COLOURMAP);
-	type.push_back(PROPERTY_TYPE_CHOICE);
+	p.name=TRANS("Colour Map"); 
+	p.data=tmpStr;
+	p.key=KEY_IONCOLOURFILTER_COLOURMAP;
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Colour scheme used to assign points colours by value");
+	propertyList.addProperty(p,curGroup);
 
 	if(showColourBar)
 		tmpStr="1";
 	else
 		tmpStr="0";
-	str =string(TRANS("Show Bar"));
-	s.push_back(make_pair(str,tmpStr));
-	keys.push_back(KEY_IONCOLOURFILTER_SHOWBAR);
-	type.push_back(PROPERTY_TYPE_BOOL);
+	
+	p.name=TRANS("Show Bar");
+	p.key=KEY_IONCOLOURFILTER_SHOWBAR;
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_BOOL;
+	propertyList.addProperty(p,curGroup);
 
-
-	str = TRANS("Num Colours");	
 	stream_cast(tmpStr,nColours);
-	s.push_back(make_pair(str,tmpStr));
-	keys.push_back(KEY_IONCOLOURFILTER_NCOLOURS);
-	type.push_back(PROPERTY_TYPE_INTEGER);
+	p.name=TRANS("Num Colours");
+	p.data=tmpStr;
+	p.helpText=TRANS("Number of unique colours to use in colour map"); 
+	p.key=KEY_IONCOLOURFILTER_NCOLOURS;
+	p.type=PROPERTY_TYPE_INTEGER;
+	propertyList.addProperty(p,curGroup);
 
 	stream_cast(tmpStr,mapBounds[0]);
-	s.push_back(make_pair(TRANS("Map start"), tmpStr));
-	keys.push_back(KEY_IONCOLOURFILTER_MAPSTART);
-	type.push_back(PROPERTY_TYPE_REAL);
+	p.name=TRANS("Map start");
+	p.helpText=TRANS("Assign points with this value to the first colour in map"); 
+	p.data= tmpStr;
+	p.key=KEY_IONCOLOURFILTER_MAPSTART;
+	p.type=PROPERTY_TYPE_REAL;
+	propertyList.addProperty(p,curGroup);
 
 	stream_cast(tmpStr,mapBounds[1]);
-	s.push_back(make_pair(TRANS("Map end"), tmpStr));
-	keys.push_back(KEY_IONCOLOURFILTER_MAPEND);
-	type.push_back(PROPERTY_TYPE_REAL);
+	p.name=TRANS("Map end");
+	p.helpText=TRANS("Assign points with this value to the last colour in map"); 
+	p.data= tmpStr;
+	p.key=KEY_IONCOLOURFILTER_MAPEND;
+	p.type=PROPERTY_TYPE_REAL;
+	propertyList.addProperty(p,curGroup);
 
-
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
 }
 
-bool IonColourFilter::setProperty( unsigned int set, unsigned int key,
+bool IonColourFilter::setProperty(  unsigned int key,
 					const std::string &value, bool &needUpdate)
 {
-	ASSERT(!set);
 
 	needUpdate=false;
 	switch(key)
@@ -410,7 +410,7 @@ std::string  IonColourFilter::getErrString(unsigned int code) const
 }
 
 
-bool IonColourFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+bool IonColourFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -593,10 +593,10 @@ bool ionCountTest()
 	f->setCaching(false);
 
 	bool needUpdate;
-	f->setProperty(0,KEY_IONCOLOURFILTER_NCOLOURS,"100",needUpdate);
-	f->setProperty(0,KEY_IONCOLOURFILTER_MAPSTART,"0",needUpdate);
-	f->setProperty(0,KEY_IONCOLOURFILTER_MAPEND,"100",needUpdate);
-	f->setProperty(0,KEY_IONCOLOURFILTER_SHOWBAR,"0",needUpdate);
+	f->setProperty(KEY_IONCOLOURFILTER_NCOLOURS,"100",needUpdate);
+	f->setProperty(KEY_IONCOLOURFILTER_MAPSTART,"0",needUpdate);
+	f->setProperty(KEY_IONCOLOURFILTER_MAPEND,"100",needUpdate);
+	f->setProperty(KEY_IONCOLOURFILTER_SHOWBAR,"0",needUpdate);
 	
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");

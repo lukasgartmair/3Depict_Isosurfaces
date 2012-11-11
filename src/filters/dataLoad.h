@@ -1,5 +1,5 @@
-#ifndef POSLOAD_H
-#define POSLOAD_H
+#ifndef DATALOAD_H
+#define DATALOAD_H
 
 #include "../filter.h"
 
@@ -98,8 +98,8 @@ class DataLoadFilter:public Filter
 		// this does not require exposing the file parameter key
 		void setFileMode(unsigned int mode);
 
-		//!Get filter type (returns FILTER_TYPE_POSLOAD)
-		unsigned int getType() const { return FILTER_TYPE_POSLOAD;};
+		//!Get filter type (returns FILTER_TYPE_DATALOAD)
+		unsigned int getType() const { return FILTER_TYPE_DATALOAD;};
 
 		//!Get (approx) number of bytes required for cache
 		virtual size_t numBytesForCache(size_t nOBjects) const;
@@ -114,20 +114,20 @@ class DataLoadFilter:public Filter
 		virtual std::string typeString() const { return std::string(TRANS("Pos Data"));}
 		
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
-		void getProperties(FilterProperties &propertyList) const;
+		void getProperties(FilterPropGroup &propertyList) const;
 
 		//!Set the properties for the nth filter
-		bool setProperty(unsigned int set, unsigned int key, const std::string &value, bool &needUpdate);
+		bool setProperty( unsigned int key, const std::string &value, bool &needUpdate);
 		
 		//!Get the human readable error string associated with a particular error code during refresh(...)
 		std::string getErrString(unsigned int code) const;
 
 		//!Dump state to output stream, using specified format
-		bool writeState(std::ofstream &f,unsigned int format, 
+		bool writeState(std::ostream &f,unsigned int format, 
 						unsigned int depth=0) const;
 		
 		//!write an overridden filename version of the state
-		virtual bool writePackageState(std::ofstream &f, unsigned int format,
+		virtual bool writePackageState(std::ostream &f, unsigned int format,
 				const std::vector<std::string> &valueOverrides,unsigned int depth=0) const;
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.

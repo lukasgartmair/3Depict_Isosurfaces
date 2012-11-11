@@ -81,17 +81,14 @@ FilterTree::~FilterTree()
 	clear();
 }
 
-FilterTree::FilterTree(const FilterTree &orig) 
+FilterTree::FilterTree(const FilterTree &orig) :
+	cacheStrategy(orig.cacheStrategy), maxCachePercent(orig.maxCachePercent),
+	filters(orig.filters)
 {
-	cacheStrategy=orig.cacheStrategy;
-	maxCachePercent=orig.maxCachePercent;
-
-	filters=orig.filters;
-
 	//Don't grab a direct copy of the tree, but rather an cloned duplicate,
 	// without the internal cache data
 	for(tree<Filter *>::pre_order_iterator it=filters.begin();
-		it!=filters.end();it++)
+		it!=filters.end();++it)
 		(*it)=(*it)->cloneUncached();
 }
 
@@ -112,7 +109,7 @@ const FilterTree &FilterTree::operator=(const FilterTree &orig)
 	//Don't grab a direct copy of the tree, but rather an cloned duplicate,
 	// without the internal cache data
 	for(tree<Filter *>::pre_order_iterator it=filters.begin();
-		it!=filters.end();it++)
+		it!=filters.end();++it)
 		(*it)=(*it)->cloneUncached();
 
 	return *this;
@@ -138,7 +135,7 @@ void FilterTree::initFilterTree() const
 	inDataStack.push(curData);
 	//Depth-first search from root node, refreshing filters as we proceed.
 	for(tree<Filter * >::pre_order_iterator filtIt=filters.begin();
-					filtIt!=filters.end(); filtIt++)
+					filtIt!=filters.end(); ++filtIt)
 	{
 		//Step 0 : Pop the cache until we reach our current level, 
 		//	deleting any pointers that would otherwise be lost.
@@ -161,7 +158,7 @@ void FilterTree::initFilterTree() const
 		bool isLeaf;
 		isLeaf=false;
 		for(tree<Filter *>::leaf_iterator leafIt=filters.begin_leaf();
-				leafIt!=filters.end_leaf(); leafIt++)
+				leafIt!=filters.end_leaf(); ++leafIt)
 		{
 			if(*leafIt == *filtIt)
 			{
@@ -320,7 +317,7 @@ void FilterTree::getAccumulatedPropagationMaps(map<Filter*, size_t> &emitTypes, 
 			if((*it)->haveCache())
 			{
 				//Loop over the children of this filter, grab their block masks
-				for(tree<Filter *>::sibling_iterator itJ=it.begin(); itJ!=it.end(); itJ++)
+				for(tree<Filter *>::sibling_iterator itJ=it.begin(); itJ!=it.end(); ++itJ)
 				{
 
 					if((*itJ)->haveCache())
@@ -420,7 +417,7 @@ void FilterTree::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propS
 			bool isLeaf;
 			isLeaf=false;
 			for(tree<Filter*>::leaf_iterator  itJ= filters.begin_leaf();
-			itJ!=filters.end_leaf(); itJ++)
+			itJ!=filters.end_leaf(); ++itJ)
 
 			{
 				if(itJ == it)
@@ -440,7 +437,7 @@ void FilterTree::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propS
 			int emitMask,blockMask;
 			emitMask=accumulatedEmitTypes[*it];
 			blockMask=~0;
-			for(tree<Filter *>::sibling_iterator itJ=filters.begin(it); itJ!=filters.end(it); itJ++)
+			for(tree<Filter *>::sibling_iterator itJ=filters.begin(it); itJ!=filters.end(it); ++itJ)
 				blockMask&=accumulatedBlockTypes[*itJ];
 
 
@@ -613,6 +610,7 @@ unsigned int FilterTree::refreshFilterTree(
 #ifdef DEBUG
 			//Perform sanity checks on filter output
 			checkRefreshValidity(curData,*filtIt);
+			ASSERT(curProg.step == curProg.maxStep);
 #endif
 			//Ensure that (1) yield is called, regardless of what filter does
 			//(2) yield is called after 100% update	
@@ -649,7 +647,7 @@ unsigned int FilterTree::refreshFilterTree(
 			}
 
 
-			//Update the filter output information
+			//Update the filter output statistics, eg num objects of each type output 
 			(*filtIt)->updateOutputInfo(curData);
 			
 			
@@ -657,7 +655,7 @@ unsigned int FilterTree::refreshFilterTree(
 			bool isLeaf;
 			isLeaf=false;
 			for(tree<Filter *>::leaf_iterator leafIt=filters.begin_leaf();
-					leafIt!=filters.end_leaf(); leafIt++)
+					leafIt!=filters.end_leaf(); ++leafIt)
 			{
 				if(*leafIt == *filtIt)
 				{
@@ -665,61 +663,63 @@ unsigned int FilterTree::refreshFilterTree(
 					break;
 				}
 			}
-		
-			//If this is not a leaf, keep track of intermediary pointers
-			if(!isLeaf)
+	
+			if(curData.size())
 			{
-				//The filter will generate a list of new pointers. If any out-going data 
-				//streams are un-cached, track them
-				for(unsigned int ui=0;ui<curData.size(); ui++)
+				//If this is not a leaf, keep track of intermediary pointers
+				if(!isLeaf)
 				{
-					//Keep an eye on this pointer. It is not cached (owned) by the filter
-					//and needs to be tracked (for possible later deletion)
-					ASSERT(curData[ui]);
-
-					list<const FilterStreamData *>::iterator it;
-					it = find(pointerTrackList.begin(),pointerTrackList.end(),curData[ui]);
-					//Check it is not cached, and that we are not already tracking it.
-					if(!curData[ui]->cached && it!=pointerTrackList.end()) 
+					//The filter will generate a list of new pointers. If any out-going data 
+					//streams are un-cached, track them
+					for(unsigned int ui=0;ui<curData.size(); ui++)
 					{
-						//track pointer.
-						pointerTrackList.push_back(curData[ui]);
+						//Keep an eye on this pointer. It is not cached (owned) by the filter
+						//and needs to be tracked (for possible later deletion)
+						ASSERT(curData[ui]);
+
+						list<const FilterStreamData *>::iterator it;
+						it = find(pointerTrackList.begin(),pointerTrackList.end(),curData[ui]);
+						//Check it is not cached, and that we are not already tracking it.
+						if(!curData[ui]->cached && it!=pointerTrackList.end()) 
+						{
+							//track pointer.
+							pointerTrackList.push_back(curData[ui]);
+						}
+					}	
+					
+					//Put this in the intermediary stack, 
+					//so it is available for any other children at this leve.
+					inDataStack.push(curData);
+				}
+				else
+				{
+					//The filter has created an ouput. Record it for passing to updateScene
+					outData.push_back(make_pair(*filtIt,curData));
+					for(unsigned int ui=0;ui<curData.size();ui++)
+					{
+						//Search through the pointer list. If we find it,
+						//then it is handled by VisController::updateScene, 
+						//and we do not need to delete it using the stack
+						//if we don't find it, then it is a new pointer, and we still don't need
+						//to delete it. At any rate, we need to make sure that it is not
+						//deleted by the popPointerStack function.
+						list<const FilterStreamData *>::iterator it;
+						it=find(pointerTrackList.begin(),pointerTrackList.end(),
+									curData[ui]);
+
+						//The pointer is an output from the filter, so we don't need to track it
+						if(it!=pointerTrackList.end())
+							pointerTrackList.erase(it);
+
+						//Pointer should be only in the track list once.
+						ASSERT(find(pointerTrackList.begin(),pointerTrackList.end(),
+									curData[ui]) == pointerTrackList.end());
+					
 					}
 				}	
-				
-				//Put this in the intermediary stack, 
-				//so it is available for any other children at this leve.
-				inDataStack.push(curData);
+				//Cur data is recorded either in outDta or on the data stack
+				curData.clear();
 			}
-			else
-			{
-				//The filter has created an ouput. Record it for passing to updateScene
-				outData.push_back(make_pair(*filtIt,curData));
-				for(unsigned int ui=0;ui<curData.size();ui++)
-				{
-					//Search through the pointer list. If we find it,
-					//then it is handled by VisController::updateScene, 
-					//and we do not need to delete it using the stack
-					//if we don't find it, then it is a new pointer, and we still don't need
-					//to delete it. At any rate, we need to make sure that it is not
-					//deleted by the popPointerStack function.
-					list<const FilterStreamData *>::iterator it;
-					it=find(pointerTrackList.begin(),pointerTrackList.end(),
-								curData[ui]);
-
-					//The pointer is an output from the filter, so we don't need to track it
-					if(it!=pointerTrackList.end())
-						pointerTrackList.erase(it);
-
-					//Pointer should be only in the track list once.
-					ASSERT(find(pointerTrackList.begin(),pointerTrackList.end(),
-								curData[ui]) == pointerTrackList.end());
-				
-				}
-			}	
-
-			//Cur data is recorded either in outDta or on the data stack
-			curData.clear();
 			//---
 			
 		}
@@ -771,11 +771,11 @@ unsigned int FilterTree::refreshFilterTree(
 	return 0;
 }
 
-bool FilterTree::setFilterProperty(Filter *targetFilter, unsigned int set, 
-						unsigned int key, const std::string &value, bool &needUpdate)
+bool FilterTree::setFilterProperty(Filter *targetFilter, unsigned int key,
+				const std::string &value, bool &needUpdate)
 {
 	ASSERT(std::find(filters.begin(),filters.end(),targetFilter) != filters.end());
-	if(!targetFilter->setProperty(set,key,value,needUpdate))
+	if(!targetFilter->setProperty(key,value,needUpdate))
 		return false;
 
 	//If we no longer have a cache, and the filter needs an update, then we must
@@ -783,7 +783,7 @@ bool FilterTree::setFilterProperty(Filter *targetFilter, unsigned int set,
 	if(needUpdate)
 	{
 		for(tree<Filter * >::pre_order_iterator filtIt=filters.begin();
-						filtIt!=filters.end(); filtIt++)
+						filtIt!=filters.end(); ++filtIt)
 		{
 			if(targetFilter == *filtIt)
 			{
@@ -954,7 +954,7 @@ bool FilterTree::saveXML(std::ofstream &f,std::map<string,string> &fileMapping,
 	unsigned int depthLast=0;
 	unsigned int child=0;
 	for(tree<Filter * >::pre_order_iterator filtIt=filters.begin();
-					filtIt!=filters.end(); filtIt++)
+					filtIt!=filters.end(); ++filtIt)
 	{
 		unsigned int depth;
 		depth = filters.depth(filtIt);
@@ -1059,7 +1059,7 @@ void FilterTree::stripHazardousContents()
 
 			//nuke this branch
 			it=filters.erase(it);
-			it--;
+			--it;
 		}
 	}
 
@@ -1067,7 +1067,7 @@ void FilterTree::stripHazardousContents()
 
 bool FilterTree::isChild(const tree<Filter *> &treeInst,
 				tree<Filter *>::iterator testParent,
-				tree<Filter *>::iterator testChild) const
+				tree<Filter *>::iterator testChild) 
 {
 	// NOTE: A comparison against tree root (treeInst.begin())is INVALID
 	// for trees that have multiple base nodes.
@@ -1088,13 +1088,13 @@ bool FilterTree::contains(const Filter *f) const
 }
 
 size_t FilterTree::countChildFilters(const tree<Filter *> &treeInst,
-			const vector<tree<Filter *>::iterator> &nodes) const
+			const vector<tree<Filter *>::iterator> &nodes)
 {
 	set<Filter*> childIts;
 	for(size_t ui=0;ui<nodes.size();ui++)
 	{
 		for(tree<Filter*>::pre_order_iterator it=nodes[ui];
-				it!=treeInst.end();it++)
+				it!=treeInst.end();++it)
 			childIts.insert(*it);
 
 	}
@@ -1104,14 +1104,30 @@ size_t FilterTree::countChildFilters(const tree<Filter *> &treeInst,
 
 
 #ifdef DEBUG
-void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> curData, 
+void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> &curData, 
 							const Filter *refreshFilter) const
 {
+
 	//Filter outputs should
 	//	- never be null pointers.
 	for(size_t ui=0; ui<curData.size(); ui++)
 	{
 		ASSERT(curData[ui]);
+	}
+
+	//Filter outputs should have a parent that exists somewhere in the tree
+	for(size_t ui=0;ui<curData.size();ui++)
+	{
+		bool found;
+		found=false;
+		for(tree<Filter * >::iterator it=filters.begin(); 
+							it!=filters.end(); ++it)
+		{
+			if(*it == curData[ui]->parent)
+				found=true;
+		}
+
+		ASSERT(found);
 	}
 
 	//Filter outputs should
@@ -1230,25 +1246,22 @@ void FilterTree::safeDeleteFilterList(
 							it!=outData.end(); ) 
 	{
 		//Note the No-op at the loop iterator. this is needed so we can safely .erase()
-		for(vector<const FilterStreamData *>::iterator itJ=(it->second).begin(); itJ!=(it->second).end(); )  
+		for(size_t ui=0;ui<it->second.size();ui++)
 		{
 			//Don't operate on streams if we have a nonzero mask, and the (mask is active XOR mask mode)
 			//NOTE: the XOR flips the action of the mask. if maskprevents is true, then this logical switch
 			//prevents the masked item from being deleted. if not, ONLY the maked types are deleted.
 			//In any case, a zero mask makes this whole thing not do anything, and everything gets deleted.
-			if(typeMask && ( ((bool)((*itJ)->getStreamType() & typeMask)) ^ !maskPrevents)) 
-			{
-				++itJ; //increment.
+			if(typeMask && ( ((bool)(it->second[ui]->getStreamType() & typeMask)) ^ !maskPrevents)) 
 				continue;
-			}
-		
-			switch((*itJ)->getStreamType())
+			
+			switch(it->second[ui]->getStreamType())
 			{
 				case STREAM_TYPE_IONS:
 				{
 					//Iterator points to vector. Typecast elements in vector to IonStreamData 
 					const IonStreamData *ionData;
-					ionData=((const IonStreamData *)(*itJ));
+					ionData=((const IonStreamData *)(it->second[ui]));
 					
 					ASSERT(ionData->cached == 1 ||
 						ionData->cached == 0);
@@ -1259,10 +1272,8 @@ void FilterTree::safeDeleteFilterList(
 				}
 				case STREAM_TYPE_PLOT:
 				{
-					
-					//Draw plot
 					const PlotStreamData *plotData;
-					plotData=((PlotStreamData *)(*itJ));
+					plotData=((PlotStreamData *)it->second[ui]);
 
 					ASSERT(plotData->cached == 1 ||
 						plotData->cached == 0);
@@ -1274,7 +1285,7 @@ void FilterTree::safeDeleteFilterList(
 				case STREAM_TYPE_DRAW:
 				{
 					DrawStreamData *drawData;
-					drawData=((DrawStreamData *)(*itJ));
+					drawData=((DrawStreamData *)it->second[ui]);
 					
 					ASSERT(drawData->cached == 1 ||
 						drawData->cached == 0);
@@ -1285,14 +1296,26 @@ void FilterTree::safeDeleteFilterList(
 				case STREAM_TYPE_RANGE:
 					//Range data has no allocated pointer
 					break;
+				case STREAM_TYPE_VOXEL:
+				{
+					//Iterator points to vector. Typecast elements in vector to VoxelStreamData 
+					const VoxelStreamData *voxelData;
+					voxelData=((const VoxelStreamData *)(it->second[ui]));
+					
+					ASSERT(voxelData->cached == 1 ||
+						voxelData->cached == 0);
 
-				
+					if(!voxelData->cached)
+						delete voxelData;
+					break;
+				}
 				default:
 					ASSERT(false);
 			}
-
-			//deleting increments.
-			itJ=it->second.erase(itJ);
+		
+	
+			std::swap((it->second[ui]),it->second.back());
+			it->second.pop_back();
 		}
 
 		//Check to see if this element still has any items in its vector. if not,
@@ -1505,7 +1528,7 @@ void FilterTree::removeSubtree(Filter *removeFilt)
 
 	//Remove element and all children
 	for(tree<Filter * >::pre_order_iterator filtIt=filters.begin();
-					filtIt!=filters.end(); filtIt++)
+					filtIt!=filters.end(); ++filtIt)
 	{
 		if(removeFilt == *filtIt)
 		{

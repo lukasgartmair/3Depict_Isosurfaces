@@ -37,11 +37,15 @@ class RangeFileFilter;
 #include "select.h"
 #include "voxels.h"
 
-//This MUST go after the other headers,
-//as there is some kind of symbol clash...
-#undef ATTRIBUTE_PRINTF
-#include <libxml/xmlreader.h>
-#undef ATTRIBUTE_PRINTF
+//ifdef inclusion as there is some kind of symbol clash...
+#ifdef ATTRIBUTE_PRINTF
+	#pragma push_macro("ATTRIBUTE_PRINTF")
+	#include <libxml/xmlreader.h>
+	#pragma pop_macro(" ATTRIBUTE_PRINTF")
+#else
+	#include <libxml/xmlreader.h>
+	#undef ATTRIBUTE_PRINTF
+#endif
 
 
 #include "wxcomponents.h"
@@ -54,10 +58,10 @@ const unsigned int IONDATA_SIZE=4;
 //!Filter types  -- must match array FILTER_NAMES
 enum
 {
-	FILTER_TYPE_POSLOAD,
+	FILTER_TYPE_DATALOAD,
 	FILTER_TYPE_IONDOWNSAMPLE,
 	FILTER_TYPE_RANGEFILE,
-	FILTER_TYPE_SPECTRUMPLOT,
+	FILTER_TYPE_SPECTRUMPLOT, 
 	FILTER_TYPE_IONCLIP,
 	FILTER_TYPE_IONCOLOURFILTER,
 	FILTER_TYPE_COMPOSITION,
@@ -181,19 +185,66 @@ class FilterStreamData
 
 };
 
-class FilterProperties 
+class FilterProperty
 {
 	public:
-		//Filter property data, one per output, each is value then name
-		std::vector<std::vector<std::pair< std::string, std::string > > > data;
-		//Data types for each single element
-		std::vector<std::vector<unsigned int>  > types;
-		
-		//!Key numbers for filter. Must be unique per set
-		std::vector<std::vector<unsigned int> > keys;
-		
+	//!Human readable short help (tooltip) for each of the keys
+	std::string helpText;
+	//!Data type for this element
+	unsigned int type;
+	//!Unique key value for this element
+	size_t key;
+	//!Property data
+	std::string data;
+	//!name of property
+	std::string name;
+
+	bool checkSelfConsistent() const;
+};
+
+class FilterPropGroup
+{
+	private:
+		//!The groupings for the keys in contained properties.
+		// First entry is the key ID, second is he group that it belongs to
+		std::vector<std::pair<unsigned int,unsigned int> > keyGroupings;
 		//!Names for each group of keys.
-		std::vector<std::string> keyNames;
+		std::vector<std::string> groupNames;
+		//!Key information
+		std::vector<FilterProperty > properties;
+		
+		size_t groupCount;
+	public:
+		FilterPropGroup() { groupCount=0;}
+		//!Add a property to a grouping
+		void addProperty(const FilterProperty &prop, size_t group);
+
+
+		//!Set the title text for a particular group
+		void setGroupTitle(size_t group, const std::string &str);
+
+		//!Obtain the title of the nth group
+		void getGroupTitle(size_t group, std::string &str) const ;
+
+		//Obtain a property by its key
+		const FilterProperty &getPropValue(size_t key) const;
+
+		//Retrieve the number of groups 
+		size_t numGroups() const { return groupCount;};
+
+		bool hasProp(size_t key) const;
+		//Get number of keys
+		size_t numProps() const { return properties.size(); }
+		//Erase all stored  information 
+		void clear() 
+			{ groupNames.clear();keyGroupings.clear(); properties.clear();
+				groupCount=0;}
+
+		//!Grab all properties from the specified group
+		void getGroup(size_t group, vector<FilterProperty> &groupVec) const;
+		//!Get the nth key
+		const FilterProperty &getNthProp(size_t nthProp) const { return properties[nthProp];};
+
 #ifdef DEBUG
 		void checkConsistent() const; 
 #endif
@@ -241,7 +292,9 @@ class PlotStreamData : public FilterStreamData
 {
 	public:
 		PlotStreamData();
-	
+
+		bool save(const char *filename) const; 
+
 		//erase plot contents	
 		void clear() {xyData.clear();};
 		//Get data size
@@ -330,10 +383,13 @@ class RangeStreamData :  public FilterStreamData
 		//Enabled ions from source filter 
 		vector<char> enabledIons;
 
+		
 		//!constructor
 		RangeStreamData();
 		//!Destructor
 		~RangeStreamData() {};
+		//!save the range data to a file
+		bool save(const char *filename, size_t format) const; 
 		//!Returns 0, as this does not store basic object types -- i.e. is not for data storage per se.
 		size_t getNumBasicObjects() const { return 0; }
 
@@ -387,6 +443,10 @@ class Filter
 				ProgressData &progress, bool (*callback)(bool)) =0;
 		//!Erase cache
 		virtual void clearCache();
+
+		//!Erase any active devices
+		virtual void clearDevices(); 
+
 		//!Get (approx) number of bytes required for cache
 		virtual size_t numBytesForCache(size_t nObjects) const =0;
 
@@ -397,15 +457,15 @@ class Filter
 		virtual std::string typeString()const =0;
 		
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
-		virtual void getProperties(FilterProperties &propertyList) const =0;
+		virtual void getProperties(FilterPropGroup &propertyList) const =0;
 
 		//!Set the properties for the nth filter, 
 		//!needUpdate tells us if filter output changes due to property set
 		//NOte that if you modify a result without clearing the cache,
 		//then any downstream decision based upon that may not be noted in an update
 		//Take care.
-		virtual bool setProperty(unsigned int set, unsigned int key,
-			       		const std::string &value, bool &needUpdate) = 0;
+		virtual bool setProperty(unsigned int key,
+			const std::string &value, bool &needUpdate) = 0;
 
 		//!Get the human readable error string associated with a particular error code during refresh(...)
 		virtual std::string getErrString(unsigned int code) const =0;
@@ -413,7 +473,7 @@ class Filter
 		//!Dump state to output stream, using specified format
 		/* Current supported formats are STATE_FORMAT_XML
 		 */
-		virtual bool writeState(std::ofstream &f, unsigned int format,
+		virtual bool writeState(std::ostream &f, unsigned int format,
 			       	unsigned int depth=0) const = 0;
 	
 		//!Read state from XML  stream, using xml format
@@ -480,7 +540,7 @@ class Filter
 		void getSelectionDevices(vector<SelectionDevice<Filter> *> &devices);
 
 
-		//!Update the output informaiton for this filter
+		//!Update the output statistics for this filter (num items of streams of each type output)
 		void updateOutputInfo(const std::vector<const FilterStreamData *> &dataOut);
 
 		//!Set the binding value for a float

@@ -596,11 +596,11 @@ void CropPanel::draw()
 	float meanX = (float)w*(crop[0] + (1.0-crop[2]))*0.5;
 	float meanY = (float)h*(crop[1] + (1.0-crop[3]))*0.5;
 
-	dc->DrawCircle(meanX,meanY,1);
+	dc->DrawCircle((int)meanX,(int)meanY,1);
 	if(selMode==SELECT_MODE_CENTRE)
 	{
 		dc->SetPen(*highPen);
-		dc->DrawCircle(meanX,meanY,4);
+		dc->DrawCircle((int)meanX,(int)meanY,4);
 	}
 
 	delete dc;

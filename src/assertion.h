@@ -20,8 +20,11 @@
 #define ASSERTION_H
 
 #ifdef DEBUG
+	#include "eventlogger.h"
 	#include <iostream>
 	#include <cstdlib>
+
+
 	void dh_assert(const char * const filename, const unsigned int lineNumber); 
 	void dh_warn(const char * const filename, const unsigned int lineNumber,
 							const char *message);
@@ -36,6 +39,8 @@
 	
 	inline void dh_assert(const char * const filename, const unsigned int lineNumber) 
 	{
+		extern EventLogger evtlog;
+		evtlog.dump();
 		std::cerr << "ASSERTION ERROR!" << std::endl;
 		std::cerr << "Filename: " << filename << std::endl;
 		std::cerr << "Line number: " << lineNumber << std::endl;
@@ -57,19 +62,20 @@
 		std::cerr << message << std::endl;
 	}
 
+	//Debug timing routines
+	#define DEBUG_TIME_START timeval TIME_DEBUG_t; gettimeofday(&TIME_DEBUG_t,NULL);
+	#define DEBUG_TIME_END timeval TIME_DEBUG_tend; gettimeofday(&TIME_DEBUG_tend,NULL); \
+		cerr << (TIME_DEBUG_tend.tv_sec - TIME_DEBUG_t.tv_sec) + ((float)TIME_DEBUG_tend.tv_usec-(float)TIME_DEBUG_t.tv_usec)/1.0e6;
+
 	//OpenGL debugging macro
-	#if DEBUG
-		#define glError() { \
-			GLenum err = glGetError(); \
-			while (err != GL_NO_ERROR) { \
-						fprintf(stderr, "glError: %s caught at %s:%u\n", (char *)gluErrorString(err), __FILE__, __LINE__); \
-						err = glGetError(); \
-					} \
-			std::cerr << "glErr Clean " << __FILE__ << ":" << __LINE__ << std::endl; \
-			}
-	#else
-		#define glError()
-	#endif
+	#define glError() { \
+		GLenum err = glGetError(); \
+		while (err != GL_NO_ERROR) { \
+					fprintf(stderr, "glError: %s caught at %s:%u\n", (char *)gluErrorString(err), __FILE__, __LINE__); \
+					err = glGetError(); \
+				} \
+		std::cerr << "glErr Clean " << __FILE__ << ":" << __LINE__ << std::endl; \
+		}
 
 	#ifndef TEST
 	#define TEST(f,g) if(!(f)) { cerr << "Test fail :" << __FILE__ << ":" << __LINE__ << "\t"<< g << endl;return false;}
@@ -85,6 +91,7 @@
 	#define ASSERT(f)
 	#define COMPILE_ASSERT(f)
 	#define WARN(f,g) 
+	#define glError()
 #endif
 
 #endif

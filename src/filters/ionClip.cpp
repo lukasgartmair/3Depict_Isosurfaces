@@ -118,8 +118,8 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 								bool (*callback)(bool))
 {
 	ASSERT(vectorParams.size() || scalarParams.size());	
-	//Clear selection devices
-	devices.clear();
+	//Clear selection devices, first deleting any we have
+	clearDevices();
 
 	if(showPrimitive)
 	{
@@ -640,21 +640,15 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 }
 
 //!Get the properties of the filter, in key-value form. First vector is for each output.
-void IonClipFilter::getProperties(FilterProperties &propertyList) const
+void IonClipFilter::getProperties(FilterPropGroup &propertyList) const
 {
 	ASSERT(vectorParams.size() || scalarParams.size());	
-	propertyList.data.clear();
-	propertyList.keys.clear();
-	propertyList.types.clear();
 
-	vector<unsigned int> type,keys;
-	vector<pair<string,string> > s;
-
-
-	string str;
+	FilterProperty p;
+	
+	size_t curGroup=0; 
 	//Let the user know what the valid values for Primitive type
-	string tmpChoice,tmpStr;
-
+	string tmpStr;
 
 	vector<pair<unsigned int,string> > choices;
 
@@ -668,19 +662,28 @@ void IonClipFilter::getProperties(FilterProperties &propertyList) const
 				primitiveStringFromID(PRIMITIVE_AAB)));
 
 	tmpStr= choiceString(choices,primitiveType);
-	s.push_back(make_pair(string(TRANS("Primitive")),tmpStr));
-	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_PRIMITIVE_TYPE);
+	p.name=TRANS("Primitive");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Shape of clipping object");
+	p.key=KEY_PRIMITIVE_TYPE;
+	propertyList.addProperty(p,curGroup);
 	
-	stream_cast(str,showPrimitive);
-	keys.push_back(KEY_PRIMITIVE_SHOW);
-	s.push_back(make_pair(TRANS("Show Primitive"), str));
-	type.push_back(PROPERTY_TYPE_BOOL);
+	stream_cast(tmpStr,showPrimitive);
+	p.key=KEY_PRIMITIVE_SHOW;
+	p.name=TRANS("Show Primitive");
+	p.data= tmpStr;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Display the 3D interaction object");
+	propertyList.addProperty(p,curGroup);
 	
-	stream_cast(str,invertedClip);
-	keys.push_back(KEY_PRIMITIVE_INVERTCLIP);
-	s.push_back(make_pair(TRANS("Invert Clip"), str));
-	type.push_back(PROPERTY_TYPE_BOOL);
+	stream_cast(tmpStr,invertedClip);
+	p.key=KEY_PRIMITIVE_INVERTCLIP;
+	p.name=TRANS("Invert Clip");
+	p.data= tmpStr;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Switch between retaining points inside (false) and outside (true) of primitive");
+	propertyList.addProperty(p,curGroup);
 
 	switch(primitiveType)
 	{
@@ -688,15 +691,21 @@ void IonClipFilter::getProperties(FilterProperties &propertyList) const
 		{
 			ASSERT(vectorParams.size() == 1);
 			ASSERT(scalarParams.size() == 1);
-			stream_cast(str,vectorParams[0]);
-			keys.push_back(KEY_ORIGIN);
-			s.push_back(make_pair(TRANS("Origin"), str));
-			type.push_back(PROPERTY_TYPE_POINT3D);
+			stream_cast(tmpStr,vectorParams[0]);
+			p.key=KEY_ORIGIN;
+			p.name=TRANS("Origin");
+			p.data= tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.helpText=TRANS("Position for centre of sphere");
+			propertyList.addProperty(p,curGroup);
 			
-			stream_cast(str,scalarParams[0]);
-			keys.push_back(KEY_RADIUS);
-			s.push_back(make_pair(TRANS("Radius"), str));
-			type.push_back(PROPERTY_TYPE_REAL);
+			stream_cast(tmpStr,scalarParams[0]);
+			p.key=KEY_RADIUS;
+			p.name=TRANS("Radius");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_REAL;
+			p.helpText=TRANS("Radius of sphere");
+			propertyList.addProperty(p,curGroup);
 
 			break;
 		}
@@ -704,15 +713,21 @@ void IonClipFilter::getProperties(FilterProperties &propertyList) const
 		{
 			ASSERT(vectorParams.size() == 2);
 			ASSERT(scalarParams.size() == 0);
-			stream_cast(str,vectorParams[0]);
-			keys.push_back(KEY_ORIGIN);
-			s.push_back(make_pair(TRANS("Origin"), str));
-			type.push_back(PROPERTY_TYPE_POINT3D);
+			stream_cast(tmpStr,vectorParams[0]);
+			p.key=KEY_ORIGIN;
+			p.name=TRANS("Origin");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.helpText=TRANS("Position that plane passes through");
+			propertyList.addProperty(p,curGroup);
 			
-			stream_cast(str,vectorParams[1]);
-			keys.push_back(KEY_NORMAL);
-			s.push_back(make_pair(TRANS("Plane Normal"), str));
-			type.push_back(PROPERTY_TYPE_POINT3D);
+			stream_cast(tmpStr,vectorParams[1]);
+			p.key=KEY_NORMAL;
+			p.name=TRANS("Plane Normal");
+			p.data= tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.helpText=TRANS("Perpendicular direction for plane");
+			propertyList.addProperty(p,curGroup);
 
 			break;
 		}
@@ -720,65 +735,75 @@ void IonClipFilter::getProperties(FilterProperties &propertyList) const
 		{
 			ASSERT(vectorParams.size() == 2);
 			ASSERT(scalarParams.size() == 1);
-			stream_cast(str,vectorParams[0]);
-			keys.push_back(KEY_ORIGIN);
-			s.push_back(make_pair(TRANS("Origin"), str));
-			type.push_back(PROPERTY_TYPE_POINT3D);
+			stream_cast(tmpStr,vectorParams[0]);
+			p.key=KEY_ORIGIN;
+			p.name=TRANS("Origin");
+			p.data= tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.helpText=TRANS("Centre of cylinder");
+			propertyList.addProperty(p,curGroup);
 			
-			stream_cast(str,vectorParams[1]);
-			keys.push_back(KEY_NORMAL);
-			s.push_back(make_pair(TRANS("Axis"), str));
-			type.push_back(PROPERTY_TYPE_POINT3D);
+			stream_cast(tmpStr,vectorParams[1]);
+			p.key=KEY_NORMAL;
+			p.name=TRANS("Axis");
+			p.data= tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.helpText=TRANS("Positive vector for cylinder");
+			propertyList.addProperty(p,curGroup);
 			
 			if(lockAxisMag)
-				str="1";
+				tmpStr="1";
 			else
-				str="0";
-			keys.push_back(KEY_AXIS_LOCKMAG);
-			s.push_back(make_pair(TRANS("Lock Axis Mag."), str));
-			type.push_back(PROPERTY_TYPE_BOOL);
+				tmpStr="0";
+			p.key=KEY_AXIS_LOCKMAG;
+			p.name=TRANS("Lock Axis Mag.");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Prevent changing length of cylinder during 3D interaction");
+			propertyList.addProperty(p,curGroup);
 
-			stream_cast(str,scalarParams[0]);
-			keys.push_back(KEY_RADIUS);
-			s.push_back(make_pair(TRANS("Radius"), str));
-			type.push_back(PROPERTY_TYPE_POINT3D);
+			stream_cast(tmpStr,scalarParams[0]);
+			p.key=KEY_RADIUS;
+			p.name=TRANS("Radius");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.helpText=TRANS("Radius of cylinder");
+			propertyList.addProperty(p,curGroup);
 			break;
 		}
 		case PRIMITIVE_AAB:
 		{
 			ASSERT(vectorParams.size() == 2);
 			ASSERT(scalarParams.size() == 0);
-			stream_cast(str,vectorParams[0]);
-			keys.push_back(KEY_ORIGIN);
-			s.push_back(make_pair(TRANS("Origin"), str));
-			type.push_back(PROPERTY_TYPE_POINT3D);
+			stream_cast(tmpStr,vectorParams[0]);
+			p.key=KEY_ORIGIN;
+			p.name=TRANS("Origin");
+			p.data= tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.helpText=TRANS("Centre of axis aligned box");
+			propertyList.addProperty(p,curGroup);
 			
-			stream_cast(str,vectorParams[1]);
-			keys.push_back(KEY_CORNER);
-			s.push_back(make_pair(TRANS("Corner offset"), str));
-			type.push_back(PROPERTY_TYPE_POINT3D);
+			stream_cast(tmpStr,vectorParams[1]);
+			p.key=KEY_CORNER;
+			p.name=TRANS("Corner offset");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_POINT3D;
+			p.helpText=TRANS("Vector to corner of box");
+			propertyList.addProperty(p,curGroup);
 			break;
 		}
 		default:
 			ASSERT(false);
 	}
 	
-	
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
-
-	ASSERT(keys.size() == type.size());	
 }
 
 //!Set the properties for the nth filter. Returns true if prop set OK
-bool IonClipFilter::setProperty(unsigned int set,unsigned int key, 
+bool IonClipFilter::setProperty(unsigned int key, 
 				const std::string &value, bool &needUpdate)
 {
 
 	needUpdate=false;
-	ASSERT(set == 0);
-
 	switch(key)
 	{
 		case KEY_PRIMITIVE_TYPE:
@@ -1023,14 +1048,14 @@ std::string IonClipFilter::getErrString(unsigned int code) const
 	switch(code)
 	{
 		case BAD_ALLOC:
-			return std::string(TRANS("Insufficient memory for clip"));
+			return std::string("Insufficient mem. for Ionclip");
 		case CALLBACK_FAIL:
-			return std::string(TRANS("Clip Aborted"));
+			return std::string("Ionclip Aborted");
 	}
 	ASSERT(false);
 }
 
-bool IonClipFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+bool IonClipFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -1361,18 +1386,18 @@ bool sphereTest()
 	f->setCaching(false);
 	
 	bool needUp; std::string s;
-	f->setProperty(0,KEY_PRIMITIVE_TYPE,
+	f->setProperty(KEY_PRIMITIVE_TYPE,
 		primitiveStringFromID(PRIMITIVE_SPHERE),needUp);
 
 	Point3D pOrigin((float)span[0]/2,(float)span[1]/2,(float)span[2]/2);
 	stream_cast(s,pOrigin);
-	f->setProperty(0,KEY_ORIGIN,s,needUp);
+	f->setProperty(KEY_ORIGIN,s,needUp);
 
 	const float TEST_RADIUS=1.2f;
 	stream_cast(s,TEST_RADIUS);
-	f->setProperty(0,KEY_RADIUS,s,needUp);
+	f->setProperty(KEY_RADIUS,s,needUp);
 	
-	f->setProperty(0,KEY_PRIMITIVE_SHOW,"0",needUp);
+	f->setProperty(KEY_PRIMITIVE_SHOW,"0",needUp);
 
 	//Do the refresh
 	ProgressData p;
@@ -1418,18 +1443,18 @@ bool planeTest()
 	f->setCaching(false);
 	
 	bool needUp; std::string s;
-	f->setProperty(0,KEY_PRIMITIVE_TYPE,
+	f->setProperty(KEY_PRIMITIVE_TYPE,
 		primitiveStringFromID(PRIMITIVE_PLANE),needUp);
 
 	Point3D pOrigin((float)span[0]/2,(float)span[1]/2,(float)span[2]/2);
 	stream_cast(s,pOrigin);
-	f->setProperty(0,KEY_ORIGIN,s,needUp);
+	f->setProperty(KEY_ORIGIN,s,needUp);
 
 	Point3D pPlaneDir(1,2,3);
 	stream_cast(s,pPlaneDir);
-	f->setProperty(0,KEY_NORMAL,s,needUp);
+	f->setProperty(KEY_NORMAL,s,needUp);
 
-	f->setProperty(0,KEY_PRIMITIVE_SHOW,"0",needUp);
+	f->setProperty(KEY_PRIMITIVE_SHOW,"0",needUp);
 
 	//Do the refresh
 	ProgressData p;
@@ -1469,20 +1494,20 @@ bool cylinderTest(const Point3D &pAxis, const unsigned int *span, float testRadi
 	f->setCaching(false);
 
 	bool needUp; std::string s;
-	f->setProperty(0,KEY_PRIMITIVE_TYPE,
+	f->setProperty(KEY_PRIMITIVE_TYPE,
 		primitiveStringFromID(PRIMITIVE_CYLINDER),needUp);
 
 	Point3D pOrigin((float)span[0]/2,(float)span[1]/2,(float)span[2]/2);
 	stream_cast(s,pOrigin);
-	f->setProperty(0,KEY_ORIGIN,s,needUp);
+	f->setProperty(KEY_ORIGIN,s,needUp);
 
 	stream_cast(s,pAxis);
-	f->setProperty(0,KEY_NORMAL,s,needUp);
+	f->setProperty(KEY_NORMAL,s,needUp);
 
 	stream_cast(s,testRadius);
-	f->setProperty(0,KEY_RADIUS,s,needUp);
+	f->setProperty(KEY_RADIUS,s,needUp);
 
-	f->setProperty(0,KEY_PRIMITIVE_SHOW,"0",needUp);
+	f->setProperty(KEY_PRIMITIVE_SHOW,"0",needUp);
 	//Do the refresh
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
@@ -1541,20 +1566,20 @@ bool rectTest()
 	f->setCaching(false);
 	
 	bool needUp; std::string s;
-	f->setProperty(0,KEY_PRIMITIVE_TYPE,
+	f->setProperty(KEY_PRIMITIVE_TYPE,
 		primitiveStringFromID(PRIMITIVE_AAB),needUp);
-	f->setProperty(0,KEY_PRIMITIVE_SHOW,"0",needUp);
-	f->setProperty(0,KEY_PRIMITIVE_INVERTCLIP,"0",needUp);
+	f->setProperty(KEY_PRIMITIVE_SHOW,"0",needUp);
+	f->setProperty(KEY_PRIMITIVE_INVERTCLIP,"0",needUp);
 
 	Point3D pOrigin(span[0],span[1],span[2]);
 	pOrigin*=0.25f;
 	stream_cast(s,pOrigin);
-	f->setProperty(0,KEY_ORIGIN,s,needUp);
+	f->setProperty(KEY_ORIGIN,s,needUp);
 		
 	Point3D pCorner(span[0],span[1],span[2]);
 	pCorner*=0.25f;
 	stream_cast(s,pCorner);
-	f->setProperty(0,KEY_CORNER,s,needUp);
+	f->setProperty(KEY_CORNER,s,needUp);
 
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");

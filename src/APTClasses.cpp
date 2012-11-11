@@ -348,93 +348,103 @@ bool decomposeIonNames(const std::string &name,
 // is a match in the map of composed names
 bool matchComposedName(const std::map<string,size_t> &composedNames,
 	       
-		const vector<pair<string,size_t> > &nameFreq, size_t &offset)
+		const vector<pair<string,size_t> > &namesToFind, size_t &matchOffset)
 {
-	std::map<size_t,size_t> offsetMap;
+	//Decomposition of composed names. 
 	std::vector<vector<pair<string,size_t> > > fragmentVec;
 
+	//break each composed name into a vector of decomposed fragments
+	// and the multiplicity
+	//of that fragment (eg, AuHg2 would become  { Au ,1} {Hg,2})
 	fragmentVec.reserve(composedNames.size());
 	for(std::map<string,size_t>::const_iterator it=composedNames.begin();
-			it!=composedNames.end();it++)
+			it!=composedNames.end();++it)
 	{
 		vector<pair<string,size_t> > frags;
 		if(!decomposeIonNames(it->first,frags))
 			frags.clear();
-	
-		offsetMap[fragmentVec.size()] = it->second; 	
+
+			
 		fragmentVec.push_back(frags);
-
-
 
 		frags.clear();
 	}
 
 
-	//Try to match each group of fragments (name-frequency pairings) 
-	//from the fragments of the decomposed composed names (fragmentVec entries)
-	//against the "master" list of possible fragments, nameFreq
+	//Try to match all fragments in "namesToFind" (name-frequency pairings) 
+	//in the master list of fragments of 
+	// which consists of the decomposed composed names (fragmentVec entries)
 
 	//If the decomposed fragments wholly constitute the
 	//master list, then thats good, and we have a match.
-	//Note that the master list will not neccesarily be in
+	//Note that the master list will not necessarily be in
 	//the same order as the fragment list
-
 	//match tally for fragments
 	
 
-	vector<int> validFragments;
+	vector<bool> excludedMatch;
+	excludedMatch.resize(fragmentVec.size(),false);
 
-	std::set<pair<size_t,size_t> > usedFragments;
-
-	validFragments.resize(fragmentVec.size(),1);
-	for(size_t ui=0;ui<nameFreq.size();ui++)
+	for(size_t uj=0;uj<namesToFind.size();uj++)
 	{
-		for(size_t uj=0;uj<fragmentVec.size();uj++)
+		pair<string,size_t> curFrag;
+		curFrag=namesToFind[uj];
+		for(size_t ui=0;ui<fragmentVec.size();ui++)
 		{
-			size_t curOffset=(size_t)-1;
-			for(size_t uk=0;uk<fragmentVec[uj].size();uk++)
-			{
-				pair<size_t,size_t> fragmentOff;
-				fragmentOff=make_pair(uj,uk);
-		
-				//Skip over used fragments	
-				if(std::find(usedFragments.begin(),usedFragments.end(),fragmentOff)
-					!= usedFragments.end())
-					continue;
+			//Was disqualified from matching before
+			if(excludedMatch[ui])
+				continue;
 
-				if(nameFreq[ui] == fragmentVec[uj][uk])
+			//If we cannot find this particular fragment, then 
+			// this is excluded from future searches
+			if(std::find(fragmentVec[ui].begin(),
+				fragmentVec[ui].end(),curFrag) == fragmentVec[ui].end())
+				excludedMatch[ui]=true;
+		}
+	}
+	//-------
+
+	//Scan through the candidate matches to find if there is
+	// a single unique candidate
+	matchOffset=-1;
+	for(size_t ui=0;ui<fragmentVec.size();ui++)
+	{
+		if(!excludedMatch[ui])
+		{
+			//Check for bijection in the mapping. Currently
+			// we know that fragmentVec is a superset of 
+			// namesToFind, but we don't know it matches -
+			// it could exceed it, for example.
+			bool doesMatch=true;
+			for(size_t uj=0;uj<fragmentVec[ui].size();uj++)
+			{
+				if(std::find(namesToFind.begin(),
+					namesToFind.end(),fragmentVec[ui][uj]) ==
+							namesToFind.end())
 				{
-					curOffset = uk;
-					usedFragments.insert(make_pair(uj,uk));
+					doesMatch=false;
 					break;
+
 				}
 			}
 
-			if(curOffset == (size_t)-1)
+			//Duplicate match
+			if(doesMatch)
 			{
-				validFragments[uj]=false;
+				if(matchOffset !=(size_t)-1)
+					return false;
+				else
+				{
+					//OK, we found a match.
+					matchOffset=ui;
+				}
 			}
-		}
 
-	}
-
-	bool haveMatch=false;
-
-	for(size_t ui=0;ui<validFragments.size();ui++)
-	{
-		if(validFragments[ui])
-		{
-			if(!haveMatch)
-			{
-				offset=offsetMap.at(ui);
-				haveMatch=true;
-			}
-			else
-				return false; //non-unique match
 		}
 	}
 
-	return haveMatch;
+	//Return OK, iff we have exactly one match
+	return (matchOffset !=(size_t) - 1);
 }
 
 unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumcols, unsigned int index[], vector<IonHit> &posIons,const char *posFile, size_t limitCount,
@@ -1128,59 +1138,134 @@ RangeFile::RangeFile() : errState(0)
 {
 }
 
-unsigned int RangeFile::write(std::ostream &f) const
+unsigned int RangeFile::write(std::ostream &f, size_t format) const
 {
 
+	using std::endl;
 	ASSERT(colours.size() == ionNames.size());
 
-	//File header
-	f << ionNames.size() << " " ; 
-	f << ranges.size() << std::endl;
-
-	//Colour and longname data
-	for(unsigned int ui=0;ui<ionNames.size() ; ui++)
+	switch(format)
 	{
-		f << ionNames[ui].second<< std::endl;
-		f << ionNames[ui].first << " " << colours[ui].red << " " << colours[ui].green << " " << colours[ui].blue << std::endl;
-
-	}	
-
-	//Construct the table header
-	f<< "-------------";
-	for(unsigned int ui=0;ui<ionNames.size() ; ui++)
-	{
-		f << " " << ionNames[ui].first;
-	}
-
-	f << std::endl;
-	//Construct the range table
-	for(unsigned int ui=0;ui<ranges.size() ; ui++)
-	{
-		f << ". " << ranges[ui].first << " " << ranges[ui].second ;
-
-		//Now put the "1" in the correct column
-		for(unsigned int uj=0;uj<ionNames.size(); uj++)
+		case RANGE_FORMAT_ORNL:
 		{
-			if(uj == ionIDs[ui])
-				f << " " << 1;
-			else
-				f << " " << 0;
+			//File header
+			f << ionNames.size() << " " ; 
+			f << ranges.size() << std::endl;
+
+			//Colour and longname data
+			for(unsigned int ui=0;ui<ionNames.size() ; ui++)
+			{
+				f << ionNames[ui].second<< std::endl;
+				f << ionNames[ui].first << " " << colours[ui].red << " " << colours[ui].green << " " << colours[ui].blue << std::endl;
+
+			}	
+
+			//Construct the table header
+			f<< "-------------";
+			for(unsigned int ui=0;ui<ionNames.size() ; ui++)
+			{
+				f << " " << ionNames[ui].first;
+			}
+
+			f << std::endl;
+			//Construct the range table
+			for(unsigned int ui=0;ui<ranges.size() ; ui++)
+			{
+				f << ". " << ranges[ui].first << " " << ranges[ui].second ;
+
+				//Now put the "1" in the correct column
+				for(unsigned int uj=0;uj<ionNames.size(); uj++)
+				{
+					if(uj == ionIDs[ui])
+						f << " " << 1;
+					else
+						f << " " << 0;
+				}
+
+				f << std::endl;
+				
+			}
+			break;
 		}
+		case RANGE_FORMAT_ENV:
+		{
+			//Comment indicating it came from this program
+			f << "#" << PROGRAM_NAME << " " << PROGRAM_VERSION <<std::endl;
+			
+			//File header
+			f << ionNames.size() << " " ; 
+			f << ranges.size() << std::endl;
 
-		f << std::endl;
+			//Colour and name data
+			for(unsigned int ui=0;ui<ionNames.size() ; ui++)
+			{
+				f << ionNames[ui].first << " " << colours[ui].red << " " << colours[ui].green << " " << colours[ui].blue << std::endl;
+			}	
+			//Construct the range table
+			for(unsigned int ui=0;ui<ranges.size() ; ui++)
+			{
+				f << ionNames[ionIDs[ui]].first << " " << ranges[ui].first 
+					<< " " << ranges[ui].second << "    1.0 1.0" << std::endl;
+			}
+	
+			break;
+		}
+		case RANGE_FORMAT_RRNG:
+		{
+			f << "[Ions]" << endl;
+			f << "Number=" << ionNames.size() << endl;
+			
+			for(size_t ui=0;ui<ionNames.size();ui++)
+			{
+				f << "Ion" << ui+1 <<"=" << ionNames[ui].first << endl;
+			}
 		
-	}
+			f << "[Ranges] " << endl;
+			f << "Number=" << ranges.size() << endl;
+			for(size_t ui=0;ui<ranges.size();ui++)
+			{
+				std::string colString;
+				genColString((unsigned char)colours[ui].red*255,
+					(unsigned char)colours[ui].green*255,
+					(unsigned char)colours[ui].blue*255,colString);
 
+				//strip leading #
+				colString=colString.substr(1);
+				ASSERT(colString.size() == 6);
+
+				f << "Range" << ui+1 <<"=" 
+				<< ranges[ui].first << " " << ranges[ui].second <<
+				" " << ionNames[ionIDs[ui]].first<< ":1" << 
+				" Color:" << colString << endl;
+			}
+
+			break;
+		}
+		
+		default:
+			ASSERT(false);
+	}
 	return 0;
 }
 
-unsigned int RangeFile::write(const char *filename) const
+unsigned int RangeFile::write(const char *filename,size_t format) const
 {
 	std::ofstream f(filename);
 	if(!f)
 		return 1;
 
-	return write(f);
+	return write(f,format);
+}
+
+void RangeFile::clear()
+{
+	ionIDs.clear();
+	warnMessages.clear();
+	ionNames.clear();
+	colours.clear();
+	ranges.clear();
+	
+	errState=0;
 }
 
 unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
@@ -1193,6 +1278,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 		return errState;
 	}
 
+
 	//switch to "C" style decimal notation (english),
 	//as needed
 	char *oldLocale=setlocale(LC_NUMERIC,NULL);
@@ -1203,1163 +1289,26 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 	if(strcmp(oldLocale,"C"))
 		setlocale(LC_NUMERIC,"C");	
 		
-	//TODO: This needs to be broken apart into several functions.
-	// it is far too unwieldy to be a single switch statemet
+	size_t errCode;
 	switch(fileFormat)
 	{
-		//Oak-Ridge "Format" - this is based purely on example, as no standard exists
-		//the classic example is from Miller, "Atom probe: Analysis at the atomic scale"
-		//but alternate output forms exist. Our only strategy is to try to be as acoommodating
-		//as reasonably possible
 		case RANGE_FORMAT_ORNL:
 		{
-			char inBuffer[256];
-			unsigned int tempInt;
-
-			unsigned int numRanges;
-			unsigned int numIons;	
-			
-			
-			//Read out the number of ions and ranges int hef ile	
-			if(fscanf(fpRange, "%64u %64u", &numIons, &numRanges) != 2)
-			{
-				errState=RANGE_ERR_FORMAT_HEADER;
-				fclose(fpRange);
-				if(strcmp(oldLocale,"C"))
-					setlocale(LC_NUMERIC,oldLocale);
-				free(oldLocale);
-				return errState;
-			}
-			
-			if (!(numIons && numRanges))
-			{
-				errState= RANGE_ERR_EMPTY;
-				fclose(fpRange);
-				if(strcmp(oldLocale,"C"))
-					setlocale(LC_NUMERIC,oldLocale);
-				free(oldLocale);
-				return errState;
-			}
-			
-			//Reserve Storage
-			ionNames.reserve(numIons);
-			colours.reserve(numIons);
-			ranges.reserve(numRanges);
-			ionIDs.reserve(numRanges);
-			
-			RGBf colourStruct;
-			pair<string, string> namePair;
-			
-			//Read ion short and full names as well as colour info
-			for(unsigned int i=0; i<numIons; i++)
-			{
-				//Spin until we get to a new line. 
-				//Certain programs emit range files that have
-				//some string of unknown purpose
-				//after the colour specification
-				if(fpeek(fpRange)== ' ')
-				{
-					int peekVal;
-					//Gobble chars until we hit the newline
-					do
-					{
-						fgetc(fpRange);
-						peekVal=fpeek(fpRange);
-					}
-					while(peekVal != (int)'\n'&&
-					    	peekVal !=(int)'\r' && peekVal != EOF);
-
-					//eat another char if we are using 
-					//windows newlines
-					if(peekVal== '\r')
-						fgetc(fpRange);
-				}
-				//Read the input for long name (max 255 chars)
-				if(!fscanf(fpRange, " %255s", inBuffer))
-				{
-					errState=RANGE_ERR_FORMAT_LONGNAME;
-					fclose(fpRange);
-					if(strcmp(oldLocale,"C"))
-						setlocale(LC_NUMERIC,oldLocale);
-					free(oldLocale);
-					return errState;
-				}
-					
-				namePair.second = inBuffer;
-
-
-				//Read short name
-				if(!fscanf(fpRange, " %255s", inBuffer))
-				{
-					errState=RANGE_ERR_FORMAT_SHORTNAME;
-					fclose(fpRange);
-					if(strcmp(oldLocale,"C"))
-						setlocale(LC_NUMERIC,oldLocale);
-					free(oldLocale);
-					return errState;
-				}
-				
-				namePair.first= inBuffer;
-				//Read Red green blue data
-				if(!fscanf(fpRange,"%128f %128f %128f",&(colourStruct.red),
-					&(colourStruct.green),&(colourStruct.blue)))
-				{
-					errState=RANGE_ERR_FORMAT_COLOUR;
-					fclose(fpRange);
-					if(strcmp(oldLocale,"C"))
-						setlocale(LC_NUMERIC,oldLocale);
-					free(oldLocale);
-					return errState;
-				}
-				
-				ionNames.push_back(namePair);	
-				colours.push_back(colourStruct);	
-			}	
-			
-			fgets((char *)inBuffer, 256, fpRange); /* skip over <LF> */
-			fgets((char *)inBuffer, 256, fpRange); /* skip the comment line */
-
-
-			//We should be at the line which has lots of dashes
-			if(inBuffer[0] != '-')
-			{
-				errState=RANGE_ERR_FORMAT_TABLESEPARATOR;
-				fclose(fpRange);
-				if(strcmp(oldLocale,"C"))
-					setlocale(LC_NUMERIC,oldLocale);
-				free(oldLocale);
-				return errState;
-			}
-
-			vector<unsigned int > frequencyEntries;
-			frequencyEntries.clear();
-			frequencyEntries.resize(numRanges*numIons,0);
-			//Load in each range file line
-			tempInt=0;
-			pair<float,float> massPair;
-			for(unsigned int i=0; i<numRanges; i++)
-			{
-				//Read dummy chars until we hit a digit
-				char peekVal;
-				peekVal=fpeek(fpRange);
-				while((peekVal< '0' || peekVal > '9'))
-				{
-					fgetc(fpRange);
-					if(feof(fpRange))
-					{
-						errState=RANGE_ERR_FORMAT_RANGE_DUMMYCHARS;
-						fclose(fpRange);
-						if(strcmp(oldLocale,"C"))
-							setlocale(LC_NUMERIC,oldLocale);
-						free(oldLocale);
-						return errState;
-					}
-				
-					peekVal=fpeek(fpRange);
-
-				}
-				if(!fscanf(fpRange, "%128f %128f",&massPair.first, 
-							&massPair.second))
-				{
-					errState=RANGE_ERR_FORMAT_MASS_PAIR;
-					fclose(fpRange);
-					if(strcmp(oldLocale,"C"))
-						setlocale(LC_NUMERIC,oldLocale);
-					free(oldLocale);
-					return errState;
-				}
-
-				if(massPair.first >= massPair.second)
-				{
-					errState=RANGE_ERR_DATA_FLIPPED;
-					fclose(fpRange);
-					if(strcmp(oldLocale,"C"))
-						setlocale(LC_NUMERIC,oldLocale);
-					free(oldLocale);
-					return errState;
-				}
-
-				ranges.push_back(massPair);	
-				//Load the range data line
-
-				for(unsigned int j=0; j<numIons; j++)
-				{
-					if(!fscanf(fpRange, "%64u",&tempInt))
-					{
-						errState=RANGE_ERR_FORMAT_TABLE_ENTRY;
-						fclose(fpRange);
-						if(strcmp(oldLocale,"C"))
-							setlocale(LC_NUMERIC,oldLocale);
-						free(oldLocale);
-						return errState;
-					}
-					
-					
-					if(tempInt)
-						frequencyEntries[numIons*i + j]=tempInt;
-					
-				}
-
-			}
-			
-			//Do some post-processing on the range table
-			//
-			//Prevent rangefiles that have no valid ranges
-			//from being loaded
-			size_t nMax=std::accumulate(frequencyEntries.begin(),frequencyEntries.end(),0);
-			if(!nMax)
-			{
-				errState=RANGE_ERR_DATA_TOO_MANY_USELESS_RANGES;
-				fclose(fpRange);
-
-				if(strcmp(oldLocale,"C"))
-					setlocale(LC_NUMERIC,oldLocale);
-				free(oldLocale);
-				return errState;
-
-			}
-
-
-			//Because of a certain software's output
-			//it can generate a range listing like this (table +example colour line only)
-			//
-			// these are invalid according to white book
-			//  and the "Atom Probe Microscopy", (Springer series in Materials Science
-			//   vol. 160) descriptions
-			//
-			// Cu2 1.0 1.0 1.0 (Cu2)
-			// ------------Cu Ni Mg Si CuNi4 Mg3Si2 Cu2
-			// . 12.3 23.5 1 4 0 0 0 0 0
-			// . 32.1 43.2 0 0 3 2 0 0 0
-			// . 56.7 89.0 2 0 0 0 0 0 0
-			//
-			// which we get blamed for not supporting :(
-			//
-			//So, we have to scan the lists of ions, and create
-			//tentative "combined" ion names, from the list of ions at the top.
-			//
-			//However, this violates the naming system in the "white book" (Miller, Atom probe: Analysis at the atomic scale)
-			// scheme, which might allow something like
-			// U235U238
-			// as a single range representing a single ion. So they bastardise it by placing the zero columns
-			// as a hint marker. Technically speaking, the zero column entries should not exist
-			// in the format - as they would correspond to a non-existant species (or rather, an unreferenced species).
-			// To check the case of certain programs using cluster ions like this, we have to engage in some
-			// hacky-heuristics, check for 
-			// 	- Columns with only zero entries, 
-			// 	- which have combined numerical headers
-			//
-			// 	Then handle this as a separate case. FFS.
-
-			//-- Build a sparse vector of composed ions
-			std::map<string,size_t> composeMap;
-
-			for(size_t uj=0;uj<numIons;uj++)
-			{
-				bool maybeComposed;
-				maybeComposed=true;
-				for(size_t ui=0; ui<numRanges;ui++)
-				{
-					//Scan through the range listing to try to
-					//find a non-zero entries
-					if(frequencyEntries[numIons*ui + uj])
-					{
-						maybeComposed=false;
-						break;
-					}
-				}
-
-				//If the ion has a column full of zeroes, and
-				//the ion looks like its composable, then
-				//decompose it for later references
-				if(maybeComposed)
-					composeMap.insert(make_pair(ionNames[uj].first,uj));
-			}
-			//--
-
-
-			//Loop through each range's freq table entries, to determine if
-			// the ion is composed (has more than one "1" in multiplicity listing)
-			for(size_t ui=0;ui<numRanges;ui++)
-			{
-				std::map<size_t,size_t > freqEntries;
-				size_t freq;
-
-				freqEntries.clear();
-				freq=0;
-				for(size_t uj=0;uj<numIons;uj++)
-				{
-					size_t thisEntry;
-					thisEntry=frequencyEntries[numIons*ui+uj];
-					freq+=thisEntry;
-					if(thisEntry)
-						freqEntries.insert(make_pair(uj,thisEntry));
-				}
-
-				if(freq ==1)
-				{
-					//Simple case - we only had a single [1] in
-					//a row for the 
-					ASSERT(freqEntries.size() == 1);
-					ionIDs.push_back( freqEntries.begin()->first);
-				}
-				else if (freq > 1)
-				{
-					//More complex case
-					// ion appears to be composed of multiple fragments.
-					//First entry is the ion name, second is the number of times it occurs 
-					// (ie value in freq table, on this range line)
-					vector<pair<string,size_t> > entries;
-
-					for(map<size_t,size_t>::iterator it=freqEntries.begin();it!=freqEntries.end();++it)
-						entries.push_back(make_pair(ionNames[it->first].first,it->second));
-
-					//try to match the composed name to the
-					size_t offset;
-					if(!matchComposedName(composeMap,entries,offset))
-					{
-						//We failed to match the ion against a composed name.
-						// cannot deal with this case.
-						//
-						// we can't just build a new ion name,
-						// as we don't have a colour specification for this.
-						//
-						// We can't use the regular ion name, without 
-						// tracking multiplicity (and then what to do with it in every case - 
-						// seems only a special case for composition? eg. 
-						// Is it a sep. species when clustering? Who knows!)
-						errState=RANGE_ERR_DATA_NOMAPPED_IONNAME;
-						fclose(fpRange);
-
-						if(strcmp(oldLocale,"C"))
-							setlocale(LC_NUMERIC,oldLocale);
-						free(oldLocale);
-						return errState;
-					}
-
-
-
-
-					ASSERT(offset < ionNames.size());
-					ionIDs.push_back( offset);
-				}
-				else //0
-				{
-					//Range was useless - had no nonzero values
-					//in frequency table.
-					//Set to bad ionID - we will kill this later.
-					ionIDs.push_back(-1);
-				}
-			}
-
-			//Loop through any ranges with a bad ionID (== -1), then delete them by popping
-			for(size_t ui=0;ui<ionIDs.size();ui++)
-			{
-				if(ionIDs[ui] == (size_t)-1)
-				{
-					std::swap(ranges[ui],ranges.back());
-					ranges.pop_back();
-
-					std::swap(ionIDs[ui],ionIDs.back());
-					ionIDs.pop_back();
-				}
-			}
-		
-			break;	
+			errCode=openRNG(fpRange);
+			break;
 		}
 		//Cameca "ENV" file format.. I have a couple of examples, but nothing more.
 		//There is no specification of this format publicly available
 		case RANGE_FORMAT_ENV:
 		{
-			//Ruoen group "environment file" format
-			//This is not a standard file format, so the
-			//reader is a best-effort implementation, based upon example
-			const unsigned int MAX_LINE_SIZE=4096;	
-			char *inBuffer = new char[MAX_LINE_SIZE];
-			unsigned int numRanges;
-			unsigned int numIons;	
-
-			bool beyondRanges=false;
-			bool haveNumRanges=false;	
-			bool haveNameBlock=false;	
-			vector<string> strVec;
-
-			//Read file until we get beyond the range length
-			while(!beyondRanges && !feof(fpRange) )
-			{
-				fgets((char *)inBuffer, MAX_LINE_SIZE, fpRange);
-				//Trick to "strip" the buffer
-				nullifyMarker(inBuffer,'#');
-
-				string s;
-				s=inBuffer;
-
-				s=stripWhite(s);
-
-				if(!s.size())
-					continue;
-
-				//Try different delimiters to split string
-				splitStrsRef(s.c_str(),"\t ",strVec);
-			
-				stripZeroEntries(strVec);
-
-				if(strVec.empty())
-					continue;
-
-				if(!haveNumRanges)
-				{
-					//num ranges should have two entries, num ions and ranges
-					if(strVec.size() != 2)
-					{
-						fclose(fpRange);
-						delete[] inBuffer;
-						if(strcmp(oldLocale,"C"))
-							setlocale(LC_NUMERIC,oldLocale);
-						free(oldLocale);
-						return RANGE_ERR_FORMAT;
-					}
-
-					if(stream_cast(numIons,strVec[0]))
-					{
-						fclose(fpRange);
-						delete[] inBuffer;
-						if(strcmp(oldLocale,"C"))
-							setlocale(LC_NUMERIC,oldLocale);
-						free(oldLocale);
-						return RANGE_ERR_FORMAT;
-					}
-					if(stream_cast(numRanges,strVec[1]))
-					{
-						fclose(fpRange);
-						delete[] inBuffer;
-						if(strcmp(oldLocale,"C"))
-							setlocale(LC_NUMERIC,oldLocale);
-						free(oldLocale);
-						return RANGE_ERR_FORMAT;
-					}
-
-					haveNumRanges=true;
-				}
-				else
-				{
-					//Do we still have to process the name block?
-					if(!haveNameBlock)
-					{
-						//Just exiting name block,
-						if(strVec.size() == 5)
-							haveNameBlock=true;
-						else if(strVec.size() == 4)
-						{
-							//Entry in name block
-							if(!strVec[0].size())
-							{
-								delete[] inBuffer;
-								fclose(fpRange);
-								if(strcmp(oldLocale,"C"))
-									setlocale(LC_NUMERIC,oldLocale);
-								free(oldLocale);
-								return RANGE_ERR_FORMAT;
-							}
-
-							//Check that name consists only of 
-							//readable ascii chars, or period
-							for(unsigned int ui=0; ui<strVec[0].size(); ui++)
-							{
-								if(!isdigit(strVec[0][ui]) &&
-									!isalpha(strVec[0][ui]) && strVec[0][ui] != '.')
-								{
-									fclose(fpRange);
-									delete[] inBuffer;
-
-									if(strcmp(oldLocale,"C"))
-										setlocale(LC_NUMERIC,oldLocale);
-									free(oldLocale);
-									return RANGE_ERR_FORMAT;
-								}
-							}
-							//Env file contians only the long name, so use that for both the short and long names
-							ionNames.push_back(std::make_pair(strVec[0],strVec[0]));
-							//Use the colours (positions 1-3)
-							RGBf colourStruct;
-							if(stream_cast(colourStruct.red,strVec[1])
-								||stream_cast(colourStruct.green,strVec[2])
-							 	||stream_cast(colourStruct.blue,strVec[3]) )
-							{
-								fclose(fpRange);
-								delete[] inBuffer;
-								if(strcmp(oldLocale,"C"))
-									setlocale(LC_NUMERIC,oldLocale);
-								free(oldLocale);
-								return RANGE_ERR_FORMAT;
-
-							}
-
-							if(colourStruct.red >1.0 || colourStruct.red < 0.0f ||
-							   colourStruct.green >1.0 || colourStruct.green < 0.0f ||
-							   colourStruct.blue >1.0 || colourStruct.blue < 0.0f )
-							{
-								fclose(fpRange);
-								delete[] inBuffer;
-								if(strcmp(oldLocale,"C"))
-									setlocale(LC_NUMERIC,oldLocale);
-								free(oldLocale);
-								return RANGE_ERR_FORMAT;
-
-							}
-							
-									
-							colours.push_back(colourStruct);
-						}
-						else 
-						{
-							//Well thats not right,
-							//we should be looking at the first entry in the
-							//range block....
-							fclose(fpRange);
-							delete[] inBuffer;
-							if(strcmp(oldLocale,"C"))
-								setlocale(LC_NUMERIC,oldLocale);
-							free(oldLocale);
-							return RANGE_ERR_FORMAT;
-						}
-					}
-
-					if(haveNameBlock)
-					{
-						//We are finished
-						if(strVec.size() == 5)
-						{
-							unsigned int thisIonID;
-							thisIonID=(unsigned int)-1;
-							for(unsigned int ui=0;ui<ionNames.size();ui++)
-							{
-								if(strVec[0] == ionNames[ui].first)
-								{
-									thisIonID=ui;
-									break;
-								}
-
-							}
-						
-							if(thisIonID==(unsigned int) -1)
-							{
-								fclose(fpRange);
-								delete[] inBuffer;
-								if(strcmp(oldLocale,"C"))
-									setlocale(LC_NUMERIC,oldLocale);
-								free(oldLocale);
-								return RANGE_ERR_FORMAT;
-							}
-
-							float rangeStart,rangeEnd;
-							if(stream_cast(rangeStart,strVec[1]))
-							{
-								fclose(fpRange);
-								delete[] inBuffer;
-								if(strcmp(oldLocale,"C"))
-									setlocale(LC_NUMERIC,oldLocale);
-								free(oldLocale);
-								return RANGE_ERR_FORMAT;
-							}
-							if(stream_cast(rangeEnd,strVec[2]))
-							{
-								fclose(fpRange);
-								delete[] inBuffer;
-								if(strcmp(oldLocale,"C"))
-									setlocale(LC_NUMERIC,oldLocale);
-								free(oldLocale);
-								return RANGE_ERR_FORMAT;
-							}
-
-							ranges.push_back(std::make_pair(rangeStart,rangeEnd));
-
-							ionIDs.push_back(thisIonID);
-						}
-						else
-							beyondRanges=true;
-
-					}
-
-				}
-			
-				
-			}	
-
-			if(feof(fpRange))
-			{
-				fclose(fpRange);
-				delete[] inBuffer;
-				if(strcmp(oldLocale,"C"))
-					setlocale(LC_NUMERIC,oldLocale);
-				free(oldLocale);
-				return RANGE_ERR_FORMAT;
-			}	
-		
-			delete[] inBuffer;
-			break;	
+			errCode=openENV(fpRange);
+			break;
 		}
 		//Imago (now Cameca), "RRNG" file format. Again, neither standard 
 		//nor formal specification exists (sigh). Purely implemented by example.
 		case RANGE_FORMAT_RRNG:
-		{
-			const unsigned int MAX_LINE_SIZE=4096;
-			char *inBuffer = new char[MAX_LINE_SIZE];
-			unsigned int numRanges;
-			unsigned int numBasicIons;
-
-
-			//Different "blocks" that can be read
-			enum {
-				BLOCK_NONE,
-				BLOCK_IONS,
-				BLOCK_RANGES,
-			};
-
-			unsigned int curBlock=BLOCK_NONE;
-			bool haveSeenIonBlock;
-			haveSeenIonBlock=false;
-			numRanges=0;
-			numBasicIons=0;
-			vector<string> basicIonNames;
-
-			while (!feof(fpRange))
-			{
-				if(!fgets((char *)inBuffer, MAX_LINE_SIZE, fpRange))
-					break;
-				//Trick to "strip" the buffer, assuming # is a comment
-				nullifyMarker(inBuffer,'#');
-
-				string s;
-				s=inBuffer;
-
-				s=stripWhite(s);
-				if (!s.size())
-					continue;
-
-				if (s == "[Ions]")
-				{
-					curBlock=BLOCK_IONS;
-					continue;
-				}
-				else if (s == "[Ranges]")
-				{
-					curBlock=BLOCK_RANGES;
-					continue;
-				}
-
-				switch (curBlock)
-				{
-				case BLOCK_NONE:
-					break;
-				case BLOCK_IONS:
-				{
-
-					//The ion section in RRNG seems almost completely redundant.
-					//This does not actually contain information about the ions
-					//in the file (this is in the ranges section).
-					//Rather it tells you what the constituents are from which
-					//complex ions may be formed. Apply Palm to Face.
-
-					vector<string> split;
-					splitStrsRef(s.c_str(),'=',split);
-
-					if (split.size() != 2)
-					{
-						delete[] inBuffer;
-						fclose(fpRange);
-						if(strcmp(oldLocale,"C"))
-							setlocale(LC_NUMERIC,oldLocale);
-						free(oldLocale);
-						return RANGE_ERR_FORMAT;
-					}
-
-					std::string stmp;
-					stmp=lowercase(split[0]);
-
-					haveSeenIonBlock=true;
-
-
-					if (stmp == "number")
-					{
-						//Should not have set the
-						//number of ions yet.
-						if (numBasicIons !=0)
-						{
-							delete[] inBuffer;
-							fclose(fpRange);
-							if(strcmp(oldLocale,"C"))
-								setlocale(LC_NUMERIC,oldLocale);
-							free(oldLocale);
-							return RANGE_ERR_FORMAT;
-						}
-						//Set the number of ions
-						if(stream_cast(numBasicIons, split[1]))
-						{
-							delete[] inBuffer;
-							fclose(fpRange);
-							if(strcmp(oldLocale,"C"))
-								setlocale(LC_NUMERIC,oldLocale);
-							free(oldLocale);
-							return RANGE_ERR_FORMAT;
-						}
-
-						if (numBasicIons == 0)
-						{
-							delete[] inBuffer;
-							fclose(fpRange);
-							if(strcmp(oldLocale,"C"))
-								setlocale(LC_NUMERIC,oldLocale);
-							free(oldLocale);
-							return RANGE_ERR_FORMAT;
-						}
-					}
-					else if (split[0].size() >3)
-					{
-						stmp = lowercase(split[0].substr(0,3));
-						if (stmp == "ion")
-						{
-							//OK, its an ion.
-							basicIonNames.push_back(split[1]);
-
-							if (basicIonNames.size()  > numBasicIons)
-						{
-							delete[] inBuffer;
-							fclose(fpRange);
-							if(strcmp(oldLocale,"C"))
-								setlocale(LC_NUMERIC,oldLocale);
-							free(oldLocale);
-							return RANGE_ERR_FORMAT;
-						}
-						}
-						else
-						{
-							delete[] inBuffer;
-							fclose(fpRange);
-							if(strcmp(oldLocale,"C"))
-								setlocale(LC_NUMERIC,oldLocale);
-							free(oldLocale);
-							return RANGE_ERR_FORMAT;
-						}
-					}
-					break;
-				}
-				case BLOCK_RANGES:
-				{
-
-					//Although it looks like the blocks are independent.
-					//it is more complicated to juggle a parser with them
-					//out of dependency order, as  a second pass would
-					//need to be done.
-					if (!haveSeenIonBlock)
-					{
-						delete[] inBuffer;
-						fclose(fpRange);
-						if(strcmp(oldLocale,"C"))
-							setlocale(LC_NUMERIC,oldLocale);
-						free(oldLocale);
-						return RANGE_ERR_FORMAT;
-					}
-					vector<string> split;
-
-					if (s.size() > 6)
-					{
-						splitStrsRef(s.c_str(),'=',split);
-
-						if (split.size() != 2)
-						{
-							delete[] inBuffer;
-							fclose(fpRange);
-							if(strcmp(oldLocale,"C"))
-								setlocale(LC_NUMERIC,oldLocale);
-							free(oldLocale);
-							return RANGE_ERR_FORMAT;
-						}
-
-						if (lowercase(split[0].substr(0,5)) == "numbe")
-						{
-
-							//Should not have set the num ranges yet
-							if (numRanges)
-							{
-								delete[] inBuffer;
-								fclose(fpRange);
-								if(strcmp(oldLocale,"C"))
-									setlocale(LC_NUMERIC,oldLocale);
-								free(oldLocale);
-								return RANGE_ERR_FORMAT;
-							}
-
-							if (stream_cast(numRanges,split[1]))
-							{
-							
-								delete[] inBuffer;
-								if(strcmp(oldLocale,"C"))
-									setlocale(LC_NUMERIC,oldLocale);
-								free(oldLocale);
-								fclose(fpRange);
-								return RANGE_ERR_FORMAT;
-							}
-
-							if (!numRanges)
-							{
-								delete[] inBuffer;
-								if(strcmp(oldLocale,"C"))
-									setlocale(LC_NUMERIC,oldLocale);
-								free(oldLocale);
-								fclose(fpRange);
-								return RANGE_ERR_FORMAT;
-							}
-
-						}
-						else if ( lowercase(split[0].substr(0,5)) == "range")
-						{
-							//Try to decode a range line, as best we can.
-							//These appear to come in a variety of flavours,
-							//which makes this section quite long.
-
-							//OK, so the format here is a bit wierd
-							//we first have to strip the = bit
-							//then we have to step across fields,
-							//I assume the fields are in order (or missing)
-							//* denotes 0 or more,  + denotes 1 or more, brackets denote grouping
-							// Vol: [0-9]* ([A-z]+: [0-9]+)* (Name:[0-9]*([A-z]+[0-9]*)+ Color:[0-F][0-F][0-F][0-F][0-F][0-F]
-							// Examples:
-							// Range1=31.8372 32.2963 Vol:0.01521 Zn:1 Color:999999
-							// or
-							// Range1=31.8372 32.2963 Zn:1 Color:999999
-							// or
-							// Range1=95.3100 95.5800 Vol:0.04542 Zn:1 Sb:1 Color:00FFFF
-							// or
-							// Range1=95.3100 95.5800 Vol:0.04542 Name:1Zn1Sb1 Color:00FFFF
-							// or
-							// Range1=95.3100 95.5800 Vol:0.04542 Zn:1 Sb:1 Name:1Zn1Sb1 Color:00FFFF
-							// or
-							// Range1= 95.3100 95.5800 Color:00FFFF Vol:0.04542 Zn:1 Sb:1 Name:1Zn1Sb1 
-
-							//Starting positions (string index)
-							//of range start and end
-							//Range1=31.8372 32.2963 Vol:0.01521 Zn:1 Color:999999
-							//	 	^rngmid ^rngend
-							size_t rngMidIdx,rngEndIdx;
-							string rngStart,rngEnd;
-							split[1]=stripWhite(split[1]);
-							rngMidIdx = split[1].find_first_of(' ');
-
-							if (rngMidIdx == std::string::npos)
-							{
-								delete[] inBuffer;
-								fclose(fpRange);
-								if(strcmp(oldLocale,"C"))
-									setlocale(LC_NUMERIC,oldLocale);
-								free(oldLocale);
-								return RANGE_ERR_FORMAT;
-							}
-
-							rngEndIdx=split[1].find_first_of(' ',rngMidIdx+1);
-							if (rngEndIdx == std::string::npos)
-							{
-								delete[] inBuffer;
-								fclose(fpRange);
-								if(strcmp(oldLocale,"C"))
-									setlocale(LC_NUMERIC,oldLocale);
-								free(oldLocale);
-								return RANGE_ERR_FORMAT;
-							}
-
-							rngStart = split[1].substr(0,rngMidIdx);
-							rngEnd = split[1].substr(rngMidIdx+1,rngEndIdx-(rngMidIdx+1));
-
-
-							//Strip the range
-							string strTmp;
-							strTmp = split[1].substr(rngEndIdx+1);//,split[1].size()-(rngEndIdx+1));
-
-							//Split the remaining field into key:value pairs
-							split.clear();
-							splitStrsRef(strTmp.c_str(),' ',split);
-
-							stripZeroEntries(split);
-							RGBf col;
-							bool haveColour,haveNameField;
-							haveColour=false;
-							haveNameField=false;
-							string strIonNameTmp,strNameFieldValue;
-
-							for (unsigned int ui=0; ui<split.size(); ui++)
-							{
-								//':' is the key:value delimiter (Self reference is hilarious.)
-								size_t colonPos;
-
-
-								colonPos = split[ui].find_first_of(':');
-
-								if (colonPos == std::string::npos)
-								{
-									delete[] inBuffer;
-									fclose(fpRange);
-									if(strcmp(oldLocale,"C"))
-										setlocale(LC_NUMERIC,oldLocale);
-									free(oldLocale);
-									return RANGE_ERR_FORMAT;
-								}
-
-								//Extract the key value pairs
-								string key,value;
-								key=split[ui].substr(0,colonPos);
-								value=split[ui].substr(colonPos+1);
-								if (lowercase(key) == "vol")
-								{
-									//Do nothing
-								}
-								else if (lowercase(key) == "name")
-								{
-									//OK, so we need to handle two wierd cases
-									//1) we have the name section and the ion section
-									//2) we have the name section and no ion section
-
-									//Rant:WTF is the point of the "name" section. They are 
-									//encoding information in a redundant and irksome fashion!
-									//Better to store the charge (if that's what you want) in a F-ing charge
-									//section, and the multiplicity is already bloody defined elsewhere!
-									
-									//This won't be known until we complete the parse
-									haveNameField=true;
-									strNameFieldValue=value;
-								}
-								else if (lowercase(key) == "color")
-								{
-									haveColour=true;
-
-
-									if (value.size() !=6)
-									{
-										delete[] inBuffer;
-										fclose(fpRange);
-										if(strcmp(oldLocale,"C"))
-											setlocale(LC_NUMERIC,oldLocale);
-										free(oldLocale);
-										return RANGE_ERR_FORMAT;
-									}
-
-									//Use our custom string parser,
-									//which requires a leading #,
-									//in lowercase
-									value = string("#") + lowercase(value);
-									unsigned char r,g,b,a;
-
-									parseColString(value,r,g,b,a);
-
-									col.red = (float)r/255.0f;
-									col.green=(float)g/255.0f;
-									col.blue=(float)b/255.0f;
-								}
-								else
-								{
-									//Basic ion was not in the original [Ions] list. This is not right
-									unsigned int pos=(unsigned int)-1;
-									for (unsigned int uj=0; uj<basicIonNames.size(); uj++)
-									{
-										if (basicIonNames[uj] == key)
-										{
-											pos = uj;
-											break;
-										}
-									}
-
-									if (pos == (unsigned int)-1)
-									{
-										delete[] inBuffer;
-										fclose(fpRange);
-										if(strcmp(oldLocale,"C"))
-											setlocale(LC_NUMERIC,oldLocale);
-										free(oldLocale);
-										return RANGE_ERR_FORMAT;
-									}
-									//Check the multiplicity of the ion. Should be an integer > 0
-									unsigned int uintVal;
-									if (stream_cast(uintVal,value) || !uintVal)
-									{
-										delete[] inBuffer;
-										fclose(fpRange);
-										if(strcmp(oldLocale,"C"))
-											setlocale(LC_NUMERIC,oldLocale);
-										free(oldLocale);
-										return RANGE_ERR_FORMAT;
-									}
-
-									//If it is  1, then use straight name. Otherwise try to give it a
-									//chemical formula look by mixing in the multiplicity after the key
-									if (uintVal==1)
-										strIonNameTmp+=key;
-									else
-										strIonNameTmp+=key+value;
-								}
-							}
-
-							if (!haveColour )
-								col.red=col.green=col.blue=0.0f;
-
-							//Get the range values
-							float rngStartV,rngEndV;
-							if(strIonNameTmp.size() || haveNameField)
-							{
-								if (stream_cast(rngStartV,rngStart))
-								{
-									delete[] inBuffer;
-									fclose(fpRange);
-									if(strcmp(oldLocale,"C"))
-										setlocale(LC_NUMERIC,oldLocale);
-									free(oldLocale);
-								
-									return RANGE_ERR_FORMAT;
-								}
-
-								if (stream_cast(rngEndV,rngEnd))
-								{
-									delete[] inBuffer;
-									fclose(fpRange);
-									if(strcmp(oldLocale,"C"))
-										setlocale(LC_NUMERIC,oldLocale);
-									free(oldLocale);
-								
-									return RANGE_ERR_FORMAT;
-								}
-							}
-
-							//So the ion field appears to be optional (that is,
-							//ivas emits RRNGs that do not contain an ion listed in the 
-							//ion field). It is unclear what the purpose of these lines is,
-							//so we shall ignore it, in preference to aborting
-							if(strIonNameTmp.size())
-							{
-								//Check to see if we have this ion.
-								//If we dont, we create a new one.
-								//if we do, we check that the colours match
-								//and if not reject the file parsing.
-								unsigned int pos=(unsigned int)(-1);
-								for (unsigned int ui=0; ui<ionNames.size(); ui++)
-								{
-									if (ionNames[ui].first == strIonNameTmp)
-									{
-										pos=ui;
-										break;
-									}
-								}
-
-								ranges.push_back(std::make_pair(rngStartV,rngEndV));
-								if (pos == (unsigned int) -1)
-								{
-									//This is new. Create a new ion,
-									//and use its ionID
-									ionNames.push_back(std::make_pair(strIonNameTmp,
-												     strIonNameTmp));
-									colours.push_back(col);
-									ionIDs.push_back(ionNames.size()-1);
-								}
-								else
-								{
-									//we have the name already
-									ionIDs.push_back(pos);
-								}
-							}
-							else if(haveNameField)
-							{
-								//OK, so we don't have the ion section
-								//but we do have the field section
-								//let us decode the name field in order to retrieve 
-								//the ion information which was missing (for whatever reason)
-								if(!strNameFieldValue.size())
-								{
-									delete[] inBuffer;
-									fclose(fpRange);
-									if(strcmp(oldLocale,"C"))
-										setlocale(LC_NUMERIC,oldLocale);
-									free(oldLocale);
-						
-				
-									return RANGE_ERR_FORMAT;
-								}
-
-
-								unsigned int chargeStrStop=0;
-								for(unsigned int ui=0;ui<strNameFieldValue.size();ui++)
-								{
-									if(strNameFieldValue[ui] <'0' || strNameFieldValue[ui] > '9')
-									{
-										chargeStrStop =ui;
-										break;
-									}
-
-								}
-
-								//Strip off the charge value, to get the ion name
-								strNameFieldValue =strNameFieldValue.substr(chargeStrStop,strNameFieldValue.size()-chargeStrStop);
-
-								//Check to see if we have this ion.
-								//If we dont, we create a new one.
-								//if we do, we check that the colours match
-								//and if not reject the file parsing.
-								unsigned int pos=(unsigned int)(-1);
-								for (unsigned int ui=0; ui<ionNames.size(); ui++)
-								{
-									if (ionNames[ui].first == strNameFieldValue)
-									{
-										pos=ui;
-										break;
-									}
-								}
-
-								ranges.push_back(std::make_pair(rngStartV,rngEndV));
-								if (pos == (unsigned int) -1)
-								{
-									//This is new. Create a new ion,
-									//and use its ionID
-									ionNames.push_back(std::make_pair(strNameFieldValue,
-												     strNameFieldValue));
-									colours.push_back(col);
-									ionIDs.push_back(ionNames.size()-1);
-								}
-								else
-								{
-									//we have the name already
-									ionIDs.push_back(pos);
-								}
-
-							}
-						}
-						else
-						{
-							delete[] inBuffer;
-							fclose(fpRange);
-							if(strcmp(oldLocale,"C"))
-								setlocale(LC_NUMERIC,oldLocale);
-							free(oldLocale);
-							return RANGE_ERR_FORMAT;
-						}
-
-					}
-					break;
-				}
-				default:
-					ASSERT(false);
-					break;
-				}
-			}
-
-			delete[] inBuffer;
-			//If we didn't find anything useful, then thats a formatting error
-			if(!haveSeenIonBlock || (!numRanges  && !numBasicIons))
-			{
-				fclose(fpRange);
-				if(strcmp(oldLocale,"C"))
-					setlocale(LC_NUMERIC,oldLocale);
-				free(oldLocale);
-				return RANGE_ERR_FORMAT;
-			}
-			ASSERT(numRanges == ranges.size());
+			errCode=openRRNG(fpRange);
 			break;
-		}
 		default:
 			ASSERT(false);
 			fclose(fpRange);
@@ -2369,18 +1318,31 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 			return RANGE_ERR_FORMAT;
 	}
 
+	fclose(fpRange);
+	if(errCode)
+	{
+		errState=errCode;
+		
+		if(strcmp(oldLocale,"C"))
+			setlocale(LC_NUMERIC,oldLocale);
+		free(oldLocale);
+
+		return errState;
+	}
 
 	//revert back to user's locale, as needed
 	if(strcmp(oldLocale,"C"))
 		setlocale(LC_NUMERIC,oldLocale);
 
-	fclose(fpRange);
 	free(oldLocale);
 	
 	
 	//Run self consistency check on freshly loaded data
 	if(!isSelfConsistent())
-		return RANGE_ERR_DATA_INCONSISTENT;
+	{
+		errState=RANGE_ERR_DATA_INCONSISTENT;
+		return errState;
+	}
 	
 	return 0;
 }
@@ -2435,6 +1397,1056 @@ bool RangeFile::openGuessFormat(const char *rangeFilename)
 	return true;
 }
 
+unsigned int RangeFile::openRNG( FILE *fpRange)
+{
+	//Oak-Ridge "Format" - this is based purely on example, as no standard exists
+	//the classic example is from Miller, "Atom probe: Analysis at the atomic scale"
+	//but alternate output forms exist. Our only strategy is to try to be as acoommodating
+	//as reasonably possible
+	const size_t MAX_LINE_SIZE = 16536;
+	char *inBuffer = new char[MAX_LINE_SIZE];
+	unsigned int tempInt;
+
+	unsigned int numRanges;
+	unsigned int numIons;	
+	
+	
+	//Read out the number of ions and ranges int hef ile	
+	if(fscanf(fpRange, "%64u %64u", &numIons, &numRanges) != 2)
+	{
+		
+		delete[] inBuffer;
+		return RANGE_ERR_FORMAT_HEADER;
+	}
+	
+	if (!(numIons && numRanges))
+	{
+		delete[] inBuffer;
+		return  RANGE_ERR_EMPTY;
+	}
+	
+	//Reserve Storage
+	ionNames.reserve(numIons);
+	colours.reserve(numIons);
+	ranges.reserve(numRanges);
+	ionIDs.reserve(numRanges);
+	
+	RGBf colourStruct;
+	pair<string, string> namePair;
+	
+	//Read ion short and full names as well as colour info
+	for(unsigned int i=0; i<numIons; i++)
+	{
+		//Spin until we get to a new line. 
+		//Certain programs emit range files that have
+		//some string of unknown purpose
+		//after the colour specification
+		if(fpeek(fpRange)== ' ')
+		{
+			int peekVal;
+			//Gobble chars until we hit the newline
+			do
+			{
+				fgetc(fpRange);
+				peekVal=fpeek(fpRange);
+			}
+			while(peekVal != (int)'\n'&&
+				peekVal !=(int)'\r' && peekVal != EOF);
+
+			//eat another char if we are using 
+			//windows newlines
+			if(peekVal== '\r')
+				fgetc(fpRange);
+		}
+		//Read the input for long name (max 255 chars)
+		if(!fscanf(fpRange, " %255s", inBuffer))
+		{
+			delete[] inBuffer;
+			return RANGE_ERR_FORMAT_LONGNAME;
+		}
+			
+		namePair.second = inBuffer;
+
+
+		//Read short name
+		if(!fscanf(fpRange, " %255s", inBuffer))
+		{
+			delete[] inBuffer;
+			return RANGE_ERR_FORMAT_SHORTNAME;
+		}
+		
+		namePair.first= inBuffer;
+		//Read Red green blue data
+		if(!fscanf(fpRange,"%128f %128f %128f",&(colourStruct.red),
+			&(colourStruct.green),&(colourStruct.blue)))
+		{
+			delete[] inBuffer;
+			return RANGE_ERR_FORMAT_COLOUR;
+		}
+		
+		ionNames.push_back(namePair);	
+		colours.push_back(colourStruct);	
+	}	
+	
+	// skip over <LF> 
+	char *ret;
+	ret=fgets((char *)inBuffer, MAX_LINE_SIZE, fpRange); 
+	if(!ret || strlen(ret) >= MAX_LINE_SIZE-1)
+	{
+		delete[] inBuffer;
+		return RANGE_ERR_FORMAT;
+	}
+	// read the column header line 
+	ret=fgets((char *)inBuffer, MAX_LINE_SIZE, fpRange); 
+
+	if(!ret || strlen(ret) >= MAX_LINE_SIZE-1)
+	{
+		delete[] inBuffer;
+		return RANGE_ERR_FORMAT;
+	}
+
+	//We should be at the line which has lots of dashes
+	if(inBuffer[0] != '-')
+	{
+		delete[] inBuffer;
+		return RANGE_ERR_FORMAT_TABLESEPARATOR;
+	}
+
+
+	vector<string> colHeaders;
+	splitStrsRef(inBuffer,' ',colHeaders);
+
+	//remove whitespace from each entry
+	for(size_t ui=0;ui<colHeaders.size();ui++)
+		stripWhite(colHeaders[ui]);
+	stripZeroEntries(colHeaders);
+	
+
+	if(!colHeaders.size() )
+	{
+		delete[] inBuffer;
+		return RANGE_ERR_FORMAT_TABLESEPARATOR;
+	}
+
+	if(colHeaders.size() > 1)
+	{
+
+		if(colHeaders.size() -1 !=numIons)
+		{
+			// Emit warning
+			delete[] inBuffer;
+			return RANGE_ERR_FORMAT_TABLESEPARATOR;
+		}
+	
+		//Strip any trailing newlines off the last of the  colheaders,
+		// to avoid dos->unix conversion problems
+		std::string str = colHeaders[colHeaders.size() -1];
+
+		if(str[str.size() -1 ] == '\n')
+			colHeaders[colHeaders.size()-1]=str.substr(0,str.size()-1);
+
+		//Each column header should match the original ion name
+		for(size_t ui=1;ui<colHeaders.size();ui++)
+		{
+			//look for a corresponding entry in the column headers
+			if(ionNames[ui-1].second != colHeaders[ui])
+			{
+				warnMessages.push_back(TRANS("Range headings do not match order of the ions listed in the name specifications. The name specification ordering will be used when reading the range table, as the range heading section is declared as a comment in the file-format specifications, and is not to be intepreted by this program. Check range-species associations actually match what you expect."));
+				break;
+			}
+
+		}
+
+	}
+
+	vector<unsigned int > frequencyEntries;
+	frequencyEntries.clear();
+	frequencyEntries.resize(numRanges*numIons,0);
+	//Load in each range file line
+	tempInt=0;
+	pair<float,float> massPair;
+	for(unsigned int i=0; i<numRanges; i++)
+	{
+		//Read dummy chars until we hit a digit
+		char peekVal;
+		peekVal=fpeek(fpRange);
+		while((peekVal< '0' || peekVal > '9'))
+		{
+			fgetc(fpRange);
+			if(feof(fpRange))
+			{
+				delete[] inBuffer;
+				return RANGE_ERR_FORMAT_RANGE_DUMMYCHARS;
+			}
+		
+			peekVal=fpeek(fpRange);
+
+		}
+		if(!fscanf(fpRange, "%128f %128f",&massPair.first, 
+					&massPair.second))
+		{
+			delete[] inBuffer;
+			return RANGE_ERR_FORMAT_MASS_PAIR;
+		}
+
+		if(massPair.first >= massPair.second)
+		{
+			delete[] inBuffer;
+			return RANGE_ERR_DATA_FLIPPED;
+		}
+
+		ranges.push_back(massPair);	
+		//Load the range data line
+
+		for(unsigned int j=0; j<numIons; j++)
+		{
+			if(!fscanf(fpRange, "%64u",&tempInt))
+			{
+				delete[] inBuffer;
+				return RANGE_ERR_FORMAT_TABLE_ENTRY;
+			}
+			
+			
+			if(tempInt)
+				frequencyEntries[numIons*i + j]=tempInt;
+			
+		}
+
+	}
+	
+	//Do some post-processing on the range table
+	//
+	//Prevent rangefiles that have no valid ranges
+	//from being loaded
+	size_t nMax=std::accumulate(frequencyEntries.begin(),frequencyEntries.end(),0);
+	if(!nMax)
+	{
+		delete[] inBuffer;
+		return RANGE_ERR_DATA_TOO_MANY_USELESS_RANGES;
+	}
+
+
+	//Because of a certain software's output
+	//it can generate a range listing like this (table +example colour line only)
+	//
+	// these are invalid according to white book
+	//  and the "Atom Probe Microscopy", (Springer series in Materials Science
+	//   vol. 160) descriptions
+	//
+	// Cu2 1.0 1.0 1.0 (Cu2)
+	// ------------Cu Ni Mg Si CuNi4 Mg3Si2 Cu2
+	// . 12.3 23.5 1 4 0 0 0 0 0
+	// . 32.1 43.2 0 0 3 2 0 0 0
+	// . 56.7 89.0 2 0 0 0 0 0 0
+	//
+	// which we get blamed for not supporting :(
+	//
+	//So, we have to scan the lists of ions, and create
+	//tentative "combined" ion names, from the list of ions at the top.
+	//
+	//However, this violates the naming system in the "white book" (Miller, Atom probe: Analysis at the atomic scale)
+	// scheme, which might allow something like
+	// U235U238
+	// as a single range representing a single ion. So they bastardise it by placing the zero columns
+	// as a hint marker. Technically speaking, the zero column entries should not exist
+	// in the format - as they would correspond to a non-existant species (or rather, an unreferenced species).
+	// To check the case of certain programs using cluster ions like this, we have to engage in some
+	// hacky-heuristics, check for 
+	// 	- Columns with only zero entries, 
+	// 	- which have combined numerical headers
+	//
+	// 	Then handle this as a separate case. FFS.
+
+	//-- Build a sparse vector of composed ions
+	std::map<string,size_t> composeMap;
+
+	for(size_t uj=0;uj<numIons;uj++)
+	{
+		bool maybeComposed;
+		maybeComposed=true;
+		for(size_t ui=0; ui<numRanges;ui++)
+		{
+			//Scan through the range listing to try to
+			//find a non-zero entries
+			if(frequencyEntries[numIons*ui + uj])
+			{
+				maybeComposed=false;
+				break;
+			}
+		}
+
+		//If the ion has a column full of zeroes, and
+		//the ion looks like its composable, then
+		//decompose it for later references
+		if(maybeComposed)
+			composeMap.insert(make_pair(ionNames[uj].first,uj));
+	}
+	//--
+
+
+	//Loop through each range's freq table entries, to determine if
+	// the ion is composed (has more than one "1" in multiplicity listing)
+	for(size_t ui=0;ui<numRanges;ui++)
+	{
+		std::map<size_t,size_t > freqEntries;
+		size_t freq;
+
+		freqEntries.clear();
+		freq=0;
+		for(size_t uj=0;uj<numIons;uj++)
+		{
+			size_t thisEntry;
+			thisEntry=frequencyEntries[numIons*ui+uj];
+			freq+=thisEntry;
+
+			if(thisEntry)
+			{
+				freqEntries.insert(make_pair(uj,thisEntry));
+			}
+		}
+
+		if(freq ==1)
+		{
+			//Simple case - we only had a single [1] in
+			//a row for the 
+			ASSERT(freqEntries.size() == 1);
+			ionIDs.push_back( freqEntries.begin()->first);
+		}
+		else if (freq > 1)
+		{
+			//More complex case
+			// ion appears to be composed of multiple fragments.
+			//First entry is the ion name, second is the number of times it occurs 
+			// (ie value in freq table, on this range line)
+			vector<pair<string,size_t> > entries;
+
+			for(map<size_t,size_t>::iterator it=freqEntries.begin();it!=freqEntries.end();++it)
+				entries.push_back(make_pair(ionNames[it->first].first,it->second));
+
+			//try to match the composed name to the
+			size_t offset;
+			if(!matchComposedName(composeMap,entries,offset))
+			{
+				//We failed to match the ion against a composed name.
+				// cannot deal with this case.
+				//
+				// we can't just build a new ion name,
+				// as we don't have a colour specification for this.
+				//
+				// We can't use the regular ion name, without 
+				// tracking multiplicity (and then what to do with it in every case - 
+				// seems only a special case for composition? eg. 
+				// Is it a sep. species when clustering? Who knows!)
+				delete[] inBuffer;
+				
+				return RANGE_ERR_DATA_NOMAPPED_IONNAME;
+			}
+
+
+
+
+			ASSERT(offset < ionNames.size());
+			ionIDs.push_back( offset);
+		}
+		else //0
+		{
+			//Range was useless - had no nonzero values
+			//in frequency table.
+			//Set to bad ionID - we will kill this later.
+			ionIDs.push_back(-1);
+		}
+	}
+
+	//Loop through any ranges with a bad ionID (== -1), then delete them by popping
+	for(size_t ui=0;ui<ionIDs.size();ui++)
+	{
+		if(ionIDs[ui] == (size_t)-1)
+		{
+			std::swap(ranges[ui],ranges.back());
+			ranges.pop_back();
+
+			std::swap(ionIDs[ui],ionIDs.back());
+			ionIDs.pop_back();
+		}
+	}
+
+	delete[] inBuffer;
+	return 0;
+}
+
+unsigned int RangeFile::openENV(FILE *fpRange)
+{
+	//Ruoen group "environment file" format
+	//This is not a standard file format, so the
+	//reader is a best-effort implementation, based upon example
+	const unsigned int MAX_LINE_SIZE=4096;	
+	char *inBuffer = new char[MAX_LINE_SIZE];
+	unsigned int numRanges;
+	unsigned int numIons;	
+
+	bool beyondRanges=false;
+	bool haveNumRanges=false;	
+	bool haveNameBlock=false;	
+	vector<string> strVec;
+
+	//Read file until we get beyond the range length
+	while(!beyondRanges && !feof(fpRange) )
+	{
+		if(!fgets((char *)inBuffer, MAX_LINE_SIZE, fpRange)
+			|| strlen(inBuffer) >=MAX_LINE_SIZE-1)
+		{
+			delete[] inBuffer;
+			return RANGE_ERR_FORMAT;
+		}
+		//Trick to "strip" the buffer
+		nullifyMarker(inBuffer,'#');
+
+		string s;
+		s=inBuffer;
+
+		s=stripWhite(s);
+
+		if(!s.size())
+			continue;
+
+		//Try different delimiters to split string
+		splitStrsRef(s.c_str(),"\t ",strVec);
+	
+		stripZeroEntries(strVec);
+
+		if(strVec.empty())
+			continue;
+
+		if(!haveNumRanges)
+		{
+			//num ranges should have two entries, num ions and ranges
+			if(strVec.size() != 2)
+			{
+				delete[] inBuffer;
+				return RANGE_ERR_FORMAT;
+			}
+
+			if(stream_cast(numIons,strVec[0]))
+			{
+				delete[] inBuffer;
+				return RANGE_ERR_FORMAT;
+			}
+			if(stream_cast(numRanges,strVec[1]))
+			{
+				delete[] inBuffer;
+				return RANGE_ERR_FORMAT;
+			}
+
+			haveNumRanges=true;
+		}
+		else
+		{
+			//Do we still have to process the name block?
+			if(!haveNameBlock)
+			{
+				//Just exiting name block,
+				if(strVec.size() == 5)
+					haveNameBlock=true;
+				else if(strVec.size() == 4)
+				{
+					//Entry in name block
+					if(!strVec[0].size())
+					{
+						delete[] inBuffer;
+						return RANGE_ERR_FORMAT;
+					}
+
+					//Check that name consists only of 
+					//readable ascii chars, or period
+					for(unsigned int ui=0; ui<strVec[0].size(); ui++)
+					{
+						if(!isdigit(strVec[0][ui]) &&
+							!isalpha(strVec[0][ui]) && strVec[0][ui] != '.')
+						{
+							delete[] inBuffer;
+
+							return RANGE_ERR_FORMAT;
+						}
+					}
+					//Env file contains only the long name, so use that for both the short and long names
+					ionNames.push_back(std::make_pair(strVec[0],strVec[0]));
+					//Use the colours (positions 1-3)
+					RGBf colourStruct;
+					if(stream_cast(colourStruct.red,strVec[1])
+						||stream_cast(colourStruct.green,strVec[2])
+						||stream_cast(colourStruct.blue,strVec[3]) )
+					{
+						delete[] inBuffer;
+						return RANGE_ERR_FORMAT;
+
+					}
+
+					if(colourStruct.red >1.0 || colourStruct.red < 0.0f ||
+					   colourStruct.green >1.0 || colourStruct.green < 0.0f ||
+					   colourStruct.blue >1.0 || colourStruct.blue < 0.0f )
+					{
+						delete[] inBuffer;
+						return RANGE_ERR_FORMAT;
+
+					}
+					
+							
+					colours.push_back(colourStruct);
+				}
+				else 
+				{
+					//Well thats not right,
+					//we should be looking at the first entry in the
+					//range block....
+					delete[] inBuffer;
+					return RANGE_ERR_FORMAT;
+				}
+			}
+
+			if(haveNameBlock)
+			{
+				//We are finished
+				if(strVec.size() == 5)
+				{
+					unsigned int thisIonID;
+					thisIonID=(unsigned int)-1;
+					for(unsigned int ui=0;ui<ionNames.size();ui++)
+					{
+						if(strVec[0] == ionNames[ui].first)
+						{
+							thisIonID=ui;
+							break;
+						}
+
+					}
+				
+					if(thisIonID==(unsigned int) -1)
+					{
+						delete[] inBuffer;
+						return RANGE_ERR_FORMAT;
+					}
+
+					float rangeStart,rangeEnd;
+					if(stream_cast(rangeStart,strVec[1]))
+					{
+						delete[] inBuffer;
+						return RANGE_ERR_FORMAT;
+					}
+					if(stream_cast(rangeEnd,strVec[2]))
+					{
+						delete[] inBuffer;
+						return RANGE_ERR_FORMAT;
+					}
+
+					ranges.push_back(std::make_pair(rangeStart,rangeEnd));
+
+					ionIDs.push_back(thisIonID);
+				}
+				else
+					beyondRanges=true;
+
+			}
+
+		}
+	
+		
+	}	
+
+	//There should be more data following the range information.
+	// if not, this is not really an env file
+	if(feof(fpRange))
+	{
+		delete[] inBuffer;
+		return RANGE_ERR_FORMAT;
+	}	
+
+	delete[] inBuffer;
+
+	return 0;
+}
+
+unsigned int RangeFile::openRRNG(FILE *fpRange)
+{
+	const unsigned int MAX_LINE_SIZE=4096;
+	char *inBuffer = new char[MAX_LINE_SIZE];
+	unsigned int numRanges;
+	unsigned int numBasicIons;
+
+
+	//Different "blocks" that can be read
+	enum {
+		BLOCK_NONE,
+		BLOCK_IONS,
+		BLOCK_RANGES,
+	};
+
+	unsigned int curBlock=BLOCK_NONE;
+	bool haveSeenIonBlock;
+	haveSeenIonBlock=false;
+	numRanges=0;
+	numBasicIons=0;
+	vector<string> basicIonNames;
+
+	while (!feof(fpRange))
+	{
+		if(!fgets((char *)inBuffer, MAX_LINE_SIZE, fpRange)
+			|| strlen(inBuffer) >=MAX_LINE_SIZE-1)
+			break;
+		//Trick to "strip" the buffer, assuming # is a comment
+		nullifyMarker(inBuffer,'#');
+
+		string s;
+		s=inBuffer;
+
+		s=stripWhite(s);
+		if (!s.size())
+			continue;
+
+		if (s == "[Ions]")
+		{
+			curBlock=BLOCK_IONS;
+			continue;
+		}
+		else if (s == "[Ranges]")
+		{
+			curBlock=BLOCK_RANGES;
+			continue;
+		}
+
+		switch (curBlock)
+		{
+		case BLOCK_NONE:
+			break;
+		case BLOCK_IONS:
+		{
+
+			//The ion section in RRNG seems almost completely redundant.
+			//This does not actually contain information about the ions
+			//in the file (this is in the ranges section).
+			//Rather it tells you what the constituents are from which
+			//complex ions may be formed. Apply Palm to Face.
+
+			vector<string> split;
+			splitStrsRef(s.c_str(),'=',split);
+
+			if (split.size() != 2)
+			{
+				delete[] inBuffer;
+				return RANGE_ERR_FORMAT;
+			}
+
+			std::string stmp;
+			stmp=lowercase(split[0]);
+
+			haveSeenIonBlock=true;
+
+
+			if (stmp == "number")
+			{
+				//Should not have set the
+				//number of ions yet.
+				if (numBasicIons !=0)
+				{
+					delete[] inBuffer;
+					return RANGE_ERR_FORMAT;
+				}
+				//Set the number of ions
+				if(stream_cast(numBasicIons, split[1]))
+				{
+					delete[] inBuffer;
+					return RANGE_ERR_FORMAT;
+				}
+
+				if (numBasicIons == 0)
+				{
+					delete[] inBuffer;
+					return RANGE_ERR_FORMAT;
+				}
+			}
+			else if (split[0].size() >3)
+			{
+				stmp = lowercase(split[0].substr(0,3));
+				if (stmp == "ion")
+				{
+					//OK, its an ion.
+					basicIonNames.push_back(split[1]);
+
+					if (basicIonNames.size()  > numBasicIons)
+				{
+					delete[] inBuffer;
+					return RANGE_ERR_FORMAT;
+				}
+				}
+				else
+				{
+					delete[] inBuffer;
+					return RANGE_ERR_FORMAT;
+				}
+			}
+			break;
+		}
+		case BLOCK_RANGES:
+		{
+			//Although it looks like the blocks are independent.
+			//it is more complicated to juggle a parser with them
+			//out of dependency order, as  a second pass would
+			//need to be done.
+			if (!haveSeenIonBlock)
+			{
+				delete[] inBuffer;
+				return RANGE_ERR_FORMAT;
+			}
+			vector<string> split;
+
+			if (s.size() > 6)
+			{
+				splitStrsRef(s.c_str(),'=',split);
+
+				if (split.size() != 2)
+				{
+					delete[] inBuffer;
+					return RANGE_ERR_FORMAT;
+				}
+
+				if (lowercase(split[0].substr(0,5)) == "numbe")
+				{
+
+					//Should not have set the num ranges yet
+					if (numRanges)
+					{
+						delete[] inBuffer;
+						return RANGE_ERR_FORMAT;
+					}
+
+					if (stream_cast(numRanges,split[1]))
+					{
+					
+						delete[] inBuffer;
+						return RANGE_ERR_FORMAT;
+					}
+
+					if (!numRanges)
+					{
+						delete[] inBuffer;
+						return RANGE_ERR_FORMAT;
+					}
+
+				}
+				else if ( lowercase(split[0].substr(0,5)) == "range")
+				{
+					//Try to decode a range line, as best we can.
+					//These appear to come in a variety of flavours,
+					//which makes this section quite long.
+
+					//OK, so the format here is a bit wierd
+					//we first have to strip the = bit
+					//then we have to step across fields,
+					//I assume the fields are in order (or missing)
+					//* denotes 0 or more,  + denotes 1 or more, brackets denote grouping
+					// Vol: [0-9]* ([A-z]+: [0-9]+)* (Name:[0-9]*([A-z]+[0-9]*)+ Color:[0-F][0-F][0-F][0-F][0-F][0-F]
+					// Examples:
+					// Range1=31.8372 32.2963 Vol:0.01521 Zn:1 Color:999999
+					// or
+					// Range1=31.8372 32.2963 Zn:1 Color:999999
+					// or
+					// Range1=95.3100 95.5800 Vol:0.04542 Zn:1 Sb:1 Color:00FFFF
+					// or
+					// Range1=95.3100 95.5800 Vol:0.04542 Name:1Zn1Sb1 Color:00FFFF
+					// or
+					// Range1=95.3100 95.5800 Vol:0.04542 Zn:1 Sb:1 Name:1Zn1Sb1 Color:00FFFF
+					// or
+					// Range1= 95.3100 95.5800 Color:00FFFF Vol:0.04542 Zn:1 Sb:1 Name:1Zn1Sb1 
+
+					//Starting positions (string index)
+					//of range start and end
+					//Range1=31.8372 32.2963 Vol:0.01521 Zn:1 Color:999999
+					//	 	^rngmid ^rngend
+					size_t rngMidIdx,rngEndIdx;
+					string rngStart,rngEnd;
+					split[1]=stripWhite(split[1]);
+					rngMidIdx = split[1].find_first_of(' ');
+
+					if (rngMidIdx == std::string::npos)
+					{
+						delete[] inBuffer;
+						return RANGE_ERR_FORMAT;
+					}
+
+					rngEndIdx=split[1].find_first_of(' ',rngMidIdx+1);
+					if (rngEndIdx == std::string::npos)
+					{
+						delete[] inBuffer;
+						return RANGE_ERR_FORMAT;
+					}
+
+					rngStart = split[1].substr(0,rngMidIdx);
+					rngEnd = split[1].substr(rngMidIdx+1,rngEndIdx-(rngMidIdx+1));
+
+
+					//Strip the range
+					string strTmp;
+					strTmp = split[1].substr(rngEndIdx+1);//,split[1].size()-(rngEndIdx+1));
+
+					//Split the remaining field into key:value pairs
+					split.clear();
+					splitStrsRef(strTmp.c_str(),' ',split);
+
+					stripZeroEntries(split);
+					RGBf col;
+					bool haveColour,haveNameField;
+					haveColour=false;
+					haveNameField=false;
+					string strIonNameTmp,strNameFieldValue;
+
+					for (unsigned int ui=0; ui<split.size(); ui++)
+					{
+						//':' is the key:value delimiter (Self reference is hilarious.)
+						size_t colonPos;
+
+
+						colonPos = split[ui].find_first_of(':');
+
+						if (colonPos == std::string::npos)
+						{
+							delete[] inBuffer;
+							return RANGE_ERR_FORMAT;
+						}
+
+						//Extract the key value pairs
+						string key,value;
+						key=split[ui].substr(0,colonPos);
+						value=split[ui].substr(colonPos+1);
+						if (lowercase(key) == "vol")
+						{
+							//Do nothing
+						}
+						else if (lowercase(key) == "name")
+						{
+							//OK, so we need to handle two wierd cases
+							//1) we have the name section and the ion section
+							//2) we have the name section and no ion section
+
+							//Rant:WTF is the point of the "name" section. They are 
+							//encoding information in a redundant and irksome fashion!
+							//Better to store the charge (if that's what you want) in a F-ing charge
+							//section, and the multiplicity is already bloody defined elsewhere!
+							
+							//This won't be known until we complete the parse
+							haveNameField=true;
+							strNameFieldValue=value;
+						}
+						else if (lowercase(key) == "color")
+						{
+							haveColour=true;
+
+
+							if (value.size() !=6)
+							{
+								delete[] inBuffer;
+								return RANGE_ERR_FORMAT;
+							}
+
+							//Use our custom string parser,
+							//which requires a leading #,
+							//in lowercase
+							value = string("#") + lowercase(value);
+							unsigned char r,g,b,a;
+
+							parseColString(value,r,g,b,a);
+
+							col.red = (float)r/255.0f;
+							col.green=(float)g/255.0f;
+							col.blue=(float)b/255.0f;
+						}
+						else
+						{
+							//Basic ion was not in the original [Ions] list. This is not right
+							unsigned int pos=(unsigned int)-1;
+							for (unsigned int uj=0; uj<basicIonNames.size(); uj++)
+							{
+								if (basicIonNames[uj] == key)
+								{
+									pos = uj;
+									break;
+								}
+							}
+
+							if (pos == (unsigned int)-1)
+							{
+								delete[] inBuffer;
+								return RANGE_ERR_FORMAT;
+							}
+							//Check the multiplicity of the ion. Should be an integer > 0
+							unsigned int uintVal;
+							if (stream_cast(uintVal,value) || !uintVal)
+							{
+								delete[] inBuffer;
+								return RANGE_ERR_FORMAT;
+							}
+
+							//If it is  1, then use straight name. Otherwise try to give it a
+							//chemical formula look by mixing in the multiplicity after the key
+							if (uintVal==1)
+								strIonNameTmp+=key;
+							else
+								strIonNameTmp+=key+value;
+						}
+					}
+
+					if (!haveColour )
+					{
+						//Okay, so a colour wasn't provided.
+						// to make our users lives a bit less
+						// boring, lets just use some semi-random ones
+						col.red=rand()/(float)std::numeric_limits<int>::max();
+						col.green=rand()/(float)std::numeric_limits<int>::max();
+						col.blue=rand()/(float)std::numeric_limits<int>::max();
+
+					}
+
+					//Get the range values
+					float rngStartV,rngEndV;
+					if(strIonNameTmp.size() || haveNameField)
+					{
+						if (stream_cast(rngStartV,rngStart))
+						{
+							delete[] inBuffer;
+						
+							return RANGE_ERR_FORMAT;
+						}
+
+						if (stream_cast(rngEndV,rngEnd))
+						{
+							delete[] inBuffer;
+						
+							return RANGE_ERR_FORMAT;
+						}
+					}
+
+					//So the ion field appears to be optional (that is,
+					//ivas emits RRNGs that do not contain an ion listed in the 
+					//ion field). It is unclear what the purpose of these lines is,
+					//so we shall ignore it, in preference to aborting
+					if(strIonNameTmp.size())
+					{
+						//Check to see if we have this ion.
+						//If we dont, we create a new one.
+						//if we do, we check that the colours match
+						//and if not reject the file parsing.
+						unsigned int pos=(unsigned int)(-1);
+						for (unsigned int ui=0; ui<ionNames.size(); ui++)
+						{
+							if (ionNames[ui].first == strIonNameTmp)
+							{
+								pos=ui;
+								break;
+							}
+						}
+
+						ranges.push_back(std::make_pair(rngStartV,rngEndV));
+						if (pos == (unsigned int) -1)
+						{
+							//This is new. Create a new ion,
+							//and use its ionID
+							ionNames.push_back(std::make_pair(strIonNameTmp,
+										     strIonNameTmp));
+							colours.push_back(col);
+							ionIDs.push_back(ionNames.size()-1);
+						}
+						else
+						{
+							//we have the name already
+							ionIDs.push_back(pos);
+						}
+					}
+					else if(haveNameField)
+					{
+						//OK, so we don't have the ion section
+						//but we do have the field section
+						//let us decode the name field in order to retrieve 
+						//the ion information which was missing (for whatever reason)
+						if(!strNameFieldValue.size())
+						{
+							delete[] inBuffer;
+				
+		
+							return RANGE_ERR_FORMAT;
+						}
+
+
+						unsigned int chargeStrStop=0;
+						for(unsigned int ui=0;ui<strNameFieldValue.size();ui++)
+						{
+							if(strNameFieldValue[ui] <'0' || strNameFieldValue[ui] > '9')
+							{
+								chargeStrStop =ui;
+								break;
+							}
+
+						}
+
+						//Strip off the charge value, to get the ion name
+						strNameFieldValue =strNameFieldValue.substr(chargeStrStop,strNameFieldValue.size()-chargeStrStop);
+
+						//Check to see if we have this ion.
+						//If we dont, we create a new one.
+						//if we do, we check that the colours match
+						//and if not reject the file parsing.
+						unsigned int pos=(unsigned int)(-1);
+						for (unsigned int ui=0; ui<ionNames.size(); ui++)
+						{
+							if (ionNames[ui].first == strNameFieldValue)
+							{
+								pos=ui;
+								break;
+							}
+						}
+
+						ranges.push_back(std::make_pair(rngStartV,rngEndV));
+						if (pos == (unsigned int) -1)
+						{
+							//This is new. Create a new ion,
+							//and use its ionID
+							ionNames.push_back(std::make_pair(strNameFieldValue,
+										     strNameFieldValue));
+							colours.push_back(col);
+							ionIDs.push_back(ionNames.size()-1);
+						}
+						else
+						{
+							//we have the name already
+							ionIDs.push_back(pos);
+						}
+
+					}
+				}
+				else
+				{
+					delete[] inBuffer;
+					return RANGE_ERR_FORMAT;
+				}
+
+			}
+			break;
+		}
+		default:
+			ASSERT(false);
+			break;
+		}
+	}
+
+	delete[] inBuffer;
+
+	//If we didn't find anything useful, then thats a formatting error
+	if(!haveSeenIonBlock || !numRanges  || !numBasicIons)
+		return RANGE_ERR_FORMAT;
+	
+	if(numRanges != ranges.size())
+		return RANGE_ERR_FORMAT;
+
+	return 0;
+}
+
 bool RangeFile::extensionIsRange(const char *ext) 
 {
 	bool isRange=false;
@@ -2455,10 +2467,15 @@ bool RangeFile::extensionIsRange(const char *ext)
 
 void RangeFile::getAllExts(std::vector<std::string> &exts)
 {
-	exts.resize(ARRAYSIZE(RANGE_EXTS));
+	//subtract one for the guard terminator, which
+	// we do not want to return
+	exts.resize(ARRAYSIZE(RANGE_EXTS)-1);
 
-	for(unsigned int ui=0;ui<ARRAYSIZE(RANGE_EXTS); ui++)
+	for(unsigned int ui=0;ui<ARRAYSIZE(RANGE_EXTS)-1; ui++)
+	{
 		exts[ui]=RANGE_EXTS[ui];
+		ASSERT(exts[ui].size());
+	}
 }
 
 bool RangeFile::isSelfConsistent() const

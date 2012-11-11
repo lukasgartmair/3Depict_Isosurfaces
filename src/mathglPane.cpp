@@ -146,11 +146,17 @@ void MathGLPane::setPlotWrapper(PlotWrapper *newPlot)
 }
 
 
+
 void MathGLPane::render(wxPaintEvent &event)
 {
-	wxAutoBufferedPaintDC   *dc=new wxAutoBufferedPaintDC(this);
+#ifdef DEBUG
+    extern EventLogger evtlog;
+    evtlog.insert(event);
+#endif
+	
+    wxAutoBufferedPaintDC   *dc=new wxAutoBufferedPaintDC(this);
 
-	if(!thePlot || !plotSelList)
+	if(!thePlot || !plotSelList || thePlot->isInteractionLocked() )
 	{
 		delete dc;
 		return;
@@ -465,7 +471,7 @@ bool MathGLPane::getRegionUnderCursor(const wxPoint  &mousePos, unsigned int &pl
 void MathGLPane::mouseMoved(wxMouseEvent& event)
 {
 	leftWindow=false;
-	if(!thePlot || !gr)
+	if(!thePlot || !gr || thePlot->isInteractionLocked() )
 	{
 		mouseDragMode=MOUSE_MODE_ENUM_END;
 		return;
@@ -508,7 +514,7 @@ void MathGLPane::mouseMoved(wxMouseEvent& event)
 
 void MathGLPane::mouseDoubleLeftClick(wxMouseEvent& event)
 {
-	if(!thePlot || !gr)
+	if(!thePlot || !gr || thePlot->isInteractionLocked())
 		return;
 
 	//Cancel any mouse drag mode
@@ -605,7 +611,7 @@ void MathGLPane::oneDMouseDownAction(bool leftDown,bool middleDown,
 
 void MathGLPane::leftMouseDown(wxMouseEvent& event)
 {
-	if(!gr || !thePlot->getNumVisible())
+	if(!gr || !thePlot->getNumVisible() || !thePlot->isInteractionLocked())
 		return;
 
 	int w,h;
@@ -634,7 +640,7 @@ void MathGLPane::leftMouseDown(wxMouseEvent& event)
 
 void MathGLPane::middleMouseDown(wxMouseEvent &event)
 {
-	if(!gr || !thePlot->getNumVisible())
+	if(!gr || !thePlot->getNumVisible() || thePlot->isInteractionLocked())
 		return;
 	
 	int w,h;
@@ -665,7 +671,7 @@ void MathGLPane::middleMouseDown(wxMouseEvent &event)
 void MathGLPane::mouseWheelMoved(wxMouseEvent& event)
 {
 	//If no valid plot, don't do anything
-	if(!thePlot || !gr )
+	if(!thePlot || !gr || thePlot->isInteractionLocked() )
 		return;
 	
 	//no action if currently dragging
@@ -769,7 +775,7 @@ void MathGLPane::mouseWheelMoved(wxMouseEvent& event)
 void MathGLPane::leftMouseReleased(wxMouseEvent& event)
 {
 
-	if(!thePlot || !gr)
+	if(!thePlot || !gr || thePlot->isInteractionLocked() )
 		return;
 
 	switch(mouseDragMode)
@@ -807,6 +813,10 @@ void MathGLPane::leftMouseReleased(wxMouseEvent& event)
 
 void MathGLPane::middleMouseReleased(wxMouseEvent& event)
 {
+
+	if(!gr || thePlot->isInteractionLocked())
+		return;
+
 	if(mouseDragMode == MOUSE_MODE_DRAG_PAN)
 	{
 		mouseDragMode=MOUSE_MODE_ENUM_END;
@@ -932,14 +942,16 @@ void MathGLPane::mouseLeftWindow(wxMouseEvent& event)
 
 void MathGLPane::keyPressed(wxKeyEvent& event) 
 {
-	if(gr)
-		updateMouseCursor();
+	if(!gr || thePlot->isInteractionLocked() )
+		return;
+	updateMouseCursor();
 }
 
 void MathGLPane::keyReleased(wxKeyEvent& event) 
 {
-	if(gr)
-		updateMouseCursor();
+	if(!gr || thePlot->isInteractionLocked() )
+		return;
+	updateMouseCursor();
 }
 
 

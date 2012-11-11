@@ -498,20 +498,19 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 }
 
 
-void BoundingBoxFilter::getProperties(FilterProperties &propertyList) const
+void BoundingBoxFilter::getProperties(FilterPropGroup &propertyList) const
 {
-	propertyList.data.clear();
-	propertyList.keys.clear();
-	propertyList.types.clear();
-
-	vector<unsigned int> type,keys;
-	vector<pair<string,string> > s;
+	FilterProperty p;
+	size_t curGroup=0;
 
 	string tmpStr;
 	stream_cast(tmpStr,isVisible);
-	s.push_back(std::make_pair(TRANS("Visible"), tmpStr));
-	keys.push_back(KEY_VISIBLE);
-	type.push_back(PROPERTY_TYPE_BOOL);
+	p.name=TRANS("Visible");
+	p.data= tmpStr;
+	p.key=KEY_VISIBLE;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("If true, show box, otherwise hide box");
+	propertyList.addProperty(p,curGroup);
 
 	if(isVisible)
 	{
@@ -523,105 +522,122 @@ void BoundingBoxFilter::getProperties(FilterProperties &propertyList) const
 		}
 
 		tmpStr= choiceString(choices,boundStyle);
-		s.push_back(make_pair(string(TRANS("Style")),tmpStr));
-		type.push_back(PROPERTY_TYPE_CHOICE);
-		keys.push_back(KEY_STYLE);
+		p.name=TRANS("Style");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_CHOICE;
+		p.helpText=TRANS("Box display mode");
+		p.key=KEY_STYLE;
+		propertyList.addProperty(p,curGroup);
 
-
-		propertyList.data.push_back(s);
-		propertyList.types.push_back(type);
-		propertyList.keys.push_back(keys);
-		
 		
 		if(boundStyle == BOUND_STYLE_TICKS)
 		{
-			type.clear();
-			keys.clear();
-			s.clear();
-		
+			curGroup++;
+
 			//Properties are X Y and Z counts on ticks
 			stream_cast(tmpStr,fixedNumTicks);
-			s.push_back(std::make_pair(TRANS("Fixed Tick Num"), tmpStr));
-			keys.push_back(KEY_FIXEDOUT);
-			type.push_back(PROPERTY_TYPE_BOOL);
+			p.name=TRANS("Fixed Tick Num");
+			p.data=tmpStr;
+			p.key=KEY_FIXEDOUT;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("If true, evenly use specified number of ticks. Otherwise, use distance to determine tick count");
+			propertyList.addProperty(p,curGroup);
 
 			if(fixedNumTicks)
 			{
 				//Properties are X Y and Z counts on ticks
 				stream_cast(tmpStr,numTicks[0]);
-				keys.push_back(KEY_COUNT_X);
-				s.push_back(make_pair(TRANS("Num X"), tmpStr));
-				type.push_back(PROPERTY_TYPE_INTEGER);
+				p.key=KEY_COUNT_X;
+				p.name=TRANS("Num X");
+				p.data=tmpStr;
+				p.type=PROPERTY_TYPE_INTEGER;
+				p.helpText=TRANS("Tick count in X direction");
+				propertyList.addProperty(p,curGroup);
 				
 				stream_cast(tmpStr,numTicks[1]);
-				keys.push_back(KEY_COUNT_Y);
-				s.push_back(make_pair(TRANS("Num Y"), tmpStr));
-				type.push_back(PROPERTY_TYPE_INTEGER);
+				p.key=KEY_COUNT_Y;
+				p.name=TRANS("Num Y");
+				p.data=tmpStr;
+				p.type=PROPERTY_TYPE_INTEGER;
+				p.helpText=TRANS("Tick count in Y direction");
+				propertyList.addProperty(p,curGroup);
 				
 				stream_cast(tmpStr,numTicks[2]);
-				keys.push_back(KEY_COUNT_Z);
-				s.push_back(make_pair(TRANS("Num Z"), tmpStr));
-				type.push_back(PROPERTY_TYPE_INTEGER);
+				p.key=KEY_COUNT_Z;
+				p.name=TRANS("Num Z");
+				p.data=tmpStr;
+				p.type=PROPERTY_TYPE_INTEGER;
+				p.helpText=TRANS("Tick count in Z direction");
+				propertyList.addProperty(p,curGroup);
 			}
 			else
 			{
 				stream_cast(tmpStr,tickSpacing[0]);
-				s.push_back(make_pair(TRANS("Spacing X"), tmpStr));
-				keys.push_back(KEY_SPACING_X);
-				type.push_back(PROPERTY_TYPE_REAL);
+				p.name=TRANS("Spacing X");
+				p.data= tmpStr;
+				p.key=KEY_SPACING_X;
+				p.type=PROPERTY_TYPE_REAL;
+				p.helpText=TRANS("Distance between ticks on X axis");
+				propertyList.addProperty(p,curGroup);
 
 				stream_cast(tmpStr,tickSpacing[1]);
-				s.push_back(make_pair(TRANS("Spacing Y"), tmpStr));
-				keys.push_back(KEY_SPACING_Y);
-				type.push_back(PROPERTY_TYPE_REAL);
+				p.name=TRANS("Spacing Y");
+				p.data= tmpStr;
+				p.key=KEY_SPACING_Y;
+				p.type=PROPERTY_TYPE_REAL;
+				p.helpText=TRANS("Distance between ticks on Y axis");
+				propertyList.addProperty(p,curGroup);
 
 				stream_cast(tmpStr,tickSpacing[2]);
-				s.push_back(make_pair(TRANS("Spacing Z"), tmpStr));
-				keys.push_back(KEY_SPACING_Z);
-				type.push_back(PROPERTY_TYPE_REAL);
+				p.name=TRANS("Spacing Z");
+				p.data= tmpStr;
+				p.key=KEY_SPACING_Z;
+				p.type=PROPERTY_TYPE_REAL;
+				p.helpText=TRANS("Distance between ticks on Z axis");
+				propertyList.addProperty(p,curGroup);
 			}
+			propertyList.setGroupTitle(curGroup,TRANS("Tick marks"));
 
-			propertyList.data.push_back(s);
-			propertyList.types.push_back(type);
-			propertyList.keys.push_back(keys);
 		}
 
 		//Box Line properties 
-		type.clear();
-		keys.clear();
-		s.clear();
+		curGroup++;
 
 		//Colour
 		genColString((unsigned char)(rLine*255.0),(unsigned char)(gLine*255.0),
 			(unsigned char)(bLine*255),(unsigned char)(aLine*255),tmpStr);
-		s.push_back(std::make_pair(TRANS("Box Colour"), tmpStr));
-		keys.push_back(KEY_LINECOLOUR);
-		type.push_back(PROPERTY_TYPE_COLOUR);
+		p.name=TRANS("Box Colour");
+		p.data= tmpStr;
+		p.key=KEY_LINECOLOUR;
+		p.type=PROPERTY_TYPE_COLOUR;
+		p.helpText=TRANS("Colour of the bounding box");
+		propertyList.addProperty(p,curGroup);
 
-
-		
 		//Line thickness
 		stream_cast(tmpStr,lineWidth);
-		s.push_back(std::make_pair(TRANS("Line thickness"), tmpStr));
-		keys.push_back(KEY_LINEWIDTH);
-		type.push_back(PROPERTY_TYPE_REAL);
+		p.name=TRANS("Line thickness");
+		p.data= tmpStr;
+		p.key=KEY_LINEWIDTH;
+		p.type=PROPERTY_TYPE_REAL;
+		p.helpText=TRANS("Thickness of the lines used to draw the box");
+		propertyList.addProperty(p,curGroup);
 
 		//Font size	
 		if(boundStyle != BOUND_STYLE_BOX_ONLY)
 		{
 			stream_cast(tmpStr,fontSize);
-			keys.push_back(KEY_FONTSIZE);
-			s.push_back(make_pair(TRANS("Font Size"), tmpStr));
-			type.push_back(PROPERTY_TYPE_INTEGER);
+			p.key=KEY_FONTSIZE;
+			p.name=TRANS("Font Size");
+			p.data= tmpStr;
+			p.type=PROPERTY_TYPE_INTEGER;
+			p.helpText=TRANS("Relative size for text");
+			propertyList.addProperty(p,curGroup);
 		}
+		propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
 	}
-	
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
 }
 
-bool BoundingBoxFilter::setProperty( unsigned int set, unsigned int key,
+bool BoundingBoxFilter::setProperty(  unsigned int key,
 					const std::string &value, bool &needUpdate)
 {
 
@@ -646,7 +662,6 @@ bool BoundingBoxFilter::setProperty( unsigned int set, unsigned int key,
 		}	
 		case KEY_STYLE:
 		{
-			string stripped=stripWhite(value);
 			size_t ltmp=BOUND_STYLE_ENUM_END;
 			for(unsigned int ui=0;ui<BOUND_STYLE_ENUM_END;ui++)
 			{
@@ -774,7 +789,7 @@ std::string  BoundingBoxFilter::getErrString(unsigned int code) const
 	return std::string("Aborted");
 }
 
-bool BoundingBoxFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+bool BoundingBoxFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -1070,7 +1085,7 @@ bool boxVolumeTest()
 	b->setCaching(false);
 
 	bool needUp;
-	b->setProperty(0,KEY_VISIBLE,"1",needUp);
+	b->setProperty(KEY_VISIBLE,"1",needUp);
 
 
 	ProgressData p;

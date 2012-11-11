@@ -115,7 +115,7 @@ bool K3DTreeMk2::build()
 
 
 	
-	size_t *childPtr=0;
+	size_t *childPtr;
 
 #ifdef DEBUG
 	for(size_t ui=0;ui<nodes.size();ui++)

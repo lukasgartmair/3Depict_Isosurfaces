@@ -147,7 +147,7 @@ void ResolutionDialog::OnTextWidth(wxCommandEvent &event)
 	//if we are locking the aspect ratio, set the other text box to have the same ratio
 	if(checkLockAspect->IsChecked() && aspect > std::numeric_limits<float>::epsilon())
 	{
-		resHeight=width*aspect;
+		resHeight=(unsigned int)(width*aspect);
 		stream_cast(textStr,resHeight);
 		textHeight->SetValue(wxStr(textStr));
 	}
@@ -157,7 +157,6 @@ void ResolutionDialog::OnTextWidth(wxCommandEvent &event)
 
 	programmaticEvent--;
 }
-
 
 void ResolutionDialog::OnTextHeight(wxCommandEvent &event)
 {
@@ -197,7 +196,7 @@ void ResolutionDialog::OnTextHeight(wxCommandEvent &event)
 	//if we are locking the aspect ratio, set the other text box to preserve the same ratio
 	if(checkLockAspect->IsChecked() && aspect > std::numeric_limits<float>::epsilon())
 	{
-		resWidth=height/aspect;
+		resWidth=(unsigned int)(height/aspect);
 		stream_cast(textStr,resWidth);
 		textWidth->SetValue(wxStr(textStr));
 	}
@@ -275,7 +274,7 @@ void ResolutionDialog::OnMouseWheelWidth(wxMouseEvent &event)
 	if(checkLockAspect->IsChecked() && aspect > std::numeric_limits<float>::epsilon())
 	{
 		std::string textStr;
-		resHeight=resWidth*aspect;
+		resHeight=(unsigned int)resWidth*aspect;
 		stream_cast(textStr,resHeight);
 		textHeight->SetValue(wxStr(textStr));
 	}
@@ -315,13 +314,13 @@ void ResolutionDialog::OnMouseWheelHeight(wxMouseEvent &event)
 
 	programmaticEvent++;
 
-	setRes(resWidth,resHeight+moveRate);
+	setRes(resWidth,(unsigned int)(resHeight+moveRate));
 
 	//if we are locking the aspect ratio, set the other text box to preserve the same ratio
 	if(checkLockAspect->IsChecked() && aspect > std::numeric_limits<float>::epsilon())
 	{
 		std::string textStr;
-		resWidth=resHeight/aspect;
+		resWidth=(unsigned int)(resHeight/aspect);
 		stream_cast(textStr,resWidth);
 		textWidth->SetValue(wxStr(textStr));
 	}
@@ -403,8 +402,8 @@ void ResolutionDialog::drawImageRectangle(wxDC *paintDC)
 	scaleFactor=std::min((float)panelHeight/(float)height,
 			(float)panelWidth/(float)width);
 
-	width*=scaleFactor;
-	height*=scaleFactor;
+	width=(unsigned int)(width*scaleFactor);
+	height=(unsigned int)(height*scaleFactor);
 
 	int startX,startY;
 

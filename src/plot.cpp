@@ -84,7 +84,7 @@ char MGLColourFixer::haveExactColour(float r, float g, float b) const
 	return 0;
 }
 
-unsigned int MGLColourFixer::getMaxColours() const
+unsigned int MGLColourFixer::getMaxColours() 
 {
 	//Used cached value if available
 	if(maxCols!=-1)
@@ -170,6 +170,38 @@ char MGLColourFixer::getNextBestColour(float r, float g, float b)
 
 	ASSERT(mglColorIds[best].id != 'k');
 	return mglColorIds[best].id;
+}
+
+//Mathgl uses some internal for(float=...) constructions, 
+// which are just generally a bad idea, as they often won't terminate
+// as the precision is not guaranteed. Try to catch these by detecting this
+bool mglFloatTooClose(float a, float b)
+{
+	//For small numbers an absolute delta can catch
+	// too close values
+	if(fabs(a-b) < sqrt(std::numeric_limits<float>::epsilon()))
+		return true;
+
+	const int FLOAT_ACC_MASK=0xffff0000;
+	union FLT_INT
+	{
+		float f;
+		int i;
+	};
+	FLT_INT u;
+	u.f=a;
+	//For big numbers, we have to either bit-bash, or something
+	u.i&=FLOAT_ACC_MASK;
+	a=u.f;
+
+	u.f=b;
+	u.i&=FLOAT_ACC_MASK;
+	b=u.f;
+
+	if(fabs(a-b) < sqrt(std::numeric_limits<float>::epsilon()))
+		return true;
+
+	return false;
 }
 
 
@@ -281,6 +313,13 @@ PlotWrapper::PlotWrapper()
 	applyUserBounds=false;
 	plotChanged=true;
 	drawLegend=true;
+	interactionLocked=false;
+}
+
+PlotWrapper::~PlotWrapper()
+{
+	for(size_t ui=0;ui<plottingData.size();ui++)
+		delete plottingData[ui];
 }
 
 unsigned int PlotWrapper::addPlot(PlotBase *p)
@@ -368,6 +407,8 @@ void PlotWrapper::setColours(unsigned int plotUniqueID, float rN,float gN,float 
 void PlotWrapper::setBounds(float xMin, float xMax,
 			float yMin,float yMax)
 {
+	ASSERT(!interactionLocked);
+
 	ASSERT(xMin<xMax);
 	ASSERT(yMin<=yMax);
 	xUserMin=xMin;
@@ -383,6 +424,7 @@ void PlotWrapper::setBounds(float xMin, float xMax,
 
 void PlotWrapper::disableUserAxisBounds(bool xBound)
 {
+	ASSERT(!interactionLocked);
 	float xMin,xMax,yMin,yMax;
 	scanBounds(xMin,xMax,yMin,yMax);
 
@@ -685,6 +727,19 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 				gr->Org=axisCross;
 			}
 			
+			//"Push" bounds around to prevent min == max
+			// This is a hack to prevent mathgl from inf. looping
+			//---
+			if(mglFloatTooClose(min.x , max.x))
+			{
+				min.x-=5;
+				max.x+=5;
+			}
+
+			if(mglFloatTooClose(min.y , max.y))
+				max.y+=1;
+			//------
+
 			//tell mathgl about the bounding box	
 			gr->Axis(min,max,axisCross);
 
@@ -693,20 +748,10 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 			WARN((fabs(min.y-max.y) > sqrt(std::numeric_limits<float>::epsilon())), 
 					"WARNING: Mgl limits (Y) too Close! Due to limitiations in MGL, This may inf. loop!");
 
-
-			//"Push" bounds around to prevent min == max
-			if(min.x == max.x)
-			{
-				min.x-=0.5;
-				max.x+=0.5;
-			}
-
-			if(min.y == max.y)
-				max.y+=1;
-
 			gr->AdjustTicks("x");
 			gr->SetXTT("%g"); //Set the tick type
 			gr->Axis("xy"); //Build an X-Y crossing axis
+			//---
 
 			//Loop through the plots, drawing them as needed
 			for(unsigned int ui=0;ui<plottingData.size();ui++)
@@ -803,6 +848,48 @@ bool PlotWrapper::getRegionIdAtPosition(float x, float y, unsigned int &pId, uns
 	return false;
 }
 
+unsigned int PlotWrapper::getNumVisible() const
+{
+	unsigned int num=0;
+	for(unsigned int ui=0;ui<plottingData.size();ui++)
+	{
+		if(plottingData[ui]->visible)
+			num++;
+	}
+	
+	
+	return num;
+}
+
+bool PlotWrapper::isPlotVisible(unsigned int plotID) const
+{
+	return plottingData[plotIDHandler.getPos(plotID)]->visible;
+}
+
+void PlotWrapper::getRegion(unsigned int plotId, unsigned int regionId, PlotRegion &region) const
+{
+	plottingData[plotIDHandler.getPos(plotId)]->getRegion(regionId,region);
+}
+
+unsigned int PlotWrapper::plotType(unsigned int plotId) const
+{
+	return plottingData[plotIDHandler.getPos(plotId)]->plotType;
+}
+
+
+void PlotWrapper::moveRegionLimit(unsigned int plotId, unsigned int regionId,
+			unsigned int movementType, float &constrainX, float &constrainY) const
+{
+	plottingData[plotIDHandler.getPos(plotId)]->moveRegionLimit(
+				regionId,movementType,constrainX,constrainY);
+}
+
+
+void PlotWrapper::moveRegion(unsigned int plotID, unsigned int regionId, unsigned int movementType, 
+							float newX, float newY) const
+{
+	plottingData[plotIDHandler.getPos(plotID)]->moveRegion(regionId,movementType,newX,newY);
+}
 //-----------
 
 
@@ -870,6 +957,8 @@ void Plot1D::setData(const vector<float> &vX, const vector<float> &vY,
 		maxY+=AXIS_MIN_TOLERANCE;
 	}
 }
+//---
+
 
 void Plot1D::setData(const vector<std::pair<float,float> > &v)
 {
@@ -1124,48 +1213,6 @@ void Plot1D::addRegion(unsigned int parentPlot,unsigned int regionID,float start
 	regions.push_back(region);
 }
 
-unsigned int PlotWrapper::getNumVisible() const
-{
-	unsigned int num=0;
-	for(unsigned int ui=0;ui<plottingData.size();ui++)
-	{
-		if(plottingData[ui]->visible)
-			num++;
-	}
-	
-	
-	return num;
-}
-
-bool PlotWrapper::isPlotVisible(unsigned int plotID) const
-{
-	return plottingData[plotIDHandler.getPos(plotID)]->visible;
-}
-
-void PlotWrapper::getRegion(unsigned int plotId, unsigned int regionId, PlotRegion &region) const
-{
-	plottingData[plotIDHandler.getPos(plotId)]->getRegion(regionId,region);
-}
-
-unsigned int PlotWrapper::plotType(unsigned int plotId) const
-{
-	return plottingData[plotIDHandler.getPos(plotId)]->plotType;
-}
-
-
-void PlotWrapper::moveRegionLimit(unsigned int plotId, unsigned int regionId,
-			unsigned int movementType, float &constrainX, float &constrainY) const
-{
-	plottingData[plotIDHandler.getPos(plotId)]->moveRegionLimit(
-				regionId,movementType,constrainX,constrainY);
-}
-
-
-void PlotWrapper::moveRegion(unsigned int plotID, unsigned int regionId, unsigned int movementType, 
-							float newX, float newY) const
-{
-	plottingData[plotIDHandler.getPos(plotID)]->moveRegion(regionId,movementType,newX,newY);
-}
 //----
 
 void Plot1D::getRawData(std::vector<std::vector< float> > &rawData,

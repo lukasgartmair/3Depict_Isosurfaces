@@ -95,7 +95,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 
 
 
-	size_t totalSize=numElements(dataIn);
+	size_t totalSize=numElements(dataIn,STREAM_TYPE_IONS);
 	
 	unsigned int nBins=2;
 	if(totalSize)
@@ -368,52 +368,62 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 	return 0;
 }
 
-void SpectrumPlotFilter::getProperties(FilterProperties &propertyList) const
+void SpectrumPlotFilter::getProperties(FilterPropGroup &propertyList) const
 {
-	propertyList.data.clear();
-	propertyList.keys.clear();
-	propertyList.types.clear();
 
-	vector<unsigned int> type,keys;
-	vector<pair<string,string> > s;
-
+	FilterProperty p;
+	size_t curGroup=0;
 	string str;
 
 	stream_cast(str,binWidth);
-	keys.push_back(KEY_SPECTRUM_BINWIDTH);
-	s.push_back(make_pair(TRANS("bin width"), str));
-	type.push_back(PROPERTY_TYPE_REAL);
+	p.name=TRANS("Bin width");
+	p.data=str;
+	p.key=KEY_SPECTRUM_BINWIDTH;
+	p.type=PROPERTY_TYPE_REAL;
+	p.helpText=TRANS("Step size for spectrum");
+	propertyList.addProperty(p,curGroup);
 
 	if(autoExtrema)
 		str = "1";
 	else
 		str = "0";
 
-	keys.push_back(KEY_SPECTRUM_AUTOEXTREMA);
-	s.push_back(make_pair(TRANS("Auto Min/max"), str));
-	type.push_back(PROPERTY_TYPE_BOOL);
+
+	p.name=TRANS("Auto Min/max");
+	p.data=str;
+	p.key=KEY_SPECTRUM_AUTOEXTREMA;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Automatically compute spectrum upper and lower bound");
+	propertyList.addProperty(p,curGroup);
 
 	stream_cast(str,minPlot);
-	keys.push_back(KEY_SPECTRUM_MIN);
-	s.push_back(make_pair(TRANS("Min"), str));
-	type.push_back(PROPERTY_TYPE_REAL);
+	p.data=str;
+	p.name=TRANS("Min");
+	p.key=KEY_SPECTRUM_MIN;
+	p.type=PROPERTY_TYPE_REAL;
+	p.helpText=TRANS("Starting position for spectrum");
+	propertyList.addProperty(p,curGroup);
 
 	stream_cast(str,maxPlot);
-	keys.push_back(KEY_SPECTRUM_MAX);
-	s.push_back(make_pair(TRANS("Max"), str));
-	type.push_back(PROPERTY_TYPE_REAL);
+	p.key=KEY_SPECTRUM_MAX;
+	p.name=TRANS("Max");
+	p.data=str;
+	p.type=PROPERTY_TYPE_REAL;
+	p.helpText=TRANS("Ending position for spectrum");
+	propertyList.addProperty(p,curGroup);
 	
 	if(logarithmic)
 		str = "1";
 	else
 		str = "0";
-	keys.push_back(KEY_SPECTRUM_LOGARITHMIC);
-	s.push_back(make_pair(TRANS("Logarithmic"), str));
-	type.push_back(PROPERTY_TYPE_BOOL);
-
+	p.key=KEY_SPECTRUM_LOGARITHMIC;
+	p.name=TRANS("Logarithmic");
+	p.data=str;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Convert the plot to logarithmic mode");
+	propertyList.addProperty(p,curGroup);
 
 	//Let the user know what the valid values for plot type are
-	string tmpChoice;
 	vector<pair<unsigned int,string> > choices;
 
 
@@ -429,9 +439,12 @@ void SpectrumPlotFilter::getProperties(FilterProperties &propertyList) const
 
 
 	tmpStr= choiceString(choices,plotStyle);
-	s.push_back(make_pair(string(TRANS("Plot Type")),tmpStr));
-	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_SPECTRUM_PLOTTYPE);
+	p.name=TRANS("Plot Type");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Visual style of plot");
+	p.key=KEY_SPECTRUM_PLOTTYPE;
+	propertyList.addProperty(p,curGroup);
 
 	string thisCol;
 
@@ -439,20 +452,17 @@ void SpectrumPlotFilter::getProperties(FilterProperties &propertyList) const
 	genColString((unsigned char)(r*255.0),(unsigned char)(g*255.0),
 		(unsigned char)(b*255.0),(unsigned char)(a*255.0),thisCol);
 
-	s.push_back(make_pair(string(TRANS("colour")),thisCol)); 
-	type.push_back(PROPERTY_TYPE_COLOUR);
-	keys.push_back(KEY_SPECTRUM_COLOUR);
-
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
+	p.name=TRANS("Colour");
+	p.data=thisCol; 
+	p.type=PROPERTY_TYPE_COLOUR;
+	p.helpText=TRANS("Colour of plotted spectrum");
+	p.key=KEY_SPECTRUM_COLOUR;
+	propertyList.addProperty(p,curGroup);
 }
 
-bool SpectrumPlotFilter::setProperty(unsigned int set, unsigned int key, 
+bool SpectrumPlotFilter::setProperty( unsigned int key, 
 					const std::string &value, bool &needUpdate) 
 {
-	ASSERT(!set);
-
 	needUpdate=false;
 	switch(key)
 	{
@@ -686,7 +696,7 @@ std::string  SpectrumPlotFilter::getErrString(unsigned int code) const
 	return std::string("BUG: (SpectrumPlotFilter::getErrString) Shouldn't see this!");
 }
 
-bool SpectrumPlotFilter::writeState(std::ofstream &f,unsigned int format, unsigned int depth) const
+bool SpectrumPlotFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -877,10 +887,10 @@ bool countTest()
 
 	bool needUp;
 	std::string s;
-	f->setProperty(0,KEY_SPECTRUM_LOGARITHMIC,"0",needUp);
+	f->setProperty(KEY_SPECTRUM_LOGARITHMIC,"0",needUp);
 	
 	genColString(255,0,0,s);
-	f->setProperty(0,KEY_SPECTRUM_COLOUR,s,needUp);
+	f->setProperty(KEY_SPECTRUM_COLOUR,s,needUp);
 
 	vector<const FilterStreamData*> streamIn,streamOut;
 

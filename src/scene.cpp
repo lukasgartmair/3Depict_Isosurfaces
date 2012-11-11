@@ -26,6 +26,7 @@ using std::vector;
 Scene::Scene() : tempCam(0), activeCam(0), cameraSet(false), outWinAspect(1.0f), r(0.0f), g(0.0f), b(0.0f)
 {
 	lastHovered=lastSelected=(unsigned int)(-1);
+	lockInteract=false;
 	hoverMode=selectionMode=false;
 	viewRestrict=false;
 	useAlpha=true;
@@ -220,7 +221,7 @@ void Scene::draw()
 	glPopMatrix();
 		
 	//Now draw 2D overlays
-	if(lastHovered != (unsigned int)(-1))
+	if(!lockInteract&& lastHovered != (unsigned int)(-1) )
 		drawHoverOverlay();
 	drawOverlays();
 
@@ -230,25 +231,14 @@ void Scene::drawObjectVector(const vector<const DrawableObj*> &drawObjs, bool &l
 {
 	for(unsigned int ui=0; ui<drawObjs.size(); ui++)
 	{
-		//FIXME: Use logical operator to simplify this.
-		// its late, and i'm tired and can't think. Its very easy
-		// when you can think. 
-		if(drawOpaques)
-		{
-			//Don't draw opaque drawObjs in this pass
-			 if(drawObjs[ui]->needsDepthSorting())
-				continue;
-		}
-		else
-		{
-			//Do draw opaque drawObjs in this pass
-			 if(!drawObjs[ui]->needsDepthSorting())
-				continue;
-		}
+		//Only draw opaque drawObjs in this pass if not required
+		if(drawObjs[ui]->needsDepthSorting() == drawOpaques)
+			continue;
 	
 		//overlays need to be drawn later
 		if(drawObjs[ui]->isOverlay())
 			continue;
+
 		if(useLighting)
 		{	
 			if(!drawObjs[ui]->wantsLight && lightsOn )
@@ -713,6 +703,8 @@ bool Scene::setCamProperty(unsigned int uniqueID, unsigned int key,
 //GPLv3+ permission obtained by email inquiry.
 unsigned int Scene::glSelect(bool storeSelected)
 {
+	ASSERT(!lockInteract);
+
 	glClear(  GL_DEPTH_BUFFER_BIT );
 	//Shouldn't be using a temporary camera.
 	//temporary cameras are only active during movement operations
@@ -834,6 +826,7 @@ void Scene::applyDevice(float startX, float startY, float curX, float curY,
 			unsigned int keyFlags, unsigned int mouseFlags,	bool permanent)
 {
 
+	ASSERT(!lockInteract);
 	if(lastSelected == (unsigned int) (-1))
 		return;
 

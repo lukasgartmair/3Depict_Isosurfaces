@@ -73,16 +73,16 @@ class SpatialAnalysisFilter : public Filter
 		virtual std::string typeString() const { return std::string(TRANS("Spat. Analysis"));};
 
 		//!Get the properties of the filter, in key-value form. First vector is for each output.
-		void getProperties(FilterProperties &propertyList) const;
+		void getProperties(FilterPropGroup &propertyList) const;
 
 		//!Set the properties for the nth filter
-		bool setProperty(unsigned int set,unsigned int key, 
+		bool setProperty(unsigned int key, 
 				const std::string &value, bool &needUpdate);
 		//!Get the human readable error string associated with a particular error code during refresh(...)
 		std::string getErrString(unsigned int code) const;
 		
 		//!Dump state to output stream, using specified format
-		bool writeState(std::ofstream &f,unsigned int format,
+		bool writeState(std::ostream &f,unsigned int format,
 						unsigned int depth=0) const;
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.

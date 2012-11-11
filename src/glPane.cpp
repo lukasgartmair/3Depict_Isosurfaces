@@ -96,7 +96,6 @@ wxGLCanvas(parent, wxID_ANY,  wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas
 	haveCameraUpdates=false;
 	applyingDevice=false;
 	paneInitialised=false;
-	disableSceneInteraction=false;
 
 	keyDoubleTapTimer=new wxTimer(this,ID_KEYPRESS_TIMER);
 	lastKeyDoubleTap=(unsigned int)-1;
@@ -105,6 +104,7 @@ wxGLCanvas(parent, wxID_ANY,  wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas
 	dragging=false;
 	lastMoveShiftDown=false;
 	selectionMode=false;
+	lastKeyFlags=lastMouseFlags=0;
 }
 
 BasicGLPane::~BasicGLPane()
@@ -128,11 +128,17 @@ bool BasicGLPane::displaySupported() const
 
 void BasicGLPane::setSceneInteractionAllowed(bool enabled)
 {
-	disableSceneInteraction=!enabled;
+	currentScene.lockInteraction(!enabled);
 }
 
-unsigned int  BasicGLPane::selectionTest(wxPoint &p,bool &shouldRedraw)
+unsigned int  BasicGLPane::selectionTest(const wxPoint &p,bool &shouldRedraw)
 {
+
+	if(currentScene.isInteractionLocked())
+	{
+		shouldRedraw=false;
+		return -1; 
+	}
 
 	//TODO: Refactor. Much of this could be pushed into the scene, 
 	//and hence out of this wx panel.
@@ -167,9 +173,14 @@ unsigned int  BasicGLPane::selectionTest(wxPoint &p,bool &shouldRedraw)
 	return selectedObject;
 }
  
-unsigned int  BasicGLPane::hoverTest(wxPoint &p,bool &shouldRedraw)
+unsigned int  BasicGLPane::hoverTest(const wxPoint &p,bool &shouldRedraw)
 {
 
+	if(currentScene.isInteractionLocked())
+	{
+		shouldRedraw=false;
+		return -1;
+	}
 	//Push on the matrix stack
 	glPushMatrix();
 	
@@ -218,7 +229,7 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 
 	if(selectionMode )
 	{
-		if(disableSceneInteraction)
+		if(currentScene.isInteractionLocked())
 		{
 			event.Skip();
 			return;
@@ -383,7 +394,8 @@ void BasicGLPane::mouseDown(wxMouseEvent& event)
 	//This can cause a selection test to occur whilst
 	//a temp cam is activated in the scene, or a binding refresh is underway,
 	//which is currently considered bad
-	if(!dragging && !applyingDevice && !selectionMode && !disableSceneInteraction)
+	if(!dragging && !applyingDevice && !selectionMode 
+			&& !currentScene.isInteractionLocked())
 	{
 		//Check to see if the user has clicked an object in the scene
 		bool redraw;
@@ -450,6 +462,11 @@ void BasicGLPane::mouseWheelMoved(wxMouseEvent& event)
 
 void BasicGLPane::mouseReleased(wxMouseEvent& event) 
 {
+	if(currentScene.isInteractionLocked())
+	{
+		event.Skip();
+		return;
+	}
 		
 	if(selectionMode )
 	{
@@ -784,9 +801,13 @@ int BasicGLPane::getHeight()
 {
     return GetClientSize().y;
 }
- 
+
 void BasicGLPane::render( wxPaintEvent& evt )
 {
+#ifdef DEBUG 
+	extern EventLogger evtlog;
+	evtlog.insert(evt);
+#endif
 	//Prevent calls to openGL if pane not visible
 	if (!IsShown()) 
 		return;
@@ -827,13 +848,14 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	GLint dims[2]; 
 	glGetIntegerv(GL_MAX_VIEWPORT_DIMS, dims); 
 
-	//create new image
-	wxImage *image = new wxImage(width,height);
-	
+	//Opengl should not be giving us zero dimensions here.
+	// if it does, just abandon saving the image as a fallback
 	ASSERT(dims[0] && dims[1]);
-
 	if(!dims[0] || !dims[1])
 		return false;
+	
+	//create new image
+	wxImage *image = new wxImage(width,height);
 
 	//We cannot seem to draw outside the current viewport.
 	//in a cross platform manner.
@@ -860,10 +882,10 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 		if(panelHeight% height)
 			numTilesY++;
 
-		//COnstruct the image using "tiles" what we do is
+		//Construct the image using "tiles": what we do is
 		//use the existing viewport size (as we cannot reliably change it
 		//without handling an OnSize event to resize the underlying 
-		//system bufer (eg hwnd under windows.))
+		//system buffer (eg hwnd under windows.))
 		//and then use this to reconstruct the image in a piece wise manner
 		float tileStart[2];
 

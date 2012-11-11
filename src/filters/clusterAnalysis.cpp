@@ -64,11 +64,6 @@ using std::vector;
 //  in terms of algorithm speed
 const float SPHERE_PRESEARCH_CUTOFF = 75;
 
-const unsigned int SET_CORE_IONS=3;
-const unsigned int SET_BULK_IONS=4;
-
-
-
 
 void makeFrequencyTable(const IonStreamData *i ,const RangeFile *r, 
 				std::vector<std::pair<string,size_t> > &freqTable) 
@@ -222,7 +217,7 @@ void ClusterAnalysisFilter::checkIonEnabled(bool &core, bool &bulk) const
 
 
 void ClusterAnalysisFilter::buildRangeEnabledMap(const RangeStreamData *r,
-					map<size_t,size_t> &rangeEnabledMap) const
+					map<size_t,size_t> &rangeEnabledMap) 
 {
 
 	//should be empty...
@@ -241,7 +236,6 @@ void ClusterAnalysisFilter::buildRangeEnabledMap(const RangeStreamData *r,
 	}
 
 
-	ASSERT(rangeEnabledMap.size() == ionCoreEnabled.size());
 }
 
 ClusterAnalysisFilter::ClusterAnalysisFilter() : algorithm(CLUSTER_LINK_ERODE),
@@ -877,14 +871,10 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	return 0;
 }
 
-void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
+void ClusterAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 {
-	propertyList.data.clear();
-	propertyList.keys.clear();
-	propertyList.types.clear();
-
-	vector<unsigned int> type,keys;
-	vector<pair<string,string> > s;
+	FilterProperty p;
+	size_t curGroup=0;
 
 	string tmpStr;
 	vector<pair<unsigned int,string> > choices;
@@ -892,127 +882,153 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 	choices.push_back(make_pair((unsigned int)CLUSTER_LINK_ERODE,tmpStr));
 	
 	tmpStr= choiceString(choices,algorithm);
-	s.push_back(make_pair(string(TRANS("Algorithm")),tmpStr));
+	p.name=TRANS("Algorithm");
+	p.data=tmpStr;
 	choices.clear();
-	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_CLUSTERANALYSIS_ALGORITHM);
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Cluster algorithm mode");
+	p.key=KEY_CLUSTERANALYSIS_ALGORITHM;
+	propertyList.addProperty(p,curGroup);
 	
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
-	propertyList.keyNames.push_back(TRANS("Algorithm"));
-
-	s.clear(); type.clear(); keys.clear(); 
-
+	curGroup++;
+	
 	if(algorithm == CLUSTER_LINK_ERODE)
 	{
 		stream_cast(tmpStr,coreDist);
-		s.push_back(make_pair(string(TRANS("Core Classify Dist")),tmpStr));
-		type.push_back(PROPERTY_TYPE_REAL);
-		keys.push_back(KEY_CORECLASSIFYDIST);
+		p.name=TRANS("Core Classify Dist");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_REAL;
+		p.helpText=TRANS("Restrict only atoms by distance to be cluster sources");
+		p.key=KEY_CORECLASSIFYDIST;
+		propertyList.addProperty(p,curGroup);
 		
 		stream_cast(tmpStr,coreKNN);
-		s.push_back(make_pair(string(TRANS("Classify Knn Max")),tmpStr));
-		type.push_back(PROPERTY_TYPE_INTEGER);
-		keys.push_back(KEY_CORECLASSIFYKNN);
+		p.name=TRANS("Classify Knn Max");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_INTEGER;
+		p.helpText=TRANS("Require that the kth NN (this number) is within the classify distance, to be a cluster source");
+		p.key=KEY_CORECLASSIFYKNN;
+		propertyList.addProperty(p,curGroup);
 		
 		stream_cast(tmpStr,linkDist);
-		s.push_back(make_pair(string(TRANS("Core Link Dist")),tmpStr));
-		type.push_back(PROPERTY_TYPE_REAL);
-		keys.push_back(KEY_LINKDIST);
+		p.name=TRANS("Core Link Dist");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_REAL;
+		p.helpText=TRANS("Distance between clusters to allow linking");
+		p.key=KEY_LINKDIST;
+		propertyList.addProperty(p,curGroup);
 		
 		stream_cast(tmpStr,bulkLink);
-		s.push_back(make_pair(string(TRANS("Bulk Link (Envelope) Dist")),tmpStr));
-		type.push_back(PROPERTY_TYPE_REAL);
-		keys.push_back(KEY_BULKLINK);
+		p.name=TRANS("Bulk Link (Envelope) Dist");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_REAL;
+		p.helpText=TRANS("Distance from core points that form cluster that is used to grab surrounding bulk points");
+		p.key=KEY_BULKLINK;
+		propertyList.addProperty(p,curGroup);
 		
 		stream_cast(tmpStr,dErosion);
-		s.push_back(make_pair(string(TRANS("Erode Dist")),tmpStr));
-		type.push_back(PROPERTY_TYPE_REAL);
-		keys.push_back(KEY_ERODEDIST);
+		p.name=TRANS("Erode Dist");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_REAL;
+		p.helpText=TRANS("Distance from unclustered material in which bulk points are eroded from cluster");
+		p.key=KEY_ERODEDIST;
+		propertyList.addProperty(p,curGroup);
 	}
 	
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
-	propertyList.keyNames.push_back(TRANS("Clustering Params"));
-	
-	s.clear(); type.clear(); keys.clear(); 
+	propertyList.setGroupTitle(curGroup,TRANS("Clustering Params"));
+
+	curGroup++;
 
 	if(bulkLink > 0.0f)
 	{
 		tmpStr=boolStrEnc(sizeCountBulk);
-		s.push_back(make_pair(TRANS("Count bulk"),tmpStr));
-		type.push_back(PROPERTY_TYPE_BOOL);
-		keys.push_back(KEY_SIZE_COUNT_BULK);
+		p.name=TRANS("Count bulk");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_BOOL;
+		p.helpText=TRANS("Include bulk ions in size distribution.");
+		p.key=KEY_SIZE_COUNT_BULK;
+		propertyList.addProperty(p,curGroup);
 	}
 
 	tmpStr=boolStrEnc(wantCropSize);
-	s.push_back(make_pair(TRANS("Size Cropping"),tmpStr));
-	type.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(KEY_CROP_SIZE);
+	p.name=TRANS("Size Cropping");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Perform removal of clusters based upon size distribution");
+	p.key=KEY_CROP_SIZE;
+	propertyList.addProperty(p,curGroup);
 
 	if(wantCropSize)
 	{
 		stream_cast(tmpStr,nMin);
-		s.push_back(make_pair(TRANS("Min Size"),tmpStr));
-		type.push_back(PROPERTY_TYPE_INTEGER);
-		keys.push_back(KEY_CROP_NMIN);
+		p.name=TRANS("Min Size");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_INTEGER;
+		p.helpText=TRANS("Remove clusters below this size");
+		p.key=KEY_CROP_NMIN;
+		propertyList.addProperty(p,curGroup);
 		
 		stream_cast(tmpStr,nMax);
-		s.push_back(make_pair(TRANS("Max Size"),tmpStr));
-		type.push_back(PROPERTY_TYPE_INTEGER);
-		keys.push_back(KEY_CROP_NMAX);
-
+		p.name=TRANS("Max Size");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_INTEGER;
+		p.helpText=TRANS("Remove clusters above this size");
+		p.key=KEY_CROP_NMAX;
+		propertyList.addProperty(p,curGroup);
 	}	
 	
-		tmpStr=boolStrEnc(wantClusterSizeDist);
-	s.push_back(make_pair(TRANS("Size Distribution"),tmpStr));
-	type.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(KEY_WANT_CLUSTERSIZEDIST);
+	tmpStr=boolStrEnc(wantClusterSizeDist);
+	p.name=TRANS("Size Distribution");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Show number of clusters as a function of cluster size");
+	p.key=KEY_WANT_CLUSTERSIZEDIST;
 	if(wantClusterSizeDist)
 	{	
 		tmpStr=boolStrEnc(logClusterSize);
-		s.push_back(make_pair(TRANS("Log Scale"),tmpStr));
-		type.push_back(PROPERTY_TYPE_BOOL);
-		keys.push_back(KEY_WANT_LOGSIZEDIST);
+		p.name=TRANS("Log Scale");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_BOOL;
+		p.helpText=TRANS("Use logarithmic scale for size distribution");
+		p.key=KEY_WANT_LOGSIZEDIST;
 	}
 
 
 	tmpStr=boolStrEnc(wantClusterMorphology);
-	s.push_back(make_pair(TRANS("Morphology Dist."),tmpStr));
-	type.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(KEY_WANT_CLUSTERMORPHOLOGY);
+	p.name=TRANS("Morphology Dist.");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Create a plot showing cluster aspect ratio data");
+	p.key=KEY_WANT_CLUSTERMORPHOLOGY;
 	
 	tmpStr=boolStrEnc(wantClusterComposition);
-	s.push_back(make_pair(TRANS("Chemistry Dist."),tmpStr));
-	type.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(KEY_WANT_COMPOSITIONDIST);
+	p.name=TRANS("Chemistry Dist.");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Create a plot showing chemistry for each cluster size");
+	p.key=KEY_WANT_COMPOSITIONDIST;
 
 	
 	if(wantClusterComposition)
 	{	
 		tmpStr=boolStrEnc(normaliseComposition);
-		s.push_back(make_pair(TRANS("Normalise"),tmpStr));
-		type.push_back(PROPERTY_TYPE_BOOL);
-		keys.push_back(KEY_NORMALISE_COMPOSITION);
+		p.name=TRANS("Normalise");
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_BOOL;
+		p.helpText=TRANS("Convert cluster counts to composition");
+		p.key=KEY_NORMALISE_COMPOSITION;
+		propertyList.addProperty(p,curGroup);
 	}
 
 
-	propertyList.data.push_back(s);
-	propertyList.types.push_back(type);
-	propertyList.keys.push_back(keys);
-	propertyList.keyNames.push_back(TRANS("Postprocess"));
+	propertyList.setGroupTitle(curGroup,TRANS("Postprocess"));
 	
-	s.clear(); type.clear(); keys.clear(); 
-
+	curGroup++;
 
 	if(haveRangeParent)
 	{	
 		//Offset markers are used elsewhere. Must be in sync with
 		//this code	
-		ASSERT(propertyList.data.size() == SET_CORE_IONS);
-
 		ASSERT(ionCoreEnabled.size() == ionBulkEnabled.size());
 		ASSERT(ionCoreEnabled.size() == ionNames.size())
 		for(size_t ui=0;ui<ionNames.size();ui++)
@@ -1021,43 +1037,39 @@ void ClusterAnalysisFilter::getProperties(FilterProperties &propertyList) const
 				tmpStr="1";
 			else
 				tmpStr="0";
-			s.push_back(make_pair(ionNames[ui],tmpStr));
-			type.push_back(PROPERTY_TYPE_BOOL);
-			keys.push_back(KEY_CORE_OFFSET+ui);
+			p.name=ionNames[ui];
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("If selected, use as \"core\" ion type (can make clusters)");
+			p.key=KEY_CORE_OFFSET+ui;
+			propertyList.addProperty(p,curGroup);
 		}
-		propertyList.data.push_back(s);
-		propertyList.types.push_back(type);
-		propertyList.keys.push_back(keys);
-		propertyList.keyNames.push_back(TRANS("Core Ranges"));
-		s.clear(); type.clear(); keys.clear(); 
 		
+		propertyList.setGroupTitle(curGroup,TRANS("Core Ranges"));
+		curGroup++;	
 	
-		//Offset markers are used elsewhere. Must be in sync with
-		//this code	
-		ASSERT(propertyList.data.size() == SET_BULK_IONS);
-		
 		for(size_t ui=0;ui<ionNames.size();ui++)
 		{
 			if(ionBulkEnabled[ui])
 				tmpStr="1";
 			else
 				tmpStr="0";
-			s.push_back(make_pair(ionNames[ui],tmpStr));
-			type.push_back(PROPERTY_TYPE_BOOL);
-			keys.push_back(KEY_BULK_OFFSET+ui);
+			p.name=ionNames[ui];
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("If selected, use as \"bulk\" ion type (can be included in existing clusters)");
+			p.key=KEY_BULK_OFFSET+ui;
+			propertyList.addProperty(p,curGroup);
 		}
-		propertyList.data.push_back(s);
-		propertyList.types.push_back(type);
-		propertyList.keys.push_back(keys);
-		propertyList.keyNames.push_back(TRANS("Bulk Ranges"));
+		
+		propertyList.setGroupTitle(curGroup,TRANS("Bulk Ranges"));
 	}	
 
 }
 
-bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key, 
+bool ClusterAnalysisFilter::setProperty(unsigned int key, 
 				const std::string &value, bool &needUpdate)
 {
-
 	needUpdate=false;
 	switch(key)
 	{
@@ -1416,9 +1428,10 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 		}
 		default:
 		{
+			ASSERT( key >=KEY_CORE_OFFSET);
 			//Set value is dictated by getProperties routine
 			//and is the vector push back value
-			if(set==SET_CORE_IONS)
+			if(key <KEY_BULK_OFFSET && key>=KEY_CORE_OFFSET)
 			{
 				bool b;
 				if(stream_cast(b,value))
@@ -1440,7 +1453,7 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 				clearCache();
 				needUpdate=true;
 			}
-			else if(set ==SET_BULK_IONS)
+			else if(key >=KEY_BULK_OFFSET)
 			{
 				bool b;
 				if(stream_cast(b,value))
@@ -1474,7 +1487,7 @@ bool ClusterAnalysisFilter::setProperty(unsigned int set,unsigned int key,
 	return true;
 }
 
-bool ClusterAnalysisFilter::writeState(std::ofstream &f,unsigned int format,
+bool ClusterAnalysisFilter::writeState(std::ostream &f,unsigned int format,
 				unsigned int depth) const
 {
 	using std::endl;
@@ -1541,7 +1554,6 @@ size_t ClusterAnalysisFilter::numBytesForCache(size_t nObjects) const
 bool ClusterAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &packDir)
 {
 	using std::string;
-	string tmpStr;
 
 	//Retrieve user string
 	//===
@@ -2040,7 +2052,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 
 
 		} // Keep looping whilst we have coreTree to cluster.
-		while(thisClusterQueue.size() && clustIdx !=(size_t)-1);
+		while(!thisClusterQueue.empty() && clustIdx !=(size_t)-1);
 			
 
 		if(soluteCluster.size())
@@ -2445,6 +2457,7 @@ void ClusterAnalysisFilter::createRangedIons(const std::vector<const FilterStrea
 	// then this maps to offsets 1 2 and 3 in the ion(Core/Bulk)Enabled vectors 
 	map<size_t,size_t> rangeEnabledMap;
 	buildRangeEnabledMap(r,rangeEnabledMap);
+	ASSERT(rangeEnabledMap.size() == ionCoreEnabled.size());
 
 	bool needBulk = bulkLink > std::numeric_limits<float>::epsilon();
 
@@ -2509,7 +2522,7 @@ PlotStreamData* ClusterAnalysisFilter::clusterSizeDistribution(const vector<vect
 						const vector<vector<IonHit> > &bulk) const
 {
 	//each cluster is represented by one entry in core and bulk
-	ASSERT(bulk.size() == core.size() || !bulk.size());
+	ASSERT(bulk.size() == core.size() || bulk.empty());
 
 	//Map that maps input number to frequency
 	map<size_t,size_t> countMap;
@@ -3119,7 +3132,6 @@ IonStreamData *genCoreTestCluster()
 //
 bool isolatedClusterTest()
 {
-
 	//Build some points to pass to the filter
 	vector<const FilterStreamData*> streamIn,streamOut;
 	
@@ -3158,17 +3170,17 @@ bool isolatedClusterTest()
 	
 	//Enable A as core, and B as bulk
 	bool needUp;
-	f->setProperty(SET_CORE_IONS,KEY_CORE_OFFSET,"1",needUp);
-	f->setProperty(SET_BULK_IONS,KEY_BULK_OFFSET+1,"1",needUp);
+	f->setProperty(KEY_CORE_OFFSET,"1",needUp);
+	f->setProperty(KEY_BULK_OFFSET+1,"1",needUp);
 
-	f->setProperty(0,KEY_CORECLASSIFYDIST,"0",needUp);
-	f->setProperty(0,KEY_LINKDIST,"1.1",needUp);
-	f->setProperty(0,KEY_BULKLINK,"1.1",needUp);
-	f->setProperty(0,KEY_ERODEDIST,"0",needUp);
+	f->setProperty(KEY_CORECLASSIFYDIST,"0",needUp);
+	f->setProperty(KEY_LINKDIST,"1.1",needUp);
+	f->setProperty(KEY_BULKLINK,"1.1",needUp);
+	f->setProperty(KEY_ERODEDIST,"0",needUp);
 	
 	//stop the plots
-	f->setProperty(0,KEY_WANT_CLUSTERSIZEDIST,"0",needUp);
-	f->setProperty(0,KEY_WANT_COMPOSITIONDIST,"0",needUp);
+	f->setProperty(KEY_WANT_CLUSTERSIZEDIST,"0",needUp);
+	f->setProperty(KEY_WANT_COMPOSITIONDIST,"0",needUp);
 
 	for(unsigned int ui=0;ui<CLUSTER_UNITTEST_END;ui++)
 	{
@@ -3271,17 +3283,17 @@ bool coreClusterTest()
 	
 	//Enable A as core
 	bool needUp;
-	TEST(f->setProperty(SET_CORE_IONS,KEY_CORE_OFFSET,"1",needUp),"Set core range");
+	TEST(f->setProperty(KEY_CORE_OFFSET,"1",needUp),"Set core range");
 
-	TEST(f->setProperty(0,KEY_CORECLASSIFYDIST,"1.1",needUp),"Set core classification dist");
-	TEST(f->setProperty(0,KEY_CORECLASSIFYKNN,"1",needUp),"Set core classfication kNN");
-	TEST(f->setProperty(0,KEY_LINKDIST,"2.0",needUp),"set link distance");
-	TEST(f->setProperty(0,KEY_BULKLINK,"0",needUp),"set bulk distance");
-	TEST(f->setProperty(0,KEY_ERODEDIST,"0",needUp),"set erode distance");
+	TEST(f->setProperty(KEY_CORECLASSIFYDIST,"1.1",needUp),"Set core classification dist");
+	TEST(f->setProperty(KEY_CORECLASSIFYKNN,"1",needUp),"Set core classfication kNN");
+	TEST(f->setProperty(KEY_LINKDIST,"2.0",needUp),"set link distance");
+	TEST(f->setProperty(KEY_BULKLINK,"0",needUp),"set bulk distance");
+	TEST(f->setProperty(KEY_ERODEDIST,"0",needUp),"set erode distance");
 
 	//stop the plots
-	f->setProperty(0,KEY_WANT_CLUSTERSIZEDIST,"0",needUp);
-	f->setProperty(0,KEY_WANT_COMPOSITIONDIST,"0",needUp);
+	f->setProperty(KEY_WANT_CLUSTERSIZEDIST,"0",needUp);
+	f->setProperty(KEY_WANT_COMPOSITIONDIST,"0",needUp);
 	
 	IonStreamData *ionData = genCoreTestCluster();
 

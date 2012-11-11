@@ -100,17 +100,17 @@ class ConfigFile
 		bool configLoadedOK() const { return configLoadOK;}
 			
 		//Create the configuration folder, if needed.
-		bool createConfigDir() const;
-		//Get the configartion dir path
-		std::string getConfigDir() const;
+		static bool createConfigDir() ;
+		//Get the configuration dir path
+		static std::string getConfigDir();
 		
 		std::string getErrMessage() const { return errMessage;};
 
-		unsigned int getMaxHistory() const;
+		static unsigned int getMaxHistory();
 
 		//Get a vector of the default filter pointers
 		void getFilterDefaults(vector<Filter* > &defs);
-		//Set the default filter pointers (note this will take ownership of the poitner)
+		//Set the default filter pointers (note this will take ownership of the pointer)
 		void setFilterDefaults(const vector<Filter* > &defs);
 
 		//Get a clone of the default filter for a given type,
@@ -140,7 +140,7 @@ class ConfigFile
 
 		//!Returns true if we have a suggested initial window size; with x & y being the suggestion
 		bool getInitialAppSize(unsigned int &x, unsigned int &y) const;
-		//!Set the inital window suggested size
+		//!Set the initial window suggested size
 		void setInitialAppSize(unsigned int x, unsigned int y);
 
 		bool getAllowOnlineVersionCheck() const;

@@ -63,6 +63,8 @@ class FilterTreeAnalyse
 		// upon there being no spatial sampling
 		// are being used with sampling.
 		void spatialSampling(const FilterTree &f);
+
+		void compositionAltered(const FilterTree &f);
 	public:
 		void analyse(const FilterTree &f);
 

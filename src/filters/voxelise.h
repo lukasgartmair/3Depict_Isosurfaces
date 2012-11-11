@@ -72,25 +72,25 @@ public:
 	virtual std::string typeString() const { return std::string(TRANS("Voxelisation"));};
 
 	//!Get the human-readable options for the normalisation, based upon enum 
-	std::string getNormaliseTypeString(int type) const;
+	static std::string getNormaliseTypeString(int type);
 	//!Get the human-readable options for filtering, based upon enum 
-	std::string getFilterTypeString(int type) const;
+	static std::string getFilterTypeString(int type);
 	//!Get the human-readable options for the visual representation (enum)
-	std::string getRepresentTypeString(int type) const;
+	static std::string getRepresentTypeString(int type);
 	//!Get the human-readable options for boundary behaviour during filtering, based upon enum 
-	std::string getFilterBoundTypeString(int type) const;
+	static std::string getFilterBoundTypeString(int type);
 	
 	//!Get the properties of the filter, in key-value form. First vector is for each output.
-	void getProperties(FilterProperties &propertyList) const;
+	void getProperties(FilterPropGroup &propertyList) const;
 	
 	//!Set the properties for the nth filter. Returns true if prop set OK
-	bool setProperty(unsigned int set,unsigned int key, 
+	bool setProperty(unsigned int key, 
 					 const std::string &value, bool &needUpdate);
 	//!Get the human readable error string associated with a particular error code during refresh(...)
 	std::string getErrString(unsigned int code) const;
 	
 	//!Dump state to output stream, using specified format
-	bool writeState(std::ofstream &f,unsigned int format, 
+	bool writeState(std::ostream &f,unsigned int format, 
 					unsigned int depth=0) const;
 	//!Read the state of the filter from XML file. If this
 	//fails, filter will be in an undefined state.
@@ -109,7 +109,7 @@ public:
 	
 	
 	//!calculate the widths of the bins in 3D
-	void calculateWidthsFromNumBins(Point3D &widths, unsigned long long *nb) {
+	void calculateWidthsFromNumBins(Point3D &widths, unsigned long long *nb) const{
 		Point3D low, high;
 		bc.getBounds(low, high);
 		for (unsigned int i = 0; i < 3; i++) {
@@ -117,7 +117,7 @@ public:
 		}
 	}
 	//!set the number of the bins in 3D
-	void calculateNumBinsFromWidths(Point3D &widths, unsigned long long *nb) {
+	void calculateNumBinsFromWidths(Point3D &widths, unsigned long long *nb) const{
 		Point3D low, high;
 		bc.getBounds(low, high);
 		for (unsigned int i = 0; i < 3; i++) {

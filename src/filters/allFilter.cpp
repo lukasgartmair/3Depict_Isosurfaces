@@ -31,7 +31,7 @@ Filter *makeFilter(unsigned int ui)
 
 	switch(ui)
 	{
-		case FILTER_TYPE_POSLOAD:
+		case FILTER_TYPE_DATALOAD:
 			f=new DataLoadFilter;
 			break;
 		case FILTER_TYPE_IONDOWNSAMPLE:
@@ -40,7 +40,7 @@ Filter *makeFilter(unsigned int ui)
 		case FILTER_TYPE_RANGEFILE:
 			f=new RangeFileFilter;
 			break;
-		case FILTER_TYPE_SPECTRUMPLOT:
+		case FILTER_TYPE_SPECTRUMPLOT: 
 			f=new SpectrumPlotFilter;
 			break;
 		case FILTER_TYPE_IONCLIP:
