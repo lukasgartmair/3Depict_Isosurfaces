@@ -21,6 +21,9 @@
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
+/* MathGL compilation OK */
+#undef HAVE_MGL
+
 /* Have got mathgl headers */
 #undef HAVE_MGL_H
 

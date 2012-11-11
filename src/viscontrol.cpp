@@ -1,6 +1,6 @@
 /*
  *	viscontrol.cpp - visualation-user interface glue code
- *	Copyright (C) 2011, D Haley 
+ *	Copyright (C) 2012, D Haley 
 
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
