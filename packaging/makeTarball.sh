@@ -1,6 +1,8 @@
 #!/bin/bash
 MSG_FILE=tmp-messages
 
+NUM_PROCS=4
+
 
 if [ ! -f configure ] ; then
 	echo "Configure not found -- are you running this script from the top dir? " 
@@ -13,6 +15,36 @@ do
 	MSG_FILE=tmp-$MSG_FILE
 done
 	
+
+#Try building in debug mode
+#-------
+make distclean
+
+./configure --disable-debug-checks
+if [ $? -ne 0 ] ; then
+	echo "no-debug mode failed to configure"
+fi
+
+make -j $NUM_PROCS
+if [ $? -ne 0 ] ; then
+	echo "no-debug mode failed to build"
+fi
+make distclean
+#-------
+
+#Try building in parallel mode
+#-------
+./configure --enable-openmp-parallel
+if [ $? -ne 0 ] ; then
+	echo "parallel mode failed to configure"
+fi
+make -j$NUM_PROCS
+if [ $? -ne 0 ] ; then
+	echo "parallel mode failed to build"
+fi
+make distclean
+#-------
+
 
 #Reconfigure
 ./configure

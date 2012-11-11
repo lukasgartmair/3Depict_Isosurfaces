@@ -1,3 +1,9 @@
+3depict (0.0.12-1) unstable; urgency=low
+
+  * Update to upstream 0.0.12
+
+ -- D Haley <mycae@yahoo.com>  Sun, 11 Nov 2012 21:09:11 +0100
+
 3depict (0.0.10-1) unstable; urgency=low
 
   * Update to upstream 0.0.10

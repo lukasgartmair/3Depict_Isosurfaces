@@ -1,3 +1,48 @@
+* Nov 2012 : 0.0.12
+	Features:
+	- Animation tool for performing "sweeps" of filter properties
+		- can change a filter properties and export images,
+		 point data, plots etc. for each step in the property
+		- Can sweep multiple properties simultaneously
+		- Use for exporting videos/animations of parameter changes
+	- Each filter property now has built-in tooltip help text
+	- New warning for possible compositional biasing in composition results
+
+	User Visible Bugfixes/Changes:
+	- Point input starting with "." no longer incorrectly rejected
+	- Fix arrow heads being shown for some objects where they should not be
+	- Improved RNG file reader, fixed some multiple ions being
+	   rejected when they should not be
+	- Performance increase in transform filter, ion shuffle mode,
+	  due to better shuffle strategy, and more parallelism
+	- Fix progress reporting in transform filter, shuffle mode
+	- RRNG files without colour data will now have random colour
+	  assignments, instead of black.
+	- Some performance increases in point generation and display
+	- More property group naming
+	- Fix spectrum plot resetting itself to default values if no valid input
+	- Fix some malformatted RRNG files could cause crash
+	- Fix vertical "sash"/splitter motion not causing 3D view to update
+	- Fix crash when loading large posfiles in external program filter
+
+
+	Technical Bugfixes/Features:
+	- Added Event logger code, for better user feedback from assertion failures
+	- More workarounds for mathgl library infinite loop problems,
+	  which occur due to floating point aliasing
+	- Fix segfault in point parsing routines
+	- Improved UI locking during scene refresh, limiting scope for 
+	  callback re-entrancy, which caused some crashes.
+	- Fixed several small memory leaks
+	- More unit testing, and fix some non-working unit tests,
+	  eg transform shuffle, which wansn't checking shuffled state
+	  correctly, and hence did very little
+	- Minor openMP fixes
+	- Many cppcheck fixes - mostly stylistic, or minor performance improvements
+
+
+		
+
 * 1 Jul, 2012  : 0.0.11 
 	Features:
 	- Filter tree is now scanned for common errors, with a clickable
