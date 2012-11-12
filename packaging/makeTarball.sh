@@ -152,6 +152,12 @@ if [ ! -f docs/manual-latex/manual.pdf ] ; then
 	echo " WARNING : PDF manual was not found -- has it been compiled?" >> $MSG_FILE
 	echo "$FILES" >> $MSG_FILE
 fi
+
+#Check for outstanding mercurial changes
+SOME_LINES=`hg diff | wc -l`
+if [ x"$SOME_LINES" != x"0" ] ; then
+	echo " WARNING : Oustanding mercurial changes! Normally should commit fixes!" >> $MSG_FILE
+fi
 #----
 
 
@@ -159,76 +165,102 @@ rm -rf tarball
 mkdir tarball
 
 pushd tarball
-tar -zxf ../3depict-$VER.tar.gz
-rm ../3depict-$VER.tar.gz
-#Autoconf buggers up the name case
-mv 3depict-$VER 3Depict-$VER
+	tar -zxf ../3depict-$VER.tar.gz
+	rm ../3depict-$VER.tar.gz
+	#Autoconf buggers up the name case
+	mv 3depict-$VER 3Depict-$VER
 
-#--- Translation stuff--
+	#--- Translation stuff--
 
-#Build the translation files
-pushd ../translations
-./makeTranslations 
-mkdir -p ../tarball/3Depict-$VER/translations
-cp 3Depict*.mo ../tarball/3Depict-$VER/translations/
+	#Build the translation files
+	pushd ../translations
+		./makeTranslations 
+		mkdir -p ../tarball/3Depict-$VER/translations
+		cp 3Depict*.mo ../tarball/3Depict-$VER/translations/
+	popd
+
+	#copy the manual
+	cp ../docs/manual-latex/manual.pdf ./tarball/3Depict-$VER/docs/manual-latex/
+
+	pushd 3Depict-$VER/translations/
+
+	#Move the .mo file to the correct subdir
+		for i in `ls *.mo`
+		do
+			LOCALEVAL=`basename $i | sed 's/\.mo//' | sed 's/3Depict_//'`
+
+			mkdir -p locales/$LOCALEVAL/LC_MESSAGES
+			mv $i locales/$LOCALEVAL/LC_MESSAGES/3Depict.mo
+		done
+
+		if [ -d locales ] ; then
+			mv locales ../
+		else
+			echo "ERROR: No Locales built.. Aborting"
+			exit 1
+		fi
+
+	popd
+
+	#--------------
+
+
+	# Configure stuffs up the directories marked as extra-dist
+	# if you don't use a trailing slash, some versions of configure die
+	# if you do, other versions of configure add it as a subdir of itself
+	# so lets just "fix it"
+	#--------
+	pushd 3Depict-$VER/
+		for i in textures tex-source glade-skeleton 
+		do
+			if [ -d src/$i/$i ] ; then
+				mv src/$i/$i/* src/$i/
+				rmdir src/$i/$i/
+			fi
+		done
+
+
+
+		for i in packaging docs m4 translations deps test
+		do
+			if [ -d $i/$i ] ; then
+				mv $i/$i/* $i/
+				rmdir $i/$i/
+			fi
+		done
+	popd
+
+	#make the final source tarball
+	tar -cz 3Depict-$VER > 3Depict-$VER.tar.gz
 popd
+#------
 
-#copy the manual
-cp ../docs/manual-latex/manual.pdf ./tarball/3Depict-$VER/docs/manual-latex/
-
-pushd 3Depict-$VER/translations/
-
-#Move the .mo file to the correct subdir
-for i in `ls *.mo`
-do
-	LOCALEVAL=`basename $i | sed 's/\.mo//' | sed 's/3Depict_//'`
-
-	mkdir -p locales/$LOCALEVAL/LC_MESSAGES
-	mv $i locales/$LOCALEVAL/LC_MESSAGES/3Depict.mo
-done
-
-if [ -d locales ] ; then
-	mv locales ../
-else
-	echo "ERROR: No Locales built.. Aborting"
-	exit 1
+#OK, now try unpacking the thing, then building it.
+mkdir tarball/extract/
+if [ $? -ne 0 ] ; then
+	echo "failed to make tarball extract dir"
 fi
+pushd tarball/extract
 
-popd
+	tar -zxf ../3Depict-$VER.tar.gz
 
-#--------------
-
-
-# Configure stuffs up the directories marked as extra-dist
-# if you don't use a trailing slash, some versions of configure die
-# if you do, other versions of configure add it as a subdir of itself
-# so lets just "fix it"
-#--------
-pushd 3Depict-$VER/
-for i in textures tex-source glade-skeleton 
-do
-	if [ -d src/$i/$i ] ; then
-		mv src/$i/$i/* src/$i/
-		rmdir src/$i/$i/
-	fi
-done
+	pushd 3Depict-$VER;
+		./configure
+		if [ $? -ne 0 ] ; then
+			echo "didn't configure after tarball extract"
+		fi
 
 
+		make  -j$NUM_PROCS 
+		if [ $? -ne 0 ] ; then
+			echo "rebuilding tarball failed."
+		else
+			echo "tarball rebuild OK!"
+		fi
 
-for i in packaging docs m4 translations deps test
-do
-	if [ -d $i/$i ] ; then
-		mv $i/$i/* $i/
-		rmdir $i/$i/
-	fi
-done
-popd
-
-#make the final source tarball
-tar -cz 3Depict-$VER > 3Depict-$VER.tar.gz
+	popd
 popd
 #--------
-
 
 if [ -f $MSG_FILE ] ; then
 	echo "------------- SUMMARY ----------"
