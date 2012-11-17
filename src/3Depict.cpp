@@ -1770,6 +1770,16 @@ void MainWindowFrame::setLockUI(bool locking=true,
 void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 
 {
+
+	//Don't let the user run the animation dialog if they have
+	// no filters open
+	if(!visControl.numFilters())
+	{
+		statusMessage(TRANS("Cannot run animate with no filters."));
+		return;
+	}
+
+
 	ExportAnimationDialog *exportDialog = 
 		new ExportAnimationDialog(this, wxID_ANY, wxEmptyString);
 
@@ -1851,7 +1861,7 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 		
 			//Now update the scene, if needed
 			for(list<PAIR_STREAMOUT>::iterator it=outData.begin();
-					it!=outData.end();it++)
+					it!=outData.end();++it)
 				outStreams.push_back(it->second);
 
 
@@ -1893,7 +1903,7 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 					//merge all the output streams into one
 					vector<const FilterStreamData *> mergedStreams;
 					for(list<STREAMOUT>::iterator it=outStreams.begin();
-							it!=outStreams.end();it++)
+							it!=outStreams.end();++it)
 					{
 						size_t origSize;
 						origSize=mergedStreams.size();
@@ -1918,7 +1928,7 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 
 					size_t plotNumber=0;
 					//Save each plot by name, where possible
-					for(list<STREAMOUT>::iterator it=outStreams.begin(); it!=outStreams.end();it++)
+					for(list<STREAMOUT>::iterator it=outStreams.begin(); it!=outStreams.end();++it)
 					{
 						for(size_t uj=0;uj<it->size();uj++)
 						{
@@ -1960,7 +1970,7 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 					rangeEnumMap[RANGE_AMETEK_RRNG] = RANGE_FORMAT_RRNG;
 					rangeEnumMap[RANGE_AMETEK_ENV] = RANGE_FORMAT_ENV;
 					//Save each range
-					for(list<STREAMOUT>::iterator it=outStreams.begin(); it!=outStreams.end();it++)
+					for(list<STREAMOUT>::iterator it=outStreams.begin(); it!=outStreams.end();++it)
 					{
 						for(size_t uj=0;uj<it->size();uj++)
 						{
@@ -1994,7 +2004,7 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 				if(exportDialog->wantsVoxels())
 				{
 					size_t offset=0;
-					for(list<STREAMOUT>::iterator it=outStreams.begin(); it!=outStreams.end();it++)
+					for(list<STREAMOUT>::iterator it=outStreams.begin(); it!=outStreams.end();++it)
 					{
 						for(size_t uj=0;uj<it->size();uj++)
 						{
@@ -5322,10 +5332,10 @@ void MainWindowFrame::set_properties()
     checkAutoUpdate->SetToolTip(wxTRANS("Enable/Disable automatic updates of data when filter change takes effect"));
     checkAutoUpdate->SetValue(true);
 
-    checkAlphaBlend->SetToolTip(wxTRANS("Enable/Disable \"Alpha blending\" (transparency) in rendering system. This is used to smooth objects (avoids artefacts known as \"jaggies\") and to make transparent surfaces. Disabling will provide faster rendering but look more blocky")); 
+    checkAlphaBlend->SetToolTip(wxTRANS("Enable/Disable \"Alpha blending\" (transparency) in rendering system. Blending is used to smooth objects (avoids artefacts known as \"jaggies\") and to make transparent surfaces. Disabling will provide faster rendering but look more blocky")); 
     checkLighting->SetToolTip(wxTRANS("Enable/Disable lighting calculations in rendering, for objects that request this. Lighting provides important depth cues for objects comprised of 3D surfaces. Disabling may allow faster rendering in complex scenes"));
     checkWeakRandom->SetToolTip(wxTRANS("Enable/Disable weak randomisation (Galois linear feedback shift register). Strong randomisation uses a much slower random selection method, but provides better protection against inadvertent correlations, and is recommended for final analyses"));
-    checkCaching->SetToolTip(wxTRANS("Enable/Disable caching of intermediate results during filter updates. This will use less system RAM, though changes to any filter property will cause the entire filter tree to be recomputed, greatly slowing computations"));
+    checkCaching->SetToolTip(wxTRANS("Enable/Disable caching of intermediate results during filter updates. Disabling caching will use less system RAM, though changes to any filter property will cause the entire filter tree to be recomputed, greatly slowing computations"));
 
     gridFilterPropGroup->CreateGrid(0, 2);
     gridFilterPropGroup->EnableDragRowSize(false);

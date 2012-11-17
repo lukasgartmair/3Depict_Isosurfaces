@@ -1552,8 +1552,6 @@ unsigned int loadTextStringData(const char *cpFilename, vector<vector<string> > 
 {
 	const unsigned int BUFFER_SIZE=4096;
 	
-	unsigned int num_fields=0;
-
 	dataVec.clear();
 	//Open a file in text mode
 	std::ifstream CFile(cpFilename);

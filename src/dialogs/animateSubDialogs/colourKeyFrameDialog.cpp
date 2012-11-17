@@ -44,7 +44,7 @@ ColourKeyFrameDialog::ColourKeyFrameDialog(wxWindow* parent, int id, const wxStr
         wxTRANS("Step"),
         wxTRANS("Ramp")
     };
-	comboTransition = new wxComboBox(this, ID_COMBO_TRANSITION, _(""), wxDefaultPosition, wxDefaultSize, 2, comboTransition_choices, wxCB_DROPDOWN|wxCB_DROPDOWN|wxCB_READONLY);
+	comboTransition = new wxComboBox(this, ID_COMBO_TRANSITION, _(""), wxDefaultPosition, wxDefaultSize, 2, comboTransition_choices, wxCB_DROPDOWN|wxCB_READONLY);
 	labelFrameStart = new wxStaticText(this, wxID_ANY, wxTRANS("Start Frame"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
 	textFrameStart = new wxTextCtrl(this, ID_TEXT_FRAME_START, wxEmptyString);
 	labelFrameEnd = new wxStaticText(this, wxID_ANY, wxTRANS("End Frame"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
