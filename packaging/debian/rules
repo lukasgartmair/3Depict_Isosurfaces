@@ -9,6 +9,8 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
+DPKG_EXPORT_BUILDFLAGS=1
+include /usr/share/dpkg/buildflags.mk
 
 # These are used for cross-compiling and for saving the configure script
 # from having to guess our platform (since we know it already)
@@ -23,9 +25,8 @@ endif
 
 config.status: configure
 	dh_testdir
-	# Add here commands to configure the package.
-	
-	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --enable-openmp-parallel --disable-debug-checks --with-libpng-link="-lpng" --with-libpng-flags="-L/lib" LDFLAGS="-Wl,-z,defs"  --with-ftgl-prefix="/usr"
+	#Compile package, disabling internal debug checking and enabling parallelism
+	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --enable-openmp-parallel --disable-debug-checks --with-libpng-link="-lpng" --with-libpng-flags="-L/lib" LDFLAGS="${LDFLAGS} -Wl,-z,defs"  --with-ftgl-prefix="/usr"
 
 
 build: build-arch 
