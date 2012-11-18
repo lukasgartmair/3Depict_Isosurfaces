@@ -610,7 +610,7 @@ unsigned int FilterTree::refreshFilterTree(
 #ifdef DEBUG
 			//Perform sanity checks on filter output
 			checkRefreshValidity(curData,*filtIt);
-			ASSERT(curProg.step == curProg.maxStep);
+			ASSERT(curProg.step == curProg.maxStep || errCode);
 #endif
 			//Ensure that (1) yield is called, regardless of what filter does
 			//(2) yield is called after 100% update	
