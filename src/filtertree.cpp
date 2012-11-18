@@ -184,7 +184,7 @@ void FilterTree::initFilterTree() const
 				ASSERT(!curData[ui]->cached);
 				
 				//Check that we are not already tracking it.
-				if(it!=pointerTrackList.end()) 
+				if(it==pointerTrackList.end()) 
 				{
 					//track pointer.
 					pointerTrackList.push_back(curData[ui]);
@@ -192,7 +192,7 @@ void FilterTree::initFilterTree() const
 			}	
 			
 			//Put this in the intermediary stack, 
-			//so it is available for any other children at this leve.
+			//so it is available for any other children at this level.
 			inDataStack.push(curData);
 		}
 		else
@@ -680,7 +680,7 @@ unsigned int FilterTree::refreshFilterTree(
 						list<const FilterStreamData *>::iterator it;
 						it = find(pointerTrackList.begin(),pointerTrackList.end(),curData[ui]);
 						//Check it is not cached, and that we are not already tracking it.
-						if(!curData[ui]->cached && it!=pointerTrackList.end()) 
+						if(!curData[ui]->cached && it==pointerTrackList.end()) 
 						{
 							//track pointer.
 							pointerTrackList.push_back(curData[ui]);
