@@ -298,7 +298,7 @@ class PlotWrapper
 
 		bool isInteractionLocked() const { return interactionLocked;};
 
-		bool lockInteraction(bool lock=true) {interactionLocked=lock;};
+		void lockInteraction(bool lock=true) {interactionLocked=lock;};
 
 		//!Has the contents of the plot changed since the last call to resetChange?
 		bool hasChanged() const { return plotChanged;};

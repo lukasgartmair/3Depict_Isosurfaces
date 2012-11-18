@@ -631,7 +631,8 @@ void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 			
 			//Note to translators, this is short for "annotation text",
 			// or similar
-			p.name=TRANS("Annotation"),annotateText;
+			p.name=TRANS("Annotation");
+			p.data=annotateText;
 			p.type=PROPERTY_TYPE_STRING;
 			p.key=KEY_ANNOTATE_TEXT;
 			p.helpText=TRANS("Text of annotation");

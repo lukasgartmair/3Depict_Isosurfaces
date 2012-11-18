@@ -125,7 +125,7 @@ bool StringKeyFrameDialog::getStrings(vector<string> &res) const
 
 void StringKeyFrameDialog::OnTextStart(wxCommandEvent &event)
 {
-	startFrameOK=validateTextAsStream(textStartFrame,startFrame,intIsPositive);
+	startFrameOK=validateTextAsStream(textStartFrame,startFrame);
 	updateOKButton();
 	buildGrid();
 }

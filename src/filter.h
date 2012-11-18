@@ -527,7 +527,7 @@ class Filter
 
 		//!Modified version of writeState for packaging. By default simply calls writeState.
 		//value overrides override the values returned by getStateOverrides. In order.	
-		virtual bool writePackageState(std::ofstream &f, unsigned int format,
+		virtual bool writePackageState(std::ostream &f, unsigned int format,
 				const std::vector<std::string> &valueOverrides,unsigned int depth=0) const {return writeState(f,format,depth);};
 		
 

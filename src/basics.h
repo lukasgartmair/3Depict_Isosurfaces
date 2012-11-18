@@ -230,8 +230,6 @@ void stripZeroEntries(std::vector<std::string> &s);
 //Convert a point string from its "C" language representation to a point value
 bool parsePointStr(const std::string &str,Point3D &pt);
 
-//Returns true if an integer is positive. Used as a parameter to templated functions
-bool intIsPositive(const size_t &pos);
 
 //Parse a colour string, such as #aabbccdd into its RGBA 8-bit components
 bool parseColString(const std::string &str,

@@ -106,14 +106,14 @@ void ColourKeyFrameDialog::OnComboTransition(wxCommandEvent &event)
 
 void ColourKeyFrameDialog::OnTextStartFrame(wxCommandEvent &event)
 {
-	startFrameOK=validateTextAsStream(textFrameStart,startFrame,intIsPositive);
+	startFrameOK=validateTextAsStream(textFrameStart,startFrame);
 	updateOKButton();
 }
 
 
 void ColourKeyFrameDialog::OnTextEndFrame(wxCommandEvent &event)
 {
-	endFrameOK=validateTextAsStream(textFrameEnd,endFrame,intIsPositive);
+	endFrameOK=validateTextAsStream(textFrameEnd,endFrame);
 	updateOKButton();
 }
 

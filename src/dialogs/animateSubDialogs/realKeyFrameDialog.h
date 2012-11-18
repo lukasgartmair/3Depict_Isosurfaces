@@ -213,14 +213,14 @@ void RealKeyFrameDialog<T>::OnComboTransition(wxCommandEvent &event)
 template<class T>
 void RealKeyFrameDialog<T>::OnTextStartFrame(wxCommandEvent &event)
 {
-	startFrameOK=validateTextAsStream(textFrameStart,startFrame,intIsPositive);
+	startFrameOK=validateTextAsStream(textFrameStart,startFrame);
 	updateOKButton();
 }
 
 template<class T>
 void RealKeyFrameDialog<T>::OnTextEndFrame(wxCommandEvent &event)
 {
-	endFrameOK=validateTextAsStream(textFrameEnd,endFrame,intIsPositive);
+	endFrameOK=validateTextAsStream(textFrameEnd,endFrame);
 	updateOKButton();
 }
 

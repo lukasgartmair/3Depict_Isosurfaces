@@ -46,7 +46,7 @@ void ChoiceKeyFrameDialog::OnChoiceCombo(wxCommandEvent &event)
 
 void ChoiceKeyFrameDialog::OnFrameText(wxCommandEvent &event)
 {
-	if(validateTextAsStream(textFrame,startFrame,intIsPositive))
+	if(validateTextAsStream(textFrame,startFrame))
 		startFrameOK=true;
 
 	updateOKButton();

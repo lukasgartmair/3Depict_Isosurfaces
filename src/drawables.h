@@ -270,7 +270,7 @@ class DrawManyPoints : public DrawableObj
 		size_t getNumPts() const { return pts.size();};
 
 		//!This object is explodable
-		bool isExplodable() { return true;}
+		bool isExplodable() const { return true;}
 
 		//!Explode object into simple point drawables
 		void explode(vector<DrawableObj*> &simpleObjects);
@@ -310,7 +310,7 @@ class DrawVector: public DrawableObj
 		virtual unsigned int getType() const {return DRAW_TYPE_VECTOR;};	
 	
 		//!Set if we want to draw the arrow or not
-		bool setDrawArrow(bool wantDraw) { drawArrow=wantDraw;}
+		void setDrawArrow(bool wantDraw) { drawArrow=wantDraw;}
 		//!Sets the color of the point to be drawn
 		void setColour(float r, float g, float b, float alpha);
 		//!Draws the points

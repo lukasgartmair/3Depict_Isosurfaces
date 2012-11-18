@@ -290,7 +290,7 @@ class Scene
 		// is interaction currently locked?
 		bool isInteractionLocked()  const { return lockInteract;}
 		//!Prevent user interactoin
-		bool lockInteraction(bool amLocking=true) { lockInteract=amLocking;};
+		void lockInteraction(bool amLocking=true) { lockInteract=amLocking;};
 		//!Set selection mode true=select on, false=select off.
 		//All this does internally is modify how drawing works.
 		void setSelectionMode(bool selMode) { selectionMode=selMode;};

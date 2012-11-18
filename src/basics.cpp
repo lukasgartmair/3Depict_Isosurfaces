@@ -318,11 +318,6 @@ void hexStrToUChar(const std::string &s, unsigned char &c)
 	c = 16*high + low;
 }
 
-bool intIsPositive(const size_t &pos)
-{
-	return pos >=0;
-}
-
 std::string convertFileStringToCanonical(const std::string &s)
 {
 	//We call unix the "canonical" format. 
