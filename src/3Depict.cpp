@@ -683,7 +683,10 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     textConsoleOut = new wxTextCtrl(noteDataViewConsole, 
 		    wxID_ANY, wxEmptyString,wxDefaultPosition,
 		    wxDefaultSize,wxTE_MULTILINE|wxTE_READONLY);
+    MainFrame_statusbar = CreateStatusBar(3, 0);
 
+    set_properties();
+    do_layout();
 
     //Disable post-processing
 #ifndef APPLE_EFFECTS_WORKAROUND
@@ -727,15 +730,12 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     //Last Refresh box
     listLastRefresh->InsertColumn(0,wxTRANS("Type"));
     listLastRefresh->InsertColumn(1,wxTRANS("Num"));
-    MainFrame_statusbar = CreateStatusBar(3, 0);
 
     //Inform top panel about timer and timeouts
     panelTop->setParentStatus(MainFrame_statusbar,statusTimer,STATUS_TIMER_DELAY);
 
     panelTop->clearCameraUpdates();
 
-    set_properties();
-    do_layout();
     // end wxGlade
     //
 

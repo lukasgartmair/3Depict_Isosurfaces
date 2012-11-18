@@ -100,6 +100,8 @@ void wxPropertyGrid::OnSize(wxSizeEvent &event)
 
 void wxPropertyGrid::OnLabelDClick(wxGridEvent &event)
 {
+	if(!this->GetCols())
+		return;
 	wxSize s;
 	s=this->GetSize();
 	fitCols(s);
