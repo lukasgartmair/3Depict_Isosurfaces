@@ -4775,6 +4775,8 @@ void MainWindowFrame::OnClose(wxCloseEvent &event)
 	}
 	else
 	{
+		//If the program is being forced by the OS to shut down, don't ask the user for abort,
+		// as we can't abort it anyway.
 		if(event.CanVeto())
 		{
 			if(visControl.numFilters() || visControl.numCams() > 1)

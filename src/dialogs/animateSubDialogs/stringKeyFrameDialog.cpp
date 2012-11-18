@@ -38,6 +38,10 @@ StringKeyFrameDialog::StringKeyFrameDialog(wxWindow* parent, int id, const wxStr
 	btnOK = new wxButton(this, wxID_OK, wxEmptyString);
 
 
+
+	set_properties();
+	do_layout();
+	// end wxGlade
 	startFrame=0;
 	startFrameOK=filenameOK=false;
 	string s;
@@ -47,10 +51,6 @@ StringKeyFrameDialog::StringKeyFrameDialog(wxWindow* parent, int id, const wxStr
 	radioFromFile->SetValue(true);
 
 	dataSourceFromFile=radioFromFile->GetValue();
-
-	set_properties();
-	do_layout();
-	// end wxGlade
 }
 
 
