@@ -133,15 +133,7 @@ bool PropertyAnimator::checkSelfConsistent(std::set<size_t> &conflictFrames) con
 				maxA=keyFrames[ui].getMaxFrame();
 				maxB=keyFrames[uj].getMaxFrame();
 
-				//check for
-				//	- time range A overlaps minimum of time range B
-				//	- time rangeA overlaps maximum time of B
-				//	- time A cntains timeB entirely
-				//	- time B contains timeA entirely
-				if( (minA <= minB && maxA >= minB) ||
-					(maxA <= maxB && minA >= minB) ||
-					(minA <= minB && maxA >= maxB) ||
-					(minB <= minA && maxB >= maxA) )
+				if(rangesOverlap(minA,maxA,minB,maxB))				
 				{
 					conflictFrames.insert(ui);
 					conflictFrames.insert(uj);

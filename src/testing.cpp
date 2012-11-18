@@ -194,6 +194,20 @@ bool basicFunctionTests()
 	ASSERT(p.sqrDist(Point3D(0,0,0))<0.01f);
 
 	}
+
+	//Test some basics routines
+	{
+	TEST(rangesOverlap(0,3,1,2),"Overlap test a contain b");
+	TEST(rangesOverlap(1,2,0,3),"Overlap test b contain a");
+	TEST(rangesOverlap(0,2,1,3),"Overlap test a partial b (low)");
+	TEST(rangesOverlap(1,3,0,2),"Overlap test b partial a (high)");
+	TEST(rangesOverlap(2,3,1,4),"Overlap test a partial b (high)");
+	TEST(rangesOverlap(1,3,2,4),"Overlap test b partial a (low)");
+	TEST(!rangesOverlap(1,2,3,4),"Overlap test");
+	TEST(!rangesOverlap(3,4,1,2),"Overlap test");
+	}
+
+	
 	return true;
 }
 

@@ -154,6 +154,30 @@ std::string boolStrEnc(bool b)
 		return "0";
 }
 
+bool rangesOverlap(size_t minA, size_t maxA,
+			size_t minB, size_t maxB)
+{
+
+	ASSERT(minA <= maxA);
+	ASSERT(minB<=maxB);
+
+	// A-  B- A+ 
+	// A- B+ A+
+	if( (minA <= minB && maxA >=minB )
+		|| (minA<=maxB && maxA >=maxB) )
+		return true;
+
+	// B-  A- B+ 
+	// B- A+ B+
+	if(( minB <= minA && maxB >=minA )
+		|| (minB<=maxA && maxB >=maxA) )
+		return true;
+
+	return false;
+
+}
+
+
 bool dummyCallback(bool)
 {
 	return true;

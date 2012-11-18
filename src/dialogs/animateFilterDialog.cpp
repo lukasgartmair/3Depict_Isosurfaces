@@ -413,6 +413,9 @@ void ExportAnimationDialog::updateFrameViewGrid()
 		framePropGrid->DeleteRows(0,animationGrid->GetNumberRows());
 	framePropGrid->EndBatch();
 
+	std::set<size_t> conflictProps;
+	if(!propertyAnimator.checkSelfConsistent(conflictProps))
+		return;
 
 	vector<FrameProperties> alteredProperties;
 	vector<size_t> propertyIds;
@@ -867,6 +870,8 @@ void ExportAnimationDialog::updateOKButton()
 	badStatus|=filterMap.empty();
 	badStatus|=(imagePrefix.empty() && wantImageOutput);
 	badStatus|=(propertyAnimator.getNumProps() == 0);
+	std::set<size_t> inconsistentProps;
+	badStatus|=!propertyAnimator.checkSelfConsistent(inconsistentProps);
 	okButton->Enable(!badStatus);
 }
 

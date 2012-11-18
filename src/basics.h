@@ -61,6 +61,8 @@ inline int fpeek(FILE *stream)
 	return c;
 }
 
+bool rangesOverlap(size_t minA, size_t maxA,
+			size_t minB, size_t maxB);
 
 
 //!Text file loader errors
