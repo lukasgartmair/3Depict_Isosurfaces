@@ -1264,7 +1264,13 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 			std::string str;
 			str=ss.str();
 			textConsoleOut->AppendText(wxStr(str));
-			wxMessageDialog *wxD  =new wxMessageDialog(this,
+			//Note that the parent window must be NULL 
+			// if the parent window is not visible (eg autosave startup)
+			wxWindow *parentWin=NULL;
+			if(this->IsShown())
+				parentWin=this;
+
+			wxMessageDialog *wxD  =new wxMessageDialog(parentWin,
 						wxTRANS("Error loading state file.\nSee console for more info.") 
 						,wxTRANS("Load error"),wxOK|wxICON_ERROR);
 			wxD->ShowModal();
@@ -1758,6 +1764,13 @@ void MainWindowFrame::setLockUI(bool locking=true,
 			editRedoMenuItem->Enable(!locking);
 			gridFilterPropGroup->Enable(!locking);
 			comboStash->Enable(!locking);
+
+			//Locking of the tools pane
+			checkWeakRandom->Enable(!locking);
+			checkCaching->Enable(!locking);
+			spinCachePercent->Enable(!locking);
+
+			
 
 			panelSpectra->limitInteraction(!locking);
 			break;

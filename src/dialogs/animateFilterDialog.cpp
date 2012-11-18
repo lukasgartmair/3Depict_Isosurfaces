@@ -185,9 +185,9 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
     set_properties();
     do_layout();
     // end wxGlade
-  
+ 
 
-#ifdef __APPLE__
+#if wxCHECK_VERSION(2,9,0)
     //Manually tuned splitter parameters
     splitPaneFilter->SetMinimumPaneSize(220);
     int w, h;
@@ -551,7 +551,6 @@ void ExportAnimationDialog::OnFrameViewSlider(wxScrollEvent &event)
 void ExportAnimationDialog::OnButtonCancel(wxCommandEvent &event)
 {
     event.Skip();
-    wxLogDebug(wxT("Event handler (ExportAnimationDialog::OnButtonCancel) not implemented yet")); //notify the user that he hasn't implemented the event handler yet
 }
  
 void ExportAnimationDialog::update()
@@ -1059,7 +1058,6 @@ void ExportAnimationDialog::OnRangeTypeCombo(wxCommandEvent &event)
 void ExportAnimationDialog::OnButtonOK(wxCommandEvent &event)
 {
     event.Skip();
-    wxLogDebug(wxT("Event handler (ExportAnimationDialog::OnButtonOK) not implemented yet")); //notify the user that he hasn't implemented the event handler yet
 }
 
 size_t ExportAnimationDialog::getRangeFormat() const
