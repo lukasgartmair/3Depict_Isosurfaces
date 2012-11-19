@@ -79,7 +79,7 @@ With this program, point data can be visualised using a fully implemented camera
  \caption{Closed-source programs only provide the final application, are neither human readable nor modifiable, and will only work on a specific platform. By contrast open source programs distribute the source-code as well as the application. The source code is the core logic which can be made to work on many platforms due to the invariance of the program logic.}
 \label{fig:compilation}
 \end{wrapfigure}
-Open source programs are programs which distribute not only the executable code, which is understood by the computer (so called machine code), but also provides the version of the program as it was written by humans as well. This provides external users with the possibility of modification or verification of the program behaviour, either by themselves, or by engaging a third party. With the source code one can verify the correctness of the system, alter behaviour or otherwise modify the program, or even reuse sub-sections of the program elsewhere. 
+Open source programs are programs which distribute not only the executable code, which is understood by the computer (so called machine code), but also provides the version of the program as it was written by the developers as well. This provides external users with the possibility of modification or verification of the program behaviour, either by themselves, or by engaging a third party. With the source code one can verify the correctness of the system, alter behaviour or otherwise modify the program, or even reuse sub-sections of the program elsewhere. 
 
 Modifications to the program itself may include migrating the program to newer or older systems, adding new functionality, or correcting errors in the program implementation.  
  
@@ -344,7 +344,7 @@ The program has an undo feature which can be used to abort the last changes to t
 The raw data pane may be used to obtain the raw XY data used to generate the plots. This can either by copied and pasted, or alternately saved to file.  
 
 \subsubsection{Export Menu}
-Plots, images and ion data may be exported from the program. The output format for 3D images is the ``Portable Network Graphic (PNG)'' format; these are supported by almost all image viewers. 
+Plots, images, ion data and animations may be exported from the program. The output format for 3D images is the ``Portable Network Graphic (PNG)'' format; these are supported by almost all image viewers. 
 
 For plots, you may save in either (Scalable Vector Graphic (SVG)) or ``PNG'' forms. Note that due to the nature of the SVG files, no resolution is needed, and the image can be reproduced at any scale. Furthermore the SVG can be used later to generate PNG images at the required size for output (We recommend the program \textit{Inkscape}). Alternately saving as PNG can be done, and you will be prompted for the desired image size.
 
@@ -352,13 +352,78 @@ Exporting Ion data can be done in several ways; you may export only the visible 
 
 Modified range files may be exported in whole. Currently the only supported export format is the oak-ridge``RNG'' format
 
-Simple animations of the 3D data can be constructed, where the current camera is orbited 360 degrees around its target location. The result is saved as an image sequence, which can be converted into an AVI using programs such as \emph{ImageJ}, or \emph{ffmpeg} to convert the constructed image sequence into a video file.
+Using simple animations of the 3D data can be constructed, where the current camera is orbited 360 degrees around its target location. The result is saved as an image sequence, which can be converted into an AVI using programs such as \emph{ImageJ}, or \emph{ffmpeg} to convert the constructed image sequence into a video file.
+
+More complex, filter based animations are covered in more detail in~\ref{sec:animationExport}
 
 Finally one can export the entire analysis state, including all required data using the export analysis package option. This will create  a folder which contains all the files needed to reproduce the current program state elsewhere. Note that this imports all referenced data files, so the package can become quite large, but should be fully portable to any other system by simply copying the created folder. Inside the folder, the program state will be stored as a state file, and can be accessed by simply opening this state file.
 
 \subsubsection{Autosave}
-The program will generate an autosave file periodically. If the program crashes, it will look for an autosave file and prompt you to restore it. Note that only the program settings are saved, not the intermediate data, so recomputation will be necessary. If the autosave fails to load, then the autosave file will be archived; in this case, please consider sending the failed file to the developers.
+The program will generate an autosave file periodically. If the program crashes, it will look for an autosave file and prompt you to restore it. Note that only the program settings are saved, not the intermediate data, so recomputation will be necessary. If the autosave fails to load, then the autosave file will be archived in your 3depict configuration folder; in this case, please consider sending the failed file to the developers. For configuration locations, see the paths Section~\ref{sec:3DepictPaths}
 
+
+\subsubsection{Export Animation}
+\label{sec:animationExport}As of \emph{3Depict} 0.0.12, it is now possible to automate the modify filter-refresh cycle. Specifically this allows for the animation of any property in any filter in the current filter tree. For example, if one wished to create an animation of a slice through of a POS file, one could create a clip filter, then interpolate the 3D point property to move the clip object automatically between animation frames. Note that the output of animation is not restricted to images only, it can output any data that can normally be exported. 
+
+
+In the Figure~\ref{fig:animateFilterView} the main window for animation can be seen, here it is possible to select the filters and properties that are to be animated. Depending upon the type of property selected (\emph{e.g.} number, colour, string, multiple choice), the selection dialog shown will be different.  To select the property that is to be animated, first one must select the filter, similar to how this is done in the main window. Once this is done, the properties currently set for that filter will be used as the default properties for the animation. To change the property, simply double click the property listing on th desired entry. Depending upon the entry type of property selected, as previously mentioned, you will be shown a differing dialog. For example, here the numerical property has been selected, and the dialog for setting animation parameters is displayed (Figure~\ref{fig:animateParamDialog}). 
+
+\begin{figure}
+\begin{center}
+ \includegraphics[width=0.9 \textwidth,keepaspectratio=true]{./figures/exportanimDialogFilterView.png}
+ \caption{Overview of animation dialog with ``filter view'' active; left hand area of the window shows standard tree view, right hand window shows properties that are to be animated.}
+\label{fig:animateFilterView}
+\end{center}
+\end{figure}
+
+
+
+\begin{figure}
+\begin{center}
+ \includegraphics[width=0.9 \textwidth,keepaspectratio=true]{./figures/exportanimParamDialog.png}
+ \caption{Numerical input window for setting parameters for animation}
+\label{fig:animateParamDialog}
+\end{center}
+\end{figure}
+
+By setting the start and end frame of the property, as well as the values desired at the start and the end, then the property of the filter will be changed during the animation. Any properties not listed in the grid will remain at their current values. Conflicting values are not allowed, for example, specifying the same property to have two different values at the same time. Such errors will be displayed in the filter view, as seen in Figure~\ref{fig:animateParamConflict}. 
+
+\begin{figure}
+\begin{center}
+ \includegraphics[width=0.9 \textwidth,keepaspectratio=true]{./figures/exportanimDialogConflict.png}
+ \caption{Conflicting filter properties shown, highlighted to show the conflicting values in the animation property grid.}
+\label{fig:animateParamConflict}
+\centering
+\end{center}
+\end{figure}
+
+The properties selected for a filter will be linearly interpolated from start to finish, so, for example, setting a property at frame 1 to ``1'', and frame 10 to ``10'', each frame between will change as 1,2,3...,9,10. This can be done for multiple properties at any one time. Similarly for colours, the interpolation will be done linearly on the colour's red/green/blue value, so, similarly, colours can also be animated. Whilst linear interpolation can be done for colours, points and digit values, it is not possible to do this for so-called ``strings'' (text values); these values must be treated specially, as shown in Figure~\ref{fig:animatePropString}.
+
+
+\begin{figure}
+ \begin{center}
+ \includegraphics[width=0.9 \textwidth,keepaspectratio=true]{./figures/exportanimDialogPropString.png}
+ \caption{Setting string properties using the string input dialog, via manual entry.}
+\label{fig:animatePropString}
+\centering
+\end{center}
+\end{figure}
+
+
+
+
+In this case either each string must be individually specified, as shown in the figure, or alternately, one must supply a text file, with one line per string to be used as input --- this can be selected via the ``open'' button.
+
+\begin{figure}
+\begin{center}
+ \includegraphics[width=0.9 \textwidth,keepaspectratio=true]{./figures/exportanimDialogFrameView.png}
+ \caption{Overview of animation dialog with ``frame view'' active; right hand region of the window shows the values of the animation for each frame, on the left hand side are the outputs that the user wishes to obtain.}
+\label{fig:animateFrameView}
+\end{center}
+\end{figure}
+
+Once the desired properties have been set in the filter view, then one proceeds to the frame view in order to review the animation by examining the properties that will be obtained in each filter, frame-by-frame. If you are familiar with this dialog, then it is easy to simply examine this quickly to ensure that the properties that were intended have been obtained. Now, having ensured that this is the case, it can be seen that the "OK" button cannot be pressed at this time. Firstly, the desired outputs, and the directory that they will be sent to during the animation process must be specified. Once the output directory is set, the desired outputs, normally either images, or points are to be selected as required. The checkbox `` '',  if set, will cause only the changes that actually alter the computation internal computation to be saved. As an example, if one was to animate the ``Load Limit'' property of the ``Pos Data'' filter, and the file to be opened was only 1~MB, but the animation proceeded as 0.5, 0.6...,
+ 1.0,1.1... , when the sampling value exceeds 1~MB, there is no effect on the computation, thus the program will not save data on frames that do not alter the output.
 
 \section{Detailed Reference}
 \subsection{Data types}
@@ -963,6 +1028,15 @@ A drawable will only be emitted if the ``show marker'' option is selected.
 This document is licenced under the Creative Commons 3.0 ShareAlike licence. \url{http://creativecommons.org/licenses/by-sa/3.0/}
 
 \section{Appendices}
+\label{sec:appendix}
+\subsection{Paths}
+\label{sec:3DepictPaths}
+\emph{3Depict} uses one of several different paths for storing configuration and autosave information, depending upon your host operating system. 
+\begin{itemize}
+ \item Linux-like : your home directory, in th .3Depict folder. \emph{e.g.} \texttt{/home/someuser/.3Depict/}
+ \item Mac OSX :\texttt{ /Users/someuser/Documents/.3Depict/}
+ \item Windows : usually \texttt{C:\\Documents and settings\\someuser\\Documents\\.3Depict\\}
+\end{itemize}
 
 \subsection{File formats}
 
