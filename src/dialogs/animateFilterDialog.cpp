@@ -43,6 +43,8 @@ enum
 	ID_SPLIT_FILTERVIEW,
 	ID_FRAME_SLIDER,
 	ID_FRAME_TEXTBOX,
+	ID_BTN_OK,
+	ID_BTN_CANCEL,
 	ID_FILTER_PROPERTY_VALUE_GRID
 };
 enum
@@ -254,8 +256,8 @@ BEGIN_EVENT_TABLE(ExportAnimationDialog, wxDialog)
     EVT_COMBOBOX(ID_COMBO_RANGE_TYPE, ExportAnimationDialog::OnRangeTypeCombo)
     EVT_COMMAND_SCROLL(ID_FRAME_SLIDER, ExportAnimationDialog::OnFrameViewSlider)
     EVT_TEXT(ID_FRAME_TEXTBOX, ExportAnimationDialog::OnTextFrame)
-    EVT_BUTTON(wxID_ANY, ExportAnimationDialog::OnButtonCancel)
-    EVT_BUTTON(wxID_ANY, ExportAnimationDialog::OnButtonOK)
+    EVT_BUTTON(ID_BTN_CANCEL, ExportAnimationDialog::OnButtonCancel)
+    EVT_BUTTON(ID_BTN_OK, ExportAnimationDialog::OnButtonOK)
     // end wxGlade
 END_EVENT_TABLE();
 
@@ -770,7 +772,7 @@ void ExportAnimationDialog::OnFilterGridCellEditorShow(wxGridEvent &event)
 					wxID_ANY,wxTRANS("Keyframe : decimal"));
 			if(!getRealKeyFrame(frameProp,filterProp,r))
 				return;
-			frameProp.setInterpMode(INTERP_LINEAR_FLOAT);
+			frameProp.setInterpMode(r->getTransitionMode());
 			break;
 		}
 		case PROPERTY_TYPE_INTEGER:
@@ -779,7 +781,7 @@ void ExportAnimationDialog::OnFilterGridCellEditorShow(wxGridEvent &event)
 					wxID_ANY,wxTRANS("Keyframe : integer"));
 			if(!getRealKeyFrame(frameProp,filterProp,r))
 				return;
-			frameProp.setInterpMode(INTERP_LINEAR_FLOAT);
+			frameProp.setInterpMode(r->getTransitionMode());
 			break;
 		}
 		case PROPERTY_TYPE_POINT3D:
@@ -792,6 +794,8 @@ void ExportAnimationDialog::OnFilterGridCellEditorShow(wxGridEvent &event)
 			// if user chooses a linear ramp
 			if(frameProp.getInterpMode()==INTERP_LINEAR_FLOAT)
 				frameProp.setInterpMode(INTERP_LINEAR_POINT3D);
+			else
+				frameProp.setInterpMode(r->getTransitionMode());
 
 			break;
 		}
@@ -869,6 +873,9 @@ void ExportAnimationDialog::updateOKButton()
 	badStatus|=filterMap.empty();
 	badStatus|=(imagePrefix.empty() && wantImageOutput);
 	badStatus|=(propertyAnimator.getNumProps() == 0);
+
+	//Ensure that there were no inconsisted properties in
+	// the animation
 	std::set<size_t> inconsistentProps;
 	badStatus|=!propertyAnimator.checkSelfConsistent(inconsistentProps);
 	okButton->Enable(!badStatus);
@@ -1089,11 +1096,15 @@ void ExportAnimationDialog::set_properties()
     textWorkDir->SetToolTip(wxTRANS("Enter where the animation frames will be exported to"));
     buttonWorkDir->SetToolTip(wxTRANS("Browse to directory where the animation frames will be exported to"));
     checkImageOutput->SetValue(1);
-    textImageName->SetToolTip(wxTRANS("Enter the target resolution (width)"));
-    textImageSize->SetToolTip(wxTRANS("Enter the target resolution (width)"));
+    textImageName->SetToolTip(wxTRANS("Enter a descriptive name for output files"));
+    textImageSize->SetToolTip(wxTRANS("Enter the target resoltuion (image size)"));
     comboRangeFormat->SetSelection(-1);
-    frameSlider->SetToolTip(wxTRANS("frame"));
-    textFrame->SetToolTip(wxTRANS("Enter frame number"));
+    frameSlider->SetToolTip(wxTRANS("Select frame for property display"));
+    textFrame->SetToolTip(wxTRANS("Enter frame number to change frame (eg 1/20)"));
+    checkPoints->SetToolTip(wxTRANS("Save point data (POS files) in output folder?"));
+    checkPlotData->SetToolTip(wxTRANS("Save plots (as text files) in output folder?"));
+    checkVoxelData->SetToolTip(wxTRANS("Save voxel data (raw files) in output folder?"));
+    checkRangeData->SetToolTip(wxTRANS("Save range files  in output folder?"));
     framePropGrid->CreateGrid(0, 3);
     framePropGrid->SetColLabelValue(0, wxTRANS("Filter"));
     framePropGrid->SetColLabelValue(1, wxTRANS("Property"));

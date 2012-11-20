@@ -181,12 +181,11 @@ void RealKeyFrameDialog<T>::updateOKButton()
 {
 	bool isOK=true;
 	isOK&=startFrameOK;
-	isOK&=endFrameOK;
-	isOK&=startValueOK;
-	isOK&=endValueOK;
+	//step transitions need to be handled without end frmae
+	isOK&=endFrameOK || transitionMode==TRANSITION_STEP;
 
 	//Ensure start frame is > end frame
-	if(isOK)
+	if(isOK && transitionMode != TRANSITION_STEP)
 	{
 		isOK&=(startFrame<endFrame);
 		if(!isOK)
@@ -201,12 +200,21 @@ void RealKeyFrameDialog<T>::updateOKButton()
 		}
 	}
 	
+	isOK&=startValueOK;
+	isOK&=endValueOK || transitionMode==TRANSITION_STEP;
+	
 	buttonOK->Enable(isOK);
 }
 
 template<class T>
 void RealKeyFrameDialog<T>::OnComboTransition(wxCommandEvent &event)
 {
+	ASSERT(event.GetInt() < TRANSITION_END);
+
+	transitionMode=event.GetInt();
+
+	textEndVal->Enable(transitionMode != TRANSITION_STEP);
+	textFrameEnd->Enable(transitionMode!=TRANSITION_STEP);
 }
 
 

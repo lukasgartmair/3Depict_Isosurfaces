@@ -463,7 +463,7 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 			,wxTRANS("OpenGL Failed"),wxICON_ERROR|wxOK);
 		
 		wxD->ShowModal();
-		delete wxD;
+		wxD->Destroy();
 
 		cerr << wxTRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please check your video drivers.") << endl;
 		return;
