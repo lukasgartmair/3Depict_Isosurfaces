@@ -2476,7 +2476,7 @@ msgstr "- Anzahl -"
 
 #: ../src/filters/ionInfo.cpp:355
 msgid "Total Ranged\t"
-msgstr "Gesamt ranged<span class=\"whitespace other\" title=\"Tab\">»</span>"
+msgstr "Gesamt ranged\t"
 
 #: ../src/filters/ionInfo.cpp:360
 msgid "Total (incl. unranged)\t"

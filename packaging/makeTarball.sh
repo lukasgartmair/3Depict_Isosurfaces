@@ -63,7 +63,7 @@ fi
 rm -rf autom4te.cache
 
 #Build tarball
-make dist
+make dist -j $NUM_PROCS
 
 if [ $? -ne 0 ] ; then
 	echo "make dist failed";
@@ -157,6 +157,12 @@ fi
 SOME_LINES=`hg diff | wc -l`
 if [ x"$SOME_LINES" != x"0" ] ; then
 	echo " WARNING : Oustanding mercurial changes! Normally should commit fixes!" >> $MSG_FILE
+fi
+
+#Check translation files for "span" element - transifex has a bad habit of encoding whitspace
+SPAN_ELEMENT=`cat translations/3Depict_*po | grep "<span"`
+if [ x$SPAN_ELEMENT != x"" ] ; then
+	echo "WARNING : Found \"span\" element in translation file - normally this is due to transifex incorrectly parsing translation files" >> $MSG_FILE
 fi
 #----
 
