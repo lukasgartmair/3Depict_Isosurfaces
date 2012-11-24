@@ -100,8 +100,12 @@ std::string ColourKeyFrameDialog::getStartValue() const
 
 void ColourKeyFrameDialog::OnComboTransition(wxCommandEvent &event)
 {
-	event.Skip();
-	wxLogDebug(wxT("Event handler (ColourKeyFrameDialog::OnComboTransition) not implemented yet")); //notify the user that he hasn't implemented the event handler yet
+	ASSERT(event.GetInt() < TRANSITION_END);
+
+	transitionMode=event.GetInt();
+
+	btnEndColour->Enable(transitionMode != TRANSITION_STEP);
+	textFrameEnd->Enable(transitionMode!=TRANSITION_STEP);
 }
 
 void ColourKeyFrameDialog::OnTextStartFrame(wxCommandEvent &event)

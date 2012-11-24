@@ -702,11 +702,8 @@ void ExportAnimationDialog::OnFilterGridCellEditorShow(wxGridEvent &event)
 			//Copy out the data obtained from the dialog
 			size_t transitionMode;
 			transitionMode=colDlg->getTransitionMode();
-			//FIXME: HACK!  Overiding interpolation mode, until we unify
-			// the differing definitions
+			
 			frameProp.setInterpMode(transitionMode);
-			frameProp.setInterpMode(INTERP_LINEAR_COLOUR);
-
 			filterProp.data=colDlg->getStartValue();
 
 			frameProp.addKeyFrame(colDlg->getStartFrame(),filterProp);
@@ -717,6 +714,7 @@ void ExportAnimationDialog::OnFilterGridCellEditorShow(wxGridEvent &event)
 					break;
 				case TRANSITION_INTERP:
 					filterProp.data=colDlg->getEndValue();
+					frameProp.setInterpMode(INTERP_LINEAR_COLOUR);
 					frameProp.addKeyFrame(colDlg->getEndFrame(),filterProp);
 					break;
 				default:
