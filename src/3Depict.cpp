@@ -1772,7 +1772,7 @@ void MainWindowFrame::setLockUI(bool locking=true,
 
 			
 
-			panelSpectra->limitInteraction(!locking);
+			panelSpectra->limitInteraction(locking);
 			break;
 		}
 		default:
