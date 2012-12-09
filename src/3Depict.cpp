@@ -2071,6 +2071,9 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 	setLockUI(false);
 	panelTop->Enable(true);
 
+	//Re-run the scene update for the original case,
+	// this allow sfor things like the selection bindings to be reinitialised.
+	doSceneUpdate();
 }
 
 void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
