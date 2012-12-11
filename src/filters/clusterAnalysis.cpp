@@ -983,6 +983,7 @@ void ClusterAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	p.type=PROPERTY_TYPE_BOOL;
 	p.helpText=TRANS("Show number of clusters as a function of cluster size");
 	p.key=KEY_WANT_CLUSTERSIZEDIST;
+		propertyList.addProperty(p,curGroup);
 	if(wantClusterSizeDist)
 	{	
 		tmpStr=boolStrEnc(logClusterSize);
@@ -991,23 +992,26 @@ void ClusterAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 		p.type=PROPERTY_TYPE_BOOL;
 		p.helpText=TRANS("Use logarithmic scale for size distribution");
 		p.key=KEY_WANT_LOGSIZEDIST;
+		propertyList.addProperty(p,curGroup);
 	}
 
 
+	/*
 	tmpStr=boolStrEnc(wantClusterMorphology);
 	p.name=TRANS("Morphology Dist.");
 	p.data=tmpStr;
 	p.type=PROPERTY_TYPE_BOOL;
 	p.helpText=TRANS("Create a plot showing cluster aspect ratio data");
 	p.key=KEY_WANT_CLUSTERMORPHOLOGY;
-	
+	propertyList.addProperty(p,curGroup);
+	*/
 	tmpStr=boolStrEnc(wantClusterComposition);
 	p.name=TRANS("Chemistry Dist.");
 	p.data=tmpStr;
 	p.type=PROPERTY_TYPE_BOOL;
 	p.helpText=TRANS("Create a plot showing chemistry for each cluster size");
 	p.key=KEY_WANT_COMPOSITIONDIST;
-
+	propertyList.addProperty(p,curGroup);
 	
 	if(wantClusterComposition)
 	{	

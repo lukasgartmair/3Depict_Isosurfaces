@@ -1326,14 +1326,13 @@ bool TransformFilter::setProperty(  unsigned int key,
 
 			return true;
 		}
-			break;
 		case KEY_ORIGINMODE:
 		{
 			size_t i;
-			for (i = 0; i < MODE_ENUM_END; i++)
+			for (i = 0; i < ORIGINMODE_END; i++)
 				if (value == getOriginTypeString(i)) break;
 		
-			if( i == MODE_ENUM_END)
+			if( i == ORIGINMODE_END)
 				return false;
 
 			if(originMode != i)

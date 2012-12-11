@@ -1544,7 +1544,7 @@ bool rulerTest()
 	
 	bool needUp; std::string s;
 	//Set linear ruler mode
-	f->setProperty(KEY_MODE,annotationModeStrings[ANNOTATION_LINEAR_MEASURE],needUp);
+	f->setProperty(KEY_MODE,TRANS(annotationModeStrings[ANNOTATION_LINEAR_MEASURE]),needUp);
 	//Set ruler position & length
 	stream_cast(s,Point3D(0,0,0));
 	f->setProperty(KEY_POSITION,s,needUp);

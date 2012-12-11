@@ -2216,9 +2216,9 @@ bool rdfPlotTest()
 	//Set it to do an NN terminated density computation
 	bool needUp;
 	TEST(f->setProperty(KEY_STOPMODE,
-		STOP_MODES[STOP_MODE_RADIUS],needUp),"set stop mode");
+		TRANS(STOP_MODES[STOP_MODE_RADIUS]),needUp),"set stop mode");
 	TEST(f->setProperty(KEY_ALGORITHM,
-			SPATIAL_ALGORITHMS[ALGORITHM_RDF],needUp),"set Algorithm");
+			TRANS(SPATIAL_ALGORITHMS[ALGORITHM_RDF]),needUp),"set Algorithm");
 	TEST(f->setProperty(KEY_DISTMAX,"2",needUp),"Set NNmax");
 	
 	//Do the refresh
