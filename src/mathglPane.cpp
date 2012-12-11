@@ -611,7 +611,7 @@ void MathGLPane::oneDMouseDownAction(bool leftDown,bool middleDown,
 
 void MathGLPane::leftMouseDown(wxMouseEvent& event)
 {
-	if(!gr || !thePlot->getNumVisible() || !thePlot->isInteractionLocked())
+	if(!gr || !thePlot->getNumVisible() || thePlot->isInteractionLocked())
 		return;
 
 	int w,h;
