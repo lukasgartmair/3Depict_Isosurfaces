@@ -1,6 +1,6 @@
 /*
  * 	wxcomponents.h - custom wxwidgets components
- *	Copyright (C) 2012, D. Haley
+ *	Copyright (C) 2013, D. Haley
 
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -20,15 +20,15 @@
 #ifndef WXCOMPONENTS_H
 #define WXCOMPONENTS_H
 
-#include <wx/dc.h>
-#include <wx/settings.h>
 #include <wx/grid.h>
 #include <wx/treectrl.h>
 #include <wx/laywin.h>
-#include <wx/filedlg.h>
 
 #include <vector>
 #include <string>
+
+
+#include "backend/filtertree.h"
 
 //Shut wxwidgets assertion errors up by defining a "safe" cb_sort wrapper macro
 #if defined(__WXMAC__) || defined(__WXGTK20__)
@@ -47,8 +47,6 @@
 	#define SAFE_CB_SORT wxCB_SORT
 #endif
 
-#include "assertion.h"
-#include "commonConstants.h"
 
 //!3D combo grid renderer, from
 //http://nomadsync.cvs.sourceforge.net/nomadsync/nomadsync/src/EzGrid.cpp?view=markup (GPL)
@@ -86,6 +84,10 @@ protected:
 	wxPoint m_pointActivate;
 };
 
+//!Update a wxTree control to layout according to the specified filter tree
+void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
+		std::map<size_t,Filter *> &filterMap,vector<const Filter *> &persistentFilters,
+		const Filter *visibleFilt);
 
 //!Data container for tree object data
 class wxTreeUint : public wxTreeItemData
@@ -154,7 +156,7 @@ class wxPropertyGrid : public wxGrid
 		void setNumGroups(unsigned int newGroupCount){propertyKeys.resize(newGroupCount); sectionNames.resize(newGroupCount);};
 
 		//Set the names for each group. This will appear as a small text in the blank rows
-		void setGroupName(unsigned int set, const std::string &name) {ASSERT(set < sectionNames.size()); sectionNames[set]=name;};
+		void setGroupName(unsigned int set, const std::string &name); 
 
 		//!This adds the item to the property key vector of a specified group 
 		//!	key must be unique 
@@ -198,7 +200,7 @@ public:
 
 	void currentCell();
 	void selectData();
-	//!Copy data to the clipboard (TODO: not working under GTK???)
+	//!Copy data to the clipboard 
 	void copyData();
 	//!Prompts user to save data to file, and then saves it. pops up error 
 	// dialog box if there is a problem. Data is tab deliminated
@@ -207,6 +209,8 @@ public:
 	virtual void OnKey(wxKeyEvent &evt);
 
 	virtual ~CopyGrid(){};
+		
+	DECLARE_EVENT_TABLE()
 
 };
 

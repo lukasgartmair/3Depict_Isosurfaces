@@ -21,6 +21,8 @@
         
 #include "pngread.h"
 
+#include <stdlib.h>
+
 int check_if_png(const char *file_name, FILE **fp, unsigned int bytes_to_check)
 {
    char buf[bytes_to_check];

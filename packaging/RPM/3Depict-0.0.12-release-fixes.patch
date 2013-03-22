@@ -1,0 +1,34 @@
+diff -r 53afe9a60fab -r 7bb4ba49dcb4 src/3Depict.cpp
+--- src/3Depict.cpp	Sat Nov 24 23:55:24 2012 +0100
++++ src/3Depict.cpp	Sun Dec 09 18:27:00 2012 +0100
+@@ -1772,7 +1772,7 @@
+ 
+ 			
+ 
+-			panelSpectra->limitInteraction(!locking);
++			panelSpectra->limitInteraction(locking);
+ 			break;
+ 		}
+ 		default:
+@@ -2071,6 +2071,9 @@
+ 	setLockUI(false);
+ 	panelTop->Enable(true);
+ 
++	//Re-run the scene update for the original case,
++	// this allow sfor things like the selection bindings to be reinitialised.
++	doSceneUpdate();
+ }
+ 
+ void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
+diff -r 53afe9a60fab -r 7bb4ba49dcb4 src/mathglPane.cpp
+--- src/mathglPane.cpp	Sat Nov 24 23:55:24 2012 +0100
++++ src/mathglPane.cpp	Sun Dec 09 18:27:00 2012 +0100
+@@ -611,7 +611,7 @@
+ 
+ void MathGLPane::leftMouseDown(wxMouseEvent& event)
+ {
+-	if(!gr || !thePlot->getNumVisible() || !thePlot->isInteractionLocked())
++	if(!gr || !thePlot->getNumVisible() || thePlot->isInteractionLocked())
+ 		return;
+ 
+ 	int w,h;

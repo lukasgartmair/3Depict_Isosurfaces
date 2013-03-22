@@ -21,66 +21,86 @@ MSYS_PATH=/c/msys/1.0/local/include/
 
 bin_PROGRAMS= 3Depict
 
-FILTER_FILES = filters/allFilter.cpp filters/dataLoad.cpp filters/ionDownsample.cpp \
-		filters/rangeFile.cpp filters/voxelise.cpp filters/spectrumPlot.cpp \
-	       	filters/transform.cpp filters/externalProgram.cpp filters/ionClip.cpp \
-		filters/ionColour.cpp filters/boundingBox.cpp  \
-		filters/compositionProfile.cpp filters/spatialAnalysis.cpp \
-		filters/clusterAnalysis.cpp filters/ionInfo.cpp \
-		filters/annotation.cpp
+#------- Common header files for all sub-modules
+COMMON_SOURCE_FILES =  common/stringFuncs.cpp common/xmlHelper.cpp common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp
+COMMON_HEADER_FILES = common/stringFuncs.h  common/constants.h  common/xmlHelper.h common/colourmap.h common/mathfuncs.h common/basics.h
+#-----------
 
-FILTER_HEADER_FILES = filters/allFilter.h filters/dataLoad.h filters/ionDownsample.h \
-		filters/rangeFile.h filters/voxelise.h filters/spectrumPlot.h \
-	       	filters/transform.h filters/externalProgram.h filters/ionClip.h \
-		filters/ionColour.h filters/boundingBox.h  \
-		filters/compositionProfile.h filters/spatialAnalysis.h \
-		filters/clusterAnalysis.h filters/ionInfo.h \
-		filters/annotation.h
+#------- "Backend" calculation files (non-ui) ----------
+FILTER_FILES = backend/filters/allFilter.cpp backend/filters/filterCommon.cpp \
+	        backend/filters/dataLoad.cpp backend/filters/ionDownsample.cpp \
+		backend/filters/rangeFile.cpp backend/filters/voxelise.cpp \
+		backend/filters/spectrumPlot.cpp backend/filters/transform.cpp \
+		backend/filters/externalProgram.cpp backend/filters/ionClip.cpp \
+		backend/filters/ionColour.cpp backend/filters/boundingBox.cpp  \
+		backend/filters/compositionProfile.cpp backend/filters/spatialAnalysis.cpp \
+		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
+		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp
 
-DIALOG_SOURCE_FILES = dialogs/ExportPos.cpp  dialogs/ExportRngDialog.cpp dialogs/prefDialog.cpp  \
-		dialogs/resolutionDialog.cpp  dialogs/StashDialog.cpp \
-		dialogs/autosaveDialog.cpp dialogs/filterErrorDialog.cpp \
-		dialogs/animateFilterDialog.cpp \
-		dialogs/animateSubDialogs/colourKeyFrameDialog.cpp \
-		dialogs/animateSubDialogs/stringKeyFrameDialog.cpp \
-		dialogs/animateSubDialogs/choiceKeyFrameDialog.cpp
+FILTER_HEADER_FILES = backend/filters/allFilter.h filters/filterCommon.h \
+		backend/filters/dataLoad.h backend/filters/ionDownsample.h \
+		backend/filters/rangeFile.h backend/filters/voxelise.h filters/spectrumPlot.h \
+	       	backend/filters/transform.h backend/filters/externalProgram.h filters/ionClip.h \
+		backend/filters/ionColour.h backend/filters/boundingBox.h  \
+		backend/filters/compositionProfile.h backendfilters/spatialAnalysis.h \
+		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
+		backend/filters/annotation.h backend/filters/geometryHelpers.h
 
+BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backend/filtertree.cpp \
+		     	backend/APT/APTClasses.cpp backend/APT/APTRanges.cpp \
+			backend/filters/K3DTree.cpp backend/filters/K3DTree-mk2.cpp\
+			backend/filter.cpp backend/filters/rdf.cpp \
+		       backend/viscontrol.cpp backend/plot.cpp  backend/configFile.cpp 
 
-DIALOG_HEADER_FILES = dialogs/ExportPos.h dialogs/ExportRngDialog.h dialogs/prefDialog.h \
-		dialogs/StashDialog.h dialogs/resolutionDialog.h \
-		dialogs/autosaveDialog.h dialogs/filterErrorDialog.h \
-		dialogs/animateFilterDialog.h \
-		dialogs/animateSubDialogs/realKeyFrameDialog.h \
-		dialogs/animateSubDialogs/colourKeyFrameDialog.h \
-		dialogs/animateSubDialogs/stringKeyFrameDialog.h \
-		dialogs/animateSubDialogs/choiceKeyFrameDialog.h
+BACKEND_HEADER_FILES =  backend/animator.h backend/filtertreeAnalyse.h backend/filtertree.h\
+			backend/APT/APTClasses.h backend/APT/APTRanges.h \
+			backend/filters/K3DTree.h backend/filters/K3DTree-mk2.h \
+			backend/filter.h backend/filters/rdf.h \
+			backend/viscontrol.h  backend/plot.h backend/configFile.h
 
-#These source files should have heirachical couplings only; no cross-coupling
-BASE_SOURCE_FILES=  animator.cpp eventlogger.cpp filtertreeAnalyse.cpp filtertree.cpp mathglPane.cpp \
-	  	     plot.cpp configFile.cpp filter.cpp \
-		     APTClasses.cpp select.cpp \
-		     drawables.cpp effect.cpp textures.cpp rdf.cpp \
-		     cameras.cpp isoSurface.cpp K3DTree.cpp K3DTree-mk2.cpp\
-			 xmlHelper.cpp cropPanel.cpp colourmap.cpp \
-			pngread.c mathfuncs.cpp wxcomponents.cpp wxcommon.cpp 
+#------------
 
-BASE_HEADER_FILES=   animator.h eventlogger.h filtertreeAnalyse.h filtertree.h mathglPane.h plot.h \
-		     configFile.h filter.h APTClasses.h select.h \
-		     drawables.h effect.h textures.h rdf.h translation.h winconsole.h \
-		     cameras.h isoSurface.h K3DTree.h K3DTree-mk2.h\
-			xmlHelper.h cropPanel.h colourmap.h \
-			pngread.h mathfuncs.h wxcomponents.h wxcommon.h voxels.h \
-		       endianTest.h assertion.h commonConstants.h  art.h tree.hh 3Depict.xpm
+#------------ OpenGL interface files
+OPENGL_HEADER_FILES = gl/scene.h gl/drawables.h gl/effect.h gl/textures.h gl/select.h gl/cameras.h gl/isoSurface.h
+OPENGL_SOURCE_FILES =  gl/scene.cpp gl/drawables.cpp gl/effect.cpp gl/textures.cpp gl/select.cpp gl/cameras.cpp gl/isoSurface.cpp
 
 
-#These files are inter-dependant to some extent (mostly viscontrol)
-CROSS_DEP_SOURCE_FILES=testing.cpp 3Depict.cpp basics.cpp glPane.cpp \
-		       scene.cpp viscontrol.cpp 
-CROSS_DEP_HEADER_FILES=testing.h 3Depict.h basics.h glPane.h \
-			scene.h viscontrol.h 
+#------------
 
-SOURCE_FILES=  $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(DIALOG_SOURCE_FILES) $(DIALOG_HEADER_FILES) $(FILTER_FILES) $(FILTER_HEADER_FILES) \
-	      $(CROSS_DEP_SOURCE_FILES) $(CROSS_DEP_HEADER_FILES) 
+
+
+#------------ Frontend (linked to UI in some way) files ---
+DIALOG_SOURCE_FILES = gui/dialogs/ExportPos.cpp  gui/dialogs/ExportRngDialog.cpp gui/dialogs/prefDialog.cpp  \
+		gui/dialogs/resolutionDialog.cpp  gui/dialogs/StashDialog.cpp \
+		gui/dialogs/autosaveDialog.cpp gui/dialogs/filterErrorDialog.cpp \
+		gui/dialogs/animateFilterDialog.cpp \
+		gui/dialogs/animateSubDialogs/colourKeyFrameDialog.cpp \
+		gui/dialogs/animateSubDialogs/stringKeyFrameDialog.cpp \
+		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.cpp
+
+
+DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/dialogs/prefDialog.h \
+		gui/dialogs/StashDialog.h gui/dialogs/resolutionDialog.h \
+		gui/dialogs/autosaveDialog.h gui/dialogs/filterErrorDialog.h \
+		gui/dialogs/animateFilterDialog.h \
+		gui/dialogs/animateSubDialogs/realKeyFrameDialog.h \
+		gui/dialogs/animateSubDialogs/colourKeyFrameDialog.h \
+		gui/dialogs/animateSubDialogs/stringKeyFrameDialog.h \
+		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.h
+
+GUI_SOURCE_FILES=gui/mainFrame.cpp gui/mathglPane.cpp gui/cropPanel.cpp gui/glPane.cpp  $(DIALOG_SOURCE_FILES)
+GUI_HEADER_FILES=gui/mainFrame.h gui/mathglPane.h gui/cropPanel.h gui/art.h gui/glPane.h $(DIALOG_HEADER_FILES)
+
+BASE_SOURCE_FILES=   3Depict.cpp testing.cpp pngread.c wxcomponents.cpp wxcommon.cpp 
+BASE_HEADER_FILES=   3Depict.h testing.h winconsole.h pngread.h 
+#-----------
+
+
+
+SOURCE_FILES=  $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(GUI_SOURCE_FILES) $(GUI_HEADER_FILES) \
+	       $(FILTER_FILES) $(FILTER_HEADER_FILES) \
+	       ${BACKEND_SOURCE_FILES} ${BACKEND_HEADER_FILES} $(OPENGL_SOURCE_FILES) $(OPENGL_HEADER_FILES) \
+	       $(COMMON_SOURCE_FILES) $(COMMON_HEADER_FILES)
 
 
 #Do we have or need windows-XP "resource" files for look and feel?
@@ -94,19 +114,3 @@ endif
 EXTRA_DIST = textures/ tex-source/ glade-skeleton/ myAppIcon.ico
  
 
-if USE_PRECOMPILED_HEADERS
-
-#Precompiled headers
-BUILT_SOURCES=   mathglPane.h.gch plot.h.gch configFile.h.gch filter.h.gch \
-		     APTClasses.h.gch resDialog.h.gch select.h.gch \
-		     drawables.h.gch effect.h.gch textures.h.gch rdf.h.gch \
-		     cameras.h.gch isoSurface.h.gch K3DTree.h.gch K3DTree-mk2.h.gch\
-			basics.h.gch xmlHelper.h.gch cropPanel.h.gch colourmap.h.gch \
-			pngread.h.gch mathfuncs.h.gch wxcomponents.h.gch wxcommon.h.gch voxels.h.gch \
-		       endianTest.h.gch assertion.h.gch commonConstants.h.gch  art.h.gch tree.hh.gch
-%.hh.gch: %.hh
-	        $(CXXCOMPILE) $(3Depict_CXXFLAGS)-c $< 
-
-%.h.gch: %.h
-	        $(CXXCOMPILE) $(3Depict_CXXFLAGS) -c $< 
-endif

@@ -1,6 +1,6 @@
 Name:		3Depict
 Version:	0.0.12
-Release:	1%{?dist}
+Release:	2%{?dist}
 Summary:	Valued 3D point cloud visualization and analysis
 Group:		Applications/Engineering
 
@@ -27,7 +27,7 @@ BuildRequires: desktop-file-utils
 #WX widgets
 BuildRequires: wxGTK-devel
 #PDF latex build
-BuildRequires: tex(latex)
+#BuildRequires: tex(latex)
 
 #Required for surface removal algorithms 
 BuildRequires: qhull-devel
@@ -36,6 +36,8 @@ BuildRequires: qhull-devel
 Patch0: %{name}-%{version}-manual-pdf-loc.patch
 #Fedora specific font dir
 Patch1: %{name}-%{version}-font-path.patch
+#Upstream patch for 0.0.12 release bugs
+Patch2: %{name}-0.0.12-release-fixes.patch
 
 %description
 This software is designed to help users visualize and analyze 3D point clouds
@@ -49,17 +51,11 @@ useful for general scalar valued point data purposes.
 
 %patch0
 %patch1
+%patch2
 
 %build
 %configure --disable-debug-checks --enable-openmp-parallel
 make %{?_smp_mflags}
-
-pushd docs/manual-latex
-pdflatex manual.tex
-bibtex manual
-pdflatex manual.tex
-popd
-
 
 %install
 rm -rf %{buildroot}
@@ -116,7 +112,10 @@ rm -rf %{buildroot}
 
 
 %changelog
-* Sun Nov 11 2012 D Haley <mycae(a!t)yahoo.com> - 0.0.12-1
+* Sun Dec 9 2012 D Haley <mycae(a!t)yahoo.com> - 0.0.12-2
+- Import bugfixes from upstream for plot UI and crash fixes
+
+* Sun Nov 25 2012 D Haley <mycae(a!t)yahoo.com> - 0.0.12-1
 - Update to 0.0.12
 
 * Mon Apr 2 2012 D Haley <mycae(a!t)yahoo.com> - 0.0.10-1

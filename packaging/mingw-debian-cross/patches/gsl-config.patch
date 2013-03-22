@@ -1,0 +1,36 @@
+--- gsl-config	2013-02-23 12:01:38.000000000 +0100
++++ /usr/bin/gsl-config	2011-05-08 15:12:21.000000000 +0200
+@@ -1,9 +1,8 @@
+ #! /bin/sh
+ 
+-BASEDIR=/home/pcuser/mingw64-cross
+-prefix=/
+-exec_prefix=/
+-includedir=$BASEDIR/include
++prefix=/usr
++exec_prefix=/usr
++includedir=/usr/include
+ 
+ usage()
+ {
+@@ -59,16 +58,16 @@
+ 	;;
+ 
+     --cflags)
+-       	echo -I/$BASEDIR/include 
++       	echo -I/usr/include 
+        	;;
+ 
+     --libs)
+         : ${GSL_CBLAS_LIB=-lgslcblas}
+-	echo -L/$BASEDIR/lib -lgsl $GSL_CBLAS_LIB -lm
++	echo -L/usr/lib -lgsl $GSL_CBLAS_LIB -lm
+        	;;
+ 
+     --libs-without-cblas)
+-	echo -L/$BASEDIR/lib -lgsl -lm
++	echo -L/usr/lib -lgsl -lm
+        	;;
+     *)
+ 	usage
+

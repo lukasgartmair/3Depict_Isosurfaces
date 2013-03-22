@@ -11,22 +11,21 @@ dnl Tested platforms : Mac OS X 10.4.6 with ftgl installed via fink, Fedora core
 dnl
 dnl This script requires the pkg.m4 file
 
+#This is broken without pkg-config!!
+# Allow user to pass a manual dir for FTGL
+#
+AC_ARG_WITH([ftgl-prefix], [--with-ftgl-prefix : specify prefix dir for FTGL],
+		ftgl_prefix="$withval", ftgl_config_prefix="")
+#
+# allow for disabling the pkg-config check
+AC_ARG_WITH([ftgl-no-pkg], 
+		 [--with-ftgl-no-pkg : don't use pkg-config to check for ftgl])
+
 AC_DEFUN([AX_CHECK_FTGL], [ 
 dnl AC_REQUIRE([PKG_CHECK_MODULES]) - I had to take this out, with it in it messes up confgure
 dnl as the PKG_CHECK_MODULES is expanded with no arguments. I dont want to expand it, I just
 dnl want to ensure that it is defined. never mind. 
 
-#
-# Allow user to pass a manual dir for FTGL
-#
-AC_ARG_WITH([ftgl-prefix], [AC_HELP_STRING([--with-ftgl-prefix=PFX]), 
-		Manually specify the FTGL location (optional)], 
-		ftgl_prefix="$withval", ftgl_config_prefix="")
-#
-# allow for disabling the pkg-config check
-# FIXME: THIS DOESN'T work  "unrecognised option"
-AC_ARG_WITH([ftgl-dont-use-pkg], 
-		[ AC_HELP_STRING([--ftgl-dont-use-pkg], [ don't use pkg-config to check for ftgl]) ])
 
 AC_MSG_CHECKING([for ftgl])
 
@@ -38,7 +37,7 @@ if test "x$ftgl_prefix" != "x" ; then
 	FTGL_CFLAGS="-I$ftgl_prefix/include/ -L$ftgl_prefix/lib/"
 	FTGL_LIBS="-lFTGL"
 else
-	if test "x$ftgl_dont_use_pkg" = "xyes" ; then
+	if test "x$with_ftgl_no_pkg" = "xyes" ; then
 		AC_DEFINE([FTGL_NO_PKG_CONFIG], [1], [Dont use pkg-config to locate ftgl])
 		#well the user doesn't want us to use pkg-config so dont.
 		manual_ftgl=yes
@@ -58,9 +57,14 @@ else
 fi
 
 
-#TODO: see if we can put in some manual tests for a few common locations for ftgl?
 if test "x$manual_ftgl" = "xyes" ; then
-	AC_MSG_ERROR([*** Couldn't find FTGL, either provide the path to the base dir, i e  if you libs are in /usr/lib and your includes are in /usr/include or /usr/include/FTGL then use the --with-ftgl-prefix=/usr/ to tell configure where to look, or alternately install pkg-config and ensure pkg-config outputs the correct path for ftgl ***]) 
+	LIBS_ORIG="$LIBS"
+	LIBS="$LIBS $FTGL_LIBS $LDFLAGS"
+	#TODO: see if we can put in some more manual tests for a few common locations for ftgl?
+	AC_CHECK_LIB(ftgl, ftglCreateSimpleLayout, [AC_DEFINE(HAVE_FTGL,[],[FTGL compilation OK])] , AC_MSG_ERROR([Couldnt find ftgl -- provide base dir or install pkg_config]),-lm)
+i
+	CFLAGS="$CFLAGS_ORIG"
+	LIBS="$LIBS_ORIG"
 fi
 
 #

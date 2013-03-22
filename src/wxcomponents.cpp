@@ -1,6 +1,6 @@
 /*
  *	wxcomponents.h - Custom wxWidgets components header
- *	Copyright (C) 2012, D Haley 
+ *	Copyright (C) 2013, D Haley 
 
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -18,15 +18,14 @@
 
 #include "wxcomponents.h"
 #include "wxcommon.h"
-#include "basics.h"
+#include "common/stringFuncs.h"
 
-#include "translation.h"
+#include "common/constants.h"
+#include "common/translation.h"
+
 
 #include <wx/clipbrd.h>
-#include <wx/filefn.h>
 
-#include <string>
-#include <fstream>
 
 using std::ofstream;
 using std::vector;
@@ -37,7 +36,98 @@ const float FONT_HEADING_SCALEFACTOR=1.0f;
 const float FONT_HEADING_SCALEFACTOR=0.75f;
 #endif
 
+void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
+		std::map<size_t,Filter *> &filterMap,vector<const Filter *> &persistentFilters,
+		const Filter *visibleFilt)
+{
+	//Remove any filters that don't exist any more
+	for(unsigned int ui=persistentFilters.size();ui--;)
+	{
+		if(!filterTree.contains(persistentFilters[ui]))
+		{
+			std::swap(persistentFilters[ui],persistentFilters.back());
+			persistentFilters.pop_back();
+		}
+	}
 
+	stack<wxTreeItemId> treeIDs;
+	//Warning: this generates an event, 
+	//most of the time (some windows versions do not according to documentation)
+	t->DeleteAllItems();
+
+	//Clear the mapping
+	filterMap.clear();
+	size_t nextID=0;
+	
+	size_t lastDepth=0;
+	//Add dummy root node. This will be invisible to wxTR_HIDE_ROOT controls
+	wxTreeItemId tid;
+	tid=t->AddRoot(wxT("TreeBase"));
+	t->SetItemData(tid,new wxTreeUint(nextID));
+
+	// Push on stack to prevent underflow, but don't keep a copy, 
+	// as we will never insert or delete this from the UI	
+	treeIDs.push(tid);
+
+	nextID++;
+	std::map<const Filter*,wxTreeItemId> reverseFilterMap;
+	//Depth first  add
+	for(tree<Filter * >::pre_order_iterator filtIt=filterTree.depthBegin();
+					filtIt!=filterTree.depthEnd(); ++filtIt)
+	{	
+		//Push or pop the stack to make it match the iterator position
+		if( lastDepth > filterTree.depth(filtIt))
+		{
+			while(filterTree.depth(filtIt) +1 < treeIDs.size())
+				treeIDs.pop();
+		}
+		else if( lastDepth < filterTree.depth(filtIt))
+		{
+			treeIDs.push(tid);
+		}
+		
+
+		lastDepth=filterTree.depth(filtIt);
+	
+		//This will use the user label or the type string.	
+		tid=t->AppendItem(treeIDs.top(),
+			wxStr((*filtIt)->getUserString()));
+		t->SetItemData(tid,new wxTreeUint(nextID));
+	
+
+		//Record mapping to filter for later reference
+		filterMap[nextID]=*filtIt;
+		//Remember the reverse mapping for later in
+		// this function when we reset visibility
+		reverseFilterMap[*filtIt] = tid;
+
+		nextID++;
+	}
+
+	//Try to restore the  selection in a user friendly manner
+	// - Try restoring all requested filter's visibility
+	// - then restore either the first requested filter as the selection
+	//   or the specified parameter filter as the selection.
+	if(persistentFilters.size())
+	{
+		for(unsigned int ui=0;ui<persistentFilters.size();ui++)
+			t->EnsureVisible(reverseFilterMap[persistentFilters[ui]]);
+
+		if(!visibleFilt)
+			t->SelectItem(reverseFilterMap[persistentFilters[0]]);
+		else
+			t->SelectItem(reverseFilterMap[visibleFilt]);
+
+		persistentFilters.clear();
+	}
+	else if(visibleFilt)
+	{
+		ASSERT(reverseFilterMap.find(visibleFilt)!=reverseFilterMap.end())
+		t->SelectItem(reverseFilterMap[visibleFilt]);
+	}
+	t->GetParent()->Layout();
+
+}
 
 //Convert my internal choice string format to wx's
 std::string wxChoiceParamString(std::string choiceString)
@@ -91,6 +181,13 @@ wxPropertyGrid::wxPropertyGrid(wxWindow* parent, wxWindowID id,
     	GetGridWindow()->Connect(wxID_ANY,
                  wxEVT_MOTION, wxMouseEventHandler(wxPropertyGrid::OnMouseMove), NULL, this);
 #endif
+}
+
+
+void wxPropertyGrid::setGroupName(unsigned int set, const std::string &name) 
+{
+	ASSERT(set < sectionNames.size());
+	sectionNames[set]=name;
 }
 
 void wxPropertyGrid::OnSize(wxSizeEvent &event)
@@ -392,7 +489,7 @@ void wxPropertyGrid::propertyLayout()
 			case PROPERTY_TYPE_COLOUR:
 				//OK, this is totally inefficient, and hacky. but set the colour
 				//based upon the colour string. Then when user edits, use a colour
-				//dialog (handled elswehere)
+				//dialog (handled elsewhere)
 				unsigned char r,g,b,a;
 				parseColString(propertyKeys[ui][uj].data,r,g,b,a);
 				attr->SetBackgroundColour(wxColour(r,g,b,a));
@@ -418,6 +515,12 @@ void wxPropertyGrid::propertyLayout()
 				wxGridCellChoiceEditor *choiceEd=new wxFastComboEditor(a,false);
 				this->SetCellEditor(propertyKeys[ui][uj].renderPosition,
 				                    1,choiceEd);
+
+				//Required to prevent wx from asserting,
+				// "GetEventHandler == this" failed in ~wxWindowBase(), any pushed event handlers must be removed".
+				// I posted on the wxwidgets forum and got the reply that I should try this, but they were not sure.
+				// seems to work
+				attr->DecRef();
 				break;
 			}
 			case PROPERTY_TYPE_STRING:
@@ -517,6 +620,9 @@ void wxFastComboEditor::BeginEdit(int row, int col, wxGrid* grid)
 #endif
 }
 
+BEGIN_EVENT_TABLE(CopyGrid, wxGrid)
+	EVT_KEY_DOWN(CopyGrid::OnKey) 
+END_EVENT_TABLE()
 CopyGrid::CopyGrid(wxWindow* parent, wxWindowID id, 
 		const wxPoint& pos , 
 		const wxSize& size , 
@@ -613,53 +719,119 @@ void CopyGrid::copyData()
 	wxGridCellCoordsArray arrayBR(GetSelectionBlockBottomRight());
 	
 
-	if(!arrayTL.Count() || !arrayBR.Count())
-		return;
-
-	wxGridCellCoords coordTL = arrayTL.Item(0);
-	wxGridCellCoords coordBR = arrayBR.Item(0);
-
-
-	rows = coordBR.GetRow() - coordTL.GetRow() +1;
-        cols = coordBR.GetCol() - coordTL.GetCol() +1;	
-
-        // data variable contain text that must be set in the clipboard
+	// data variable contain text that must be set in the clipboard
 	std::string data;
-        // For each cell in selected range append the cell value in the data
-	//variable
-    	// Tabs '\\t' for cols and '\\n' for rows
-    	for(int  r=0; r<rows; r++)
-	{
-            for(int  c=0; c<cols; c++)
-	    {
-                data+= stlStr(GetCellValue(coordTL.GetRow() + r,
-						coordTL.GetCol()+ c));
-                if(c < cols - 1)
-                    data+= "\t";
+	std::string endline;
+#ifdef __WXMSW__
+	endline="\r\n";
+#else
+	endline="\n";
+#endif
 
-	    }
-		#ifdef __WXMSW__
-		data+="\r\n";
-		#else
-	    data+="\n"; 
-		#endif
+	if(arrayTL.Count() && arrayBR.Count())
+	{
+
+		wxGridCellCoords coordTL = arrayTL.Item(0);
+		wxGridCellCoords coordBR = arrayBR.Item(0);
+
+
+		rows = coordBR.GetRow() - coordTL.GetRow() +1;
+		cols = coordBR.GetCol() - coordTL.GetCol() +1;	
+
+		// For each cell in selected range append the cell value in the data
+		//variable
+		// Tabs '\\t' for cols and '\\n' for rows
+		for(int  r=0; r<rows; r++)
+		{
+		    for(int  c=0; c<cols; c++)
+		    {
+			data+= stlStr(GetCellValue(coordTL.GetRow() + r,
+							coordTL.GetCol()+ c));
+			if(c < cols - 1)
+			    data+= "\t";
+
+		    }
+		    data+=endline;
+		}
 	}
-	// Create text data object
-	wxClipboard *clipboard = new wxClipboard();
+	else
+	{
+		const wxArrayInt& rows(GetSelectedRows());
+		const wxArrayInt& cols(GetSelectedCols());
+		const wxGridCellCoordsArray& cells(GetSelectedCells());
+		if(cols.size())
+		{
+			for(int ui=0;ui<GetNumberRows(); ui++)
+			{
+			    for(int  c=0; c<cols.size(); c++)
+			    {
+				data+= stlStr(GetCellValue(ui,cols[c]));
+				if(c < cols.size())
+				    data+= "\t";
+
+			    }
+			    data +=endline;
+			}
+
+
+		}
+		else if (rows.size())
+		{
+			for(int r=0;r<rows.size(); r++)
+			{
+			    for(int  c=0; c<GetNumberCols(); c++)
+			    {
+				data+= stlStr(GetCellValue(rows[r],c));
+				if(c < GetNumberCols()-1)
+				    data+= "\t";
+
+			    }
+			    data +=endline;
+			}
+		}
+/*		else if(cells.size())
+		{
+			//FIXME: Needs more thought than I have time for right now. 
+			// the problem is that cells[] doesn't neccesarily sort tl->br,
+			// so you have to do this first
+			int lastRow=cells[0].GetRow();
+			int lastCol=cells[0].GetCol();
+			for(int cell=0; cell<cells.size();cell++)
+			{
+
+				if(cells[cell].GetRow() > lastRow)
+				{
+					lastRow=cells[cell].GetRow();
+					data+=endline;
+				}
+				data+=stlStr(GetCellValue(cells[cell].GetRow(),
+							cells[cell].GetCol()));
+
+				if(lastCol < cells[cell].GetCol())
+				{
+					lastCol=cells[cell].GetCol();
+					data+="\t";
+				}
+			}
+		} */
+		else 
+			return;
+
+
+	}
+		// Create text data object
+	//wxClipboard *clipboard = new wxClipboard();
 	// Put the data in the clipboard
-	if (clipboard->Open())
+	if (wxTheClipboard->Open())
 	{
 		wxTextDataObject* clipData= new wxTextDataObject;
 		// Set data object value
 		clipData->SetText(wxStr(data));
-		clipboard->UsePrimarySelection(false);
-		clipboard->SetData(clipData);
-		clipboard->Flush();
-		//This causes double free bug?
-		clipboard->Close();
+		wxTheClipboard->UsePrimarySelection(false);
+		wxTheClipboard->SetData(clipData);
+		wxTheClipboard->Close();
 	}
 
-	delete clipboard;
 }
 
 
@@ -683,15 +855,18 @@ std::string TTFFinder::nxFindFont(const char *fontFile)
 {
 	//This is a list of possible target dirs to search
 	//(Oh look Ma, I'm autoconf!)
+
 	const char *dirs[] = {	".",
-				"/usr/share/fonts/truetype",
-				"/usr/local/share/fonts/truetype",
+				"/usr/share/fonts/truetype", //Old debian 
+				"/usr/share/fonts/truetype/freefont", // New debian
+				"/usr/share/fonts/truetype/ttf-dejavu", //New debian
+				"/usr/local/share/fonts/truetype", // User fonts
 				"/usr/X11R6/lib/X11/fonts/truetype",
 				"/usr/X11R6/lib64/X11/fonts/truetype",
-				"/usr/lib/X11/fonts/truetype",
-				"/usr/lib64/X11/fonts/truetype",
-				"/usr/local/lib/X11/fonts/truetype",
-				"/usr/local/lib64/X11/fonts/truetype",
+				"/usr/lib/X11/fonts/truetype",// Fedora 32
+				"/usr/lib64/X11/fonts/truetype", //Fedora 64
+				"/usr/local/lib/X11/fonts/truetype", // Fedora 32 new
+				"/usr/local/lib64/X11/fonts/truetype",// Fedora 64 new
 				"",
 				}; //MUST end with "".
 

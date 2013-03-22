@@ -1,9 +1,9 @@
 Documentation directory change for debian
-Index: 3depict/src/3Depict.cpp
+Index: 3depict-0.0.8/src/3Depict.cpp
 ===================================================================
---- 3depict.orig/src/3Depict.cpp	2012-11-14 22:44:44.000000000 +0100
-+++ 3depict/src/3Depict.cpp	2012-11-14 22:44:47.000000000 +0100
-@@ -2651,11 +2651,13 @@
+--- 3depict-0.0.8.orig/src/3Depict.cpp	2011-10-23 16:32:15.000000000 +0100
++++ 3depict-0.0.8/src/3Depict.cpp	2011-10-23 16:32:24.000000000 +0100
+@@ -2140,11 +2140,13 @@
  {
  	//First attempt to locate the local copy of the manual.
  	string s;

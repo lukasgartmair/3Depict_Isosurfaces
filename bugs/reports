@@ -1,0 +1,45 @@
+-- Unconfirmed reports --
+
+OS : OSX 
+Version : 0.0.12 - 1427:66d7d8525811
+Reporter: A. Ceguerra
+* Need to do shift-refresh (cache purge) to update names on name edit
+	- Not reproducible under GTK (1427:66d7d8525811 or 1491:fb97c55b65a8)
+	- More info needed? Platform specific?
+
+OS : OSX 
+Version : 0.0.12 - 1427:66d7d8525811
+Reporter: A. Ceguerra
+* Preference dialog Online update checkbox for OSX may not actually allow unchecking/checking if initially unchecked?
+
+OS : Windows 7
+Version : 0.0.11, release
+Reporter: D. Haley
+* Enabling/disabling 3D viewport cropping when using non-default link options causes the dropdowns to show the wrong links status for the plot-area.
+	- Not reproducible under GTK - windows only bug?
+
+OS: Ubuntu 12.04
+Version : 0.0.12 - 1515:5e1fe5974b7e : parallel build, no debug
+Reporter: D. Haley
+	- Left clicking on an axis aligned cylinder caused cylinder to
+	misalign (prev position?), after correctly displaying radius
+	change. (difficult to reproduce?)
+-- Confirmed reports --
+
+OS : Windows 7
+Version : 0.0.11
+Date : 30/1/2013
+Reporter : D. Haley
+* When recovering via an autosave several session parameters are not restored
+	- Selection of plots
+	- Legend hide/display 
+	- Raw data display 
+
+OS: Ubuntu 12.04
+Version : 0.0.12 - 1515:5e1fe5974b7e : parallel build, no debug
+Reporter: D. Haley
+* RDF in parallel mode hits 99% on step 2 of 4 (build), then goes to 100% on step 4/4 (Done), with no intermediate progress
+	- GetReducedHullPts doesn't have progress. Its difficult (but
+	  not impossible!) to implement because of qhull. Need to implement input dicing
+	- A small improvement in the UI in this area has been made
+	  (call before/after GetReducedHullPts)

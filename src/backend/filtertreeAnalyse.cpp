@@ -1,0 +1,469 @@
+/*
+ *	filtertreeAnalyse.cpp - Performs correctness checking of filter trees
+ *	Copyright (C) 2013, D Haley 
+
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU General Public License for more details.
+
+ *	You should have received a copy of the GNU General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#include "filtertreeAnalyse.h"
+
+
+
+//Needed to obtain filter data keys
+//----
+#include "filters/dataLoad.h"
+#include "filters/ionDownsample.h"
+#include "filters/compositionProfile.h"
+//----
+
+void FilterTreeAnalyse::getAnalysisResults(std::vector<FILTERTREE_ERR> &errs) const
+{
+	errs.resize(analysisResults.size());
+	std::copy(analysisResults.begin(),analysisResults.end(),errs.begin());
+}
+
+void FilterTreeAnalyse::analyse(const FilterTree &f)
+{
+	f.getAccumulatedPropagationMaps(emitTypes,blockTypes);
+
+	//Check for a data pair where the output is entirely blocked,
+	// rendering computation of filter useless
+	blockingPairError(f);
+
+	//Check for spatial sampling altering some results in later analyses
+	spatialSampling(f);
+	
+	//Check for compositional biasing altering some later anaylsis
+	compositionAltered(f);
+
+	emitTypes.clear();
+	blockTypes.clear();
+
+}
+
+
+
+
+void FilterTreeAnalyse::blockingPairError(const FilterTree &f)
+{
+	//Examine the emit and block/use masks for each filter's parent (emit)
+	// child relationship(block/use), such that in the case of a child filter that is expecting
+	// a particular input, but the parent cannot generate it
+
+	const tree<Filter *> &treeFilt=f.getTree();
+	for(tree<Filter*>::pre_order_iterator it = treeFilt.begin(); it!=treeFilt.end(); ++it)
+	{
+
+		tree_node_<Filter*> *myNode=it.node->first_child;
+		
+		size_t parentEmit;	
+		parentEmit = emitTypes[(*it) ]| (*it)->getRefreshEmitMask();
+
+		while(myNode)
+		{
+			Filter *childFilter;
+			childFilter = myNode->data;
+
+			size_t curBlock,curUse;
+			curBlock=blockTypes[childFilter] | childFilter->getRefreshBlockMask();
+			curUse=childFilter->getRefreshUseMask();
+
+			//If the child filter cannot use and blocks all parent emit values
+			// emission of the all possible output filters,
+			// then this is a bad filter pairing
+			bool passedThrough;
+			passedThrough=parentEmit & ~curBlock;
+
+			if(!parentEmit && curUse)
+			{
+				FILTERTREE_ERR treeErr;
+				treeErr.reportedFilters.push_back(childFilter);
+				treeErr.reportedFilters.push_back(*it);
+				treeErr.verboseReportMessage = TRANS("Parent filter has no output, but filter requires input -- there is no point in placing a child filter here.");
+				treeErr.shortReportMessage = TRANS("Leaf-only filter with child");
+				treeErr.severity=ANALYSE_SEVERITY_ERROR; //This is definitely a bad thing.
+			
+				analysisResults.push_back(treeErr);
+			}
+			else if(!(parentEmit & curUse) && !passedThrough )
+			{
+				FILTERTREE_ERR treeErr;
+				treeErr.reportedFilters.push_back(childFilter);
+				treeErr.reportedFilters.push_back(*it);
+				treeErr.verboseReportMessage = TRANS("Parent filters' output will be blocked by child, without use. Parent results will be dropped.");
+				treeErr.shortReportMessage = TRANS("Bad parent->child pair");
+				treeErr.severity=ANALYSE_SEVERITY_ERROR; //This is definitely a bad thing.
+			
+				analysisResults.push_back(treeErr);
+			}
+			//If the parent does not emit a useable objects 
+			//for the child filter, this is bad too.
+			// - else if, so we don't double up on warnings
+			else if( !(parentEmit & curUse) && !childFilter->isUsefulAsAppend())
+			{
+				FILTERTREE_ERR treeErr;
+				treeErr.reportedFilters.push_back(childFilter);
+				treeErr.reportedFilters.push_back(*it);
+				treeErr.verboseReportMessage = TRANS("First filter does not output anything useable by child filter. Child filter not useful.");
+				treeErr.shortReportMessage = TRANS("Bad parent->child pair");
+				treeErr.severity=ANALYSE_SEVERITY_ERROR; //This is definitely a bad thing.
+			
+				analysisResults.push_back(treeErr);
+
+			}
+
+
+			//Move to next sibling
+			myNode = myNode->next_sibling;
+		}
+
+
+	}	
+
+}
+
+bool filterIsSampling(const Filter *f)
+{
+	bool affectsSampling=false;
+
+
+	FilterPropGroup props;
+	f->getProperties(props);
+
+
+
+	switch(f->getType())
+	{
+		case FILTER_TYPE_DATALOAD:
+		{
+			//Check if load limiting is on
+			//Not strictly true. If data file is smaller (in MB) than this number
+			// (which we don't know here), then this will be false.
+			if(props.hasProp(DATALOAD_KEY_SAMPLE))
+				affectsSampling = (props.getPropValue(DATALOAD_KEY_SAMPLE).data!= "0");
+			else
+				affectsSampling=false;
+		}
+		case FILTER_TYPE_IONDOWNSAMPLE:
+		{
+			FilterProperty p;
+			if(props.hasProp(KEY_IONDOWNSAMPLE_FIXEDOUT))
+			{
+				p=props.getPropValue(KEY_IONDOWNSAMPLE_FIXEDOUT);
+				//If using  fixed output mode, then
+				// we may affect the output ion density
+				// if the count is low. How low? 
+				// We don't know with the information to hand...
+				affectsSampling=(p.data== "1");
+			}
+			else
+			{
+				//If randomly sampling, then we are definitely affecting the results
+				//if we are not including every ion
+				if(props.hasProp(KEY_IONDOWNSAMPLE_FRACTION))
+				{
+					p=props.getPropValue(KEY_IONDOWNSAMPLE_FRACTION);
+					float sampleFrac;
+					stream_cast(sampleFrac,p.data);
+					affectsSampling=(sampleFrac < 1.0f);
+				}
+				else
+					affectsSampling=false;
+			}
+
+			break;
+		}
+	}
+
+
+	return affectsSampling;
+}
+
+bool affectedBySampling(const Filter *f, bool haveRngParent)
+{
+	FilterPropGroup props;
+	f->getProperties(props);
+	
+	bool affected;
+	//See if filter is configured to affect spatial analysis
+	switch(f->getType())
+	{
+		case FILTER_TYPE_CLUSTER_ANALYSIS:
+		{
+			affected=haveRngParent;
+			break;
+		}
+		case FILTER_TYPE_COMPOSITION:
+		{
+			FilterProperty p;
+			p=props.getPropValue(COMPOSITION_KEY_NORMALISE);
+
+			//If using normalise mode, and we do not have a range parent
+			//then filter is in "density" plotting mode, which is affected by
+			//this analysis
+			affected= (p.data== "1" && !haveRngParent);
+			break;
+		}
+		case FILTER_TYPE_SPATIAL_ANALYSIS:
+		case FILTER_TYPE_IONINFO:
+		{
+			affected=true;
+			break;
+		}
+	}
+
+	return affected;
+}
+
+
+void FilterTreeAnalyse::spatialSampling(const FilterTree &f)
+{
+	//True if spatial sampling is (probably) happening for children of 
+	//filter. 
+	vector<int> affectedFilters;
+	affectedFilters.push_back(FILTER_TYPE_CLUSTER_ANALYSIS); //If have range parent
+	affectedFilters.push_back(FILTER_TYPE_COMPOSITION); //If using density
+	affectedFilters.push_back(FILTER_TYPE_SPATIAL_ANALYSIS); 
+	affectedFilters.push_back(FILTER_TYPE_IONINFO); 
+
+	const tree<Filter *> &treeFilt=f.getTree();
+	for(tree<Filter*>::pre_order_iterator it(treeFilt.begin()); it!=treeFilt.end(); it++)
+	{
+		//Check to see if we have a filter that can cause sampling
+		if(filterIsSampling(*it))
+		{
+			tree_node_<Filter*> *childNode=it.node->first_child;
+
+			if(childNode)
+			{		
+
+				//TODO: Not the most efficient method of doing this...
+				//shouldn't need to continually compute depth to iterate over children	
+				size_t minDepth=treeFilt.depth(it);	
+				for(tree<Filter*>::pre_order_iterator itJ(childNode); treeFilt.depth(itJ) > minDepth;itJ++)
+				{
+					//ignore filters that are not affected by spatial sampling
+					size_t filterType;
+					filterType=(*itJ)->getType();
+					if(std::find(affectedFilters.begin(),affectedFilters.end(),filterType)== affectedFilters.end())
+						continue;
+
+					childNode=itJ.node;
+
+					//Check to see if we have a "range" type ancestor
+					// - we will need to know this in a second
+					bool haveRngParent=false;
+					{
+						tree_node_<Filter*> *ancestor;
+						ancestor = childNode->parent;
+						while(true) 
+						{
+							if(ancestor->data->getType() == FILTER_TYPE_RANGEFILE)
+							{
+								haveRngParent=true;
+								break;
+							}
+
+							if(!ancestor->parent)
+								break;
+
+							ancestor=ancestor->parent;
+
+						}
+					}
+
+					if(affectedBySampling(*itJ,haveRngParent))
+					{
+						FILTERTREE_ERR treeErr;
+						treeErr.reportedFilters.push_back(*it);
+						treeErr.reportedFilters.push_back(*itJ);
+						treeErr.shortReportMessage=TRANS("Spatial results possibly altered");
+						treeErr.verboseReportMessage=TRANS("Filters and settings selected that could alter reported results that depend upon density. Check to see if spatial sampling may be happening in the filter tree - this warning is provisional only.");						
+						treeErr.severity=ANALYSE_SEVERITY_WARNING;
+
+						analysisResults.push_back(treeErr);
+					}
+				}
+			}
+
+			//No need to walk child nodes	
+			it.skip_children();
+		}
+		
+
+
+	}
+}
+
+
+bool filterAltersComposition(const Filter *f)
+{
+	bool affectsComposition=false;
+
+
+	FilterPropGroup props;
+	f->getProperties(props);
+
+
+
+	switch(f->getType())
+	{
+		case FILTER_TYPE_IONDOWNSAMPLE:
+		{
+			FilterProperty p;
+			if(!props.hasProp(KEY_IONDOWNSAMPLE_PERSPECIES))
+				return false;
+
+			p=props.getPropValue(KEY_IONDOWNSAMPLE_PERSPECIES);
+
+			
+			if(p.data== "1")
+			{
+				vector<FilterProperty> propVec;
+				const int GROUP_SAMPLING=1;
+				props.getGroup(GROUP_SAMPLING,propVec);
+
+				//If using per-species mode, then
+				// we may affect the output ion composition
+				// if we have differing values
+				for(size_t ui=1;ui<propVec.size(); ui++)
+				{
+					if(propVec[ui-1].data != propVec[ui].data)
+					{
+						affectsComposition=true;
+						break;
+					}
+
+				}
+			}
+			break;
+		}
+	}
+
+
+	return affectsComposition;
+}
+
+bool filterAffectedByComposition(const Filter *f, bool haveRngParent)
+{
+	FilterPropGroup props;
+	f->getProperties(props);
+	
+	bool affected=false;
+	//See if filter is configured to affect spatial analysis
+	switch(f->getType())
+	{
+		case FILTER_TYPE_CLUSTER_ANALYSIS:
+		{
+			affected=haveRngParent;
+			break;
+		}
+		case FILTER_TYPE_COMPOSITION:
+		{
+			FilterProperty p;
+			p=props.getPropValue(COMPOSITION_KEY_NORMALISE);
+
+			//Affected if using normalise mode, and we do have a range parent
+			affected= (p.data== "1" && haveRngParent);
+			break;
+		}
+		case FILTER_TYPE_SPATIAL_ANALYSIS:
+		{
+			affected=true;
+			break;
+		}
+	}
+
+	return affected;
+}
+
+//FIXME: This is largely a cut and paste of ::spatialSampling - could be unified through
+// function pointers and friends
+void FilterTreeAnalyse::compositionAltered(const FilterTree &f)
+{
+	//True if composition biasing is (probably) happening for children of 
+	//filter. 
+	vector<int> affectedFilters;
+	affectedFilters.push_back(FILTER_TYPE_CLUSTER_ANALYSIS); //If have range parent
+	affectedFilters.push_back(FILTER_TYPE_COMPOSITION); //By definition
+	affectedFilters.push_back(FILTER_TYPE_IONINFO); //If using composition 
+
+	const tree<Filter *> &treeFilt=f.getTree();
+	for(tree<Filter*>::pre_order_iterator it(treeFilt.begin()); it!=treeFilt.end(); it++)
+	{
+		//Check to see if we have a filter that can cause sampling
+		if(filterAltersComposition(*it))
+		{
+			tree_node_<Filter*> *childNode=it.node->first_child;
+
+			if(childNode)
+			{		
+
+				//TODO: Not the most efficient method of doing this...
+				//shouldn't need to continually compute depth to iterate over children	
+				size_t minDepth=treeFilt.depth(it);	
+				for(tree<Filter*>::pre_order_iterator itJ(childNode); treeFilt.depth(itJ) > minDepth;itJ++)
+				{
+					//ignore filters that are not affected by spatial sampling
+					size_t filterType;
+					filterType=(*itJ)->getType();
+					if(std::find(affectedFilters.begin(),affectedFilters.end(),filterType)== affectedFilters.end())
+						continue;
+
+					childNode=itJ.node;
+
+					//Check to see if we have a "range" type ancestor
+					// - we will need to know this in a second
+					bool haveRngParent=false;
+					{
+						tree_node_<Filter*> *ancestor;
+						ancestor = childNode->parent;
+						while(true) 
+						{
+							if(ancestor->data->getType() == FILTER_TYPE_RANGEFILE)
+							{
+								haveRngParent=true;
+								break;
+							}
+
+							if(!ancestor->parent)
+								break;
+
+							ancestor=ancestor->parent;
+
+						}
+					}
+
+					if(filterAffectedByComposition(*itJ,haveRngParent))
+					{
+						FILTERTREE_ERR treeErr;
+						treeErr.reportedFilters.push_back(*it);
+						treeErr.reportedFilters.push_back(*itJ);
+						treeErr.shortReportMessage=TRANS("Composition results possibly altered");
+						treeErr.verboseReportMessage=TRANS("Filters and settings selected that could bias reported composition. Check to see if species biasing may occcur in the filter tree - this warning is provisional only.");						
+						treeErr.severity=ANALYSE_SEVERITY_WARNING;
+
+						analysisResults.push_back(treeErr);
+					}
+				}
+			}
+
+			//No need to walk child nodes	
+			it.skip_children();
+		}
+		
+
+
+	}
+}

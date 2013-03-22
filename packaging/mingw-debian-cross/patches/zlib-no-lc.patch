@@ -1,0 +1,13 @@
+diff -r 5cc2e4c24bef Makefile
+--- a/Makefile	Sat Feb 23 00:14:40 2013 +0100
++++ b/Makefile	Sat Feb 23 00:15:49 2013 +0100
+@@ -40,7 +40,7 @@
+ ARFLAGS=rc
+ RANLIB=x86_64-w64-mingw32-ranlib
+ LDCONFIG=ldconfig
+-LDSHAREDLIBC=-lc
++LDSHAREDLIBC=
+ TAR=tar
+ SHELL=/bin/sh
+ EXE=
+

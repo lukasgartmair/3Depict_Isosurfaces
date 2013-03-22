@@ -1,6 +1,6 @@
 /*
  *	wxcommon.cpp - Comon wxwidgets functionality 
- *	Copyright (C) 2012, D Haley 
+ *	Copyright (C) 2013, D Haley 
 
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -17,16 +17,14 @@
 */
 #include "wxcommon.h"
 
-#include "basics.h"
+#include "common/stringFuncs.h"
 
+#include <wx/wx.h>
 #include <wx/xml/xml.h>
-#include <wx/event.h>
 #include <wx/filename.h>
-#include <vector>
-#include <string>
 
 #if defined(WIN32) || defined(WIN64)
-#include <wx/msw/registry.h>
+	#include <wx/msw/registry.h>  
 #endif
 
 //Auto update checking RSS URL
@@ -43,17 +41,14 @@ std::string inputString;
 
 std::string locateDataFile(const char *name)
 {
-	//Possible strategies:
+	//Current strategies:
 	//Linux:
-	//TODO: Implement me. Currently we just return the name
-	//which is equivalent to using current working dir (cwd).
-	//	- Look in cwd.
-	//	- Look in $PREFIX from config.h
-	//	- Look in .config
+	//	- Look in cwd & some common hard-coded install locations.
+	//Mac:
+	// 	- look in cwd
 	//Windows
 	//	- Locate a registry key that has the install path, which is preset by
 	//	  application installer
-	//	- Look in cwd
 
 #if defined(WIN32) || defined(WIN64)
 
@@ -82,13 +77,14 @@ std::string locateDataFile(const char *name)
 
 #ifdef __linux__
 
-	//POssible search paths. Must have trailing slash. will
+	//Possible search paths. Must have trailing slash. will
 	//be searched in sequence.
-	const unsigned int NUM_SEARCH_DIRS=4;
+	const unsigned int NUM_SEARCH_DIRS=5;
 	const char *possibleDirs[] = { "./",
 					"/usr/local/share/3Depict/",
 					"/usr/share/3Depict/",
 					"/usr/share/3depict/", //Under debian, we have to use lowercase according to the debian guidelines, so handle this case.
+					"../data/",
 					"",
 					};
 
@@ -132,7 +128,6 @@ void *VersionCheckThread::Entry()
 	std::string strUrl;
 	wxString rssUrl;
 
-	std::cerr << "Running version check" << std::endl;	
 	//Build the rss query string, encoding 3depict version and OS description 
 	strUrl = std::string(RSS_FEED_LOCATION) + std::string("?progver=") + std::string(PROGRAM_VERSION) + 
 				std::string("&os=") + stlStr(::wxGetOsDescription());
@@ -153,6 +148,14 @@ void *VersionCheckThread::Entry()
 
 	inputStream = url.GetInputStream();
 
+	if(!inputStream || !inputStream->CanRead())
+	{
+		retrieveOK=false;
+		complete=true;
+		wxPostEvent(targetWindow,event);
+		return 0;
+	}
+	
 	wxXmlDocument *doc= new wxXmlDocument;
 	if(!doc->Load(*inputStream))
 	{
@@ -162,7 +165,8 @@ void *VersionCheckThread::Entry()
 		wxPostEvent(targetWindow,event);
 		return 0;
 	}
-	
+
+	//FIXME : leaking inptustream?	
 
 	//Check we grabbed an RSS feed
 	if(doc->GetRoot()->GetName() != wxT("rss"))
@@ -395,7 +399,7 @@ bool processMatchesName(size_t processID, const std::string &procName)
 		//FIXME: Hack. Program name under windows is PROGRAM_NAME + ".exe"
 		const char *EXENAME="3Depict.exe";
 		
-		//Loop through the linked list of process data strcutures
+		//Loop through the linked list of process data structures
 		while( (pspid=(PSYSTEM_PROCESS_INFORMATION_DETAILD)(pspid->NextEntryOffset + (PBYTE)pspid)) && pspid->NextEntryOffset)
 		{
 			

@@ -1,0 +1,19 @@
+--- wx-config	2013-02-23 15:56:01.000000000 +0100
++++ ./wx-config-fixed	2013-02-23 15:08:17.000000000 +0100
+@@ -900,12 +900,13 @@
+ # delegate out to anything in that prefix, then reset the build
+ # tree prefix to provide the correct output for using this
+ # uninstalled wx build.  Or put more simply:
++sysroot=/home/pcuser/mingw64-cross/
+ prefix=${this_prefix-$prefix}
+ exec_prefix=${this_exec_prefix-$exec_prefix}
+ 
+-includedir="${prefix}/include"
+-libdir="${exec_prefix}/lib"
+-bindir="${exec_prefix}/bin"
++includedir="${sysroot}${prefix}/include"
++libdir="${sysroot}${exec_prefix}/lib"
++bindir="${sysroot}${exec_prefix}/bin"
+ 
+ # Trivial queries we can answer now.
+ [ -z "$output_option_prefix"        ] || echo $prefix

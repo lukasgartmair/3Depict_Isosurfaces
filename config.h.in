@@ -9,6 +9,9 @@
 /* Define to 1 if you have the <ft2build.h> header file. */
 #undef HAVE_FT2BUILD_H
 
+/* FTGL compilation OK */
+#undef HAVE_FTGL
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
@@ -89,6 +92,9 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
+
+/* "Enable mgl2 support" */
+#undef USE_MGL2
 
 /* Version number of package */
 #undef VERSION

@@ -29,7 +29,7 @@ echo '(information)' >> tmp-ignore
 echo 'is not initialized in the constructor' >> tmp-ignore
 echo 'C-style pointer casting' >> tmp-ignore
 grep -v -f tmp-ignore tmp  > ${HG_ROOT}/cpp-res
-
+rm tmp-ignore
 
 #Use the per-error message ignore file to filter the last of it
 if [ -f ${HG_ROOT}/cpp-ignore ] ; then
@@ -37,5 +37,6 @@ if [ -f ${HG_ROOT}/cpp-ignore ] ; then
 	mv tmp ${HG_ROOT} > cpp-res
 	echo "Wrote cpp-res and cpp-res-delta (result - ignore) to ${HG_ROOT}."
 else
+	rm tmp
 	echo "No ignore file (cpp-ignore) found - please check entire cppcheck output"
 fi

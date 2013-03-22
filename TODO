@@ -1,11 +1,14 @@
 TODO List - worlds simplest bugtracking system 
 
 --Packaging--
+	* Fix linker order (?) for mingw-cross compile
 
 --Main app--
 	To Implement:
 		== Next version ==
-		
+		* Range editor
+		* Plot overlays
+		* Ruler annotation could use "enable" and control sphere size setting
 		== Eventually == 
 		* Support for XY scatter plots
 		* Status bar message queue
@@ -34,7 +37,6 @@ TODO List - worlds simplest bugtracking system
 		 scene drawing of non-pointcloud objects
 		* Voxelisation filter needs progress
 		* Better progress during cluster ranging
-		* Clipping should be parallelised
 		* Billboard text
 		* Camera animation control (slerp?)
 		* Undo by timestream
@@ -52,7 +54,6 @@ TODO List - worlds simplest bugtracking system
 
 	Outstanding bugs:
 		== Next release==
-		* Abort behaviour odd, shows "aborted" generic message, then waits for several seconds, then shows error
 		* File -> export image -> Height*=2, results in aspect ratio of output image being distorted
 		* Cluster filter wont save state correctly if parent
 		  rangefile has disabled ions. It will output incorrect
@@ -62,16 +63,13 @@ TODO List - worlds simplest bugtracking system
 		  of plot zoom status
 		
 		Windows:
-		* section symbol does not display on console tab
+		* Drawing updates for resolution dialog are wonk
 		
-		OSX:
-		* drag drop not working?
 			
 		== Eventually==
 		* Lighting calculations on isosurfaces can be problematic. See example package
 		* Voxelisation "filter" option appears to be reducing voxel intensity
 		* Loading a full pos file directly onto the video card cannot be aborted.
-		* OSX drag/drop functionality broken.
 		* Scroll wheel on text area for camera drop down does
 		  not scroll cameras; only on button (wxGTK only??)
 		* Switching between fixed width and num bins in voxel
@@ -80,11 +78,6 @@ TODO List - worlds simplest bugtracking system
 		* Error bar masking for graph (mathgl draws error bars outside plot boundary)
 		* Pos load add could always add to bottom of filter list,
 		 rather than default value
-		* Grid copy/ctrl-c doesn't seem to work under GTK. The data gets
-		  passed to the clipboard, but then wx doesn't appear to
-		  do anything with it...
-			- Could be constrained to wxGTK2.8 or less (
-			 wxWidgets Bug Ticket #11811 ??? )
 		* Under mac osx, changing languages does not cause stock
 		  wx translation strings to change, even after app restart.
 		* Select an X-Y crop, camera coords, on a dataset,
@@ -93,22 +86,15 @@ TODO List - worlds simplest bugtracking system
 		  dataset disappears until mouse motion. This is due to
 		  camera up vector not being updated, I suspect.
 		* 3D Text bounding boxes are wrong.
-		* mac os x: icon on dock bounces very fast during some refreshes
-		* mac os x: update from rss feed crashes
-
-		== Needs reproducing ==
-		* Invalid range file being opened cause Package export to crash
-		* Duplicate range at end when exporting range
-		* Large datasets causing crash?
-		* Ion transform leaking memory??
-		* Windows (32 bit on 64) crash on startup bug -- seems to happen after
-		  locale init, maybe openGL related (there was a second
-		  opengl program running at the time - context
-		  problem???). Cannot reproduce... Maybe fixed by improved
-		  glpane error code?
+		
+		OSX:
+			* drag drop not working?
+			* icon on dock bounces very fast during some refreshes
 
 	Auditing:
 		== Next release ==
+		* Set keynames for property groupings
+		* Unit testing of text data loading routines
 
 	Performance:
 		* Scene is sometimes continuously refreshed during post effects, causing CPU usage
@@ -126,21 +112,20 @@ TODO List - worlds simplest bugtracking system
 
 
 -- Refactor/cleanup --
-	* updateFilterPropertyGrid is in a bad location, need new
-	  file that knows about filters and wx at the same time,
-	  but is not viscontrol ;)
-	* Refactor wxMessageDialog *... to wxErrMsg(..)
+	* Interaction code needs to be cleaned up. Currently it is a substatiative hack.
+		- Viscontrol should store a copy of the original tree,
+		  then periodicially compare it to the current tree. if it
+		  is different, then it should invalidate the caches for
+		  the different bits, and then force a refresh. This would allow for removal 
+		  of the callback mechanism that is currently in use
 	* Plotting code is a nightmare. Data model for plot.h is not
 	   very well thought out, leading to large duplication, and elaborate special-case-ing
 		- Plots need log/non-log axes
 		- Plots need to be connected/disconnected
 		- Plots need to be able to specify bounding boxes separate from their data
 		- Plots need to be able to set strings/legends
+		- There is little diference between plot1D and plot2D, really.
 	* work out which inline FIXMEs and TODOs are still valid, and need attention
 	* I have multiple colour classes floating about. might be an idea to unify them.
 	* K3DTree currently requires public access to members of boundcube
 
--- Deprecate --
-	* On Minor version change:
-		- DataLoadFilter::readState(...) -> doSample test for statefiles without doSample.
-			- 3Depict versions prior to 1207:2a01b7e83d75

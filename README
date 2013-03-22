@@ -1,1 +1,25 @@
-See the web page for the latest documentation, at http://threedepict.sourceforge.net .
+If you want the manual, or a "how to use" for this program, See the web
+page for the latest documentation, at http://threedepict.sourceforge.net.
+
+Most users should obtain a "binary" version from the website. If you are
+trying to build from source, the webpage is recommended, but otherwise,
+install the required dependencies (see website for more details) and then,
+from the command-line run:
+
+./configure 
+make 
+make install
+
+to build the default-mode (single-threaded, debug on ) program. 
+
+Interesting configure flags (see ./configure --help):
+
+--enable-openmp-parallel : Enable multi-CPU mode (for multi-CPU sections
+ 				of the program) via the "openMP" framework
+--disable-debug-checks : Disable debug checks. This makes the program
+				much faster, but less likely to catch
+				program bugs
+
+
+
+

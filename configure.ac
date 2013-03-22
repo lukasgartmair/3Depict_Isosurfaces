@@ -2,12 +2,9 @@ AC_INIT([3Depict], [0.0.12], [mycae@yahoo.com])
 AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CXX
 AC_PROG_CC
-AM_CONFIG_HEADER([config.h])
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile src/Makefile])
 
-#Lets check if we have windres, and assume this only exists under
-#Windows.
-AM_CONDITIONAL(HAVE_WINDRES, which windres > /dev/null)
 
 #Ok, lets try using gcc style precompiled headers.
 AM_CONDITIONAL(USE_PRECOMPILED_HEADERS, 1)
@@ -36,8 +33,23 @@ AC_MSG_ERROR([
 ])
 fi
 
+AM_CONDITIONAL(HAVE_WINDRES, which ${host_os}windres > /dev/null && which windres >> /dev/null)
+
 #Append the --gl-libs flag
 WX_LIBS="$WX_LIBS `$WX_CONFIG_PATH --gl-libs`"
+
+case "${host_os}" in 
+	*w64_mingw*)
+		#wx-config is a little unreliable in cross-compile mode
+		# Manually append -DUNICODE to cppflags/cxxflags
+		WX_CXXFLAGS="$WX_CXXFLAGS -DUNICODE"
+		WX_CPPFLAGS="$WX_CPPFLAGS -DUNICODE"
+		;;
+	*)
+	;;
+esac
+
+
 AC_SUBST(WX_LIBS)
 dnl ----------
 
@@ -262,6 +274,9 @@ dnl ----------
 CFLAGS_ORIG="$CFLAGS"
 LDFLAGS_ORIG="$LDFLAGS"
 
+AC_ARG_ENABLE(mgl2,
+  [  --enable-mgl2 Enable mathgl 2.x support])
+
 AC_ARG_WITH(mgl-flags,
   [  --with-mgl-flags=PATH : specify compiler flags for mathgl])
 if test x"$with_mgl_flags" != x"" ; then
@@ -280,9 +295,40 @@ fi
 AC_SUBST(MGL_LIBS)
 LDFLAGS="$LDFLAGS $MGL_LIBS"
 
-AC_CHECK_HEADER([mgl/mgl_c.h],[AC_DEFINE(HAVE_MGL_H,[],[Have got mathgl headers])],
-	[AC_MSG_ERROR([Required MathGL headers not found (looking for mgl/mgl_c.h) - is mathgl development code installed?])])
+#mathgl 2, under linux (at least debian) installs headers 
+#  into /usr/include/mgl2/
+#Note:
+#  mathgl1.x uses mgl_c.h as c functions. 
+#  mathgl2.x uses mgl_cf.h for c functions.
+MGL_HEADER_TESTFILE=mgl/mgl_c.h
+
+if test x"${enable_mgl2}" == x"yes" ; then 
+	AC_DEFINE(USE_MGL2, 1 , ["Enable mgl2 support"])
+fi
+
+case "${host_os}" in
+	darwin*)
+		;;
+	mingw*|windows*|winnt)
+		;;
+	linux*)
+		#if enable mgl2, substitute header
+		if test -z "${enable_mgl2}"  ; then
+				AC_MSG_RESULT(["mathgl check: assuming mathgl 1.x"])
+		else
+				#note file rename under mgl2 mgl_c->mgl_cf
+				MGL_HEADER_TESTFILE="mgl2/mgl_cf.h"
+		fi
+		;;
+	*)
+		;;
+esac
+
+#mgl2 is installed into different path (at least under debian)
+AC_CHECK_HEADER([${MGL_HEADER_TESTFILE}],[AC_DEFINE(HAVE_MGL_H,[],[Have got mathgl headers])],
+	[AC_MSG_ERROR([Required MathGL headers not found (looking for ${MGL_HEADER_TESTFILE}) - is mathgl development code installed?])])
 AC_CHECK_LIB(mgl, mgl_set_def_param, [AC_DEFINE(HAVE_MGL,[],[MathGL compilation OK])] , AC_MSG_ERROR([Required MathGL libraries not found]), -lmgl)
+
 CFLAGS="$CFLAGS_ORIG"
 LDFLAGS="$LDFLAGS_ORIG"
 

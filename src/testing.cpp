@@ -1,20 +1,36 @@
+/*
+ *	testing.cpp - unit testing implementation
+ *	Copyright (C) 2013, D Haley 
+
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU General Public License for more details.
+
+ *	You should have received a copy of the GNU General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
 #include "testing.h"
 #ifdef DEBUG
-#include <wx/filefn.h>
 #include <wx/filename.h>
 #include <wx/dir.h>
-#include <wx/arrstr.h>
 
 #include "wxcommon.h"
 
-#include <string>
 
-#include "filters/allFilter.h"
-#include "configFile.h"
+#include "backend/filters/allFilter.h"
+#include "backend/configFile.h"
 
-#include "xmlHelper.h"
+#include "common/stringFuncs.h"
+#include "common/xmlHelper.h"
 
-#include "filtertree.h"
 
 const char *TESTING_RESOURCE_DIRS[] = {
 		"../test/",
@@ -26,12 +42,6 @@ bool filterTests();
 //!Try cloning the filter from itself, and checking the filter
 // clone is identical
 bool filterCloneTests();
-//!Try setting/unsetting all visible boolean properties
-// in each filter
-bool filterBoolToggleTests();
-
-//!Check each visible property has help text
-bool filterHelpStringTests();
 
 //!Try loading each range file in the testing folder
 bool rangeFileLoadTests();
@@ -46,7 +56,7 @@ bool XMLTests();
 bool filterTreeTests();
 
 
-bool testFilterTree(FilterTree f)
+bool testFilterTree(const FilterTree &f)
 {
 	ASSERT(!f.hasHazardousContents());
 	std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > outData;
@@ -93,26 +103,7 @@ bool testFilterTree(FilterTree f)
 
 bool basicFunctionTests()
 {
-	//Test getMaxVerStr
-	{
-	vector<string> verStrs;
-
-	verStrs.push_back("0.0.9");
-	verStrs.push_back("0.0.10");
-
-	TEST(getMaxVerStr(verStrs) == "0.0.10","version string maximum testing");
-
-	verStrs.clear();
-	
-	verStrs.push_back("0.0.9");
-	verStrs.push_back("0.0.9");
-	TEST(getMaxVerStr(verStrs) == "0.0.9","version string maximum testing");
-
-	
-	verStrs.push_back("0.0.9");
-	verStrs.push_back("0.0.blah");
-	TEST(getMaxVerStr(verStrs) == "0.0.9","version string maximum testing");
-	}
+	testStringFuncs();
 
 	//Test singular value routines
 	{
@@ -178,18 +169,18 @@ bool basicFunctionTests()
 	std::string testStr;
 	testStr="0.0,1.0,1";
 	Point3D p;
-	bool res=parsePointStr(testStr,p);
+	bool res=p.parse(testStr);
 	ASSERT(res);
 	ASSERT(p.sqrDist(Point3D(0,1,1)) < 0.1f);
 
 
 	//test case causes segfault : found 30/9/12
 	testStr="0,0,,";
-	res=parsePointStr(testStr,p);
+	res=p.parse(testStr);
 	ASSERT(!res);
 
 	testStr="(0,0,0)";
-	res=parsePointStr(testStr,p);
+	res=p.parse(testStr);
 	ASSERT(res);
 	ASSERT(p.sqrDist(Point3D(0,0,0))<0.01f);
 
@@ -207,17 +198,17 @@ bool basicFunctionTests()
 	TEST(!rangesOverlap(3,4,1,2),"Overlap test");
 	}
 
+	//Test the LFSR to a small extent (first 16 table entries)
+	// -test is brute-force so we can't test much more without being slow
+	LinearFeedbackShiftReg reg;
+	TEST(reg.verifyTable(16),"Check LFSR table integrity");
+
 	
 	return true;
 }
 
 bool runUnitTests()
 {
-	if(!filterBoolToggleTests())
-		return false;
-	
-	if(!filterHelpStringTests())
-		return false;
 
 	if(!basicFunctionTests())
 		return false;
@@ -237,6 +228,9 @@ bool runUnitTests()
 	if(!filterTreeTests())
 		return false;
 
+	if(!runVoxelTests())
+		return false;
+
 	return true;
 }
 
@@ -254,6 +248,12 @@ bool filterTests()
 		delete f;
 	}
 	cerr << "OK" <<endl;
+
+	if(!Filter::boolToggleTests())
+		return false;
+
+	if(!Filter::helpStringTests())
+		return false;
 
 	return true;
 }
@@ -409,7 +409,7 @@ bool rangeFileLoadTests()
 	//whichever is first. 
 	wxString testDir;
 	bool haveDir=false;
-	for(unsigned int ui=0;ui<ARRAYSIZE(TESTING_RESOURCE_DIRS);ui++)
+	for(unsigned int ui=0;ui<THREEDEP_ARRAYSIZE(TESTING_RESOURCE_DIRS);ui++)
 	{
 		testDir=wxCStr(TESTING_RESOURCE_DIRS[ui]);
 		if(wxDirExists(testDir))
@@ -468,6 +468,8 @@ bool rangeFileLoadTests()
 	// Multiple ions cannot be assigned in this fashion,
 	// as there is no naming or colour data to match to
 	failSet.insert("test6.rng");
+	ionCountMap["test7.rng"]=2; rangeCountMap["test7.rng"]=2;
+	ionCountMap["test8.rng"]=2; rangeCountMap["test8.rng"]=2;
 
 	ionCountMap["test1.rrng"]=1; rangeCountMap["test1.rrng"]=1;
 	ionCountMap["test2.rrng"]=3; rangeCountMap["test2.rrng"]=6; 
@@ -612,7 +614,7 @@ bool filterTreeTests()
 		f[ui]->setUserString(s);
 	}
 
-	//build a new tree arrangemnet
+	//build a new tree arrangement
 	//0
 	// ->3
 	//1
@@ -652,102 +654,91 @@ bool filterTreeTests()
 	//swap working back
 	fTree.swap(fSpareTree);
 	TEST(fTree.maxDepth() == fTmp.maxDepth(),"filtertree swap");
-	return true;
-}
 
-//TODO: Refactor into filter base class.
-bool filterBoolToggleTests()
-{
-	//Each filter should allow user to toggle any boolean value
-	// here we just test the default visible ones
-	for(unsigned int ui=0;ui<FILTER_TYPE_ENUM_END;ui++)
+
+	bool needUp;
+	ASSERT(fTree.setFilterProperty(f[0],KEY_IONDOWNSAMPLE_FRACTION,"0.5",needUp)
+	 || fTree.setFilterProperty(f[0],KEY_IONDOWNSAMPLE_COUNT,"10",needUp));
+
+	std::string tmpName;
+	if(!genRandomFilename(tmpName) )
 	{
-		Filter *f;
-		f=makeFilter(ui);
-		
-		FilterPropGroup propGroupOrig;
-
-		//Grab all the default properties
-		f->getProperties(propGroupOrig);
-
-
-		for(size_t ui=0;ui<propGroupOrig.numProps();ui++)
+		//Build an XML file containing the filter tree
+		// then try to load it
+		try
 		{
-			FilterProperty p;
-			p=propGroupOrig.getNthProp(ui);
-			//Only consider boolean values 
-			if( p.type != PROPERTY_TYPE_BOOL )
-				continue;
+			//Create an XML file
+			std::ofstream tmpFile(tmpName.c_str());
 
-			//Toggle value to other status
-			if(p.data== "0")
-				p.data= "1";
-			else if (p.data== "1")
-				p.data= "0";
+			if(!tmpFile)
+				throw false;
+			tmpFile << "<testXML>" << endl;
+			//Dump tree contents into XML file
+			std::map<string,string> dummyMap;
+			if(fTree.saveXML(tmpFile,dummyMap,false,true))
+			{
+				tmpFile<< "</testXML>" << endl;
+			}
 			else
 			{
-				ASSERT(false);
+			WARN(true,"Unable to write to random file in current folder. skipping test");
+			}
+		
+
+			//Reparse tree
+			//---
+			xmlDocPtr doc;
+			xmlParserCtxtPtr context;
+
+			context =xmlNewParserCtxt();
+
+
+			if(!context)
+			{
+				cout << "Failed to allocate parser" << std::endl;
+				throw false;
 			}
 
+			//Open the XML file
+			doc = xmlCtxtReadFile(context, tmpName.c_str(), NULL,0);
 
-			//set value to toggled version
-			bool needUp;
-			f->setProperty(p.key,p.data,needUp);
-
-			//Re-get properties to find altered property 
-			FilterPropGroup propGroup;
-			f->getProperties(propGroup);
+			if(!doc)
+				throw false;
 			
-			FilterProperty p2;
-			p2 = propGroup.getPropValue(p.key);
-			//Check the property values
-			TEST(p2.data == p.data,"displayed bool property can't be toggled");
+			//release the context
+			xmlFreeParserCtxt(context);
+			//retrieve root node	
+			xmlNodePtr nodePtr = xmlDocGetRootElement(doc);
+			if(!nodePtr)
+				throw false;
 			
-			//Toggle value back to original status
-			if(p2.data== "0")
-				p2.data= "1";
-			else 
-				p2.data= "0";
-			//re-set value to toggled version
-			f->setProperty(p2.key,p2.data,needUp);
-		
-			//Re-get properties to see if orginal value is restored
-			FilterPropGroup fp2;
-			f->getProperties(fp2);
-			p = fp2.getPropValue(p2.key);
+			nodePtr=nodePtr->xmlChildrenNode;
+			if(!nodePtr)
+				throw false;
 
-			TEST(p.data== p2.data,"failed trying to set bool value back to original after toggle");
+			//find filtertree data
+			if(XMLHelpFwdToElem(nodePtr,"filtertree"))
+				throw false;
+			
+			TEST(!fTree.loadXML(nodePtr,cerr,""),"Tree load test");
+			//-----
 		}
-		delete f;
-	}
-
-	return true;
-}
-
-//TODO: Refactor into filter base class.
-bool filterHelpStringTests()
-{
-	//Each filter should provide help text for each property
-	// here we just test the default visible ones
-	for(unsigned int ui=0;ui<FILTER_TYPE_ENUM_END;ui++)
-	{
-		Filter *f;
-		f=makeFilter(ui);
-
-
-		
-		FilterPropGroup propGroup;
-		f->getProperties(propGroup);
-		for(size_t ui=0;ui<propGroup.numProps();ui++)
+		catch(bool)
 		{
-			FilterProperty p;
-			p=propGroup.getNthProp(ui);
-			TEST(p.helpText.size(),"Property help text must not be empty");
+			WARN(false,"Couldn't run XML reparse of output file");
+			wxRemoveFile(wxStr(tmpName));
+			return false;
 		}
-		delete f;
+		wxRemoveFile(wxStr(tmpName));
+	}
+	else
+	{
+		WARN(true,"Unable to open random file in current folder. skipping a test");
 	}
 
 	return true;
 }
+
+
 
 #endif

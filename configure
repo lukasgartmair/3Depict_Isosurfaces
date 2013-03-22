@@ -652,6 +652,8 @@ USE_XML_TRUE
 XML_LIBS
 XML_CFLAGS
 XMLCONFIG
+HAVE_WINDRES_FALSE
+HAVE_WINDRES_TRUE
 WX_RESCOMP
 WX_VERSION
 WX_LIBS_STATIC
@@ -675,8 +677,6 @@ GREP
 CPP
 USE_PRECOMPILED_HEADERS_FALSE
 USE_PRECOMPILED_HEADERS_TRUE
-HAVE_WINDRES_FALSE
-HAVE_WINDRES_TRUE
 am__fastdepCC_FALSE
 am__fastdepCC_TRUE
 CCDEPMODE
@@ -764,6 +764,8 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_ftgl_prefix
+with_ftgl_no_pkg
 enable_dependency_tracking
 with_wxdir
 with_wx_config
@@ -771,12 +773,11 @@ with_wx_prefix
 with_wx_exec_prefix
 with_xml_config
 with_freetype
-with_ftgl_prefix
-with_ftgl_dont_use_pkg
 with_libqhull_flags
 with_libqhull_link
 with_libpng_flags
 with_libpng_link
+enable_mgl2
 with_mgl_flags
 with_mgl_libs
 with_gsl_flags
@@ -1428,6 +1429,7 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-dependency-tracking  speeds up one-time build
   --enable-dependency-tracking   do not reject slow dependency extractors
+  --enable-mgl2 Enable mathgl 2.x support
   --disable-gsltest       Do not try to compile and run a test GSL program
   --enable-openmp-parallel  Enable OpenMP multi-CPU usage; requires GCC > 4.2 for parallel STL support
   --disable-debug-checks Disable any debug checking, provides faster operation, but less information needed to debug internal problems, or to provide problem reports to developers
@@ -1435,6 +1437,8 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+--with-ftgl-prefix : specify prefix dir for FTGL
+--with-ftgl-no-pkg : don't use pkg-config to check for ftgl
   --with-wxdir=PATH       Use uninstalled version of wxWidgets in PATH
   --with-wx-config=CONFIG wx-config script to use (optional)
   --with-wx-prefix=PREFIX Prefix where wxWidgets is installed (optional)
@@ -1442,9 +1446,6 @@ Optional Packages:
                           Exec prefix where wxWidgets is installed (optional)
   --with-xml-config=PATH  use xml-config in PATH to find libxml
   --with-freetype=DIR     where to find the freetype 2.x library
-  --with-ftgl-prefix=PFX  ,
-		Manually specify the FTGL location (optional)
-   --ftgl-dont-use-pkg     don't use pkg-config to check for ftgl
   --with-libqhull-flags=PATH : specify compiler flags for libqhull
   --with-libqhull-link=PATH : specify linker flag (library) for libqhull
   --with-libpng-flags=PATH : specify compiler flags for libpng
@@ -4451,16 +4452,6 @@ ac_config_headers="$ac_config_headers config.h"
 ac_config_files="$ac_config_files Makefile src/Makefile"
 
 
-#Lets check if we have windres, and assume this only exists under
-#Windows.
- if which windres > /dev/null; then
-  HAVE_WINDRES_TRUE=
-  HAVE_WINDRES_FALSE='#'
-else
-  HAVE_WINDRES_TRUE='#'
-  HAVE_WINDRES_FALSE=
-fi
-
 
 #Ok, lets try using gcc style precompiled headers.
  if 1; then
@@ -5255,8 +5246,30 @@ as_fn_error $? "
 " "$LINENO" 5
 fi
 
+ if which ${host_os}windres > /dev/null && which windres >> /dev/null; then
+  HAVE_WINDRES_TRUE=
+  HAVE_WINDRES_FALSE='#'
+else
+  HAVE_WINDRES_TRUE='#'
+  HAVE_WINDRES_FALSE=
+fi
+
+
 #Append the --gl-libs flag
 WX_LIBS="$WX_LIBS `$WX_CONFIG_PATH --gl-libs`"
+
+case "${host_os}" in
+	*w64_mingw*)
+		#wx-config is a little unreliable in cross-compile mode
+		# Manually append -DUNICODE to cppflags/cxxflags
+		WX_CXXFLAGS="$WX_CXXFLAGS -DUNICODE"
+		WX_CPPFLAGS="$WX_CPPFLAGS -DUNICODE"
+		;;
+	*)
+	;;
+esac
+
+
 
 
 
@@ -5805,26 +5818,6 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 
 
-#
-# Allow user to pass a manual dir for FTGL
-#
-
-# Check whether --with-ftgl-prefix was given.
-if test "${with_ftgl_prefix+set}" = set; then :
-  withval=$with_ftgl_prefix; ftgl_prefix="$withval"
-else
-  ftgl_config_prefix=""
-fi
-
-#
-# allow for disabling the pkg-config check
-# FIXME: THIS DOESN'T work  "unrecognised option"
-
-# Check whether --with-ftgl-dont-use-pkg was given.
-if test "${with_ftgl_dont_use_pkg+set}" = set; then :
-  withval=$with_ftgl_dont_use_pkg;
-fi
-
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ftgl" >&5
 $as_echo_n "checking for ftgl... " >&6; }
@@ -5837,7 +5830,7 @@ if test "x$ftgl_prefix" != "x" ; then
 	FTGL_CFLAGS="-I$ftgl_prefix/include/ -L$ftgl_prefix/lib/"
 	FTGL_LIBS="-lFTGL"
 else
-	if test "x$ftgl_dont_use_pkg" = "xyes" ; then
+	if test "x$with_ftgl_no_pkg" = "xyes" ; then
 
 $as_echo "#define FTGL_NO_PKG_CONFIG 1" >>confdefs.h
 
@@ -5929,9 +5922,57 @@ fi
 fi
 
 
-#TODO: see if we can put in some manual tests for a few common locations for ftgl?
 if test "x$manual_ftgl" = "xyes" ; then
-	as_fn_error $? "*** Couldn't find FTGL, either provide the path to the base dir, i e  if you libs are in /usr/lib and your includes are in /usr/include or /usr/include/FTGL then use the --with-ftgl-prefix=/usr/ to tell configure where to look, or alternately install pkg-config and ensure pkg-config outputs the correct path for ftgl ***" "$LINENO" 5
+	LIBS_ORIG="$LIBS"
+	LIBS="$LIBS $FTGL_LIBS $LDFLAGS"
+	#TODO: see if we can put in some more manual tests for a few common locations for ftgl?
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ftglCreateSimpleLayout in -lftgl" >&5
+$as_echo_n "checking for ftglCreateSimpleLayout in -lftgl... " >&6; }
+if ${ac_cv_lib_ftgl_ftglCreateSimpleLayout+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lftgl -lm $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char ftglCreateSimpleLayout ();
+int
+main ()
+{
+return ftglCreateSimpleLayout ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_ftgl_ftglCreateSimpleLayout=yes
+else
+  ac_cv_lib_ftgl_ftglCreateSimpleLayout=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ftgl_ftglCreateSimpleLayout" >&5
+$as_echo "$ac_cv_lib_ftgl_ftglCreateSimpleLayout" >&6; }
+if test "x$ac_cv_lib_ftgl_ftglCreateSimpleLayout" = xyes; then :
+
+$as_echo "#define HAVE_FTGL /**/" >>confdefs.h
+
+else
+  as_fn_error $? "Couldnt find ftgl -- provide base dir or install pkg_config" "$LINENO" 5
+fi
+
+i
+	CFLAGS="$CFLAGS_ORIG"
+	LIBS="$LIBS_ORIG"
 fi
 
 #
@@ -6486,6 +6527,12 @@ esac
 CFLAGS_ORIG="$CFLAGS"
 LDFLAGS_ORIG="$LDFLAGS"
 
+# Check whether --enable-mgl2 was given.
+if test "${enable_mgl2+set}" = set; then :
+  enableval=$enable_mgl2;
+fi
+
+
 
 # Check whether --with-mgl-flags was given.
 if test "${with_mgl_flags+set}" = set; then :
@@ -6512,13 +6559,47 @@ fi
 
 LDFLAGS="$LDFLAGS $MGL_LIBS"
 
-ac_fn_c_check_header_mongrel "$LINENO" "mgl/mgl_c.h" "ac_cv_header_mgl_mgl_c_h" "$ac_includes_default"
-if test "x$ac_cv_header_mgl_mgl_c_h" = xyes; then :
+#mathgl 2, under linux (at least debian) installs headers
+#  into /usr/include/mgl2/
+#Note:
+#  mathgl1.x uses mgl_c.h as c functions.
+#  mathgl2.x uses mgl_cf.h for c functions.
+MGL_HEADER_TESTFILE=mgl/mgl_c.h
+
+if test x"${enable_mgl2}" == x"yes" ; then
+
+$as_echo "#define USE_MGL2 1 " >>confdefs.h
+
+fi
+
+case "${host_os}" in
+	darwin*)
+		;;
+	mingw*|windows*|winnt)
+		;;
+	linux*)
+		#if enable mgl2, substitute header
+		if test -z "${enable_mgl2}"  ; then
+				{ $as_echo "$as_me:${as_lineno-$LINENO}: result: \"mathgl check: assuming mathgl 1.x\"" >&5
+$as_echo "\"mathgl check: assuming mathgl 1.x\"" >&6; }
+		else
+				#note file rename under mgl2 mgl_c->mgl_cf
+				MGL_HEADER_TESTFILE="mgl2/mgl_cf.h"
+		fi
+		;;
+	*)
+		;;
+esac
+
+#mgl2 is installed into different path (at least under debian)
+as_ac_Header=`$as_echo "ac_cv_header_${MGL_HEADER_TESTFILE}" | $as_tr_sh`
+ac_fn_c_check_header_mongrel "$LINENO" "${MGL_HEADER_TESTFILE}" "$as_ac_Header" "$ac_includes_default"
+if eval test \"x\$"$as_ac_Header"\" = x"yes"; then :
 
 $as_echo "#define HAVE_MGL_H /**/" >>confdefs.h
 
 else
-  as_fn_error $? "Required MathGL headers not found (looking for mgl/mgl_c.h) - is mathgl development code installed?" "$LINENO" 5
+  as_fn_error $? "Required MathGL headers not found (looking for ${MGL_HEADER_TESTFILE}) - is mathgl development code installed?" "$LINENO" 5
 fi
 
 
@@ -6565,6 +6646,7 @@ $as_echo "#define HAVE_MGL /**/" >>confdefs.h
 else
   as_fn_error $? "Required MathGL libraries not found" "$LINENO" 5
 fi
+
 
 CFLAGS="$CFLAGS_ORIG"
 LDFLAGS="$LDFLAGS_ORIG"
@@ -7310,12 +7392,12 @@ if test -z "${am__fastdepCC_TRUE}" && test -z "${am__fastdepCC_FALSE}"; then
   as_fn_error $? "conditional \"am__fastdepCC\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
-if test -z "${HAVE_WINDRES_TRUE}" && test -z "${HAVE_WINDRES_FALSE}"; then
-  as_fn_error $? "conditional \"HAVE_WINDRES\" was never defined.
-Usually this means the macro was only invoked conditionally." "$LINENO" 5
-fi
 if test -z "${USE_PRECOMPILED_HEADERS_TRUE}" && test -z "${USE_PRECOMPILED_HEADERS_FALSE}"; then
   as_fn_error $? "conditional \"USE_PRECOMPILED_HEADERS\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${HAVE_WINDRES_TRUE}" && test -z "${HAVE_WINDRES_FALSE}"; then
+  as_fn_error $? "conditional \"HAVE_WINDRES\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${USE_XML_TRUE}" && test -z "${USE_XML_FALSE}"; then

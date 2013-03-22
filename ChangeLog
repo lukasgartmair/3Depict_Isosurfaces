@@ -1,3 +1,46 @@
+* Mar 2013 : 0.0.13
+	Features:
+	- Spherical composition profile support
+	- Added axial distribution mode to spatial analysis (directional RDF)
+
+	User Visible Bugfixes/Changes:
+	- Clipping algorithm now uses multiple CPUs
+	- RDF algorithm (max dist) now uses multiple CPUs
+	- More locking of UI elements during refresh
+	- Fix animate dialog, where wrong text box updated on frame change
+	- Improve view splitter startup behaviour
+	- Fix crash bug on OSX during animate
+	- Rangefiles now correctly load when altering name property
+	- The default camera now is stored and loaded when saving state
+	- Fix RDF generating error/crashes when passing < 4 points
+	- Fix crash if unable to obtain RSS feed when checking for updates (Windows only)
+	- Copy/pasting from the raw data grid now works.
+	- Fix voxel filtering not preserving intensity correctly
+
+	Technical Bugfixes/Features:
+	- Mathgl >= 1.11 (Nov 2010) now required as hard
+	  dependency, earlier versions will not compile
+	- Mathgl 2.x now supported
+	- Refactored clipping and concentration profile code
+	  into single geometry handler
+	- Refactored often copy-pasted XML writer code back to
+	  "filter common" functions
+	- Fixed bug whereby if user preference had been altered
+	  for pos data, with loadlimit=0, then loading would cancel
+	  if this value was not changed in the filter property,
+	  and sampling was set.
+	- Improved wx correctness in property grid
+	- Tentative support in "getDeps" script for CentOS6
+	- Refactor APTClasses & basics functions into several
+	  more managable parts
+	- Better RNG support (negative ranges, range lines starting with a digit)
+	- More extensive unit testing
+	- Fix double-free bug for certain topologies in filter tree
+	- Fix memory leak when aborting refresh
+	- Cross compilation script for mingw-win64
+	- Source code relayout to reflect overall design
+
+
 * Nov 2012 : 0.0.12
 	Features:
 	- Animation tool for performing "sweeps" of filter properties

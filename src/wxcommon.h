@@ -1,6 +1,6 @@
 /*
  * wxcommon.h  - Common wxwidgets header stuff
- * Copyright (C) 2011  D Haley
+ * Copyright (C) 2013  D Haley
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,10 +18,9 @@
 #ifndef WXCOMMON_H
 #define WXCOMMON_H
 #include <wx/wx.h>
-#include <wx/treectrl.h>
-#include <wx/thread.h>
 #include <wx/url.h>
-#include <string>
+
+#include "common/basics.h"
 
 #define wxCStr(a) wxString(a,*wxConvCurrent)
 #define wxStr(a) wxString(a.c_str(),*wxConvCurrent)
