@@ -23,7 +23,8 @@ bin_PROGRAMS= 3Depict
 
 #------- Common header files for all sub-modules
 COMMON_SOURCE_FILES =  common/stringFuncs.cpp common/xmlHelper.cpp common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp
-COMMON_HEADER_FILES = common/stringFuncs.h  common/constants.h  common/xmlHelper.h common/colourmap.h common/mathfuncs.h common/basics.h
+COMMON_HEADER_FILES = common/stringFuncs.h  common/constants.h  common/xmlHelper.h common/colourmap.h common/mathfuncs.h common/basics.h common/translation.h common/endianTest.h common/assertion.h common/voxels.h
+
 #-----------
 
 #------- "Backend" calculation files (non-ui) ----------
@@ -37,12 +38,12 @@ FILTER_FILES = backend/filters/allFilter.cpp backend/filters/filterCommon.cpp \
 		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
 		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp
 
-FILTER_HEADER_FILES = backend/filters/allFilter.h filters/filterCommon.h \
+FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h \
 		backend/filters/dataLoad.h backend/filters/ionDownsample.h \
-		backend/filters/rangeFile.h backend/filters/voxelise.h filters/spectrumPlot.h \
-	       	backend/filters/transform.h backend/filters/externalProgram.h filters/ionClip.h \
+		backend/filters/rangeFile.h backend/filters/voxelise.h backend/filters/spectrumPlot.h \
+	       	backend/filters/transform.h backend/filters/externalProgram.h backend/filters/ionClip.h \
 		backend/filters/ionColour.h backend/filters/boundingBox.h  \
-		backend/filters/compositionProfile.h backendfilters/spatialAnalysis.h \
+		backend/filters/compositionProfile.h backend/filters/spatialAnalysis.h \
 		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
 		backend/filters/annotation.h backend/filters/geometryHelpers.h
 
@@ -56,7 +57,8 @@ BACKEND_HEADER_FILES =  backend/animator.h backend/filtertreeAnalyse.h backend/f
 			backend/APT/APTClasses.h backend/APT/APTRanges.h \
 			backend/filters/K3DTree.h backend/filters/K3DTree-mk2.h \
 			backend/filter.h backend/filters/rdf.h \
-			backend/viscontrol.h  backend/plot.h backend/configFile.h
+			backend/viscontrol.h  backend/plot.h backend/configFile.h \
+		        backend/tree.hh
 
 #------------
 
@@ -92,7 +94,7 @@ GUI_SOURCE_FILES=gui/mainFrame.cpp gui/mathglPane.cpp gui/cropPanel.cpp gui/glPa
 GUI_HEADER_FILES=gui/mainFrame.h gui/mathglPane.h gui/cropPanel.h gui/art.h gui/glPane.h $(DIALOG_HEADER_FILES)
 
 BASE_SOURCE_FILES=   3Depict.cpp testing.cpp pngread.c wxcomponents.cpp wxcommon.cpp 
-BASE_HEADER_FILES=   3Depict.h testing.h winconsole.h pngread.h 
+BASE_HEADER_FILES=   testing.h winconsole.h pngread.h  wxcomponents.h  wxcommon.h
 #-----------
 
 
@@ -111,6 +113,6 @@ else
 endif
 
 #Tarball options
-EXTRA_DIST = textures/ tex-source/ glade-skeleton/ myAppIcon.ico
+EXTRA_DIST = gui/glade-skeleton myAppIcon.ico
  
 

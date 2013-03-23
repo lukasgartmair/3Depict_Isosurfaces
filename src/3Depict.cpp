@@ -107,7 +107,7 @@ winconsole winC;
 #ifdef __linux__
 #include <fenv.h>
 void trapfpe () {
-  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
+//  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
 }
 #endif
 #endif

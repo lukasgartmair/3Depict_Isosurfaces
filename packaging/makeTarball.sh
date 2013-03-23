@@ -87,7 +87,7 @@ if [ x"`grep $VER ChangeLog`" == x"" ] ; then
 	echo " WARNING: Program version not set to match between configure.ac. and ChangeLog">> $MSG_FILE
 fi
 
-if [ x"`grep PROGRAM_VERSION src/basics.cpp | grep $VER`" == x"" ] ; then
+if [ x"`grep PROGRAM_VERSION src/common/basics.cpp | grep $VER`" == x"" ] ; then
 	echo " WARNING: Program version not set to match between configure.ac. and basics.cpp">> $MSG_FILE
 fi
 
@@ -227,7 +227,7 @@ pushd tarball
 
 
 
-		for i in packaging docs m4 translations deps test
+		for i in packaging docs m4 translations deps test data
 		do
 			if [ -d $i/$i ] ; then
 				mv $i/$i/* $i/
