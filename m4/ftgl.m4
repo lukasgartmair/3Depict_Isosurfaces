@@ -37,20 +37,31 @@ if test "x$ftgl_prefix" != "x" ; then
 	FTGL_CFLAGS="-I$ftgl_prefix/include/ -L$ftgl_prefix/lib/"
 	FTGL_LIBS="-lFTGL"
 else
+	
+	HAVE_PKG=$(basename $(which pkg-config))
+
+
+	if test $HAVE_PKG != x"pkg-config"  ; then
+		manual_ftgl="yes" ;
+	fi
+		
+
 	if test "x$with_ftgl_no_pkg" = "xyes" ; then
 		AC_DEFINE([FTGL_NO_PKG_CONFIG], [1], [Dont use pkg-config to locate ftgl])
 		#well the user doesn't want us to use pkg-config so dont.
 		manual_ftgl=yes
-	else
-		#
-		#Use PKG_CONFIG to do the heavy lifting, must be greater than 2.0.0
-		#
-		PKG_CHECK_MODULES([FTGL], ftgl >= 2.0.0, [libftgl="yes"], [libftgl="no"])
+	else 
+		if  ! test x"$manual_ftgl" == x"yes"  ; then
+			#
+			#Use PKG_CONFIG to do the heavy lifting, must be greater than 2.0.0
+			#
+			PKG_CHECK_MODULES([FTGL], ftgl >= 2.0.0, [libftgl="yes"], [libftgl="no"])
 
-		#Check to see if pkg-config did the job
-		if test "x$libftgl" = "xno" ; then
-			#dang, looks like we have to try a manual approach
-			manual_ftgl=yes
+			#Check to see if pkg-config did the job
+			if test "x$libftgl" = "xno" ; then
+				#dang, looks like we have to try a manual approach
+				manual_ftgl=yes ;
+			fi
 		fi
 	fi
 	
@@ -60,9 +71,15 @@ fi
 if test "x$manual_ftgl" = "xyes" ; then
 	LIBS_ORIG="$LIBS"
 	LIBS="$LIBS $FTGL_LIBS $LDFLAGS"
+
+	if test x$FTGL_LIBS == x""  ; then
+		FTGL_LIBS="-lftgl"
+	fi
+
 	#TODO: see if we can put in some more manual tests for a few common locations for ftgl?
-	AC_CHECK_LIB(ftgl, ftglCreateSimpleLayout, [AC_DEFINE(HAVE_FTGL,[],[FTGL compilation OK])] , AC_MSG_ERROR([Couldnt find ftgl -- provide base dir or install pkg_config]),-lm)
-i
+	AC_CHECK_LIB(ftgl, ftglCreateSimpleLayout, 
+		[], AC_MSG_ERROR([Couldnt find ftgl -- provide base dir or install pkg_config]),-lm)
+	
 	CFLAGS="$CFLAGS_ORIG"
 	LIBS="$LIBS_ORIG"
 fi

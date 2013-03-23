@@ -105,65 +105,6 @@ bool basicFunctionTests()
 {
 	testStringFuncs();
 
-	//Test singular value routines
-	{
-
-		const unsigned int NUM_PTS=5000;
-		unsigned int numPts=0;
-
-		vector<IonHit> curCluster;
-		curCluster.resize(NUM_PTS);
-		RandNumGen rng;
-		rng.initTimer();
-
-		//Build a ball of points
-		
-		WARN(false, "The ellipse test is wrong. It doesn't use an isotropic density!");
-		IonHit h;
-		h.setMassToCharge(1);
-		do
-		{
-			Point3D p;
-
-			p=Point3D(rng.genUniformDev() - 0.5f,
-					(rng.genUniformDev() -0.5f),
-					rng.genUniformDev() -0.5f);
-
-			//only allow  points inside the unit sphere
-			if(p.sqrMag() > 0.25)
-				continue;
-
-			//make it elliptical by scaling along Y axis
-			p[1]*=0.5;
-
-			h.setPos(p);
-			curCluster[numPts] = h;
-			numPts++;
-
-		}while(numPts<NUM_PTS);
-		
-		vector<vector<IonHit> > clusters,dummy;
-		clusters.push_back(curCluster);
-
-		vector<vector<float> > singularVals;
-		vector<std::pair<Point3D,vector<Point3D> > >  singularBases;
-		ClusterAnalysisFilter c;
-
-		c.getSingularValues(clusters,dummy,singularVals,singularBases);
-
-		TEST(singularVals.size() == 1,"Number of SVs should be same as input size");
-		TEST(singularVals.size() == singularBases.size(), "SVs and bases count should be same");
-
-		//SV ratio of above ellipse should be roughly 1:2 (sorted, S1/S2 = 1, S2/S3 = 2)
-		// there will be some random fluctuations, depending upon exact initial seed
-		TEST( fabs(singularVals[0][0]/singularVals[0][1] -1.0f)  < 0.2f,"Singular Value ratio 1:2");
-		TEST( fabs(singularVals[0][1]/singularVals[0][2] -2.0f) < 0.2f,"Singular Value Ration 2:3");
-
-		TEST( singularBases[0].first.sqrMag() < 0.01, "Centroid somewhere near origin");
-
-		IonVectorToPos(curCluster,"TestCluster.pos");
-	}
-
 	//Test point parsing routines
 	{
 	std::string testStr;

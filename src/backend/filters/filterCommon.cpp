@@ -54,11 +54,10 @@ bool readVectorsXML(xmlNodePtr nodePtr,	std::vector<Point3D> &vectorParams)
 	nodePtr=nodePtr->xmlChildrenNode;
 	vectorParams.clear();
 	
-	
-	xmlChar* xmlString;
-	std::string tmpStr;
 	while(!XMLHelpFwdToElem(nodePtr,"point3d"))
 	{
+		std::string tmpStr;
+		xmlChar* xmlString;
 		float x,y,z;
 		//--Get X value--
 		xmlString=xmlGetProp(nodePtr,(const xmlChar *)"x");

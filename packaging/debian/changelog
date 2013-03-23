@@ -1,20 +1,21 @@
-3depict (0.0.12-1) UNRELEASED; urgency=low
+3depict (0.0.13-1) unstable; urgency=low
 
-  * Update to upstream
+  * New upstream release
 
- -- D Haley <mycae@yahoo.com>  Wed, 14 Nov 2012 22:34:50 +0100
+ -- D Haley <mycae@yahoo.com>  Sat, 23 Mar 2013 16:06:15 +0100
 
-3depict (0.0.10-3) unstable; urgency=low
+3depict (0.0.12-1) experimental; urgency=low
 
-  * Apply upstream patch to fix value transform filter
+  [ D Haley ]
+  * New upstream release
 
- -- D Haley <mycae@yahoo.com>  Fri, 6 Apr 2012 15:52:57 +0100
-
-3depict (0.0.10-2) UNRELEASED; urgency=low
-
+  [ Sylvestre Ledru ]
   * Standards-Version updated to version 3.9.3
 
- -- Sylvestre Ledru <sylvestre@debian.org>  Mon, 02 Apr 2012 01:01:11 +0200
+  [ Sébastien Villemot ]
+  * Refreshed patches
+
+ -- D Haley <mycae@yahoo.com>  Sat, 24 Nov 2012 23:54:29 +0100
 
 3depict (0.0.10-1) unstable; urgency=low
 

@@ -9,8 +9,6 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-DPKG_EXPORT_BUILDFLAGS=1
-include /usr/share/dpkg/buildflags.mk
 
 # These are used for cross-compiling and for saving the configure script
 # from having to guess our platform (since we know it already)
@@ -22,11 +20,15 @@ else
 CROSS= --build $(DEB_BUILD_GNU_TYPE)
 endif
 
+#Hardening
+DPKG_EXPORT_BUILDFLAGS = 1
+include /usr/share/dpkg/buildflags.mk
+
 
 config.status: configure
 	dh_testdir
 	#Compile package, disabling internal debug checking and enabling parallelism
-	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --enable-openmp-parallel --disable-debug-checks --with-libpng-link="-lpng" --with-libpng-flags="-L/lib" LDFLAGS="${LDFLAGS} -Wl,-z,defs"  --with-ftgl-prefix="/usr"
+	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --enable-openmp-parallel --disable-debug-checks --with-libpng-link="-lpng" --with-libpng-flags="-L/lib" --with-ftgl-prefix="/usr"
 
 
 build: build-arch 
@@ -63,7 +65,8 @@ install: build
 	$(MAKE) DESTDIR=$(CURDIR)/debian/3depict install
 
 	#Install the textures
-	cp -rp src/textures/ $(CURDIR)/debian/3depict/usr/share/3depict/
+	mkdir -p $(CURDIR)/debian/3depict/usr/share/3depict/textures/
+	cp -p data/textures/*png $(CURDIR)/debian/3depict/usr/share/3depict/textures/
 
 	#rename 3Depict (real program name) to debian-friendly 3depict
 	mv $(CURDIR)/debian/3depict/usr/bin/3Depict $(CURDIR)/debian/3depict/usr/bin/3depict
@@ -75,8 +78,8 @@ install: build
 	#Install .desktop file (for XFCE)
 	install -Dp -m 644 $(CURDIR)/packaging/3Depict.desktop $(CURDIR)/debian/3depict/usr/share/applications/3depict.desktop
 	#install icon (both SVG and XPM) into pixmaps
-	install -Dp -m 644 $(CURDIR)/src/3Depict.xpm $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.xpm
-	install -Dp -m 644 $(CURDIR)/src/tex-source/3Depict-icon.svg $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.svg
+	install -Dp -m 644 $(CURDIR)/data/3Depict.xpm $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.xpm
+	install -Dp -m 644 $(CURDIR)/data/textures/tex-source/3Depict-icon.svg $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.svg
 	
 	#Install the pre-built locale files that are shipped with the tarball.
 	#translation sources (.po) files are in the translations/ folder.

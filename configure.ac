@@ -5,7 +5,6 @@ AC_PROG_CC
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile src/Makefile])
 
-
 #Ok, lets try using gcc style precompiled headers.
 AM_CONDITIONAL(USE_PRECOMPILED_HEADERS, 1)
 
@@ -213,8 +212,6 @@ AC_ARG_WITH(libpng-link,
 if test x"$with_libpng_flags" != x"" ;
 then
     PNG_CFLAGS="$with_libpng_flags"
-else
-    PKG_CHECK_MODULES(PNG, libpng >= 1.2)
 fi
 AC_SUBST(PNG_CFLAGS)
 
@@ -223,7 +220,13 @@ if test x"$with_libpng_link" != x"" ;
 then
     PNG_LIBS="$with_libpng_link"
 else
-    PKG_CHECK_MODULES(PNG, libpng >= 1.2)
+
+	AC_CHECK_LIB([png],[png_create_write_struct_2] , 
+		[PNG_LIBS=-lpng], [PNG_USE_PKG_CFG=yes],-lm)
+
+	if test x"$PNG_USE_PKG_CFG" == x"yes" ; then
+		PKG_CHECK_MODULES(PNG, libpng >= 1.2)
+	fi
 fi
 
 AC_SUBST(PNG_LIBS)
