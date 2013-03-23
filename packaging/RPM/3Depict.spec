@@ -1,6 +1,6 @@
 Name:		3Depict
-Version:	0.0.12
-Release:	2%{?dist}
+Version:	0.0.13
+Release:	1%{?dist}
 Summary:	Valued 3D point cloud visualization and analysis
 Group:		Applications/Engineering
 
@@ -36,8 +36,6 @@ BuildRequires: qhull-devel
 Patch0: %{name}-%{version}-manual-pdf-loc.patch
 #Fedora specific font dir
 Patch1: %{name}-%{version}-font-path.patch
-#Upstream patch for 0.0.12 release bugs
-Patch2: %{name}-0.0.12-release-fixes.patch
 
 %description
 This software is designed to help users visualize and analyze 3D point clouds
@@ -51,7 +49,6 @@ useful for general scalar valued point data purposes.
 
 %patch0
 %patch1
-%patch2
 
 %build
 %configure --disable-debug-checks --enable-openmp-parallel
@@ -63,7 +60,7 @@ make install DESTDIR=%{buildroot}
 
 # Install the textures
 mkdir -p %{buildroot}%{_datadir}/%{name}/textures
-cp -p src/textures/* %{buildroot}%{_datadir}/%{name}/textures
+cp -p data/textures/*png %{buildroot}%{_datadir}/%{name}/textures/
 
 
 #Install the manpage
@@ -73,7 +70,7 @@ desktop-file-install \
 		--dir %{buildroot}%{_datadir}/applications \
 		packaging/%{name}.desktop
 mkdir -p %{buildroot}%{_datadir}/pixmaps/
-install -Dp -m 644 src/tex-source/%{name}-icon.svg %{buildroot}%{_datadir}/pixmaps/%{name}.svg
+install -Dp -m 644 data/textures/tex-source/%{name}-icon.svg %{buildroot}%{_datadir}/pixmaps/%{name}.svg
 
 #install language files
 #--
@@ -112,6 +109,15 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Sun Mar 23 2013 D Haley <mycae(a!t)gmx.com> - 0.0.13-1
+- Update to 0.0.13
+
+* Sun Mar 23 2013 D Haley <mycae(a!t)gmx.com> - 0.0.12-4
+- Add aarch 64 patch for bug 924960, until next version
+
+* Wed Feb 13 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.12-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
+
 * Sun Dec 9 2012 D Haley <mycae(a!t)yahoo.com> - 0.0.12-2
 - Import bugfixes from upstream for plot UI and crash fixes
 
@@ -130,7 +136,7 @@ rm -rf %{buildroot}
 * Thu Jan 12 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.9-2
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_17_Mass_Rebuild
 
-* Sat Dec 20 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.9-1
+* Sat Dec 17 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.9-1
 - Update to 0.0.9
 
 * Tue Dec 06 2011 Adam Jackson <ajax@redhat.com> - 0.0.8-3
@@ -145,13 +151,13 @@ rm -rf %{buildroot}
 * Sun Aug 14 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.7-1
 - Update to 0.0.7
 
-* Sun May 20 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.6-1
+* Fri May 20 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.6-1
 - Update to 0.0.6
 
-* Mon Mar 27 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.5-1
+* Sun Mar 27 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.5-1
 - New upstream release
 
-* Sat Mar 13 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.4-3
+* Sun Mar 13 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.4-3
 - Patch opengl startup code -- peek at gl context. Possible fix for bug 684390
 
 * Sat Feb 12 2011 D Haley <mycae(a!t)yahoo.com> - 0.0.4-2
@@ -173,5 +179,5 @@ rm -rf %{buildroot}
 - Update to 0.0.2
 - Address comments in package review 
 
-* Sat Aug 08 2010 D Haley <mycae(a!t)yahoo.com> - 0.0.1-1
+* Sun Aug 08 2010 D Haley <mycae(a!t)yahoo.com> - 0.0.1-1
 - Initial package
