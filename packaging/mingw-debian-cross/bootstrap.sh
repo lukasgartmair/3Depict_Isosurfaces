@@ -2,7 +2,7 @@
 
 #Script to bootstrap 3Depict cross-compilation under debian
 # and debian-like systems	
-
+# Note that building wx requires ~8GB of ram (or swap)
 BASE=`pwd`
 HOST_VAL=x86_64-w64-mingw32
 PREFIX=/
@@ -28,8 +28,18 @@ PATCHES_FTGL="ftgl-override-configure"
 #   https://lists.gnu.org/archive/html/bug-gettext/2012-12/msg00071.html
 PATCHES_GETTEXT="gettext-disable-tools gettext-win32-prefix"
 
-PATCH_LIST="$PATCHES_WXWIDGETS $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG"
+PATCH_LIST="$PATCHES_WXWIDGETS $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL"
 
+BUILD_STATUS_FILE="build-status"
+
+function isBuilt()
+{
+	if [ `cat ${BUILD_STATUS_FILE} | grep $ISBUILT_ARG` != x"" ]  ; then
+		ISBUILT=1
+	else
+		ISBUILT=0
+	fi
+}
 
 function applyPatches()
 {
@@ -64,7 +74,7 @@ function installX86_64_mingw32()
 function grabDeps()
 {
 	pushd deps 2>/dev/null
-	DEB_PACKAGES="expat freetype ftgl gettext gsl libjpeg8 libpng libxml2 mathgl qhull tiff3 wxwidgets2.8 zlib"
+	DEB_PACKAGES="expat freetype ftgl gettext gsl libjpeg8 libpng libxml2 mathgl qhull tiff3 wxwidgets2.8 zlib nsis"
 	apt-get source $DEB_PACKAGES
 
 	if [ $? -ne 0 ] ; then
@@ -144,6 +154,11 @@ function fix_la_file
 
 function build_zlib()
 {
+	ISBUILT_ARG="zlib"
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
+
 	pushd deps >/dev/null
 	pushd zlib-* >/dev/null
 
@@ -157,7 +172,7 @@ function build_zlib()
 	rm -f configure.log
 
 	
-	./configure  --prefix="/" || { echo "ZLib configurefailed"; exit 1; } 
+	./configure  --prefix="/" || { echo "ZLib configure failed"; exit 1; } 
 	
 	APPLY_PATCH_ARG="$PATCHES_ZLIB"
 	applyPatches
@@ -166,14 +181,23 @@ function build_zlib()
 
 	make install DESTDIR="$BASE"|| { echo "ZLib install failed"; exit 1; } 
 
+	#Move the .so to a .dll
+	mv ${BASE}/lib/libz.so ${BASE}/lib/libz.dll
+
 	#Remove the static zlib. We don't want it
 	rm $BASE/lib/libz.a
 	popd >/dev/null
 	popd >/dev/null
+
+	echo "zlib" >> $BUILD_STATUS_FILE
 }
 
 function build_libpng()
 {
+	ISBUILT_ARG="libpng"
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
 	pushd deps >/dev/null
 	pushd libpng-* >/dev/null
 	
@@ -204,7 +228,8 @@ function build_libpng()
 	# the headers in a new subfolder, which is not compatible with most buildsystems
 	# so make some symlinks
 	#---
-	# First simulate libpng's installer working (TODO: Why is this not working? It did before..)
+	# First emulate libpng's installer 
+	#	(TODO: Why is the normal installer not working? It did before..)
 	mkdir -p ../../include/libpng12/ 
 	cp -p png.h pngconf.h ../../include/libpng12/
 	# Then actually make the symlinks
@@ -214,20 +239,34 @@ function build_libpng()
 	popd >/dev/null
 
 	#Aaand it doesn't install the libraries, so do that too.
-	cp -p .libs/*.dll $BASE/lib/
-	cp -p .libs/*.la $BASE/lib/
+	pushd .libs 2>/dev/null
+	cp -p *.dll $BASE/lib/
+	cp -p *.la $BASE/lib/
+	popd 2> /dev/null
 	#----
 
+
+	#Remove superseded libpng3
+	rm ${BASE}/lib/libpng-3*
+	ln -s ${BASE}/lib/libpng12-0.dll  ${BASE}/lib/libpng.dll
 
 	popd >/dev/null
 	popd >/dev/null
 
 	FIX_LA_FILE_ARG=libpng
 	fix_la_file
+	
+	echo "libpng" >> $BUILD_STATUS_FILE
 }
 
 function build_libxml2()
 {
+	NAME="libxml2"
+	ISBUILT_ARG=${NAME}
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
+
 	pushd deps >/dev/null
 	pushd libxml2-* >/dev/null
 	
@@ -250,14 +289,26 @@ function build_libxml2()
 	fix_la_file
 
 	#For compat, link libxml2/libxml to libxml/
-
 	pushd include >/dev/null
 	ln -s libxml2/libxml libxml
 	popd >/dev/null
+
+	#The dll gets installed into bin/, link it to lib/
+	pushd lib > /dev/null
+	ln -s ../bin/libxml2-[0-9]*.dll 
+	popd > /dev/null
+
+
+	echo ${NAME} >> $BUILD_STATUS_FILE
 }
 
 function build_libjpeg()
 {
+	NAME="libjpeg"
+	ISBUILT_ARG=${NAME}
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
 	pushd deps >/dev/null
 	pushd libjpeg[0-9]*-* >/dev/null
 	
@@ -273,16 +324,25 @@ function build_libjpeg()
 	make -j $NUM_PROCS || { echo "libjpeg build failed"; exit 1; } 
 	
 	make install DESTDIR="$BASE"|| { echo "libjpeg install failed"; exit 1; } 
+	
+	#DLL needs to be copied into lib manually
+	cp -p .libs/${NAME}-[0-9]*.dll $BASE/lib/ 
 
 	popd >/dev/null
 	popd >/dev/null
 
 	FIX_LA_FILE_ARG=libjpeg
 	fix_la_file
+	echo ${NAME}  >> $BUILD_STATUS_FILE
 }
 
 function build_libtiff()
 {
+	NAME="libtiff"
+	ISBUILT_ARG=${NAME}
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
 	pushd deps >/dev/null
 	pushd tiff[0-9]*-* >/dev/null
 	
@@ -295,16 +355,26 @@ function build_libtiff()
 	make -j $NUM_PROCS || { echo "libtiff build failed"; exit 1; } 
 	
 	make install DESTDIR="$BASE"|| { echo "libtiff install failed"; exit 1; } 
+	
+	#DLL needs to be copied into lib manually
+	cp -p .libs/${NAME}-[0-9]*.dll $BASE/lib/ 
 
 	popd >/dev/null
 	popd >/dev/null
 	
 	FIX_LA_FILE_ARG=libtiff
 	fix_la_file
+	echo ${NAME} >> $BUILD_STATUS_FILE
 }
 
 function build_qhull()
 {
+	NAME="libqhull"
+	ISBUILT_ARG=${NAME}
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
+	
 	pushd deps >/dev/null
 	pushd qhull-* >/dev/null
 	
@@ -326,11 +396,17 @@ function build_qhull()
 	
 	FIX_LA_FILE_ARG=libqhull
 	fix_la_file
+	echo ${NAME} >> $BUILD_STATUS_FILE
 }
 
 
 function build_expat()
 {
+	NAME="libexpat"
+	ISBUILT_ARG=${NAME}
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
 	pushd deps >/dev/null
 	pushd expat-** >/dev/null
 	
@@ -344,14 +420,27 @@ function build_expat()
 	
 	make install DESTDIR="$BASE"|| { echo "expat install failed"; exit 1; } 
 
+	#DLL needs to be copied into lib manually
+	cp -p .libs/${NAME}-[0-9]*.dll $BASE/lib/ 
+
 	popd >/dev/null
 	popd >/dev/null
+
+
+
 	FIX_LA_FILE_ARG=libexpat
 	fix_la_file
+	echo ${NAME} >> $BUILD_STATUS_FILE
 }
 
 function build_gsl()
 {
+	NAME="libgsl"
+	ISBUILT_ARG=${NAME}
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
+	
 	pushd deps >/dev/null
 	pushd gsl-* >/dev/null
 		
@@ -382,10 +471,17 @@ function build_gsl()
 
 	FIX_LA_FILE_ARG=libgsl
 	fix_la_file
+	echo ${NAME} >> $BUILD_STATUS_FILE
 }
 
 function build_wx()
 {
+	NAME="libwx"
+	ISBUILT_ARG=${NAME}
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
+	
 	pushd deps >/dev/null
 	pushd wxwidgets[23].[0-9]-* >/dev/null
 		
@@ -400,18 +496,44 @@ function build_wx()
 	applyPatches
 	./configure --host=x86_64-w64-mingw32 --enable-shared --disable-static --with-opengl --enable-unicode --without-regex --prefix=/ || { echo "wxwidgets configure failed"; exit 1; } 
 
-	make -j $NUM_PROCS || { echo "wxwidgets build failed"; exit 1; } 
+	#TODO: Where is this coming from ???
+	for i in `find ./ -name Makefile | grep -v samples | grep -v wxPython`
+	do
+		sed -i "s@-luuid-L${BASE}lib/@ -luuid -L${BASE}ib/@" $i
+	done	
 	
-	APPLY_PATCH_ARG=$PATCHES_WXWIDGETS_POST
-	applyPatches
+	make -j $NUM_PROCS || { echo "wxwidgets build failed"; exit 1; } 
 	make install DESTDIR="$BASE"|| { echo "wxwidgets install failed"; exit 1; } 
 
+
+	
 	popd >/dev/null
 	popd >/dev/null
+
+	pushd ./bin/
+	unlink wx-config
+	ln -s `find ${BASE}/lib/wx/config/ -name \*release-2.8` wx-config
+	APPLY_PATCH_ARG=$PATCHES_WXWIDGETS_POST
+	applyPatches
+	popd
+
+	pushd ./lib/
+	ln -s wx-2.8/wx/ wx
+	popd
+
+	sed -i "s/REPLACE_BASENAME/${BASE}/" wx-config
+
+	echo ${NAME} >> $BUILD_STATUS_FILE
+
 }
 
 function build_freetype()
 {
+	NAME="libfreetype"
+	ISBUILT_ARG=${NAME}
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
 	pushd deps >/dev/null
 	pushd freetype-* >/dev/null
 		
@@ -444,11 +566,19 @@ function build_freetype()
 	pushd include >/dev/null
 	ln -s freetype2/freetype/
 	popd >/dev/null
+	
+	echo ${NAME} >> $BUILD_STATUS_FILE
 }
 
 
 function build_libiconv()
 {
+	NAME="iconv"
+	ISBUILT_ARG=${NAME}
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
+
 	pushd deps >/dev/null
 	pushd libiconv-* >/dev/null
 		
@@ -469,10 +599,16 @@ function build_libiconv()
 	
 	FIX_LA_FILE_ARG=libiconv
 	fix_la_file
+	echo ${NAME} >> $BUILD_STATUS_FILE
 }
 
 function build_gettext()
 {
+	NAME="gettext"
+	ISBUILT_ARG=${NAME}
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
 	pushd deps >/dev/null
 	pushd gettext-* >/dev/null
 		
@@ -500,10 +636,17 @@ function build_gettext()
 	fix_la_file
 	FIX_LA_FILE_ARG=libcharset
 	fix_la_file
+	
+	echo ${NAME} >> $BUILD_STATUS_FILE
 }
 
 function build_mathgl()
 {
+	NAME="libmgl"
+	ISBUILT_ARG=${NAME}
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
 	pushd deps >/dev/null
 	pushd mathgl-* >/dev/null
 	
@@ -526,15 +669,25 @@ function build_mathgl()
 	make -j $NUM_PROCS || { echo "mathgl build failed"; exit 1; } 
 	
 	make install DESTDIR="$BASE"|| { echo "mathgl install failed"; exit 1; } 
-
+	
+	#DLL needs to be copied into lib manually
+	cp -p .libs/${NAME}-[0-9]*.dll $BASE/lib/ 
+h
 	popd >/dev/null
 	popd >/dev/null
 	FIX_LA_FILE_ARG=libmgl
 	fix_la_file
+	
+	echo ${NAME} >> $BUILD_STATUS_FILE
 }
 
 function build_ftgl()
 {
+	NAME="libftgl"
+	ISBUILT_ARG=${NAME}
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
 	pushd deps >/dev/null
 	pushd ftgl-* >/dev/null
 	
@@ -563,6 +716,8 @@ function build_ftgl()
 	popd >/dev/null
 	FIX_LA_FILE_ARG=libftgl
 	fix_la_file
+	
+	echo ${NAME} >> $BUILD_STATUS_FILE
 }
 
 function createDirLayout()
@@ -599,6 +754,7 @@ function checkPatchesExist()
 	echo "done"
 }
 
+#Ensure we are running under  a whitelisted host
 function checkHost()
 {
 	echo -n "Host checks... "
@@ -641,6 +797,57 @@ function checkHost()
 	echo "done"
 }
 
+#Build the nsis package
+function make_package()
+{
+	pushd ./code/3Depict 2> /dev/null
+
+	NSI_FILE=./packaging/windows-installer/windows-installer.nsi
+	if [ ! -f $NSI_FILE ] ; then
+		echo "NSI file missing whilst trying to build package"
+		exit 1;
+	fi
+
+	#make symlink as needed
+	if [ ! -f `basename $NSI_FILE`  ] ; then
+		ln -s ./packaging/windows-installer/windows-installer.nsi
+	fi
+
+
+	echo -n " Copying dll files... "
+	DLL_FILES=`grep File windows-installer.nsi | grep dll | sed 's/.*src.//' | sed 's/\"//' | sed 's/\r/ /g'`
+
+	SYS_DIR=/usr/lib/gcc/${HOST_VAL}/
+	#copy the DLL files from system or 
+	# from the build locations
+	for i in ${DLL_FILES}
+	do
+		HAVE_DLL=0
+		for j in ${BASE}/lib/ ${BASE}/bin/ $SYS_DIR
+		do
+			FIND_RES=`find $j -name $i | head -n 1`
+			if [ x$FIND_RES != x"" ] ; then
+				HAVE_DLL=1;
+				cp $FIND_RES ./src/
+				break;
+			fi
+		done
+
+		if [ $HAVE_DLL -eq 0 ] ; then
+			echo "Couldnt find DLL :" 
+			echo " $i "
+			echo " looked in ${BASE}/lib/ and $SYS_DIR"
+			exit 1;
+		fi
+	done
+	echo "done."
+
+	makensis `basename $NSI_FILE` ||  { echo "makensis failed" ; exit 1; }
+	
+	
+	popd
+}
+
 #Check that we have a suitable host system
 checkHost
 
@@ -656,6 +863,9 @@ createBaseBinaries
 #Obtain the needed dependencies
 grabDeps
 
+#Install cross compiler
+installX86_64_mingw32
+
 #set our needed environment variables
 PATH=${BASE}/bin/:/usr/$HOST_VAL/bin/:$PATH
 export CXX=${HOST_VAL}-g++
@@ -664,9 +874,9 @@ export CC=${HOST_VAL}-gcc
 export CPPFLAGS=-I${BASE}/include/
 export CFLAGS=-I${BASE}/include/
 export CXXFLAGS=-I${BASE}/include/
-#export LDFLAGS=-L${BASE}/lib/
+export LDFLAGS=-L${BASE}/lib/
 export RANLIB=${HOST_VAL}-ranlib
-export LIBS=" -L${BASE}/lib/"
+export LIBS="-L${BASE}/lib/"
 DESTDIR=${BASE}
 
 build_zlib
@@ -684,8 +894,15 @@ build_gettext
 build_mathgl 
 build_ftgl 
 
-#cd code/3Depict
-#CFLAGS="$CFLAGS -DUNICODE" CPPFLAGS="${CPPFLAGS} -DUNICODE" ./configure --host=$HOST_VAL
-#make -j4
+if [ ! -d code/3Depict ] ; then
+	echo "3depict dir ${BASE}/code/3Depict/ missing"
+	exit 1
+fi
 
+pushd code/3Depict
+CFLAGS="$CFLAGS -DUNICODE" CPPFLAGS="${CPPFLAGS} -DUNICODE" ./configure --host=$HOST_VAL
+make -j4
+popd
+
+make_package
 
