@@ -1,0 +1,27 @@
+diff -r 1b997a96b779 src/wxcomponents.cpp
+--- src/wxcomponents.cpp	Sat Mar 23 17:50:44 2013 +0000
++++ src/wxcomponents.cpp	Sat Mar 23 17:56:14 2013 +0000
+@@ -857,16 +857,17 @@
+ 	//(Oh look Ma, I'm autoconf!)
+ 
+ 	const char *dirs[] = {	".",
+-				"/usr/share/fonts/truetype", //Old debian 
++				"/usr/local/share/fonts/truetype", // User fonts
+ 				"/usr/share/fonts/truetype/freefont", // New debian
+ 				"/usr/share/fonts/truetype/ttf-dejavu", //New debian
+-				"/usr/local/share/fonts/truetype", // User fonts
++				"/usr/share/fonts/truetype", //Old debian 
++				"/usr/share/fonts/dejavu", //Fedora
+ 				"/usr/X11R6/lib/X11/fonts/truetype",
+ 				"/usr/X11R6/lib64/X11/fonts/truetype",
+-				"/usr/lib/X11/fonts/truetype",// Fedora 32
+-				"/usr/lib64/X11/fonts/truetype", //Fedora 64
+-				"/usr/local/lib/X11/fonts/truetype", // Fedora 32 new
+-				"/usr/local/lib64/X11/fonts/truetype",// Fedora 64 new
++				"/usr/lib/X11/fonts/truetype",
++				"/usr/lib64/X11/fonts/truetype", 
++				"/usr/local/lib/X11/fonts/truetype", 
++				"/usr/local/lib64/X11/fonts/truetype",
+ 				"",
+ 				}; //MUST end with "".
+ 
