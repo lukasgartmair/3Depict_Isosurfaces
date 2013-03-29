@@ -44,7 +44,7 @@ void FilterTreeAnalyse::analyse(const FilterTree &f)
 	//Check for spatial sampling altering some results in later analyses
 	spatialSampling(f);
 	
-	//Check for compositional biasing altering some later anaylsis
+	//Check for compositional biasing altering some later analysis
 	compositionAltered(f);
 
 	emitTypes.clear();
@@ -107,7 +107,7 @@ void FilterTreeAnalyse::blockingPairError(const FilterTree &f)
 			
 				analysisResults.push_back(treeErr);
 			}
-			//If the parent does not emit a useable objects 
+			//If the parent does not emit a usable objects 
 			//for the child filter, this is bad too.
 			// - else if, so we don't double up on warnings
 			else if( !(parentEmit & curUse) && !childFilter->isUsefulAsAppend())

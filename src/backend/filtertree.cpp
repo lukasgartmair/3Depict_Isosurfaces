@@ -1257,7 +1257,7 @@ void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> &c
 	}
 
 	//plot output streams should only have known types
-	//for various identfiers
+	//for various identifiers
 	for(size_t ui=0; ui<curData.size(); ui++)
 	{
 		if(curData[ui]->getStreamType() != STREAM_TYPE_PLOT)
@@ -1655,7 +1655,7 @@ bool FilterTree::reparentFilter(Filter *f, const Filter *newParent)
 
 	tree<Filter*>::iterator replaceNode,parentFilterIt ;
 	tree<Filter *>::iterator moveFilterIt=filters.end();
-	//If we are moing to the base, then that is a special case.
+	//If we are moving to the base, then that is a special case.
 	if(!newParent)
 	{
 		for(tree<Filter * >::iterator it=filters.begin(); 

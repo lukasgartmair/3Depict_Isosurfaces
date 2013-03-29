@@ -352,7 +352,7 @@ RandNumGen::RandNumGen()
 	//Initialisation is NOT performed here, because we need a random seed
 	//to generate our sequence....
 
-	//we dont initially have gaussian
+	//we don't initially have Gaussian
 	//value to spare
 	haveGaussian=false;	
 }
@@ -445,7 +445,7 @@ float RandNumGen::genGaussDev()
 {
 	float v1,v2,rsq,fac;
 	//This algorithm generates
-	//two gaussian numbers from two Uniform Devs,
+	//two Gaussian numbers from two Uniform Devs,
 	//however we only want one. So to speed things up
 	//remember the second and spit it out as required
 	if(haveGaussian)
@@ -461,7 +461,7 @@ float RandNumGen::genGaussDev()
 		v1=2.0f*genUniformDev()-1.0f;
 		v2=2.0f*genUniformDev()-1.0f;
 		rsq=v1*v1+v2*v2;
-	//reject them if they dont lie in unit circle
+	//reject them if they don't lie in unit circle
 	//or if rsq is at the origin of the unit circle
 	//(as eqn below is undefined at origin)
 	}while(rsq>=1.0f || rsq==0.0f);
@@ -493,7 +493,7 @@ void quat_mult_no_second_a(Quaternion *result, const Quaternion *q1, const Quate
 	result->d = (q1->a*q2->d +q1->b*q2->c -q1->c*q2->b );
 }
 
-//this is a little optimisation that doesnt calculate the a component for
+//this is a little optimisation that doesn't calculate the "a" component for
 //the returned quaternion, and implicitly performs conjugation. 
 //Note that the result is specific to quaternion rotation 
 void quat_pointmult(Point3f *result, const Quaternion *q1, const Quaternion *q2)
@@ -506,7 +506,7 @@ void quat_pointmult(Point3f *result, const Quaternion *q1, const Quaternion *q2)
  
 //Uses quaternion mathematics to perform a rotation around your favourite axis
 //IMPORTANT: Rotvec must be normalised before passing to this function 
-//failure to do so will have wierd results. 
+//failure to do so will have weird results. 
 //For better performance on multiple rotations, use other function
 //Note result is stored in returned point
 void quat_rot(Point3f *point, Point3f *rotVec, float angle)
@@ -519,7 +519,7 @@ void quat_rot(Point3f *point, Point3f *rotVec, float angle)
 	Quaternion pointQuat;
 	Quaternion temp;
 	
-	//remember this value so we dont recompute it
+	//remember this value so we don't recompute it
 #ifdef _GNU_SOURCE
 	double cosCoeff;
 	//GNU provides sincos which is about twice the speed of sin/cos separately
@@ -589,7 +589,7 @@ void quat_rot_apply_quat(Point3f *point, const Quaternion *rotQuat)
 #endif
 
 //Maximum period linear shift register values (computed by
-//other program for galois polynomial)
+//other program for Galois polynomial)
 //Unless otherwise noted, all these entries have been verified using the
 //verifyTable routine. 
 //

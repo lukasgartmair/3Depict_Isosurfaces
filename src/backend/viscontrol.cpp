@@ -747,7 +747,7 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 		targetPlots->bestEffortRestoreVisibility();
 
 #if defined(__WIN32__) || defined(__WIN64__)
-		//Bug under windows. SetSelection(wxNOT_FOUND) does not work for multiseletion list boxes
+		//Bug under windows. SetSelection(wxNOT_FOUND) does not work for multi-selection list boxes
 		plotSelList->SetSelection(-1, false);
 #else
  		plotSelList->SetSelection(wxNOT_FOUND); //Clear selection

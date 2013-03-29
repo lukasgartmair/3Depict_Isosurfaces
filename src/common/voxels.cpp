@@ -105,7 +105,7 @@ bool testConvolve()
 	data.setCallbackMethod(dummyCallback);
 	kernel.setCallbackMethod(dummyCallback);
 	//Check that convolving with an impulse with 
-	//a guassian  gives us a gaussian 
+	//a Gaussian  gives us a Gaussian 
 	//back, roughly speaking
 	kernel.setGaussianKernelCube(1.0f,10.0f,10);
 

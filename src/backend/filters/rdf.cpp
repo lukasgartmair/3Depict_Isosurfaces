@@ -165,7 +165,7 @@ float distanceToFacet(const Point3D &fA, const Point3D &fB,
 
 
 //A bigger MAX_NN_DISTS is better because you will attempt to grab more ram
-//however there is a chance that memory allocation can fail, which currently i do not grab safely
+//however there is a chance that memory allocation can fail, which currently I do not grab safely
 const unsigned int MAX_NN_DISTS = 0x8000000; //96 MB samples at a time 
 
 
@@ -311,7 +311,7 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 			vertexPt[ui] = Point3D(vertex->point[0],vertex->point[1],vertex->point[2]);
 		}
 
-		//Find the distance between hullcentroid and a given facet
+		//Find the distance between hull centroid and a given facet
 		temp = distanceToFacet(vertexPt[0],vertexPt[1],vertexPt[2],hullCentroid,
 					Point3D(curFac->normal[0],curFac->normal[1],curFac->normal[2]));
 
@@ -611,10 +611,10 @@ unsigned int generate1DAxialDistHist(const vector<Point3D> &pointList, const K3D
 
 	BoundCube cube;
 	cube.setBounds(pointList);
-	//We dont know how much ram we will need
+	//We don't know how much ram we will need
 	//one could estimate an upper bound by 
 	//tree.numverticies*pointlist.size()
-	//but i dont have  a tree.numvertcies
+	//but I don't have  a tree.numvertices
 	float maxSqrDist = distMax*distMax;
 
 	unsigned int warnBiasCount=0;

@@ -65,7 +65,7 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 	//Generate the convex hull
 	//(result is stored in qh's globals :(  )
 	//note that the input is "joggled" to 
-	//ensure simplicial facet generation
+	//ensure simplical facet generation
 
 	qh_new_qhull(	dim,
 			bufferSize,

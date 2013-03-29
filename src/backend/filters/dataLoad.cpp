@@ -1231,7 +1231,7 @@ bool posFileTest()
 	
 	
 #if defined(__LINUX__) || defined(__APPLE__)
-	//Hackish mathod to delete file
+	//Hackish method to delete file
 	std::string s;
 	s=string("rm -f ") + string(posName);
 	system(s.c_str());

@@ -942,7 +942,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							// same as feeding back a random number into other rng instances 
 							//
 							// One solution is to use the unix /dev/urandom interface or the windows
-							// cryptographic API, alternatively use the TR1 header's mersenne twister with
+							// cryptographic API, alternatively use the TR1 header's Mersenne twister with
 							// multi-seeding:
 							//  http://theo.phys.sci.hiroshima-u.ac.jp/~ishikawa/PRNG/mt_stream_en.html
 							switch(noiseType)

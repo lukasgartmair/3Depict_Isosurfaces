@@ -635,7 +635,7 @@ bool Filter::boolToggleTests()
 			//re-set value to toggled version
 			f->setProperty(p2.key,p2.data,needUp);
 		
-			//Re-get properties to see if orginal value is restored
+			//Re-get properties to see if original value is restored
 			FilterPropGroup fp2;
 			f->getProperties(fp2);
 			p = fp2.getPropValue(p2.key);

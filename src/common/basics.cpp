@@ -30,7 +30,7 @@
 	#include <mach/mach.h>
 	#include <unistd.h>
 #elif defined __linux__
-	//Needed for getting ram total usage under linux
+	//Needed for getting ram total usage under Linux
 	#include <sys/sysinfo.h>
 #endif
 
@@ -576,7 +576,7 @@ float BoundCube::getMaxDistanceToBox(const Point3D &queryPt) const
 	p[0] = Point3D(bounds[0][0],bounds[1][0],bounds[2][0]);
 	p[1] = Point3D(bounds[0][1],bounds[1][1],bounds[2][1]);
 
-	//Count binary-wise selecting upper and lower limits, to enumerate all 8 verticies.
+	//Count binary-wise selecting upper and lower limits, to enumerate all 8 vertices.
 	for(unsigned int ui=0;ui<9; ui++)
 	{
 		maxDistSqr=std::max(maxDistSqr,

@@ -290,7 +290,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 	//use the cached copy of the data if we have it.
 	if(cacheOK)
 	{
-		//proagate our cached plot data.
+		//propagate our cached plot data.
 		for(unsigned int ui=0;ui<filterOutputs.size();ui++)
 			getOut.push_back(filterOutputs[ui]);
 
