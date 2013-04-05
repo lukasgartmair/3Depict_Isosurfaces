@@ -1,21 +1,28 @@
-* Mar 2013 : 0.0.13
+* Apr 2013 : 0.0.13
 	Features:
 	- Spherical composition profile support
 	- Added axial distribution mode to spatial analysis (directional RDF)
 
 	User Visible Bugfixes/Changes:
+	- Fix crash if unable to obtain RSS feed when checking for updates (Windows only)
+	- Rangefiles now correctly load when altering name property
+	- Copy/pasting from the raw data grid now works.
+	- Fix refresh loop in Data Load filter when "monitor" active and "enabled" inactive.
+	- Fix RDF generating error/crashes when passing < 4 points
+	- Fix voxel filtering not preserving intensity correctly
+	- Fix crash bug on OSX during animate
+	- Fix animate dialog, where wrong text box updated on frame change
+	- Animate dialog "remove" button now works correctly
 	- Clipping algorithm now uses multiple CPUs
 	- RDF algorithm (max dist) now uses multiple CPUs
-	- More locking of UI elements during refresh
-	- Fix animate dialog, where wrong text box updated on frame change
-	- Improve view splitter startup behaviour
-	- Fix crash bug on OSX during animate
-	- Rangefiles now correctly load when altering name property
 	- The default camera now is stored and loaded when saving state
-	- Fix RDF generating error/crashes when passing < 4 points
-	- Fix crash if unable to obtain RSS feed when checking for updates (Windows only)
-	- Copy/pasting from the raw data grid now works.
-	- Fix voxel filtering not preserving intensity correctly
+	- Ion information filter now emits warnings if sampling is enabled by a parent
+	- Warning on export of plot's without legend fixed
+	- Fix bug where gl window did not update after sash move on some video drivers
+	- Not providing an extention when exporting plots now causes prompt, rather than error
+	- Fixed filters not staying selected when loading new data files
+	- More locking of UI elements during refresh
+	- Improve view splitter startup behaviour
 
 	Technical Bugfixes/Features:
 	- Mathgl >= 1.11 (Nov 2010) now required as hard
@@ -39,7 +46,9 @@
 	- Fix memory leak when aborting refresh
 	- Cross compilation script for mingw-win64
 	- Source code relayout to reflect overall design
-
+	- Fix several minor assertion errors
+	- Remove several redundant scene update calls in main window
+	- Re-enable OSX checking for updates
 
 * Nov 2012 : 0.0.12
 	Features:
