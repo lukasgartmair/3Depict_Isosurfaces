@@ -1512,8 +1512,18 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			//volume. 
 			vector<Point3D> returnPoints;
 			if(GetReducedHullPts(pts[0],reductionDistance,
-					returnPoints))
-				return INSUFFICIENT_SIZE_ERR;
+					&progress.filterProgress,callback,returnPoints))
+			{
+				if(errCode ==1)
+					return INSUFFICIENT_SIZE_ERR;
+				else if(errCode ==2)
+					return ABORT_ERR;
+				else
+				{
+					ASSERT(false);
+					return ABORT_ERR;
+				}
+			}
 			
 			if(!(*callback)(true))
 				return ABORT_ERR;
@@ -1555,9 +1565,23 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			//to compute the convex hull reduced 
 			//volume. 
 			vector<Point3D> returnPoints;
-			if(GetReducedHullPts(p,reductionDistance,
+			size_t errCode;
+			if(errCode=GetReducedHullPts(p,reductionDistance,
+					&progress.filterProgress,callback,
 					returnPoints))
-				return INSUFFICIENT_SIZE_ERR;
+			{
+				if(errCode ==1)
+					return INSUFFICIENT_SIZE_ERR;
+				else if(errCode ==2)
+					return ABORT_ERR;
+				else
+				{
+					ASSERT(false);
+					return ABORT_ERR;
+				}
+			}
+
+
 
 			//Forget the original points, and use the new ones
 			p.swap(returnPoints);

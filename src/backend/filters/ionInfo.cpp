@@ -19,25 +19,6 @@
 
 #include "filterCommon.h"
 
-//QHull library
-#ifdef __POWERPC__
-	#pragma push_macro("__POWERPC__")
-	#define __POWERPC__ 1
-#endif
-extern "C"
-{
-	#include <qhull/qhull_a.h>
-}
-#ifdef __POWERPC__
-	#pragma pop_macro("__POWERPC__")
-#endif
-
-//TODO: Work out where the payoff for this is
-//grab size when doing convex hull calculations
-const unsigned int HULL_GRAB_SIZE=4096;
-
-
-
 enum
 {
 	VOLUME_MODE_RECTILINEAR=0,
@@ -57,70 +38,6 @@ enum
 	ERR_BAD_QHULL
 };
 
-unsigned int doHull(unsigned int bufferSize, double *buffer, 
-			vector<Point3D> &resHull, Point3D &midPoint)
-{
-	const int dim=3;
-	//Now compute the new hull
-	//Generate the convex hull
-	//(result is stored in qh's globals :(  )
-	//note that the input is "joggled" to 
-	//ensure simplicial facet generation
-
-	qh_new_qhull(	dim,
-			bufferSize,
-			buffer,
-			false,
-			(char *)"qhull QJ", //Joggle the output, such that only simplical facets are generated
-			NULL,
-			NULL);
-
-	unsigned int numPoints=0;
-	//count points
-	//--	
-	//OKay, whilst this may look like invalid syntax,
-	//qh is actually a macro from qhull
-	//that creates qh. or qh-> as needed
-	vertexT *vertex = qh vertex_list;
-	while(vertex != qh vertex_tail)
-	{
-		vertex = vertex->next;
-		numPoints++;
-	}
-	//--	
-
-	//store points in vector
-	//--
-	vertex= qh vertex_list;
-	try
-	{
-		resHull.resize(numPoints);	
-	}
-	catch(std::bad_alloc)
-	{
-		free(buffer);
-		return ERR_NO_MEM;
-	}
-	//--
-
-	//Compute mean point
-	//--
-	int curPt=0;
-	midPoint=Point3D(0,0,0);	
-	while(vertex != qh vertex_tail)
-	{
-		resHull[curPt]=Point3D(vertex->point[0],
-				vertex->point[1],
-				vertex->point[2]);
-		midPoint+=resHull[curPt];
-		curPt++;
-		vertex = vertex->next;
-	}
-	midPoint*=1.0f/(float)numPoints;
-	//--
-
-	return 0;
-}
 
 bool getRectilinearBounds(const std::vector<const FilterStreamData *> &dataIn, BoundCube &bound,
 					unsigned int *progress, unsigned int totalSize,bool (*callback)(bool))
@@ -643,160 +560,28 @@ void IonInfoFilter::setPropFromBinding(const SelectionBinding &b)
 unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStreamData*> &data, 
 								float &volume,bool (*callback)(bool))const
 {
-	//OK, so heres the go. partition the input data
-	//into GRAB_SIZE lots before processing hull.
-
 	volume=0;
-	double *buffer;
-	double *tmp;
-	//Use malloc so we can re-alloc
-	buffer =(double*) malloc(HULL_GRAB_SIZE*3*sizeof(double));
 
-	if(!buffer)
-		return ERR_NO_MEM;
+	//TODO: replace with real progress
+	unsigned int dummyProgress;
+	unsigned int errCode;
 
-	size_t bufferSize=0;
+	//Compute the convex hull, leaving the qhull data structure intact
+	const bool NO_FREE_QHULL=false;
+	vector<Point3D> hullPts;
+	if((errCode=computeConvexHull(data,&dummyProgress,callback,
+						hullPts,NO_FREE_QHULL)))
+		return errCode;
 
-	vector<Point3D> curHull;
+	Point3D midPt(0,0,0);
 
-	//Do the convex hull in steps for two reasons
-	// 1) qhull chokes on large data
-	// 2) we need to run the callback every now and again, so we have to 
-	//   work in batches.
-	Point3D midPoint;
-	float maxSqrDist=-1;
-	bool doneHull=false;
-	for(size_t ui=0;ui<data.size(); ui++)
-	{
-		if(data[ui]->getStreamType() != STREAM_TYPE_IONS)
-			continue;
+	for(size_t ui=0;ui<hullPts.size();ui++)
+		midPt+=hullPts[ui];
+	
+	midPt*=1.0f/(float)hullPts.size();
 
-		const IonStreamData* ions=(const IonStreamData*)data[ui];
-
-		for(size_t uj=0; uj<ions->data.size(); uj++)
-		{
-			if(curHull.size())
-			{
-				//Do contained-in-sphere check
-				if(midPoint.sqrDist(ions->data[uj].getPos()) < maxSqrDist)
-					continue;
-			}
-			//Copy point data into hull buffer
-			buffer[3*bufferSize]=ions->data[uj].getPos()[0];
-			buffer[3*bufferSize+1]=ions->data[uj].getPos()[1];
-			buffer[3*bufferSize+2]=ions->data[uj].getPos()[2];
-			bufferSize++;
-
-
-			if(bufferSize == HULL_GRAB_SIZE)
-			{
-				bufferSize+=curHull.size();
-				tmp=(double*)realloc(buffer,
-						3*bufferSize*sizeof(double));
- 				if(!tmp)
-				{
-					free(buffer);
-					return ERR_NO_MEM;
-				}
-
-				buffer=tmp;
-				//Copy in the old hull
-				for(size_t uk=0;uk<curHull.size();uk++)
-				{	
-					buffer[3*(HULL_GRAB_SIZE+uk)]=curHull[uk][0];
-					buffer[3*(HULL_GRAB_SIZE+uk)+1]=curHull[uk][1];
-					buffer[3*(HULL_GRAB_SIZE+uk)+2]=curHull[uk][2];
-				}
-
-				unsigned int errCode=0;
-				if(doneHull)
-				{
-					//Free the last convex hull mem	
-					qh_freeqhull(!qh_ALL);
-					int curlong, totlong;
-					qh_memfreeshort(&curlong, &totlong);
-				}
-				errCode=doHull(bufferSize,buffer,curHull,midPoint);
-				if(errCode)
-					return errCode;
-
-				doneHull=true;
-
-				//Now compute the min sqr distance
-				//to the vertex, so we can fast-reject
-				maxSqrDist=std::numeric_limits<float>::max();
-				for(size_t ui=0;ui<curHull.size();ui++)
-					maxSqrDist=std::min(maxSqrDist,curHull[ui].sqrDist(midPoint));
-				//reset buffer size
-				bufferSize=0;
-			}
-
-
-			if(!(*callback)(false))
-			{
-				free(buffer);
-				return ERR_USER_ABORT;
-			}
-
-		}
-
-
-
-	}
-
-    if(doneHull)
-    {
-        //Free the last convex hull mem	
-        qh_freeqhull(!qh_ALL);
-        
-        int curlong, totlong;
-        qh_memfreeshort(&curlong, &totlong);
-    }
-
-	//Need at least 3 objects to construct a sufficiently large buffer
-	if(bufferSize + curHull.size() > 3)
-	{
-		//Re-allocate the buffer to determine the last hull size
-		tmp=(double*)realloc(buffer,
-			3*(bufferSize+curHull.size())*sizeof(double));
-		if(!tmp)
-		{
-			free(buffer);
-			return ERR_NO_MEM;
-		}
-		buffer=tmp;
-
-		#pragma omp parallel for 
-		for(unsigned int ui=0;ui<curHull.size();ui++)
-		{
-			buffer[3*(bufferSize+ui)]=curHull[ui][0];
-			buffer[3*(bufferSize+ui)+1]=curHull[ui][1];
-			buffer[3*(bufferSize+ui)+2]=curHull[ui][2];
-		}
-
-		unsigned int errCode=doHull(bufferSize+curHull.size(),buffer,curHull,midPoint);
-		if(errCode)
-		{
-			free(buffer);
-			return errCode;
-		}
-	}
-	else if(bufferSize)
-	{
-		//we don't have enough points to run the convex hull algorithm;
-		free(buffer);
-		return 0;
-	}
-
-
-	//maybe we didn't have any points to hull?
-	if(curHull.empty())
-	{	
-		free(buffer);
-		return 0;
-	}
-
-
+	//We don't need this result anymore
+	hullPts.clear();
 
 	//OK, so we computed the hull. Good work.
 	//now compute the volume
@@ -806,10 +591,10 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 		vertexT *vertex;
 		unsigned int ui;
 		Point3D ptArray[3];
-	
+
 		//Facet should be a simplical facet (i.e. triangle)
 		ASSERT(curFac->simplicial);
-		
+
 		ui=0;
 		vertex  = (vertexT *)curFac->vertices->e[ui].p;
 		while(vertex)
@@ -817,29 +602,26 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 			(ptArray[ui])[0]  = vertex->point[0];
 			(ptArray[ui])[1]  = vertex->point[1];
 			(ptArray[ui])[2]  = vertex->point[2];
-		
+
 			//increment before updating vertex
-			//to allow checking for NULL termination	
+			//to allow checking for NULL termination
 			ui++;
 			vertex  = (vertexT *)curFac->vertices->e[ui].p;
-		
+
 		}
-		
-		//note that this counter has been post incremented. 
+
+		//note that this counter has been post incremented.
 		ASSERT(ui ==3);
-		volume+=pyramidVol(ptArray,midPoint);
-		
+		volume+=pyramidVol(ptArray,midPt);
+
 
 		curFac=curFac->next;
 	}
+
+
+	//Free the convex hull mem
+	FREE_QHULL();
 	
-
-	//Free the convex hull mem	
-	qh_freeqhull(!qh_ALL);
-	int curlong, totlong;
-	qh_memfreeshort(&curlong, &totlong);
-	free(buffer);
-
 	return 0;
 }
 

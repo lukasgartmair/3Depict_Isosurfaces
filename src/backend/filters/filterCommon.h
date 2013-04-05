@@ -27,6 +27,29 @@
 #include "backend/APT/APTClasses.h"
 #include "backend/APT/APTRanges.h"
 
+//QHull library
+#ifdef __POWERPC__
+	#pragma push_macro("__POWERPC__")
+	#define __POWERPC__ 1
+#endif
+extern "C"
+{
+	#include <qhull/qhull_a.h>
+}
+#ifdef __POWERPC__
+	#pragma pop_macro("__POWERPC__")
+#endif
+#define FREE_QHULL() { qh_freeqhull(!qh_ALL); int curlong, totlong; \
+			qh_memfreeshort(&curlong, &totlong);}
+
+
+enum
+{
+	HULL_ERR_NO_MEM=1,
+	HULL_ERR_USER_ABORT,
+	HULL_ERR_ENUM_END
+};
+
 //serialise 3D std::vectors to specified output stream in XML format
 void writeVectorsXML(std::ostream &f, const char *containerName,
 		const std::vector<Point3D> &vectorParams, unsigned int depth);
@@ -96,4 +119,12 @@ unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<Ion
 
 const RangeFile *getRangeFile(const std::vector<const FilterStreamData*> &dataIn);
 
+//Compute the convex hull of a set of input points from fiilterstream data
+unsigned int computeConvexHull(const std::vector<const FilterStreamData*> &data, 
+			unsigned int *progress, bool (*callback)(bool), 
+			std::vector<Point3D> &hullPts, bool freeHull=true);
+//Compute the convex hull of a set of input points
+unsigned int computeConvexHull(const std::vector<Point3D> &data, 
+			unsigned int *progress, bool (*callback)(bool), 
+			std::vector<Point3D> &hullPts, bool freeHull=true);
 #endif

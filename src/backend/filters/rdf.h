@@ -49,7 +49,8 @@ unsigned int generateDistHist(const std::vector<Point3D> &pointList, const K3DTr
  * smallest distance between the scaled hull and the original hull is  exactly
  * reductionDim
  */
-unsigned int GetReducedHullPts(const std::vector<Point3D> &pts, float reductionDim,std::vector<Point3D> &returnIons );
+unsigned int GetReducedHullPts(const std::vector<Point3D> &pts, float reductionDim,
+		unsigned int  *progress, bool (callback)(bool),std::vector<Point3D> &returnIons );
 
 
 //Return a 1D histogram of NN frequencies, by projecting the NNs within a given search onto a specified axis, stopping at some fixed sstance

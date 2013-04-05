@@ -18,6 +18,7 @@
 
 #include "rdf.h"
 
+#include "filterCommon.h"
 
 using std::vector;
 
@@ -173,7 +174,8 @@ const unsigned int MAX_NN_DISTS = 0x8000000; //96 MB samples at a time
 //obtains all the input points from ions that lie inside the convex hull after
 //it has been shrunk such that the closest distance from the hull to the original data
 //is reductionDim 
-unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim, vector<Point3D> &pointResult)
+unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim,  
+		unsigned int *progress, bool (*callback)(bool), vector<Point3D> &pointResult)
 {
 	const int dim=3;
 
@@ -189,53 +191,22 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 	if(points.size() < 4) 
 		return 1;
 
-	//First we must construct the hull
-	double *buffer = new double[points.size()*3];
-#pragma omp parallel for 
-	for(unsigned int ui=0; ui<points.size();ui++)
-	{
-		Point3D tempPt;
-		tempPt = points[ui];
-		buffer[ui*dim] = tempPt[0];
-		buffer[ui*dim + 1] = tempPt[1];
-		buffer[ui*dim + 2] = tempPt[2];
-	}
+	unsigned int dummyProg;
+	vector<Point3D> theHull;
+	if(computeConvexHull(points,progress,callback,theHull,false))
+		return 2;
 
-	//Generate the convex hull
-	//(result is stored in qh's globals :(  )
-	//note that the input is "joggled" to 
-	//ensure simplicial facet generation
-	qh_new_qhull(	dim,
-			points.size(),
-			buffer,
-			false,
-			(char *)"qhull QJ", //Joggle the output, such that only simplical facets are generated
-			NULL,
-			NULL);
+	Point3D midPoint(0,0,0);
+	for(size_t ui=0;ui<theHull.size();ui++)
+		midPoint+=theHull[ui];
+	midPoint *= 1.0f/(float)theHull.size();
 
-	//OKay, whilst this may look like invalid syntax,
-	//qh is actually a macro from qhull
-	//that creates qh. or qh-> as needed
-	vertexT *vertex = qh vertex_list;
-
-	//obtain convex hull points & mass centroid
-	Point3D midPoint(0.0f,0.0f,0.0f);
-	unsigned int numPoints=0;
-	while(vertex != qh vertex_tail)
-	{
-		//aggregate points
-		midPoint+=Point3D(vertex->point[0],
-					vertex->point[1],
-					vertex->point[2]);
-		vertex = vertex->next;
-		numPoints++;
-	}
-
-	//do division to obtain average (midpoint)
-	midPoint *= 1.0f/(float)numPoints;
 	//Now we will find the mass/volume centroid of the hull
-	//by constructing sets of pyramids
-	//where the faces of the hull are the bases of 
+	//by constructing sets of pyramids.
+	//We cannot use the simple midpoint, as point distribution
+	//around the hull sruface may be uneven
+	
+	//Here the faces of the hull are the bases of 
 	//pyramids, and the midpoint is the apex
 	Point3D hullCentroid(0.0f,0.0f,0.0f);
 	float massPyramids=0.0f;
@@ -331,15 +302,10 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 		return RDF_ERR_NEGATIVE_SCALE_FACT;
 
 	
-	
 	//now scan through the input points and see if they
 	//lie in the reduced convex hull
-	vertex = qh vertex_list;
+	vertexT *vertex = qh vertex_list;	
 
-	//find the bounding cube for the scaled convex hull such that we can quickly
-	//discount points without examining the entire hull
-	vector<Point3D> vecHullPts;
-	vecHullPts.resize(qh num_vertices);
 	unsigned int ui=0;
 	while(vertex !=qh vertex_tail)
 	{
@@ -350,15 +316,10 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 		vertex->point[1] = (vertex->point[1] - hullCentroid[1])*scaleFactor + hullCentroid[1];
 		vertex->point[2] = (vertex->point[2] - hullCentroid[2])*scaleFactor + hullCentroid[2];
 	
-		vecHullPts[ui]=Point3D(vertex->point[0],
-					vertex->point[1],
-					vertex->point[2]);
-
 		vertex = vertex->next;
 		ui++;
 	}
 
-	vecHullPts.clear();
 	//if the dot product of the normal with the point vector of the
 	//considered point P, to any vertex on all of the facets of the 
 	//convex hull F1, F2, ... , Fn is negative,
@@ -404,7 +365,9 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 reduced_loop_next:
 	;
 	}
-	
+
+	FREE_QHULL();
+
 	return 0;
 }
 
@@ -472,7 +435,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 					spin=true;
 			}			
 #else
-			*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*100.0f);
+			*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*50.0f);
 			if(!(*callback)(false))
 			{
 				delete[] maxSqrDist;
@@ -563,7 +526,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 		{
 		#pragma omp critical
 		{
-			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
+			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*50.0f + 50.0f);
 			if(!(*callback)(false))
 				spin=true;
 			numAnalysed+=CALLBACK_REDUCE;
@@ -573,7 +536,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 #else
 		if(!(callbackReduce--))
 		{
-			*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*100.0f);
+			*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*50.0f + 50.0f);
 			if(!(*callback)(false))
 			{
 				delete[] maxSqrDist;
