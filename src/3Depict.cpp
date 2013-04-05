@@ -212,7 +212,7 @@ void threeDepictApp::initLanguageSupport()
 //Catching key events globally.
 int threeDepictApp::FilterEvent(wxEvent& event)
 {
-	//Process global keyboard (non-accellerator) events
+	//Process global keyboard (non-accelerator) events
 	if ( event.GetEventType()==wxEVT_KEY_DOWN )
 	{
 		if(MainFrame)

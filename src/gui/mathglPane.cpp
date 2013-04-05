@@ -229,7 +229,7 @@ void MathGLPane::render(wxPaintEvent &event)
 
 
 	//If the plot has changed, been resized or is performing
-	// a mouse action that reuqires updating, we need to update it
+	// a mouse action that requires updating, we need to update it
 	//likewise if we don't have a plot, we need one.
 	if(!gr || hasChanged || hasResized || 
 		MOUSE_ACTION_NEEDS_REDRAW[mouseDragMode])
@@ -329,8 +329,8 @@ void MathGLPane::render(wxPaintEvent &event)
 
 			const int END_MARKER_SIZE=5;
 
-			//If the cursor is wholly below
-			//the axis, draw a line rather than abox
+		//If the cursor is wholly below
+			//the axis, draw a line rather than a box
 
 			unsigned int startMask, endMask;
 			startMask=getAxisMask(draggingStart.x, draggingStart.y);

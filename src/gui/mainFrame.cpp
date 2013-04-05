@@ -386,7 +386,7 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 	glPanelOK = panelTop->displaySupported();
 #else
 	#if defined(__WXGTK20__) 
-		//I had to work this out by studying the construtor, and then testing simultaneously
+		//I had to work this out by studying the constructor, and then testing simultaneously
 		//on a broken and working Gl install. booyah.
 		glPanelOK=panelTop->m_glWidget;
 	#elif defined(__WIN32) || defined(__WIN64) || defined(__APPLE__)
@@ -5210,7 +5210,7 @@ void MainWindowFrame::checkReloadAutosave()
 			wxFileName fileNaming(wxStr(removeFiles[ui]));
 			wxCopyFile(wxStr(removeFiles[ui]),wxtmpDir+fileNaming.GetFullName()); 
 		}
-		//if the copy works or not, just delete the autsave anyway
+		//if the copy works or not, just delete the autosave anyway
 		wxRemoveFile(wxStr(removeFiles[ui]));	
 	}
 }

@@ -187,7 +187,7 @@ void computeSingularValues(float *data, size_t numRows, size_t numCols,
 	gsl_matrix *newSpace = gsl_matrix_alloc(numCols,numCols); // Singular basis vectors
 	gsl_vector *workspace = gsl_vector_alloc(numCols); //scratch space
 
-	//Transformation space set to orthogonal cartesian
+	//Transformation space set to orthogonal Cartesian
 	gsl_matrix_set_identity(newSpace); //U
 
 	//Decompose matrix. Note that input matrix is overwritten by gsl. 
@@ -1771,7 +1771,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	//3*) Bulk inclusion step
 	//	- For each cluster, every ion has a sphere placed around it. Bulk
 	//	 ions that lie within this union of spheres are assigned to the cluster
-	//	 This assignment is unambigious *iff* this radius is smaller than that
+	//	 This assignment is unambiguous *iff* this radius is smaller than that
 	//	 for the cluster construction step
 	//
 	//4*) Bulk Erosion step

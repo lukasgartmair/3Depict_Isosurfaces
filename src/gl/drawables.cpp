@@ -544,7 +544,7 @@ void DrawCylinder::draw() const
 	if(!q || !qCap[0] || !qCap[1])
 		return;
 
-	//Cross product desired drection with default
+	//Cross product desired direction with default
 	//direction to produce rotation vector
 	Point3D dir(0.0f,0.0f,1.0f);
 
@@ -1068,7 +1068,7 @@ void DrawGLText::draw() const
 					//the text direction is now the x-axis
 					glTranslatef(advance/2.0f,halfHeight,0);
 					//spin text around its front direction 180 degrees
-					//no need to trnaslate as text sits at its baseline
+					//no need to translate as text sits at its baseline
 					glRotatef(180,0,0,1);
 					//move halfway along text, noting that 
 					//the text direction is now the x-axis
@@ -1083,7 +1083,7 @@ void DrawGLText::draw() const
 	}
 	else
 	{
-		//FIXME: The text ends up in a wierd location
+		//FIXME: The text ends up in a weird location
 		//2D coordinate storage for bitmap text
 		double xWin,yWin,zWin;
 		//Compute the 2D coordinates

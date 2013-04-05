@@ -266,7 +266,7 @@ bool decomposeIonNames(const std::string &name,
 	if(nameMode)
 	{
 		//Hit end of string.
-		//record framgent
+		//record fragment
 		std::string s;
 		s=name.substr(lastMarker,name.size()-lastMarker);
 		fragments.push_back(make_pair(s,1));
@@ -534,7 +534,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 	}
 
 
-	//switch to "C" style decimal notation (english),
+	//switch to "C" style decimal notation (English),
 	//as needed
 	char *oldLocale=setlocale(LC_NUMERIC,NULL);
 
@@ -1609,7 +1609,7 @@ unsigned int RangeFile::openRRNG(FILE *fpRange)
 					if(strIonNameTmp.size())
 					{
 						//Check to see if we have this ion.
-						//If we dont, we create a new one.
+						//If we don't, we create a new one.
 						//if we do, we check that the colours match
 						//and if not reject the file parsing.
 						unsigned int pos=(unsigned int)(-1);

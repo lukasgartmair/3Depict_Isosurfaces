@@ -324,7 +324,7 @@ unsigned int PlotWrapper::addPlot(PlotBase *p)
 void PlotWrapper::clear(bool preserveVisiblity)
 {
 
-	//Do our best to preserve visiblity of
+	//Do our best to preserve visibility of
 	//plots. 
 	lastVisiblePlots.clear();
 	if(preserveVisiblity)

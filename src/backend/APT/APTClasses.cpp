@@ -573,7 +573,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 	//to new lines in the file. Each component must have some form of numeric data 
 	//preceding it. That numeric data may not be fully parseable, but we assume it is until we know better.
 	//
-	//If it is *not* parseable. just throw an error when we find that out.
+	//If it is *not* parseable, just throw an error when we find that out.
 
 	//If we are going to load the whole file, don't use a sampling method to do it.
 	if(limitCount >=newLinePositions.size())
@@ -703,7 +703,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 
 IonHit::IonHit() 
 {
-	//At this point i deliberately dont initialise the point class
+	//At this point I deliberately don't initialise the point class
 	//as in DEBUG mode, the point class will catch failure to init
 }
 

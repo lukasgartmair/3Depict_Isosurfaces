@@ -369,7 +369,7 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 							float thisFraction = ionFractions[ionIDVec[idPos]];
 							
 							//Reserve 90% of storage needed.
-							//highly likely (poisson) with even modest numbers of ions
+							//highly likely (Poisson) with even modest numbers of ions
 							//that this will be exceeded, and thus we won't over-allocate
 							d->data.reserve((size_t)(thisFraction*0.9*numIons[ionIDVec[idPos]]));
 

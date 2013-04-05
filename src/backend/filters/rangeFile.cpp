@@ -801,7 +801,7 @@ bool RangeFileFilter::setProperty(unsigned int key,
 				{
 					case 0://Ion name
 					{
-						//only allow english alphabet, upper and lowercase, as well as 0->9
+						//only allow English alphabet, upper and lowercase, as well as 0->9
 						for(unsigned int ui=0;ui<value.size();ui++)
 						{
 

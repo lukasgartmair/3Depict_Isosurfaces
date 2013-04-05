@@ -159,7 +159,7 @@ void PrefDialog::createFilterListing()
 	unsigned int pos=0;
 	for(unsigned int ui=0;ui<FILTER_TYPE_ENUM_END;ui++)
 	{
-		//If we have a default, dont create a new filter entry
+		//If we have a default, don't create a new filter entry
 		if(pos >=v.size() || v[pos] != ui)
 		{
 			//This is a bit of a hack, but it works.

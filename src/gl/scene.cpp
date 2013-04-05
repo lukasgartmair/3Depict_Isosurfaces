@@ -668,7 +668,7 @@ void Scene::computeSceneLimits()
 		boundCube.setBounds(-0.5,-0.5,-0.5,
 					0.5,0.5,0.5);
 	}
-	//NOw that we have a scene level bounding box,
+	//Now that we have a scene level bounding box,
 	//we need to set the camera to ensure that
 	//this box is visible
 	ASSERT(boundCube.isValid());
@@ -921,7 +921,7 @@ void Scene::applyDevice(float startX, float startY, float curX, float curY,
 	for(unsigned int ui=0;ui<activeBindings.size();ui++)
 	{
 		//Convert the mouse-XY coords into a world coordinate, depending upon mouse/
-		//key cobinations
+		//key combinations
 		Point3D worldVec;
 		Point3D vectorCoeffs[2];
 		activeBindings[ui]->computeWorldVectorCoeffs(mouseFlags,keyFlags,

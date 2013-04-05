@@ -4,7 +4,7 @@
 #Usage:
 #---
 # grep '^\s*//' *{cpp,h} > comments #Rudely extract (some) comments
-# cat comments | aspell list  > badwords #get a list of words with spelling errors
+# cat comments | aspell list | sort | uniq > badwords #get a list of words with spelling errors
 #Manually slice down list of bad words
 # grep  -f badwords comments > errs
 #Manually slice down errs file, then correct spelling errs in that file
@@ -15,7 +15,7 @@ SAVEIFS=$IFS
 IFS=$(echo -en "\n\b")
 for i in `cat errs`
 do
-	tre-agrep -4 --line-number $i *.{cpp,h} > tmpRes;
+	tre-agrep -4 --line-number $i `find ./ -name \*.cpp` `find ./ -name \*.h` > tmpRes;
 
 	if [ `wc -l tmpRes | awk '{print $1}'` -eq 0 ] ; then
 		echo "no match for :" $i

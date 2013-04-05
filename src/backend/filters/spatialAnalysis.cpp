@@ -152,7 +152,7 @@ Filter *SpatialAnalysisFilter::cloneUncached() const
 	p->densityCutoff=densityCutoff;
 
 
-	//We are copying wether to cache or not,
+	//We are copying whether to cache or not,
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;

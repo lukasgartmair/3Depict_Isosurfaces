@@ -657,7 +657,7 @@ void K3DTreeMk2::getTreesInSphere(const Point3D &pt, float sqrDist, const BoundC
 
 		if(tmpCube.containedInSphere(pt,sqrDist))
 		{
-			//We are? Interesting. We must be a contigous block from our lower
+			//We are? Interesting. We must be a contiguous block from our lower
 			//to upper limits
 			contigousBlocks.push_back(limitQueue.front());
 		}
