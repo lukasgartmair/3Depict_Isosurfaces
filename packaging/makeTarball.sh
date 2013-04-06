@@ -15,45 +15,45 @@ do
 	MSG_FILE=tmp-$MSG_FILE
 done
 	
-
-#Try building in debug mode
+#Check build for all 4 combinations of enable/disable parallel and debug checking
 #-------
-make distclean
+CONF_ARGS=" --enable-openmp-parallel, --disable-debug-checks, --enable-debug-checks, --enable-openmp-parallel --disable-debug-checks"
 
-./configure --disable-debug-checks
-if [ $? -ne 0 ] ; then
-	echo "no-debug mode failed to configure"
-fi
+OLD_IFS=$IFS
+IFS=","
+for i in ${CONF_ARGS[*]}
+do
+	echo "$i"
 
-make -j $NUM_PROCS
-if [ $? -ne 0 ] ; then
-	echo "no-debug mode failed to build"
-fi
-make distclean
+	make distclean
+
+	./configure
+	if [ $? -ne 0 ] ; then
+		echo "no-debug mode failed to configure"
+	fi
+
+	make -j $NUM_PROCS
+	if [ $? -ne 0 ] ; then
+		echo "no-debug mode failed to build"
+	fi
+
+	#Check for unit test availability, and run them
+	# where possible
+	pushd src
+	TEST_FLAG=`./3Depict --help  2>&1 | grep "\-\-test"`
+	if [ x"$TEST_FLAG" != x"" ] ; then
+		./3Depict -t
+		if [ $? -ne 0 ] ; then
+			echo "Unit tests failed for configure flag : $i" 
+			exit 1
+		fi
+	fi
+	popd	
+      
+	make distclean
+done
+IFS=$OLD_IFS
 #-------
-
-#Try building in parallel mode
-#-------
-./configure --enable-openmp-parallel
-if [ $? -ne 0 ] ; then
-	echo "parallel mode failed to configure"
-fi
-make -j$NUM_PROCS
-if [ $? -ne 0 ] ; then
-	echo "parallel mode failed to build"
-fi
-make distclean
-#-------
-
-
-#Reconfigure
-./configure
-make distclean
-
-if [ $? -ne 0 ] ; then
-	echo "Something went wrong with distclean. Cannot continue"
-	exit 1
-fi
 
 ./configure
 if [ $? -ne 0 ] ; then
