@@ -13,13 +13,12 @@ if [ $1 = '--update-config=yes' ]; then
 
 	if [ $3 = '--debug=no' ]; then
 		echo "Building debug off"
-		DISABLE_DEBUG="--enable-no-debug-checks"
+		DISABLE_DEBUG="--disable-debug-checks"
 	fi
 
 	CFLAGS="$CFLAGS -I/opt/local/include -I/usr/local/include" \
 	LDFLAGS="$LDFLAGS -L/opt/local/lib -L/usr/local/lib -headerpad_max_install_names" \
-	./configure $SHOULD_PARALLEL $DISABLE_DEBUG \
-
+	./configure $SHOULD_PARALLEL $DISABLE_DEBUG 
 
 	if [ $? -ne 0 ]; then
 		echo "Configure unsuccessful - exiting"
@@ -42,17 +41,16 @@ mkdir -p ./3Depict.app/Contents/MacOS/
 mkdir -p ./3Depict.app/Contents/Resources/
 mkdir -p ./3Depict.app/Contents/libs/
 cp ./src/3Depict ./3Depict.app/Contents/MacOS/3Depict
-cp src/tex-source/3Depict-icon.icns ./3Depict.app/Contents/Resources/3Depict-icon.icns
+cp data/textures/tex-source/3Depict-icon.icns ./3Depict.app/Contents/Resources/3Depict-icon.icns
 touch ./3Depict.app/Contents/PkgInfo
 touch ./3Depict.app/Contents/info.plist
 #copy textures
-cp -R ./src/textures ./3Depict.app/Contents/Resources
+cp -R ./data/textures ./3Depict.app/Contents/Resources
 
 
 #Update gettext translation
 #----
 echo "Updating translation files..."
-#cp -Rp locales/* ./3Depict.app/Contents/Resources/
 for i in `ls ./translations/3Depict_*.mo`
 do
 	j=`echo $i | sed 's/.\/translations\/3Depict_//' | sed 's/.mo//'`
@@ -63,13 +61,12 @@ done
 
 #----
 
-
 # relabel libraries for packaging
 if [ x`which dylibbundler` == x"" ] ; then
 	echo "dyllibbundler command does not appear to be available. Package built, but cannot relabel libaries to use in-package versions"
 	exit 1
 fi
 
-/opt/local/bin/dylibbundler -od -b -x ./3Depict.app/Contents/MacOS/3Depict -d  ./3Depict.app/Contents/libs
+dylibbundler -od -b -x ./3Depict.app/Contents/MacOS/3Depict -d  ./3Depict.app/Contents/libs
 echo "Done"
 

@@ -1,12 +1,4 @@
 -- Unconfirmed reports --
-
-OS : OSX 
-Version : 0.0.12 - 1427:66d7d8525811
-Reporter: A. Ceguerra
-* Need to do shift-refresh (cache purge) to update names on name edit
-	- Not reproducible under GTK (1427:66d7d8525811 or 1491:fb97c55b65a8)
-	- More info needed? Platform specific?
-
 OS : OSX 
 Version : 0.0.12 - 1427:66d7d8525811
 Reporter: A. Ceguerra
@@ -34,12 +26,3 @@ Reporter : D. Haley
 	- Selection of plots
 	- Legend hide/display 
 	- Raw data display 
-
-OS: Ubuntu 12.04
-Version : 0.0.12 - 1515:5e1fe5974b7e : parallel build, no debug
-Reporter: D. Haley
-* RDF in parallel mode hits 99% on step 2 of 4 (build), then goes to 100% on step 4/4 (Done), with no intermediate progress
-	- GetReducedHullPts doesn't have progress. Its difficult (but
-	  not impossible!) to implement because of qhull. Need to implement input dicing
-	- A small improvement in the UI in this area has been made
-	  (call before/after GetReducedHullPts)

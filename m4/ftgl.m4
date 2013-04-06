@@ -69,6 +69,7 @@ fi
 
 
 if test "x$manual_ftgl" = "xyes" ; then
+	CFLAGS_ORIG="$CFLAGS"
 	LIBS_ORIG="$LIBS"
 	LIBS="$LIBS $FTGL_LIBS $LDFLAGS"
 
