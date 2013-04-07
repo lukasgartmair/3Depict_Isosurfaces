@@ -4,9 +4,18 @@
 # and debian-like systems	
 # Note that building wx requires ~8GB of ram (or swap)
 BASE=`pwd`
-HOST_VAL=x86_64-w64-mingw32
+#HOST_VAL=x86_64-w64-mingw32 #For mingw64
+#HOST_VAL=i686-w64-mingw32
+
+if [ x$HOST_VAL = x"" ] ; then
+	echo "Please uncomment the right HOST_VAL for your system"
+	exit 1
+fi
+
 PREFIX=/
 NUM_PROCS=4
+
+IS_RELEASE=1
 
 if [ `id -u` -eq 0 ]; then
 	echo "This script should not be run as root."
@@ -20,7 +29,8 @@ PATCHES_WXWIDGETS_POST="wx-config-sysroot.patch"
 #1) Zlib no longer needs to explicitly link libc, and will fail if it tries
 PATCHES_ZLIB="zlib-no-lc.patch"
 #1) Override some configure patches to bypass false positive failures
-PATCHES_FTGL="ftgl-override-configure"
+#2) mingw32 specific patch - mingw32 won't link with overridden prototypes
+PATCHES_FTGL="ftgl-override-configure ftgl-mingw32-prototype"
 
 #1) gettext-tools fails in various places, but we don't actually need it, so turn it off
 #2) gettext fails to correctly determine windows function call prefix.
@@ -28,13 +38,15 @@ PATCHES_FTGL="ftgl-override-configure"
 #   https://lists.gnu.org/archive/html/bug-gettext/2012-12/msg00071.html
 PATCHES_GETTEXT="gettext-disable-tools gettext-win32-prefix"
 
-PATCH_LIST="$PATCHES_WXWIDGETS $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL"
+PATCH_LIST="$PATCHES_WXWIDGETS_PRE $PATCHES_WXWIDGETS_POST $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL"
 
-BUILD_STATUS_FILE="build-status"
+BUILD_STATUS_FILE="$BASE/build-status"
+PATCH_STATUS_FILE="$BASE/patch-status"
+PATCH_LEVEL=1
 
 function isBuilt()
 {
-	if [ `cat ${BUILD_STATUS_FILE} | grep $ISBUILT_ARG` != x"" ]  ; then
+	if [ x`cat ${BUILD_STATUS_FILE} | grep $ISBUILT_ARG` != x"" ]  ; then
 		ISBUILT=1
 	else
 		ISBUILT=0
@@ -45,22 +57,26 @@ function applyPatches()
 {
 	for i in $APPLY_PATCH_ARG
 	do
+		if [ x`cat $PATCH_STATUS_FILE | grep "$i"` != x"" ] ; then
+			echo "Patch already applied :" $i
+			continue
+		fi
+
 		echo "Applying patch:" $i
-		patch -t -p1  < ../../patches/$i
+		patch -tN -p$PATCH_LEVEL  < $BASE/patches/$i
 		
 		if [ $? -ne 0 ] ; then
 			echo "Failed applying patch :" $i
 			exit 1
 		fi
 		echo "applied patch"
-		sleep 1
+		echo $i >> $PATCH_STATUS_FILE
 	done
 }
 
-function installX86_64_mingw32()
+function install_mingw()
 {
-	MINGW_PACKAGES="mingw-w64-x86-64-dev g++-mingw-w64-x86-64"
-	echo "Requesting install of w64-mingw :" $MINGW_PACKAGES
+	echo "Requesting install of mingw :" $MINGW_PACKAGES
 
 	#install mingw and libtool (we will need it...)
 	sudo apt-get install $MINGW_PACKAGES libtool
@@ -87,7 +103,7 @@ function grabDeps()
 	if [ ! -f libiconv-1.14.tar.gz ] ; then
 		wget "ftp://ftp.gnu.org/gnu/libiconv/libiconv-1.14.tar.gz" || { echo "Libiconv download failed "; exit 1; }
 	else
-		if [ `sha1sum libiconv-1.14.tar.gz` != be7d67e50d72ff067b2c0291311bc283add36965 ] ; then
+		if [ x`sha1sum libiconv-1.14.tar.gz | awk '{print $1}'` != x"be7d67e50d72ff067b2c0291311bc283add36965" ] ; then
 			echo "SHA1 sum mismatch for libiconv"
 			exit 1
 		fi
@@ -108,7 +124,7 @@ function createBaseBinaries()
 	# primary path, and thus override the normal compiler
 	
 	#use ccache if it is around
-	if [ x`which ccache` != x"" ] ; then
+	if [  x`which ccache` != x"" ] ; then
 		echo -n "Enabling ccache support..."
 		USE_CCACHE=1
 	else
@@ -155,6 +171,7 @@ function fix_la_file
 function build_zlib()
 {
 	ISBUILT_ARG="zlib"
+	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
@@ -195,6 +212,7 @@ function build_zlib()
 function build_libpng()
 {
 	ISBUILT_ARG="libpng"
+	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
@@ -208,7 +226,7 @@ function build_libpng()
 
 	make clean
 
-	./configure --host=x86_64-w64-mingw32 --enable-shared --disable-static || { echo "Libpng configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static || { echo "Libpng configure failed"; exit 1; } 
 
 	#Hack to strip linker version script
 	# eg as discussed : 
@@ -228,8 +246,7 @@ function build_libpng()
 	# the headers in a new subfolder, which is not compatible with most buildsystems
 	# so make some symlinks
 	#---
-	# First emulate libpng's installer 
-	#	(TODO: Why is the normal installer not working? It did before..)
+	# First simulate libpng's installer working (TODO: Why is this not working? It did before..)
 	mkdir -p ../../include/libpng12/ 
 	cp -p png.h pngconf.h ../../include/libpng12/
 	# Then actually make the symlinks
@@ -239,10 +256,8 @@ function build_libpng()
 	popd >/dev/null
 
 	#Aaand it doesn't install the libraries, so do that too.
-	pushd .libs 2>/dev/null
-	cp -p *.dll $BASE/lib/
-	cp -p *.la $BASE/lib/
-	popd 2> /dev/null
+	cp -p .libs/*.dll $BASE/lib/
+	cp -p .libs/*.la $BASE/lib/
 	#----
 
 
@@ -263,6 +278,7 @@ function build_libxml2()
 {
 	NAME="libxml2"
 	ISBUILT_ARG=${NAME}
+	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
@@ -276,7 +292,7 @@ function build_libxml2()
 	fi
 	make clean
 
-	./configure --host=x86_64-w64-mingw32 --enable-shared --disable-static --prefix=/ || { echo "Libxml2 configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "Libxml2 configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "libxml2 build failed"; exit 1; } 
 	
@@ -306,6 +322,7 @@ function build_libjpeg()
 {
 	NAME="libjpeg"
 	ISBUILT_ARG=${NAME}
+	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
@@ -319,7 +336,7 @@ function build_libjpeg()
 
 	make clean
 
-	./configure --host=x86_64-w64-mingw32 --enable-shared --disable-static --prefix=/ || { echo "Libjpeg configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "Libjpeg configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "libjpeg build failed"; exit 1; } 
 	
@@ -340,6 +357,7 @@ function build_libtiff()
 {
 	NAME="libtiff"
 	ISBUILT_ARG=${NAME}
+	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
@@ -350,7 +368,7 @@ function build_libtiff()
 		echo "libtiff dir missing, or duplicated?"
 		exit 1
 	fi
-	./configure --host=x86_64-w64-mingw32 --enable-shared --disable-static --prefix=/ || { echo "Libtiff configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "Libtiff configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "libtiff build failed"; exit 1; } 
 	
@@ -371,6 +389,7 @@ function build_qhull()
 {
 	NAME="libqhull"
 	ISBUILT_ARG=${NAME}
+	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
@@ -385,7 +404,7 @@ function build_qhull()
 
 	make clean
 
-	./configure --host=x86_64-w64-mingw32 --enable-shared --disable-static --prefix=/ || { echo "qhull configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "qhull configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "qhull build failed"; exit 1; } 
 	
@@ -404,6 +423,7 @@ function build_expat()
 {
 	NAME="libexpat"
 	ISBUILT_ARG=${NAME}
+	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
@@ -414,7 +434,7 @@ function build_expat()
 		echo "expat dir missing, or duplicated?"
 		exit 1
 	fi
-	./configure --host=x86_64-w64-mingw32 --enable-shared --disable-static --prefix=/ || { echo "Libtiff configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "Libtiff configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "expat build failed"; exit 1; } 
 	
@@ -437,6 +457,7 @@ function build_gsl()
 {
 	NAME="libgsl"
 	ISBUILT_ARG=${NAME}
+	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
@@ -459,7 +480,7 @@ function build_gsl()
 	APPLY_PATCH_ARG=$PATCHES_GSL
 	applyPatches
 
-	./configure --host=x86_64-w64-mingw32 --enable-shared --disable-static --prefix=/ || { echo "gsl configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "gsl configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "gsl build failed"; exit 1; } 
 	
@@ -478,13 +499,15 @@ function build_wx()
 {
 	NAME="libwx"
 	ISBUILT_ARG=${NAME}
+	isBuilt
+
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
 	
 	pushd deps >/dev/null
 	pushd wxwidgets[23].[0-9]-* >/dev/null
-		
+       	
 	if [ $? -ne 0 ] ; then
 		echo "wxwidgets dir missing, or duplicated?"
 		exit 1
@@ -494,12 +517,13 @@ function build_wx()
 
 	APPLY_PATCH_ARG=$PATCHES_WXWIDGETS_PRE
 	applyPatches
-	./configure --host=x86_64-w64-mingw32 --enable-shared --disable-static --with-opengl --enable-unicode --without-regex --prefix=/ || { echo "wxwidgets configure failed"; exit 1; } 
+
+	./configure --host=$HOST_VAL --enable-shared --disable-static --with-opengl --enable-unicode --without-regex --prefix=/ || { echo "wxwidgets configure failed"; exit 1; } 
 
 	#TODO: Where is this coming from ???
 	for i in `find ./ -name Makefile | grep -v samples | grep -v wxPython`
 	do
-		sed -i "s@-luuid-L${BASE}lib/@ -luuid -L${BASE}ib/@" $i
+		sed -i "s@-luuid-L@ -luuid -L@" $i
 	done	
 	
 	make -j $NUM_PROCS || { echo "wxwidgets build failed"; exit 1; } 
@@ -514,14 +538,16 @@ function build_wx()
 	unlink wx-config
 	ln -s `find ${BASE}/lib/wx/config/ -name \*release-2.8` wx-config
 	APPLY_PATCH_ARG=$PATCHES_WXWIDGETS_POST
+	PATCH_LEVEL=0
 	applyPatches
+	PATCH_LEVEL=1
 	popd
 
 	pushd ./lib/
 	ln -s wx-2.8/wx/ wx
 	popd
 
-	sed -i "s/REPLACE_BASENAME/${BASE}/" wx-config
+	sed -i "s@REPLACE_BASENAME@${BASE}@" wx-config
 
 	echo ${NAME} >> $BUILD_STATUS_FILE
 
@@ -531,6 +557,7 @@ function build_freetype()
 {
 	NAME="libfreetype"
 	ISBUILT_ARG=${NAME}
+	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
@@ -546,7 +573,7 @@ function build_freetype()
 
 	pushd freetype-[0-9]*
 	make clean
-	./configure --host=x86_64-w64-mingw32 --enable-shared --disable-static --prefix=/ || { echo "freetype configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "freetype configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "freetype build failed"; exit 1; } 
 	
@@ -575,6 +602,7 @@ function build_libiconv()
 {
 	NAME="iconv"
 	ISBUILT_ARG=${NAME}
+	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
@@ -588,7 +616,7 @@ function build_libiconv()
 	fi
 
 	make clean
-	./configure --host=x86_64-w64-mingw32 --enable-shared --disable-static --prefix=/ || { echo "libiconv configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "libiconv configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "libiconv build failed"; exit 1; } 
 	
@@ -606,6 +634,7 @@ function build_gettext()
 {
 	NAME="gettext"
 	ISBUILT_ARG=${NAME}
+	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
@@ -623,7 +652,7 @@ function build_gettext()
 	applyPatches
 	automake
 
-	./configure --host=x86_64-w64-mingw32 --enable-shared --disable-static --prefix=/ || { echo "gettext configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "gettext configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "gettext build failed"; exit 1; } 
 	
@@ -644,6 +673,7 @@ function build_mathgl()
 {
 	NAME="libmgl"
 	ISBUILT_ARG=${NAME}
+	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
@@ -660,19 +690,23 @@ function build_mathgl()
 	aclocal
 
 	autoreconf
-	LIBS="${LIBS} -lz" ./configure --host=x86_64-w64-mingw32 --disable-pthread --enable-shared --disable-static --prefix=/ || { echo "mathgl configure failed"; exit 1; } 
+	LIBS="${LIBS} -lz" ./configure --host=$HOST_VAL --disable-pthread --enable-shared --disable-static --prefix=/ || { echo "mathgl configure failed"; exit 1; } 
 
 	#RPATH disable hack
 	sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|g' libtool
 	sed -i 's|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|g' libtool
-	
+
+	#Hack to fix mathgl's libpng dll search
+	mkdir -p $BASE/lib/.libs/
+	ln -s $BASE/lib/libpng.dll $BASE/lib/.libs/libpng.dll.a 
+
 	make -j $NUM_PROCS || { echo "mathgl build failed"; exit 1; } 
 	
 	make install DESTDIR="$BASE"|| { echo "mathgl install failed"; exit 1; } 
 	
 	#DLL needs to be copied into lib manually
 	cp -p .libs/${NAME}-[0-9]*.dll $BASE/lib/ 
-h
+
 	popd >/dev/null
 	popd >/dev/null
 	FIX_LA_FILE_ARG=libmgl
@@ -685,6 +719,7 @@ function build_ftgl()
 {
 	NAME="libftgl"
 	ISBUILT_ARG=${NAME}
+	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
@@ -705,7 +740,7 @@ function build_ftgl()
 #	APPLY_PATCH_ARG="$PATCHES_FTGL"
 #	applyPatches
 
-	./configure --host=x86_64-w64-mingw32 --enable-shared --disable-static --prefix=/ || { echo "ftgl configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "ftgl configure failed"; exit 1; } 
 
 	
 	make -j $NUM_PROCS || { echo "ftgl build failed"; exit 1; } 
@@ -772,7 +807,7 @@ function checkHost()
 	HOSTTYPE=`uname -m`
 
 	if [ x"$HOSTTYPE" != x"x86_64" ] ; then
-		echo "This only works on x86_64 - you'll need to modify the script to handle other arches. Sorry."
+		echo "This only works on x86_64 builder machines - you'll need to modify the script to handle other arches. Sorry."
 		exit 1
 	fi
 
@@ -808,14 +843,16 @@ function make_package()
 		exit 1;
 	fi
 
-	#make symlink as needed
+	#copy as needed
+	# Due to debian bug : #704828, makensis cannot correctly handle symlinks,
+	# so don't use symlinks
 	if [ ! -f `basename $NSI_FILE`  ] ; then
-		ln -s ./packaging/windows-installer/windows-installer.nsi
+		cp ./packaging/windows-installer/windows-installer.nsi .
 	fi
 
 
 	echo -n " Copying dll files... "
-	DLL_FILES=`grep File windows-installer.nsi | grep dll | sed 's/.*src.//' | sed 's/\"//' | sed 's/\r/ /g'`
+	DLL_FILES=`grep File windows-installer.nsi | egrep '(\.dll|\.so)' | sed 's/.*src.//' | sed 's/\"//' | sed 's/\r/ /g'`
 
 	SYS_DIR=/usr/lib/gcc/${HOST_VAL}/
 	#copy the DLL files from system or 
@@ -842,10 +879,47 @@ function make_package()
 	done
 	echo "done."
 
+	
+	if [ $IS_RELEASE -ne 0 ] ; then
+		pushd src/ 2> /dev/null
+		strip *.dll *.exe
+		popd 2> /dev/null
+	fi
+
+
 	makensis `basename $NSI_FILE` ||  { echo "makensis failed" ; exit 1; }
 	
 	
 	popd
+}
+
+function make_3depict()
+{
+	cd code/3Depict
+	make distclean
+
+	if [ $IS_RELEASE -eq 1 ] ;  then
+		CONFIGURE_ARGS="--disable-debug-checks"
+	fi
+
+	CFLAGS="$CFLAGS -DUNICODE" CPPFLAGS="${CPPFLAGS} -DUNICODE" ./configure --host=$HOST_VAL $CONFIGURE_ARGS
+
+	if [ $? -ne 0 ] ; then
+		echo "Failed 3Depict configure"
+		exit 1
+	fi
+
+	#HACK - strip all makefiles of -D_GLIBCXX_DEBUG, even when not in release mode
+	# as a workaround for broken configure not handling debian bug 703935
+	if [ $IS_RELEASE -ne 1 ] ;  then
+		find ./ -name Makefile -exec sed -i 's/-D_GLIBCXX_DEBUG//g' {} \;
+	fi
+
+	make -j$NUM_PROCS
+	if [ $? -ne 0 ] ; then
+		echo "Failed 3Depict build"
+		exit 1
+	fi
 }
 
 #Check that we have a suitable host system
@@ -864,7 +938,21 @@ createBaseBinaries
 grabDeps
 
 #Install cross compiler
-installX86_64_mingw32
+case echo ${HOST_VAL} 
+	
+	x86_64-w64-mingw32)
+		MINGW_PACKAGES="gcc-mingw32"
+	;;
+	HOST_VAL=i686-w64-mingw32)
+		MINGW_PACKAGES="mingw-w64-x86-64-dev g++-mingw-w64-x86-64"
+	;;
+	*)
+	echo "Unknown host... please install deps manually,or alter script"
+	return
+	;;
+esac
+
+install_mingw
 
 #set our needed environment variables
 PATH=${BASE}/bin/:/usr/$HOST_VAL/bin/:$PATH
@@ -894,15 +982,7 @@ build_gettext
 build_mathgl 
 build_ftgl 
 
-if [ ! -d code/3Depict ] ; then
-	echo "3depict dir ${BASE}/code/3Depict/ missing"
-	exit 1
-fi
 
-pushd code/3Depict
-CFLAGS="$CFLAGS -DUNICODE" CPPFLAGS="${CPPFLAGS} -DUNICODE" ./configure --host=$HOST_VAL
-make -j4
-popd
 
 make_package
 
