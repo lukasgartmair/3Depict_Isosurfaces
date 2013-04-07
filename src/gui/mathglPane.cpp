@@ -782,6 +782,7 @@ void MathGLPane::mouseWheelMoved(wxMouseEvent& event)
 			;
 	}
 
+	Refresh();
 }
 
 void MathGLPane::leftMouseReleased(wxMouseEvent& event)
@@ -821,6 +822,7 @@ void MathGLPane::leftMouseReleased(wxMouseEvent& event)
 	}
 
 	mouseDragMode=MOUSE_MODE_ENUM_END;
+	Refresh();
 }
 
 void MathGLPane::middleMouseReleased(wxMouseEvent& event)
@@ -1349,96 +1351,3 @@ void MathGLPane::drawRegionDraggingOverlay(wxDC *dc) const
 	delete arrowPen;
 
 }
-/*
-void MathGLPane::drawActionHintOverlay(wxDC *dc)
-{
-	const char *overlays[] = {	
-			"mouse-shift-pan.png",
-			"mousewheel-zoom.png",
-			"mousewheel-zoom-x.png",
-			"mousewheel-zoom-y.png",
-			"mousewheel-pan.png",
-			"axis-zoom-x.png",
-			"axis-zoom-y.png",
-				};
-
-	//Axis mask on current position 
-	//required in order for overlay 
-	//to be displayed. 0 means show always
-	const int overlayAxisMask ={	
-			0,
-			0,
-			AXIS_POSITION_LOW_X,
-			AXIS_POSITION_LOW_Y,
-			0,
-			AXIS_POSITION_LOW_X,
-			AXIS_POSITION_LOW_Y
-			};
-
-
-	unsigned int axisMask=getAxisMask(curMouse.x,curMouse.y);
-	
-	
-	vector<bool> overlaysToDraw;
-	overlaysToDraw.resize(NUM_OVERLAYS);
-	
-	//find the overlays that need to be drawn, according to their mask 
-	for(unsigned int ui=0;ui<overlaysToDraw.size();ui++)
-		overlaysToDraw[ui]=(axisMask & overlayAxisMask);
-
-	wxImage img;
-	string file;
-	bool fileMissing=false;
-	for(unsigned int ui=0;ui<NUM_OVERLAYS;ui++)
-	{
-		//Do we need to draw this overlay?
-		if(!overlaysToDraw[ui])
-			continue;
-
-		file=locateDataFile(overlays);
-
-		if(!wxFileExists(wxStr(file)))
-		{
-			fileMissing=true;
-			break;
-		}
-
-	}
-
-	std::
-
-	//if we are missing a file, the added functionality
-	// of showing a hint with hints missing might be confusing
-	if(fileMissing)
-	{
-		WARN(false, "Note, overlay file missing for plot.");
-		break;
-	}
-
-
-
-	//coordinates of overlay in (x,y) 
-	const float OVERLAY_LEFT=0.9;
-	const float OVERLAY_TOP=0.1;
-
-
-	float curTop;
-	curTop=OVERLAY_TOP;
-
-	const float MAX_OVERLAY_HEIGHT
-	float overlayHeight;
-
-	overlayHeight=std::min(MAX_OVERLAY_HEIGHT,1.0f/NUM_OVERLAYS);
-
-	vector<pair<float,float> > coords;
-	for(unsigned int ui=0;ui<NUM_OVERLAYS;ui++)
-	{
-		unsigned int drawOffset;
-		//Compute the overlay coordinates
-		coords.push_back(make_pair(curLeft,curTop));
-		curTop+=1.1*overlayHeight;
-
-	}
-
-}
-*/
