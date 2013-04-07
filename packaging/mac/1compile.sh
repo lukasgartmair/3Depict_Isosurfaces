@@ -1,6 +1,11 @@
 #!/bin/sh
+cp makeMacOSXApp ../..
+cp -R 3Depict.app ../..
+cd ../..
 time ./makeMacOSXApp --update-config=yes --parallel=yes --debug=yes > out.txt 2>&1
-if [ x"`tail -1 out.txt`" == x"Done" ] ; then
+
+#check compile OK
+if [ $? -eq 0 ] ; then
 	echo "Finished compiling"
 else
 	echo "Failed"
@@ -8,7 +13,8 @@ else
 	exit 1
 fi
 time ./3Depict.app/Contents/MacOS/3Depict -t > out2.txt 2>&1
-if [ x"`tail -1 out2.txt`" == x"Unit tests succeeded!" ] ; then
+#Check return value from debug
+if [ $? -eq 0 ] ; then
         echo "Finished testing"
 else
         echo "Failed"

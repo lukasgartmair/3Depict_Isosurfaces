@@ -45,7 +45,8 @@ cp data/textures/tex-source/3Depict-icon.icns ./3Depict.app/Contents/Resources/3
 touch ./3Depict.app/Contents/PkgInfo
 touch ./3Depict.app/Contents/info.plist
 #copy textures
-cp -R ./data/textures ./3Depict.app/Contents/Resources
+cp ./data/textures/* ./3Depict.app/Contents/Resources
+cp ./data/textures/tex-source/3Depict-icon.icns ./3Depict.app/Contents/Resources
 
 
 #Update gettext translation
