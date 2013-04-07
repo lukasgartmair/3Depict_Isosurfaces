@@ -2,9 +2,10 @@
 	Features:
 	- Spherical composition profile support
 	- Added axial distribution mode to spatial analysis (directional RDF)
+	- New build for windows 64 (no parallel build available yet)
 
 	User Visible Bugfixes/Changes:
-	- Fix crash if unable to obtain RSS feed when checking for updates (Windows only)
+	- Fix crash if unable to obtain RSS feed when checking for updates from behind proxy (Windows only)
 	- Rangefiles now correctly load when altering name property
 	- Copy/pasting from the raw data grid now works.
 	- Fix refresh loop in Data Load filter when "monitor" active and "enabled" inactive.
@@ -39,12 +40,12 @@
 	- Improved wx correctness in property grid
 	- Tentative support in "getDeps" script for CentOS6
 	- Refactor APTClasses & basics functions into several
-	  more managable parts
+	  more manageable parts
 	- Better RNG support (negative ranges, range lines starting with a digit)
 	- More extensive unit testing
 	- Fix double-free bug for certain topologies in filter tree
 	- Fix memory leak when aborting refresh
-	- Cross compilation script for mingw-win64
+	- Cross compilation script for mingw-win64 and 32
 	- Source code relayout to reflect overall design
 	- Fix several minor assertion errors
 	- Remove several redundant scene update calls in main window
@@ -172,7 +173,7 @@
 	- More QA checking in release script
 	- Compiles against GCC 4.7.
 	- Re-enable convex hull based algorithms in OSX.
-	- Remove unneccessary #includes.
+	- Remove unnecessary #includes.
 	- Some code de-duplication, thanks to pmd.sourceforge.net
 	- Hidden debug only Autosave with ctrl+insert.
 	- Fix memory leaks in filter devices, rangefile filter 
@@ -321,7 +322,7 @@
 
 
 	Technical Bugfixes/Features:
-	- Signficantly more complex refresh system, now performs type analysis
+	- Significantly more complex refresh system, now performs type analysis
 	  on tree to determine minimal subsections of tree to refresh. Now filters
 	  that cannot cache well will penalise the refresh system much less.
 	- Fix corner case bug in LFSR selection routines (power of two
@@ -435,7 +436,7 @@
 	- Ensure visibility reset actually resets to looking down +ve axis
 	- Change plot axis to show log_10 rather than just log() during log
 	mode
-	- Fixed interaction overlay drawing transparancy
+	- Fixed interaction overlay drawing transparency
 
 	Technical Bugs/Features:
 	- Really fast "random" sampling.
@@ -443,11 +444,11 @@
 	use due to bad name handling
 	- Fix incorrect usage of std::unique that was leading to assertion
 	failure
-	- Make conjugation in quaternions implicit for even faster quat
+	- Make conjugation in quaternions implicit for even faster quaternion
 	rotations.
 	- Fix bug in GenericLoadFloatFile, where the output vector was too
-	small for cols<4, resulting in mem overflow
-	- Fix bug in transform filter where data limits were requirested for
+	small for cols<4, resulting in memory overflow
+	- Fix bug in transform filter where data limits were required for
 	ion data sizes < 2
 	- Fixes for spatial analysis filter
 		- Catch and report errors to console, rather than crash.
@@ -460,7 +461,7 @@
 	after ion export
 	- Fix bug in BoundCube::setBounds where incorrect assignment for z
 	was made
-	- Valgrind out two crash bugs due to uninited mem
+	- Valgrind out two crash bugs due to uninitialised memory
 
 
 
@@ -468,7 +469,7 @@
 
 	- Files with arbitrary number of data channels can now be loaded,
 	but only one channel at a time can be analysed.
-	- Many functions are now openMP parallellised, and thus will
+	- Many functions are now openMP parallelised, and thus will
 	take advantage of multiple CPUs, if enabled at compile time
 	- Simple animation support (PNG sequences in an orbit)
 	- Voxelisation support; voxel data can be generated using the new

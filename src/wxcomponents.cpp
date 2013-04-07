@@ -738,6 +738,19 @@ void CopyGrid::copyData()
 		rows = coordBR.GetRow() - coordTL.GetRow() +1;
 		cols = coordBR.GetCol() - coordTL.GetCol() +1;	
 
+		//copy title from header
+		if(cols)
+		{
+			for(int ui=0;ui<cols;ui++)
+			{
+				data+=stlStr(GetColLabelValue(ui));
+
+				if(ui<cols-1)
+					data+="\t";
+			}
+			data+=endline;
+		}
+
 		// For each cell in selected range append the cell value in the data
 		//variable
 		// Tabs '\\t' for cols and '\\n' for rows
@@ -759,14 +772,25 @@ void CopyGrid::copyData()
 		const wxArrayInt& rows(GetSelectedRows());
 		const wxArrayInt& cols(GetSelectedCols());
 		const wxGridCellCoordsArray& cells(GetSelectedCells());
+
+		//Copy title from header
 		if(cols.size())
 		{
+			for(int ui=0;ui<cols.size();ui++)
+			{
+				data+=stlStr(GetColLabelValue(ui));
+
+				if(ui<cols.size()-1)
+					data+="\t";
+			}
+			data+=endline;
+
 			for(int ui=0;ui<GetNumberRows(); ui++)
 			{
 			    for(int  c=0; c<cols.size(); c++)
 			    {
 				data+= stlStr(GetCellValue(ui,cols[c]));
-				if(c < cols.size())
+				if(c < cols.size()-1)
 				    data+= "\t";
 
 			    }
@@ -777,6 +801,15 @@ void CopyGrid::copyData()
 		}
 		else if (rows.size())
 		{
+			for(int ui=0;ui<GetNumberCols();ui++)
+			{
+				data+=stlStr(GetColLabelValue(ui));
+
+				if(ui<cols.size()-1)
+					data+="\t";
+			}
+			data+=endline;
+
 			for(int r=0;r<rows.size(); r++)
 			{
 			    for(int  c=0; c<GetNumberCols(); c++)
@@ -819,8 +852,7 @@ void CopyGrid::copyData()
 
 
 	}
-		// Create text data object
-	//wxClipboard *clipboard = new wxClipboard();
+
 	// Put the data in the clipboard
 	if (wxTheClipboard->Open())
 	{
