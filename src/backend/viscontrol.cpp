@@ -1313,8 +1313,7 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 					thisCam = new CameraLookAt;
 					if(!thisCam->readState(nodePtr->xmlChildrenNode))
 					{
-						std::string s,sTmp;
-						s =TRANS("Failed to interpret camera state for camera : "); 
+						std::string s =TRANS("Failed to interpret camera state for camera : "); 
 
 						errStream<< s <<  newCameraVec.size() << endl;
 						throw 1;
@@ -1727,9 +1726,10 @@ void VisController::updateRawGrid() const
 	if(targetRawGrid->GetNumberRows())
 		targetRawGrid->DeleteRows(0,targetRawGrid->GetNumberRows());
 	
-	unsigned int startCol,curCol=0;
+	unsigned int curCol=0;
 	for(unsigned int ui=0;ui<plotData.size(); ui++)
 	{
+		unsigned int startCol;
 		//Create new columns
 		targetRawGrid->AppendCols(plotData[ui].size());
 		ASSERT(labels[ui].size() == plotData[ui].size());

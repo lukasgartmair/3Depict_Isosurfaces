@@ -353,7 +353,7 @@ template<class T> class Voxels
 		int countPoints( const std::vector<Point3D> &points, bool noWrap=true, bool doErase=false);
 
 		//!Integrate the datataset via the trapezoidal method
-		T trapezIntegral();	
+		T trapezIntegral() const;	
 		//! Convert voxel intensity into voxel density
 		// this is done by dividing each voxel by its volume 
 		void calculateDensity();
@@ -1184,7 +1184,7 @@ T Voxels<T>::getSum(const T &initialValue) const
 }
 
 template<class T>
-T Voxels<T>::trapezIntegral()
+T Voxels<T>::trapezIntegral() const
 {
 	//Compute volume prefactor - volume of cube of each voxel
 	//--
@@ -1912,11 +1912,12 @@ void Voxels<T>::makeSphericalKernel(size_t sideLen, float bound, const T &val, u
 			{
 				for(size_t uk=0;uk<sideLen;uk++)
 				{
-					float offset[8],x,y,z;
+					float offset[8];
 					bool insideSphere,fullCalc;
 					//Calcuate r^2 from sphere centre for each corner
 					for(unsigned int off=0;off<8; off++)
 					{
+						float x,y,z;
 						x= ui + 2*(off &1)-1;
 						y= uj + (off &2)-1;
 						z= uk + 0.5*(off &4)-1;
@@ -1949,9 +1950,7 @@ void Voxels<T>::makeSphericalKernel(size_t sideLen, float bound, const T &val, u
 						//We chop the voxel into eight half size voxels, then check 
 						//to see which lie in the sphere, and which dont.
 						std::stack<std::pair<Point3D, unsigned int > > positionStack;
-						Point3D thisCentre;
-						unsigned int thisLevel;
-						float thisLen,value,x,y,z;
+						float value,x,y,z;
 						value=0;
 						//Push this voxel's 8 sub-voxel's centres onto the stack
 						//to kick things off
@@ -1970,6 +1969,10 @@ void Voxels<T>::makeSphericalKernel(size_t sideLen, float bound, const T &val, u
 						//each voxel has side lenght L_v = originalLen/(2^(level+1))
 						while(!positionStack.empty())
 						{
+							unsigned int thisLevel;
+							float thisLen;
+							Point3D thisCentre;
+
 							thisCentre = positionStack.top().first;
 							thisLevel = positionStack.top().second;
 							positionStack.pop();

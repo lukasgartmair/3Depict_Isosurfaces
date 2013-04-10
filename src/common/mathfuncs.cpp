@@ -361,7 +361,6 @@ void RandNumGen::initialise(int seed)
 {
 	long mj,mk;
 
-	int ii;
 	//initialise ma[55] with seed
 	mj=labs((MBIG-labs(seed)));
 	mj%=MBIG;
@@ -372,6 +371,7 @@ void RandNumGen::initialise(int seed)
 	//Initialise the rest of the table
 	for(unsigned int i=1; i<55; i++)
 	{
+		int ii;
 		ii=(21*i)%55;
 	
 		ma[ii]=mk;

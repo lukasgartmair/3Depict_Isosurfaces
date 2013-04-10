@@ -267,7 +267,6 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 	while(curFac != qh facet_tail)
 	{
 		float temp;
-		vertexT *vertex;
 		Point3D vertexPt[3];
 		
 		//The shortest distance from the plane to the point
@@ -275,6 +274,7 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 		//A-B, where B is on plane, A is point in question
 		for(unsigned int ui=0; ui<3; ui++)
 		{
+			vertexT *vertex;
 			//grab vertex
 			vertex  = ((vertexT *)curFac->vertices->e[ui].p);
 			vertexPt[ui] = Point3D(vertex->point[0],vertex->point[1],vertex->point[2]);
@@ -493,7 +493,6 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 	for(unsigned int ui=0; ui<pointList.size(); ui++)
 	{
 		vector<const Point3D *> nnPoints;
-		float temp;
 #ifdef _OPENMP
 		if(spin)
 			continue;
@@ -505,6 +504,8 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 		for(unsigned int uj=0; uj<nnPoints.size(); uj++)
 		{
 			unsigned int offsetTemp;
+			float temp;
+
 			temp=sqrtf(nnPoints[uj]->sqrDist(pointList[ui]));
 			offsetTemp = (unsigned int)(temp/binWidth[uj]);
 			
@@ -802,7 +803,6 @@ unsigned int generate1DAxialNNHist(const vector<Point3D> &pointList, const K3DTr
 	for(unsigned int ui=0; ui<pointList.size(); ui++)
 	{
 		vector<const Point3D *> nnPoints;
-		float temp;
 #ifdef _OPENMP
 		if(spin)
 			continue;
@@ -813,6 +813,7 @@ unsigned int generate1DAxialNNHist(const vector<Point3D> &pointList, const K3DTr
 
 		for(unsigned int uj=0; uj<nnPoints.size(); uj++)
 		{
+			float temp;
 			temp=(*nnPoints[uj]-pointList[ui]).dotProd(axisDir);
 			int offset=(int)(((0.5f*temp)/maxOfMaxDists+0.5f)*numBins);
 

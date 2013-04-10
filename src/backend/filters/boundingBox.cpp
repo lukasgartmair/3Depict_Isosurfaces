@@ -179,7 +179,6 @@ void BoundingBoxFilter::drawTicks(const BoundCube &bTotal, DrawStreamData *d) co
 		for(unsigned int uj=0;uj<tmpTickCount[ui];uj++)
 		{
 			DrawVector *dV;
-			DrawGLText *dT;
 			tickPosition[ui]=tmpTickSpacing[ui]*uj + tickOrigin[ui];
 			dV = new DrawVector;
 	
@@ -195,6 +194,7 @@ void BoundingBoxFilter::drawTicks(const BoundCube &bTotal, DrawStreamData *d) co
 			//we will handle this separately
 			if(uj)
 			{
+				DrawGLText *dT;
 				//Draw the tick text
 				if( threeDText)	
 					dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_POLYGON);

@@ -1103,7 +1103,7 @@ void FilterTree::stripHazardousContents()
 		if ((*it)->canBeHazardous())
 		{
 			//delete filters from this branch
-			for(tree<Filter *>::pre_order_iterator itj(it); itj!=filters.end(); itj++)
+			for(tree<Filter *>::pre_order_iterator itj(it); itj!=filters.end(); ++itj)
 				delete *itj;
 	
 

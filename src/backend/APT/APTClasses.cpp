@@ -443,7 +443,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 
 	//seek to the end of the file
 	//to get the filesize
-	size_t maxPos,bytesToRead,curPos;
+	size_t maxPos,curPos;
 	CFile.seekg(0,std::ios::end);
 	maxPos=CFile.tellg();
 
@@ -532,6 +532,8 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 	buffer = new char[BUFFER_SIZE];
 	while(!CFile.eof() && curPos < maxPos)
 	{
+		size_t bytesToRead;
+
 		if(!CFile.good())
 		{
 			delete[] buffer;

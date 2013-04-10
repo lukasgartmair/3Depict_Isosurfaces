@@ -238,7 +238,7 @@ void FilterTreeAnalyse::spatialSampling(const FilterTree &f)
 	affectedFilters.push_back(FILTER_TYPE_IONINFO); 
 
 	const tree<Filter *> &treeFilt=f.getTree();
-	for(tree<Filter*>::pre_order_iterator it(treeFilt.begin()); it!=treeFilt.end(); it++)
+	for(tree<Filter*>::pre_order_iterator it(treeFilt.begin()); it!=treeFilt.end(); ++it)
 	{
 		//Check to see if we have a filter that can cause sampling
 		if(filterIsSampling(*it))
@@ -251,7 +251,7 @@ void FilterTreeAnalyse::spatialSampling(const FilterTree &f)
 				//TODO: Not the most efficient method of doing this...
 				//shouldn't need to continually compute depth to iterate over children	
 				size_t minDepth=treeFilt.depth(it);	
-				for(tree<Filter*>::pre_order_iterator itJ(childNode); treeFilt.depth(itJ) > minDepth;itJ++)
+				for(tree<Filter*>::pre_order_iterator itJ(childNode); treeFilt.depth(itJ) > minDepth;++itJ)
 				{
 					//ignore filters that are not affected by spatial sampling
 					size_t filterType;
@@ -400,7 +400,7 @@ void FilterTreeAnalyse::compositionAltered(const FilterTree &f)
 	affectedFilters.push_back(FILTER_TYPE_IONINFO); //If using composition 
 
 	const tree<Filter *> &treeFilt=f.getTree();
-	for(tree<Filter*>::pre_order_iterator it(treeFilt.begin()); it!=treeFilt.end(); it++)
+	for(tree<Filter*>::pre_order_iterator it(treeFilt.begin()); it!=treeFilt.end(); ++it)
 	{
 		//Check to see if we have a filter that can cause sampling
 		if(filterAltersComposition(*it))
@@ -413,7 +413,7 @@ void FilterTreeAnalyse::compositionAltered(const FilterTree &f)
 				//TODO: Not the most efficient method of doing this...
 				//shouldn't need to continually compute depth to iterate over children	
 				size_t minDepth=treeFilt.depth(it);	
-				for(tree<Filter*>::pre_order_iterator itJ(childNode); treeFilt.depth(itJ) > minDepth;itJ++)
+				for(tree<Filter*>::pre_order_iterator itJ(childNode); treeFilt.depth(itJ) > minDepth;++itJ)
 				{
 					//ignore filters that are not affected by spatial sampling
 					size_t filterType;

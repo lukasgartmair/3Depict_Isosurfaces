@@ -883,6 +883,43 @@ std::string TTFFinder::findFont(const char *fontFile)
 }
 
 
+#ifdef __APPLE__
+std::string TTFFinder::macFindFont(const char *fontFile) 
+{
+	//This is a list of possible target dirs to search
+	//(Oh look Ma, I'm autoconf!)
+	const char *dirs[] = {	".",
+				"/Library/Fonts",
+				"" ,
+				}; //MUST end with "".
+
+	wxPathList *p = new wxPathList;
+
+	unsigned int ui=0;
+	//Try a few standard locations
+	while(strlen(dirs[ui]))
+	{
+		p->Add(wxCStr(dirs[ui]));
+		ui++;
+	};
+
+	wxString s;
+
+	//execute the search for the file
+	s= p->FindValidPath(wxCStr(fontFile));
+
+
+	std::string res;
+	if(s.size())
+	{
+		if(p->EnsureFileAccessible(s))
+			res = stlStr(s);
+	}
+
+	delete p;
+	return res;
+}
+#elif defined __UNIX_LIKE__ || defined __linux__
 std::string TTFFinder::nxFindFont(const char *fontFile) 
 {
 	//This is a list of possible target dirs to search
@@ -928,7 +965,7 @@ std::string TTFFinder::nxFindFont(const char *fontFile)
 	delete p;
 	return res;
 }
-
+#elif defined  __WINDOWS__
 std::string TTFFinder::winFindFont(const char *fontFile)
 {
             //This is a list of possible target dirs to search
@@ -968,42 +1005,7 @@ std::string TTFFinder::winFindFont(const char *fontFile)
 
 
 }
-
-std::string TTFFinder::macFindFont(const char *fontFile) 
-{
-	//This is a list of possible target dirs to search
-	//(Oh look Ma, I'm autoconf!)
-	const char *dirs[] = {	".",
-				"/Library/Fonts",
-				"" ,
-				}; //MUST end with "".
-
-	wxPathList *p = new wxPathList;
-
-	unsigned int ui=0;
-	//Try a few standard locations
-	while(strlen(dirs[ui]))
-	{
-		p->Add(wxCStr(dirs[ui]));
-		ui++;
-	};
-
-	wxString s;
-
-	//execute the search for the file
-	s= p->FindValidPath(wxCStr(fontFile));
-
-
-	std::string res;
-	if(s.size())
-	{
-		if(p->EnsureFileAccessible(s))
-			res = stlStr(s);
-	}
-
-	delete p;
-	return res;
-}
+#endif
 
 std::string TTFFinder::suggestFontName(unsigned int fontType, unsigned int index) 
 {
