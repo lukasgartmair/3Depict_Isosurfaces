@@ -177,8 +177,6 @@ const unsigned int MAX_NN_DISTS = 0x8000000; //96 MB samples at a time
 unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim,  
 		unsigned int *progress, bool (*callback)(bool), vector<Point3D> &pointResult)
 {
-	const int dim=3;
-
 	//TODO: This could be made to use a fixed amount of ram, by
 	//partitioning the input points, and then
 	//computing multiple hulls.

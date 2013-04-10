@@ -1566,9 +1566,9 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			//volume. 
 			vector<Point3D> returnPoints;
 			size_t errCode;
-			if(errCode=GetReducedHullPts(p,reductionDistance,
-					&progress.filterProgress,callback,
-					returnPoints))
+			if((errCode=GetReducedHullPts(p,reductionDistance,
+					&progress.filterProgress,callback, 
+					returnPoints)) )
 			{
 				if(errCode ==1)
 					return INSUFFICIENT_SIZE_ERR;

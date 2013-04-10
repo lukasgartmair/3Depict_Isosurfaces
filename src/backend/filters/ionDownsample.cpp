@@ -767,7 +767,6 @@ bool IonDownsampleFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	else
 		return false;
 
-	xmlNodePtr lastNode;
 	//Retrieve the ion per-species fractions
 	if(XMLHelpFwdToElem(nodePtr,"fractions"))
 		return false;
