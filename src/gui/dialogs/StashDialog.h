@@ -1,6 +1,6 @@
 /*
  * 	stashdialog.h - "Stash" filter storage edit dialog header
- *	Copyright (C) 2012, D Haley 
+ *	Copyright (C) 2013, D Haley 
 
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by

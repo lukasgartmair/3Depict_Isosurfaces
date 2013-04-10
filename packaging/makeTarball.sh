@@ -164,6 +164,16 @@ SPAN_ELEMENT=`cat translations/3Depict_*po | grep "<span"`
 if [ x$SPAN_ELEMENT != x"" ] ; then
 	echo "WARNING : Found \"span\" element in translation file - normally this is due to transifex incorrectly parsing translation files" >> $MSG_FILE
 fi
+
+#Run licensecheck over files, if available
+if [ x`which licensecheck` != x"" ] ; then
+	LIC_CHECK_OUT=`licensecheck -r  --ignore ".*\.(sh|sci|py|tex)$" | grep -v "GPL (v3 or later)" | grep -v "GENERATED FILE" `
+
+	if [ x$LIC_CHECK_OUT != x"" ] ; then
+		echo "WARNING:" $LIC_CHECK_OUT >> $MSG_FILE
+	fi
+fi
+
 #----
 
 
