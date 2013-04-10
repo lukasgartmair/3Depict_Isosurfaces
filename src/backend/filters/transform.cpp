@@ -312,6 +312,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		//  - Every ion in the data body can be operated on independently.
 		//
 		//  OK, important safety tip.
+		size_t n=0;
 		for(unsigned int ui=0;ui<dataIn.size() ;ui++)
 		{
 			switch(transformMode)
@@ -325,7 +326,6 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 					float scaleFactor=scalarParams[0];
 					Point3D origin=vectorParams[0];
 
-					size_t n=0;
 					switch(dataIn[ui]->getStreamType())
 					{
 						case STREAM_TYPE_IONS:
@@ -447,7 +447,6 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 					
 					Point3D origin=vectorParams[0];
 					Point3D transformVec=vectorParams[1];
-					size_t n=0;
 					switch(dataIn[ui]->getStreamType())
 					{
 						case STREAM_TYPE_IONS:
@@ -571,7 +570,6 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 					ASSERT(vectorParams.size() == 1);
 					ASSERT(scalarParams.size() == 0);
 					Point3D origin =vectorParams[0];
-					size_t n=0;
 					switch(dataIn[ui]->getStreamType())
 					{
 						case STREAM_TYPE_IONS:
@@ -689,7 +687,6 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 					ASSERT(vectorParams.size() == 0);
 					ASSERT(scalarParams.size() == 1);
 					float origin =scalarParams[0];
-					size_t n=0;
 					switch(dataIn[ui]->getStreamType())
 					{
 						case STREAM_TYPE_IONS:
@@ -837,7 +834,6 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							float angle=scalarParams[0]*M_PI/180.0f;
 
 							unsigned int curProg=NUM_CALLBACK;
-							size_t n=0;
 
 							Point3f rotVec,p;
 							rotVec.fx=axis[0];
