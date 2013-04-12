@@ -1,4 +1,4 @@
-* Apr 2013 : 0.0.13
+* 12 Apr 2013 : 0.0.13
 	Features:
 	- Spherical composition profile support
 	- Added axial distribution mode to spatial analysis (directional RDF)
@@ -8,6 +8,7 @@
 	- Fix crash if unable to obtain RSS feed when checking for updates from behind proxy (Windows only)
 	- Rangefiles now correctly load when altering name property
 	- Copy/pasting from the raw data grid now works.
+	- Plot now updates when scrolling, rather than just during mouse motion
 	- Fix refresh loop in Data Load filter when "monitor" active and "enabled" inactive.
 	- Fix RDF generating error/crashes when passing < 4 points
 	- Fix voxel filtering not preserving intensity correctly
@@ -50,6 +51,8 @@
 	- Fix several minor assertion errors
 	- Remove several redundant scene update calls in main window
 	- Re-enable OSX checking for updates
+	- Fix incorrect progress reporting when ranging
+	- Improved release QA checking
 
 * Nov 2012 : 0.0.12
 	Features:
@@ -144,7 +147,7 @@
 	- More strict emit/use/block patterns for spatial analysis, bound box
 	  and external program
 
-* 1 Apr, 2011  : 0.0.10
+* 1 Apr, 2012  : 0.0.10
 	Features:
 	- Improved aborting behaviour for filters
 
