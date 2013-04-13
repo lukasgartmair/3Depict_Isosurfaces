@@ -20,8 +20,9 @@
 #include <wx/wx.h>
 #include <wx/cmdline.h>
 #include <wx/filename.h>
-#ifdef __APPLE__
 #include <wx/stdpaths.h>
+
+#ifdef __APPLE__
 #include "CoreFoundation/CoreFoundation.h"
 #endif
 

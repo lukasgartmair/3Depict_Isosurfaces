@@ -76,40 +76,66 @@ function applyPatches()
 
 function install_mingw()
 {
-	echo "Requesting install of mingw :" $MINGW_PACKAGES
 
 	#install mingw and libtool (we will need it...)
-	sudo apt-get install $MINGW_PACKAGES libtool
 
-	if [ $? -ne 0] ; then
-		echo "Mingw installation failed".
-		exit 1
+	GET_PACKAGES="";
+	for i in $MINGW_PACKAGES
+	do
+		if [ x`apt-cache pkgnames --installed $i` != x"$i" ] ; then
+			GET_PACKAGES="$GET_PACKAGES $i";
+		fi
+	done
+
+	if [ x"$GET_PACKAGES" != x"" ] ; then
+		echo "Requesting install of mingw :" $GET_PACKAGES
+		sudo apt-get install $GET_PACKAGES libtool || { echo "Mingw install failed";  exit 1 ; }
 	fi
+
 }
 
 function grabDeps()
 {
 	pushd deps 2>/dev/null
 	DEB_PACKAGES="expat freetype ftgl gettext gsl libjpeg8 libpng libxml2 mathgl qhull tiff3 wxwidgets2.8 zlib nsis"
-	apt-get source $DEB_PACKAGES
+
+	GET_PACKAGES=""
+	for i in $DEB_PACKAGES
+	do
+		FNAME=`ls packages/$i-*.orig.* 2> /dev/null`
+		if [ x"" == x"" ] ; then
+			GET_PACKAGES="${GET_PACKAGES} $i"
+		fi
+	done
+
+	#grab packages if they are not already on-disk
+	if [ x"$GET_PACKAGES" != x"" ] ; then
+		echo apt-get source $GET_PACKAGES
+	fi
 
 	if [ $? -ne 0 ] ; then
 		echo "apt-get source failed... Maybe check internet connection, then try updating package database, then re-run?"
 		exit 1
 	fi
 
-	mv *.orig.* *.debian.* *.dsc *.diff.* packages 
-
-	if [ ! -f libiconv-1.14.tar.gz ] ; then
-		wget "ftp://ftp.gnu.org/gnu/libiconv/libiconv-1.14.tar.gz" || { echo "Libiconv download failed "; exit 1; }
-	else
-		if [ x`sha1sum libiconv-1.14.tar.gz | awk '{print $1}'` != x"be7d67e50d72ff067b2c0291311bc283add36965" ] ; then
-			echo "SHA1 sum mismatch for libiconv"
-			exit 1
-		fi
+	#Move debian stuff into packages folder
+	if [ x"$GET_PACKAGES" != x"" ] ; then
+		mv *.orig.* *.debian.* *.dsc *.diff.* packages 
 	fi
-	
-	tar -zxf libiconv-1.14.tar.gz || { echo "failed extracting iconv "; exit 1; }
+
+	#extract libiconv if needed
+	if [ ! -f packages/libiconv-1.14.tar.gz ] ; then
+		wget "ftp://ftp.gnu.org/gnu/libiconv/libiconv-1.14.tar.gz" || { echo "Libiconv download failed "; exit 1; }
+		mv libiconv-1.14.tar.gz packages/
+		tar -zxf packages/libiconv-1.14.tar.gz || { echo "failed extracting iconv "; exit 1; }
+	fi
+
+	#Check for SHA1 goodness
+	if [ x`sha1sum packages/libiconv-1.14.tar.gz | awk '{print $1}'` != x"be7d67e50d72ff067b2c0291311bc283add36965" ] ; then
+		echo "SHA1 sum mismatch for libiconv"
+		exit 1
+	fi
+
 
 	
 	popd 2> /dev/null
@@ -135,7 +161,7 @@ function createBaseBinaries()
 	for i in g++ cpp gcc c++
 	do
 		#Skip existing links
-		if [ -f ${HOST_VAL}-$i ] ; then
+		if [ -f ${HOST_VAL}-$i ] || [ -L ${HOST_VAL}-$i ] ; then
 			continue;
 		fi
 
@@ -832,6 +858,46 @@ function checkHost()
 	echo "done"
 }
 
+#Build 3Depict
+function build_3Depict()
+{
+	pushd code/3Depict
+	make distclean
+
+
+	CONF_FLAG="--host=$HOST_VAL"
+	if [ $IS_RELEASE -ne 0 ] ; then
+		CONF_FLAG="$CONF_FLAG --disable-debug-checks"
+	fi
+
+	CFLAGS="$CFLAGS -DUNICODE" CPPFLAGS="${CPPFLAGS} -DUNICODE" ./configure  $CONF_FLAG
+
+	if [ $? -ne 0 ] ; then
+		echo "Failed 3Depict configure"
+		exit 1
+	fi
+
+	#HACK - strip all makefiles of -D_GLIBCXX_DEBUG
+	find ./ -name Makefile -exec sed -i 's/-D_GLIBCXX_DEBUG//g' {} \;
+
+	make -j$NUM_PROCS
+	if [ $? -ne 0 ] ; then
+		echo "Failed 3Depict build"
+		exit 1
+	fi
+
+	if [ $IS_RELEASE -ne 0 ] ; then
+		#Sanity check that we are actually in debug mode
+	TEST_FLAG=`./3Depict --help  2>&1 | grep "\-\-test"`
+	if [ x"$TEST_FLAG" != x"" ] ; then
+		echo "3Depict\'s Unit tests available, but should not be, when in release mode" 
+		exit 1
+	fi
+	fi
+
+	popd > /dev/null
+}
+
 #Build the nsis package
 function make_package()
 {
@@ -881,45 +947,25 @@ function make_package()
 
 	
 	if [ $IS_RELEASE -ne 0 ] ; then
-		pushd src/ 2> /dev/null
+		#Strip debugging information
+		pushd src/ > /dev/null
 		strip *.dll *.exe
-		popd 2> /dev/null
+		popd > /dev/null
 	fi
 
 
 	makensis `basename $NSI_FILE` ||  { echo "makensis failed" ; exit 1; }
+
+	if [ $IS_RELEASE -ne 0 ] ; then
+		VERSION=`cat $NSI_FILE | grep "define PRODUCT_VERSION " | awk '{print $3}' | sed s/\"//g | sed s/.$//`
+		TARGET_FILE=3Depict-$VERSION-$HOST_EXT.exe
+		mv Setup.exe  $TARGET_FILE
+		echo "-------------------"
+		echo "File written to : `pwd`/$TARGET_FILE"
+		echo "-------------------"
+	fi
 	
-	
-	popd
-}
-
-function make_3depict()
-{
-	cd code/3Depict
-	make distclean
-
-	if [ $IS_RELEASE -eq 1 ] ;  then
-		CONFIGURE_ARGS="--disable-debug-checks"
-	fi
-
-	CFLAGS="$CFLAGS -DUNICODE" CPPFLAGS="${CPPFLAGS} -DUNICODE" ./configure --host=$HOST_VAL $CONFIGURE_ARGS
-
-	if [ $? -ne 0 ] ; then
-		echo "Failed 3Depict configure"
-		exit 1
-	fi
-
-	#HACK - strip all makefiles of -D_GLIBCXX_DEBUG, even when not in release mode
-	# as a workaround for broken configure not handling debian bug 703935
-	if [ $IS_RELEASE -ne 1 ] ;  then
-		find ./ -name Makefile -exec sed -i 's/-D_GLIBCXX_DEBUG//g' {} \;
-	fi
-
-	make -j$NUM_PROCS
-	if [ $? -ne 0 ] ; then
-		echo "Failed 3Depict build"
-		exit 1
-	fi
+	popd > /dev/null
 }
 
 #Check that we have a suitable host system
@@ -938,17 +984,18 @@ createBaseBinaries
 grabDeps
 
 #Install cross compiler
-case echo ${HOST_VAL} 
-	
+case ${HOST_VAL}  in
 	x86_64-w64-mingw32)
-		MINGW_PACKAGES="gcc-mingw32"
-	;;
-	HOST_VAL=i686-w64-mingw32)
 		MINGW_PACKAGES="mingw-w64-x86-64-dev g++-mingw-w64-x86-64"
+		HOST_EXT="win64"
+	;;
+	i686-w64-mingw32)
+		MINGW_PACKAGES="gcc-mingw32"
+		HOST_EXT="win32"
 	;;
 	*)
-	echo "Unknown host... please install deps manually,or alter script"
-	return
+		echo "Unknown host... please install deps manually,or alter script"
+		exit 1	
 	;;
 esac
 
@@ -983,6 +1030,7 @@ build_mathgl
 build_ftgl 
 
 
+build_3Depict
 
 make_package
 
