@@ -668,7 +668,7 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 	unsigned int numIons;	
 	
 	
-	//Read out the number of ions and ranges int hef ile	
+	//Read out the number of ions and ranges in the file	
 	if(fscanf(fpRange, "%64u %64u", &numIons, &numRanges) != 2)
 	{
 		
@@ -957,7 +957,11 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 			composeMap.insert(make_pair(ionNames[uj].first,uj));
 	}
 	//--
+		
 
+	//vector of entries that are multiples, but don't have a 
+	// matching compose key
+	std::vector<pair<size_t, map<size_t,size_t > > > unassignedMultiples;
 
 	//Loop through each range's freq table entries, to determine if
 	// the ion is composed (has more than one "1" in multiplicity listing)
@@ -966,19 +970,23 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 		std::map<size_t,size_t > freqEntries;
 		size_t freq;
 
+	
+		//Find the nonzero entries in this row
+		//--
 		freqEntries.clear();
 		freq=0;
 		for(size_t uj=0;uj<numIons;uj++)
 		{
 			size_t thisEntry;
 			thisEntry=frequencyEntries[numIons*ui+uj];
+			if(!thisEntry)
+				continue;
+		
+			//Record nonzero entries
 			freq+=thisEntry;
-
-			if(thisEntry)
-			{
-				freqEntries.insert(make_pair(uj,thisEntry));
-			}
+			freqEntries.insert(make_pair(uj,thisEntry));
 		}
+		//--
 
 		if(freq ==1)
 		{
@@ -989,39 +997,48 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 		}
 		else if (freq > 1)
 		{
-			//More complex case
-			// ion appears to be composed of multiple fragments.
-			//First entry is the ion name, second is the number of times it occurs 
-			// (ie value in freq table, on this range line)
-			vector<pair<string,size_t> > entries;
-
-			for(map<size_t,size_t>::iterator it=freqEntries.begin();it!=freqEntries.end();++it)
-				entries.push_back(make_pair(ionNames[it->first].first,it->second));
-
-			//try to match the composed name to the
-			size_t offset;
-			if(!matchComposedName(composeMap,entries,offset))
+			if(composeMap.empty())
 			{
-				//We failed to match the ion against a composed name.
-				// cannot deal with this case.
-				//
-				// we can't just build a new ion name,
-				// as we don't have a colour specification for this.
-				//
-				// We can't use the regular ion name, without 
-				// tracking multiplicity (and then what to do with it in every case - 
-				// seems only a special case for composition? eg. 
-				// Is it a sep. species when clustering? Who knows!)
-				delete[] inBuffer;
-				
-				return RANGE_ERR_DATA_NOMAPPED_IONNAME;
+				//We have a multiple, but no way of composing it!
+				// we will need ot build our own table entry.
+				// For now, just store the freq tableentry
+				unassignedMultiples.push_back(make_pair(ui,freqEntries));
+				ionIDs.push_back(-2);
+			}
+			else
+			{
+				//More complex case
+				// ion appears to be composed of multiple fragments.
+				//First entry is the ion name, second is the number of times it occurs 
+				// (ie value in freq table, on this range line)
+				vector<pair<string,size_t> > entries;
+
+				for(map<size_t,size_t>::iterator it=freqEntries.begin();it!=freqEntries.end();++it)
+					entries.push_back(make_pair(ionNames[it->first].first,it->second));
+
+				//try to match the composed name to the entries
+				size_t offset;
+				if(!matchComposedName(composeMap,entries,offset))
+				{
+					//We failed to match the ion against a composed name.
+					// cannot deal with this case.
+					//
+					// we can't just build a new ion name,
+					// as we don't have a colour specification for this.
+					//
+					// We can't use the regular ion name, without 
+					// tracking multiplicity (and then what to do with it in every case - 
+					// seems only a special case for composition? eg. 
+					// Is it a sep. species when clustering? Who knows!)
+					delete[] inBuffer;
+					
+					return RANGE_ERR_DATA_NOMAPPED_IONNAME;
+				}
+				ASSERT(offset < ionNames.size());
+				ionIDs.push_back( offset);
 			}
 
 
-
-
-			ASSERT(offset < ionNames.size());
-			ionIDs.push_back( offset);
 		}
 		else //0
 		{
@@ -1044,6 +1061,68 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 			ionIDs.pop_back();
 		}
 	}
+
+
+	//Check for any leftover unhandled cases
+	if(unassignedMultiples.size())
+	{
+		//OK, so we didn't deal with a few cases before
+		// lets sort these out now
+
+		//Create a name + list of ranges mapping
+		map<string,vector<int> > newNames;
+		
+		for(size_t ui=0;ui<unassignedMultiples.size();ui++)
+		{
+			ComparePairFirstReverse cmp;
+			//create a flattened name from the map as a unique key
+			//eg { Cu , 2 } | { Au, 1} | {O , 3} => O3Cu2Au
+			//--
+			{
+			vector<pair<size_t,size_t> > flatData;
+			
+			std::map<size_t,size_t> &m=unassignedMultiples[ui].second;
+			for(std::map<size_t,size_t>::const_iterator it=m.begin(); it!=m.end();++it)
+				flatData.push_back(make_pair(it->first,it->second));
+			std::sort(flatData.begin(),flatData.end(),cmp);
+
+			string nameStr;
+			for(size_t uj=0;uj<flatData.size();uj++)
+			{
+				string tmpStr;
+
+				stream_cast(tmpStr,flatData[uj].second);
+				//Use short name then value
+				nameStr+=ionNames[flatData[uj].first].first + tmpStr;
+			}
+			
+			//Append the new range/create a new entry
+			newNames[nameStr].push_back(unassignedMultiples[ui].first);
+
+
+			}
+		}
+
+		//Create one new name per new string we generated,
+		for(map<string,vector<int> >::iterator it=newNames.begin(); it!=newNames.end();++it)
+		{
+			for(size_t ui=0;ui<it->second.size();ui++)
+			{
+				ASSERT(ionIDs[it->second[ui]] == (size_t)-2);
+				ionIDs[it->second[ui]] =ionNames.size();
+			}
+			ionNames.push_back(make_pair(it->first,it->first));
+			//make a new random colour
+			RGBf col;
+			col.red=rand()/(float)std::numeric_limits<int>::max();
+			col.green=rand()/(float)std::numeric_limits<int>::max();
+			col.blue=rand()/(float)std::numeric_limits<int>::max();
+
+			colours.push_back(col);
+		}
+
+	}
+
 
 	delete[] inBuffer;
 	return 0;

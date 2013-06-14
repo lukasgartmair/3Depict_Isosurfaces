@@ -411,6 +411,7 @@ bool rangeFileLoadTests()
 	failSet.insert("test6.rng");
 	ionCountMap["test7.rng"]=2; rangeCountMap["test7.rng"]=2;
 	ionCountMap["test8.rng"]=2; rangeCountMap["test8.rng"]=2;
+	ionCountMap["test11.rng"]=5; rangeCountMap["test11.rng"]=10;
 
 	ionCountMap["test1.rrng"]=1; rangeCountMap["test1.rrng"]=1;
 	ionCountMap["test2.rrng"]=3; rangeCountMap["test2.rrng"]=6; 
