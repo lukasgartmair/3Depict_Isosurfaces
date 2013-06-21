@@ -214,12 +214,11 @@ unsigned int CropPanel::getBestCropWidget(float xMouse, float yMouse,unsigned in
 	
 	float meanPx = 1.0/(1.0/(w-2) + 1.0/(h-2));
 	unsigned int minIndex;
-	float minDist,x,y;
+	float minDist,tmpDist,x,y;
 	//work our way clockwise around the corners
 	//finding the minimum distance
 	for(unsigned int ui=0;ui<4;ui++)
 	{
-		float tmpDist;
 		//Check this corner
 		switch(ui)
 		{

@@ -390,6 +390,11 @@ void genColString(unsigned char r, unsigned char g,
 //Strip "whitespace"
 std::string stripWhite(const std::string &str)
 {
+	return stripChars(str,"\f\n\r\t ");
+}
+
+std::string stripChars(const std::string &str, const char *chars)
+{
 	using std::string;
 
 	size_t start;
@@ -397,8 +402,8 @@ std::string stripWhite(const std::string &str)
 	if(!str.size())
 	      return str;
 
- 	start = str.find_first_not_of("\f\n\r\t ");
-	end = str.find_last_not_of("\f\n\r\t ");
+ 	start = str.find_first_not_of(chars);
+	end = str.find_last_not_of(chars);
 	if(start == string::npos) 
 		return string("");
 	else

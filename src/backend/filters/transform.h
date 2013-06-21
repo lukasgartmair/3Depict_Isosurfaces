@@ -47,7 +47,7 @@ class TransformFilter : public Filter
 		static std::string getNoiseTypeString(unsigned int i);
 
 		//!Make the marker sphere
-		DrawStreamData* makeMarkerSphere(SelectionDevice<Filter>* &s) const;
+		DrawStreamData* makeMarkerSphere(SelectionDevice* &s) const;
 		
 		//!random number generator
 		RandNumGen randGen;

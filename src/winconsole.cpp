@@ -16,6 +16,9 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+//Prevent 
+#if defined(__WIN32) || defined(__WIN64)
+
 // winconsole.cpp
 #include "winconsole.h"
 #include <cstdio>
@@ -53,3 +56,5 @@ winconsole::~winconsole()
   // remove the winconsole window
   FreeConsole();
 }
+
+#endif

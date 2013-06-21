@@ -66,8 +66,8 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am__3Depict_SOURCES_DIST = 3Depict.cpp testing.cpp pngread.c \
-	wxcomponents.cpp wxcommon.cpp testing.h winconsole.h pngread.h \
+am__3Depict_SOURCES_DIST = 3Depict.cpp testing.cpp wxcomponents.cpp \
+	wxcommon.cpp winconsole.cpp testing.h winconsole.h \
 	wxcomponents.h wxcommon.h gui/mainFrame.cpp gui/mathglPane.cpp \
 	gui/cropPanel.cpp gui/glPane.cpp gui/dialogs/ExportPos.cpp \
 	gui/dialogs/ExportRngDialog.cpp gui/dialogs/prefDialog.cpp \
@@ -115,25 +115,27 @@ am__3Depict_SOURCES_DIST = 3Depict.cpp testing.cpp pngread.c \
 	backend/APT/APTRanges.cpp backend/filters/K3DTree.cpp \
 	backend/filters/K3DTree-mk2.cpp backend/filter.cpp \
 	backend/filters/rdf.cpp backend/viscontrol.cpp \
-	backend/plot.cpp backend/configFile.cpp backend/animator.h \
-	backend/filtertreeAnalyse.h backend/filtertree.h \
-	backend/APT/APTClasses.h backend/APT/APTRanges.h \
-	backend/filters/K3DTree.h backend/filters/K3DTree-mk2.h \
-	backend/filter.h backend/filters/rdf.h backend/viscontrol.h \
+	backend/state.cpp backend/plot.cpp backend/configFile.cpp \
+	backend/animator.h backend/filtertreeAnalyse.h \
+	backend/filtertree.h backend/APT/APTClasses.h \
+	backend/APT/APTRanges.h backend/filters/K3DTree.h \
+	backend/filters/K3DTree-mk2.h backend/filter.h \
+	backend/filters/rdf.h backend/viscontrol.h backend/state.h \
 	backend/plot.h backend/configFile.h backend/tree.hh \
 	gl/scene.cpp gl/drawables.cpp gl/effect.cpp gl/textures.cpp \
 	gl/select.cpp gl/cameras.cpp gl/isoSurface.cpp gl/scene.h \
 	gl/drawables.h gl/effect.h gl/textures.h gl/select.h \
-	gl/cameras.h gl/isoSurface.h common/stringFuncs.cpp \
-	common/xmlHelper.cpp common/colourmap.cpp common/voxels.cpp \
-	common/mathfuncs.cpp common/basics.cpp common/stringFuncs.h \
+	gl/cameras.h gl/isoSurface.h common/pngread.c \
+	common/stringFuncs.cpp common/xmlHelper.cpp \
+	common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp \
+	common/basics.cpp common/pngread.h common/stringFuncs.h \
 	common/constants.h common/xmlHelper.h common/colourmap.h \
 	common/mathfuncs.h common/basics.h common/translation.h \
 	common/endianTest.h common/assertion.h common/voxels.h \
-	winconsole.cpp 3Depict.rc
+	3Depict.rc
 am__objects_1 = 3Depict-3Depict.$(OBJEXT) 3Depict-testing.$(OBJEXT) \
-	3Depict-pngread.$(OBJEXT) 3Depict-wxcomponents.$(OBJEXT) \
-	3Depict-wxcommon.$(OBJEXT)
+	3Depict-wxcomponents.$(OBJEXT) 3Depict-wxcommon.$(OBJEXT) \
+	3Depict-winconsole.$(OBJEXT)
 am__objects_2 =
 am__objects_3 = 3Depict-ExportPos.$(OBJEXT) \
 	3Depict-ExportRngDialog.$(OBJEXT) 3Depict-prefDialog.$(OBJEXT) \
@@ -165,22 +167,22 @@ am__objects_7 = 3Depict-animator.$(OBJEXT) \
 	3Depict-APTRanges.$(OBJEXT) 3Depict-K3DTree.$(OBJEXT) \
 	3Depict-K3DTree-mk2.$(OBJEXT) 3Depict-filter.$(OBJEXT) \
 	3Depict-rdf.$(OBJEXT) 3Depict-viscontrol.$(OBJEXT) \
-	3Depict-plot.$(OBJEXT) 3Depict-configFile.$(OBJEXT)
+	3Depict-state.$(OBJEXT) 3Depict-plot.$(OBJEXT) \
+	3Depict-configFile.$(OBJEXT)
 am__objects_8 = 3Depict-scene.$(OBJEXT) 3Depict-drawables.$(OBJEXT) \
 	3Depict-effect.$(OBJEXT) 3Depict-textures.$(OBJEXT) \
 	3Depict-select.$(OBJEXT) 3Depict-cameras.$(OBJEXT) \
 	3Depict-isoSurface.$(OBJEXT)
-am__objects_9 = 3Depict-stringFuncs.$(OBJEXT) \
-	3Depict-xmlHelper.$(OBJEXT) 3Depict-colourmap.$(OBJEXT) \
-	3Depict-voxels.$(OBJEXT) 3Depict-mathfuncs.$(OBJEXT) \
-	3Depict-basics.$(OBJEXT)
+am__objects_9 = 3Depict-pngread.$(OBJEXT) \
+	3Depict-stringFuncs.$(OBJEXT) 3Depict-xmlHelper.$(OBJEXT) \
+	3Depict-colourmap.$(OBJEXT) 3Depict-voxels.$(OBJEXT) \
+	3Depict-mathfuncs.$(OBJEXT) 3Depict-basics.$(OBJEXT)
 am__objects_10 = $(am__objects_1) $(am__objects_2) $(am__objects_4) \
 	$(am__objects_5) $(am__objects_6) $(am__objects_2) \
 	$(am__objects_7) $(am__objects_2) $(am__objects_8) \
 	$(am__objects_2) $(am__objects_9) $(am__objects_2)
 @HAVE_WINDRES_FALSE@am_3Depict_OBJECTS = $(am__objects_10)
 @HAVE_WINDRES_TRUE@am_3Depict_OBJECTS = $(am__objects_10) \
-@HAVE_WINDRES_TRUE@	3Depict-winconsole.$(OBJEXT) \
 @HAVE_WINDRES_TRUE@	3Depict.$(OBJEXT)
 3Depict_OBJECTS = $(am_3Depict_OBJECTS)
 am__DEPENDENCIES_1 =
@@ -363,8 +365,10 @@ MSYS_PATH = /c/msys/1.0/local/include/
 
 
 #------- Common header files for all sub-modules
-COMMON_SOURCE_FILES = common/stringFuncs.cpp common/xmlHelper.cpp common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp
-COMMON_HEADER_FILES = common/stringFuncs.h  common/constants.h  common/xmlHelper.h common/colourmap.h common/mathfuncs.h common/basics.h common/translation.h common/endianTest.h common/assertion.h common/voxels.h
+COMMON_SOURCE_FILES = common/pngread.c common/stringFuncs.cpp common/xmlHelper.cpp common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp
+COMMON_HEADER_FILES = common/pngread.h common/stringFuncs.h  common/constants.h  common/xmlHelper.h common/colourmap.h \
+		      	common/mathfuncs.h common/basics.h common/translation.h common/endianTest.h common/assertion.h common/voxels.h
+
 
 #-----------
 
@@ -392,13 +396,13 @@ BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backen
 		     	backend/APT/APTClasses.cpp backend/APT/APTRanges.cpp \
 			backend/filters/K3DTree.cpp backend/filters/K3DTree-mk2.cpp\
 			backend/filter.cpp backend/filters/rdf.cpp \
-		       backend/viscontrol.cpp backend/plot.cpp  backend/configFile.cpp 
+		       backend/viscontrol.cpp backend/state.cpp backend/plot.cpp  backend/configFile.cpp 
 
 BACKEND_HEADER_FILES = backend/animator.h backend/filtertreeAnalyse.h backend/filtertree.h\
 			backend/APT/APTClasses.h backend/APT/APTRanges.h \
 			backend/filters/K3DTree.h backend/filters/K3DTree-mk2.h \
 			backend/filter.h backend/filters/rdf.h \
-			backend/viscontrol.h  backend/plot.h backend/configFile.h \
+			backend/viscontrol.h backend/state.h backend/plot.h backend/configFile.h \
 		        backend/tree.hh
 
 
@@ -407,7 +411,6 @@ BACKEND_HEADER_FILES = backend/animator.h backend/filtertreeAnalyse.h backend/fi
 #------------ OpenGL interface files
 OPENGL_HEADER_FILES = gl/scene.h gl/drawables.h gl/effect.h gl/textures.h gl/select.h gl/cameras.h gl/isoSurface.h
 OPENGL_SOURCE_FILES = gl/scene.cpp gl/drawables.cpp gl/effect.cpp gl/textures.cpp gl/select.cpp gl/cameras.cpp gl/isoSurface.cpp
-
 #------------
 
 #------------ Frontend (linked to UI in some way) files ---
@@ -417,7 +420,7 @@ DIALOG_SOURCE_FILES = gui/dialogs/ExportPos.cpp  gui/dialogs/ExportRngDialog.cpp
 		gui/dialogs/animateFilterDialog.cpp \
 		gui/dialogs/animateSubDialogs/colourKeyFrameDialog.cpp \
 		gui/dialogs/animateSubDialogs/stringKeyFrameDialog.cpp \
-		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.cpp
+		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.cpp 
 
 DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/dialogs/prefDialog.h \
 		gui/dialogs/StashDialog.h gui/dialogs/resolutionDialog.h \
@@ -426,12 +429,12 @@ DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/
 		gui/dialogs/animateSubDialogs/realKeyFrameDialog.h \
 		gui/dialogs/animateSubDialogs/colourKeyFrameDialog.h \
 		gui/dialogs/animateSubDialogs/stringKeyFrameDialog.h \
-		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.h
+		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.h 
 
 GUI_SOURCE_FILES = gui/mainFrame.cpp gui/mathglPane.cpp gui/cropPanel.cpp gui/glPane.cpp  $(DIALOG_SOURCE_FILES)
 GUI_HEADER_FILES = gui/mainFrame.h gui/mathglPane.h gui/cropPanel.h gui/art.h gui/glPane.h $(DIALOG_HEADER_FILES)
-BASE_SOURCE_FILES = 3Depict.cpp testing.cpp pngread.c wxcomponents.cpp wxcommon.cpp 
-BASE_HEADER_FILES = testing.h winconsole.h pngread.h  wxcomponents.h  wxcommon.h
+BASE_SOURCE_FILES = 3Depict.cpp testing.cpp  wxcomponents.cpp wxcommon.cpp winconsole.cpp 
+BASE_HEADER_FILES = testing.h winconsole.h   wxcomponents.h  wxcommon.h
 #-----------
 SOURCE_FILES = $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(GUI_SOURCE_FILES) $(GUI_HEADER_FILES) \
 	       $(FILTER_FILES) $(FILTER_HEADER_FILES) \
@@ -441,7 +444,7 @@ SOURCE_FILES = $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(GUI_SOURCE_FILES) $(G
 @HAVE_WINDRES_FALSE@3Depict_SOURCES = $(SOURCE_FILES)
 
 #Do we have or need windows-XP "resource" files for look and feel?
-@HAVE_WINDRES_TRUE@3Depict_SOURCES = $(SOURCE_FILES)  winconsole.cpp 3Depict.rc
+@HAVE_WINDRES_TRUE@3Depict_SOURCES = $(SOURCE_FILES)  3Depict.rc
 
 #Tarball options
 EXTRA_DIST = gui/glade-skeleton myAppIcon.ico
@@ -581,6 +584,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-select.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-spatialAnalysis.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-spectrumPlot.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-state.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-stringFuncs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-stringKeyFrameDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-testing.Po@am__quote@
@@ -608,19 +612,19 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(COMPILE) -c `$(CYGPATH_W) '$<'`
 
-3Depict-pngread.o: pngread.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CFLAGS) $(CFLAGS) -MT 3Depict-pngread.o -MD -MP -MF $(DEPDIR)/3Depict-pngread.Tpo -c -o 3Depict-pngread.o `test -f 'pngread.c' || echo '$(srcdir)/'`pngread.c
+3Depict-pngread.o: common/pngread.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CFLAGS) $(CFLAGS) -MT 3Depict-pngread.o -MD -MP -MF $(DEPDIR)/3Depict-pngread.Tpo -c -o 3Depict-pngread.o `test -f 'common/pngread.c' || echo '$(srcdir)/'`common/pngread.c
 @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/3Depict-pngread.Tpo $(DEPDIR)/3Depict-pngread.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='pngread.c' object='3Depict-pngread.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='common/pngread.c' object='3Depict-pngread.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CFLAGS) $(CFLAGS) -c -o 3Depict-pngread.o `test -f 'pngread.c' || echo '$(srcdir)/'`pngread.c
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CFLAGS) $(CFLAGS) -c -o 3Depict-pngread.o `test -f 'common/pngread.c' || echo '$(srcdir)/'`common/pngread.c
 
-3Depict-pngread.obj: pngread.c
-@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CFLAGS) $(CFLAGS) -MT 3Depict-pngread.obj -MD -MP -MF $(DEPDIR)/3Depict-pngread.Tpo -c -o 3Depict-pngread.obj `if test -f 'pngread.c'; then $(CYGPATH_W) 'pngread.c'; else $(CYGPATH_W) '$(srcdir)/pngread.c'; fi`
+3Depict-pngread.obj: common/pngread.c
+@am__fastdepCC_TRUE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CFLAGS) $(CFLAGS) -MT 3Depict-pngread.obj -MD -MP -MF $(DEPDIR)/3Depict-pngread.Tpo -c -o 3Depict-pngread.obj `if test -f 'common/pngread.c'; then $(CYGPATH_W) 'common/pngread.c'; else $(CYGPATH_W) '$(srcdir)/common/pngread.c'; fi`
 @am__fastdepCC_TRUE@	$(am__mv) $(DEPDIR)/3Depict-pngread.Tpo $(DEPDIR)/3Depict-pngread.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='pngread.c' object='3Depict-pngread.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='common/pngread.c' object='3Depict-pngread.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CFLAGS) $(CFLAGS) -c -o 3Depict-pngread.obj `if test -f 'pngread.c'; then $(CYGPATH_W) 'pngread.c'; else $(CYGPATH_W) '$(srcdir)/pngread.c'; fi`
+@am__fastdepCC_FALSE@	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CFLAGS) $(CFLAGS) -c -o 3Depict-pngread.obj `if test -f 'common/pngread.c'; then $(CYGPATH_W) 'common/pngread.c'; else $(CYGPATH_W) '$(srcdir)/common/pngread.c'; fi`
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	$(CXXCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -691,6 +695,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='wxcommon.cpp' object='3Depict-wxcommon.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-wxcommon.obj `if test -f 'wxcommon.cpp'; then $(CYGPATH_W) 'wxcommon.cpp'; else $(CYGPATH_W) '$(srcdir)/wxcommon.cpp'; fi`
+
+3Depict-winconsole.o: winconsole.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-winconsole.o -MD -MP -MF $(DEPDIR)/3Depict-winconsole.Tpo -c -o 3Depict-winconsole.o `test -f 'winconsole.cpp' || echo '$(srcdir)/'`winconsole.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-winconsole.Tpo $(DEPDIR)/3Depict-winconsole.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='winconsole.cpp' object='3Depict-winconsole.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-winconsole.o `test -f 'winconsole.cpp' || echo '$(srcdir)/'`winconsole.cpp
+
+3Depict-winconsole.obj: winconsole.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-winconsole.obj -MD -MP -MF $(DEPDIR)/3Depict-winconsole.Tpo -c -o 3Depict-winconsole.obj `if test -f 'winconsole.cpp'; then $(CYGPATH_W) 'winconsole.cpp'; else $(CYGPATH_W) '$(srcdir)/winconsole.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-winconsole.Tpo $(DEPDIR)/3Depict-winconsole.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='winconsole.cpp' object='3Depict-winconsole.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-winconsole.obj `if test -f 'winconsole.cpp'; then $(CYGPATH_W) 'winconsole.cpp'; else $(CYGPATH_W) '$(srcdir)/winconsole.cpp'; fi`
 
 3Depict-mainFrame.o: gui/mainFrame.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-mainFrame.o -MD -MP -MF $(DEPDIR)/3Depict-mainFrame.Tpo -c -o 3Depict-mainFrame.o `test -f 'gui/mainFrame.cpp' || echo '$(srcdir)/'`gui/mainFrame.cpp
@@ -1294,6 +1312,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-viscontrol.obj `if test -f 'backend/viscontrol.cpp'; then $(CYGPATH_W) 'backend/viscontrol.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/viscontrol.cpp'; fi`
 
+3Depict-state.o: backend/state.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-state.o -MD -MP -MF $(DEPDIR)/3Depict-state.Tpo -c -o 3Depict-state.o `test -f 'backend/state.cpp' || echo '$(srcdir)/'`backend/state.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-state.Tpo $(DEPDIR)/3Depict-state.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backend/state.cpp' object='3Depict-state.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-state.o `test -f 'backend/state.cpp' || echo '$(srcdir)/'`backend/state.cpp
+
+3Depict-state.obj: backend/state.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-state.obj -MD -MP -MF $(DEPDIR)/3Depict-state.Tpo -c -o 3Depict-state.obj `if test -f 'backend/state.cpp'; then $(CYGPATH_W) 'backend/state.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/state.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-state.Tpo $(DEPDIR)/3Depict-state.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backend/state.cpp' object='3Depict-state.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-state.obj `if test -f 'backend/state.cpp'; then $(CYGPATH_W) 'backend/state.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/state.cpp'; fi`
+
 3Depict-plot.o: backend/plot.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-plot.o -MD -MP -MF $(DEPDIR)/3Depict-plot.Tpo -c -o 3Depict-plot.o `test -f 'backend/plot.cpp' || echo '$(srcdir)/'`backend/plot.cpp
 @am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-plot.Tpo $(DEPDIR)/3Depict-plot.Po
@@ -1503,20 +1535,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='common/basics.cpp' object='3Depict-basics.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-basics.obj `if test -f 'common/basics.cpp'; then $(CYGPATH_W) 'common/basics.cpp'; else $(CYGPATH_W) '$(srcdir)/common/basics.cpp'; fi`
-
-3Depict-winconsole.o: winconsole.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-winconsole.o -MD -MP -MF $(DEPDIR)/3Depict-winconsole.Tpo -c -o 3Depict-winconsole.o `test -f 'winconsole.cpp' || echo '$(srcdir)/'`winconsole.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-winconsole.Tpo $(DEPDIR)/3Depict-winconsole.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='winconsole.cpp' object='3Depict-winconsole.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-winconsole.o `test -f 'winconsole.cpp' || echo '$(srcdir)/'`winconsole.cpp
-
-3Depict-winconsole.obj: winconsole.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-winconsole.obj -MD -MP -MF $(DEPDIR)/3Depict-winconsole.Tpo -c -o 3Depict-winconsole.obj `if test -f 'winconsole.cpp'; then $(CYGPATH_W) 'winconsole.cpp'; else $(CYGPATH_W) '$(srcdir)/winconsole.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-winconsole.Tpo $(DEPDIR)/3Depict-winconsole.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='winconsole.cpp' object='3Depict-winconsole.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-winconsole.obj `if test -f 'winconsole.cpp'; then $(CYGPATH_W) 'winconsole.cpp'; else $(CYGPATH_W) '$(srcdir)/winconsole.cpp'; fi`
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \

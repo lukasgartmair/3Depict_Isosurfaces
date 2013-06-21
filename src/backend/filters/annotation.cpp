@@ -193,7 +193,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 		dt->setAlignment(DRAWTEXT_ALIGN_CENTRE);
 		
 		dt->canSelect=true;
-		SelectionDevice<Filter> *s = new SelectionDevice<Filter>(this);
+		SelectionDevice *s = new SelectionDevice(this);
 		SelectionBinding bind[1];
 		
 		bind[0].setBinding(SELECT_BUTTON_LEFT,0,DRAW_TEXT_BIND_ORIGIN,
@@ -222,7 +222,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 		dv->canSelect=true;
 		dv->wantsLight=true;
 
-		SelectionDevice<Filter> *s = new SelectionDevice<Filter>(this);
+		SelectionDevice *s = new SelectionDevice(this);
 		SelectionBinding bind[2];
 		
 		bind[0].setBinding(SELECT_BUTTON_LEFT,0,DRAW_VECTOR_BIND_TARGET,
@@ -248,7 +248,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 		for(unsigned int ui=0;ui<3;ui++)
 		{
 			DrawSphere *dS;
-			SelectionDevice<Filter> *s= new SelectionDevice<Filter>(this);
+			SelectionDevice *s= new SelectionDevice(this);
 			SelectionBinding bind[2];
 
 			dS=new DrawSphere;
@@ -452,7 +452,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 			dS->canSelect=true;
 			dS->wantsLight=true;
 			
-			SelectionDevice<Filter> *s= new SelectionDevice<Filter>(this);
+			SelectionDevice *s= new SelectionDevice(this);
 			SelectionBinding bind[4];
 			//Create binding for sphere translation.
 			//Note that each binding is a bit different, as it
@@ -475,7 +475,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 		
 		
 			//Now do the second sphere (end marker)
-			s= new SelectionDevice<Filter>(this);
+			s= new SelectionDevice(this);
 			dS = new DrawSphere;
 			
 			dS->setRadius(linearMeasureMarkerSize);

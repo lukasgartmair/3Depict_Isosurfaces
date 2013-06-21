@@ -558,7 +558,7 @@ void IonInfoFilter::setPropFromBinding(const SelectionBinding &b)
 }
 
 unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStreamData*> &data, 
-								float &volume,bool (*callback)(bool))const
+								float &volume,bool (*callback)(bool))
 {
 	volume=0;
 

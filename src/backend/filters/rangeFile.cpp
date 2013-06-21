@@ -19,15 +19,6 @@
 
 #include "filterCommon.h"
 
-enum
-{
-	KEY_RANGE_ACTIVE=1,
-	KEY_DROP_UNRANGED,
-	KEY_RANGE_FILENAME,
-	KEY_RANGE_IONID,
-	KEY_ENABLE_ALL_IONS, //Limited to ~100K ions
-	KEY_ENABLE_ALL_RANGES=100000,
-};
 
 const unsigned int NUM_ROWS_ION=3;
 const unsigned int NUM_ROWS_RANGE=4;
@@ -504,7 +495,7 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 	prop.name=TRANS("File");
 	prop.type=PROPERTY_TYPE_STRING;
 	prop.helpText=TRANS("File to use for range data");
-	prop.key=KEY_RANGE_FILENAME;
+	prop.key=RANGE_KEY_RANGE_FILENAME;
 	prop.data=rngName;
 
 	p.addProperty(prop,curGroup);	
@@ -518,7 +509,7 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 	prop.name=TRANS("Drop unranged");
 	prop.type=PROPERTY_TYPE_BOOL;
 	prop.helpText=TRANS("Remove unranged points when generating output");
-	prop.key=KEY_DROP_UNRANGED;
+	prop.key=RANGE_KEY_DROP_UNRANGED;
 	prop.data=tmpStr;
 
 	p.addProperty(prop,curGroup);
@@ -541,7 +532,7 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 		prop.helpText=TRANS("Enable/disable all ions at once");
 		prop.data=str;
 		prop.type=PROPERTY_TYPE_BOOL;
-		prop.key=KEY_ENABLE_ALL_IONS;
+		prop.key=RANGE_KEY_ENABLE_ALL_IONS;
 
 		p.addProperty(prop,curGroup);
 
@@ -557,7 +548,7 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 			prop.helpText=TRANS("Enable/disable specified ion");
 			prop.data=rng.getName(ui);
 			prop.type=PROPERTY_TYPE_STRING;
-			prop.key=NUM_ROWS_ION*ui+1+KEY_ENABLE_ALL_IONS;
+			prop.key=NUM_ROWS_ION*ui+1+RANGE_KEY_ENABLE_ALL_IONS;
 
 			p.addProperty(prop,curGroup);
 
@@ -571,7 +562,7 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 			prop.type=PROPERTY_TYPE_BOOL;
 			prop.helpText=TRANS("If true, ion is used in output");
 			prop.data=str;
-			prop.key=NUM_ROWS_ION*ui+2+KEY_ENABLE_ALL_IONS;
+			prop.key=NUM_ROWS_ION*ui+2+RANGE_KEY_ENABLE_ALL_IONS;
 		
 			p.addProperty(prop,curGroup);
 
@@ -587,7 +578,7 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 			prop.data=thisCol;
 			prop.type=PROPERTY_TYPE_COLOUR;
 			prop.helpText=TRANS("Colour used to represent ion");
-			prop.key=NUM_ROWS_ION*ui+3+KEY_ENABLE_ALL_IONS;
+			prop.key=NUM_ROWS_ION*ui+3+RANGE_KEY_ENABLE_ALL_IONS;
 
 			p.addProperty(prop,curGroup);
 		}
@@ -614,7 +605,7 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 		prop.helpText=TRANS("Enable/disable all ranges");
 		prop.data=str;
 		prop.type=PROPERTY_TYPE_BOOL;
-		prop.key=KEY_ENABLE_ALL_RANGES;
+		prop.key=RANGE_KEY_ENABLE_ALL_RANGES;
 	
 		p.addProperty(prop,curGroup);
 		
@@ -633,14 +624,14 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 			prop.data=str;
 			prop.type=PROPERTY_TYPE_BOOL;
 			prop.helpText=TRANS("Enable/disable specified range (ion must also be enabled to activiate range)");
-			prop.key=KEY_ENABLE_ALL_RANGES+NUM_ROWS_RANGE*ui+1;
+			prop.key=RANGE_KEY_ENABLE_ALL_RANGES+NUM_ROWS_RANGE*ui+1;
 			p.addProperty(prop,curGroup);
 
 			prop.name=string(TRANS("Ion ")) + suffix;
 			prop.data=rng.getName(rng.getIonID(ui));
 			prop.type=PROPERTY_TYPE_STRING;
 			prop.helpText=TRANS("Name of ion associate to this range");
-			prop.key=KEY_ENABLE_ALL_RANGES+NUM_ROWS_RANGE*ui+2;
+			prop.key=RANGE_KEY_ENABLE_ALL_RANGES+NUM_ROWS_RANGE*ui+2;
 			p.addProperty(prop,curGroup);
 
 			std::pair<float,float > thisRange;
@@ -652,7 +643,7 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 			prop.data=rangeVal;
 			prop.type=PROPERTY_TYPE_REAL;
 			prop.helpText=TRANS("Start value for range");
-			prop.key=KEY_ENABLE_ALL_RANGES + NUM_ROWS_RANGE*ui +3;
+			prop.key=RANGE_KEY_ENABLE_ALL_RANGES + NUM_ROWS_RANGE*ui +3;
 			p.addProperty(prop,curGroup);
 		
 			stream_cast(rangeVal,thisRange.second);
@@ -660,7 +651,7 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 			prop.data=rangeVal;
 			prop.type=PROPERTY_TYPE_REAL;
 			prop.helpText=TRANS("Stopping value for range`");
-			prop.key=KEY_ENABLE_ALL_RANGES+NUM_ROWS_RANGE*ui+4;
+			prop.key=RANGE_KEY_ENABLE_ALL_RANGES+NUM_ROWS_RANGE*ui+4;
 			p.addProperty(prop,curGroup);
 		}
 		p.setGroupTitle(curGroup,TRANS("Ranges"));
@@ -678,7 +669,7 @@ bool RangeFileFilter::setProperty(unsigned int key,
 
 	switch(key)
 	{
-		case KEY_RANGE_FILENAME:
+		case RANGE_KEY_RANGE_FILENAME:
 		{
 			if(value != rngName)
 			{
@@ -708,7 +699,7 @@ bool RangeFileFilter::setProperty(unsigned int key,
 
 			break;
 		}
-		case KEY_DROP_UNRANGED: //Enable/disable unranged dropping
+		case RANGE_KEY_DROP_UNRANGED: //Enable/disable unranged dropping
 		{
 			unsigned int valueInt;
 			if(stream_cast(valueInt,value))
@@ -716,7 +707,7 @@ bool RangeFileFilter::setProperty(unsigned int key,
 
 			if(valueInt ==0 || valueInt == 1)
 			{
-				if((int)dropUnranged!= valueInt)
+				if(dropUnranged!= (bool)valueInt)
 				{
 					needUpdate=true;
 					dropUnranged=valueInt;
@@ -732,7 +723,7 @@ bool RangeFileFilter::setProperty(unsigned int key,
 
 			break;
 		}	
-		case KEY_ENABLE_ALL_RANGES:
+		case RANGE_KEY_ENABLE_ALL_RANGES:
 		{
 
 			bool allEnable;
@@ -759,7 +750,7 @@ bool RangeFileFilter::setProperty(unsigned int key,
 
 			break;
 		}
-		case KEY_ENABLE_ALL_IONS:
+		case RANGE_KEY_ENABLE_ALL_IONS:
 		{
 
 			bool allEnable;
@@ -787,15 +778,15 @@ bool RangeFileFilter::setProperty(unsigned int key,
 		}
 		default:
 		{
-			if(key < KEY_ENABLE_ALL_RANGES)
+			if(key < RANGE_KEY_ENABLE_ALL_RANGES)
 			{
 				//structured group, each with NUM_ROWS_ION per grouping.
 				//The ion ID is simply the row number/NUM_ROWS_ION.
 				//similarly the element is given by remainder 
-				unsigned int ionID=((key-1)-KEY_ENABLE_ALL_IONS)/NUM_ROWS_ION;
+				unsigned int ionID=((key-1)-RANGE_KEY_ENABLE_ALL_IONS)/NUM_ROWS_ION;
 				ASSERT(ionID < rng.getNumIons());
-				ASSERT(key <=NUM_ROWS_ION*rng.getNumIons()+KEY_ENABLE_ALL_IONS);
-				unsigned int prop = ((key-1)-KEY_ENABLE_ALL_IONS)-ionID*NUM_ROWS_ION;
+				ASSERT(key <=NUM_ROWS_ION*rng.getNumIons()+RANGE_KEY_ENABLE_ALL_IONS);
+				unsigned int prop = ((key-1)-RANGE_KEY_ENABLE_ALL_IONS)-ionID*NUM_ROWS_ION;
 
 				switch(prop)
 				{
@@ -860,8 +851,8 @@ bool RangeFileFilter::setProperty(unsigned int key,
 			}
 			else
 			{
-				unsigned int rangeId=((key-1)-KEY_ENABLE_ALL_RANGES)/NUM_ROWS_RANGE;
-				unsigned int prop = ((key-1)-KEY_ENABLE_ALL_RANGES)-rangeId*NUM_ROWS_RANGE;
+				unsigned int rangeId=((key-1)-RANGE_KEY_ENABLE_ALL_RANGES)/NUM_ROWS_RANGE;
+				unsigned int prop = ((key-1)-RANGE_KEY_ENABLE_ALL_RANGES)-rangeId*NUM_ROWS_RANGE;
 				switch(prop)
 				{
 					//Range active

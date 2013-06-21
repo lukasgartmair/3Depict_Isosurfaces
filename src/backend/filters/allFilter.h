@@ -33,6 +33,10 @@
 #include "ionInfo.h"
 #include "annotation.h"
 
+
+//!Returns true if the string is a valid filter name
+bool isValidFilterName(const std::string &s);
+
 //!Create a "true default" filter from its true name string
 Filter *makeFilter(const string  &s) ;
 //!Create a true default filter from its enum value FILTER_TYPE_*

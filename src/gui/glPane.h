@@ -18,10 +18,12 @@
 #ifndef GLPANE_H
 #define GLPANE_H
  
-#include <wx/glcanvas.h>
 
 #include "gl/scene.h"
 
+#include <wx/glcanvas.h>
+#include <wx/timer.h>
+#include <wx/statusbr.h>
 
 class BasicGLPane : public wxGLCanvas
 {

@@ -16,13 +16,26 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#if defined(WIN32) || defined(WIN64)
+#include <GL/glew.h>
+#endif
+
 #include "scene.h"
 
-
+#include "./backend/viscontrol.h"
+#include "./backend/filter.h"
 
 using std::vector;
 
-Scene::Scene() : tempCam(0), activeCam(0), cameraSet(false), outWinAspect(1.0f), r(0.0f), g(0.0f), b(0.0f)
+
+//
+const char ANIMATE_PROGRESS_BASENAME[] = {
+	"textures/animProgress"};
+unsigned int ANIMATE_PROGRESS_NUMFRAMES=3;
+
+
+
+Scene::Scene() : tempCam(0), cameraSet(true), outWinAspect(1.0f), r(0.0f), g(0.0f), b(0.0f)
 {
 	lastHovered=lastSelected=(unsigned int)(-1);
 	lockInteract=false;
@@ -32,21 +45,44 @@ Scene::Scene() : tempCam(0), activeCam(0), cameraSet(false), outWinAspect(1.0f),
 	useLighting=true;
 	useEffects=false;
 	showAxis=true;
+	attemptedLoadProgressAnim=false;
+	showProgressAnimation=false;
 
 	//default to black
 	rBack=gBack=bBack=0.0f;
+
+	activeCam = new CameraLookAt;
+
+	//Initialise GLEW
+#if defined(WIN32) || defined(WIN64)
+	if(glewInit())
+	{
+		cerr << "Opengl context could not be created, aborting." << endl;
+		//Blow up without opengl
+		exit(1);
+	}
+#endif
+
+
+	DrawableObj::setTexPool(new TexturePool);
 
 }
 
 Scene::~Scene()
 {
 	clearAll();
+	DrawableObj::clearTexPool();
 }
 
 unsigned int Scene::initDraw()
 {
 	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
 
+	//Will it blend? That is the question...
+	// let the objects know about this, so they
+	// can pick the right algorithm
+	DrawableObj::setUseAlphaBlending(useAlpha);
+	
 	if(useAlpha)
 		glEnable(GL_BLEND);
 	else
@@ -66,9 +102,6 @@ unsigned int Scene::initDraw()
 	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
 
 
-
-
-	glDisable(GL_LIGHTING);
 	//==
 	
 	//Use the active if set 
@@ -79,7 +112,27 @@ unsigned int Scene::initDraw()
 
 	}
 
+	//Attempt to load the progress animation, if we have not tried before
+	if(!attemptedLoadProgressAnim)
+	{
+		attemptedLoadProgressAnim=true;
 
+		//Load the animation textures
+		vector<string> animFiles;
+		animFiles.resize(ANIMATE_PROGRESS_NUMFRAMES);
+		string animFilename,tmpStr;
+		for(size_t ui=0;ui<ANIMATE_PROGRESS_NUMFRAMES;ui++)
+		{
+			animFilename=ANIMATE_PROGRESS_BASENAME;
+			stream_cast(tmpStr,ui);
+			animFilename+=tmpStr + string(".png");
+			animFiles[ui]=animFilename;
+		}
+
+		progressAnimTex.setTexture(animFiles);
+
+		updateProgressOverlay();
+	}
 
 	//Let the effects objects know about the scene
 	Effect::setBoundingCube(boundCube);
@@ -117,6 +170,18 @@ void Scene::updateCam(const Camera *camToUse) const
 
 }
 
+void Scene::updateProgressOverlay()
+{
+	progressAnimTex.setPos(0.9*winX,0.9*winY);
+	progressAnimTex.setSize(0.1*winX);
+	//Cycle every this many seconds
+	progressAnimTex.setRepeatTime(6.0f);
+	//Ramp opacity for this long (seconds)
+	progressAnimTex.setFadeInTime(1.0f);
+	//Don't show the animation until this many sceonds
+	progressAnimTex.setShowDelayTime(1.0f);
+}
+
 void Scene::draw() 
 {
 
@@ -127,12 +192,10 @@ void Scene::draw()
 	if(tempCam)
 		camToUse=tempCam;
 	else
-	{
-		ASSERT(activeCam < cameras.size());
-		camToUse=cameras[activeCam];
-	}
+		camToUse=activeCam;
 	//Inform text about current camera, so it can billboard if needed
 	DrawableObj::setCurCamera(camToUse);
+	DrawableObj::setWindowSize(winX,winY);
 	Effect::setCurCam(camToUse);
 
 
@@ -223,6 +286,9 @@ void Scene::draw()
 	if(!lockInteract&& lastHovered != (unsigned int)(-1) )
 		drawHoverOverlay();
 	drawOverlays();
+
+	//Draw progress, if needed
+	drawProgressAnim();
 
 }
 
@@ -365,16 +431,8 @@ void Scene::drawHoverOverlay()
 
 
 		const float ICON_SIZE= 0.05;
-		binderIcons.setTexturePool(&texPool);
-		binderIcons.setWindowSize(winX,winY);	
 		binderIcons.setSize(ICON_SIZE*winY);
-		
-		mouseIcons.setTexturePool(&texPool);
-		mouseIcons.setWindowSize(winX,winY);	
 		mouseIcons.setSize(ICON_SIZE*winY);
-	
-		keyIcons.setTexturePool(&texPool);
-		keyIcons.setWindowSize(winX,winY);	
 		keyIcons.setSize(ICON_SIZE*winY);
 
 		unsigned int iconNum=0;
@@ -388,14 +446,14 @@ void Scene::drawHoverOverlay()
 				case BIND_MODE_FLOAT_SCALE:
 				case BIND_MODE_FLOAT_TRANSLATE:
 				case BIND_MODE_POINT3D_SCALE:
-					foundIconTex=binderIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_ENLARGE]);
+					foundIconTex=binderIcons.setTexture(TEXTURE_OVERLAY_PNG[TEXTURE_ENLARGE]);
 					break;
 				case BIND_MODE_POINT3D_TRANSLATE:
-					foundIconTex=binderIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_TRANSLATE]);
+					foundIconTex=binderIcons.setTexture(TEXTURE_OVERLAY_PNG[TEXTURE_TRANSLATE]);
 					break;
 				case BIND_MODE_POINT3D_ROTATE:
 				case BIND_MODE_POINT3D_ROTATE_LOCK:
-					foundIconTex=binderIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_ROTATE]);
+					foundIconTex=binderIcons.setTexture(TEXTURE_OVERLAY_PNG[TEXTURE_ROTATE]);
 				default:
 					break;
 			}
@@ -404,13 +462,13 @@ void Scene::drawHoverOverlay()
 			switch(binder[ui]->getMouseButtons())
 			{
 				case SELECT_BUTTON_LEFT:
-					foundMouseTex=mouseIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_LEFT_CLICK]);
+					foundMouseTex=mouseIcons.setTexture(TEXTURE_OVERLAY_PNG[TEXTURE_LEFT_CLICK]);
 					break;
 				case SELECT_BUTTON_MIDDLE:
-					foundMouseTex=mouseIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_MIDDLE_CLICK]);
+					foundMouseTex=mouseIcons.setTexture(TEXTURE_OVERLAY_PNG[TEXTURE_MIDDLE_CLICK]);
 					break;
 				case SELECT_BUTTON_RIGHT:
-					foundMouseTex=mouseIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_RIGHT_CLICK]);
+					foundMouseTex=mouseIcons.setTexture(TEXTURE_OVERLAY_PNG[TEXTURE_RIGHT_CLICK]);
 					break;
 				default:
 					//The flags are or'd together, so we can get other combinations
@@ -424,13 +482,13 @@ void Scene::drawHoverOverlay()
 			{
 				case FLAG_CMD:
 #ifdef __APPLE__
-					foundKeyTex=keyIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_COMMAND]);
+					foundKeyTex=keyIcons.setTexture(TEXTURE_OVERLAY_PNG[TEXTURE_COMMAND]);
 #else
-					foundKeyTex=keyIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_CTRL]);
+					foundKeyTex=keyIcons.setTexture(TEXTURE_OVERLAY_PNG[TEXTURE_CTRL]);
 #endif
 					break;
 				case FLAG_SHIFT:
-					foundKeyTex=keyIcons.setTexture(TEST_OVERLAY_PNG[TEXTURE_SHIFT]);
+					foundKeyTex=keyIcons.setTexture(TEXTURE_OVERLAY_PNG[TEXTURE_SHIFT]);
 					break;
 				default:
 					//The flags are or'd together, so we can get other combinations
@@ -473,11 +531,21 @@ void Scene::drawHoverOverlay()
 	glEnable(GL_DEPTH_TEST);
 }
 
+void Scene::drawProgressAnim() const
+{
+	if(!showProgressAnimation)
+		return;
+
+	if(!progressAnimTex.isOK())
+		return;
+
+	progressAnimTex.draw();
+}
 
 void Scene::commitTempCam()
 {
 	ASSERT(tempCam);
-	std::swap(cameras[activeCam], tempCam);
+	std::swap(activeCam, tempCam);
 	delete tempCam;
 	tempCam=0;
 }
@@ -493,9 +561,9 @@ void Scene::setTempCam()
 	//If a temporary camera is not set, set one.
 	//if it is set, update it from the active camera
 	if(!tempCam)
-		tempCam =cameras[activeCam]->clone();
+		tempCam =activeCam->clone();
 	else
-		*tempCam=*cameras[activeCam];
+		*tempCam=*activeCam;
 }
 
 void Scene::addDrawable(DrawableObj const *obj )
@@ -526,7 +594,6 @@ void Scene::clearAll()
 	clearObjs();
 	clearRefObjs();
 	clearBindings();	
-	clearCams();
 }
 
 void Scene::clearObjs()
@@ -545,47 +612,15 @@ void Scene::clearBindings()
 }
 
 
-void Scene::clearCams()
-{
-	for(unsigned int ui=0; ui<cameras.size(); ui++)
-		delete cameras[ui];
-
-	cameras.clear();
-	camIDs.clear();
-}
-
 void Scene::clearRefObjs()
 {
 	refObjects.clear();
 }
 
-
-unsigned int Scene::addCam(Camera *c)
+void Scene::setShowProgress(bool show)
 {
-	ASSERT(c);
-	ASSERT(cameras.size() == camIDs.size());
-	cameras.push_back(c);
-	unsigned int id = camIDs.genId(cameras.size()-1);
-
-	if(cameras.size() == 1)
-		setDefaultCam();
-	return id;
-}
-
-void Scene::removeCam(unsigned int camIDVal)
-{
-	unsigned int position = camIDs.getPos(camIDVal);
-	delete cameras[position];
-	cameras.erase(cameras.begin()+position);
-	camIDs.killByPos(position);
-
-	if(cameras.size())
-	{
-		activeCam=0;
-		cameraSet=true;
-	}
-	else
-		cameraSet=false;
+	showProgressAnimation=show;
+	progressAnimTex.resetTime();
 }
 
 
@@ -594,37 +629,12 @@ void Scene::setAspect(float newAspect)
 	outWinAspect=newAspect;
 }
 
-void Scene::setActiveCam(unsigned int idValue)
+void Scene::setActiveCamByClone(const Camera *c)
 {
-
 	if(tempCam)
 		discardTempCam();
 
-	unsigned int position = camIDs.getPos(idValue);
-	activeCam = position;
-	cameraSet=true;
-}
-
-void Scene::setDefaultCam(Camera *newCam, bool setAsActive)
-{
-	ASSERT(cameras.size() || newCam);
-
-	//If the scene is using a temporary camera
-	// (eg for animation or visual effects), discard it
-	if(tempCam)
-		discardTempCam();
-
-	//If we don't have a default camera, set one
-	if(cameras.size() && newCam)
-	{
-		if(newCam)
-			cameras[0] = newCam;
-	}
-	else if(newCam)
-		cameras.push_back(newCam);
-
-	if(setAsActive)
-		activeCam=0;
+	activeCam = c->clone();
 	cameraSet=true;
 }
 
@@ -633,7 +643,7 @@ void Scene::ensureVisible(unsigned int direction)
 {
 	computeSceneLimits();
 
-	cameras[activeCam]->ensureVisible(boundCube,direction);
+	activeCam->ensureVisible(boundCube,direction);
 }
 
 void Scene::computeSceneLimits()
@@ -668,7 +678,7 @@ void Scene::computeSceneLimits()
 		boundCube.setBounds(-0.5,-0.5,-0.5,
 					0.5,0.5,0.5);
 	}
-	//Now that we have a scene level bounding box,
+	//NOw that we have a scene level bounding box,
 	//we need to set the camera to ensure that
 	//this box is visible
 	ASSERT(boundCube.isValid());
@@ -687,40 +697,13 @@ void Scene::computeSceneLimits()
 
 Camera *Scene::getActiveCam()
 {
-	ASSERT(cameras.size());
-	return cameras[activeCam];
+	return activeCam;
 }
 
 Camera *Scene::getTempCam()
 {
 	ASSERT(tempCam);
 	return tempCam;
-}
-
-void Scene::getCamProperties(unsigned int uniqueID, CameraProperties &p) const
-{
-	unsigned int position=camIDs.getPos(uniqueID);
-	cameras[position]->getProperties(p);
-}
-
-void Scene::getCameraIDs(vector<std::pair<unsigned int, std::string> > &idVec) const
-{
-	std::vector<unsigned int> ids;
-	camIDs.getIds(ids);
-
-	idVec.resize(ids.size());
-	for(unsigned int ui=0;ui<ids.size(); ui++)
-	{
-		idVec[ui] = std::make_pair(ids[ui],
-			cameras[camIDs.getPos(ids[ui])]->getUserString());
-	}
-}
-
-bool Scene::setCamProperty(unsigned int uniqueID, unsigned int key,
-	       					const std::string &value) 
-{
-	unsigned int position=camIDs.getPos(uniqueID);
-	return cameras[position]->setProperty(key,value);
 }
 
 //Adapted from 
@@ -734,7 +717,6 @@ unsigned int Scene::glSelect(bool storeSelected)
 	//Shouldn't be using a temporary camera.
 	//temporary cameras are only active during movement operations
 	ASSERT(!tempCam);
-	ASSERT(activeCam < cameras.size());
 	
 	
 	// Need to load a base name so that the other calls can replace it
@@ -749,7 +731,7 @@ unsigned int Scene::glSelect(bool storeSelected)
 	glPushMatrix();
 	//Apply the camera, but do NOT load the identity matrix, as
 	//we have set the pick matrix
-	cameras[activeCam]->apply(outWinAspect,boundCube,false);
+	activeCam->apply(outWinAspect,boundCube,false);
 
 	//Set up the objects. Only NON DISPLAYLIST items can be selected.
 	for(unsigned int ui=0; ui<objects.size(); ui++)
@@ -824,15 +806,15 @@ unsigned int Scene::glSelect(bool storeSelected)
 
 void Scene::finaliseCam()
 {
-	switch(cameras[activeCam]->type())
+	switch(activeCam->type())
 	{
 		case CAM_LOOKAT:
-			((CameraLookAt *)cameras[activeCam])->recomputeUpDirection();
+			((CameraLookAt *)activeCam)->recomputeUpDirection();
 			break;
 	}
 }
 
-void Scene::addSelectionDevices(const vector<SelectionDevice<Filter> *> &d)
+void Scene::addSelectionDevices(const vector<SelectionDevice *> &d)
 {
 	for(unsigned int ui=0;ui<d.size();ui++)
 	{
@@ -921,7 +903,7 @@ void Scene::applyDevice(float startX, float startY, float curX, float curY,
 	for(unsigned int ui=0;ui<activeBindings.size();ui++)
 	{
 		//Convert the mouse-XY coords into a world coordinate, depending upon mouse/
-		//key combinations
+		//key cobinations
 		Point3D worldVec;
 		Point3D vectorCoeffs[2];
 		activeBindings[ui]->computeWorldVectorCoeffs(mouseFlags,keyFlags,
@@ -952,16 +934,6 @@ void Scene::applyDevice(float startX, float startY, float curX, float curY,
 
 }
 
-unsigned int Scene::duplicateCameras(vector<Camera *> &cams) const
-{
-	cams.resize(cameras.size());
-
-	for(unsigned int ui=0;ui<cameras.size();ui++)	
-		cams[ui]=cameras[ui]->clone();
-
-	return activeCam;
-}	
-
 void Scene::getEffects(vector<const Effect *> &eff) const
 {
 	eff.resize(effects.size());
@@ -969,11 +941,6 @@ void Scene::getEffects(vector<const Effect *> &eff) const
 	for(unsigned int ui=0;ui<effects.size();ui++)	
 		eff[ui]=effects[ui];
 }	
-
-unsigned int Scene::getActiveCamId() const
-{
-	return camIDs.getId(activeCam);
-}
 
 
 void Scene::getModifiedBindings(std::vector<std::pair<const Filter *, SelectionBinding> > &bindings) const
@@ -993,22 +960,15 @@ void Scene::restrictView(float xS, float yS, float xFin, float yFin)
 	viewRestrict=true;	
 }
 
-bool Scene::isDefaultCam() const
+
+void Scene::setEffectVec(vector<Effect *> &e)
 {
-	return  activeCam==0;
+	clearEffects();
+
+	for(size_t ui=0;ui<e.size();ui++)
+		addEffect(e[ui]);
+	e.clear();
 }
-
-bool Scene::camNameExists(const std::string &s) const
-{
-	for(unsigned int ui=0;ui<cameras.size() ;ui++)
-	{
-		if(cameras[ui]->getUserString() == s)
-			return true;
-	}
-
-	return false;
-}
-
 
 
 unsigned int Scene::addEffect(Effect *e)
@@ -1020,7 +980,6 @@ unsigned int Scene::addEffect(Effect *e)
 
 	return effectIDs.genId(effects.size()-1);
 }
-
 
 void Scene::removeEffect(unsigned int uniqueID)
 {

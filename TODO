@@ -1,7 +1,6 @@
 TODO List - worlds simplest bugtracking system 
 
 --Packaging--
-	* Fix linker order (?) for mingw-cross compile
 
 --Main app--
 	To Implement:
@@ -9,6 +8,9 @@ TODO List - worlds simplest bugtracking system
 		* Range editor
 		* Plot overlays
 		* Ruler annotation could use "enable" and control sphere size setting
+		* Unit tests for statefile with stashes
+		* Improved filter tree visibility behaviour 
+
 		== Eventually == 
 		* Support for XY scatter plots
 		* Status bar message queue
@@ -91,6 +93,12 @@ TODO List - worlds simplest bugtracking system
 			* drag drop not working?
 			* icon on dock bounces very fast during some refreshes
 
+		== Needs reproducing ==
+		* Invalid range file being opened cause Package export to crash
+		* Windows appears to have weird front-back drawing behaviour for point clouds.
+		* Duplicate range at end when exporting range
+		* Large datasets causing crash?
+
 	Auditing:
 		== Next release ==
 		* Set keynames for property groupings
@@ -112,6 +120,9 @@ TODO List - worlds simplest bugtracking system
 
 
 -- Refactor/cleanup --
+	* updateFilterPropertyGrid is in a bad location, need new
+	  file that knows about filters and wx at the same time,
+	  but is not viscontrol ;)
 	* Interaction code needs to be cleaned up. Currently it is a substatiative hack.
 		- Viscontrol should store a copy of the original tree,
 		  then periodicially compare it to the current tree. if it
@@ -129,3 +140,9 @@ TODO List - worlds simplest bugtracking system
 	* I have multiple colour classes floating about. might be an idea to unify them.
 	* K3DTree currently requires public access to members of boundcube
 
+-- Deprecate --
+	* On Minor version change:
+		- DataLoadFilter::readState(...) -> doSample test for statefiles without doSample.
+			- 3Depict versions prior to 1207:2a01b7e83d75
+		- VoxeliseFilter::readState(...) -> axial slice read will be silently skipped if it is missing
+			- 3Depict versions <= 1628:ffa0b851e966 don't know about this element 

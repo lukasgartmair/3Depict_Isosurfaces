@@ -54,9 +54,10 @@ std::string getActiveChoice(const std::string &choiceString);
 std::string wxChoiceParamString(std::string choiceString);
 
 
-//Strip whitespace from a string
+//Strip given whitespace (\f,\n,\r,\t,\ )from a string
 std::string stripWhite(const std::string &str);
-
+//Strip specified chars from a string
+std::string stripChars(const std::string &Str, const char *chars);
 //!Return a lowercase version for a given string
 std::string lowercase(std::string s);
 

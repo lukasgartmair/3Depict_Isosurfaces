@@ -1,5 +1,5 @@
 /*
- *	threeDepict.cpp - main program user interface and control implementation
+ *	threeDepict.cpp - main program implementation
  *	Copyright (C) 2013, D Haley 
 
  *	This program is free software: you can redistribute it and/or modify
@@ -108,7 +108,7 @@ winconsole winC;
 #ifdef __linux__
 #include <fenv.h>
 void trapfpe () {
-//  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
+  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
 }
 #endif
 #endif
@@ -448,10 +448,11 @@ bool threeDepictApp::OnInit()
 #endif
 
 
+    MainFrame->Show();
+    
     if(commandLineFiles.GetCount())
     	MainFrame->SetCommandLineFiles(commandLineFiles);
 
-    MainFrame->Show();
     MainFrame->fixSplitterWindow();
     return true;
 }

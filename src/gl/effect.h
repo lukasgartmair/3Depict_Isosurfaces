@@ -28,14 +28,6 @@
 	#undef ATTRIBUTE_PRINTF
 #endif
 
-//OpenGL includes
-//MacOS is "special" and puts it elsewhere
-#ifdef __APPLE__ 
-	#include <OpenGL/glu.h>
-#else
-	#include <GL/glu.h>
-#endif
-
 #include "cameras.h"
 
 //opengl allows up to 6 clipping planes
@@ -71,6 +63,8 @@ class Effect
 	public:
 		Effect();
 		virtual ~Effect() {};
+
+		virtual Effect *clone() const = 0;
 		virtual void enable(unsigned int pass=0) const =0;
 		virtual void disable() const=0;
 		std::string getName() const;
@@ -114,6 +108,10 @@ class BoxCropEffect : public Effect
 	public:
 		BoxCropEffect();
 		virtual ~BoxCropEffect(){}; 
+
+
+		//Duplicate thi
+		Effect *clone() const;
 
 		//!Enable the clipping plane. Values *must* be set before calling
 		void enable(unsigned int pass) const;
@@ -159,6 +157,8 @@ class AnaglyphEffect : public Effect
 	public:
 		AnaglyphEffect();
 		~AnaglyphEffect(){}; 
+		//Duplicate thi
+		Effect *clone() const;
 
 		//!Enable the clipping plane. Values *must* be set before calling
 		void enable(unsigned int pass) const;

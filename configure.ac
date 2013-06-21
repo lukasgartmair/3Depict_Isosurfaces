@@ -253,8 +253,10 @@ dnl--------------
 #Try linking against gluSphere windows usese -lglu32; mac?? ; linux -lGLU
 case "${host_os}" in 
 	mingw*|windows*|winnt)
-		#FTGL_CHECK_GL # Not working for some reason?
-		GL_LIBS="-lglu32 -lopengl32 "
+		#win32 opengl names
+		GL_LIBS="-lglu32 -lopengl32"
+		#Add GLEW dependency for opengl > 1.1
+		GL_LIBS="$GL_LIBS -lglew32"
 		AC_SUBST(GL_LIBS)
 	    ;;
 	darwin*)
@@ -327,10 +329,14 @@ case "${host_os}" in
 		;;
 esac
 
+
 #mgl2 is installed into different path (at least under debian)
+AC_LANG_PUSH([C++])
 AC_CHECK_HEADER([${MGL_HEADER_TESTFILE}],[AC_DEFINE(HAVE_MGL_H,[],[Have got mathgl headers])],
 	[AC_MSG_ERROR([Required MathGL headers not found (looking for ${MGL_HEADER_TESTFILE}) - is mathgl development code installed?])])
 AC_CHECK_LIB(mgl, mgl_set_def_param, [AC_DEFINE(HAVE_MGL,[],[MathGL compilation OK])] , AC_MSG_ERROR([Required MathGL libraries not found]), -lmgl)
+AC_LANG_POP([C++])
+
 
 CFLAGS="$CFLAGS_ORIG"
 LDFLAGS="$LDFLAGS_ORIG"

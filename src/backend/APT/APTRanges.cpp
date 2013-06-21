@@ -46,6 +46,7 @@ const char *rangeErrStrings[] =
 	NTRANS("Error reading the short name for ion."),
 	NTRANS("Error reading colour data in the file, expecting 3 decimal values, space separated."),
 	NTRANS("Tried skipping to table separator line (line with dashes), but did not find it."),	
+	NTRANS("Number of ions in the table header did not match the number specified at the start of the file"),
 	NTRANS("Unexpected failure whilst trying to skip over range lead-in data (bit before range start value)"),
 	NTRANS("Range table had an incorrect number of entries, should be 2 or 3 + number of ranges"),
 	NTRANS("Unable to read range start and end values"),
@@ -769,30 +770,37 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 		return RANGE_ERR_FORMAT_TABLESEPARATOR;
 	}
 
-
 	vector<string> colHeaders;
-	splitStrsRef(inBuffer,' ',colHeaders);
+	string entry;
 
-	//remove whitespace from each entry
-	for(size_t ui=0;ui<colHeaders.size();ui++)
-		stripWhite(colHeaders[ui]);
-	stripZeroEntries(colHeaders);
-	
+	char *ptrBegin;
+	ptrBegin=inBuffer;
+	while(*ptrBegin && *ptrBegin == '-')
+		ptrBegin++;
+	splitStrsRef(ptrBegin," \n",colHeaders);
 
 	if(!colHeaders.size() )
 	{
 		delete[] inBuffer;
 		return RANGE_ERR_FORMAT_TABLESEPARATOR;
 	}
+	
+	//remove whitespace from each entry
+	for(size_t ui=0;ui<colHeaders.size();ui++)
+	{
+		stripChars(colHeaders[ui],"\f\n\r\t ");
+	}
+	stripZeroEntries(colHeaders);
+
 
 	if(colHeaders.size() > 1)
 	{
 
-		if(colHeaders.size() -1 !=numIons)
+		if(colHeaders.size() !=numIons)
 		{
 			// Emit warning
 			delete[] inBuffer;
-			return RANGE_ERR_FORMAT_TABLESEPARATOR;
+			return RANGE_ERR_FORMAT_TABLEHEADER_NUMIONS;
 		}
 	
 		//Strip any trailing newlines off the last of the  colheaders,

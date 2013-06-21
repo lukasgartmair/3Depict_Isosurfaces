@@ -102,6 +102,8 @@ private:
 
 	void setLockUI(bool amlocking,unsigned int lockMode);
 
+	//Did the opengl panel initialise correctly?
+	bool glPanelOK;
 	//!Scene - user interaction interface "visualisation control"
 	VisController visControl;
 
@@ -122,9 +124,6 @@ private:
 	//!source item when dragging a filter in the tree control
 	wxTreeItemId *filterTreeDragSource;
 
-	//!The current file if we are using an XML file
-	wxString currentFile;
-
 	//!Drag and drop functionality
 	FileDropTarget *dropTarget;
 	
@@ -144,10 +143,6 @@ private:
 	//Map to convert filter drop down choices to IDs
 	map<std::string,size_t> filterMap;
     
-
-#ifdef DEBUG
-    ofstream fs; // file for writing the event log
-#endif
 protected:
     wxTimer *statusTimer;
     wxTimer *progressTimer;
@@ -166,6 +161,7 @@ protected:
     wxMenu *fileMenu;
     wxMenu *fileExport;
     wxFileHistory *recentHistory;
+    ProgressData lastProgressData;
 
 
     // begin wxGlade: MainWindowFrame::attributes
@@ -173,6 +169,7 @@ protected:
     wxStaticText* lblSettings;
     wxComboBox* comboStash;
     wxButton* btnStashManage;
+    wxStaticLine* stashFilterStaticSep;
     wxStaticText* filteringLabel;
     wxComboBox* comboFilters;
     wxTreeCtrl* treeFilters;
@@ -197,11 +194,11 @@ protected:
     wxScrolledWindow* noteCamera;
     wxCheckBox* checkPostProcessing;
     wxCheckBox* checkFxCrop;
+    wxCheckBox* checkFxCropCameraFrame;
     wxComboBox* comboFxCropAxisOne;
     CropPanel* panelFxCropOne;
     wxComboBox* comboFxCropAxisTwo;
     CropPanel* panelFxCropTwo;
-    wxCheckBox* checkFxCropCameraFrame;
     wxStaticText* labelFxCropDx;
     wxTextCtrl* textFxCropDx;
     wxStaticText* labelFxCropDy;
@@ -210,18 +207,23 @@ protected:
     wxTextCtrl* textFxCropDz;
     wxPanel* noteFxPanelCrop;
     wxCheckBox* checkFxEnableStereo;
-    wxCheckBox* checkFxStereoLensFlip;
     wxStaticText* lblFxStereoMode;
     wxComboBox* comboFxStereoMode;
     wxStaticBitmap* bitmapFxStereoGlasses;
     wxStaticText* labelFxStereoBaseline;
     wxSlider* sliderFxStereoBaseline;
+    wxCheckBox* checkFxStereoLensFlip;
     wxPanel* noteFxPanelStereo;
     wxNotebook* noteEffects;
     wxPanel* notePost;
+    wxStaticText* labelAppearance;
     wxCheckBox* checkAlphaBlend;
     wxCheckBox* checkLighting;
+    wxStaticLine* static_line_1;
+    wxStaticText* labelPerformance;
     wxCheckBox* checkWeakRandom;
+    wxCheckBox* checkLimitOutput;
+    wxTextCtrl* textLimitOutput;
     wxCheckBox* checkCaching;
     wxStaticText* labelMaxRamUsage;
     wxSpinCtrl* spinCachePercent;
@@ -249,6 +251,9 @@ protected:
     wxStatusBar* MainFrame_statusbar;
     // end wxGlade
 
+    //Set the state for the state menu
+    void setSaveStatus();
+
     DECLARE_EVENT_TABLE();
 
 public:
@@ -256,6 +261,10 @@ public:
     virtual void OnFileMerge(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnFileSave(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnFileSaveAs(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnFileExportPlot(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnFileExportImage(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnFileExportIons(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnFileExportRange(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnFileExit(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnViewControlPane(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnViewRawDataPane(wxCommandEvent &event); // wxGlade: <event_handler>
@@ -301,6 +310,9 @@ public:
     virtual void OnCheckWeakRandom(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnCacheRamUsageSpin(wxSpinEvent &event); // wxGlade: <event_handler>
     virtual void OnSpectraListbox(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnCheckLimitOutput(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnTextLimitOutput(wxCommandEvent &event); // wxGlade: <event_handler>
+    virtual void OnTextLimitOutputEnter(wxCommandEvent &event); // wxGlade: <event_handler>
 
     virtual void OnComboFilterEnter(wxCommandEvent &event); // 
     virtual void OnComboFilter(wxCommandEvent &event); // 
@@ -332,10 +344,6 @@ public:
     virtual void OnNoteDataView(wxNotebookEvent &evt);
     virtual void OnGridCameraPropertyChange(wxGridEvent &event); // wxGlade: <event_handler>
 
-    virtual void OnFileExportPlot(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFileExportImage(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFileExportIons(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFileExportRange(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnFileExportVideo(wxCommandEvent &event);
     virtual void OnFileExportFilterVideo(wxCommandEvent &event);
     virtual void OnFileExportPackage(wxCommandEvent &event);

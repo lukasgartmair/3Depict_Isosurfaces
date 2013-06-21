@@ -50,6 +50,13 @@ enum{
 	BOUND_ENUM_END
 };
 
+//Interpolation mode for slice 
+enum
+{
+	SLICE_INTERP_NONE,
+	SLICE_INTERP_LINEAR,
+	SLICE_INTERP_ENUM_END
+};
 
 enum{
 	ADJ_ALL,
@@ -163,7 +170,15 @@ template<class T> class Voxels
 		void setData(size_t x, size_t y, size_t z, const T &val);
 		//!Set the value of nth point in the dataset
 		void setData(size_t n, const T &val);
-		
+
+
+		//get an interpolated slice from a section of the data
+		void getSlice(size_t normal, float offset, T *p, 
+			size_t interpMode=SLICE_INTERP_NONE, size_t boundMode=BOUND_MIRROR) const;
+
+		//Get a specific slice, from an integral offset in the data
+		void getSlice(size_t normal, size_t offset, 
+					T *p,size_t boundMode) const;
 		//!Get the size of the data field
 		void getSize(size_t &x, size_t &y, size_t &z) const;
 		size_t getSize() const {return voxels.size();};
@@ -228,10 +243,14 @@ template<class T> class Voxels
 		//!Get the bounding size
 		Point3D getMinBounds() const;
 		Point3D getMaxBounds() const;
+		//Obtain the ounds for a specified axis
+		void getAxisBounds(size_t axis, float &minV, float &maxV) const;
 		///! Get the spacing for a unit cell
 		Point3D getPitch() const;
 		//!Set the bounding size
 		void setBounds(const Point3D &pMin, const Point3D &pMax);
+		//!Get the bounding size
+		void getBounds(Point3D &pMin, Point3D &pMax) const { pMin=minBound;pMax=maxBound;}
 
 		//!Initialise the voxel storage
 		size_t init(size_t nX,size_t nY,size_t nZ, const BoundCube &bound);
@@ -340,7 +359,7 @@ template<class T> class Voxels
 		int histogram(std::vector<size_t> &v, size_t histBinCount) const;
 
 		//!Find the largest or smallest n objects
-		void findSorted(std::vector<size_t> &x, std::vector<size_t> &y, std::vector<size_t> &z, size_t n, bool largest=true) const;
+		void findNExtrema(std::vector<size_t> &x, std::vector<size_t> &y, std::vector<size_t> &z, size_t n, bool largest=true) const;
 
 		//!Generate a dataset that consists of the counts of points in a given voxel
 		/*! Ensure that the voxel scaling factors 
@@ -859,6 +878,13 @@ void Voxels<T>::getEdgeEndApproxVals(size_t edgeUniqId, float &a, float &b ) con
 			
 	}	
 
+}
+
+template<class T>
+void Voxels<T>::getAxisBounds(size_t axis, float &minV, float &maxV ) const
+{
+	maxV=maxBound[axis];
+	minV=minBound[axis];
 }
 
 template<class T>
@@ -2452,7 +2478,7 @@ int Voxels<T>::histogram(std::vector<size_t> &v, size_t histBinCount) const
 }
 
 template<class T>
-void Voxels<T>::findSorted(std::vector<size_t> &x, std::vector<size_t> &y, 
+void Voxels<T>::findNExtrema(std::vector<size_t> &x, std::vector<size_t> &y, 
 			std::vector<size_t> &z, size_t n, bool largest) const
 {
 	//Could be better if we didn't use indexed data aquisition (record opsition)
@@ -2537,6 +2563,168 @@ void Voxels<T>::findSorted(std::vector<size_t> &x, std::vector<size_t> &y,
 		bSz.pop_back();	
 	}
 }
+
+
+//Obtain a slice of the voxel data. Data output will be in column order
+// p[posB*nA + posA]. Input slice must be sufficiently sized and allocated
+// to hold the output data
+template<class T>
+void Voxels<T>::getSlice(size_t normalAxis, size_t offset, T *p,size_t boundMode) const
+{
+	ASSERT(normalAxis < 3);
+
+	size_t dimA,dimB,nA;
+	switch(normalAxis)
+	{
+		case 0:
+		{
+			dimA=1;
+			dimB=2;
+			nA=binCount[dimA];
+			break;
+		}
+		case 1:
+		{	
+			dimA=0;
+			dimB=2;
+			nA=binCount[dimA];
+			break;
+		}
+		case 2:
+		{
+			dimA=0;
+			dimB=1;
+			nA=binCount[dimA];
+			break;
+		}
+		default:
+			ASSERT(false); //WTF - how did you get here??
+	}
+		
+
+	if(offset < binCount[normalAxis])
+	{
+		//We are within bounds, use normal access functions
+		switch(normalAxis)
+		{
+			case 0:
+			{
+				for(size_t ui=0;ui<binCount[dimA];ui++)
+				{
+					for(size_t uj=0;uj<binCount[dimB];uj++)
+						p[uj*nA + ui] =	getData(offset,ui,uj);
+				}
+				break;
+			}
+			case 1:
+			{	
+				for(size_t ui=0;ui<binCount[dimA];ui++)
+				{
+					for(size_t uj=0;uj<binCount[dimB];uj++)
+						p[uj*nA + ui] =	getData(ui,offset,uj);
+				}
+				break;
+			}
+			case 2:
+			{
+				for(size_t ui=0;ui<binCount[dimA];ui++)
+				{
+					for(size_t uj=0;uj<binCount[dimB];uj++)
+						p[uj*nA + ui] =	getData(ui,uj,offset);
+				}
+				break;
+			}
+			default:
+				ASSERT(false);
+		}
+	}
+	else
+	{
+		//We are outside the cube bounds, use the padded access functions
+		switch(normalAxis)
+		{
+			case 0:
+			{
+				for(size_t ui=0;ui<binCount[dimA];ui++)
+				{
+					for(size_t uj=0;uj<binCount[dimB];uj++)
+						p[uj*nA + ui] =	getPaddedData(offset,ui,uj,boundMode);
+				}
+				break;
+			}
+			case 1:
+			{	
+				for(size_t ui=0;ui<binCount[dimA];ui++)
+				{
+					for(size_t uj=0;uj<binCount[dimB];uj++)
+						p[uj*nA + ui] =	getPaddedData(ui,offset,uj,boundMode);
+				}
+				break;
+			}
+			case 2:
+			{
+				for(size_t ui=0;ui<binCount[dimA];ui++)
+				{
+					for(size_t uj=0;uj<binCount[dimB];uj++)
+						p[uj*nA + ui] =	getPaddedData(ui,uj,offset,boundMode);
+				}
+				break;
+			}
+			default:
+				ASSERT(false);
+		}
+	}
+}
+
+template<class T>
+void Voxels<T>::getSlice(size_t normal, float offset, 
+		T *p, size_t interpMode,size_t boundMode) const
+{
+	ASSERT(offset <=1.0f && offset >=0.0f);
+
+	//Obtain the appropriately interpolated slice
+	switch(interpMode)
+	{
+		case SLICE_INTERP_NONE:
+		{
+			size_t slicePos;
+			slicePos=roundf(offset*binCount[normal]);
+			getSlice(normal,slicePos,p,boundMode);
+			break;
+		}
+		case SLICE_INTERP_LINEAR:
+		{
+			//Find the upper and lower bounds
+			size_t sliceUpper,sliceLower;;
+			sliceUpper=ceilf(offset*binCount[normal]);
+			sliceLower=offset*binCount[normal];
+
+			{
+				T *pLower;
+				size_t numEntries=binCount[(normal+1)%3]*binCount[(normal+2)%3];
+				
+				pLower  = new T[numEntries];
+
+				getSlice(normal,sliceLower,pLower,boundMode);
+				getSlice(normal,sliceUpper,p,boundMode);
+
+				//Get the decimal part of the float
+				float integ;
+				float delta=modff(offset*binCount[normal],&integ);
+				for(size_t ui=0;ui<numEntries;ui++)
+					p[ui] = delta*(p[ui]-pLower[ui]) + pLower[ui];
+
+				delete[] pLower;
+			}
+			break;
+		}
+		default:
+			ASSERT(false);
+			
+	}
+
+}
+
 
 template<class T>
 void Voxels<T>::operator/=(const Voxels<T> &v)

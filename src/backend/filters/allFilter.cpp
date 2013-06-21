@@ -42,6 +42,17 @@ Filter *makeFilter(const std::string &s)
 	return  f;
 }
 
+bool isValidFilterName(const std::string &s)
+{
+	for(unsigned int ui=0;ui<FILTER_TYPE_ENUM_END; ui++)
+	{
+		if(FILTER_NAMES[ui] == s)
+			return true;
+	}
+
+	return false;
+}
+
 Filter *makeFilter(unsigned int ui)
 {
 	Filter *f;
@@ -99,6 +110,8 @@ Filter *makeFilter(unsigned int ui)
 
 	return  f;
 }
+
+
 
 Filter *makeFilterFromDefUserString(const std::string &s)
 {

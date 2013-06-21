@@ -1,6 +1,6 @@
 /*
  *	ExportRngDialog.h - Range data export dialog
- *	Copyright (C) 2012, D Haley 
+ *	Copyright (C) 2013, D Haley 
 
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -22,11 +22,15 @@
 #include <wx/wx.h>
 // begin wxGlade: ::dependencies
 #include <wx/listctrl.h>
+#include <wx/grid.h>
 // end wxGlade
 
 #include <map>
+#include <vector>
 
-#include "backend/viscontrol.h"
+class VisController;
+class Filter;
+
 class ExportRngDialog: public wxDialog {
 public:
     // begin wxGlade: ExportRngDialog::ids

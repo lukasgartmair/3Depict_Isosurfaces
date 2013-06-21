@@ -255,6 +255,18 @@ bool Point3D::orthogonalise(const Point3D &pt)
 	return true;
 }
 
+Point3D Point3D::centroid(const Point3D *p, unsigned int n)
+{
+	ASSERT(p);
+	Point3D pc(0,0,0);
+	for(size_t ui=0;ui<n;ui++)
+		pc+=p[ui];
+
+	pc*=1.0f/(float)n;
+
+	return pc;
+}
+
 bool Point3D::parse(const std::string &str)
 {
 	//Needs to be at minimum #,#,#
@@ -509,7 +521,7 @@ void quat_pointmult(Point3f *result, const Quaternion *q1, const Quaternion *q2)
 //failure to do so will have weird results. 
 //For better performance on multiple rotations, use other function
 //Note result is stored in returned point
-void quat_rot(Point3f *point, Point3f *rotVec, float angle)
+void quat_rot(Point3f *point, const Point3f *rotVec, float angle)
 {
 	ASSERT(rotVec->fx*rotVec->fx + rotVec->fy*rotVec->fy + rotVec->fz*rotVec->fz - 1.0f < 
 			5.0f*sqrt(std::numeric_limits<float>::epsilon()));
@@ -548,8 +560,8 @@ void quat_rot(Point3f *point, Point3f *rotVec, float angle)
 }
 
 
-//Retrieve the quaternion for repeated rotation. pass to the quat_rot_apply_quats
-void quat_get_rot_quat(Point3f *rotVec, float angle,Quaternion *rotQuat) 
+//Retrieve the quaternion for repeated rotation. Pass to the quat_rot_apply_quats
+void quat_get_rot_quat(const Point3f *rotVec, float angle,Quaternion *rotQuat) 
 {
 	ASSERT(rotVec->fx*rotVec->fx + rotVec->fy*rotVec->fy + rotVec->fz*rotVec->fz - 1.0f < 
 			5.0f*sqrt(std::numeric_limits<float>::epsilon()));

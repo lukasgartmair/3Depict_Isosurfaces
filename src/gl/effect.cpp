@@ -25,6 +25,16 @@
 #include "common/stringFuncs.h"
 #include "common/constants.h"
 
+//OpenGL includes
+//MacOS is "special" and puts it elsewhere
+#ifdef __APPLE__ 
+	#include <OpenGL/glu.h>
+#else
+	#include <GL/glu.h>
+#endif
+
+
+
 Camera* Effect::curCam=0;
 BoundCube Effect::bc;
 float MIN_CROP_FRACTION=0.0001;
@@ -101,9 +111,18 @@ std::string Effect::getName() const
 	return EFFECT_NAMES[this->getType()];
 }
 
+
 BoxCropEffect::BoxCropEffect() : openGLIdStart(0), useCamCoordinates(false)
 {
 	effectType=EFFECT_BOX_CROP;
+}
+
+Effect *BoxCropEffect::clone() const
+{
+	Effect *e = new BoxCropEffect;
+
+	*e=*this;
+	return e;
 }
 
 void BoxCropEffect::enable(unsigned int pass) const
@@ -481,6 +500,14 @@ AnaglyphEffect::AnaglyphEffect() : colourMode(ANAGLYPH_REDBLUE), eyeFlip(false),
 	effectType=EFFECT_ANAGLYPH;
 }
 
+Effect *AnaglyphEffect::clone() const
+{
+	Effect *e = new AnaglyphEffect;
+
+	*e=*this;
+	return e;
+}
+
 void AnaglyphEffect::enable(unsigned int passNumber) const
 {
 	if(passNumber >1 || curCam->type() !=CAM_LOOKAT) 
@@ -488,6 +515,7 @@ void AnaglyphEffect::enable(unsigned int passNumber) const
 
 	if(passNumber==0)
 	{
+		ASSERT(!oldCam);
 		oldCam=curCam->clone();
 		//Translate both the target, and the origin
 		curCam->translate(baseShift,0);
@@ -505,81 +533,34 @@ void AnaglyphEffect::enable(unsigned int passNumber) const
 		((CameraLookAt*)curCam)->setFrustumDistort(-baseShift);
 	}
 
-	if(colourMode<=ANAGLYPH_GREENMAGENTA)
-	{
-		//Different type of glasses use different colour masks.
-		const bool maskArray[][6] = { {true,false,false,false,false,true}, //Red-blue
-						{true,false,false,false,true,false}, //red-green
-						{true,false,false,false,true,true}, // red-cyan
-						{false,true,false,true,false,true} //green-magenta
-					};
-		
-		//Colour buffer masking method
-		if(passNumber == 0)
-		{
-			glClear(GL_COLOR_BUFFER_BIT );
-		}	
-		else
-			glClear(GL_DEPTH_BUFFER_BIT);
 
-
-		//we flip either due to the pass, or because the user has
-		//back to front glasses.
-		unsigned int offset;
-		if(passNumber ^ eyeFlip)
-			offset=0;
-		else
-			offset=3;
-		unsigned int idx = colourMode-ANAGLYPH_REDBLUE;
-
-		glColorMask(maskArray[idx][offset],maskArray[idx][offset+1],
-				maskArray[idx][offset+2],true);
-	}
-	else
-	{
-		ASSERT(false);
-		//Accumulation mode
-		if(passNumber==0)
-		{
-			//clear accumulation buffer
-			glClear(GL_ACCUM_BUFFER_BIT);
-		}
-		else
-		{
-			//Set up a colour transfer matrix for the accumulation buffer
-			glMatrixMode(GL_COLOR);
-
-			float *leftEyeMatrix;
-			if(eyeFlip)
-				leftEyeMatrix=gbMatrix;
-			else
-			{
-				switch(colourMode)
-				{
-					case ANAGLYPH_MIXED:
-						leftEyeMatrix=mixedMatrix;
-						break;
-					case ANAGLYPH_HALF_COLOUR:
-						leftEyeMatrix=halfMatrix;
-						break;
-					default:
-						ASSERT(false);
-				}
-			}	
-
-			glPushMatrix();
-			glLoadMatrixf(leftEyeMatrix);
-
-			//Copy current draw matrix to the accumulation buffer
-			glAccum(GL_ACCUM,1.0);
-
-			glPopMatrix();
-			glMatrixMode(GL_MODELVIEW);
-
-			glClear(GL_DEPTH_BUFFER_BIT);
-		}
+	//Different type of glasses use different colour masks.
+	const bool maskArray[][6] = { {true,false,false,false,false,true}, //Red-blue
+					{true,false,false,false,true,false}, //red-green
+					{true,false,false,false,true,true}, // red-cyan
+					{false,true,false,true,false,true} //green-magenta
+				};
 	
-	}
+	//Colour buffer masking method
+	if(passNumber == 0)
+	{
+		glClear(GL_COLOR_BUFFER_BIT );
+	}	
+	else
+		glClear(GL_DEPTH_BUFFER_BIT);
+
+
+	//we flip either due to the pass, or because the user has
+	//back to front glasses.
+	unsigned int offset;
+	if(passNumber ^ eyeFlip)
+		offset=0;
+	else
+		offset=3;
+	unsigned int idx = colourMode-ANAGLYPH_REDBLUE;
+
+	glColorMask(maskArray[idx][offset],maskArray[idx][offset+1],
+			maskArray[idx][offset+2],true);
 
 	
 
@@ -594,59 +575,16 @@ void AnaglyphEffect::setMode(unsigned int mode)
 
 void AnaglyphEffect::disable() const
 {
-	if(colourMode<=ANAGLYPH_GREENMAGENTA)
-	{
-		//disable the colour mask
-		glColorMask(true,true,true,true);
-	}
-	else
-	{
-		ASSERT(false);
-		//FIXME: Does not work as advertised. You cannot retrieve
-		//the off-diagonal terms without using a shader, to the
-		//best of my knowledge. The on-diagonal terms can be altered
-		//however.
-	
-		//Mix with accumulation buffer, using the
-		//right hand colour mask then restore to 
-		//draw buffer
-		glMatrixMode(GL_COLOR);
-		glPushMatrix();
-
-		float *rightEyeMatrix=gbMatrix;
-		if(eyeFlip)
-		{
-			switch(colourMode)
-			{
-				case ANAGLYPH_MIXED:
-					rightEyeMatrix=mixedMatrix;
-					break;
-				case ANAGLYPH_HALF_COLOUR:
-					rightEyeMatrix=halfMatrix;
-					break;
-				default:
-					ASSERT(false);
-			}	
-
-		}
-		else
-			rightEyeMatrix=gbMatrix;	
-		
-		glLoadMatrixf(rightEyeMatrix);
-		//Mix result with accumulation buffer then restore
-		glAccum(GL_ACCUM,1.0);
-		glAccum(GL_RETURN,1.0);
-		//reset the colour matrix
-		glPopMatrix();
-
-		glMatrixMode(GL_MODELVIEW);
-		glClear(GL_ACCUM_BUFFER_BIT);
-	}
+	//disable the colour mask
+	glColorMask(true,true,true,true);
 
 
 	ASSERT(oldCam);
 	*curCam=*oldCam;
 	delete oldCam;
+#ifdef DEBUG
+	oldCam=0;
+#endif
 }
 
 bool AnaglyphEffect::writeState(std::ofstream &f, unsigned int format,unsigned int depth) const

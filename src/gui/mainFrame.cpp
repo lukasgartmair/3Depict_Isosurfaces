@@ -1,21 +1,3 @@
-/*
- * 	3Depict.h - main program header
- * 	Copyright (C) 2013 D Haley
- *
- *	This program is free software: you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation, either version 3 of the License, or
- *	(at your option) any later version.
-
- *	This program is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *	GNU General Public License for more details.
-
- *	You should have received a copy of the GNU General Public License
- *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include "mainFrame.h"
 
 #ifdef __APPLE__
@@ -94,6 +76,7 @@ const unsigned int DEFAULT_WIN_HEIGHT=800;
 //minimum startup window size
 const unsigned int MIN_WIN_WIDTH=100;
 const unsigned int MIN_WIN_HEIGHT=100;
+
 
 
 //!Number of pages in the panel at the bottom
@@ -253,6 +236,8 @@ enum {
     //Options panel
     ID_CHECK_ALPHA,
     ID_CHECK_LIGHTING,
+    ID_CHECK_LIMIT_POINT_OUT,
+    ID_TEXT_LIMIT_POINT_OUT,
     ID_CHECK_CACHING,
     ID_CHECK_WEAKRANDOM,
     ID_SPIN_CACHEPERCENT,
@@ -283,7 +268,7 @@ void setWxTreeImages(wxTreeCtrl *t, const map<size_t, wxArtID> &artFilters)
 	//Construct an image list for the tree
 	for(map<size_t,wxArtID>::const_iterator it=artFilters.begin();it!=artFilters.end();++it)
 	{
-		#if defined(__WIN32) || defined(__WIN64)
+		#if defined(__WIN32) || defined(__WIN64) || defined(__APPLE__)
 
 			imList->Add(wxBitmap(wxBitmap(wxArtProvider::GetBitmap(it->second)).
 						ConvertToImage().Rescale(winTreeIconSize, winTreeIconSize)));
@@ -354,6 +339,8 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 	fullscreenState=0;
 	verCheckThread=0;
 	lastMessageType=MESSAGE_NONE;
+	lastProgressData.reset();
+
 	//Set up the program icon handler
 	wxArtProvider::Push(new MyArtProvider);
 	SetIcon(wxArtProvider::GetIcon(wxT("MY_ART_ID_ICON")));
@@ -399,12 +386,11 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     panelTop = new BasicGLPane(splitTopBottom);
 
 
-	bool glPanelOK;
 #if wxCHECK_VERSION(2,9,0)
 	glPanelOK = panelTop->displaySupported();
 #else
 	#if defined(__WXGTK20__) 
-		//I had to work this out by studying the constructor, and then testing simultaneously
+		//I had to work this out by studying the construtor, and then testing simultaneously
 		//on a broken and working Gl install. booyah.
 		glPanelOK=panelTop->m_glWidget;
 	#elif defined(__WIN32) || defined(__WIN64) || defined(__APPLE__)
@@ -621,12 +607,21 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
     bitmapFxStereoGlasses = new wxStaticBitmap(noteFxPanelStereo, wxID_ANY, wxNullBitmap);
     labelFxStereoBaseline = new wxStaticText(noteFxPanelStereo, wxID_ANY, wxTRANS("Baseline Separation"));
     sliderFxStereoBaseline = new wxSlider(noteFxPanelStereo,ID_EFFECT_STEREO_BASELINE_SLIDER, 20, 0, 100);
+    labelAppearance = new wxStaticText(noteTools, wxID_ANY, _("Appearance"));
     checkAlphaBlend = new wxCheckBox(noteTools,ID_CHECK_ALPHA , wxTRANS("Smooth && translucent objects"));
     checkAlphaBlend->SetValue(true);
     checkLighting = new wxCheckBox(noteTools, ID_CHECK_LIGHTING, wxTRANS("3D lighting"));
     checkLighting->SetValue(true);
+    static_line_1 = new wxStaticLine(noteTools, wxID_ANY);
+    labelPerformance = new wxStaticText(noteTools, wxID_ANY, wxTRANS("Performance"));
     checkWeakRandom = new wxCheckBox(noteTools, ID_CHECK_WEAKRANDOM, wxTRANS("Fast and weak randomisation."));
     checkWeakRandom->SetValue(true);
+    checkLimitOutput = new wxCheckBox(noteTools, ID_CHECK_LIMIT_POINT_OUT, wxTRANS("Limit Output Pts"));
+    checkLimitOutput->SetValue((visControl.getIonDisplayLimit() !=0));
+    std::string tmpStr;
+    stream_cast(tmpStr,visControl.getIonDisplayLimit());
+    textLimitOutput = new wxTextCtrl(noteTools, ID_TEXT_LIMIT_POINT_OUT, wxStr(tmpStr),
+		    	wxDefaultPosition,wxDefaultSize,wxTE_PROCESS_ENTER );
     checkCaching = new wxCheckBox(noteTools, ID_CHECK_CACHING, wxTRANS("Filter caching"));
     checkCaching->SetValue(true);
     labelMaxRamUsage = new wxStaticText(noteTools, wxID_ANY, wxTRANS("Max. Ram usage (%)"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
@@ -764,7 +759,11 @@ MainWindowFrame::~MainWindowFrame()
 
 	//delete the file history  pointer
 	delete recentHistory;
-    
+   
+   	//Bindings did not get initialised, if glpane is not OK,
+	// so abort, rather than disconnecting
+   	if(!glPanelOK)
+		return; 
 
 	//wxwidgets can crash if objects are ->Connect-ed  in 
 	// wxWindowBase::DestroyChildren(), so Disconnect before destructing
@@ -870,6 +869,9 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_CHECKBOX(ID_EFFECT_STEREO_LENSFLIP, MainWindowFrame::OnFxStereoLensFlip)
     EVT_COMBOBOX(ID_EFFECT_STEREO_COMBO, MainWindowFrame::OnFxStereoCombo)
     EVT_COMMAND_SCROLL(ID_EFFECT_STEREO_BASELINE_SLIDER, MainWindowFrame::OnFxStereoBaseline)
+    EVT_TEXT(ID_TEXT_LIMIT_POINT_OUT, MainWindowFrame::OnTextLimitOutput)
+    EVT_TEXT_ENTER(ID_TEXT_LIMIT_POINT_OUT, MainWindowFrame::OnTextLimitOutputEnter)
+    EVT_CHECKBOX(ID_CHECK_LIMIT_POINT_OUT, MainWindowFrame::OnCheckLimitOutput)
   
 
     EVT_COMMAND(wxID_ANY, RemoteUpdateAvailEvent, MainWindowFrame::OnCheckUpdatesThread)
@@ -963,6 +965,8 @@ void MainWindowFrame::OnFileMerge(wxCommandEvent &event)
 	statusMessage(TRANS("Merged file."),MESSAGE_INFO);
 
 	panelTop->Refresh();
+
+	setSaveStatus();
 	
 	wxF->Destroy();
 }
@@ -1117,20 +1121,6 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 			return false;
 		}
 
-		//Try to restore the working directory as needed
-		if(!(visControl.getWorkDir().size()))
-		{
-			wxString wd;
-			wd = wxGetCwd();
-			visControl.setWorkDir(stlStr(wd));
-		}
-		else
-		{
-			if(wxDirExists(wxStr(visControl.getWorkDir())))
-				wxSetWorkingDirectory(wxStr(visControl.getWorkDir()));
-		}
-
-
 
 		if(visControl.hasHazardousContents())
 		{
@@ -1152,38 +1142,36 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 
 		checkViewWorldAxis->Check(visControl.getAxisVisible());
 
+		{
 		//Update the camera dropdown
-		vector<std::pair<unsigned int, std::string> > camData;
-		visControl.getCamData(camData);
+		vector<std::string > camNames;
+		visControl.getCamData(camNames);
 
 		comboCamera->Clear();
-		unsigned int uniqueID;
-		//Skip the first element, as it is a hidden camera.
-		for(unsigned int ui=1;ui<camData.size();ui++)
+		for(unsigned int ui=1;ui<camNames.size();ui++)
 		{
 			//Do not delete as this will be deleted by wx
-			comboCamera->Append(wxStr(camData[ui].second),
-					(wxClientData *)new wxListUint(camData[ui].first));	
+			comboCamera->Append(wxStr(camNames[ui]),
+					(wxClientData *)new wxListUint(ui));	
 			//If this is the active cam (1) set the selection and (2) remember
 			//the ID
-			if(camData[ui].first == visControl.getActiveCamId())
-			{
+			if(ui == visControl.getActiveCamId())
 				comboCamera->SetSelection(ui-1);
-				uniqueID=camData[ui].first;
-			}
 		}
 
 		//Only update the camera grid if we have a valid uniqueID
-		if(camData.size() > 1)
+		if(camNames.size() > 1)
 		{
 			//Use the remembered ID to update the grid.
-			visControl.updateCamPropertyGrid(gridCameraProperties,uniqueID);
+			visControl.updateCamPropertyGrid(gridCameraProperties,
+						visControl.getActiveCamId());
 		}
 		else
 		{
 			//Reset the camera property fields & combo box
 			gridCameraProperties->clear();
 			comboCamera->SetValue(wxCStr(TRANS(cameraIntroString)));
+		}
 		}
 
 		//reset the stash combo box
@@ -1201,7 +1189,6 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 
 
 
-		currentFile =fileStr;
 		fileSave->Enable(true);
 
 		
@@ -1227,9 +1214,8 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 
 		FilterTree fTree;
 
-		Filter *posFilter,*downSampleFilter;
+		Filter *posFilter;
 		posFilter= configFile.getDefaultFilter(FILTER_TYPE_DATALOAD);
-		downSampleFilter= configFile.getDefaultFilter(FILTER_TYPE_IONDOWNSAMPLE);
 
 		//Bastardise the default settings such that it knows to use the correct
 		// file type, based upon file extension
@@ -1251,10 +1237,8 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 
 		//Append a new filter to the filter tree
 		fTree.addFilter(posFilter,0);
-		fTree.addFilter(downSampleFilter,posFilter);
 		visControl.addFilterTree(fTree,true,0);
 
-		currentFile.clear();
 	}	
 
 	visControl.updateWxTreeCtrl(treeFilters);
@@ -1301,43 +1285,42 @@ void MainWindowFrame::OnRecentFile(wxCommandEvent &event)
 			configFile.removeRecentFile(stlStr(f));
 		}
 	}
+
+	setSaveStatus();
 }
 
 void MainWindowFrame::OnFileSave(wxCommandEvent &event)
 {
-	if(!currentFile.length())
-		return;
+	std::string saveFilename=visControl.getFilename();
 
+	//Save menu should not be selectable if there is no file to save to.
+	ASSERT(!saveFilename.empty());
 	//If the file does not exist, use saveas instead
-	if(!wxFileExists(currentFile))
+	if( saveFilename.empty()  || !wxFileExists(wxStr(saveFilename)))
 	{
 		OnFileSaveAs(event);
-
 		return;
 	}
-
 	
 	std::map<string,string> dummyMap;
-	std::string dataFile = stlStr(currentFile);
-
 	//Try to save the viscontrol state
-	if(!visControl.saveState(dataFile.c_str(),dummyMap))
+	if(!visControl.saveState(saveFilename.c_str(),dummyMap))
 	{
 		wxErrMsg(this,TRANS("Save error"),TRANS("Unable to save. Check output destination can be written to."));
 	}
 	else
 	{
-		fileSave->Enable(true);
-
 		//Update the recent files, and the menu.
-		configFile.addRecentFile(dataFile);
-		recentHistory->AddFileToHistory(wxStr(dataFile));
-		
-		dataFile=std::string("Saved state: ") + dataFile;
-		statusMessage(dataFile.c_str(),MESSAGE_INFO);
+		configFile.addRecentFile(saveFilename);
+		recentHistory->AddFileToHistory(wxStr(saveFilename));
+	
+		std::string tmpStr;
+		tmpStr=	std::string("Saved state: ") + saveFilename;
+		statusMessage(tmpStr.c_str(),MESSAGE_INFO);
 
 	}
 
+	setSaveStatus();
 }
 
 void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
@@ -1621,10 +1604,19 @@ void MainWindowFrame::setLockUI(bool locking=true,
 			checkWeakRandom->Enable(!locking);
 			checkCaching->Enable(!locking);
 			spinCachePercent->Enable(!locking);
+			textLimitOutput->Enable(!locking);
+			checkLimitOutput->Enable(!locking);
 
 			fileMenu->Enable(ID_FILE_OPEN,!locking);
 			fileMenu->Enable(ID_FILE_MERGE,!locking);
-			fileMenu->Enable(ID_FILE_SAVE,!locking);
+
+			//Save menu needs to be handled specially in the case of an unlock
+			// as determining if it can be enabled needs work
+			if(!locking)
+				fileMenu->Enable(ID_FILE_SAVE,false);
+			else
+				setSaveStatus();
+
 			fileMenu->Enable(ID_FILE_SAVEAS,!locking);
 
 			for(size_t ui=0;ui<recentFilesMenu->GetMenuItemCount();ui++)
@@ -1657,9 +1649,16 @@ void MainWindowFrame::setLockUI(bool locking=true,
 
 			fileMenu->Enable(ID_FILE_OPEN,!locking);
 			fileMenu->Enable(ID_FILE_MERGE,!locking);
-			fileMenu->Enable(ID_FILE_SAVE,!locking);
 			fileMenu->Enable(ID_FILE_SAVEAS,!locking);
+			
+			//Save menu needs to be handled specially in the case of an unlock
+			// as determining if it can be enabled needs work
+			if(!locking)
+				fileMenu->Enable(ID_FILE_SAVE,false);
+			else
+				setSaveStatus();
 
+			//Lock/unlock all the recent files entries
 			for(size_t ui=0;ui<recentFilesMenu->GetMenuItemCount();ui++)
 			{
 				wxMenuItem *m;
@@ -1675,7 +1674,10 @@ void MainWindowFrame::setLockUI(bool locking=true,
 			//Locking of the tools pane
 			checkWeakRandom->Enable(!locking);
 			checkCaching->Enable(!locking);
+			checkLimitOutput->Enable(!locking);
+			textLimitOutput->Enable(!locking);
 			spinCachePercent->Enable(!locking);
+
 
 			//Lock panel spectra, so we cannot alter things like ranges
 			panelSpectra->limitInteraction(locking);
@@ -1786,9 +1788,10 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 			{
 				if(exportDialog->wantsImages())
 				{
+					vector<SelectionDevice *> dummy;
 					//update the output streams, but do not release
 					// the contents.
-					if(visControl.doUpdateScene(outStreams,false))
+					if(visControl.doUpdateScene(outStreams,dummy,false))
 					{
 						pair<string,string> errMsg;
 						string tmpStr;
@@ -2284,8 +2287,9 @@ void MainWindowFrame::OnFileSaveAs(wxCommandEvent &event)
 	}
 	else
 	{
-		currentFile = wxF->GetPath();
-		fileSave->Enable(true);
+		std::string tmpStr;
+		tmpStr=stlStr(wxF->GetPath());
+		visControl.setFilename(tmpStr);
 
 		//Update the recent files, and the menu.
 		configFile.addRecentFile(dataFile);
@@ -2297,6 +2301,8 @@ void MainWindowFrame::OnFileSaveAs(wxCommandEvent &event)
 
 	//Restore the relative path behaviour
 	visControl.setUseRelPaths(oldRelPath);
+	
+	setSaveStatus();
 }
 
 
@@ -3184,7 +3190,7 @@ void MainWindowFrame::OnTreeKeyDown(wxTreeEvent &event)
 	
 			//Force a scene update, independent of if autoUpdate is enabled. 
 			doSceneUpdate();	
-
+		
 			break;
 		}
 		default:
@@ -3234,7 +3240,7 @@ void MainWindowFrame::OnGridFilterPropertyChange(wxGridEvent &event)
 		clearWxTreeImages(treeFilters);
 
 	visControl.updateFilterPropGrid(gridFilterPropGroup,filterId);
-	
+
 	Layout();
 	programmaticEvent=false;
 }
@@ -3333,6 +3339,8 @@ void MainWindowFrame::OnComboCameraEnter(wxCommandEvent &event)
 		//refresh the camera property grid
 		visControl.updateCamPropertyGrid(gridCameraProperties ,l->value);
 
+		setSaveStatus();
+
 		//force redraw in 3D pane
 		panelTop->Refresh(false);
 		return ;
@@ -3350,6 +3358,8 @@ void MainWindowFrame::OnComboCameraEnter(wxCommandEvent &event)
 	visControl.setCam(u);
 	visControl.updateCamPropertyGrid(gridCameraProperties,u);
 	panelTop->Refresh(false);
+
+	setSaveStatus();
 }
 
 void MainWindowFrame::OnComboCamera(wxCommandEvent &event)
@@ -3367,6 +3377,8 @@ void MainWindowFrame::OnComboCamera(wxCommandEvent &event)
 	statusMessage(s.c_str(),MESSAGE_INFO);
 	
 	panelTop->Refresh(false);
+	
+	setSaveStatus();
 	return ;
 }
 
@@ -3510,6 +3522,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 		doSceneUpdate();
 
 	comboFilters->SetValue(wxT(""));
+	
 }
 
 bool MainWindowFrame::doSceneUpdate()
@@ -3522,6 +3535,7 @@ bool MainWindowFrame::doSceneUpdate()
 	progressTimer->Start(PROGRESS_TIMER_DELAY);		
 	currentlyUpdatingScene=true;
 	haveAborted=false;
+	panelTop->currentScene.setShowProgress(true);
 
 		
 	statusMessage("",MESSAGE_NONE);
@@ -3575,6 +3589,7 @@ bool MainWindowFrame::doSceneUpdate()
 
 	updateLastRefreshBox();
 
+	panelTop->currentScene.setShowProgress(false);
 
 	//Add (or hide) a little "Star" to inform the user there is some info available
 	if(textConsoleOut->IsEmpty() || noteDataView->GetSelection()==NOTE_CONSOLE_PAGE_OFFSET)
@@ -3592,6 +3607,8 @@ bool MainWindowFrame::doSceneUpdate()
 	setFilterTreeAnalysisImages();
 
 	visControl.updateRawGrid();
+
+	setSaveStatus();
 
 	//Return a value dependant upon whether we successfully loaded 
 	//the data or not
@@ -3694,7 +3711,8 @@ void MainWindowFrame::OnAutosaveTimer(wxTimerEvent &event)
 	std::string s;
 	s=  stlStr(filePath);
 	std::map<string,string> dummyMap;
-	if(visControl.saveState(s.c_str(),dummyMap))
+
+	if(visControl.saveState(s.c_str(),dummyMap,false,false))
 		statusMessage(TRANS("Autosave complete."),MESSAGE_INFO);
 	else
 	{
@@ -3763,8 +3781,8 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 	{
 		//Use the current combobox value to determine which camera is the 
 		//current camera in the property grid
-		
-
+		visControl.getCameraUpdates();
+			
 		int n = comboCamera->FindString(comboCamera->GetValue());
 
 		if(n != wxNOT_FOUND)
@@ -3776,6 +3794,8 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 		}
 
 		panelTop->clearCameraUpdates();
+
+		setSaveStatus();
 	}
 
 	if(plotUpdates)
@@ -3794,6 +3814,7 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 		visControl.updateFilterPropGrid(gridFilterPropGroup,filterId);
 
 	}
+
 
 	programmaticEvent=false;	
 }
@@ -3854,8 +3875,17 @@ void MainWindowFrame::updateProgressStatus()
 	}
 	else
 	{
+		//Check for new progress data
 		ProgressData p;
 		p=visControl.getProgress();
+
+		if(p == lastProgressData)
+			return;
+		lastProgressData=p;
+
+
+		//Update the text progress
+		{
 		ASSERT(p.totalProgress <= visControl.numFilters());
 		
 		if(p.filterProgress > 100)
@@ -3896,10 +3926,20 @@ void MainWindowFrame::updateProgressStatus()
 				progressString = totalProg + TRANS(" of ") + totalCount;
 		}
 
+
 		if( p.filterProgress != 100)
 			filterProg+=TRANS("\% Done (Esc aborts)");
 		else
 			filterProg+=TRANS("\% Done");
+		}
+
+		//Update the scene progress icon
+		if(panelTop->currentScene.getShowProgress())
+		{
+			wxPaintEvent wxP;
+			wxPostEvent(panelTop,wxP);
+		}
+
 
 	}
 
@@ -3907,6 +3947,7 @@ void MainWindowFrame::updateProgressStatus()
 	MainFrame_statusbar->SetStatusText(wxT(""),0);
 	MainFrame_statusbar->SetStatusText(wxStr(progressString),1);
 	MainFrame_statusbar->SetStatusText(wxStr(filterProg),2);
+
 }
 
 void MainWindowFrame::updatePostEffects()
@@ -4227,6 +4268,7 @@ void MainWindowFrame::OnButtonRefresh(wxCommandEvent &event)
 			statusMessage(TRANS("Tip: You can shift-click to force full refresh, if required"),MESSAGE_HINT);
 	}
 	doSceneUpdate();	
+	
 }
 
 void MainWindowFrame::OnRawDataUnsplit(wxSplitterEvent &event)
@@ -4370,6 +4412,8 @@ void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
 		else
 			clearWxTreeImages(treeFilters);
 	}
+
+	setSaveStatus();
 }
 
 void MainWindowFrame::OnFilterGridCellEditorHide(wxGridEvent &event)
@@ -4464,7 +4508,8 @@ void MainWindowFrame::OnCameraGridCellEditorShow(wxGridEvent &event)
 	}
 
 	panelTop->Refresh(false);
-	
+
+	setSaveStatus();
 }
 
 void MainWindowFrame::OnButtonGridCopy(wxCommandEvent &event)
@@ -4516,6 +4561,61 @@ void MainWindowFrame::OnCheckWeakRandom(wxCommandEvent &event)
 	doSceneUpdate();
 }
 
+void MainWindowFrame::OnCheckLimitOutput(wxCommandEvent &event)
+{
+	size_t limitVal;
+	if(event.IsChecked())
+	{
+		bool isOK=validateTextAsStream(textLimitOutput,limitVal);
+
+		if(!isOK)
+			return;
+	}
+	else
+		limitVal=0;
+
+	visControl.setIonDisplayLimit(limitVal);
+	doSceneUpdate();
+	
+	configFile.setMaxPoints(limitVal);
+}
+
+void MainWindowFrame::OnTextLimitOutput(wxCommandEvent &event)
+{
+	size_t limitVal;
+	bool isOK=validateTextAsStream(textLimitOutput,limitVal);
+
+	if(!isOK)
+		return;
+
+	if(checkLimitOutput->IsChecked())
+	{
+		visControl.setIonDisplayLimit(limitVal);
+		configFile.setMaxPoints(limitVal);
+	}
+}
+
+void MainWindowFrame::OnTextLimitOutputEnter(wxCommandEvent &event)
+{
+	size_t limitVal;
+	bool isOK=validateTextAsStream(textLimitOutput,limitVal);
+
+	if(!isOK)
+		return;
+
+	if(checkLimitOutput->IsChecked())
+	{
+		visControl.setIonDisplayLimit(limitVal);
+		doSceneUpdate();
+	}
+
+	//If we set the limit to zero this is a special case
+	// that disables the limit, so untick the checkbox to make it clear to the
+	// user that we are not using this any more
+	if(limitVal == 0)
+		checkLimitOutput->SetValue(false);
+}
+
 void MainWindowFrame::OnCacheRamUsageSpin(wxSpinEvent &event)
 {
 	ASSERT(event.GetPosition() >= 0 &&event.GetPosition()<=100);
@@ -4547,7 +4647,10 @@ void MainWindowFrame::OnButtonRemoveCam(wxCommandEvent &event)
 		comboCamera->SetValue(wxT(""));
 		gridCameraProperties->clear();
 		programmaticEvent=false;
+
+		setSaveStatus();
 	}
+	
 }
 
 void MainWindowFrame::OnSpectraListbox(wxCommandEvent &event)
@@ -4611,7 +4714,7 @@ void MainWindowFrame::OnClose(wxCloseEvent &event)
 		// as we can't abort it anyway.
 		if(event.CanVeto())
 		{
-			if(visControl.numFilters() || visControl.numCams() > 1)
+			if(visControl.stateModifyLevel() >= STATE_MODIFIED_ANCILLARY)
 			{
 				//Prompt for close
 				wxMessageDialog *wxD  =new wxMessageDialog(this,
@@ -4708,6 +4811,8 @@ void MainWindowFrame::OnCheckPostProcess(wxCommandEvent &event)
 	noteFxPanelStereo->Enable(event.IsChecked());
 	visControl.setEffects(event.IsChecked());
 	updatePostEffects();
+		
+	setSaveStatus();
 	
 	panelTop->Refresh();
 }
@@ -4728,6 +4833,8 @@ void MainWindowFrame::OnFxCropCheck(wxCommandEvent &event)
 	labelFxCropDx->Enable(event.IsChecked());
 	labelFxCropDy->Enable(event.IsChecked());
 	labelFxCropDz->Enable(event.IsChecked());
+
+	setSaveStatus();
 
 	updatePostEffects();
 }
@@ -4859,6 +4966,19 @@ void MainWindowFrame::restoreConfigDefaults()
 
 	panelTop->setMouseZoomFactor((float)zoomRate/100.0f);
 	panelTop->setMouseMoveFactor((float)moveRate/100.0f);
+
+
+	//If the config file has a max points value stored, use it,
+	// but don't force a refresh, as we will do that later
+	if(configFile.getHaveMaxPoints())
+	{
+		std::string s;
+		stream_cast(s,configFile.getMaxPoints());
+
+		textLimitOutput->SetValue(wxStr(s));
+
+		visControl.setIonDisplayLimit(configFile.getMaxPoints());
+	}
 }
 
 void MainWindowFrame::restoreConfigPanelDefaults()
@@ -5099,8 +5219,10 @@ void MainWindowFrame::checkReloadAutosave()
 				requireFirstUpdate=true;
 				//Prevent the program from allowing save menu usage
 				//into autosave file
-				currentFile.clear();
-				fileSave->Enable(false);		
+				std::string tmpStr;
+				visControl.setFilename(tmpStr);
+
+				setSaveStatus();
 			}
 
 		
@@ -5163,8 +5285,8 @@ void MainWindowFrame::checkReloadAutosave()
 				{
 					//Prevent the program from allowing save menu usage
 					//into autosave file
-					currentFile.clear();
-					fileSave->Enable(false);
+					
+					
 					doErase=true;
 				}
 				else 
@@ -5228,9 +5350,16 @@ void MainWindowFrame::checkReloadAutosave()
 			wxFileName fileNaming(wxStr(removeFiles[ui]));
 			wxCopyFile(wxStr(removeFiles[ui]),wxtmpDir+fileNaming.GetFullName()); 
 		}
-		//if the copy works or not, just delete the autosave anyway
+		//if the copy works or not, just delete the autsave anyway
 		wxRemoveFile(wxStr(removeFiles[ui]));	
 	}
+}
+
+void MainWindowFrame::setSaveStatus()
+{
+	fileSave->Enable(
+		(visControl.stateModifyLevel() >=STATE_MODIFIED_ANCILLARY)
+			&& visControl.getFilename().size());
 }
 
 wxSize MainWindowFrame::getNiceWindowSize() const
@@ -5284,6 +5413,8 @@ void MainWindowFrame::set_properties()
     checkAlphaBlend->SetToolTip(wxTRANS("Enable/Disable \"Alpha blending\" (transparency) in rendering system. Blending is used to smooth objects (avoids artefacts known as \"jaggies\") and to make transparent surfaces. Disabling will provide faster rendering but look more blocky")); 
     checkLighting->SetToolTip(wxTRANS("Enable/Disable lighting calculations in rendering, for objects that request this. Lighting provides important depth cues for objects comprised of 3D surfaces. Disabling may allow faster rendering in complex scenes"));
     checkWeakRandom->SetToolTip(wxTRANS("Enable/Disable weak randomisation (Galois linear feedback shift register). Strong randomisation uses a much slower random selection method, but provides better protection against inadvertent correlations, and is recommended for final analyses"));
+
+    checkLimitOutput->SetToolTip(wxTRANS("Limit the number of points that can be displayed in the 3D  scene. Does not affect filter tree calculations. Disabling this can severely reduce performance, due to large numbers of points being visible at once."));
     checkCaching->SetToolTip(wxTRANS("Enable/Disable caching of intermediate results during filter updates. Disabling caching will use less system RAM, though changes to any filter property will cause the entire filter tree to be recomputed, greatly slowing computations"));
 
     gridFilterPropGroup->CreateGrid(0, 2);
@@ -5369,6 +5500,7 @@ void MainWindowFrame::do_layout()
     wxBoxSizer* sizerLeft = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer* sizerTools = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer* sizerToolsRamUsage = new wxBoxSizer(wxHORIZONTAL);
+    wxBoxSizer* sizer_1 = new wxBoxSizer(wxHORIZONTAL);
     wxBoxSizer* postProcessSizer = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer* sizerFxStereo = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer* sizerSetereoBaseline = new wxBoxSizer(wxHORIZONTAL);
@@ -5466,9 +5598,15 @@ void MainWindowFrame::do_layout()
     noteEffects->AddPage(noteFxPanelStereo, wxTRANS("Stereo"));
     postProcessSizer->Add(noteEffects, 1, wxEXPAND, 0);
     notePost->SetSizer(postProcessSizer);
+    sizerTools->Add(labelAppearance, 0, wxTOP, 3);
     sizerTools->Add(checkAlphaBlend, 0, wxLEFT|wxTOP|wxBOTTOM, 5);
     sizerTools->Add(checkLighting, 0, wxLEFT|wxTOP|wxBOTTOM, 6);
+    sizerTools->Add(static_line_1, 0, wxEXPAND, 0);
+    sizerTools->Add(labelPerformance, 0, wxTOP, 3);
     sizerTools->Add(checkWeakRandom, 0, wxLEFT|wxTOP|wxBOTTOM, 5);
+    sizer_1->Add(checkLimitOutput, 0, wxRIGHT, 3);
+    sizer_1->Add(textLimitOutput, 0, wxLEFT, 4);
+    sizerTools->Add(sizer_1, 0, wxLEFT|wxEXPAND, 5);
     sizerTools->Add(checkCaching, 0, wxLEFT|wxTOP|wxBOTTOM, 5);
     sizerToolsRamUsage->Add(labelMaxRamUsage, 0, wxRIGHT|wxALIGN_RIGHT, 5);
     sizerToolsRamUsage->Add(spinCachePercent, 0, 0, 5);
@@ -5503,6 +5641,7 @@ void MainWindowFrame::do_layout()
     splitLeftRight->SplitVertically(panelLeft, panelRight);
     topSizer->Add(splitLeftRight, 1, wxEXPAND, 0);
     SetSizer(topSizer);
+    topSizer->Fit(this);
     Layout();
     // end wxGlade
     //

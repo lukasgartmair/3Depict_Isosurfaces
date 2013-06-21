@@ -42,7 +42,6 @@ class IonColourFilter: public Filter
 		//!Should we display the colour bar?
 		bool showColourBar;
 
-		DrawColourBarOverlay* makeColourBar() const;
 	public:
 		IonColourFilter();
 		//!Duplicate filter contents, excluding cache.

@@ -24,10 +24,10 @@
 #include <wx/treectrl.h>
 #include <wx/grid.h>
 
-
-#include "backend/viscontrol.h"
 // end wxGlade
 
+#include "./backend/filtertree.h"
+class VisController;
 // begin wxGlade: ::extracode
 #include <wx/listctrl.h>
 // end wxGlade

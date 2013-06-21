@@ -285,10 +285,6 @@ void FilterPropGroup::checkConsistent() const
 }
 #endif
 
-void IonStreamData::clear()
-{
-	data.clear();
-}
 
 void VoxelStreamData::clear()
 {
@@ -458,6 +454,42 @@ IonStreamData::IonStreamData() : representationType(ION_REPRESENT_POINTS),
 	streamType=STREAM_TYPE_IONS;
 }
 
+void IonStreamData::clear()
+{
+	data.clear();
+}
+
+IonStreamData *IonStreamData::cloneSampled(float fraction) const
+
+{
+	IonStreamData *out = new IonStreamData;
+
+	out->representationType=representationType;
+	out->r=r;
+	out->g=g;
+	out->b=b;
+	out->a=a;
+	out->ionSize=ionSize;
+	out->valueType=valueType;
+	out->parent=parent;
+	out->cached=0;
+
+
+	out->data.reserve(fraction*data.size()*0.9f);
+
+	
+	RandNumGen rng;
+	rng.initTimer();
+	for(size_t ui=0;ui<data.size();ui++)
+	{
+		if(rng.genUniformDev() < fraction)
+			out->data.push_back(data[ui]);	
+	}
+
+	return out;
+}
+
+
 VoxelStreamData::VoxelStreamData() : representationType(VOXEL_REPRESENT_POINTCLOUD),
 	r(1.0f),g(0.0f),b(0.0f),a(0.3f), splatSize(2.0f),isoLevel(0.5f)
 {
@@ -523,7 +555,7 @@ bool Filter::haveCache() const
 	return cacheOK;
 }
 
-void Filter::getSelectionDevices(vector<SelectionDevice<Filter> *> &outD)
+void Filter::getSelectionDevices(vector<SelectionDevice *> &outD) const
 {
 	outD.resize(devices.size());
 
@@ -574,6 +606,31 @@ void Filter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
 {
 	dataOut.resize(dataIn.size());
 	std::copy(dataIn.begin(),dataIn.end(),dataOut.begin());
+}
+
+bool ProgressData::operator==( const ProgressData &oth) const
+{
+	if(filterProgress!=oth.filterProgress ||
+		(totalProgress!=oth.totalProgress) ||
+		(totalNumFilters!=oth.totalNumFilters) ||
+		(step!=oth.step) ||
+		(maxStep!=oth.maxStep) ||
+		(curFilter!=oth.curFilter )||
+		(stepName!=oth.stepName) )
+		return false;
+
+	return true;
+}
+
+const ProgressData &ProgressData::operator=(const ProgressData &oth)
+{
+	filterProgress=oth.filterProgress;
+	totalProgress=oth.totalProgress;
+	totalNumFilters=oth.totalNumFilters;
+	step=oth.step;
+	maxStep=oth.maxStep;
+	curFilter=oth.curFilter;
+	stepName=oth.stepName;
 }
 
 #ifdef DEBUG

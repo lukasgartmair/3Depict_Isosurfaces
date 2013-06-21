@@ -17,7 +17,7 @@
 */
 
 #include "voxelise.h"
-
+#include "common/colourmap.h"
 #include "filterCommon.h"
 
 #include <map>
@@ -31,13 +31,24 @@ enum
 	KEY_WIDTHBINSX,
 	KEY_WIDTHBINSY,
 	KEY_WIDTHBINSZ,
+	
 	KEY_COUNT_TYPE,
 	KEY_NORMALISE_TYPE,
 	KEY_SPOTSIZE,
-	KEY_TRANSPARANCY,
+	KEY_TRANSPARENCY,
 	KEY_COLOUR,
 	KEY_ISOLEVEL,
 	KEY_VOXEL_REPRESENTATION_MODE,
+	
+	KEY_VOXEL_SLICE_COLOURAUTO,
+	KEY_MAPEND,
+	KEY_MAPSTART,
+	KEY_SHOW_COLOURBAR,
+	KEY_VOXEL_COLOURMODE,
+	KEY_VOXEL_SLICE_AXIS,
+	KEY_VOXEL_SLICE_OFFSET,
+	KEY_VOXEL_SLICE_INTERP,
+	
 	KEY_FILTER_MODE,
 	KEY_FILTER_BOUNDARY_MODE,
 	KEY_FILTER_BINS,
@@ -72,12 +83,26 @@ enum
 	VOXELISE_FILTERBOUNDMODE_MAX// keep this at the end so it's a bookend for the last value
 };
 
+
+//Error codes and corresponding strings
+//--
 enum
 {
 	VOXELISE_ABORT_ERR,
 	VOXELISE_MEMORY_ERR,
 	VOXELISE_CONVOLVE_ERR,
 	VOXELISE_BOUNDS_INVALID_ERR
+};
+//--
+
+
+//!Can we keep the cached contents, when transitioning from
+// one representation to the other- this is only the case
+// when _KEEPCACHE [] is true for both representations
+const bool VOXEL_REPRESENT_KEEPCACHE[] = {
+	true,
+	true,
+	false
 };
 
 const char *NORMALISE_TYPE_STRING[] = {
@@ -89,7 +114,8 @@ const char *NORMALISE_TYPE_STRING[] = {
 
 const char *REPRESENTATION_TYPE_STRING[] = {
 		NTRANS("Point Cloud"),
-		NTRANS("Isosurface")
+		NTRANS("Isosurface"),
+		NTRANS("Axial slice")
 	};
 
 const char *VOXELISE_FILTER_TYPE_STRING[]={
@@ -100,6 +126,11 @@ const char *VOXELISE_FILTER_TYPE_STRING[]={
 const char *VOXELISE_FILTER_BOUND_STRING[] ={
 	NTRANS("Zero"),
 	NTRANS("Bounce")
+	};
+
+const char *VOXELISE_SLICE_INTERP_STRING[]={
+	NTRANS("None"),
+	NTRANS("Linear")
 	};
 
 //This is not a member of voxels.h, as the voxels do not have any concept of the IonHit
@@ -150,6 +181,7 @@ VoxeliseFilter::VoxeliseFilter()
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(VOXELISE_FILTER_BOUND_STRING) ==  VOXELISE_FILTERBOUNDMODE_MAX);
 
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(REPRESENTATION_TYPE_STRING) == VOXEL_REPRESENT_END);
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(VOXEL_REPRESENT_KEEPCACHE) == VOXEL_REPRESENT_END);
 
 	splatSize=1.0f;
 	a=0.9f;
@@ -163,6 +195,11 @@ VoxeliseFilter::VoxeliseFilter()
 	
 	representation=VOXEL_REPRESENT_POINTCLOUD;
 
+	colourMap=0;
+	autoColourMap=true;
+	colourMapBounds[0]=0;
+	colourMapBounds[1]=1;
+
 
 	//Ficticious bounds.
 	bc.setBounds(Point3D(0,0,0),Point3D(1,1,1));
@@ -174,6 +211,13 @@ VoxeliseFilter::VoxeliseFilter()
 
 	numeratorAll = false;
 	denominatorAll = true;
+
+	sliceInterpolate=SLICE_INTERP_NONE;
+	sliceBoundMode=BOUND_MIRROR;
+	sliceAxis=0;
+	sliceOffset=0.5;
+	showColourBar=false;
+
 
 	cacheOK=false;
 	cache=true; //By default, we should cache, but decision is made higher up
@@ -228,10 +272,31 @@ Filter *VoxeliseFilter::cloneUncached() const
 	else
 		p->rsdIncoming=0;
 
+
+
+	p->colourMap = colourMap;
+
+	p->nColours = nColours;
+	p->showColourBar = showColourBar;
+	p->autoColourMap = autoColourMap;
+	p->colourMapBounds[0] = colourMapBounds[0];
+	p->colourMapBounds[1] = colourMapBounds[1];
+
+	p->sliceInterpolate = sliceInterpolate;
+	p->sliceBoundMode= sliceBoundMode;
+	p->sliceAxis = sliceAxis;
+	p->sliceOffset = sliceOffset;
+
 	p->cache=cache;
 	p->cacheOK=false;
 	p->userString=userString;
 	return p;
+}
+
+void VoxeliseFilter::clearCache() 
+{
+	voxelCache.clear();
+	Filter::clearCache();
 }
 
 size_t VoxeliseFilter::numBytesForCache(size_t nObjects) const
@@ -335,206 +400,202 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 	}
 
 
-	Point3D minP,maxP;
-
-	bc.setInverseLimits();
-		
-	for (size_t i = 0; i < dataIn.size(); i++) 
+	Voxels<float> voxelData;
+	if(!voxelCache.getSize())
 	{
-		//Check for ion stream types. Block others from propagation.
-		if (dataIn[i]->getStreamType() != STREAM_TYPE_IONS) continue;
+		Point3D minP,maxP;
 
-		const IonStreamData *is = (const IonStreamData *)dataIn[i];
-		//Don't work on empty or single object streams (bounding box needs to be defined)
-		if (is->getNumBasicObjects() < 2) continue;
-	
-		BoundCube bcTmp;
-		bcTmp=getIonDataLimits(is->data);
-
-		//Bounds could be invalid if, for example, we had coplanar axis aligned points
-		if (!bcTmp.isValid()) continue;
-
-		bc.expand(bcTmp);
-	}
-	//No bounding box? Tough cookies
-	if (!bc.isValid() || bc.isFlat()) return VOXELISE_BOUNDS_INVALID_ERR;
-
-	bc.getBounds(minP,maxP);	
-	if (fixedWidth) 
-		calculateNumBinsFromWidths(binWidth, nBins);
-	else
-		calculateWidthsFromNumBins(binWidth, nBins);
-	
-	//Disallow empty bounding boxes (ie, produce no output)
-	if(minP == maxP)
-		return 0;
-		
-	VoxelStreamData *vs = new VoxelStreamData();
-	vs->parent=this;
-	vs->data.setCallbackMethod(callback);
-	vs->data.init(nBins[0], nBins[1], nBins[2], bc);
-	vs->representationType= representation;
-	vs->splatSize = splatSize;
-	vs->isoLevel=isoLevel;
-	vs->data.fill(0);
-	vs->r=r;
-	vs->g=g;
-	vs->b=b;
-	vs->a=a;
-
-	Voxels<float> vsDenom;
-	if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL ||
-		normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL) {
-		//Check we actually have incoming data
-		ASSERT(rsdIncoming);
-		vsDenom.setCallbackMethod(callback);
-		vsDenom.init(nBins[0], nBins[1], nBins[2], bc);
-		vsDenom.fill(0);
-	}
-
-	const IonStreamData *is;
-	if(rsdIncoming)
-	{
-
+		bc.setInverseLimits();
+			
 		for (size_t i = 0; i < dataIn.size(); i++) 
 		{
-			
-			//Check for ion stream types. Don't use anything else in counting
+			//Check for ion stream types. Block others from propagation.
 			if (dataIn[i]->getStreamType() != STREAM_TYPE_IONS) continue;
-			
-			is= (const IonStreamData *)dataIn[i];
 
-			
-			//Count the numerator ions	
-			if(is->data.size())
-			{
-				//Check what Ion type this stream belongs to. Assume all ions
-				//in the stream belong to the same group
-				unsigned int ionID;
-				ionID = getIonstreamIonID(is,rsdIncoming->rangeFile);
-
-				bool thisIonEnabled;
-				if(ionID!=(unsigned int)-1)
-					thisIonEnabled=enabledIons[0][ionID];
-				else
-					thisIonEnabled=false;
-
-				if(thisIonEnabled)
-				{
-					countPoints(vs->data,is->data,true,callback);
-				}
-			}
+			const IonStreamData *is = (const IonStreamData *)dataIn[i];
+			//Don't work on empty or single object streams (bounding box needs to be defined)
+			if (is->getNumBasicObjects() < 2) continue;
 		
-			//If the user requests normalisation, compute the denominator dataset
-			if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL) {
+			BoundCube bcTmp;
+			bcTmp=getIonDataLimits(is->data);
+
+			//Bounds could be invalid if, for example, we had coplanar axis aligned points
+			if (!bcTmp.isValid()) continue;
+
+			bc.expand(bcTmp);
+		}
+		//No bounding box? Tough cookies
+		if (!bc.isValid() || bc.isFlat()) return VOXELISE_BOUNDS_INVALID_ERR;
+
+		bc.getBounds(minP,maxP);	
+		if (fixedWidth) 
+			calculateNumBinsFromWidths(binWidth, nBins);
+		else
+			calculateWidthsFromNumBins(binWidth, nBins);
+		
+		//Disallow empty bounding boxes (ie, produce no output)
+		if(minP == maxP)
+			return 0;
+	
+		//Rebuild the voxels from the point dta
+		Voxels<float> vsDenom;
+		voxelData.setCallbackMethod(callback);
+		voxelData.init(nBins[0], nBins[1], nBins[2], bc);
+		voxelData.fill(0);
+		
+		if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL ||
+			normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL) {
+			//Check we actually have incoming data
+			ASSERT(rsdIncoming);
+			vsDenom.setCallbackMethod(callback);
+			vsDenom.init(nBins[0], nBins[1], nBins[2], bc);
+			vsDenom.fill(0);
+		}
+
+		const IonStreamData *is;
+		if(rsdIncoming)
+		{
+
+			for (size_t i = 0; i < dataIn.size(); i++) 
+			{
+				
+				//Check for ion stream types. Don't use anything else in counting
+				if (dataIn[i]->getStreamType() != STREAM_TYPE_IONS) continue;
+				
+				is= (const IonStreamData *)dataIn[i];
+
+				
+				//Count the numerator ions	
 				if(is->data.size())
 				{
 					//Check what Ion type this stream belongs to. Assume all ions
 					//in the stream belong to the same group
 					unsigned int ionID;
-					ionID = rsdIncoming->rangeFile->getIonID(is->data[0].getMassToCharge());
+					ionID = getIonstreamIonID(is,rsdIncoming->rangeFile);
 
 					bool thisIonEnabled;
 					if(ionID!=(unsigned int)-1)
-						thisIonEnabled=enabledIons[1][ionID];
+						thisIonEnabled=enabledIons[0][ionID];
 					else
 						thisIonEnabled=false;
 
 					if(thisIonEnabled)
-						countPoints(vsDenom,is->data,true,callback);
+					{
+						countPoints(voxelData,is->data,true,callback);
+					}
 				}
-			} else if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
-			{
-				countPoints(vsDenom,is->data,true,callback);
-			}
+			
+				//If the user requests normalisation, compute the denominator dataset
+				if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL) {
+					if(is->data.size())
+					{
+						//Check what Ion type this stream belongs to. Assume all ions
+						//in the stream belong to the same group
+						unsigned int ionID;
+						ionID = rsdIncoming->rangeFile->getIonID(is->data[0].getMassToCharge());
 
-			if(!(*callback)(false))
-			{
-				delete vs;
-				return VOXELISE_ABORT_ERR;
+						bool thisIonEnabled;
+						if(ionID!=(unsigned int)-1)
+							thisIonEnabled=enabledIons[1][ionID];
+						else
+							thisIonEnabled=false;
+
+						if(thisIonEnabled)
+							countPoints(vsDenom,is->data,true,callback);
+					}
+				} else if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
+				{
+					countPoints(vsDenom,is->data,true,callback);
+				}
+
+				if(!(*callback)(false))
+					return VOXELISE_ABORT_ERR;
 			}
+		
+			//Perform normalsiation	
+			if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
+				voxelData.calculateDensity();
+			else if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL ||
+					 normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
+				voxelData /= vsDenom;
+		}
+		else
+		{
+			//No range data.  Just count
+			for (size_t i = 0; i < dataIn.size(); i++) 
+			{
+				
+				if(dataIn[i]->getStreamType() == STREAM_TYPE_IONS)
+				{
+					is= (const IonStreamData *)dataIn[i];
+
+					countPoints(voxelData,is->data,true,callback);
+					
+					if(!(*callback)(false))
+						return VOXELISE_ABORT_ERR;
+
+				}
+			}
+			ASSERT(normaliseType != VOXELISE_NORMALISETYPE_COUNT2INVOXEL
+					&& normaliseType!=VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL);
+			if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
+				voxelData.calculateDensity();
+		}	
+
+		vsDenom.clear();
+
+
+		//Perform voxel filtering
+		switch(filterMode)
+		{
+			case VOXELISE_FILTERTYPE_NONE:
+				break;
+			case VOXELISE_FILTERTYPE_GAUSS:
+			{
+				Voxels<float> kernel,res;
+
+				map<unsigned int, unsigned int> modeMap;
+
+
+				modeMap[VOXELISE_FILTERBOUNDMODE_ZERO]=BOUND_ZERO;
+				modeMap[VOXELISE_FILTERBOUNDMODE_BOUNCE]=BOUND_MIRROR;
+
+				//FIXME: This will be SLOW. need to use IIR or some other
+				//fast technique
+				
+				//Construct the gaussian convolution
+				kernel.setGaussianKernelCube(gaussDev,(float)filterBins,filterBins);
+				//Normalise the kernel
+				float sum;
+				sum=kernel.getSum();
+				kernel/=sum;
+			
+				if(res.resize(voxelData))
+					return VOXELISE_MEMORY_ERR; 
+
+				//Gaussian kernel is separable (rank 1)
+				if(voxelData.separableConvolve(kernel,res,modeMap[filterBoundaryMode]))
+					return VOXELISE_CONVOLVE_ERR;
+
+				voxelData.swap(res);
+
+				res.clear();
+				break;
+			}
+			default:
+				ASSERT(false);
 		}
 	
-		//Perform normalsiation	
-		if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
-			vs->data.calculateDensity();
-		else if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL ||
-				 normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
-			vs->data /= vsDenom;
+		voxelCache=voxelData;
 	}
 	else
 	{
-		//No range data.  Just count
-		for (size_t i = 0; i < dataIn.size(); i++) 
-		{
-			
-			if(dataIn[i]->getStreamType() == STREAM_TYPE_IONS)
-			{
-				is= (const IonStreamData *)dataIn[i];
-
-				countPoints(vs->data,is->data,true,callback);
-				
-				if(!(*callback)(false))
-				{
-					delete vs;
-					return VOXELISE_ABORT_ERR;
-				}
-
-			}
-		}
-		ASSERT(normaliseType != VOXELISE_NORMALISETYPE_COUNT2INVOXEL
-				&& normaliseType!=VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL);
-		if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
-			vs->data.calculateDensity();
-	}	
-
-	vsDenom.clear();
-
-
-	//Perform voxel filtering
-	switch(filterMode)
-	{
-		case VOXELISE_FILTERTYPE_NONE:
-			break;
-		case VOXELISE_FILTERTYPE_GAUSS:
-		{
-			Voxels<float> kernel,res;
-
-			map<unsigned int, unsigned int> modeMap;
-
-
-			modeMap[VOXELISE_FILTERBOUNDMODE_ZERO]=BOUND_ZERO;
-			modeMap[VOXELISE_FILTERBOUNDMODE_BOUNCE]=BOUND_MIRROR;
-
-			//FIXME: This will be SLOW. need to use IIR or some other
-			//fast technique
-			
-			//Construct the gaussian convolution
-			kernel.setGaussianKernelCube(gaussDev,(float)filterBins,filterBins);
-			//Normalise the kernel
-			float sum;
-			sum=kernel.getSum();
-			kernel/=sum;
-		
-			if(res.resize(vs->data))
-				return VOXELISE_MEMORY_ERR; 
-
-			//Gaussian kernel is separable (rank 1)
-			if(vs->data.separableConvolve(kernel,res,modeMap[filterBoundaryMode]))
-				return VOXELISE_CONVOLVE_ERR;
-
-			vs->data.swap(res);
-
-			res.clear();
-			break;
-		}
-		default:
-			ASSERT(false);
+		//Use the cached value
+		voxelData=voxelCache;
 	}
-
 	
 	float min,max;
-	vs->data.minMax(min,max);
+	voxelData.minMax(min,max);
 
 
 	string sMin,sMax;
@@ -542,21 +603,122 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 	stream_cast(sMax,max);
 	consoleOutput.push_back(std::string(TRANS("Voxel Limits (min,max): (") + sMin + string(","))
 		       	+  sMax + ")");
-	if(cache)
+
+
+	//Update the bounding cube
 	{
-		vs->cached=1;
-		cacheOK=true;
-		filterOutputs.push_back(vs);
+	Point3D p1,p2;
+	voxelData.getBounds(p1,p2);
+	lastBounds.setBounds(p1,p2);
 	}
-	else
-		vs->cached=0;
 
 
-	//Store the voxels on the output
-	getOut.push_back(vs);
+	switch(representation)
+	{
+		case VOXEL_REPRESENT_ISOSURF:
+		case VOXEL_REPRESENT_POINTCLOUD:
+		{
+			VoxelStreamData *vs = new VoxelStreamData();
+			vs->parent=this;
+			std::swap(vs->data,voxelData);
+			vs->representationType= representation;
+			vs->splatSize = splatSize;
+			vs->isoLevel=isoLevel;
+			vs->r=r;
+			vs->g=g;
+			vs->b=b;
+			vs->a=a;
+
+			if(cache)
+			{
+				vs->cached=1;
+				cacheOK=true;
+				filterOutputs.push_back(vs);
+			}
+			else
+				vs->cached=0;
+			
+			//Store the voxels on the output
+			getOut.push_back(vs);
+			break;
+		}
+		case VOXEL_REPRESENT_AXIAL_SLICE:
+		{
+			DrawStreamData *d = new DrawStreamData;
+
+			//Create the voxel slice
+			float minV,maxV;
+			{
+			DrawTexturedQuad *dq = new DrawTexturedQuad();
+
+			getTexturedSlice(voxelData,sliceAxis,sliceOffset,
+						sliceInterpolate,minV,maxV,*dq);
+
+			dq->canSelect=true;
+
+
+			SelectionDevice *s = new SelectionDevice(this);
+			SelectionBinding b;
+			//Bind translation to sphere left click
+			b.setBinding(SELECT_BUTTON_LEFT,0,DRAW_QUAD_BIND_ORIGIN,
+					BINDING_PLANE_ORIGIN,dq->getOrigin(),dq);
+			b.setInteractionMode(BIND_MODE_POINT3D_TRANSLATE);
+			s->addBinding(b);
+
+			devices.push_back(s);
+
+			d->drawables.push_back(dq);
+			}
+			
+			
+			if(showColourBar)
+				d->drawables.push_back(makeColourBar(minV,maxV,255,colourMap));
+			d->cached=0;
+			d->parent=this;
+			
+			getOut.push_back(d);
+		
+		
+			cacheOK=false;
+		}
+	}
+
+
 	
 	//Copy the inputs into the outputs, provided they are not voxels
 	return 0;
+}
+
+void VoxeliseFilter::setPropFromBinding(const SelectionBinding &b)
+{
+	switch(b.getID())
+	{
+		case BINDING_PLANE_ORIGIN:
+		{
+			ASSERT(representation == VOXEL_REPRESENT_AXIAL_SLICE);
+			ASSERT(lastBounds.isValid());
+		
+			//Convert the world coordinate value into a
+			// fractional value of voxel bounds
+			Point3D p;
+			float f;
+			b.getValue(p);
+			f=p[sliceAxis];
+
+			float minB,maxB;
+			minB = lastBounds.getBound(sliceAxis,0);
+			maxB = lastBounds.getBound(sliceAxis,1);
+			sliceOffset= (f -minB)/(maxB-minB);
+			
+			sliceOffset=std::min(sliceOffset,1.0f);
+			sliceOffset=std::max(sliceOffset,0.0f);
+			ASSERT(sliceOffset<=1 && sliceOffset>=0);
+			break;
+		}
+		default:
+			ASSERT(false);
+	}
+
 }
 
 std::string VoxeliseFilter::getNormaliseTypeString(int type){
@@ -800,6 +962,8 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 	choices.push_back(make_pair((unsigned int)VOXEL_REPRESENT_POINTCLOUD,tmpStr));
 	tmpStr=getRepresentTypeString(VOXEL_REPRESENT_ISOSURF);
 	choices.push_back(make_pair((unsigned int)VOXEL_REPRESENT_ISOSURF,tmpStr));
+	tmpStr=getRepresentTypeString(VOXEL_REPRESENT_AXIAL_SLICE);
+	choices.push_back(make_pair((unsigned int)VOXEL_REPRESENT_AXIAL_SLICE,tmpStr));
 	
 	tmpStr= choiceString(choices,representation);
 
@@ -809,12 +973,13 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 	p.helpText=TRANS("3D display method");
 	p.key=KEY_VOXEL_REPRESENTATION_MODE;
 	propertyList.addProperty(p,curGroup);
-	propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
 
 	switch(representation)
 	{
 		case VOXEL_REPRESENT_POINTCLOUD:
 		{
+			propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
+
 			stream_cast(tmpStr,splatSize);
 			p.name=TRANS("Spot size");
 			p.data=tmpStr;
@@ -828,12 +993,16 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			p.data=tmpStr;
 			p.type=PROPERTY_TYPE_REAL;
 			p.helpText=TRANS("How \"see through\" each point is (0 - opaque, 1 - invisible)");
-			p.key=KEY_TRANSPARANCY;
+			p.key=KEY_TRANSPARENCY;
 			propertyList.addProperty(p,curGroup);
+			
 			break;
 		}
 		case VOXEL_REPRESENT_ISOSURF:
 		{
+			//-- Isosurface paramters --
+			propertyList.setGroupTitle(curGroup,TRANS("Surf. param."));
+
 			stream_cast(tmpStr,isoLevel);
 			p.name=TRANS("Isovalue");
 			p.data=tmpStr;
@@ -842,8 +1011,11 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			p.key=KEY_ISOLEVEL;
 			propertyList.addProperty(p,curGroup);
 		
+			//-- 
 				
+			curGroup++;
 
+			//-- Isosurface appearance --
 			//Convert the ion colour to a hex string	
 			genColString((unsigned char)(r*255),(unsigned char)(g*255),
 					(unsigned char)(b*255),(unsigned char)(a*255),tmpStr);
@@ -859,21 +1031,129 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			p.data=tmpStr;
 			p.type=PROPERTY_TYPE_REAL;
 			p.helpText=TRANS("How \"see through\" each facet is (0 - opaque, 1 - invisible)");
-			p.key=KEY_TRANSPARANCY;
+			p.key=KEY_TRANSPARENCY;
 			propertyList.addProperty(p,curGroup);
 			
+			propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
+			//----
+			
+			break;
+		}
+		case VOXEL_REPRESENT_AXIAL_SLICE:
+		{
+			//-- Slice parameters --
+			propertyList.setGroupTitle(curGroup,TRANS("Slice param."));
+
+			vector<pair<unsigned int, string> > choices;
+			
+			
+			choices.push_back(make_pair(0,"x"));	
+			choices.push_back(make_pair(1,"y"));	
+			choices.push_back(make_pair(2,"z"));	
+			p.name=TRANS("Slice Axis");
+			p.data=choiceString(choices,sliceAxis);
+			p.type=PROPERTY_TYPE_CHOICE;
+			p.helpText=TRANS("Normal for the planar slice");
+			p.key=KEY_VOXEL_SLICE_AXIS;
+			propertyList.addProperty(p,curGroup);
+			choices.clear();
+			
+
+			stream_cast(tmpStr,sliceOffset);
+			p.name=TRANS("Slice Coord");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_REAL;
+			p.helpText=TRANS("Fractional coordinate that slice plane passes through");
+			p.key=KEY_VOXEL_SLICE_OFFSET;
+			propertyList.addProperty(p,curGroup);
+		
+			
+			p.name=TRANS("Interp. Mode");
+			for(unsigned int ui=0;ui<SLICE_INTERP_ENUM_END;ui++)
+			{
+				choices.push_back(make_pair(ui,
+					TRANS(VOXELISE_SLICE_INTERP_STRING[ui])));
+			}
+			p.data=choiceString(choices,sliceInterpolate);
+			p.type=PROPERTY_TYPE_CHOICE;
+			p.helpText=TRANS("Interpolation mode for direction normal to slice");
+			p.key=KEY_VOXEL_SLICE_INTERP;
+			propertyList.addProperty(p,curGroup);
+			choices.clear();
+			// ---	
+			curGroup++;
+
+			
+
+			//-- Slice visualisation parameters --
+			for(unsigned int ui=0;ui<NUM_COLOURMAPS; ui++)
+				choices.push_back(make_pair(ui,getColourMapName(ui)));
+
+			tmpStr=choiceString(choices,colourMap);
+
+			p.name=TRANS("Colour mode");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_CHOICE;
+			p.helpText=TRANS("Colour scheme used to assign points colours by value");
+			p.key=KEY_VOXEL_COLOURMODE;
+			propertyList.addProperty(p,curGroup);
+
+			if(showColourBar)
+				tmpStr="1";
+			else
+				tmpStr="0";
+			
+			p.name=TRANS("Show Bar");
+			p.key=KEY_SHOW_COLOURBAR;
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_BOOL;
+			propertyList.addProperty(p,curGroup);
+
+			if(autoColourMap)
+				tmpStr="1";
+			else
+				tmpStr="0";	
+			p.name=TRANS("Auto Bounds");
+			p.helpText=TRANS("Auto-compute min/max values in map"); 
+			p.data= tmpStr;
+			p.key=KEY_VOXEL_SLICE_COLOURAUTO;;
+			p.type=PROPERTY_TYPE_BOOL;
+			propertyList.addProperty(p,curGroup);
+
+			if(!autoColourMap)
+			{
+
+				stream_cast(tmpStr,colourMapBounds[0]);
+				p.name=TRANS("Map start");
+				p.helpText=TRANS("Assign points with this value to the first colour in map"); 
+				p.data= tmpStr;
+				p.key=KEY_MAPSTART;;
+				p.type=PROPERTY_TYPE_REAL;
+				propertyList.addProperty(p,curGroup);
+
+				stream_cast(tmpStr,colourMapBounds[1]);
+				p.name=TRANS("Map end");
+				p.helpText=TRANS("Assign points with this value to the last colour in map"); 
+				p.data= tmpStr;
+				p.key=KEY_MAPEND;
+				p.type=PROPERTY_TYPE_REAL;
+				propertyList.addProperty(p,curGroup);
+			}
+			// ---	
+
 			break;
 		}
 		default:
 			ASSERT(false);
 			;
 	}
-	
+	curGroup++;
+
 	//----------------------------
 }
 
-bool VoxeliseFilter::setProperty(  unsigned int key,
-									  const std::string &value, bool &needUpdate)
+bool VoxeliseFilter::setProperty(unsigned int key,
+		  const std::string &value, bool &needUpdate)
 {
 	
 	needUpdate=false;
@@ -903,8 +1183,6 @@ bool VoxeliseFilter::setProperty(  unsigned int key,
 			if(!i)
 				return false;
 
-			needUpdate=true;
-			nBins[0]=i;
 			//if the result is different, the
 			//cache should be invalidated
 			if(i!=nBins[0])
@@ -1047,7 +1325,7 @@ bool VoxeliseFilter::setProperty(  unsigned int key,
 			}
 			break;
 		}
-		case KEY_TRANSPARANCY:
+		case KEY_TRANSPARENCY:
 		{
 			float f;
 			if(stream_cast(f,value))
@@ -1124,17 +1402,19 @@ bool VoxeliseFilter::setProperty(  unsigned int key,
 		}
 		case KEY_VOXEL_REPRESENTATION_MODE:
 		{
-			 unsigned int i;
+			unsigned int i;
 			for (i = 0; i < VOXEL_REPRESENT_END; i++)
 				if (value == getRepresentTypeString(i)) break;
 			if (i == VOXEL_REPRESENT_END)
 				return false;
 			needUpdate=true;
-			representation=i;
 			//Go in and manually adjust the cached
 			//entries to have the new value, rather
 			//than doing a full recomputation
-			if(cacheOK)
+
+			//TODO: Can we instead of caching the Stream, simply cache the voxel data?
+			representation=i;
+			if(cacheOK && (VOXEL_REPRESENT_KEEPCACHE[i] && VOXEL_REPRESENT_KEEPCACHE[representation]))
 			{
 				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
 				{
@@ -1143,6 +1423,11 @@ bool VoxeliseFilter::setProperty(  unsigned int key,
 					d->representationType=representation;
 				}
 			}
+			else
+			{
+				clearCache();
+			}
+			
 			break;
 		}
 		case KEY_ENABLE_NUMERATOR:
@@ -1175,7 +1460,7 @@ bool VoxeliseFilter::setProperty(  unsigned int key,
 		}
 		case KEY_FILTER_MODE:
 		{
-			 unsigned int i;
+			unsigned int i;
 			for (i = 0; i < VOXEL_REPRESENT_END; i++)
 				if (value == getFilterTypeString(i)) break;
 			if (i == VOXEL_REPRESENT_END)
@@ -1221,8 +1506,166 @@ bool VoxeliseFilter::setProperty(  unsigned int key,
 			}
 			break;
 		}
+		case KEY_VOXEL_SLICE_COLOURAUTO:
+		{
+			bool b;
+			if(stream_cast(b,value))
+				return false;
+
+			//if the result is different, the
+			//cache should be invalidated
+			if(b!=autoColourMap)
+			{
+				needUpdate=true;
+				autoColourMap=b;
+				//Clear the generic filter cache, but
+				// not the voxel cache
+				Filter::clearCache();
+			}
+			break;
+		}	
+		case KEY_VOXEL_SLICE_AXIS:
+		{
+			unsigned int i;
+			string axisLabels[3]={"x","y","z"};
+			for (i = 0; i < 3; i++)
+				if( value == axisLabels[i]) break;
+				
+			if( i >= 3)
+				return false;
+
+			if(i != sliceAxis)
+			{
+				needUpdate=true;
+				//clear the generic filter cache (i.e. cached outputs)
+				//but not the voxel cache
+				Filter::clearCache();
+				sliceAxis=i;
+			}
+			break;
+		}
+		case KEY_VOXEL_SLICE_INTERP:
+		{
+			unsigned int i;
+			for (i = 0; i < SLICE_INTERP_ENUM_END; i++)
+				if( value == TRANS(VOXELISE_SLICE_INTERP_STRING[i])) break;
+				
+			if( i >= SLICE_INTERP_ENUM_END)
+				return false;
+
+			if(i != sliceInterpolate)
+			{
+				needUpdate=true;
+				//clear the generic filter cache (i.e. cached outputs)
+				//but not the voxel cache
+				Filter::clearCache();
+				sliceInterpolate=i;
+			}
+			break;
+		}
+		case KEY_VOXEL_SLICE_OFFSET:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+
+			if(f < 0.0f || f > 1.0f)
+				return false;
+
+
+			if( f != sliceOffset)
+			{
+				needUpdate=true;
+				//clear the generic filter cache (i.e. cached outputs)
+				//but not the voxel cache
+				Filter::clearCache();
+				sliceOffset=f;
+			}
+
+			break;
+		}
+		case KEY_VOXEL_COLOURMODE:
+		{
+			unsigned int tmpMap;
+			tmpMap=(unsigned int)-1;
+			for(unsigned int ui=0;ui<NUM_COLOURMAPS;ui++)
+			{
+				if(value== getColourMapName(ui))
+				{
+					tmpMap=ui;
+					break;
+				}
+			}
+
+			if(tmpMap >=NUM_COLOURMAPS || tmpMap ==colourMap)
+				return false;
+
+			//clear the generic filter cache (i.e. cached outputs)
+			//but not the voxel cache
+			Filter::clearCache();
+			
+			needUpdate=true;
+			colourMap=tmpMap;
+			break;
+		}
+		case KEY_SHOW_COLOURBAR:
+		{
+			bool b;
+			if(stream_cast(b,value))
+				return false;
+
+			//if the result is different, the
+			//cache should be invalidated
+			if(b!=showColourBar)
+			{
+				needUpdate=true;
+				showColourBar=b;
+				//clear the generic filter cache (i.e. cached outputs)
+				//but not the voxel cache
+				Filter::clearCache();
+			}
+			break;
+		}	
+		case KEY_MAPSTART:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			if(f >= colourMapBounds[1])
+				return false;
+		
+			if(f!=colourMapBounds[0])
+			{
+				needUpdate=true;
+				colourMapBounds[0]=f;
+				//clear the generic filter cache (i.e. cached outputs)
+				//but not the voxel cache
+				Filter::clearCache();
+			}
+			break;
+		}
+		case KEY_MAPEND:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			if(f <= colourMapBounds[0])
+				return false;
+		
+			if(f!=colourMapBounds[1])
+			{
+				needUpdate=true;
+				colourMapBounds[1]=f;
+				//clear the generic filter cache (i.e. cached outputs)
+				//but not the voxel cache
+				Filter::clearCache();
+			}
+			break;
+		}
 		default:
 		{
+			//Check for jump to denominator or numerator section
+			// TODO: This is a bit of a hack.
 			if (key >= KEY_ENABLE_DENOMINATOR*1000) {
 				bool b;
 				if(stream_cast(b,value))
@@ -1304,6 +1747,19 @@ bool VoxeliseFilter::writeState(std::ostream &f,unsigned int format, unsigned in
 			f << tabs(depth+1) << "<isovalue value=\""<<isoLevel << "\"/>" << endl;
 			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
 				<< "\" a=\"" << a << "\"/>" <<endl;
+
+			f << tabs(depth+1) << "<axialslice>" << endl;
+			f << tabs(depth+2) << "<offset value=\""<<sliceOffset<< "\"/>" << endl;
+			f << tabs(depth+2) << "<interpolate value=\""<<sliceInterpolate<< "\"/>" << endl;
+			f << tabs(depth+2) << "<axis value=\""<<sliceAxis<< "\"/>" << endl;
+			f << tabs(depth+2) << "<colourbar show=\""<<(showColourBar?1:0)<< 
+					"\" auto=\"" << (autoColourMap?1:0)<< "\" min=\"" <<
+					colourMapBounds[0] << "\" max=\"" << 
+					colourMapBounds[1] << "\"/>" << endl;
+			f << tabs(depth+1) << "</axialslice>" << endl;
+
+
+
 			f << tabs(depth) << "</" << trueName() <<">" << endl;
 			break;
 		}
@@ -1486,6 +1942,54 @@ bool VoxeliseFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 		return false;
 
 	//====
+
+	//try to retrieve slice, where possible
+	if(!XMLHelpFwdToElem(nodePtr,"axialslice"))
+	{
+		xmlNodePtr sliceNodes;
+		sliceNodes=nodePtr->xmlChildrenNode;
+
+		if(!sliceNodes)
+			return false;
+
+		if(!XMLGetNextElemAttrib(sliceNodes,sliceOffset,"offset","value"))
+			return false;
+
+		sliceOffset=std::min(sliceOffset,1.0f);
+		sliceOffset=std::max(sliceOffset,0.0f);
+		
+		
+		if(!XMLGetNextElemAttrib(sliceNodes,sliceInterpolate,"interpolate","value"))
+			return false;
+
+		if(sliceInterpolate >=SLICE_INTERP_ENUM_END)
+			return false;
+
+		if(!XMLGetNextElemAttrib(sliceNodes,sliceAxis,"axis","value"))
+			return false;
+
+		if(sliceAxis > 2)
+			sliceAxis=2;
+		
+		if(!XMLGetNextElemAttrib(sliceNodes,showColourBar,"colourbar","show"))
+			return false;
+
+		if(!XMLGetAttrib(sliceNodes,autoColourMap,"auto"))
+			return false;
+		
+		if(!XMLGetAttrib(sliceNodes,colourMapBounds[0],"min"))
+			return false;
+
+		if(!XMLGetAttrib(sliceNodes,colourMapBounds[1],"max"))
+			return false;
+
+		if(colourMapBounds[0] >= colourMapBounds[1])
+			return false;
+	}
+	
+
+
+
 	return true;
 	
 }
@@ -1506,9 +2010,110 @@ unsigned int VoxeliseFilter::getRefreshUseMask() const
 	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
 }
 
-void VoxeliseFilter::setPropFromBinding(const SelectionBinding &b)
+void VoxeliseFilter::getTexturedSlice(const Voxels<float> &v, 
+			size_t axis,float offset, size_t interpolateMode,
+			float &minV,float &maxV,DrawTexturedQuad &texQ) const
 {
-}	
+	ASSERT(axis < 3);
+
+
+	size_t dim[3]; //dim0 and 2 are the in-plane axes. dim3 is the normal axis
+	v.getSize(dim[0],dim[1],dim[2]);
+
+	switch(axis)
+	{
+		//x-normal
+		case 0:
+			rotate3(dim[0],dim[1],dim[2]);
+			break;
+		//y-normal
+		case 1:
+			rotate3(dim[2],dim[1],dim[0]);
+			break;
+		//z-normal
+		case 2:
+			std::swap(dim[0],dim[1]);
+			break;
+			
+	}
+
+
+	ASSERT(dim[0] >0 && dim[1] >0);
+	
+	texQ.resize(dim[0],dim[1],3);
+
+	//Generate the texture from the voxel data
+	//---
+	float *data = new float[dim[0]*dim[1]];
+	
+
+	ASSERT(offset >=0 && offset <=1.0f);
+
+	v.getSlice(axis,offset,data,interpolateMode,sliceBoundMode);
+
+	if(autoColourMap)
+	{
+		minV=minValue(data,dim[0]*dim[1]);
+		maxV=maxValue(data,dim[0]*dim[1]);
+	}
+	else
+	{
+		minV=colourMapBounds[0];
+		maxV=colourMapBounds[1];
+
+	}
+	ASSERT(minV <=maxV);
+
+	unsigned char rgb[3];
+	for(size_t ui=0;ui<dim[0];ui++)
+	{
+		for(size_t uj=0;uj<dim[1];uj++)
+		{
+			colourMapWrap(colourMap,rgb, data[ui*dim[1] + uj],
+					minV,maxV);
+			
+			texQ.setData(ui,uj,rgb);	
+		}
+	}
+
+	delete[] data;
+	//---
+	
+	
+	
+	//Set the vertices of the quad
+	//--
+	//compute the real position of the plane
+	float minPos,maxPos,offsetRealPos;
+	v.getAxisBounds(axis,minPos,maxPos);
+	offsetRealPos = ((float)offset)*(maxPos-minPos) + minPos; 
+	
+	
+	Point3D verts[4];
+	v.getBounds(verts[0],verts[2]);
+	//set opposite vertices to upper and lower bounds of quad
+	verts[0][axis]=verts[2][axis]=offsetRealPos;
+	//set other vertices to match, then shift them in the axis plane
+	verts[1]=verts[0]; 
+	verts[3]=verts[2];
+
+
+	unsigned int shiftAxis=(axis+1)%3;
+	verts[1][shiftAxis] = verts[2][shiftAxis];
+	verts[3][shiftAxis] = verts[0][shiftAxis];
+
+	//Correction for y texture orientation
+	if(axis==1)
+		std::swap(verts[1],verts[3]);
+
+	texQ.setVertices(verts);
+	//--
+
+	//Upload the texture to the video card
+	texQ.rebindTexture();
+
+}
+
 
 #ifdef DEBUG
 bool voxelSingleCountTest()

@@ -35,6 +35,8 @@
 	#include <GL/glu.h>
 #endif
 
+#include <sys/time.h>
+
 //TODO: Work out if there is any way of obtaining the maximum 
 //number of items that can be drawn in an opengl context
 //For now Max it out at 10 million (~120MB of vertex data)
@@ -96,11 +98,13 @@ enum
 	DRAW_TYPE_RECTPRISM,
 	DRAW_TYPE_COLOURBAR,
 	DRAW_TYPE_TEXTUREDOVERLAY,
+	DRAW_TYPE_ANIMATEDOVERLAY,
 	DRAW_TYPE_FIELD3D,
 	DRAW_TYPE_ISOSURFACE,
 	DRAW_TYPE_AXIS,
 };
 
+//TODO: It seems unneccesary to have multiple types for the bind
 
 //!Binding enums. Needed to bind drawable selection
 //to internal modification actions inside the drawable
@@ -118,10 +122,13 @@ enum
 	DRAW_RECT_BIND_TRANSLATE,
 	DRAW_RECT_BIND_CORNER_MOVE,
 	DRAW_TEXT_BIND_ORIGIN,
+
+	DRAW_QUAD_BIND_ORIGIN,
 	//DRAW_TEXT_BIND_TEXTDIR, //FIXME: Implement me for annotation todo.
 	//DRAW_TEXT_BIND_UPDIR,
 	DRAW_BIND_ENUM_END
 };
+
 
 
 
@@ -136,13 +143,21 @@ class DrawableObj
 		bool haveChanged;
 		//!Pointer to current scene camera
 		static const Camera *curCamera;	
+		//Pointer to texture pool object
+		static TexturePool *texPool;
+
+		static bool useAlphaBlend;
 	
+		static unsigned int winX,winY;
 	public: 
 		//!Can be selected from openGL viewport interactively?
 		bool canSelect;
 
 		//!Wants lighting calculations active during render?
 		bool wantsLight;
+
+
+		static bool setUseAlphaBlending(bool willBlend) { useAlphaBlend =false;}
 
 		//!Is this an overlay? By default, no
 		virtual bool isOverlay() const { return false;}
@@ -155,6 +170,7 @@ class DrawableObj
 		//!Do we need to do element based depth sorting?
 		virtual bool needsDepthSorting() const { return false; } ;
 
+	
 
 		//!Can we break this object down into constituent elements?
 		virtual bool isExplodable() const { return false;};
@@ -182,11 +198,14 @@ class DrawableObj
 		
 		//!Set the current camera
 		static void setCurCamera(const Camera *c){curCamera=c;};
+		//!Set the current camera
+		static void setTexPool(TexturePool *t);
+		static void clearTexPool();
 
 		//!Get the centre of the object. Only valid if object is simple
 		virtual Point3D getCentroid() const  ;
 
-	//	virtual DrawableObj *clone() const;
+		static void setWindowSize(unsigned int x, unsigned int y){winX=x;winY=y;};	
 
 };
 
@@ -372,6 +391,9 @@ class DrawTriangle : public DrawableObj
 class DrawQuad : public DrawableObj
 {
 	private:
+		//!Colours of the vertices (rgba colour model)
+		float r[4],g[4],b[4],a[4];
+	protected:
 		//!Vertices of the quad
 		Point3D vertices[4];
 
@@ -380,19 +402,21 @@ class DrawQuad : public DrawableObj
 		/*! Lighting for this class is per triangle only no
 		 * per vertex lighting */
 		Point3D normal;
-		//!Colours of the vertices (rgba colour model)
-		float r[4],g[4],b[4],a[4];
 	public:
 		//!Constructor
-		DrawQuad();
+		DrawQuad() {};
 		//!Destructor
-		virtual ~DrawQuad();
+		virtual ~DrawQuad() {};
 		
 		virtual unsigned int getType() const {return DRAW_TYPE_QUAD;};	
+
+		//!Get bounding cube
+		virtual void getBoundingBox(BoundCube &b) const ;
 		//!sets the vertices to defautl colours (r g b and white ) for each vertex respectively
 		void colourVerticies();
 		//!Set vertex's location
 		void setVertex(unsigned int, const Point3D &);
+		void setVertices(const Point3D *);
 		//!Set the colour of a vertex
 		void setColour(unsigned int, float r, float g, float b, float a);
 		//!Update the normal to the surface from vertices
@@ -401,8 +425,114 @@ class DrawQuad : public DrawableObj
 		void calcNormal();
 		//!Draw the triangle
 		void draw() const;
-		//!Get bounding cube
-		void getBoundingBox(BoundCube &b) const { return b.setBounds(vertices,4);}
+		
+		//!Gets the arrow axis direction
+		Point3D getOrigin() const;
+		
+		//!Recompute the internal parameters using the input vector information
+		// i.e. this is used for (eg) mouse interaction
+		void recomputeParams(const vector<Point3D> &vecs, 
+				const vector<float> &scalars, unsigned int mode);
+};
+
+class DrawTexturedQuad : public DrawQuad
+{
+	//TODO: Move this back
+	// into the texture pool
+		unsigned char *textureData;
+		size_t nX,nY;
+		size_t channels;
+		size_t displayMode;
+
+		//ID of the texture to use when drawing, -1 if not bound
+		// to opengl
+		unsigned int textureId;
+		
+	public:
+		DrawTexturedQuad();
+		~DrawTexturedQuad();
+
+		//Resize the texture contents, destroying any existing contents
+		void resize(size_t nx, size_t nY, unsigned int nChannels);
+		//Draw the texture
+		void draw() const;
+		//Set the specified pixel in the texture to this value 
+		void setData(size_t x, size_t y, unsigned char *entry);
+		//Send the texture to the video card. 
+		void rebindTexture();	
+};
+
+
+class DrawAnimatedOverlay : public DrawQuad
+{
+	private:
+		size_t nX,nY,nZ;
+
+		//ID of the texture to use when drawing, -1 if not bound
+		// to opengl
+		unsigned int textureId;
+
+		float position[2];
+
+		timeval animStartTime;
+
+		bool textureOK;
+
+		//Time delta before repeating animation
+		float repeatInterval;
+		
+		//Length to use for the quad to represent icon
+		float length;
+
+		//Time before showing the image
+		float delayBeforeShow;
+
+		//Time for fadein after show
+		float fadeIn;
+
+	public:
+		DrawAnimatedOverlay();
+		~DrawAnimatedOverlay();
+
+		virtual unsigned int getType() const {return DRAW_TYPE_ANIMATEDOVERLAY;}
+
+		//!This is an overlay
+		bool isOverlay() const {return true;};
+
+
+		//!Set the texture position in XY (z is ignored)
+		void setPos(float xp,float yp)
+		{
+			position[0]=xp;
+			position[1]=yp;
+		};
+
+		void setSize(float size);
+
+		//Set the time between repeats for the animation
+		void setRepeatTime(float timeV) { repeatInterval=timeV;}
+
+		//Set the time before the texture appears
+		void setShowDelayTime(float showDelayTime) 
+			{ ASSERT(showDelayTime >=0.0f);  delayBeforeShow = showDelayTime;}
+
+		//Set the time during which the alpha value will be ramped up.
+		// activated after the delay time (ie time before 100% visible is fadeInTime + 
+		//	delayTime.
+		void setFadeInTime(float fadeInTime)
+			{ ASSERT(fadeInTime >=0.0f); fadeIn=fadeInTime;}
+
+		//!Set the texture by name
+		bool setTexture(const vector<string> &textureFiles, float timeRepeat=1.0f);
+
+		void resetTime() ;
+
+		//!Draw object
+		void draw() const;
+
+		void getBoundingBox(BoundCube &b) const ;
+
+		bool isOK() const { return textureId != (unsigned int)-1; }
 };
 
 //!A sphere drawing 
@@ -798,11 +928,12 @@ class DrawColourBarOverlay : public DrawableObj
 class DrawTexturedQuadOverlay : public DrawableObj
 {
 	private:
-		TexturePool *texPool;
 		unsigned int textureId;
+		//Fractional coordinates for the 
 		float position[2];
+	
+		//Length of the rectangle to use for the icon
 		float length;
-		unsigned int winX,winY;
 
 		bool textureOK;
 	public:
@@ -814,7 +945,7 @@ class DrawTexturedQuadOverlay : public DrawableObj
 		//!This is an overlay
 		bool isOverlay() const {return true;};
 	
-		void setWindowSize(unsigned int x, unsigned int y){winX=x;winY=y;};	
+		static void setWindowSize(unsigned int x, unsigned int y){winX=x;winY=y;};	
 
 		//!Set the texture position in XY (z is ignored)
 		void setPos(float xp,float yp){position[0]=xp; position[1]=yp;};
@@ -824,8 +955,6 @@ class DrawTexturedQuadOverlay : public DrawableObj
 		//!Set the texture by name
 		bool setTexture(const char *textureFile);
 
-		//!Set the texture pool pointer
-		void setTexturePool(TexturePool *p) { texPool =p;};
 
 		//!Draw object
 		void draw() const;

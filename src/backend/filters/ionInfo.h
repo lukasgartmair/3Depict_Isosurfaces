@@ -62,8 +62,8 @@ class IonInfoFilter : public Filter
 		//Convex hull volume estimation routine.
 		//returns 0 on success. global "qh " "object"  will contain
 		//the hull. Volume is computed.
-		unsigned int convexHullEstimateVol(const vector<const FilterStreamData*> &data, 
-							float &vol,bool (*callback)(bool)) const;
+		static unsigned int convexHullEstimateVol(const vector<const FilterStreamData*> &data, 
+							float &vol,bool (*callback)(bool));
 	public:
 		//!Constructor
 		IonInfoFilter();

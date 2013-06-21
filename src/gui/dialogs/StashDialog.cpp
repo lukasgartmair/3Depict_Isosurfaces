@@ -22,6 +22,7 @@
 #include "wxcomponents.h"
 #include "common/translation.h"
 
+#include "./backend/viscontrol.h"
 
 using std::pair;
 using std::string;
@@ -113,7 +114,7 @@ void StashDialog::OnListKeyDown(wxListEvent &event)
 				if ( item == -1 )
 					break;
 
-				visControl->deleteStash(listStashes->GetItemData(item));
+				visControl->eraseStash(listStashes->GetItemData(item));
 			}
 			
 			//Update the filter list
@@ -353,7 +354,7 @@ void StashDialog::OnBtnRemove(wxCommandEvent &event)
 		if ( item == -1 )
 			break;
 
-		visControl->deleteStash(listStashes->GetItemData(item));
+		visControl->eraseStash(listStashes->GetItemData(item));
 		updateList();
 		updateTree();
 		updateGrid();

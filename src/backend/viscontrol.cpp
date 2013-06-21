@@ -22,10 +22,9 @@
 #include "wxcomponents.h"
 #include "gl/scene.h"
 
-#include "common/stringFuncs.h"
-#include "common/translation.h"
-#include "common/xmlHelper.h"
 
+
+#include "common/stringFuncs.h"
 
 using std::list;
 using std::stack;
@@ -39,23 +38,14 @@ wxStopWatch* delayTime=0;
 bool *abortVisCtlOp=0;
 
 
+//Number of points to limit to, by default
+const unsigned int DEFAULT_POINT_OUTPUT_LIMIT = 1500000;
 
 //A callback function for yielding the window bound to viscontrol.
 // Calling the callback will only cause a yield if sufficient time has passed
 // the parameter describes whether or not to allow for overriding of the timer
 bool wxYieldCallback(bool forceYield)
 {
-#ifdef __DEBUG__ 
-	//Function should not be re-entering itself
-	// this does not guarantee non-reentrancy, but can
-#ifdef HAVE_CPP11X
-	static std::atomic_bool reEntranceCanaryActive=false;
-#else
-	static bool reEntranceCanaryActive=false;
-#endif
-	ASSERT(!reEntranceCanaryActive);
-	reEntranceCanaryActive=true;
-#endif
 	const unsigned int YIELD_MS=75;
 
 	ASSERT(delayTime);
@@ -67,9 +57,6 @@ bool wxYieldCallback(bool forceYield)
 	}
 
 	ASSERT(abortVisCtlOp);
-#ifdef __DEBUG__ 
-	reEntranceCanaryActive=true;
-#endif
 	return !(*abortVisCtlOp);
 }
 
@@ -79,28 +66,27 @@ VisController::VisController()
 	targetScene=0;
 	targetPlots=0;
 	targetRawGrid=0;
+
+
 	doProgressAbort=false;
+
 	ASSERT(!abortVisCtlOp);
 	abortVisCtlOp=&doProgressAbort;
+
+	limitIonOutput=DEFAULT_POINT_OUTPUT_LIMIT;
+
 	amRefreshing=false;
 	pendingUpdates=false;
-	useRelativePathsForSave=false;
 	curProg.reset();
 	//Assign global variable its init value
 	ASSERT(!delayTime); //Should not have been united yet.
 
 	delayTime = new wxStopWatch();
+
 }
 
 VisController::~VisController()
 {
-	//clean up the stash trees
-	stashedFilters.clear();
-
-	//Delete the undo and redo stack trees
-	undoFilterStack.clear();
-	redoFilterStack.clear();
-
 	ASSERT(delayTime);
 	//delete global variable that visControl is responsible for
 	delete delayTime;
@@ -120,6 +106,8 @@ void VisController::addFilter(Filter *f, bool isBase,size_t parentId)
 	else
 		filterTree.addFilter(f,0);
 
+	currentState.setFilterTreeByClone(filterTree);
+
 	//the filter map is now invalid, as we added an element to the tree,
 	//and don't have a unique value for it. We need to relayout.
 	filterMap.clear();
@@ -134,6 +122,7 @@ void VisController::addFilterTree(FilterTree &f, bool isBase,size_t parentId)
 	else
 		filterTree.addFilterTree(f,filterMap[parentId]);
 
+	currentState.setFilterTreeByClone(filterTree);
 	//the filter map is now invalid, as we added an element to the tree,
 	//and don't have a unique value for it. we need to relayout.
 	filterMap.clear();
@@ -164,6 +153,8 @@ void VisController::switchoutFilterTree(FilterTree &f)
 
 	//Swap the internal tree with our clone
 	f.swap(filterTree);
+	
+	currentState.setFilterTreeByClone(filterTree);
 }
 
 //!Duplicate a branch of the tree to a new position. Do not copy cache,
@@ -176,6 +167,7 @@ bool VisController::copyFilter(size_t toCopy, size_t newParent,bool copyToRoot)
 	
 		ret=filterTree.copyFilter(filterMap[toCopy],filterMap[newParent]);
 
+	currentState.setFilterTreeByClone(filterTree);
 	if(ret)
 	{
 		//Delete the filtermap, as the current data is not valid anymore
@@ -207,7 +199,6 @@ size_t VisController::getIdByFilter(const Filter *f) const
 	}
 
 	ASSERT(false);
-	return -1; //keep gcc quiet
 }
 
 void VisController::getFiltersByType(std::vector<const Filter *> &filters, unsigned int type)  const
@@ -221,6 +212,7 @@ void VisController::removeFilterSubtree(size_t filterId)
 	//Save current filter state to undo stack
 	pushUndoStack();
        	filterTree.removeSubtree(filterMap[filterId]);
+	currentState.setFilterTreeByClone(filterTree);
 	//Delete the filtermap, as the current data is not valid anymore
 	filterMap.clear();
 }
@@ -242,6 +234,8 @@ bool VisController::setFilterProperty(size_t filterId,
 		// restoring would destroy the cache
 		popUndoStack(false);
 	}
+	else
+		currentState.setFilterTreeByClone(filterTree);
 
 	return setOK;
 }
@@ -272,7 +266,7 @@ unsigned int VisController::refreshFilterTree(bool doUpdateScene)
 
 	//Run the tree refresh system.
 	unsigned int errCode;
-	vector<SelectionDevice<Filter> *> devices;
+	vector<SelectionDevice *> devices;
 	vector<pair<const Filter*, string> > consoleMessages;
 	errCode=filterTree.refreshFilterTree(refreshData,devices,
 			consoleMessages,curProg,wxYieldCallback);
@@ -311,11 +305,14 @@ unsigned int VisController::refreshFilterTree(bool doUpdateScene)
 	}
 	
 	
-	targetScene->clearObjs();
-	targetScene->addSelectionDevices(devices);
-
 	if(doUpdateScene)
-		updateScene(outData);
+		updateScene(outData,devices);
+	else
+	{
+		targetScene->clearObjs();
+		targetScene->clearRefObjs();
+	}
+	
 	//Stop timer
 	delayTime->Pause();
 	amRefreshing=false;
@@ -325,7 +322,7 @@ unsigned int VisController::refreshFilterTree(bool doUpdateScene)
 
 unsigned int VisController::refreshFilterTree(list<FILTER_OUTPUT_DATA> &outData)
 {
-	vector<SelectionDevice<Filter> *> devices;
+	vector<SelectionDevice *> devices;
 	vector<pair<const Filter *, string> > consoleStrs;
 	return filterTree.refreshFilterTree(outData,devices,
 			consoleStrs,curProg,wxYieldCallback);
@@ -334,18 +331,13 @@ unsigned int VisController::refreshFilterTree(list<FILTER_OUTPUT_DATA> &outData)
 void VisController::setScene(Scene *theScene)
 {
 	targetScene=theScene;
-	//Set a default camera as needed. We don't need to track its unique ID, as this is
-	//"invisible" to the UI
-	if(!targetScene->getNumCams())
-	{
-		Camera *c=new CameraLookAt();
-		unsigned int id;
-		id=targetScene->addCam(c);
-		targetScene->setActiveCam(id);
-	}
-
 	//Inform scene about vis control.
 	targetScene->setViscontrol(this);
+	
+	Camera *c;
+	c= targetScene->cloneActiveCam();
+	currentState.addCamByClone(c);
+	delete c;
 }
 	
 void VisController::setYieldWindow(wxWindow *newYield)
@@ -380,14 +372,26 @@ void VisController::updateFilterPropGrid(wxPropertyGrid *g,size_t filterId) cons
 }
 
 
-bool VisController::setCamProperties(size_t camUniqueID,unsigned int key, const std::string &value)
+bool VisController::setCamProperties(size_t camID,unsigned int key, const std::string &value)
 {
-	return targetScene->setCamProperty(camUniqueID,key,value);
+	size_t offset=camID;
+
+	bool result=currentState.setCamProperty(offset,key,value);
+	if(result && offset == currentState.getActiveCam())
+	{
+		const Camera *c;
+		c=currentState.getCam(currentState.getActiveCam());
+		targetScene->setActiveCamByClone(c);
+	}
+
+	return result;
 }
 
-
-
-
+void VisController::getCameraUpdates()
+{
+	const Camera *c=targetScene->getActiveCam();
+	currentState.setCameraByClone(c,currentState.getActiveCam());
+}
 
 bool VisController::hasUpdates() const
 {
@@ -421,7 +425,8 @@ void VisController::getFilterUpdates()
 				//the filter, this could make a change that
 				//modifies output so we need to clear 
 				//all subtree caches to force reprocessing
-				filterTree.clearCache(*it);
+
+				filterTree.clearCache(*it,false);
 
 				(*it)->setPropFromBinding(bindings[ui].second);
 #ifdef DEBUG
@@ -435,21 +440,76 @@ void VisController::getFilterUpdates()
 
 	}
 
+	currentState.setFilterTreeByClone(filterTree);
 	//we have retrieved the updates.
 	pendingUpdates=false;
 }
 
 //public interface to updateScene
-unsigned int VisController::doUpdateScene(list<vector<const FilterStreamData *> > &sceneData,
+unsigned int VisController::doUpdateScene(list<vector<const FilterStreamData *> > &sceneData, vector<SelectionDevice *> &devices,
 		bool releaseData)
 {
 	amRefreshing=true;
-	unsigned int errCode=updateScene(sceneData,releaseData);
+	unsigned int errCode=updateScene(sceneData,devices,releaseData);
 	amRefreshing=false;
 	return errCode;
 
 }
-unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > &sceneData,
+
+void VisController::throttleSceneInput(list<vector<const FilterStreamData *> > &sceneData) const
+{
+	//Count the number of input ions, as we may need to perform culling,
+	if(!limitIonOutput)
+		return;
+
+	size_t inputIonCount=0;
+	for(list<vector<const FilterStreamData *> >::const_iterator it=sceneData.begin(); 
+							it!=sceneData.end(); ++it)
+		inputIonCount+=numElements(*it,STREAM_TYPE_IONS);
+
+	//If limit is higher than what we have, no culling required
+	if(limitIonOutput >=inputIonCount)
+		return;
+
+	//Need to cull
+	float cullFraction = (float)limitIonOutput/(float)inputIonCount;
+
+	for(list<vector<const FilterStreamData *> >::iterator it=sceneData.begin(); 
+							it!=sceneData.end(); ++it)
+	{
+		for(unsigned int ui=0;ui<it->size(); ui++)
+		{
+			if((*it)[ui]->getStreamType() != STREAM_TYPE_IONS)
+				continue;
+			//Obtain the ion data pointer
+			const IonStreamData *ionData;
+			ionData=((const IonStreamData *)((*it)[ui]));
+
+
+			//TODO: Is there a way we can treat cached and uncached itmes
+			// differently, without violating const-ness?
+			//Duplicate this object, then forget
+			// about the old one
+			// We can't modify the input, even when uncached,
+			// as the object is const
+			IonStreamData *newIonData;
+			newIonData=ionData->cloneSampled(cullFraction);
+
+			//Prevent leakage due to non-cached-ness
+			if(!ionData->cached)
+				delete ionData;
+
+			(*it)[ui] = newIonData;
+
+		}
+	}
+		
+
+
+}
+
+
+unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > &sceneData, vector<SelectionDevice *> &devices,
 				bool releaseData)
 {
 	//Plot wrapper should be set
@@ -471,10 +531,15 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 	//erase the contents of each plot 
 	targetPlots->clear(true); //Clear, but preserve selection information.
 
-	vector<std::pair<size_t,string> > plotLabels;
-	
-	//-- Build buffer of new objects to send to scene
 
+	//Names for plots
+	vector<std::pair<size_t,string> > plotLabels;
+
+
+	throttleSceneInput(sceneData);
+
+
+	//-- Build buffer of new objects to send to scene
 	for(list<vector<const FilterStreamData *> > ::iterator it=sceneData.begin(); 
 							it!=sceneData.end(); ++it)
 	{
@@ -772,6 +837,8 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 	targetScene->clearObjs();
 	targetScene->clearRefObjs();
 
+
+
 	//For speed, we have to treat ions specially.
 	// for now, use a display list (these are no longer recommended in opengl, 
 	// but they are much easier to use than extensions)
@@ -779,7 +846,12 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 	for(size_t ui=0;ui<sceneDrawables.size();ui++)
 	{
 		if(sceneDrawables[ui]->getType() == DRAW_TYPE_MANYPOINT)
+		{
 			drawIons.push_back((DrawManyPoints*)sceneDrawables[ui]);
+			sceneDrawables.erase(sceneDrawables.begin()+ui);
+			ui--;
+
+		}
 	}
 
 	if(totalIonCount < MAX_NUM_DRAWABLE_POINTS && drawIons.size() >1)
@@ -824,16 +896,14 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 	}
 	
 	for(size_t ui=0;ui<sceneDrawables.size();ui++)
-	{
-		//We handled the ion case above.
-		if(sceneDrawables[ui]->getType() != STREAM_TYPE_IONS)
-			targetScene->addDrawable(sceneDrawables[ui]);
-	}
+		targetScene->addDrawable(sceneDrawables[ui]);
 
 	sceneDrawables.clear();
 	targetScene->computeSceneLimits();
+	targetScene->addSelectionDevices(devices);
 	targetScene->lockInteraction(false);
 	//===============
+
 
 
 	return 0;
@@ -844,44 +914,71 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 
 unsigned int VisController::addCam(const std::string &camName)
 {
+	//Duplicate the current camera, and give it a new name
 	Camera *c=targetScene->cloneActiveCam();
 	c->setUserString(camName);
-	//Store the camera
-	unsigned int id = targetScene->addCam(c);
-	targetScene->setActiveCam(0);
+
+	//create an ID for this camera, then add to scene 
+	size_t id =currentState.getNumCams();
+	
+	currentState.addCamByClone(c);
+	delete c;
+	
 	return id;
 }
 
-bool VisController::removeCam(unsigned int uniqueID)
+bool VisController::removeCam(unsigned int offset)
 {
-	targetScene->removeCam(uniqueID);
-	targetScene->setDefaultCam();
+	//obtain the offset to the camera from its unique id
+	currentState.removeCam(offset);
+
+	if(!currentState.getNumCams())
+	{
+		const Camera *c;
+		c = targetScene->getActiveCam();
+		currentState.addCamByClone(c);
+	}
+	else
+	{
+		size_t activeCam=currentState.getActiveCam();
+		targetScene->setActiveCamByClone(currentState.getCam(activeCam) );
+	}
+
 	return true;
 }
 
-bool VisController::setCam(unsigned int uniqueID)
+bool VisController::setCam(unsigned int offset)
 {
-	targetScene->setActiveCam(uniqueID);
+	ASSERT(offset < currentState.getNumCams());
+	
+	currentState.setActiveCam(offset);
+	targetScene->setActiveCamByClone(currentState.getCam(offset));
+	
 	return true;
 }
 
-void VisController::updateCamPropertyGrid(wxPropertyGrid *g,unsigned int camID) const
+void VisController::updateCamPropertyGrid(wxPropertyGrid *g,unsigned int offset) const
 {
 
+	//Erase the grid
 	g->clearKeys();
-	if(targetScene->isDefaultCam())
+
+	//Abort if there are no cameras
+	if(!currentState.getNumCams())
 		return;
 
+	//Obtain the properties of the currently active camera
 	CameraProperties p;
-	
-	targetScene->getCamProperties(camID,p);
+	currentState.getCam(offset)->getProperties(p);
 
+	//Set the property grid
 	g->setNumGroups(p.data.size());
 	//Create the keys for the property grid to do its thing
 	for(unsigned int ui=0;ui<p.data.size();ui++)
 	{
 		for(unsigned int uj=0;uj<p.data[ui].size();uj++)
 		{
+			//TODO: ADD TOOLTIP
 			g->addKey(p.data[ui][uj].first, ui,p.keys[ui][uj],
 				p.types[ui][uj],p.data[ui][uj].second,string(""));
 		}
@@ -908,20 +1005,26 @@ bool VisController::reparentFilter(size_t filter, size_t newParent)
 		return false;
 	}
 	
+	currentState.setFilterTreeByClone(filterTree);
 	return true;
 }
 
 
 bool VisController::setFilterString(size_t id,const std::string &s)
 {
-	//Save current filter state to undo stack
-	pushUndoStack();
 	
 	Filter *p=(Filter *)getFilterById(id);
 
 	if(s != p->getUserString())
 	{
+		//Save current filter state to undo stack
+		pushUndoStack();
+		
+		//Do the actual update
 		p->setUserString(s);
+		
+		//Update the current state	
+		currentState.setFilterTreeByClone(filterTree);
 		return true;
 	}
 
@@ -930,691 +1033,132 @@ bool VisController::setFilterString(size_t id,const std::string &s)
 
 unsigned int VisController::numCams() const 
 {
-	return targetScene->getNumCams();
+	return currentState.getNumCams();
 }
 		
 void VisController::ensureSceneVisible(unsigned int direction)
 {
+	currentState.setStateModified(true);
 	targetScene->ensureVisible(direction);
 }
 
+
 bool VisController::saveState(const char *cpFilename, std::map<string,string> &fileMapping,
-		bool writePackage) const
+		bool writePackage,bool resetModifyLevel) const
 {
-	//Open file for output
-	std::ofstream f(cpFilename);
+	AnalysisState state;
 
-	if(!f)
-		return false;
+
+	//Make a copy of the state, as some variables are still stored in viscontrol's scope
+	state=currentState; 
 	
-	//Write header, also use local language if available
-	const char *headerMessage = NTRANS("This file is a \"state\" file for the 3Depict program, and stores information about a particular analysis session. This file should be a valid \"XML\" file");
+	//-- scene variables --
+	float rBack,gBack,bBack;
+	targetScene->getBackgroundColour(rBack,gBack,bBack);
+	state.setBackgroundColour(rBack,gBack,bBack);
+       	
+	state.setWorldAxisMode(targetScene->getWorldAxisVisible());
 
-	f << "<!--" <<  headerMessage;
-	if(TRANS(headerMessage) != headerMessage) 
-		f << endl << TRANS(headerMessage); 
-	
-	f << "-->" <<endl;
-
-
-
-	//Write state open tag 
-	f<< "<threeDepictstate>" << endl;
-	f<<tabs(1)<< "<writer version=\"" << PROGRAM_VERSION << "\"/>" << endl;
-	//write general settings
-	//---------------
-	float backR,backG,backB;
-
-	targetScene->getBackgroundColour(backR,backG,backB);
-	f << tabs(1) << "<backcolour r=\"" << backR << "\" g=\"" << backG  << "\" b=\"" << backB << "\"/>" <<  endl;
-	
-	f << tabs(1) << "<showaxis value=\"";
-       	if(targetScene->getWorldAxisVisible())
-	       f<< "1";
-       	else
-		f << "0";
-	f<< "\"/>"  << endl;
-
-
-	if(useRelativePathsForSave)
-	{
-		//Save path information
-		//Note: When writing packages, 
-		//- we don't want to leak path names to remote systems 
-		//and
-		//- we cannot assume that directory structures are preserved between systems
-		//
-		//so don't keep working directory in this case.
-		if(writePackage || workingDir.empty() )
-		{
-			//Are we saving the sate as a package, if so
-			//make sure we let other 3depict loaders know
-			//that we want to use relative paths
-			f << tabs(1) << "<userelativepaths/>"<< endl;
-		}
-		else
-		{
-			//Not saving a package, however we could be, 
-			//for example, be autosaving a load-from-package. 
-			//We want to keep relative paths, but
-			//want to be able to find files if something goes askew
-			f << tabs(1) << "<userelativepaths origworkdir=\"" << workingDir << "\"/>"<< endl;
-		}
-	}
-
-	//---------------
-
-
-	//Write filter tree
-	//---------------
-	if(!filterTree.saveXML(f,fileMapping,writePackage,useRelativePathsForSave))
-		return  false;
-	//---------------
-
-	vector<Camera *> camVec;
-
-	unsigned int active=targetScene->duplicateCameras(camVec);
-
-	//Save all cameras.
-	f <<tabs(1) <<  "<cameras>" << endl;
-
-	//First camera is the "working" camera, which is unnamed
-	f << tabs(2) << "<active value=\"" << active << "\"/>" << endl;
-	
-	for(unsigned int ui=0;ui<camVec.size();ui++)
-	{
-		//ask each camera to write its own state, tab indent 2
-		camVec[ui]->writeState(f,STATE_FORMAT_XML,2);
-		delete camVec[ui];
-	}
-	f <<tabs(1) <<  "</cameras>" << endl;
-	
-	camVec.clear();
-
-	if(stashedFilters.size())
-	{
-		f << tabs(1) << "<stashedfilters>" << endl;
-
-		for(unsigned int ui=0;ui<stashedFilters.size();ui++)
-		{
-			stashedFilters[ui].second.saveXML(f,fileMapping,
-					writePackage,useRelativePathsForSave,1);
-		}
-
-
-
-
-		f << tabs(1) << "</stashedfilters>" << endl;
-	}
-
-	//Save any effects
 	vector<const Effect *> effectVec;
+	
 	targetScene->getEffects(effectVec);
+	state.setEffectsByCopy(effectVec);
+	//------
 
-	if(effectVec.size())
-	{
-		f <<tabs(1) <<  "<effects>" << endl;
-		for(unsigned int ui=0;ui<effectVec.size();ui++)
-			effectVec[ui]->writeState(f,STATE_FORMAT_XML,1);
-		f <<tabs(1) <<  "</effects>" << endl;
+	//-- viscontrol variables
+	state.setFilterTreeByClone(filterTree);
+	//--
 
-	}
-
-
-
-	//Close XMl tag.	
-	f<< "</threeDepictstate>" << endl;
-
-	//Debug check to ensure we have written a valid xml file
-	ASSERT(isValidXML(cpFilename));
-
-	return true;
+	if(resetModifyLevel)
+		currentState.setStateModified(false);
+	return state.save(cpFilename,fileMapping,writePackage);
 }
 
 bool VisController::loadState(const char *cpFilename, std::ostream &errStream, bool merge,bool noUpdating) 
 {
-	//Load the state from an XML file
-	
-	//here we use libxml2's loading routines
-	//http://xmlsoft.org/
-	//Tutorial: http://xmlsoft.org/tutorial/xmltutorial.pdf
-	xmlDocPtr doc;
-	xmlParserCtxtPtr context;
 
-	context =xmlNewParserCtxt();
+	//Load into a temporary state
+	// and if successful, transfer to full state
+	AnalysisState state;
+	bool result=state.load(cpFilename,errStream,merge);
 
-
-	if(!context)
-	{
-		errStream << TRANS("Failed to allocate parser") << std::endl;
+	if(!result)
 		return false;
-	}
 
-	//Open the XML file
-	doc = xmlCtxtReadFile(context, cpFilename, NULL,0);
+	currentState=state;
 
-	if(!doc)
-		return false;
+	//Synchronise scene and viscontrol components to 
+	// current state
+
+	//Grab the filter tree from the state
+	currentState.copyFilterTree(filterTree);
 	
-	//release the context
-	xmlFreeParserCtxt(context);
-	
-
-	//By default, lets not use relative paths
-	if(!merge)
-		useRelativePathsForSave=false;
-
-	//Lets do some parsing goodness
-	//ahh parsing - verbose and boring
-	FilterTree newFilterTree;
-	vector<Camera *> newCameraVec;
-	vector<Effect *> newEffectVec;
-	vector<pair<string,FilterTree > > newStashes;
-
-	std::string stateDir=onlyDir(cpFilename);
-	unsigned int activeCam;
-	try
+	if(!noUpdating)
 	{
-		std::stack<xmlNodePtr>  nodeStack;
-		//retrieve root node	
-		xmlNodePtr nodePtr = xmlDocGetRootElement(doc);
+		// -- Set scene options --
+		float rBack,gBack,bBack;
+		currentState.getBackgroundColour(rBack,gBack,bBack);
+		targetScene->setBackgroundColour(rBack,gBack,bBack);
 
-		//Umm where is our root node guys?
-		if(!nodePtr)
-		{
-			errStream << TRANS("Unable to retrieve root node in input state file... Is this really a non-empty XML file?") <<  endl;
-			throw 1;
-		}
-		
-		//This *should* be an threeDepict state file
-		if(xmlStrcmp(nodePtr->name, (const xmlChar *)"threeDepictstate"))
-		{
-			errStream << TRANS("Base state node missing. Is this really a state XML file??") << endl;
-			throw 1;
-		}
-		//push root tag	
-		nodeStack.push(nodePtr);
-		
-		//Now in threeDepictstate tag
-		nodePtr = nodePtr->xmlChildrenNode;
-		xmlChar *xmlString;
-		//check for version tag & number
-		if(!XMLHelpFwdToElem(nodePtr,"writer"))
-		{
-			xmlString=xmlGetProp(nodePtr, (const xmlChar *)"version"); 
+		targetScene->setWorldAxisVisible(currentState.getWorldAxisMode());
 
-			if(xmlString)
-			{
-				string tmpVer;
-				
-				tmpVer =(char *)xmlString;
-				//Check to see if only contains 0-9 period and "-" characters (valid version number)
-				if(tmpVer.find_first_not_of("0123456789.-")== std::string::npos)
-				{
-					//Check between the writer reported version, and the current program version
-					vector<string> vecStrs;
-					vecStrs.push_back(tmpVer);
-					vecStrs.push_back(PROGRAM_VERSION);
+		vector<const Camera *> cams;
+		currentState.copyCamsByRef(cams);
 
-					if(getMaxVerStr(vecStrs)!=PROGRAM_VERSION)
-					{
-						errStream << TRANS("State was created by a newer version of this program.. ")
-							<< TRANS("file reading will continue, but may fail.") << endl ;
-					}
-				}
-				else
-				{
-					errStream<< TRANS("Warning, unparseable version number in state file. File reading will continue, but may fail") << endl;
-				}
-				xmlFree(xmlString);
-			}
-		}
-		else
+		if(cams.size())
 		{
-			errStream<< TRANS("Unable to find the \"writer\" node") << endl;
-			throw 1;
-		}
-	
-
-		//Get the background colour
-		//====
-		float rTmp,gTmp,bTmp;
-		if(XMLHelpFwdToElem(nodePtr,"backcolour"))
-		{
-			errStream<< TRANS("Unable to find the \"backcolour\" node.") << endl;
-			throw 1;
+			size_t activeCam=currentState.getActiveCam();
+			targetScene->setActiveCamByClone(cams[activeCam]);
 		}
 
-		xmlString=xmlGetProp(nodePtr,(const xmlChar *)"r");
-		if(!xmlString)
-		{
-			errStream<< TRANS("\"backcolour\" node missing \"r\" value.") << endl;
-			throw 1;
-		}
-		if(stream_cast(rTmp,(char *)xmlString))
-		{
-			errStream<< TRANS("Unable to interpret \"backColour\" node's \"r\" value.") << endl;
-			throw 1;
-		}
-
-		xmlFree(xmlString);
-		xmlString=xmlGetProp(nodePtr,(const xmlChar *)"g");
-		if(!xmlString)
-		{
-			errStream<< TRANS("\"backcolour\" node missing \"g\" value.") << endl;
-			throw 1;
-		}
-
-		if(stream_cast(gTmp,(char *)xmlString))
-		{
-			errStream<< TRANS("Unable to interpret \"backColour\" node's \"g\" value.") << endl;
-			throw 1;
-		}
-
-		xmlFree(xmlString);
-		xmlString=xmlGetProp(nodePtr,(const xmlChar *)"b");
-		if(!xmlString)
-		{
-			errStream<< TRANS("\"backcolour\" node missing \"b\" value.") << endl;
-			throw 1;
-		}
-
-		if(stream_cast(bTmp,(char *)xmlString))
-		{
-			errStream<< TRANS("Unable to interpret \"backColour\" node's \"b\" value.") << endl;
-			throw 1;
-		}
-
-		if(rTmp > 1.0 || gTmp>1.0 || bTmp > 1.0 || 
-			rTmp < 0.0 || gTmp < 0.0 || bTmp < 0.0)
-		{
-			errStream<< TRANS("\"backcolour\"s rgb values must be in range [0,1]") << endl;
-			throw 1;
-		}
-		if(!noUpdating)
-			targetScene->setBackgroundColour(rTmp,gTmp,bTmp);
-		xmlFree(xmlString);
-
-		nodeStack.push(nodePtr);
-
-
-		if(!XMLHelpFwdToElem(nodePtr,"userelativepaths"))
-		{
-			useRelativePathsForSave=true;
-
-			//Try to load the original working directory, if possible
-			if(!XMLGetAttrib(nodePtr,workingDir,"origworkdir"))
-				workingDir.clear();
-		}
-		
-		nodePtr=nodeStack.top();
-
-		//====
-		
-		//Get the axis visibility
-		unsigned int axisIsVis;
-		if(!XMLGetNextElemAttrib(nodePtr,axisIsVis,"showaxis","value"))
-		{
-			errStream << TRANS("Unable to find or interpret \"showaxis\" node") << endl;
-			throw 1;
-		}
-		if(!noUpdating)
-			targetScene->setWorldAxisVisible(axisIsVis==1);
-
-		//find filtertree data
-		if(XMLHelpFwdToElem(nodePtr,"filtertree"))
-		{
-			errStream << TRANS("Unable to locate \"filtertree\" node.") << endl;
-			throw 1;
-		}
-
-		//Load the filter tree
-		if(newFilterTree.loadXML(nodePtr,errStream,stateDir))
-			throw 1;
-
-		//Read camera states, if present
-		nodeStack.push(nodePtr);
-		if(!XMLHelpFwdToElem(nodePtr,"cameras"))
-		{
-			//Move to camera active tag 
-			nodePtr=nodePtr->xmlChildrenNode;
-			if(XMLHelpFwdToElem(nodePtr,"active"))
-			{
-				errStream << TRANS("Cameras section missing \"active\" node.") << endl;
-				throw 1;
-			}
-
-			//read ID of active cam
-			xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
-			if(!xmlString)
-			{
-				errStream<< TRANS("Unable to find property \"value\"  for \"cameras->active\" node.") << endl;
-				throw 1;
-			}
-
-			if(stream_cast(activeCam,xmlString))
-			{
-				errStream<< TRANS("Unable to interpret property \"value\"  for \"cameras->active\" node.") << endl;
-				throw 1;
-			}
-
-		
-			//Spin through the list of each camera	
-			while(!XMLHelpNextType(nodePtr,XML_ELEMENT_NODE))
-			{
-				std::string tmpStr;
-				tmpStr =(const char *)nodePtr->name;
-				Camera *thisCam;
-				thisCam=0;
-				
-				//work out the camera type
-				if(tmpStr == "persplookat")
-				{
-					thisCam = new CameraLookAt;
-					if(!thisCam->readState(nodePtr->xmlChildrenNode))
-					{
-						std::string s =TRANS("Failed to interpret camera state for camera : "); 
-
-						errStream<< s <<  newCameraVec.size() << endl;
-						throw 1;
-					}
-				}
-				else
-				{
-					errStream << TRANS("Unable to interpret the camera type for camera : ") << newCameraVec.size() <<  endl;
-					throw 1;
-				}
-
-				ASSERT(thisCam);
-				newCameraVec.push_back(thisCam);	
-			}
-
-			//Enforce active cam value validity
-			if(newCameraVec.size() < activeCam)
-				activeCam=0;
-
-		}
-		
-		nodePtr=nodeStack.top();
-		nodeStack.pop();
-		
-		nodeStack.push(nodePtr);
-		//Read stashes if present
-		if(!XMLHelpFwdToElem(nodePtr,"stashedfilters"))
-		{
-			nodeStack.push(nodePtr);
-
-			//Move to stashes 
-			nodePtr=nodePtr->xmlChildrenNode;
-
-			while(!XMLHelpFwdToElem(nodePtr,"stash"))
-			{
-				string stashName;
-				FilterTree newStashTree;
-				newStashTree.clear();
-
-				//read name of stash
-				xmlString=xmlGetProp(nodePtr,(const xmlChar *)"name");
-				if(!xmlString)
-				{
-					errStream << TRANS("Unable to locate stash name for stash ") << newStashTree.size()+1 << endl;
-					throw 1;
-				}
-				stashName=(char *)xmlString;
-
-				if(!stashName.size())
-				{
-					errStream << TRANS("Empty stash name for stash ") << newStashTree.size()+1 << endl;
-					throw 1;
-				}
-
-				if(newStashTree.loadXML(nodePtr,errStream,stateDir))
-				{
-					errStream << TRANS("For stash ") << newStashTree.size()+1 << endl;
-					throw 1;
-				}
-				newStashes.push_back(make_pair(stashName,newStashTree));
-			}
-
-			nodePtr=nodeStack.top();
-			nodeStack.pop();
-		}
-		nodePtr=nodeStack.top();
-		nodeStack.pop();
-	
-		//Read effects, if present
-		nodeStack.push(nodePtr);
-
-		//Read effects if present
-		if(!XMLHelpFwdToElem(nodePtr,"effects"))
-		{
-			std::string tmpStr;
-			nodePtr=nodePtr->xmlChildrenNode;
-			while(!XMLHelpNextType(nodePtr,XML_ELEMENT_NODE))
-			{
-				tmpStr =(const char *)nodePtr->name;
-
-				Effect *e;
-				e = makeEffect(tmpStr);
-				if(!e)
-				{
-					errStream << TRANS("Unrecognised effect :") << tmpStr << endl;
-					throw 1;
-				}
-
-				//Check the effects are unique
-				for(unsigned int ui=0;ui<newEffectVec.size();ui++)
-				{
-					if(newEffectVec[ui]->getType()== e->getType())
-					{
-						delete e;
-						errStream << TRANS("Duplicate effect found") << tmpStr << TRANS(" cannot use.") << endl;
-						throw 1;
-					}
-
-				}
-
-				nodeStack.push(nodePtr);
-				//Parse the effect
-				if(!e->readState(nodePtr))
-				{
-					errStream << TRANS("Error reading effect : ") << e->getName() << std::endl;
-				
-					throw 1;
-				}
-				nodePtr=nodeStack.top();
-				nodeStack.pop();
-
-
-				newEffectVec.push_back(e);				
-			}
-		}
-		nodePtr=nodeStack.top();
-		nodeStack.pop();
-
-
-
-		nodeStack.push(nodePtr);
-	}
-	catch (int)
-	{
-		//Code threw an error, just say "bad parse" and be done with it
-		xmlFreeDoc(doc);
-		return false;
-	}
-	xmlFreeDoc(doc);	
-
-	//Check that stashes are uniquely named
-	// do brute force search, as there are unlikely to be many stashes	
-	for(unsigned int ui=0;ui<newStashes.size();ui++)
-	{
-		for(unsigned int uj=0;uj<newStashes.size();uj++)
-		{
-			if(ui == uj)
-				continue;
-
-			//If these match, states not uniquely named,
-			//and thus statefile is invalid.
-			if(newStashes[ui].first == newStashes[uj].first)
-				return false;
-
-		}
+		vector<Effect*> e;
+		currentState.copyEffects(e);
+		targetScene->setEffectVec(e);
+		//----
 	}
 
-	if(!merge)
-	{
-		//Erase any viscontrol data, seeing as we got this far	
-		clear(); 
-		//Now replace it with the new data
-		filterTree.swap(newFilterTree);
-		std::swap(stashedFilters,newStashes);
-	}
-	else
-	{
-		//If we are merging, then there is a chance
-		//of a name-clash. We avoid this by trying to append -merge continuously
-		for(unsigned int ui=0;ui<newStashes.size();ui++)
-		{
-			//protect against overload (very unlikely)
-			unsigned int maxCount;
-			maxCount=100;
-			while(hasFirstInPairVec(stashedFilters,newStashes[ui]) && --maxCount)
-				newStashes[ui].first+=TRANS("-merge");
 
-			if(maxCount)
-				stashedFilters.push_back(newStashes[ui]);
-			else
-				errStream << TRANS(" Unable to merge stashes correctly. This is improbable, so please report this.") << endl;
-		}
 
-		filterTree.addFilterTree(newFilterTree,0);
-		undoFilterStack.clear();
-		redoFilterStack.clear();
-		filterMap.clear();
-	}
+
+	fta.clear();
 
 	filterTree.initFilterTree();
-	
-	
-	//NOTE: We must be careful about :return: at this point
-	// as we now have mixed in the new filter data.
+		
+	//Try to restore the working directory as needed
+	std::string wd;
+	wd=currentState.getWorkingDir();
+	if(wd.size() && wxDirExists(wxStr(wd)))
+		wxSetWorkingDirectory(wxStr(currentState.getWorkingDir()));
 
-	//Re-generate the ID mapping for the stashes
-	stashUniqueIDs.clear();
-	for(unsigned int ui=0;ui<stashedFilters.size();ui++)
-		stashUniqueIDs.genId(ui);
-
-	if(noUpdating)
-		return true;
-
-	//Wipe the existing cameras, and then put the new cameras in place
-	if(!merge)
-		targetScene->clearCams();
-	
-	//Set a default camera as needed. We don't need to track its unique ID, as this is
-	//"invisible" to the UI
-	if(!targetScene->getNumCams())
-	{
-		Camera *c=new CameraLookAt();
-		unsigned int id;
-		id=targetScene->addCam(c);
-		targetScene->setActiveCam(id);
-	}
-
-	if(newCameraVec.size())
-	{
-		for(unsigned int ui=0;ui<newCameraVec.size();ui++)
-		{
-			if(merge)
-			{
-				//Don't merge the default camera (which has no name)
-				if(newCameraVec[ui]->getUserString().empty())
-					continue;
-
-				//Keep trying new names appending "-merge" each time to obtain a new, and hopefully unique name
-				// Abort after many times
-				unsigned int maxCount;
-				maxCount=100;
-				while(targetScene->camNameExists(newCameraVec[ui]->getUserString()) && --maxCount)
-				{
-					newCameraVec[ui]->setUserString(newCameraVec[ui]->getUserString()+"-merge");
-				}
-
-				//If we have any attempts left, then it worked
-				if(maxCount)
-				{
-					unsigned int id;
-					id=targetScene->addCam(newCameraVec[ui]);
-					//Use the unique identifier to set the active cam,
-					//if this is the active camera.
-					if(ui == activeCam)
-						targetScene->setActiveCam(id);
-				}
-			}
-			else
-			{
-				//If there is no userstring, then its a  "default"
-				// camera (one that does not show up to the users,
-				// and cannot be erased from the scene)
-				// set it directly. Otherwise, its a user camera.
-				if(newCameraVec[ui]->getUserString().empty())
-				{
-					targetScene->setDefaultCam(newCameraVec[ui],
-							(ui==activeCam) );
-				}
-				else
-				{
-					unsigned int id;
-					id=targetScene->addCam(newCameraVec[ui]);
-					//Use the unique identifier to set the active cam,
-					//if this is the active camera.
-					if(ui == activeCam)
-						targetScene->setActiveCam(id);
-				}
-				
-			}
-
-		}
-	}
-	else
-	{
-		//If the user didn't specify any cameras,
-		// (as in some old versions of 3Depict < 0.0.13),
-		// then just set one that shows the scene
-		targetScene->ensureVisible(3);
-	}
-
-	if(newEffectVec.size())
-	{
-		targetScene->clearEffects();
-		for(unsigned int ui=0;ui<newEffectVec.size();ui++)
-		{
-			targetScene->addEffect(newEffectVec[ui]);
-		}
-	}
-
-	//Perform sanitisation on results
+	currentState.setStateModified(false);
 	return true;
 }
-
 
 void VisController::clear()
 {
 	filterMap.clear();
-
 	filterTree.clear();
+	fta.clear();
 
-	undoFilterStack.clear();
+	currentState.setFilterTreeByClone(filterTree);
+	currentState.clearUndoRedoStacks();
 }
 
-void VisController::getCamData(std::vector<std::pair<unsigned int, std::string> > &camData) const
+void VisController::getCamData(std::vector<std::string>  &camData) const
 {
-	targetScene->getCameraIDs(camData);
+	vector<const Camera *> camRefs;
+	currentState.copyCamsByRef(camRefs);	
+	
+	camData.resize(camRefs.size());
+	for(size_t ui=0;ui<camRefs.size();ui++)
+	{
+		camData[ui]=camRefs[ui]->getUserString();
+	}
 }
 
 unsigned int VisController::getActiveCamId() const
 { 
-	return targetScene->getActiveCamId();
+	return currentState.getActiveCam();
 }
 
 unsigned int VisController::exportIonStreams(const std::vector<const FilterStreamData * > &selectedStreams,
@@ -1658,27 +1202,27 @@ unsigned int VisController::exportIonStreams(const std::vector<const FilterStrea
 }
 
 
-void VisController::addStashedToFilters(const Filter *parent, unsigned int stashId)
+void VisController::addStashedToFilters(const Filter *parentFilter, unsigned int stashOffset)
 {
-	ASSERT(stashId<stashedFilters.size());
-	
+	//Retrieve the specified stash
+	pair<string,FilterTree> f;
+
+	currentState.copyStashedTree(stashOffset,f);
+
+	filterTree.addFilterTree(f.second,parentFilter);
+	currentState.setFilterTreeByClone(filterTree);
+
 	//Save current filter state to undo stack
 	pushUndoStack();
 
-	filterTree.addFilterTree(stashedFilters[stashId].second,parent);
+	
 	filterTree.initFilterTree();
 }
 
-void VisController::deleteStash(unsigned int stashId)
+void VisController::eraseStash(unsigned int stashPos)
 {
-	unsigned int stashPos=stashUniqueIDs.getPos(stashId);
-
-	//swap out the one we wish to kill with the last element
-	if(stashPos != stashedFilters.size() -1)
-		swap(stashedFilters[stashedFilters.size()-1],stashedFilters[0]);
-
-	//nuke the tail
-	stashedFilters.pop_back();
+	//Remove viscontrol's mapping to this
+	currentState.eraseStash(stashPos);
 }
 
 unsigned int VisController::stashFilters(unsigned int filterId, const char *stashName)
@@ -1687,28 +1231,29 @@ unsigned int VisController::stashFilters(unsigned int filterId, const char *stas
 	
 	FilterTree fTree;
 	filterTree.cloneSubtree(fTree,target);
-	
-	stashedFilters.push_back(std::make_pair(string(stashName),fTree));
-	return stashUniqueIDs.genId(stashedFilters.size()-1); 
+
+	currentState.addStashedTree(std::make_pair(string(stashName),fTree));
+	return currentState.getStashCount()-1; 
 }
 
-void VisController::getStashTree(unsigned int stashId, FilterTree &f) const
+void VisController::getStashTree(unsigned int stashPos, FilterTree &f) const
 {
-	unsigned int pos = stashUniqueIDs.getPos(stashId);
-	f = stashedFilters[pos].second;
+	pair<string,FilterTree > stash;
+	currentState.copyStashedTree(stashPos,stash);
+	f=stash.second;
 }
 
+//TDOO: Drop pairm and just use string
 void VisController::getStashes(std::vector<std::pair<std::string,unsigned int > > &stashList) const
 {
 	ASSERT(stashList.empty()); // should be empty	
-	//Duplicate the stash list, but replace the filter tree ID
-	//with the ID value that corresponds to that position
-	stashList.reserve(stashedFilters.size());	
-	for(unsigned int ui=0;ui<stashedFilters.size(); ui++)
-	{
-		stashList.push_back(std::make_pair(stashedFilters[ui].first,
-					stashUniqueIDs.getId(ui)));
-	}
+
+	vector<pair<string,FilterTree> > tmp;
+	currentState.copyStashedTrees(tmp);
+	stashList.resize(tmp.size());
+
+	for(size_t ui=0;ui<tmp.size();ui++)
+		stashList[ui]= std::make_pair(tmp[ui].first,ui);
 }
 
 void VisController::updateRawGrid() const
@@ -1770,59 +1315,25 @@ void VisController::setCachePercent(unsigned int newCache)
 
 void VisController::pushUndoStack()
 {
-	FilterTree newTree;
-	newTree = filterTree;
-	if(undoFilterStack.size() > MAX_UNDO_SIZE)
-		undoFilterStack.pop_front();
-
-	undoFilterStack.push_back(newTree);
-	redoFilterStack.clear();
+	currentState.pushUndoStack();
 }
 
 void VisController::popUndoStack(bool restorePopped)
 {
-	ASSERT(undoFilterStack.size());
-
-	//Save the current filters to the redo stack.
-	// note that the copy constructor will generate a clone for us.
-	redoFilterStack.push_back(filterTree);
-
-	if(redoFilterStack.size() > MAX_UNDO_SIZE)
-		redoFilterStack.pop_front();
+	currentState.popUndoStack(restorePopped);
 
 	if(restorePopped)
 	{
-		//Swap the current filter cache out with the undo stack result
-		std::swap(filterTree,undoFilterStack.back());
-		
-		//Filter topology has changed. Update
+		currentState.copyFilterTree(filterTree);
 		filterTree.initFilterTree();
 	}
-
-	//Pop the undo stack
-	undoFilterStack.pop_back();
-	
-
 }
 
 void VisController::popRedoStack()
 {
-	//Push the current state back onto the undo stack
-	FilterTree newTree;
-
-	//Copy the iterators onto the new tree
-	//- due to copy const. We are modifying a clone, not the original
-	newTree = filterTree;
-	ASSERT(undoFilterStack.size() <=MAX_UNDO_SIZE);
-	undoFilterStack.push_back(newTree);
-
-	//Swap the current filter cache out with the redo stack result
-	std::swap(filterTree,redoFilterStack.back());
+	currentState.popRedoStack();
+	currentState.copyFilterTree(filterTree);
 	
-	//Pop the redo stack
-	redoFilterStack.pop_back();
-
-	//Filter topology has changed. Update
 	filterTree.initFilterTree();
 }
 
@@ -1863,13 +1374,26 @@ void VisController::setEffects(bool enable)
 
 bool VisController::hasHazardousContents() const
 {
+	//Filters can contain hazardous content - that is 
+	// content that can come from untrusted sources, and be used
+	// in a nefarious way. Check to see if any filter that
+	// could potentially be used in such a manner exists in our
+	// current state
+
+	//Check the stashed state
+	vector<pair<string, FilterTree > > stashedFilters;
+
+	currentState.copyStashedTrees(stashedFilters);
 	for(size_t ui=0;ui<stashedFilters.size();ui++)
 	{
 		if(stashedFilters[ui].second.hasHazardousContents())
 			return true;
 	}
 
-	return filterTree.hasHazardousContents();
+	//Check the active filter tree
+	FilterTree f;
+	currentState.copyFilterTree(f);	
+	return f.hasHazardousContents();
 }
 
 bool VisController::filterIsPureDataSource(size_t filterId) const

@@ -18,6 +18,7 @@
 
 #include "filterCommon.h"
 
+#include "common/colourmap.h"
 
 
 
@@ -659,4 +660,37 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 	//--
 
 	return 0;
+}
+
+
+DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_t colourMap) 
+{
+	//Set up the colour bar. Place it in a draw stream type
+	DrawColourBarOverlay *dc = new DrawColourBarOverlay;
+
+	vector<float> r,g,b;
+	r.resize(nColours);
+	g.resize(nColours);
+	b.resize(nColours);
+
+	for (unsigned int ui=0;ui<nColours;ui++)
+	{
+		unsigned char rgb[3]; //RGB array
+		float value;
+		value = (float)(ui)*(maxV-minV)/(float)nColours + minV;
+		//Pick the desired colour map
+		colourMapWrap(colourMap,rgb,value,minV,maxV);
+		r[ui]=rgb[0]/255.0f;
+		g[ui]=rgb[1]/255.0f;
+		b[ui]=rgb[2]/255.0f;
+	}
+
+	dc->setColourVec(r,g,b);
+
+	dc->setSize(0.08,0.6);
+	dc->setPosition(0.1,0.1);
+	dc->setMinMax(minV,maxV);
+
+
+	return dc;
 }

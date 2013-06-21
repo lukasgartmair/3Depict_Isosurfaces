@@ -83,7 +83,7 @@ class CompositionProfileFilter : public Filter
 		static void binIon(unsigned int targetBin, const RangeStreamData* rng, const std::map<unsigned int,unsigned int> &ionIDMapping,
 			vector<vector<size_t> > &frequencyTable, float massToCharge);
 
-		unsigned int getPrimitiveId(const std::string &s) const;
+		static unsigned int getPrimitiveId(const std::string &s);;
 
 		//obtain the size of each bin, and number of bins required for profile
 		unsigned int getBinData(unsigned int &numBins, float &binLength) const;

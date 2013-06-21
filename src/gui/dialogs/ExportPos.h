@@ -32,7 +32,7 @@
 
 // end wxGlade
 
-#include "backend/viscontrol.h"
+#include "backend/filtertree.h"
 
 
 class ExportPosDialog: public wxDialog {

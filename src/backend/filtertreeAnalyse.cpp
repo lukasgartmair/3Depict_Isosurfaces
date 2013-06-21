@@ -22,116 +22,10 @@
 
 //Needed to obtain filter data keys
 //----
-#include "filters/dataLoad.h"
-#include "filters/ionDownsample.h"
-#include "filters/compositionProfile.h"
+#include "filters/allFilter.h"
 //----
 
-void FilterTreeAnalyse::getAnalysisResults(std::vector<FILTERTREE_ERR> &errs) const
-{
-	errs.resize(analysisResults.size());
-	std::copy(analysisResults.begin(),analysisResults.end(),errs.begin());
-}
-
-void FilterTreeAnalyse::analyse(const FilterTree &f)
-{
-	f.getAccumulatedPropagationMaps(emitTypes,blockTypes);
-
-	//Check for a data pair where the output is entirely blocked,
-	// rendering computation of filter useless
-	blockingPairError(f);
-
-	//Check for spatial sampling altering some results in later analyses
-	spatialSampling(f);
-	
-	//Check for compositional biasing altering some later analysis
-	compositionAltered(f);
-
-	emitTypes.clear();
-	blockTypes.clear();
-
-}
-
-
-
-
-void FilterTreeAnalyse::blockingPairError(const FilterTree &f)
-{
-	//Examine the emit and block/use masks for each filter's parent (emit)
-	// child relationship(block/use), such that in the case of a child filter that is expecting
-	// a particular input, but the parent cannot generate it
-
-	const tree<Filter *> &treeFilt=f.getTree();
-	for(tree<Filter*>::pre_order_iterator it = treeFilt.begin(); it!=treeFilt.end(); ++it)
-	{
-
-		tree_node_<Filter*> *myNode=it.node->first_child;
-		
-		size_t parentEmit;	
-		parentEmit = emitTypes[(*it) ]| (*it)->getRefreshEmitMask();
-
-		while(myNode)
-		{
-			Filter *childFilter;
-			childFilter = myNode->data;
-
-			size_t curBlock,curUse;
-			curBlock=blockTypes[childFilter] | childFilter->getRefreshBlockMask();
-			curUse=childFilter->getRefreshUseMask();
-
-			//If the child filter cannot use and blocks all parent emit values
-			// emission of the all possible output filters,
-			// then this is a bad filter pairing
-			bool passedThrough;
-			passedThrough=parentEmit & ~curBlock;
-
-			if(!parentEmit && curUse)
-			{
-				FILTERTREE_ERR treeErr;
-				treeErr.reportedFilters.push_back(childFilter);
-				treeErr.reportedFilters.push_back(*it);
-				treeErr.verboseReportMessage = TRANS("Parent filter has no output, but filter requires input -- there is no point in placing a child filter here.");
-				treeErr.shortReportMessage = TRANS("Leaf-only filter with child");
-				treeErr.severity=ANALYSE_SEVERITY_ERROR; //This is definitely a bad thing.
-			
-				analysisResults.push_back(treeErr);
-			}
-			else if(!(parentEmit & curUse) && !passedThrough )
-			{
-				FILTERTREE_ERR treeErr;
-				treeErr.reportedFilters.push_back(childFilter);
-				treeErr.reportedFilters.push_back(*it);
-				treeErr.verboseReportMessage = TRANS("Parent filters' output will be blocked by child, without use. Parent results will be dropped.");
-				treeErr.shortReportMessage = TRANS("Bad parent->child pair");
-				treeErr.severity=ANALYSE_SEVERITY_ERROR; //This is definitely a bad thing.
-			
-				analysisResults.push_back(treeErr);
-			}
-			//If the parent does not emit a usable objects 
-			//for the child filter, this is bad too.
-			// - else if, so we don't double up on warnings
-			else if( !(parentEmit & curUse) && !childFilter->isUsefulAsAppend())
-			{
-				FILTERTREE_ERR treeErr;
-				treeErr.reportedFilters.push_back(childFilter);
-				treeErr.reportedFilters.push_back(*it);
-				treeErr.verboseReportMessage = TRANS("First filter does not output anything useable by child filter. Child filter not useful.");
-				treeErr.shortReportMessage = TRANS("Bad parent->child pair");
-				treeErr.severity=ANALYSE_SEVERITY_ERROR; //This is definitely a bad thing.
-			
-				analysisResults.push_back(treeErr);
-
-			}
-
-
-			//Move to next sibling
-			myNode = myNode->next_sibling;
-		}
-
-
-	}	
-
-}
+#include <numeric>
 
 bool filterIsSampling(const Filter *f)
 {
@@ -226,6 +120,125 @@ bool affectedBySampling(const Filter *f, bool haveRngParent)
 	return affected;
 }
 
+bool needsRangeParent(const Filter *f)
+{
+	switch(f->getType())
+	{
+		case FILTER_TYPE_CLUSTER_ANALYSIS:
+			return true;
+		default:
+			return false;
+	}
+
+}
+
+void FilterTreeAnalyse::getAnalysisResults(std::vector<FILTERTREE_ERR> &errs) const
+{
+	errs.resize(analysisResults.size());
+	std::copy(analysisResults.begin(),analysisResults.end(),errs.begin());
+}
+
+void FilterTreeAnalyse::analyse(const FilterTree &f)
+{
+	f.getAccumulatedPropagationMaps(emitTypes,blockTypes);
+
+	//Check for a data pair where the output is entirely blocked,
+	// rendering computation of filter useless
+	blockingPairError(f);
+
+	//Check for spatial sampling altering some results in later analyses
+	spatialSampling(f);
+	
+	//Check for compositional biasing altering some later anaylsis
+	compositionAltered(f);
+
+	//Check for filters that do not have a parent, which is required
+	checkRequiredParent(f);
+
+	emitTypes.clear();
+	blockTypes.clear();
+
+}
+
+
+void FilterTreeAnalyse::blockingPairError(const FilterTree &f)
+{
+	//Examine the emit and block/use masks for each filter's parent (emit)
+	// child relationship(block/use), such that in the case of a child filter that is expecting
+	// a particular input, but the parent cannot generate it
+
+	const tree<Filter *> &treeFilt=f.getTree();
+	for(tree<Filter*>::pre_order_iterator it = treeFilt.begin(); it!=treeFilt.end(); ++it)
+	{
+
+		tree_node_<Filter*> *myNode=it.node->first_child;
+		
+		size_t parentEmit;	
+		parentEmit = emitTypes[(*it) ]| (*it)->getRefreshEmitMask();
+
+		while(myNode)
+		{
+			Filter *childFilter;
+			childFilter = myNode->data;
+
+			size_t curBlock,curUse;
+			curBlock=blockTypes[childFilter] | childFilter->getRefreshBlockMask();
+			curUse=childFilter->getRefreshUseMask();
+
+			//If the child filter cannot use and blocks all parent emit values
+			// emission of the all possible output filters,
+			// then this is a bad filter pairing
+			bool passedThrough;
+			passedThrough=parentEmit & ~curBlock;
+
+			if(!parentEmit && curUse)
+			{
+				FILTERTREE_ERR treeErr;
+				treeErr.reportedFilters.push_back(childFilter);
+				treeErr.reportedFilters.push_back(*it);
+				treeErr.verboseReportMessage = TRANS("Parent filter has no output, but filter requires input -- there is no point in placing a child filter here.");
+				treeErr.shortReportMessage = TRANS("Leaf-only filter with child");
+				treeErr.severity=ANALYSE_SEVERITY_ERROR; //This is definitely a bad thing.
+			
+				analysisResults.push_back(treeErr);
+			}
+			else if(!(parentEmit & curUse) && !passedThrough )
+			{
+				FILTERTREE_ERR treeErr;
+				treeErr.reportedFilters.push_back(childFilter);
+				treeErr.reportedFilters.push_back(*it);
+				treeErr.verboseReportMessage = TRANS("Parent filters' output will be blocked by child, without use. Parent results will be dropped.");
+				treeErr.shortReportMessage = TRANS("Bad parent->child pair");
+				treeErr.severity=ANALYSE_SEVERITY_ERROR; //This is definitely a bad thing.
+			
+				analysisResults.push_back(treeErr);
+			}
+			//If the parent does not emit a useable objects 
+			//for the child filter, this is bad too.
+			// - else if, so we don't double up on warnings
+			else if( !(parentEmit & curUse) && !childFilter->isUsefulAsAppend())
+			{
+				FILTERTREE_ERR treeErr;
+				treeErr.reportedFilters.push_back(childFilter);
+				treeErr.reportedFilters.push_back(*it);
+				treeErr.verboseReportMessage = TRANS("First filter does not output anything useable by child filter. Child filter not useful.");
+				treeErr.shortReportMessage = TRANS("Bad parent->child pair");
+				treeErr.severity=ANALYSE_SEVERITY_ERROR; //This is definitely a bad thing.
+			
+				analysisResults.push_back(treeErr);
+
+			}
+
+
+			//Move to next sibling
+			myNode = myNode->next_sibling;
+		}
+
+
+	}	
+
+}
+
 
 void FilterTreeAnalyse::spatialSampling(const FilterTree &f)
 {
@@ -306,6 +319,67 @@ void FilterTreeAnalyse::spatialSampling(const FilterTree &f)
 	}
 }
 
+void FilterTreeAnalyse::checkRequiredParent(const FilterTree &f)
+{
+	const tree<Filter *> &treeFilt=f.getTree();
+	vector<pair< tree<Filter*>::pre_order_iterator , size_t> > childrenNeedsParent;
+
+	for(tree<Filter*>::pre_order_iterator it = treeFilt.begin(); it!=treeFilt.end(); ++it)
+	{
+		//Enumerate all the filters that need a range parent
+		if(needsRangeParent(*it))
+			childrenNeedsParent.push_back(make_pair(it,(size_t)FILTER_TYPE_RANGEFILE));
+	}
+
+	//Check each of the reported children, each time it was reported
+	for(size_t ui=0;ui<childrenNeedsParent.size();ui++)
+	{
+		tree<Filter *>::pre_order_iterator it;
+		size_t type;
+
+		it = childrenNeedsParent[ui].first;
+		type = childrenNeedsParent[ui].second;
+
+		tree<Filter *>::pre_order_iterator parentIt;
+		bool foundParent;
+		foundParent=false;
+
+		//walk back up the tree, to locate the parent (technically ancestor)
+		// we are looking for
+		while(it != treeFilt.begin())
+		{
+			it= treeFilt.parent(it);
+			if((*it)->getType() == type)
+			{
+				foundParent=true;
+				break;
+			}
+		}
+
+		//If we couldnt find a parent, then this is an error.
+		// let the user know
+		if(!foundParent)
+		{
+
+			std::string tmpStr;
+			Filter *tmpFilt = makeFilter(type);
+			tmpStr=tmpFilt->typeString();
+			delete tmpFilt;
+
+
+			FILTERTREE_ERR treeErr;
+			treeErr.reportedFilters.push_back(*(childrenNeedsParent[ui].first));
+
+			treeErr.verboseReportMessage = TRANS("Filter needs parent \"")  + 
+					tmpStr + TRANS("\" but does not have one. Filter may not function correctly until this parent is given.");
+			treeErr.shortReportMessage = TRANS("Filter missing needed parent");
+			treeErr.severity=ANALYSE_SEVERITY_ERROR; //This is definitely a bad thing.
+			analysisResults.push_back(treeErr);
+		}
+
+	}
+}
+
 
 bool filterAltersComposition(const Filter *f)
 {
@@ -347,6 +421,33 @@ bool filterAltersComposition(const Filter *f)
 
 				}
 			}
+			break;
+		}
+		case FILTER_TYPE_RANGEFILE:
+		{
+			const RangeFileFilter *r;
+			r = (const RangeFileFilter*)f;
+
+			vector<char> enabledIons,enabledRanges;
+			enabledIons = r->getEnabledIons();
+
+			if(enabledIons.size() > 1)
+			{
+				size_t nEnabled=std::accumulate(enabledIons.begin(),enabledIons.end(),0);
+
+				if(nEnabled > 0 && nEnabled < enabledIons.size())
+					return true;
+			}
+	
+			enabledRanges=r->getEnabledRanges();
+			if(enabledRanges.size() > 1)
+			{
+				size_t nEnabled=std::accumulate(enabledRanges.begin(),enabledRanges.end(),0);
+
+				if(nEnabled > 0 && nEnabled < enabledRanges.size())
+					return true;
+			}
+
 			break;
 		}
 	}

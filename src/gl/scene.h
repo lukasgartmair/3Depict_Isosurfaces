@@ -20,11 +20,14 @@
 
 
 class Scene;
+class VisController;
+class Filter;
+class SelectionDevice;
+class SelectionBinding;
+
+#include "drawables.h"
 
 //Custom includes
-#include "../backend/viscontrol.h"
-
-#include "../backend/filter.h"
 #include "effect.h"
 
 //OpenGL debugging macro
@@ -67,13 +70,12 @@ class Scene
 
 
 		//!Bindings for interactive object properties
-		std::vector<SelectionDevice<Filter> *> selectionDevices;
+		std::vector<SelectionDevice *> selectionDevices;
 
 		//!Various OpenGL effects
 		std::vector<const Effect *> effects;
 
-		//!Vector of camera stats
-		std::vector<Camera *> cameras;
+		Camera *activeCam;
 
 		//!Temporary override camera
 		Camera *tempCam;
@@ -84,8 +86,6 @@ class Scene
 		//!Size of window in px (needed if doing 2D drawing)
 		unsigned int winX,winY;
 
-		//!Which camera are we using
-		unsigned int activeCam;
 		//!Is there a camera set?
 		bool cameraSet;
 		//!Aspect ratio of output window (x/y) -- needed for cams
@@ -93,10 +93,6 @@ class Scene
 
 		//!Blank canvas colour
 		float r,g,b;
-
-
-		//!Camera id storage and handling
-		UniqueIDHandler camIDs;
 
 		//!Effect ID handler
 		UniqueIDHandler effectIDs;
@@ -118,7 +114,8 @@ class Scene
 
 		float viewRestrictStart[2], viewRestrictEnd[2];
 			
-		//!Last selected object from call to glSelect(). -1 if last call failed to identify an item
+		//!Last selected object from call to glSelect(). -1 if last
+		// call failed to identify an item
 		unsigned int lastSelected;
 	
 		//!Last hoeverd object	
@@ -137,6 +134,14 @@ class Scene
 		//!Background colour
 		float rBack,gBack,bBack;
 
+		//!Should we a progress animation to the user in 3D?
+		bool showProgressAnimation;
+
+		//!Have we attempted to load the progress animation
+		bool attemptedLoadProgressAnim;
+
+		//texture to use for pgoress animation
+		DrawAnimatedOverlay progressAnimTex;
 
 		///!Draw the hover overlays
 		void drawHoverOverlay();
@@ -144,15 +149,21 @@ class Scene
 		//!Draw the normal overlays
 		void drawOverlays() const;
 
+		void drawProgressAnim() const;
+
 		//!initialise the drawing window
 		unsigned int initDraw();
 
 		void updateCam(const Camera *camToUse) const;
 
+		//reset the position of the overlay
+		void updateProgressOverlay(); 
 
 		//!Draw a specified vector of objects
 		void drawObjectVector(const std::vector<const DrawableObj*> &objects, bool &lightsOn, bool drawOpaques=true) const;
 
+		//!Disable copy constructor by making private
+		Scene &operator=(const Scene &);
 				
 	public:
 		//!Constructor
@@ -174,8 +185,7 @@ class Scene
 		void clearRefObjs();
 		//!Clear object bindings vector
 		void clearBindings();
-		//!Clear camera vector
-		void clearCams();
+		
 		//!Set the aspect ratio of the output window. Required.
 		void setAspect(float newAspect);
 		//!retreive aspect ratio (h/w) of output win
@@ -194,24 +204,20 @@ class Scene
 		 * It is up to the user to ensure that they are in a good state
 		 */
 		void addRefDrawable(const DrawableObj *);
-		
+	
+
+		bool setProgressAnimation(const vector<string> &animFiles);
+
+		void setShowProgress(bool show) ;
+
+		bool getShowProgress() const { return showProgressAnimation; }
 
 		//!remove a drawable object
 		void removeDrawable(unsigned int);
 
-		//!Add a camera 
-		/*!Pointer must be set to a valid (allocated) object.
-		 *!Scene will delete upon call to clearAll, clearCameras or
-		 *!upon destruction
-		 */
-		unsigned int addCam(Camera *);
-		
-		//!remove a camera object
-		void removeCam(unsigned int uniqueCamID);
-
-
+		void setActiveCam();
 		//! set the active camera
-		void setActiveCam(unsigned int uniqueCamID);
+		void setActiveCamByClone(const Camera *c);
 
 		//! get the active camera
 		Camera *getActiveCam() ;
@@ -240,24 +246,11 @@ class Scene
 		bool haveTempCam() const { return tempCam!=0;};
 
 		//!Clone the active camera
-		Camera *cloneActiveCam() const { return cameras[activeCam]->clone(); };
+		Camera *cloneActiveCam() const { return activeCam->clone(); };
 
-		//!Get the number of cameras (excluding tmp cam)
-		unsigned int getNumCams() const { return cameras.size(); } ;
-
-		//!Get the camera properties for a given camera
-		void getCamProperties(unsigned int uniqueID, CameraProperties &p) const;
-		//!Set the camera properties for a given camera. returns true if property set is OK
-		bool setCamProperty(unsigned int uniqueID, unsigned int key,
-	       					const std::string &value);
-		//!Return ALL the camera unique IDs
-		void getCameraIDs(vector<std::pair<unsigned int, std::string> > &idVec) const;
 
 		//!Modify the active camera position to ensure that scene is visible 
 		void ensureVisible(unsigned int direction);
-
-		//!Set the active camera to the first entry. Only to be called if getNumCams > 0, or if a camera is passed in
-		void setDefaultCam(Camera *c=0,bool setAsActive=true);
 
 		//!Call if user has stopped interacting with camera briefly.
 		void finaliseCam();
@@ -268,7 +261,7 @@ class Scene
 		unsigned int glSelect(bool storeSelection=true);
 
 		//!Add selection devices to the scene.
-		void addSelectionDevices(const std::vector<SelectionDevice<Filter> *> &d);
+		void addSelectionDevices(const std::vector<SelectionDevice *> &d);
 
 		//!Clear the current selection devices 
 		void clearDevices();
@@ -303,9 +296,6 @@ class Scene
 		//!Get a copy of the effects pointers
 		void getEffects(std::vector<const Effect *> &effects) const; 
 
-		//!Return the unique ID of the active camera
-		unsigned int getActiveCamId() const;
-
 		//!Return any devices that have been modified since their creation
 		void getModifiedBindings(std::vector<std::pair<const Filter *,SelectionBinding > > &bindings) const;
 
@@ -313,9 +303,6 @@ class Scene
 		void restrictView(float xS,float yS, float xFin, float yFin);
 		//!Disable view restriction
 		void unrestrictView() { viewRestrict=false;};
-
-		//!True if the current camera is the default (0th) camera
-		bool isDefaultCam() const; 
 
 		//!Set whether to use alpha blending
 		void setAlpha(bool newAlpha) { useAlpha=newAlpha;};
@@ -329,13 +316,10 @@ class Scene
 		bool getWorldAxisVisible() const { return showAxis;};
 
 		//!Set window size
-		void setWinSize(unsigned int x, unsigned int y) {winX=x;winY=y;}
+		void setWinSize(unsigned int x, unsigned int y) {winX=x;winY=y; updateProgressOverlay();}
 
 		//!Get the scene boundinng box
 		BoundCube getBound() const { return boundCube;}
-
-		//!Returns true if this camera name is already in use
-		bool camNameExists(const std::string &s) const;
 
 		//!Set the background colour
 		void setBackgroundColour(float newR,float newG,float newB) { rBack=newR;gBack=newG;bBack=newB;};
@@ -350,6 +334,13 @@ class Scene
 		
 		//!Set whether to use effects or not
 		void setEffects(bool enable) {useEffects=enable;} 
+
+		//!Set the effect vector
+		/*! Pointers will become "owned" by scene
+		 * and will be deleted during destruction, clear, or next setEffectVec call
+		 * input vector will be cleared.
+		 */
+		void setEffectVec(vector<Effect *> &e);
 
 		//!Add an effect
 		unsigned int addEffect(Effect *e);

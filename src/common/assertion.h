@@ -25,19 +25,19 @@
 	
 	#include <sys/time.h>
 
-	void dh_assert(const char * const filename, const unsigned int lineNumber); 
-	void dh_warn(const char * const filename, const unsigned int lineNumber,
+	void userAskAssert(const char * const filename, const unsigned int lineNumber); 
+	void warnProgrammer(const char * const filename, const unsigned int lineNumber,
 							const char *message);
 
 	#ifndef ASSERT
-	#define ASSERT(f) if(!(f)) {dh_assert(__FILE__,__LINE__);}
+	#define ASSERT(f) {if(!(f)) { userAskAssert(__FILE__,__LINE__);}}
 	#endif
 
 	#ifndef WARN
-	#define WARN(f,g) if(!(f)) { dh_warn(__FILE__,__LINE__,g);}
+	#define WARN(f,g) { if(!(f)) { warnProgrammer(__FILE__,__LINE__,g);}}
 	#endif
 	
-	inline void dh_assert(const char * const filename, const unsigned int lineNumber) 
+	inline void userAskAssert(const char * const filename, const unsigned int lineNumber) 
 	{
 		std::cerr << "ASSERTION ERROR!" << std::endl;
 		std::cerr << "Filename: " << filename << std::endl;
@@ -52,7 +52,7 @@
 			exit(1);
 	}
 
-	inline void dh_warn(const char * const filename, const unsigned int lineNumber,const char *message) 
+	inline void warnProgrammer(const char * const filename, const unsigned int lineNumber,const char *message) 
 	{
 		std::cerr << "Warning to programmer." << std::endl;
 		std::cerr << "Filename: " << filename << std::endl;
@@ -65,18 +65,8 @@
 	#define DEBUG_TIME_END() timeval TIME_DEBUG_tend; gettimeofday(&TIME_DEBUG_tend,NULL); \
 	std::cerr << (TIME_DEBUG_tend.tv_sec - TIME_DEBUG_t.tv_sec) + ((float)TIME_DEBUG_tend.tv_usec-(float)TIME_DEBUG_t.tv_usec)/1.0e6 << std::endl;
 
-	//OpenGL debugging macro
-	#define glError() { \
-		GLenum err = glGetError(); \
-		while (err != GL_NO_ERROR) { \
-					fprintf(stderr, "glError: %s caught at %s:%u\n", (char *)gluErrorString(err), __FILE__, __LINE__); \
-					err = glGetError(); \
-				} \
-		std::cerr << "glErr Clean " << __FILE__ << ":" << __LINE__ << std::endl; \
-		}
-
 	#ifndef TEST
-	#define TEST(f,g) if(!(f)) { std::cerr << "Test fail :" << __FILE__ << ":" << __LINE__ << "\t"<< g << std::endl;return false;}
+	#define TEST(f,g) if(!(f)) { std::cerr << "Test fail :" << __FILE__ << ":" << __LINE__ << "\t"<< (g) << std::endl;return false;}
 	#endif
 
 	//A hack to generate compile time asserts (thanks Internet).

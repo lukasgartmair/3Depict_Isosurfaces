@@ -30,6 +30,8 @@
 #include <GL/glu.h>
 #endif
 
+#include <vector>
+#include <string>
 
 
 //Named Textures
@@ -51,19 +53,20 @@ enum
 };
 
 //Paths to named textures
-extern const char *TEST_OVERLAY_PNG[]; 
+extern const char *TEXTURE_OVERLAY_PNG[]; 
 
 typedef struct {
-GLuint name; /* OpenGL name assigned by the thingy */
+GLuint name; /* OpenGL name assigned by by glGenTexture*/
 GLuint width;
 GLuint height;
+GLuint depth;
 unsigned char *data;
 } texture;
 
 class TexturePool
 {
 private:
-		UniqueIDHandler texUniqIds;
+		//Filename of textures, or "" if using a generated texture, bound to the texture data
 		std::vector<std::pair<std::string,texture> > openTextures;
 
 	public:
@@ -72,9 +75,13 @@ private:
 		//Open the texture specified by the following file, and
 		//then return the texture ID; or just return the texture 
 		//if already loaded. Return true on success.
-		bool openTexture(const char *texName,unsigned int &texID, unsigned int &uniqID);
+		bool openTexture(const char *texName,unsigned int &texID);
+		//Open a set of identically sized images  into a 3D texture object
+		bool openTexture3D(const std::vector<std::string> &texName,unsigned int &texID);
 
-		//Close the specified texture, using its unique ID
+		void genTexID(unsigned int &textureID, size_t texType=GL_TEXTURE_2D)  ;
+
+		//Close the specified texture, using its texture ID 
 		void closeTexture(unsigned int texID);
 
 		//Close all textures
@@ -84,6 +91,10 @@ private:
 
 //!Type can be GL_TEXTURE_1D or GL_TEXTURE_2D
 int pngTexture(texture* dest, const char* filename, GLenum type);
+
+//Read a stack of equi-sized PNG images into a 3D opengl texture
+int pngTexture3D(texture*, const std::vector<std::string> &filenames);
+//read a single PNG image as an opengl texture
 int pngTexture2D(texture*, const char*);
 int pngTexture1D(texture*, const char*);
 

@@ -50,7 +50,7 @@ enum
 
 
 
-Camera::Camera() : lock(false),origin(0.0f,0.0f,0.0f), viewDirection(0.0f,0.0f,-1.0f), upDirection(0.0f,0.0f,1.0f)
+Camera::Camera() : lock(false),origin(0.0f,0.0f,0.0f), viewDirection(0.0f,0.0f,-1.0f), upDirection(0.0f,0.0f,1.0f), orthoScale(1)
 {
 	
 }
@@ -915,7 +915,9 @@ bool CameraLookAt::readState(xmlNodePtr nodePtr)
 	if(!XMLGetNextElemAttrib(nodePtr,orthoScale,"orthoscale","value"))
 		return false;
 	if(orthoScale <=0 || std::isnan(orthoScale))
-		return false;
+	{
+		orthoScale=1.0f;
+	}
 
 	
 	float x,y,z;

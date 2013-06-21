@@ -20,8 +20,11 @@
 #ifndef SELECT_H
 #define SELECT_H
 
-#include "drawables.h"
+#include <vector>
 
+class DrawableObj;
+class Filter;
+class Point3D;
 
 //Mouse button flags
 enum
@@ -157,14 +160,14 @@ class SelectionBinding
 		bool modified() const {return valModified;};
 };
 
-template<class T> class SelectionDevice
+class SelectionDevice
 {
 	private:
 		std::vector<SelectionBinding> bindingVec;
-		const T *target;
+		const Filter *target;
 public:
 		//!Create a new selection device
-		SelectionDevice(const T *p);
+		SelectionDevice(const Filter *p);
 
 		//!Copy constructor (not implemented)
 		SelectionDevice(const SelectionDevice &copySrc);
@@ -177,84 +180,11 @@ public:
 		bool getBinding(const DrawableObj *d, unsigned int mouseFlags, 
 				unsigned int keyFlags,	SelectionBinding* &b);
 
-		bool getAvailBindings(const DrawableObj *d, vector<const SelectionBinding*> &b) const;
-		void getModifiedBindings(vector<std::pair<const T *,SelectionBinding> > &bindings);
+		bool getAvailBindings(const DrawableObj *d, std::vector<const SelectionBinding*> &b) const;
+		void getModifiedBindings(std::vector<std::pair<const Filter *,SelectionBinding> > &bindings);
+
+		size_t getNumBindings() const { return bindingVec.size(); }
 };
-
-template<class T>
-SelectionDevice<T>::SelectionDevice(const T *p) : target(p)
-{
-}
-
-template<class T>
-void SelectionDevice<T>::addBinding(SelectionBinding b)
-{
-	bindingVec.push_back(b);
-}
-
-template<class T>
-bool SelectionDevice<T>::getBinding(const DrawableObj *d,unsigned int mouseFlags, 
-					unsigned int keyFlags,SelectionBinding* &b)
-{
-
-	unsigned int keyMask=0;
-
-
-	bool found=false;
-
-	for(unsigned int ui=0;ui<bindingVec.size();ui++)
-	{
-		if(bindingVec[ui].matchesDrawable(d,mouseFlags,keyFlags))
-		{
-			if(!found)
-			{
-				//we found one.
-				found=true;
-				b=&(bindingVec[ui]);
-				keyMask=b->getKeyFlags();
-				continue;
-			}
-
-			//OK, we already have one, but we can be "trumped"
-			//by a more complex keymask.
-			if( (keyMask & bindingVec[ui].getKeyFlags() )== keyMask)
-			{
-				b=&(bindingVec[ui]);
-				keyMask=b->getKeyFlags();
-			}
-		}
-	}
-
-
-	//This selection device does not match
-	//the targeted object.
-	return found;
-}
-
-template<class T>
-void SelectionDevice<T>::getModifiedBindings(vector<std::pair<const T *,SelectionBinding> > &bindings)
-{
-	ASSERT(target);
-	for(unsigned int ui=0;ui<bindingVec.size();ui++)
-	{
-		if(bindingVec[ui].modified())
-			bindings.push_back(std::make_pair(target,bindingVec[ui]));
-	}
-}
-
-template<class T>
-bool SelectionDevice<T>::getAvailBindings(const DrawableObj *d,vector<const SelectionBinding*> &b) const
-{
-	ASSERT(b.empty());
-	for(unsigned int ui=0;ui<bindingVec.size();ui++)
-	{
-		if(bindingVec[ui].matchesDrawable(d))
-			b.push_back(&(bindingVec[ui]));
-	}
-
-
-	return b.size();
-}
 
 #endif
 

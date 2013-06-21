@@ -22,6 +22,7 @@
 #include "wxcommon.h"
 
 #include "common/stringFuncs.h"
+#include "gl/select.h"
 #include "glPane.h"
 
 
@@ -159,7 +160,7 @@ unsigned int  BasicGLPane::selectionTest(const wxPoint &p,bool &shouldRedraw)
 	//if it has changed, we should redraw
 	shouldRedraw = (lastSelected !=selectedObject);
 
-	//Restore the previous matrix
+	//Restore the previous matirx
 	glPopMatrix();
 
 	//Restore the viewport
@@ -294,7 +295,7 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 	//left-right and up-down move values
 	float lrMove,udMove;	
 
-	//Movement rate multiplier -- initialise to user value
+	//Movement rate multiplier -- intialise to user value
 	float camMultRate=mouseMoveFactor;
 	if(event.m_shiftDown)
 	{
@@ -400,7 +401,7 @@ void BasicGLPane::mouseDown(wxMouseEvent& event)
 
 
 		//If the selected object is valid, then
-		//we did select an object. Treat this as a selection event
+		//we did select an object. Treat this as a seletion event
 		if(currentScene.getLastSelected() != (unsigned int)-1)
 		{
 			selectionMode=true;
@@ -729,8 +730,8 @@ bool BasicGLPane::prepare3DViewport(int tlx, int tly, int brx, int bry)
 	GLint dims[2]; 
 	glGetIntegerv(GL_MAX_VIEWPORT_DIMS, dims); 
 
-	//Ensure that the opengGL function didn't tell us porkies,
-	// (well, check during debug builds)
+	//Ensure that the opengGL function didn't tell us porkies
+	//but double check for the non-debug bulds next line
 	ASSERT(dims[0] && dims[1]);
 
 	//check for exceeding max viewport and we have some space

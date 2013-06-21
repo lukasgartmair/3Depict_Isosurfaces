@@ -16,7 +16,83 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
+#include "common/mathfuncs.h"
+#include "common/assertion.h"
+#include "gl/drawables.h"
+
 #include "select.h"
+using std::vector;
+
+SelectionDevice::SelectionDevice(const Filter *p) : target(p)
+{
+}
+
+void SelectionDevice::addBinding(SelectionBinding b)
+{
+	bindingVec.push_back(b);
+}
+
+bool SelectionDevice::getBinding(const DrawableObj *d,unsigned int mouseFlags, 
+					unsigned int keyFlags,SelectionBinding* &b)
+{
+
+	unsigned int keyMask=0;
+
+
+	bool found=false;
+
+	for(unsigned int ui=0;ui<bindingVec.size();ui++)
+	{
+		if(bindingVec[ui].matchesDrawable(d,mouseFlags,keyFlags))
+		{
+			if(!found)
+			{
+				//we found one.
+				found=true;
+				b=&(bindingVec[ui]);
+				keyMask=b->getKeyFlags();
+				continue;
+			}
+
+			//OK, we already have one, but we can be "trumped"
+			//by a more complex keymask.
+			if( (keyMask & bindingVec[ui].getKeyFlags() )== keyMask)
+			{
+				b=&(bindingVec[ui]);
+				keyMask=b->getKeyFlags();
+			}
+		}
+	}
+
+
+	//This selection device does not match
+	//the targeted object.
+	return found;
+}
+
+void SelectionDevice::getModifiedBindings(vector<std::pair<const Filter *,SelectionBinding> > &bindings)
+{
+	ASSERT(target);
+	for(unsigned int ui=0;ui<bindingVec.size();ui++)
+	{
+		if(bindingVec[ui].modified())
+			bindings.push_back(std::make_pair(target,bindingVec[ui]));
+	}
+}
+
+bool SelectionDevice::getAvailBindings(const DrawableObj *d,vector<const SelectionBinding*> &b) const
+{
+	ASSERT(b.empty());
+	for(unsigned int ui=0;ui<bindingVec.size();ui++)
+	{
+		if(bindingVec[ui].matchesDrawable(d))
+			b.push_back(&(bindingVec[ui]));
+	}
+
+
+	return b.size();
+}
 
 
 SelectionBinding::SelectionBinding()
@@ -222,4 +298,5 @@ bool SelectionBinding::matchesDrawable(const DrawableObj *d) const
 {
 	return (obj == d);
 }
+
 

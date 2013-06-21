@@ -31,7 +31,10 @@ private:
 
 	//!Stepping mode - fixed width or fixed number of bins
 	bool fixedWidth;
-	
+
+	//Cache to use for voxel info
+	Voxels<float> voxelCache;
+
 	//!number of bins (if using fixed bins)
 	unsigned long long nBins[INDEX_LENGTH];
 	//!Width of each bin (if using fixed wdith)
@@ -66,13 +69,42 @@ private:
 	float isoLevel;
 	//!Default output representation mode
 	unsigned int representation;
+
+	//!Colour map to use when using axial slices
+	unsigned int colourMap;
+
+	//Number of colour levels for colour map
+	size_t nColours;
+	//Whether to show the colour map bar or not
+	bool showColourBar;
+	//Whether to use an automatic colour bound, or to use user spec
+	bool autoColourMap;
+	//Colour map start/end
+	float colourMapBounds[2];
+
+	//Interpolation mode to use when slicing	
+	size_t sliceInterpolate;
+	//Interpolation boundary handling mode
+	size_t sliceBoundMode;
+	//Axis that is normal to the slice 0,1,2 => x,y,z
+	size_t sliceAxis;
+	//Fractional offset from lower bound of data cube [0,1]
+	float sliceOffset;
+
+	//Obtain a textured slice from the given voxel set
+	void getTexturedSlice(const Voxels<float> &f,
+		size_t axis,float offset, size_t interpolateMode,
+		float &minV, float &maxV, DrawTexturedQuad &texQ) const;
+
+	BoundCube lastBounds;
+
 public:
 	VoxeliseFilter();
 	~VoxeliseFilter() { if(rsdIncoming) delete rsdIncoming;}
 	//!Duplicate filter contents, excluding cache.
 	Filter *cloneUncached() const;
 
-
+	virtual void clearCache();
 	
 	//!Get approx number of bytes for caching output
 	size_t numBytesForCache(size_t nObjects) const;

@@ -23,13 +23,15 @@ HG_ROOT=`hg root`
 cppcheck -q -j $NUM_PROCS --enable=all --inconclusive ${HG_ROOT}/src/. 2> ${HG_ROOT}/cpp-res
 cat ${HG_ROOT}/cpp-res | sort -n > tmp;
 
-#Strip output that is overly noisy/unhelpful to us
-echo 'does not have a constructor' > tmp-ignore
-echo '(information)' >> tmp-ignore
-echo 'is not initialized in the constructor' >> tmp-ignore
-echo 'C-style pointer casting' >> tmp-ignore
-grep -v -f tmp-ignore tmp  > ${HG_ROOT}/cpp-res
-rm tmp-ignore
+CPPCHECK_IGNORE=cppcheck-ignore
+echo 'does not have a constructor
+(information)
+is not initialized in the constructor
+C-style pointer casting
+[Aa]ssert
+convertion between' > $CPPCHECK_IGNORE
+grep -v -f $CPPCHECK_IGNORE tmp  > ${HG_ROOT}/cpp-res
+rm $CPPCHECK_IGNORE
 
 #Use the per-error message ignore file to filter the last of it
 if [ -f ${HG_ROOT}/cpp-ignore ] ; then
@@ -40,3 +42,4 @@ else
 	rm tmp
 	echo "No ignore file (cpp-ignore) found - please check entire cppcheck output"
 fi
+

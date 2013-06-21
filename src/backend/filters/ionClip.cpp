@@ -161,7 +161,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 				//The object is selectable
 				dS->canSelect=true;
 
-				SelectionDevice<Filter> *s = new SelectionDevice<Filter>(this);
+				SelectionDevice *s = new SelectionDevice(this);
 				SelectionBinding b[3];
 
 				//Apple doesn't have right click, so we need
@@ -218,7 +218,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 				dS->canSelect=true;
 				dV->canSelect=true;
 
-				SelectionDevice<Filter> *s = new SelectionDevice<Filter>(this);
+				SelectionDevice *s = new SelectionDevice(this);
 				SelectionBinding b[2];
 				//Bind the drawable object to the properties we wish
 				//to be able to modify
@@ -264,7 +264,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 				//tapered cylinder)
 				dC->lockRadii();
 
-				SelectionDevice<Filter> *s = new SelectionDevice<Filter>(this);
+				SelectionDevice *s = new SelectionDevice(this);
 				SelectionBinding b;
 				//Bind the drawable object to the properties we wish
 				//to be able to modify
@@ -333,7 +333,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 				//The object is selectable
 				dR->canSelect=true;
 
-				SelectionDevice<Filter> *s = new SelectionDevice<Filter>(this);
+				SelectionDevice *s = new SelectionDevice(this);
 				SelectionBinding b[2];
 				//Bind the drawable object to the properties we wish
 				//to be able to modify

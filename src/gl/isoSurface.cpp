@@ -492,7 +492,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 
 	vector<TriangleWithIndexedVertices> indexedTriVec;
 
-	//Loop over the vertices, with the mesh such that the 
+	//Loop over the vertexs, with the mesh such that the 
 	//nominally cube centres are now on a grid that is dual
 	//to the original grid (excluding the external boundary of course)
 #pragma omp parallel for

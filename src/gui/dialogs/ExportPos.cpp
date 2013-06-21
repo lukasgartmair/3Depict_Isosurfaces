@@ -151,7 +151,7 @@ void ExportPosDialog::initialiseData(FilterTree &f)
 
 	ProgressData p;
 	//TODO: Is trashing the devices a problem? do we have to restore them??
-	std::vector<SelectionDevice<Filter> *> dummyDevices;
+	std::vector<SelectionDevice *> dummyDevices;
 	std::vector<std::pair<const Filter *, string > > consoleStrings;
 	filterTree.refreshFilterTree(outputData,dummyDevices,consoleStrings,p,yieldCallback);
 

@@ -21,6 +21,8 @@ using std::numeric_limits;
 const float FLOAT_SMALL=
 	sqrt(numeric_limits<float>::epsilon());
 
+#ifdef DEBUG
+
 bool testConvolve()
 {
 	{
@@ -164,14 +166,71 @@ bool basicTests()
 	TEST(xs == ys && ys == zs && zs == 2, "resizeKeepData");
 	TEST(f.max() == 1.0f,"resize keep data");
 	
+	//Test slice functions
+	//--
+	Voxels<float> v;
+	v.resize(2,2,2);
+	for(size_t ui=0;ui<8;ui++)
+		v.setData(ui&1, (ui & 2) >> 1, (ui &4)>>2, ui);
+
+	float *slice = new float[4];
+	//Test Z slice
+	v.getSlice(2,0,slice);
+	for(size_t ui=0;ui<4;ui++)
+	{
+		ASSERT(slice[ui] == ui);
+	}
+
+	//Expected results
+	float expResults[4];
+	//Test X slice
+	expResults[0]=0; expResults[1]=2;expResults[2]=4; expResults[3]=6;
+	v.getSlice(0,0,slice);
+	for(size_t ui=0;ui<4;ui++)
+	{
+		ASSERT(slice[ui] == expResults[ui]);
+	}
+
+	//Test Y slice
+	v.getSlice(1,1,slice);
+	expResults[0]=2; expResults[1]=3;expResults[2]=6; expResults[3]=7;
+	for(size_t ui=0;ui<4;ui++)
+	{
+		ASSERT(slice[ui] == expResults[ui]);
+	}
+
+	delete[] slice;
+
+	//-- try again with nonuniform voxels
+	v.resize(4,3,2);
+	for(size_t ui=0;ui<24;ui++)
+		v.setData(ui, ui);
+
+	slice = new float[12];
+	//Test Z slice
+	v.getSlice(2,1,slice);
+	for(size_t ui=0;ui<12;ui++)
+	{
+		ASSERT( slice[ui] >=12);
+	}
+
+	delete[] slice;
+	//--
+
 	return true;
 }
 
 
+
+
+
 bool runVoxelTests()
 {
+//	TEST(testCubeIntercepts(),"cube intercept test");
 	TEST(basicTests(),"basic voxel tests");
 	TEST(testConvolve()," voxel convolve");
 	TEST(simpleMath(), "voxel simple maths");	
 	return true;	
 }
+
+#endif

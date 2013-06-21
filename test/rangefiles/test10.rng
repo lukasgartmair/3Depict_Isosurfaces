@@ -1,0 +1,12 @@
+3 3
+In-P
+Inside-Part 1 1 1
+Out-P
+Outside-Part 1 1 1
+Bd-P
+Border-Part 1 1 1
+----------------------In-P Out-P Bd-P
+. 1.0e7 4.0e7 1 0 0
+. 4.01e7 6.0e7 0 1 0
+. 6.01e7 1.0e8 0 0 1
+

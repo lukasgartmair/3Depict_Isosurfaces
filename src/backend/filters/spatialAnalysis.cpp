@@ -267,7 +267,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 				//Create the user interaction device required for the user
 				// to interact with the algorithm parameters 
 				// as this is not cached at this time
-				SelectionDevice<Filter> *s;
+				SelectionDevice *s;
 				DrawStreamData *d= new DrawStreamData;
 				d->parent=this;
 				d->cached=0;
@@ -2377,7 +2377,7 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 }
 
 void SpatialAnalysisFilter::createCylinder(DrawStreamData * &drawData,
-		SelectionDevice<Filter> * &s) const
+		SelectionDevice * &s) const
 {
 	//Origin + normal
 	ASSERT(vectorParams.size() == 2);
@@ -2401,7 +2401,7 @@ void SpatialAnalysisFilter::createCylinder(DrawStreamData * &drawData,
 	//tapered cylinder)
 	dC->lockRadii();
 
-	s = new SelectionDevice<Filter>(this);
+	s = new SelectionDevice(this);
 	SelectionBinding b;
 	//Bind the drawable object to the properties we wish
 	//to be able to modify
@@ -2714,7 +2714,7 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 	
 	//Create the user interaction device required for the user
 	// to interact with the algorithm parameters 
-	SelectionDevice<Filter> *s;
+	SelectionDevice *s;
 	DrawStreamData *d= new DrawStreamData;
 	d->parent=this;
 	d->cached=0;

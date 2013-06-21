@@ -82,8 +82,14 @@ class ConfigFile
 		//!fractional initial positions of sashes in main UI
 		float leftRightSashPos,topBottomSashPos,
 		      		filterSashPos,plotListSashPos;
-					
-					
+
+		//!True if config has a valid maxPoints value
+		bool haveMaxPoints;
+
+		//!Max. number of points to display in 3D scene
+		// 0 for unlimited
+		size_t maxPointsScene;
+
 	public:
 		ConfigFile(); 
 		~ConfigFile(); 
@@ -113,6 +119,10 @@ class ConfigFile
 		//Get a clone of the default filter for a given type,
 		//even if it is not in the array (use hardcoded)
 		Filter *getDefaultFilter(unsigned int type) const;
+
+		bool getHaveMaxPoints() const { return haveMaxPoints;}
+		size_t getMaxPoints() const { return maxPointsScene;}
+		void setMaxPoints(size_t maxP) { haveMaxPoints=true; maxPointsScene=maxP;}
 
 		//!Return startup status of UI panels
 		bool getPanelEnabled(unsigned int panelID) const;

@@ -21,6 +21,14 @@
 #include "../filter.h"
 #include "../../common/translation.h"
 
+enum
+{
+	RANGE_KEY_RANGE_ACTIVE=1,
+	RANGE_KEY_DROP_UNRANGED,
+	RANGE_KEY_RANGE_FILENAME,
+	RANGE_KEY_ENABLE_ALL_IONS, //Limited to ~100K ions
+	RANGE_KEY_ENABLE_ALL_RANGES=100000,
+};
 
 //!Range file filter
 class RangeFileFilter : public Filter
@@ -51,6 +59,8 @@ class RangeFileFilter : public Filter
 	
 		std::vector<char> getEnabledRanges() const {return enabledRanges;};
 		void setEnabledRanges(vector<char> i) {enabledRanges = i;};
+		
+		std::vector<char> getEnabledIons() const {return enabledIons;};
 
 
 		RangeFileFilter(); 

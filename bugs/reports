@@ -26,3 +26,32 @@ Reporter : D. Haley
 	- Selection of plots
 	- Legend hide/display 
 	- Raw data display 
+
+
+OS : Debian Testing
+Version : 1593:a8cd42eb41b7
+Date : 22/5/13
+Reporter: D. Haley
+* Selection binding call "getPropFromBinding" can happen multiple  and
+  a random number of times, at least for DrawQuad. Why is this?
+
+OS : Ubuntu
+Version : ??
+Date : 3/4/13
+Reporter: D. Haley
+* Ion info on sampled rangefile complains when asking for normalised composition
+
+OS : Debian Testing
+Version : 1628:ffa0b851e966
+Date : 05/6/13
+Reporter: D. Haley
+* With tree Pos Data -> Voxelisation, using axial slice, when toggling the enable for the pos data, either of the following (or both) can occur
+	- Assertion error  Filename: gl/drawables.cpp Line number: 1616
+	- Progress icon blending function is skew/icon draws as blank rectangle
+
+OS : OSX 
+Version : 0.0.13-?
+Date : 28/5/13
+Reporter: A. Ceguerra
+* Error icons in filter tree, which are shown to indicate error filters, do not show.
+

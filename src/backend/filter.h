@@ -26,6 +26,7 @@ class RangeFileFilter;
 #include "common/constants.h"
 
 #include "gl/select.h"
+#include "gl/drawables.h"
 
 #include "common/voxels.h"
 
@@ -116,6 +117,7 @@ enum
 	//VoxelStreamData
 	VOXEL_REPRESENT_POINTCLOUD,
 	VOXEL_REPRESENT_ISOSURF,
+	VOXEL_REPRESENT_AXIAL_SLICE,
 	VOXEL_REPRESENT_END
 };
 
@@ -135,7 +137,6 @@ enum
 //
 
 //Forward dec.
-class FilterStreamData;
 class wxPropertyGrid;
 
 //!Return the number of elements in a vector of filter data - i.e. the sum of the number of objects within each stream. Only masked streams (STREAM_TYPE_*) will be counted
@@ -246,6 +247,15 @@ class IonStreamData : public FilterStreamData
 public:
 	IonStreamData();
 	void clear();
+
+	//Sample the data vector to the specified fraction
+	void sample(float fraction);
+
+	//Duplicate this object, but only using a sampling of the data
+	// vector. The retuend object must be deleted by the
+	// caller. Cached status is *not* duplicated
+	IonStreamData *cloneSampled(float fraction) const;
+
 	size_t getNumBasicObjects() const  { return data.size();};
 	
 	unsigned int representationType;
@@ -412,7 +422,7 @@ class Filter
 		//Filter output cache
 		std::vector<FilterStreamData *> filterOutputs;
 		//!User interaction "Devices" associated with this filter
-		std::vector<SelectionDevice<Filter> *> devices;
+		std::vector<SelectionDevice *> devices;
 	public:	
 		Filter() ;
 		virtual ~Filter();
@@ -522,7 +532,7 @@ class Filter
 		 * another at this level (for example setting two devices on one primitve,
 		 * with the same mouse/key bindings). So dont do that.
 		 */
-		void getSelectionDevices(vector<SelectionDevice<Filter> *> &devices);
+		void getSelectionDevices(vector<SelectionDevice *> &devices) const;
 
 
 		//!Update the output statistics for this filter (num items of streams of each type output)
@@ -591,6 +601,9 @@ class ProgressData
 
 		//!Name of current operation, if specified
 		std::string stepName;
+
+		bool operator==(const ProgressData &o) const;
+		const ProgressData &operator=(const ProgressData &o);
 
 		void reset() { filterProgress=totalProgress=step=maxStep=0;curFilter=0; stepName.clear();};
 		void clock() { filterProgress=step=maxStep=0;curFilter=0;totalProgress++; stepName.clear();};

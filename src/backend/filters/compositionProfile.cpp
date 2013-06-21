@@ -181,7 +181,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 				//tapered cylinder)
 				dC->lockRadii();
 
-				SelectionDevice<Filter> *s = new SelectionDevice<Filter>(this);
+				SelectionDevice *s = new SelectionDevice(this);
 				SelectionBinding b;
 				//Bind the drawable object to the properties we wish
 				//to be able to modify
@@ -250,7 +250,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 				//The object is selectable
 				dS->canSelect=true;
 
-				SelectionDevice<Filter> *s = new SelectionDevice<Filter>(this);
+				SelectionDevice *s = new SelectionDevice(this);
 				SelectionBinding b[3];
 
 				//Apple doesn't have right click, so we need
@@ -1524,7 +1524,7 @@ void CompositionProfileFilter::setPropFromBinding(const SelectionBinding &b)
 	clearCache();
 }
 
-unsigned int CompositionProfileFilter::getPrimitiveId(const std::string &primitiveName) const
+unsigned int CompositionProfileFilter::getPrimitiveId(const std::string &primitiveName) 
 {
 	for(size_t ui=0;ui<PRIMITIVE_END; ui++)
 	{

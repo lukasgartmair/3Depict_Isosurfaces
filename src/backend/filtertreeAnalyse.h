@@ -62,6 +62,8 @@ class FilterTreeAnalyse
 		void spatialSampling(const FilterTree &f);
 
 		void compositionAltered(const FilterTree &f);
+
+		void checkRequiredParent(const FilterTree &f);
 	public:
 		void analyse(const FilterTree &f);
 

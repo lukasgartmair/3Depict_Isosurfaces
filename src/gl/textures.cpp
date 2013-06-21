@@ -16,13 +16,23 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#if defined(WIN32) || defined(WIN64)
+#include <GL/glew.h>
+#endif
+
 #include "textures.h"
 
-#include "pngread.h"
-
 #include "wxcommon.h"
+#include "common/pngread.h"
 
-const char *TEST_OVERLAY_PNG[] = { 
+#include <string>
+
+#include <iostream>
+
+using std::vector;
+using std::string;
+
+const char *TEXTURE_OVERLAY_PNG[] = { 
 				"textures/Left_clicked_mouse.png",
 				"textures/Left-Right-arrow.png",
 				"textures/Right_clicked_mouse.png",
@@ -43,19 +53,18 @@ TexturePool::~TexturePool()
 	closeAll();
 }
 
-bool TexturePool::openTexture(const char *texName,unsigned int &texID, unsigned int &uniqID)
+bool TexturePool::openTexture(const char *texName, unsigned int &texID)
 {
 	std::string texPath;
 
 	texPath = locateDataFile(texName);
 	
-	//See if we already have this texture (use abs. name)
+	//See if we already have this texture (use first frame as keyname)
 	for(unsigned int ui=0;ui<openTextures.size();ui++)
 	{
 		if(openTextures[ui].first == texPath)
 		{
 			texID = openTextures[ui].second.name;
-			uniqID = texUniqIds.getId(ui);
 			return true;
 		}
 	}
@@ -63,17 +72,70 @@ bool TexturePool::openTexture(const char *texName,unsigned int &texID, unsigned 
 
 	//Try to load the texture, as we don't have it
 	texture tex;	
-	if(!pngTexture2D(&tex,texPath.c_str()))
-	{
-		uniqID=texUniqIds.genId(openTextures.size());
-		openTextures.push_back(
-			make_pair(texPath,tex));
-
-		texID=tex.name;
-		return true;
-	}
-	else
+	if(pngTexture2D(&tex,texPath.c_str()))
 		return false;
+
+	//record the texture in list of textures
+	openTextures.push_back(
+		make_pair(texPath,tex));
+
+	texID=tex.name;
+	return true;
+}
+
+bool TexturePool::openTexture3D(const std::vector<std::string> &fileNames, unsigned int &texId) 
+{
+
+	vector<string> fullNames;
+	fullNames.resize(fileNames.size());
+	for(size_t ui=0;ui<fileNames.size();ui++)
+	{
+		std::string texPath;
+		texPath = locateDataFile(fileNames[ui].c_str());
+
+		if(!texPath.size())
+			return false;
+		fullNames[ui]=texPath;
+	}
+	
+	//See if we already have this texture (use abs. name)
+	for(unsigned int ui=0;ui<openTextures.size();ui++)
+	{
+		//Use the first name of the file as the key
+		if(openTextures[ui].first == fullNames[0])
+		{
+			texId = openTextures[ui].second.name;
+			return true;
+		}
+	}
+
+
+	//Try to load the texture, as we don't have it
+	texture tex;	
+	if(pngTexture3D(&tex,fullNames))
+		return false;
+	
+	//TODO: Better key storage method! (eg combined hash)
+	//Store the texture in the list of open textures,
+	// using the first frame of the sequence as the key
+	openTextures.push_back(
+		std::make_pair(fullNames[0],tex));
+
+
+	texId=tex.name;
+	return true;
+}
+
+//TODO: Refactor to remove this routine
+void TexturePool::genTexID(unsigned int &textureID, size_t texType) 
+{
+	texture tex;
+	tex.data=0;
+	tex.name=-1;
+	openTextures.push_back(
+		make_pair(std::string(""),tex));
+  
+	glGenTextures(1,&textureID);
 }
 
 
@@ -83,7 +145,7 @@ void TexturePool::closeTexture(unsigned int texId)
 	{
 		if(openTextures[ui].second.name== texId)
 		{
-			texUniqIds.killByPos(ui);	
+			glDeleteTextures(1,&openTextures[ui].second.name );
 			delete [] openTextures[ui].second.data;
 			openTextures.erase(openTextures.begin()+ui);
 			return;
@@ -95,64 +157,165 @@ void TexturePool::closeAll()
 {
 	for(unsigned int ui=0;ui<openTextures.size();ui++)
 	{
-		delete[] openTextures[ui].second.data;
-		glDeleteTextures(1,&openTextures[ui].second.name);	
+		if(openTextures[ui].second.data)
+		{
+			delete[] openTextures[ui].second.data;
+			glDeleteTextures(1,&openTextures[ui].second.name);
+		}
 	}
 
-	texUniqIds.clear();
 	openTextures.clear();
 }
 
 
-int pngTexture(texture* dest, const char* filename, GLenum type) {
-  FILE *fp;
-  unsigned int x, y, z;
-  png_uint_32 width, height;
-  GLint curtex;
-  png_bytep *texture_rows;
+int pngTexture(texture* dest, const char* filename, GLenum type) 
+{
+	FILE *fp;
+	unsigned int x, y, z;
+	png_uint_32 width, height;
+	GLint curtex;
+	png_bytep *texture_rows;
 
-  if (!check_if_png((char *)filename, &fp, 8)) {
-    return(1); /* could not open, or was not a valid .png */
-  }
+	if (!check_if_png((char *)filename, &fp, 8))
+	{
+		if(fp)
+			fclose(fp);
+		return 1; // could not open, or was not a valid .png
+	}
 
-  if (read_png(fp, 8, &texture_rows, &width, &height)) {
-    return(2); /* something is wrong with the .png */
-  }
+	if (read_png(fp, 8, &texture_rows, &width, &height))
+		return 2; // something is wrong with the .png 
 
-  z=0;
-  dest->width = width;
-  dest->height = height;
-  dest->data = new unsigned char[4*width*height];
-  for (y=0; y<height; y++) {
-    for (x=0; x<4*(width); x++) {
-      dest->data[z++] = texture_rows[y][x];
-    }
-    free(texture_rows[y]);
-  }
-  free(texture_rows);
+	z=0;
+	dest->width = width;
+	dest->height = height;
+	dest->data = new unsigned char[4*width*height];
+	for (y=0; y<height; y++)
+	{
+		for (x=0; x<4*(width); x++)
+		{
+			dest->data[z++] = texture_rows[y][x];
+		}
+		free(texture_rows[y]);
+	}
+	free(texture_rows);
 
-  if (type == GL_TEXTURE_1D) {
-    glGetIntegerv(GL_TEXTURE_BINDING_1D, &curtex);
-  } else {
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &curtex);
-  }
-  glGenTextures(1, &(dest->name));
-  glBindTexture(type, dest->name);
-  if (type == GL_TEXTURE_1D) {
-    glTexImage1D(type, 0, GL_RGBA, dest->width, 0, GL_RGBA, GL_UNSIGNED_BYTE, dest->data);
-  } else {
-    glTexImage2D(type, 0, GL_RGBA, dest->width, dest->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, dest->data);
-  }
-  glTexParameteri(type, GL_TEXTURE_MIN_FILTER, GL_LINEAR); /* other routines should override this later */
-  glTexParameteri(type, GL_TEXTURE_MAG_FILTER, GL_LINEAR); /* if they don't want linear filtering */
-  glBindTexture(type, curtex);
-  return (0);
+	//Retrieve the in-use texture, which we will reset later
+	if (type == GL_TEXTURE_1D)
+		glGetIntegerv(GL_TEXTURE_BINDING_1D, &curtex);
+	else 
+		glGetIntegerv(GL_TEXTURE_BINDING_2D, &curtex);
+	
+	glGenTextures(1, &(dest->name));
+	glBindTexture(type, dest->name);
+	
+	//Send texture to video card
+	if (type == GL_TEXTURE_1D)
+	{
+		glTexImage1D(type, 0, GL_RGBA, dest->width, 0, 
+					GL_RGBA, GL_UNSIGNED_BYTE, dest->data);
+	}
+	else 
+	{
+		glTexImage2D(type, 0, GL_RGBA, dest->width, dest->height, 0, 
+					GL_RGBA, GL_UNSIGNED_BYTE, dest->data);
+	}
+
+	//Sett scale-down 
+	// and scale-up interpolation to LINEAR
+	glTexParameteri(type, GL_TEXTURE_MIN_FILTER, GL_LINEAR); 
+	glTexParameteri(type, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	//Restore the current opengl texture
+	glBindTexture(type, curtex);
+
+	return (0);
 }
 
-int pngTexture2D(texture* dest, const char* filename) {
-  return (pngTexture(dest, filename, GL_TEXTURE_2D));
+int pngTexture3D(texture *dest, const vector<string> &fileNames)
+{
+	dest->depth=fileNames.size();
+
+	//Copy data from disk into temporary storage
+	vector<unsigned char> *dataArray=new vector<unsigned char>[fileNames.size()];
+	for(size_t ui=0; ui<fileNames.size(); ui++)
+	{
+		//Pointer is closed by readpng
+		FILE *fp;
+		png_bytep *texture_rows;
+		png_uint_32 width, height;
+		if (!check_if_png((char *)fileNames[ui].c_str(), &fp, 8)) 
+		{
+			if(fp)
+				fclose(fp);
+			delete[] dataArray;
+			return 1; 
+		}
+
+		/* something is wrong with the .png */
+		if (read_png(fp, 8, &texture_rows, &width, &height))
+		{
+			delete[] dataArray;
+			return 2;
+		}
+
+		if(ui)
+		{
+			//Check to see image is the same size
+			if(width != dest->width || height !=dest->height)
+			{
+				delete[] dataArray;
+				return 3;
+			}
+		}
+
+		dest->width = width;
+		dest->height = height;
+
+		dataArray[ui].resize(width*height*4);
+		size_t arrayDest;
+		arrayDest=0;
+		for (size_t y=0; y<height; y++)
+		{
+			for (size_t x=0; x<4*(width); x++)
+				dataArray[ui][arrayDest++] = texture_rows[y][x];
+		}
+	}
+
+	size_t offset=0;
+	//Copy data into cube that we will send to video card
+	dest->data = new unsigned char[4*dest->width*dest->height*dest->depth];
+	for(size_t ui=0;ui<dest->depth;ui++)
+	{
+		for(size_t uj=0;uj<dataArray[ui].size();uj++)
+		{
+			dest->data[offset++]=dataArray[ui][uj];
+		}
+	}
+
+	delete[] dataArray;
+	
+	glGenTextures(1, &(dest->name));
+	glBindTexture(GL_TEXTURE_3D, dest->name);
+	
+	//Send texture to video card
+	glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, dest->width, dest->height, dest->depth, 0,
+				GL_RGBA, GL_UNSIGNED_BYTE, dest->data);
+
+	//Sett scale-down 
+	// and scale-up interpolation to LINEAR
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); 
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	return 0;
 }
 
-int pngTexture1D(texture* dest, const char* filename) {
-  return (pngTexture(dest, filename, GL_TEXTURE_1D));
+int pngTexture2D(texture* dest, const char* filename)
+{
+	return (pngTexture(dest, filename, GL_TEXTURE_2D));
+}
+
+int pngTexture1D(texture* dest, const char* filename)
+{
+	return (pngTexture(dest, filename, GL_TEXTURE_1D));
 }

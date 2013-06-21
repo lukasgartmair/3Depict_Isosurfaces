@@ -27,12 +27,12 @@ class wxGrid;
 class wxPropertyGrid;
 class wxTreeCtrl;
 
-#include "../gl/scene.h"
+class Scene;
 
 #include "filtertreeAnalyse.h"
 #include "backend/plot.h"
+#include "state.h"
 
-const unsigned int MAX_UNDO_SIZE=10;
 
 
 
@@ -64,23 +64,20 @@ class VisController
 		wxListBox *plotSelList;
 
 
+
+
 		//--- Data storage ----
+		AnalysisState currentState;
+		
+		//TODO: Migrate to analyis state
 		//!Primary data storage for filter tree
 		FilterTree filterTree;
 	
 		//!Analysis results for last filter tree refresh
 		FilterTreeAnalyse fta;
-	
-		//!Undo filter tree stack 
-		std::deque<FilterTree> undoFilterStack,redoFilterStack;
-
-		//!Named, stored trees that can be put aside for secondary use
-		std::vector<std::pair<std::string,FilterTree> > stashedFilters;
-
-		//!Unique IDs for stash
-		UniqueIDHandler stashUniqueIDs;
 		//--------------------
 
+		
 		//!True if viscontrol should abort current operation
 		bool doProgressAbort;
 	
@@ -90,12 +87,11 @@ class VisController
 		//!True if there are pending updates from the user
 		bool pendingUpdates;
 
-		//!Have we implicitly used relative references when saving data files?
-		unsigned int useRelativePathsForSave;
-
 		//!Current progress
 		ProgressData curProg;
 
+		//!Maximum number of ions to pass to scene
+		size_t limitIonOutput;
 
 		void clear();
 	
@@ -117,8 +113,13 @@ class VisController
 		//!Update the console strings
 		void updateConsole(const std::vector<std::string> &v, const Filter *f) const;
 
+		
+		//!Limit the number of objects we are sending to the scene
+		void throttleSceneInput(std::list<vector<const FilterStreamData *> > &outputData) const;
+
 		//!Force an update to the scene. 
-		unsigned int updateScene(std::list<vector<const FilterStreamData *> > &outputData,bool releaseData=true);
+		unsigned int updateScene(std::list<vector<const FilterStreamData *> > &outputData,
+					std::vector<SelectionDevice *> &devices,bool releaseData=true);
 		
 		//!ID handler that assigns each filter its own ID that
 		// is guaranteed to be unique for the life of the filter in the filterTree	
@@ -128,8 +129,6 @@ class VisController
 		// the wxTree control
 		std::vector<const Filter *> persistentFilters;
 
-		//Working directory for filter tree file operations
-		std::string workingDir;
 
 	public:
 		VisController();
@@ -142,9 +141,9 @@ class VisController
 		unsigned int refreshFilterTree(bool doUpdateScene=true);
 
 		
-		
 		//!Force an update to the scene. 
-		unsigned int doUpdateScene(std::list<vector<const FilterStreamData *> > &outputData, bool releaseData=true);
+		unsigned int doUpdateScene(std::list<vector<const FilterStreamData *> > &outputData, 
+					std::vector<SelectionDevice *> &devices,bool releaseData=true);
 
 		//obtain the outputs from the filter tree's refresh. 
 		// The outputs *must* be deleted with safeDeleteFilterList
@@ -279,7 +278,7 @@ class VisController
 		unsigned int addCam(const std::string &camName);
 
 		//!Update a wxtGrid with the properties for a given filter
-		void updateCamPropertyGrid(wxPropertyGrid *g,unsigned int camUniqueId) const;
+		void updateCamPropertyGrid(wxPropertyGrid *g,unsigned int camId) const;
 		
 		//!Return the number of cameras
 		unsigned int numCams() const ;
@@ -287,7 +286,7 @@ class VisController
 		//!Set the properties using a key-value result (as obtaed from updatewxPropertyGrid)
 		/*! The return code tells whether to reject or accept the change. 
 		 */
-		bool setCamProperties(size_t camUniqueID, 
+		bool setCamProperties(size_t camId, 
 				unsigned int key, const std::string &value);
 
 
@@ -297,15 +296,15 @@ class VisController
 	
 
 		//!Return the current working directory for when loading/saving state file contents
-		std::string getWorkDir() const { return workingDir;};
+		std::string getWorkDir() const { return currentState.getWorkingDir();};
 		
 		//!Set current working dir used when saving state files
-		void setWorkDir(const std::string &wd) { workingDir=wd;};
+		void setWorkDir(const std::string &wd) { currentState.setWorkingDir(wd);};
 
 		
 		//!Save the viscontrol state: writes an XML file containing the viscontrol state
 		bool saveState(const char *filename, std::map<string,string> &fileMapping,
-					bool writePackage=false) const;
+					bool writePackage=false, bool resetModifyLevel=true) const;
 		
 		//!Save the viscontrol "package":this  writes an XML file containing the viscontrol state, altering the output of the filters to obtain the files it needs 
 		bool savePackage(const char *filename) const;
@@ -314,18 +313,27 @@ class VisController
 		bool loadState(const char *filename, std::ostream &f,bool merge=false,bool noUpdating=false);	
 
 		//!Are we currently using relative paths due to a previous load?
-		bool usingRelPaths() const { return useRelativePathsForSave;};
+		bool usingRelPaths() const { return currentState.getUseRelPaths();};
 
 		//!Set whether to use relative paths when saving
-		void setUseRelPaths(bool useRelPaths){ useRelativePathsForSave=useRelPaths;};
+		void setUseRelPaths(bool useRelPaths){ currentState.setUseRelPaths(useRelPaths);};
 
 		//!Get the camera ID-pair data TODO: this is kinda a halfway house between
 		//updating the camera data internally and passing in the dialog box and not
 		//should homogenise this...
-		void getCamData(std::vector<std::pair<unsigned int, std::string> > &camData) const;
+		void getCamData(std::vector<std::string> &camData) const;
 
 		//!Get the active camera ID
 		unsigned int getActiveCamId() const;
+
+		//Obtain updated camera from the scene and then commit it to the state
+		void getCameraUpdates();
+
+		//Set the maximum number of ions to allow the scene to display
+		void setIonDisplayLimit(size_t newLimit) { limitIonOutput=newLimit;}
+
+		size_t getIonDisplayLimit() const { return limitIonOutput;}
+
 
 		//!export given filterstream data pointers
 		static unsigned int exportIonStreams(const std::vector<const FilterStreamData *> &selected, 
@@ -352,7 +360,7 @@ class VisController
 		void addStashedToFilters(const Filter *parentFilter, unsigned int stashID);
 
 		//!Delete a stash using its uniqueID
-		void deleteStash(unsigned int stashID);
+		void eraseStash(unsigned int stashID);
 
 		//!Retreive the stash filters
 		void getStashes(std::vector<std::pair<std::string,unsigned int > > &stashes) const;
@@ -361,7 +369,7 @@ class VisController
 		void getStashTree(unsigned int stashId, FilterTree &) const;
 
 		//!Get the number of stashes
-		unsigned int getNumStashes() const { return stashedFilters.size();}
+		unsigned int getNumStashes() const { return currentState.getStashCount();}
 
 		//----
 
@@ -378,9 +386,9 @@ class VisController
 		void popRedoStack();
 
 		//!Get the size of the undo stack
-		unsigned int getUndoSize() const { return undoFilterStack.size();};
+		unsigned int getUndoSize() const { return currentState.getUndoSize();};
 		//!Get the size of the redo stack
-		unsigned int getRedoSize() const { return redoFilterStack.size();};
+		unsigned int getRedoSize() const { return currentState.getRedoSize();};
 
 		//!Get the current progress
 		ProgressData getProgress() const { return curProg;}
@@ -413,6 +421,14 @@ class VisController
 		//!Ask if a given filter is a pure data source
 		bool filterIsPureDataSource(size_t filterId) const ;  
 
+
+		//true if the state has been modified since last load/save.
+		int stateModifyLevel() const { return currentState.stateModifyLevel();};
+
+		//Return the current state's filename
+		string getFilename() const { return currentState.getFilename(); }
+		//Return the current state's filename
+		void setFilename(std::string &s) {currentState.setFilename(s); }
 #ifdef DEBUG
 		//Check that the tree conrol is synced up to the filter map correctly
 		void checkTree(wxTreeCtrl *t);

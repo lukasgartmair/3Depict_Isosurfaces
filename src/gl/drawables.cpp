@@ -16,9 +16,15 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#if defined(WIN32) || defined(WIN64)
+#include <GL/glew.h>
+#endif
+
 #include "drawables.h"
 
 #include "common/colourmap.h"
+
+
 
 
 const float DEPTH_SORT_REORDER_EPSILON = 1e-2;
@@ -26,6 +32,12 @@ const float DEPTH_SORT_REORDER_EPSILON = 1e-2;
 //Static class variables
 //====
 const Camera *DrawableObj::curCamera = 0;
+bool DrawableObj::useAlphaBlend;
+TexturePool *DrawableObj::texPool;
+
+unsigned int DrawableObj::winX;
+unsigned int DrawableObj::winY;
+
 //==
 
 
@@ -94,6 +106,22 @@ void DrawableObj::explode(std::vector<DrawableObj *> &simpleObjects)
 	ASSERT(isExplodable());
 }
 
+void DrawableObj::setTexPool(TexturePool *t)
+{
+	if(texPool)
+		delete texPool;
+
+	texPool=t;
+
+}
+
+void DrawableObj::clearTexPool()
+{
+	ASSERT(texPool);
+	delete texPool;
+
+}
+
 Point3D DrawableObj::getCentroid() const
 {
 	ASSERT(!isExplodable());
@@ -136,7 +164,7 @@ void DrawPoint::draw() const
 {
 	glColor4f(r,g,b,a);
 	glBegin(GL_POINT);
-	glVertex3f(origin[0],origin[1],origin[2]);
+	glVertex3fv(origin.getValueArr());
 	glEnd();
 }
 
@@ -197,32 +225,23 @@ void DrawVector::draw() const
 
 	glLineWidth(lineSize);
 	glBegin(GL_LINES);
+	glVertex3fv(origin.getValueArr());
 	
 	if(arrowSize < sqrt(std::numeric_limits<float>::epsilon()) || !drawArrow)
 	{
-		glVertex3f(origin[0],origin[1],origin[2]);
 		glVertex3f(vector[0]+origin[0],vector[1]+origin[1],vector[2]+origin[2]);
 		glEnd();
-		
 		//restore the old line size
 		glLineWidth(oldLineWidth);
-		
 		glPopAttrib();
 		return ;
 	}
-	else
-	{
-
-		glVertex3f(origin[0],origin[1],origin[2]);
-
-		
-		glVertex3f(vector[0]+origin[0],vector[1]+origin[1],vector[2]+origin[2]);
-		glEnd();
-		//restore the old line size
-		glLineWidth(oldLineWidth);
-		
-		glPopAttrib();
-	}
+	glVertex3f(vector[0]+origin[0],vector[1]+origin[1],vector[2]+origin[2]);
+	glEnd();
+	//restore the old line size
+	glLineWidth(oldLineWidth);
+	
+	glPopAttrib();
 
 
 
@@ -318,15 +337,15 @@ void DrawVector::draw() const
 	
 	//Now, having the needed coords, we can draw the cone
 	glBegin(GL_TRIANGLE_FAN);
-	glNormal3f(axis[0],axis[1],axis[2]);
+	glNormal3fv(axis.getValueArr());
 	glVertex3f(0,0,0);
 	for(unsigned int ui=0; ui<NUM_CONE_SEGMENTS; ui++)
 	{
 		Point3D n;
 		n=ptArray[ui];
 		n.normalise();
-		glNormal3f(n[0],n[1],n[2]);
-		glVertex3f(ptArray[ui][0],ptArray[ui][1],ptArray[ui][2]);
+		glNormal3fv(n.getValueArr());
+		glVertex3fv(ptArray[ui].getValueArr());
 	}
 
 	glEnd();
@@ -336,7 +355,7 @@ void DrawVector::draw() const
 	glBegin(GL_TRIANGLE_FAN);
 	glNormal3f(-axis[0],-axis[1],-axis[2]);
 	for(unsigned int ui=NUM_CONE_SEGMENTS; ui--;) 
-		glVertex3f(ptArray[ui][0],ptArray[ui][1],ptArray[ui][2]);
+		glVertex3fv(ptArray[ui].getValueArr());
 	glEnd();
 
 	glPopMatrix();
@@ -406,13 +425,149 @@ void DrawTriangle::draw() const
 {
 	glColor4f(r,g,b,a);
 	glBegin(GL_TRIANGLES);
-		glVertex3f((vertices[0])[0],
-			(vertices[0])[1], (vertices[0])[2]);
-		glVertex3f((vertices[1])[0],
-			(vertices[1])[1], (vertices[1])[2]);
-		glVertex3f((vertices[2])[0],
-			(vertices[2])[1], (vertices[2])[2]);
+		for(size_t ui=0;ui<3;ui++)
+			glVertex3fv(vertices[ui].getValueArr());
 	glEnd();
+}
+
+void DrawQuad::getBoundingBox(BoundCube &b) const
+{
+	b.setBounds(vertices,4);
+}
+
+void DrawQuad::draw() const
+{
+	ASSERT(false);
+}
+
+void DrawQuad::setVertices(const Point3D *v) 
+{
+	for(size_t ui=0;ui<4;ui++)
+		vertices[ui]=v[ui];
+}
+
+Point3D DrawQuad::getOrigin() const
+{
+	return Point3D::centroid(vertices,4);
+}
+
+void DrawQuad::recomputeParams(const vector<Point3D> &vecs, 
+			const vector<float> &scalars, unsigned int mode)
+{
+	switch(mode)
+	{
+		case DRAW_QUAD_BIND_ORIGIN:
+		{
+			ASSERT(vecs.size() ==1 && scalars.size() ==0);
+			
+			Point3D curOrig=getOrigin();
+
+			Point3D delta = vecs[0]-curOrig;
+
+			for(size_t ui=0;ui<4;ui++)
+				vertices[ui]+=delta;
+
+
+			break;
+		}
+		default:
+			ASSERT(false);
+	}
+}
+
+DrawTexturedQuad::DrawTexturedQuad() :textureData(0), textureId((unsigned int)-1)
+{
+}
+
+DrawTexturedQuad::~DrawTexturedQuad()
+{
+	if(textureData)
+		delete[] textureData;
+
+	texPool->closeTexture(textureId);
+}
+
+void DrawTexturedQuad::draw() const
+{
+	ASSERT(glIsTexture(textureId));
+	
+	glEnable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D,textureId);
+	glPushAttrib(GL_CULL_FACE);
+	glDisable(GL_CULL_FACE);
+	
+	
+	glBindTexture(GL_TEXTURE_2D,textureId);
+
+	glColor4f(1.0f,1.0f,1.0f,1.0f);
+	const float COORD_SEQ_X[]={ 0,0,1,1};
+	const float COORD_SEQ_Y[]={ 0,1,1,0};
+	glBegin(GL_QUADS);
+		for(size_t ui=0;ui<4;ui++)
+		{
+			glTexCoord2f(COORD_SEQ_X[ui],COORD_SEQ_Y[ui]);
+			glVertex3fv(vertices[ui].getValueArr());
+		}
+	glEnd();
+
+	glPopAttrib();
+	glDisable(GL_TEXTURE_2D);	
+}
+
+//Call sequence
+// - resize destination for texture
+// - set texture by pixels
+// - rebind texture
+void DrawTexturedQuad::resize(size_t numX, size_t numY, 
+					unsigned int nChannels)
+{
+	//reallocate texture as required
+	if(textureData)
+	{
+		if( numX*numY*nChannels != nX*nY*channels)
+		{
+			delete[] textureData;
+			textureData = new unsigned char[numX*numY*nChannels];
+		}
+	}
+	else
+		textureData = new unsigned char[numX*numY*nChannels];
+
+	nX=numX;
+	nY=numY;
+	channels=nChannels;
+
+}
+
+void DrawTexturedQuad::rebindTexture()
+{
+	ASSERT(texPool);
+	ASSERT(textureData);
+	if(textureId == -1)
+		texPool->genTexID(textureId);
+	
+	//Construc the texture
+	glBindTexture(GL_TEXTURE_2D,textureId);
+	glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE); 
+	ASSERT(channels == 3);
+
+	glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,nX,nY,
+		0,GL_RGB,GL_UNSIGNED_BYTE,textureData);
+
+
+
+}
+
+void DrawTexturedQuad::setData(size_t x, size_t y, unsigned char *entry)
+{
+	ASSERT(textureData);
+	ASSERT(channels == 3);
+
+	for(size_t ui=0;ui<channels;ui++)
+		textureData[(y*nX + x)*channels + ui] = entry[ui]; 	
 }
 
 
@@ -544,7 +699,7 @@ void DrawCylinder::draw() const
 	if(!q || !qCap[0] || !qCap[1])
 		return;
 
-	//Cross product desired direction with default
+	//Cross product desired drection with default
 	//direction to produce rotation vector
 	Point3D dir(0.0f,0.0f,1.0f);
 
@@ -687,8 +842,6 @@ DrawManyPoints::DrawManyPoints() : r(1.0f),g(1.0f),b(1.0f),a(1.0f), size(1.0f)
 
 DrawManyPoints::~DrawManyPoints() 
 {
-	wantsLight=false;
-	haveCachedBounds=false;
 }
 
 void DrawManyPoints::getBoundingBox(BoundCube &b) const
@@ -1068,7 +1221,7 @@ void DrawGLText::draw() const
 					//the text direction is now the x-axis
 					glTranslatef(advance/2.0f,halfHeight,0);
 					//spin text around its front direction 180 degrees
-					//no need to translate as text sits at its baseline
+					//no need to trnaslate as text sits at its baseline
 					glRotatef(180,0,0,1);
 					//move halfway along text, noting that 
 					//the text direction is now the x-axis
@@ -1083,7 +1236,7 @@ void DrawGLText::draw() const
 	}
 	else
 	{
-		//FIXME: The text ends up in a weird location
+		//FIXME: The text ends up in a wierd location
 		//2D coordinate storage for bitmap text
 		double xWin,yWin,zWin;
 		//Compute the 2D coordinates
@@ -1329,7 +1482,7 @@ void DrawRectPrism::recomputeParams(const vector<Point3D> &vecs,
 	}
 }
 
-DrawTexturedQuadOverlay::DrawTexturedQuadOverlay() : texPool(0)
+DrawTexturedQuadOverlay::DrawTexturedQuadOverlay()  
 {
 }
 
@@ -1364,6 +1517,7 @@ void DrawTexturedQuadOverlay::draw() const
 
 	glEnable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D,textureId);
+	glTexEnvf (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE); 
 	
 	// Draw overlay quad 
 	glColor3f(1.0f,1.0f,1.0f);
@@ -1393,9 +1547,7 @@ void DrawTexturedQuadOverlay::draw() const
 bool DrawTexturedQuadOverlay::setTexture(const char *textureFile)
 {
 	ASSERT(texPool);	
-	unsigned int dummy;
-
-	textureOK= texPool->openTexture(textureFile,textureId,dummy);
+	textureOK= texPool->openTexture(textureFile,textureId);
 	return textureOK;
 }
 
@@ -1404,6 +1556,104 @@ void DrawTexturedQuadOverlay::getBoundingBox(BoundCube &b) const
 	b.setInvalid();
 }
 
+DrawAnimatedOverlay::DrawAnimatedOverlay()
+{
+	fadeIn=0.0f;
+	delayBeforeShow=0.0f;
+	textureOK=false;
+	resetTime();
+}
+
+DrawAnimatedOverlay::~DrawAnimatedOverlay()
+{
+}
+
+void DrawAnimatedOverlay::resetTime()
+{
+	gettimeofday(&animStartTime,NULL);
+}
+
+bool DrawAnimatedOverlay::setTexture(const vector<string> &texFiles,
+			float replayTime)
+{
+	repeatInterval=replayTime;
+
+	textureOK=texPool->openTexture3D(texFiles, textureId);
+	return textureOK;
+}
+
+void DrawAnimatedOverlay::setSize(float newLen)
+{
+	length=newLen;
+}
+
+
+void DrawAnimatedOverlay::draw() const
+{
+	if(!textureOK)
+		return;
+
+	float texCoordZ;
+	float alphaVal=1.0f;
+	{
+	timeval t;
+	gettimeofday(&t,NULL);
+	float animDeltaTime=(float)(t.tv_sec - animStartTime.tv_sec) +
+		(t.tv_usec-animStartTime.tv_usec)/1.0e6;
+
+	//Skip if we wish to show later
+	if(animDeltaTime < delayBeforeShow)
+		return;
+
+
+	if(fadeIn > 0.0f && (delayBeforeShow + fadeIn > animDeltaTime) ) 
+		alphaVal= (animDeltaTime - delayBeforeShow )/(fadeIn) ;
+
+	texCoordZ=fmod(animDeltaTime,repeatInterval);
+	texCoordZ/=repeatInterval;
+	}
+	ASSERT(glIsTexture(textureId));
+	
+	glMatrixMode(GL_PROJECTION);	
+	glPushMatrix();
+	glLoadIdentity();
+	gluOrtho2D(0, winX, winY, 0);
+
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+
+	glEnable(GL_TEXTURE_3D);
+	glBindTexture(GL_TEXTURE_3D,textureId);
+	glTexEnvf (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MULT); 
+	
+	// Draw overlay quad 
+	glColor4f(1.0f,1.0f,1.0f,alphaVal);
+	glBegin(GL_QUADS);
+		glTexCoord3f(0.0f,0.0f,texCoordZ);
+		glVertex3f(position[0]-length/2.0,position[1]-length/2.0,0.0);
+		glTexCoord3f(0.0f,1.0f,texCoordZ);
+		glVertex3f(position[0]-length/2.0,position[1]+length/2.0,0.0);
+		glTexCoord3f(1.0f,1.0f,texCoordZ);
+		glVertex3f(position[0]+length/2.0,position[1]+length/2.0,0.0);
+		glTexCoord3f(1.0f,0.0f,texCoordZ);
+		glVertex3f(position[0]+length/2.0,position[1]-length/2.0,0.0);
+	glEnd();
+
+	glDisable(GL_TEXTURE_3D);	
+
+	glPopMatrix(); //Pop modelview matrix
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+
+	glMatrixMode(GL_MODELVIEW);
+}
+
+void DrawAnimatedOverlay::getBoundingBox(BoundCube &b) const
+{
+	b.setInvalid();
+}
 
 DrawColourBarOverlay::DrawColourBarOverlay() 
 {
@@ -1487,7 +1737,6 @@ void DrawColourBarOverlay::draw() const
 	//to 1 opengl unit by inversion 
 	const float FTGL_DEFAULT_UNIT_SCALE=1.0/72.0;
 
-	glColor3f(1.0f,1.0f,1.0f);	
 	font->FaceSize(3);
 	glDisable(GL_CULL_FACE);
 	glPushMatrix();
@@ -1627,7 +1876,7 @@ void DrawField3D::draw() const
 				ptsCacheOK=true;
 			}
 
-			if(alphaVal < 1.0f)
+			if(alphaVal < 1.0f && useAlphaBlend)
 			{
 				//We need to generate some points, then sort them by distance
 				//from eye (back to front), otherwise they will not blend properly
@@ -1662,7 +1911,7 @@ void DrawField3D::draw() const
 							((float)(ptsCache[idx].second.v[1]))/255.0f,
 							((float)(ptsCache[idx].second.v[2]))/255.0f, 
 							alphaVal);
-					glVertex3f(ptsCache[idx].first[0],ptsCache[idx].first[1],ptsCache[idx].first[2]);
+					glVertex3fv(ptsCache[idx].first.getValueArr());
 				}
 				glEnd();
 				glDepthMask(GL_TRUE);
@@ -1678,7 +1927,7 @@ void DrawField3D::draw() const
 							((float)(ptsCache[ui].second.v[1]))/255.0f,
 							((float)(ptsCache[ui].second.v[2]))/255.0f, 
 							1.0f);
-					glVertex3f(ptsCache[ui].first[0],ptsCache[ui].first[1],ptsCache[ui].first[2]);
+					glVertex3fv(ptsCache[ui].first.getValueArr());
 				}
 				glEnd();
 			}
@@ -1790,7 +2039,7 @@ void DrawIsoSurface::draw() const
 
 	//This could be optimised by using triangle strips
 	//rather than direct triangles.
-	if(a < 1.0f)
+	if(a < 1.0f && useAlphaBlend )
 	{
 		//We need to sort them by distance
 		//from eye (back to front), otherwise they will not blend properly

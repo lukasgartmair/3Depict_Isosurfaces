@@ -23,6 +23,7 @@
 
 #include <fstream>
 
+#if defined(__WIN32) || defined(__WIN64)
 class winconsole
 {
 private:
@@ -41,5 +42,5 @@ public:
   void hide();
   void show();
 };
-
+#endif
 #endif

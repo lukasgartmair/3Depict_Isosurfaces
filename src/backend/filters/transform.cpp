@@ -142,7 +142,7 @@ size_t TransformFilter::numBytesForCache(size_t nObjects) const
 	return (size_t)-1;
 }
 
-DrawStreamData* TransformFilter::makeMarkerSphere(SelectionDevice<Filter>* &s) const
+DrawStreamData* TransformFilter::makeMarkerSphere(SelectionDevice* &s) const
 {
 	//construct a new primitive, do not cache
 	DrawStreamData *drawData=new DrawStreamData;
@@ -170,7 +170,7 @@ DrawStreamData* TransformFilter::makeMarkerSphere(SelectionDevice<Filter>* &s) c
 	{
 		dS->canSelect=true;
 
-		s=new SelectionDevice<Filter>(this);
+		s=new SelectionDevice(this);
 		SelectionBinding b;
 
 		b.setBinding(SELECT_BUTTON_LEFT,FLAG_CMD,DRAW_SPHERE_BIND_ORIGIN,
@@ -210,7 +210,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 					transformMode == MODE_SCALE_ANISOTROPIC ||
 					transformMode == MODE_SCALE_ISOTROPIC) )
 			{
-				SelectionDevice<Filter> *s;
+				SelectionDevice *s;
 				getOut.push_back(makeMarkerSphere(s));
 				if(s)
 					devices.push_back(s);
@@ -295,7 +295,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 			transformMode == MODE_SCALE_ANISOTROPIC || 
 			transformMode == MODE_SCALE_ISOTROPIC) )
 	{
-		SelectionDevice<Filter> *s;
+		SelectionDevice *s;
 		getOut.push_back(makeMarkerSphere(s));
 		if(s)
 			devices.push_back(s);

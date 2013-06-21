@@ -70,7 +70,47 @@ enum
 
 extern const char *TEXT_LOAD_ERR_STRINGS[];
 
-	
+//Perform a a<-b<-c<-a rotation of data
+template<class T>
+void rotate3(T &a, T &b, T &c)
+{
+	T tmp;
+	tmp=a;
+	a=b;
+	b=c;
+	c=tmp;
+}
+
+//Find the min/max value within an array
+//array must be nonzero sized
+template<class T>
+T maxValue(const T *t, size_t n)
+{
+	ASSERT(n);
+
+	T maxV=t[0];
+	for(size_t ui=1;ui<n;ui++)
+	{
+		maxV=std::max(t[ui],maxV);
+	}
+	return maxV;
+
+}
+
+template<class T>
+T minValue(const T *t, size_t n)
+{
+	ASSERT(n);
+
+	T minV=t[0];
+	for(size_t ui=1;ui<n;ui++)
+	{
+		minV=std::min(t[ui],minV);
+	}
+	return minV;
+
+}
+
 template<class T1, class T2>
 bool hasFirstInPairVec(const std::vector<std::pair<T1,T2> > &v, const std::pair<T1,T2> &r)
 {

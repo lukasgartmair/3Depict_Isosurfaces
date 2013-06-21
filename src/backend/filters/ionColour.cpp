@@ -22,6 +22,7 @@
 #include "common/colourmap.h"
 
 
+
 const unsigned int MAX_NUM_COLOURS=256;
 enum
 {
@@ -70,38 +71,6 @@ size_t IonColourFilter::numBytesForCache(size_t nObjects) const
 		return (size_t)((float)(nObjects*IONDATA_SIZE));
 }
 
-DrawColourBarOverlay *IonColourFilter::makeColourBar() const
-{
-	//If we have ions, then we should draw a colour bar
-	//Set up the colour bar. Place it in a draw stream type
-	DrawColourBarOverlay *dc = new DrawColourBarOverlay;
-
-	vector<float> r,g,b;
-	r.resize(nColours);
-	g.resize(nColours);
-	b.resize(nColours);
-
-	for (unsigned int ui=0;ui<nColours;ui++)
-	{
-		unsigned char rgb[3]; //RGB array
-		float value;
-		value = (float)(ui)*(mapBounds[1]-mapBounds[0])/(float)nColours + mapBounds[0];
-		//Pick the desired colour map
-		colourMapWrap(colourMap,rgb,value,mapBounds[0],mapBounds[1]);
-		r[ui]=rgb[0]/255.0f;
-		g[ui]=rgb[1]/255.0f;
-		b[ui]=rgb[2]/255.0f;
-	}
-
-	dc->setColourVec(r,g,b);
-
-	dc->setSize(0.08,0.6);
-	dc->setPosition(0.1,0.1);
-	dc->setMinMax(mapBounds[0],mapBounds[1]);
-
-
-	return dc;
-}
 
 
 unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
@@ -124,7 +93,8 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 		{
 			DrawStreamData *d = new DrawStreamData;
 			d->parent=this;
-			d->drawables.push_back(makeColourBar());
+			d->drawables.push_back(makeColourBar(mapBounds[0],
+					mapBounds[1],nColours,colourMap));
 			d->cached=0;
 			getOut.push_back(d);
 		}
@@ -222,7 +192,7 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 	if(foundIons && showColourBar)
 	{
 		DrawStreamData *d = new DrawStreamData;
-		d->drawables.push_back(makeColourBar());
+		d->drawables.push_back(makeColourBar(mapBounds[0],mapBounds[1],nColours,colourMap));
 		d->parent=this;
 		d->cached=0;
 		getOut.push_back(d);

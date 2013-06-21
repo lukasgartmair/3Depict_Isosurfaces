@@ -20,7 +20,7 @@
 
 <div id="left">
 <div class="box">
-<h2> Latest version: 0.0.6</h2>
+<h2> Latest version: 0.0.13</h2>
 <p> <a href="https://sourceforge.net/projects/threedepict/files/">Download</a> the source code for the latest version of 3Depict for your platform</p>
 </div>
 <div class="box">
@@ -67,7 +67,13 @@ windows is highly complicated, and more thoroughly documented <a href="#windows"
 Direct <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Software_library">Dependencies</a>: <br/>
 
 <ul>
-<li>ftgl</li><li>freetype2</li><li>libxml2</li><li>mathgl</li><li>wxwidgets</li>
+<li><a href="http://sourceforge.net/projects/ftgl/">ftgl</a></li>
+<li><a href="http://freetype.org/">freetype2</a></li>
+<li><a href="http://www.xmlsoft.org/">libxml2</a></li>
+<li><a href="http://mathgl.sourceforge.net/">mathgl</a></li>
+<li><a href="http://wxwidgets.org/">wxwidgets</a></li>
+<li><a href="http://www.gnu.org/software/gettext/">gettext</a></li>
+<li><a href="http://www.qhull.org/">qhull</a></li>
 </ul>
 
 
@@ -99,7 +105,7 @@ You should then install the following packages (this requires administrative rig
 <h2>Setting up</h2>
 <h3>Debian/Ubuntu:</h3>
 <ul>
-<li>build-essential</li><li>libwxgtk2.8-dev</li><li>libmgl-dev</li><li>libxml2-dev</li><li>libftgl-dev</li>
+<li>build-essential</li><li>libwxgtk2.8-dev</li><li>libmgl-dev</li><li>libxml2-dev</li><li>libftgl-dev</li><li>libqhull-dev</li>
 </ul>
 
 
@@ -107,13 +113,13 @@ This can be done through the command line (below), or using the gui (synaptic pa
 
 <br/>
 
-<span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> sudo aptitude install build-essential libwxgtk2.8-dev libmgl-dev libxml2-dev libftgl-dev) </span><br/>
+<span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> sudo apt-get build-dep 3depict </span><br/>
 
 
 <h3>Fedora/RedHat:</h3>
 
 <ul>
-<li>"Development Tools"&nbsp; group package</li><li>mathgl-devel</li><li>libxml2-devel</li><li>ftgl-devel</li><li>wxgtk-devel</li>
+<li>"Development Tools"&nbsp; group package</li><li>mathgl-devel</li><li>libxml2-devel</li><li>ftgl-devel</li><li>wxgtk-devel</li><li>qhull-devel</li>
 </ul>
 
 
@@ -124,13 +130,13 @@ This can be done through either the command line, or through the GUI <br/>
 
 <span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> yum groupinstall "Development Tools"</span><br/>
 
-<span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> yum install mathgl-devel libxml2-devel ftgl-devel wxgtk-devel</span><br/>
+<span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> yum install mathgl-devel libxml2-devel ftgl-devel wxgtk-devel qhull-devel</span><br/>
 <br/>
 
 <h3>OpenSuse:</h3>
 
 <ul>
-<li>wxGTK-devel</li><li>libxml2-devel</li><li>ftgl-devel</li>
+<li>wxGTK-devel</li><li>libxml2-devel</li><li>ftgl-devel</li><li>qhull-devel</li>
 </ul>
 
 
@@ -142,7 +148,7 @@ This can be done either through the graphical interface (YaST) or at the command
 
 <span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; $ zypper install -t devel_C_C++</span><br/>
 
-<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; $ zypper install wxGTK-devel libxml2-devel ftgl-devel</span><br/>
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; $ zypper install wxGTK-devel libxml2-devel ftgl-devel qhull-devel</span><br/>
 
 &nbsp;&nbsp;&nbsp; <br/>
 
@@ -154,11 +160,16 @@ website:<br/>
 <li><a href="http://mathgl.sourceforge.net/">http://mathgl.sourceforge.net/</a></li>
 </ul>
 
+<h4> Cross compiling</h4>
+There is a cross compilation script available (0.0.13) in the packaging/mingw-debian-cross/ folder of the <a href="http://threedepict.hg.sourceforge.net/hgweb/threedepict/threedepict/summary">code repository</a>. This can be used to build 3Depict for windows platforms using a Debian or Debian-like host. The cross-compilation script is experimental, but will get you most of the way to a cross compiled version.  The script will download, patch and build all the neccessary dependencies automatically.
+
+<br/>
+
 
 <h3>Mac OS X</h3>
 
-Mac OS does not have a proper package management system. You need XCode installed (<a href="http://developer.apple.com/mac/library/documentation/Xcode/Conceptual/XcodeCoexistence/Contents/Resources/en.lproj/Basics/Basics.html">here</a>). For the latest version of Snow Leopard for some reason this is not free, and you now have to pay to download this or build gcc yourself (somehow) it appears. Considering GCC (the bit we need) is completely free, it is unclear what the deal is here.
-Note that at time of writing the wxWidgets version provided with XCode are several years out of date and cannot be guaranteed function correctly (though it may). There are some <a href="#Extra_notes_for_Mac_OSX">post-compile notes</a>, which <span style="font-weight: bold; font-style: italic;">must</span>&nbsp; be followed to build a usable program.<br/>
+Mac OS does not have a proper package management system. You need XCode installed (<a href="http://developer.apple.com/mac/library/documentation/Xcode/Conceptual/XcodeCoexistence/Contents/Resources/en.lproj/Basics/Basics.html">here</a>). For the latest version of Snow Leopard for some reason this is not free, and you now are required to use the app store or something to get this or build gcc yourself (somehow) it appears. Considering GCC (the bit we need) is completely free (GPL), it is unclear what the deal is here.
+Note that at time of writing the wxWidgets version provided with XCode is several years out-of-date and probably won't work. Please don't try to use any of the built-in libraries provided with XCode - you cannot mix and match library linkage, it simply won't work (crashes). There are some <a href="#Extra_notes_for_Mac_OSX">post-compile notes</a>, which <span style="font-weight: bold; font-style: italic;">must</span>&nbsp; be followed to build a usable program.<br/>
 
 <br/>
 
@@ -205,7 +216,7 @@ MinGW/MSYS or TDM-GCC/MSYS (unless you know better), some instructions are <a hr
 
 
 
-<br/>
+
 
 <h4>wxWidgets<br/>
 </h4>
@@ -331,8 +342,12 @@ You can even move this ".app" package to other computers (with the same OSX vers
 <br/>
 
 <h2><a href="windows"></a> Compile notes for windows </h2>
-<p>
-Before I post the full notes, this is very, very detailed and technical. But it means I have this working, and down to a fine art. Its a rough ride.</p>
+<p><i>
+THese notes are a little outdated as of April 2013 - you may find some of the program versions have changed. Most of the notes should still be valid.  However, this is not how 3Depict is built for windows - we use the cross-compile method instead. This has been scripted and is much easier, but requires a Debian or Debian-like installation (we recommend using VirtualBox). If you still want to compile under normal windows, then read on.
+</i>
+</p>
+
+<p> Before I post the full notes, this is very, very detailed and technical. But it means I have this working, and down to a fine art. Its a rough ride.</p>
 <p>
 You will need the 7zip file manager program or winrar to be able to open tar/gz files, as windows does not support this filetype, nor recognises it in the "web search" facility. (Its a standard gzip + archive file, note to windows devs : see <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Tgz">wikipedia on tar-gz</a>)</p>
 <p>
@@ -524,7 +539,7 @@ ran <span style="font-family: monospace;">make</span>. This will take a long tim
   Ran Make
 	<ul>
 	<li>
-	-- This failed in the utils dir. libpng is unable to see libz for whatever reason. Does not bode well,  but it was  in the utils section, which I don't need, so I ignored it.
+	This failed in the utils dir. libpng is unable to see libz for whatever reason. Does not bode well,  but it was  in the utils section, which I don't need, so I ignored it.
 		</li>
 	</ul>
 </li>
@@ -537,16 +552,14 @@ ran <span style="font-family: monospace;">make</span>. This will take a long tim
 </ul>
 <h4>3Depict</h4>
 <ul>
+
 <li>
- Had to override glu (gluSphere) check (this appears to be broken? (Note to self: Is this fixed now?) )
-</li>
-<li>
- Ran <span style="font-family: monospace;">export CFLAGS="-I/c/msys/1.0/local/include" &amp;&amp; LDFLAGS="-L/c/msys/1.0/local/lib" &amp;&amp; ./configure </span>
+ Ran <span style="font-family: monospace;"> export CFLAGS="-I/c/msys/1.0/local/include" && export LDFLAGS="-L/c/msys/1.0/local/lib" && ./configure --with-libqhull-link="-L/c/msys/1.0/local/lib/ -lqhull"  --with-libpng-link="-lpng -lz" </span>
 	<ul>
 	<li>
-		-- For an explanation for why this "export" businessis needed, see <a href="http://www.mingw.org/wiki/IncludePathHOWTO">this mingw faq</a>.	</li><li>
-		-- This wont build with parallelism; you have to add <span style="font-family: monospace;">--enable-openmp-parallel </span> , however some versions of GCC do not like this, so I left it off by default.  If you get errors about <span style="font-family: monospace;">undefined __sync_compare_and_swap_4  </span>(or similar) you can either 1) Alter your optimisation level 2) rebuild with -march=i686 3) modify the files it complains from, and build only those files without paralellism (modify cflags and remove -D_GLIBCXX... and -fopenmp , or 4) just build the whole thing without parallelism (the default).</li><li>
-		-- This will enable slow debug checking. To turn off debug checking add  <span style="font-family: monospace;">--enable-no-debug-checks</span> after configure, as in <span style="font-family: monospace;">./configure --enable-no-debug-checks</span>. Full information is available in <span style="font-family: monospace;">./configure --help</span>.
+		 For an explanation as to why this "export" business is needed, see <a href="http://www.mingw.org/wiki/IncludePathHOWTO">this mingw faq</a>.	</li><li>
+		-- This won't build with parallelism; you have to add <span style="font-family: monospace;">--enable-openmp-parallel </span> , however some versions of GCC do not like this, so I left it off by default.  If you get errors about <span style="font-family: monospace;">undefined __sync_compare_and_swap_4  </span>(or similar) you can either 1) Alter your optimisation level 2) rebuild with -march=i686 3) modify the files it complains from, and build only those files without paralellism (modify cflags and remove -D_GLIBCXX... and -fopenmp , or 4) just build the whole thing without parallelism (the default).</li><li>
+		 These settings will enable slow debug checking. To turn off debug checking add  <span style="font-family: monospace;">--enable-no-debug-checks</span> after configure, as in <span style="font-family: monospace;">./configure --enable-no-debug-checks</span>. Full information is available in <span style="font-family: monospace;">./configure --help</span>.
 	</li>
 	</ul>
 </li>

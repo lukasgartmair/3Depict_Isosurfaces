@@ -60,7 +60,7 @@ bool testFilterTree(const FilterTree &f)
 {
 	ASSERT(!f.hasHazardousContents());
 	std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > outData;
-	std::vector<SelectionDevice<Filter> *> devices;
+	std::vector<SelectionDevice *> devices;
 	std::vector<std::pair<const Filter *, string > > consoleMessages;
 
 	ProgressData prog;
@@ -151,9 +151,8 @@ bool basicFunctionTests()
 bool runUnitTests()
 {
 
-	if(!basicFunctionTests())
-		return false;
-	
+	cerr << "Running unit tests..." ;
+
 	if(!filterTests())
 		return false;
 
@@ -163,6 +162,10 @@ bool runUnitTests()
 	if(!rangeFileLoadTests())
 		return false;
 
+
+	if(!basicFunctionTests())
+		return false;
+	
 	if(!XMLTests())
 		return false;
 
@@ -172,13 +175,14 @@ bool runUnitTests()
 	if(!runVoxelTests())
 		return false;
 
+	cerr << " OK" << endl << endl;
+
 	return true;
 }
 
 bool filterTests()
 {
 	//Instantiate various filters, then run their unit tests
-	cerr << "Running per-filter unit tests...";
 	for(unsigned int ui=0; ui<FILTER_TYPE_ENUM_END; ui++)
 	{
 		Filter *f;
@@ -188,7 +192,6 @@ bool filterTests()
 
 		delete f;
 	}
-	cerr << "OK" <<endl;
 
 	if(!Filter::boolToggleTests())
 		return false;
@@ -215,7 +218,6 @@ bool filterCloneTests()
     	configFile.read();
 	
 	bool fileWarn=false;
-	cerr << "Running clone tests...";
 	for(unsigned int ui=0; ui<FILTER_TYPE_ENUM_END; ui++)
 	{
 		//Get the user's preferred, or the program
@@ -340,7 +342,6 @@ bool filterCloneTests()
 		delete f;
 		delete g;
 	}
-	cerr << "OK" << endl;
 	return true;
 }
 
@@ -389,7 +390,6 @@ bool rangeFileLoadTests()
 		return true;
 	}
 
-	cerr << "Range file loading...";
 
 	//Map names of file (without dir) to number of ions/range
 	map<string,unsigned int> ionCountMap;
@@ -411,6 +411,8 @@ bool rangeFileLoadTests()
 	failSet.insert("test6.rng");
 	ionCountMap["test7.rng"]=2; rangeCountMap["test7.rng"]=2;
 	ionCountMap["test8.rng"]=2; rangeCountMap["test8.rng"]=2;
+	ionCountMap["test9.rng"]=3; rangeCountMap["test9.rng"]=3;
+	ionCountMap["test10.rng"]=3; rangeCountMap["test10.rng"]=3;
 	ionCountMap["test11.rng"]=5; rangeCountMap["test11.rng"]=10;
 
 	ionCountMap["test1.rrng"]=1; rangeCountMap["test1.rrng"]=1;
@@ -421,7 +423,6 @@ bool rangeFileLoadTests()
 	
 	ionCountMap["test1.env"]=1; rangeCountMap["test1.env"]=1; 
 
-	cerr << endl;
 	//Sort the array before we go any further, so that the output
 	//each time is the same, regardless of how the files were
 	//loaded into the dir. F.ex this makes diffing easier
@@ -438,7 +439,6 @@ bool rangeFileLoadTests()
 		fileShortname=stlStr(filename.GetFullName());
 		{
 			RangeFile f;
-			cerr << "\t" << fileShortname.c_str() << "...";
 
 			bool shouldSucceed;
 
@@ -448,41 +448,42 @@ bool rangeFileLoadTests()
 				
 			if((!f.openGuessFormat(fileLongname.c_str())) == shouldSucceed)
 			{
+				cerr << "\t" << fileShortname.c_str() << "...";
 				cerr << f.getErrString() << endl;
 				TEST(false,"range file load test"); 
 			}
 
 
 			if(!shouldSucceed)
-			{
-				cerr << "OK" <<endl;
 				continue;
-			}
 
 			//Check against the hand-made map of ion and range counts
 			if(ionCountMap.find(fileShortname)!=ionCountMap.end())
 			{
-				TEST(ionCountMap[fileShortname] == f.getNumIons(),"ion count test");
+				std::string errMsg;
+				errMsg=string("ion count test : ") + fileShortname;
+				TEST(ionCountMap[fileShortname] == f.getNumIons(),errMsg.c_str());
 			}
 			else
 			{
+				cerr << "\t" << fileShortname.c_str() << "...";
 				WARN(false,"Did not know how many ions file was supposed to have. Test inconclusive");
 			}
 			
 			if(rangeCountMap.find(fileShortname)!=rangeCountMap.end())
 			{
-				TEST(rangeCountMap[fileShortname] == f.getNumRanges(),"range count test");
+				std::string errMsg;
+				errMsg=string("range count test : ") + fileShortname;
+				TEST(rangeCountMap[fileShortname] == f.getNumRanges(),errMsg.c_str());
 			}
 			else
 			{
+				cerr << "\t" << fileShortname.c_str() << "...";
 				WARN(false,"Did not know how many ranges file was supposed to have. Test inconclusive");
 			}
-
-			cerr << "OK" << endl;
 		}
 	}
 
-	cerr << "OK" << endl;
 	return true;
 }
 

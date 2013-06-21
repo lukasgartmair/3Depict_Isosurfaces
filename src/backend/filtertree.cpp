@@ -262,7 +262,6 @@ void FilterTree::initFilterTree() const
 {
 	vector< const FilterStreamData *> curData;
 	stack<vector<const FilterStreamData * > > inDataStack;
-	list<vector<const FilterStreamData * > > outData;
 	
 	FilterRefreshCollector refreshCollector;
 
@@ -541,7 +540,7 @@ void FilterTree::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propS
 }
 
 unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData, 
-		std::vector<SelectionDevice<Filter> *> &devices,
+		std::vector<SelectionDevice *> &devices,
 		vector<pair<const Filter* , string> > &consoleMessages,
 	       	ProgressData &curProg, bool (*callback)(bool)) const
 {
@@ -686,7 +685,7 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			(*callback)(false);
 
 
-			vector<SelectionDevice<Filter> *> curDevices;
+			vector<SelectionDevice *> curDevices;
 			//Retrieve the user interaction "devices", and send them to the scene
 			(*filtIt)->getSelectionDevices(curDevices);
 
@@ -938,9 +937,9 @@ unsigned int FilterTree::loadXML(const xmlNodePtr &treeParent, std::ostream &err
 			std::string tmpStr;
 			tmpStr=(char *)nodePtr->name;
 
-			newFilt=makeFilter(tmpStr);
-			if(newFilt)
+			if(isValidFilterName(tmpStr))
 			{
+				newFilt=makeFilter(tmpStr);
 				if (!newFilt->readState(nodePtr->xmlChildrenNode,stateFileDir))
 				{
 					needCleanup=true;
@@ -1266,9 +1265,7 @@ void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> &c
 		const PlotStreamData *p;
 		p =(const PlotStreamData*)curData[ui];
 
-#ifdef DEBUG
 		p->checkSelfConsistent();
-#endif
 	}
 	
 	//Voxel output streams should only have known types
@@ -1282,6 +1279,36 @@ void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> &c
 
 		//Must have valid representation 
 		ASSERT(p->representationType< VOXEL_REPRESENT_END);
+	}
+
+	//Ensure that any output drawables that are selectable have
+	// parent filters with selection devices
+	for(size_t ui=0; ui<curData.size();ui++)
+	{
+		if(curData[ui]->getStreamType() != STREAM_TYPE_DRAW)
+			continue;
+
+		const DrawStreamData *p;
+		p =(const DrawStreamData*)curData[ui];
+	
+		for(size_t uj=0;uj<p->drawables.size();uj++)
+		{
+			if ( p->drawables[uj]->canSelect )
+			{
+				vector<SelectionDevice *> devices;
+				p->parent->getSelectionDevices(devices);
+				ASSERT(devices.size());
+
+				for(size_t uk=0;uk<devices.size();uk++)
+				{
+					ASSERT(devices[uk]->getNumBindings());
+				}
+			}
+		
+			//Drawables with selection devices cannot be cached
+			ASSERT(!p->cached);
+		}
+
 	}
 
 }
@@ -1757,7 +1784,7 @@ bool FilterTree::reparentFilter(Filter *f, const Filter *newParent)
 }
 
 
-void FilterTree::clearCache(const Filter *filter)
+void FilterTree::clearCache(const Filter *filter,bool includeSelf)
 {
 	if(!filter)
 	{
@@ -1785,7 +1812,11 @@ void FilterTree::clearCache(const Filter *filter)
 			//Do not traverse siblings
 			if(filters.depth(filterIt) >= filters.depth(it) && it!=filterIt )
 				break;
-		
+
+			//If we dont want to include self,  then skip
+			if( !includeSelf && *it == filter)
+				continue;
+
 			(*it)->clearCache();
 		}
 	}

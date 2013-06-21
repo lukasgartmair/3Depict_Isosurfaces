@@ -45,8 +45,8 @@ using std::string;
 ConfigFile::ConfigFile() : configLoadOK(false), panelMode(CONFIG_PANELMODE_REMEMBER),
 	haveIntialAppSize(false), mouseZoomRatePercent(100),mouseMoveRatePercent(100),
 	allowOnline(true), allowOnlineVerCheck(true), leftRightSashPos(0),
-	topBottomSashPos(0),filterSashPos(0),plotListSashPos(0)
-
+	topBottomSashPos(0),filterSashPos(0),plotListSashPos(0), haveMaxPoints(false),
+	maxPointsScene(0)
 { 
 }
 
@@ -461,6 +461,15 @@ unsigned int ConfigFile::read()
 		}
 		nodePtr=nodeStack.top();
 		nodeStack.pop();
+
+
+		nodeStack.push(nodePtr);
+		haveMaxPoints=XMLGetNextElemAttrib(nodePtr,maxPointsScene,"maxdisplaypoints","value");
+
+		nodePtr=nodeStack.top();
+		nodeStack.pop();
+
+
 nodeptrEndJump:
 		;
 
@@ -586,6 +595,10 @@ bool ConfigFile::write()
 		if(plotListSashPos)
 			f << tabs(2) << "<pos name=\"plotlist\" value=\"" << plotListSashPos<< "\"/>" << endl;
 	f << tabs(1) << "</sashposition>" << endl;
+
+
+	if(haveMaxPoints)
+		f << tabs(1) << "<maxdisplaypoints value=\"" << maxPointsScene << "\"/>" << endl;
 
 	f << "</threeDepictconfig>" << endl;
 

@@ -105,7 +105,7 @@ class SpatialAnalysisFilter : public Filter
 		//Create a 3D manipulable cylinder as an output drawable
 		// using the parameters stored inside the vector/scalar params
 		// both parameters are outputs from this function
-		void createCylinder(DrawStreamData* &d, SelectionDevice<Filter> * &s) const;
+		void createCylinder(DrawStreamData* &d, SelectionDevice * &s) const;
 
 		//Scan input datstreams to build a two point vectors,
 		// one of those with points specified as "target" 

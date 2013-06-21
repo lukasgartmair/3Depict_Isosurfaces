@@ -127,4 +127,8 @@ unsigned int computeConvexHull(const std::vector<const FilterStreamData*> &data,
 unsigned int computeConvexHull(const std::vector<Point3D> &data, 
 			unsigned int *progress, bool (*callback)(bool), 
 			std::vector<Point3D> &hullPts, bool freeHull=true);
+
+//Draw a colour bar
+DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_t colourMap) ;
+
 #endif
