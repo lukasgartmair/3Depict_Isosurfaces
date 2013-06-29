@@ -23,6 +23,8 @@
 
 #include "common/assertion.h"
 
+#include <limits>
+
 //Crop array indices
 enum
 {

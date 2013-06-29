@@ -114,12 +114,19 @@ function applyPatches()
 function install_mingw()
 {
 
+	echo "Checking mingw install"
 	#install mingw and libtool (we will need it...)
 
 	GET_PACKAGES="";
 	for i in $MINGW_PACKAGES
 	do
-		if [ x`apt-cache pkgnames --installed $i` != x"$i" ] ; then
+		APT_RESULT=`LANG=C apt-cache policy $i | grep Installed | awk '{print $2}'`
+		if [ x"$APT_RESULT" == x"" ] ; then
+			echo "couldn't find package $i in sources, but we need it..." 
+			exit 1;
+		fi
+
+		if [ x"${APT_RESULT}" == x"(none)" ] ; then
 			GET_PACKAGES="$GET_PACKAGES $i";
 		fi
 	done
@@ -139,7 +146,7 @@ function grabDeps()
 	GET_PACKAGES=""
 	for i in $DEB_PACKAGES
 	do
-		FNAME=`ls packages/$i-*.orig.* 2> /dev/null`
+		FNAME=`ls packages/${i}_*.orig.* 2> /dev/null`
 		if [ x"$FNAME" == x"" ] ; then
 			GET_PACKAGES="${GET_PACKAGES} $i"
 		fi
@@ -147,12 +154,12 @@ function grabDeps()
 
 	#grab packages if they are not already on-disk
 	if [ x"$GET_PACKAGES" != x"" ] ; then
-		echo apt-get source $GET_PACKAGES
-	fi
+		apt-get source $GET_PACKAGES
 
-	if [ $? -ne 0 ] ; then
-		echo "apt-get source failed... Maybe check internet connection, then try updating package database, then re-run?"
-		exit 1
+		if [ $? -ne 0 ] ; then
+			echo "apt-get source failed... Maybe check internet connection, then try updating package database, then re-run?"
+			exit 1
+		fi
 	fi
 
 	#Move debian stuff into packages folder
@@ -180,7 +187,7 @@ function grabDeps()
 		mv packages/$i*.* . || { echo "existing package extraction failed "; exit 1; } 
 		dpkg-source -x $i*dsc
 		#move package back
-		mv $i*.*
+		mv ${i}_*.* packages/
 	done
 
 
@@ -791,7 +798,7 @@ function build_gettext()
 	applyPatches
 	automake
 
-	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "gettext configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --disable-threads --enable-shared --disable-static --prefix=/ || { echo "gettext configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "gettext build failed"; exit 1; } 
 	
