@@ -35,6 +35,8 @@ using std::make_pair;
 using std::map;
 using std::accumulate;
 
+//Arbitrary maximum range file line size
+const size_t MAX_LINE_SIZE = 16536;
 
 const char *rangeErrStrings[] = 
 {
@@ -56,135 +58,14 @@ const char *rangeErrStrings[] =
 	NTRANS("Range file appears to contain malformed data, check things like start and ends of m/c are not equal or flipped."),
 	NTRANS("Range file appears to be inconsistent (eg, overlapping ranges)"),
 	NTRANS("No ion name mapping found  for multiple ion."),
+	NTRANS("Polyatomic extension range matches multiple masses in first section"),
 };
 
 const char *RANGE_EXTS[] = { "rng",
-			  "rrng",
 			  "env",
+			  "rng",
+			  "rrng",
 				""};
-
-
-//No two entries in table may match. NUM_ELEMENTS contains number of entries
-const char *cpAtomNaming[][2] = { 
-	{"Hydrogen","H"},
-	{"Helium","He"},
-	{"Lithium","Li"},
-	{"Beryllium","Be"},
-	{"Boron","B"},
-	{"Carbon","C"},
-	{"Nitrogen","N"},
-	{"Oxygen","O"},
-	{"Fluorine","F"},
-	{"Neon","Ne"},
-	{"Sodium","Na"},
-	{"Magnesium","Mg"},
-	{"Aluminium","Al"},
-	{"Silicon","Si"},
-	{"Phosphorus","P"},
-	{"Sulfur","S"},
-	{"Chlorine","Cl"},
-	{"Argon","Ar"},
-	{"Potassium","K"},
-	{"Calcium","Ca"},
-	{"Scandium","Sc"},
-	{"Titanium","Ti"},
-	{"Vanadium","V"},
-	{"Chromium","Cr"},
-	{"Manganese","Mn"},
-	{"Iron","Fe"},
-	{"Cobalt","Co"},
-	{"Nickel","Ni"},
-	{"Copper","Cu"},
-	{"Zinc","Zn"},
-	{"Gallium","Ga"},
-	{"Germanium","Ge"},
-	{"Arsenic","As"},
-	{"Selenium","Se"},
-	{"Bromine","Br"},
-	{"Krypton","Kr"},
-	{"Rubidium","Rb"},
-	{"Strontium","Sr"},
-	{"Yttrium","Y"},
-	{"Zirconium","Zr"},
-	{"Niobium","Nb"},
-	{"Molybdenum","Mo"},
-	{"Technetium","Tc"},
-	{"Ruthenium","Ru"},
-	{"Rhodium","Rh"},
-	{"Palladium","Pd"},
-	{"Silver","Ag"},
-	{"Cadmium","Cd"},
-	{"Indium","In"},
-	{"Tin","Sn"},
-	{"Antimony","Sb"},
-	{"Tellurium","Te"},
-	{"Iodine","I"},
-	{"Xenon","Xe"},
-	{"Caesium","Cs"},
-	{"Barium","Ba"},
-	{"Lanthanum","La"},
-	{"Cerium","Ce"},
-	{"Praseodymium","Pr"},
-	{"Neodymium","Nd"},
-	{"Promethium","Pm"},
-	{"Samarium","Sm"},
-	{"Europium","Eu"},
-	{"Gadolinium","Gd"},
-	{"Terbium","Tb"},
-	{"Dysprosium","Dy"},
-	{"Holmium","Ho"},
-	{"Erbium","Er"},
-	{"Thulium","Tm"},
-	{"Ytterbium","Yb"},
-	{"Lutetium","Lu"},
-	{"Hafnium","Hf"},
-	{"Tantalum","Ta"},
-	{"Tungsten","W"},
-	{"Rhenium","Re"},
-	{"Osmium","Os"},
-	{"Iridium","Ir"},
-	{"Platinum","Pt"},
-	{"Gold","Au"},
-	{"Mercury","Hg"},
-	{"Thallium","Tl"},
-	{"Lead","Pb"},
-	{"Bismuth","Bi"},
-	{"Polonium","Po"},
-	{"Astatine","At"},
-	{"Radon","Rn"},
-	{"Francium","Fr"},
-	{"Radium","Ra"},
-	{"Actinium","Ac"},
-	{"Thorium","Th"},
-	{"Protactinium","Pa"},
-	{"Uranium","U"},
-	{"Neptunium","Np"},
-	{"Plutonium","Pu"},
-	{"Americium","Am"},
-	{"Curium","Cm"},
-	{"Berkelium","Bk"},
-	{"Californium","Cf"},
-	{"Einsteinium","Es"},
-	{"Fermium","Fm"},
-	{"Mendelevium","Md"},
-	{"Nobelium","No"},
-	{"Lawrencium","Lr"},
-	{"Rutherfordium","Rf"},
-	{"Dubnium","Db"},
-	{"Seaborgium","Sg"},
-	{"Bohrium","Bh"},
-	{"Hassium","Hs"},
-	{"Meitnerium","Mt"},
-	{"Darmstadtium","Ds"},
-	{"Roentgenium","Rg"},
-	{"Ununbium","Uub"},
-	{"Ununtrium","Uut"},
-	{"Ununquadium","Uuq"},
-	{"Ununpentium","Uup"},
-	{"Ununhexium","Uuh"},
-	{"Ununseptium","Uus"},
-	{"Ununoctium","Uuo"}
-};
 
 bool decomposeIonNames(const std::string &name,
 		std::vector<pair<string,size_t> > &fragments)
@@ -392,6 +273,7 @@ bool matchComposedName(const std::map<string,size_t> &composedNames,
 
 RangeFile::RangeFile() : errState(0)
 {
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(RANGE_EXTS)==RANGE_FORMAT_END_OF_ENUM+1);
 }
 
 unsigned int RangeFile::write(std::ostream &f, size_t format) const
@@ -565,6 +447,10 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 		case RANGE_FORMAT_RRNG:
 			errCode=openRRNG(fpRange);
 			break;
+		//Cameca "double" rng format, in the wild as of mid 2013
+		case RANGE_FORMAT_DBL_ORNL:
+			errCode=openDoubleRNG(fpRange);
+			break;
 		default:
 			ASSERT(false);
 			fclose(fpRange);
@@ -606,19 +492,10 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 bool RangeFile::openGuessFormat(const char *rangeFilename)
 {
 	unsigned int assumedFileFormat;
-	string s;
-	s=rangeFilename;
-	vector<string> sVec;
-	splitStrsRef(s.c_str(),'.',sVec);
 
-	if(sVec.empty())
-		assumedFileFormat=RANGE_FORMAT_ORNL;
-	else if(lowercase(sVec[sVec.size()-1]) == "rrng")
-		assumedFileFormat=RANGE_FORMAT_RRNG;
-	else if(lowercase(sVec[sVec.size()-1]) == "env")
-		assumedFileFormat=RANGE_FORMAT_ENV;
-	else
-		assumedFileFormat=RANGE_FORMAT_ORNL;
+
+	//Try to auto-detect the filetype
+	assumedFileFormat=detectFileType(rangeFilename);
 
 	//Use the guessed format
 	if(open(rangeFilename,assumedFileFormat))
@@ -629,7 +506,7 @@ bool RangeFile::openGuessFormat(const char *rangeFilename)
 		//try all readers
 		bool openOK=false;
 
-		for(unsigned int ui=1;ui<RANGE_FORMAT_END_OF_ENUM; ui++)
+		for(unsigned int ui=0;ui<RANGE_FORMAT_END_OF_ENUM; ui++)
 		{
 			if(ui == assumedFileFormat)
 				continue;
@@ -653,6 +530,106 @@ bool RangeFile::openGuessFormat(const char *rangeFilename)
 	return true;
 }
 
+unsigned int RangeFile::openDoubleRNG(FILE *fpRange)
+{
+	//Cameca modified range file format, as discussed here:
+	// https://sourceforge.net/apps/phpbb/threedepict/viewtopic.php?f=1&t=25
+
+	//Basically, the file is two range files back to back, with a single separator line
+	// where the multiple ion names and colours and table are given in the second file
+
+	clear();
+	RangeFile tmpRange[2];
+
+	unsigned int errCode;
+	errCode=tmpRange[0].openRNG(fpRange);
+	if(errCode)
+		return errCode;
+
+	//Spin forwards ot the "polyatomic extension" line
+
+		
+	char *inBuffer = new char[MAX_LINE_SIZE];
+	// skip over <LF> 
+	char *ret;
+	ret=fgets((char *)inBuffer, MAX_LINE_SIZE, fpRange); 
+
+	while(ret && strlen(ret) < MAX_LINE_SIZE-1  && ret[0] != '-')
+	{
+		ret=fgets((char *)inBuffer, MAX_LINE_SIZE, fpRange); 
+	}
+
+	if(!ret || strlen(ret) >= MAX_LINE_SIZE -1)
+	{
+		delete[] inBuffer;
+		return RANGE_ERR_FORMAT;
+	}
+	
+	//Read the "polyatomic extension" line
+	errCode=tmpRange[1].openRNG(fpRange);
+
+	if(errCode)
+	{
+		delete[] inBuffer;
+		return errCode;
+	}
+	//Now merge the two range files by using the mass pair data as a key
+
+	//Find the matching ranges
+	//range IDs from first and second file who have matching rnage values
+	vector< pair<size_t,size_t> > rangeMatches;
+	//IonID from the first dataset that we will need to replace
+	vector<size_t> overrideIonID;
+	for(size_t ui=0;ui<tmpRange[0].getNumRanges();ui++)
+	{
+		for(size_t uj=0;uj<tmpRange[1].getNumRanges();uj++)
+		{
+			if (tmpRange[0].getRange(ui) == tmpRange[1].getRange(uj))
+			{
+				rangeMatches.push_back(make_pair(ui,uj));
+				overrideIonID.push_back(tmpRange[0].getIonID((unsigned int)ui));
+			}
+		}
+	}
+
+	//Take the data from the first range,
+	// then discard the overlapping ions
+	tmpRange[0].ionNames.swap(ionNames);
+	tmpRange[0].colours.swap(colours);
+	tmpRange[0].ionIDs.swap(ionIDs);
+	tmpRange[0].ranges.swap(ranges);
+
+
+	//Ensure there are no non-unique ion entries
+	{
+	vector<size_t> uniqItems=overrideIonID;
+	std::sort(uniqItems.begin(),uniqItems.end());
+
+	if(std::unique(uniqItems.begin(),uniqItems.end()) != uniqItems.end())
+	{
+		delete[] inBuffer;
+		return RANGE_ERR_NONUNIQUE_POLYATOMIC;
+	}
+	}
+
+	//Replace ionnames with new ion name and colour
+	for(size_t ui=0;ui<overrideIonID.size();ui++)
+	{
+		size_t ids[2];
+		ids[0]=overrideIonID[ui];
+		ids[1] = tmpRange[1].getIonID((unsigned int)rangeMatches[ui].second);
+		//Replace first rangefile colour and name with that of the second
+		ionNames[ids[0]] = tmpRange[1].ionNames[ids[1]];
+		colours[ids[0]] = tmpRange[1].colours[ids[1]];
+	}
+
+	ASSERT(isSelfConsistent());
+
+	delete[] inBuffer;
+	return 0;
+
+}
+
 unsigned int RangeFile::openRNG( FILE *fpRange)
 {
 	clear();
@@ -661,91 +638,16 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 	//the classic example is from Miller, "Atom probe: Analysis at the atomic scale"
 	//but alternate output forms exist. Our only strategy is to try to be as accommodating
 	//as reasonably possible
-	const size_t MAX_LINE_SIZE = 16536;
-	char *inBuffer = new char[MAX_LINE_SIZE];
-	unsigned int tempInt;
+	unsigned int errCode;
 
 	unsigned int numRanges;
 	unsigned int numIons;	
-	
-	
-	//Read out the number of ions and ranges in the file	
-	if(fscanf(fpRange, "%64u %64u", &numIons, &numRanges) != 2)
-	{
-		
-		delete[] inBuffer;
-		return RANGE_ERR_FORMAT_HEADER;
-	}
-	
-	if (!(numIons && numRanges))
-	{
-		delete[] inBuffer;
-		return  RANGE_ERR_EMPTY;
-	}
-	
-	//Reserve Storage
-	ionNames.reserve(numIons);
-	colours.reserve(numIons);
-	ranges.reserve(numRanges);
-	ionIDs.reserve(numRanges);
-	
-	RGBf colourStruct;
-	pair<string, string> namePair;
-	
-	//Read ion short and full names as well as colour info
-	for(unsigned int i=0; i<numIons; i++)
-	{
-		//Spin until we get to a new line. 
-		//Certain programs emit range files that have
-		//some string of unknown purpose
-		//after the colour specification
-		if(fpeek(fpRange)== ' ')
-		{
-			int peekVal;
-			//Gobble chars until we hit the newline
-			do
-			{
-				fgetc(fpRange);
-				peekVal=fpeek(fpRange);
-			}
-			while(peekVal != (int)'\n'&&
-				peekVal !=(int)'\r' && peekVal != EOF);
 
-			//eat another char if we are using 
-			//windows newlines
-			if(peekVal== '\r')
-				fgetc(fpRange);
-		}
-		//Read the input for long name (max 255 chars)
-		if(!fscanf(fpRange, " %255s", inBuffer))
-		{
-			delete[] inBuffer;
-			return RANGE_ERR_FORMAT_LONGNAME;
-		}
-			
-		namePair.second = inBuffer;
+	//Load the range file header
+	if(errCode=readRNGHeader(fpRange, ionNames, colours,numRanges,numIons))
+		return errCode;
 
-
-		//Read short name
-		if(!fscanf(fpRange, " %255s", inBuffer))
-		{
-			delete[] inBuffer;
-			return RANGE_ERR_FORMAT_SHORTNAME;
-		}
-		
-		namePair.first= inBuffer;
-		//Read Red green blue data
-		if(!fscanf(fpRange,"%128f %128f %128f",&(colourStruct.red),
-			&(colourStruct.green),&(colourStruct.blue)))
-		{
-			delete[] inBuffer;
-			return RANGE_ERR_FORMAT_COLOUR;
-		}
-		
-		ionNames.push_back(namePair);	
-		colours.push_back(colourStruct);	
-	}	
-	
+	char *inBuffer = new char[MAX_LINE_SIZE];
 	// skip over <LF> 
 	char *ret;
 	ret=fgets((char *)inBuffer, MAX_LINE_SIZE, fpRange); 
@@ -770,143 +672,23 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 		return RANGE_ERR_FORMAT_TABLESEPARATOR;
 	}
 
+	
+	//Load the rangefile frequency table
 	vector<string> colHeaders;
-	string entry;
-
-	char *ptrBegin;
-	ptrBegin=inBuffer;
-	while(*ptrBegin && *ptrBegin == '-')
-		ptrBegin++;
-	splitStrsRef(ptrBegin," \n",colHeaders);
-
-	if(!colHeaders.size() )
-	{
-		delete[] inBuffer;
-		return RANGE_ERR_FORMAT_TABLESEPARATOR;
-	}
-	
-	//remove whitespace from each entry
-	for(size_t ui=0;ui<colHeaders.size();ui++)
-	{
-		stripChars(colHeaders[ui],"\f\n\r\t ");
-	}
-	stripZeroEntries(colHeaders);
-
-
-	if(colHeaders.size() > 1)
-	{
-
-		if(colHeaders.size() !=numIons)
-		{
-			// Emit warning
-			delete[] inBuffer;
-			return RANGE_ERR_FORMAT_TABLEHEADER_NUMIONS;
-		}
-	
-		//Strip any trailing newlines off the last of the  colheaders,
-		// to avoid dos->unix conversion problems
-		std::string str = colHeaders[colHeaders.size() -1];
-
-		if(str[str.size() -1 ] == '\n')
-			colHeaders[colHeaders.size()-1]=str.substr(0,str.size()-1);
-
-		//Each column header should match the original ion name
-		for(size_t ui=1;ui<colHeaders.size();ui++)
-		{
-			//look for a corresponding entry in the column headers
-			if(ionNames[ui-1].second != colHeaders[ui])
-			{
-				warnMessages.push_back(TRANS("Range headings do not match order of the ions listed in the name specifications. The name specification ordering will be used when reading the range table, as the range heading section is declared as a comment in the file-format specifications, and is not to be intepreted by this program. Check range-species associations actually match what you expect."));
-				break;
-			}
-
-		}
-
-	}
-
 	vector<unsigned int > frequencyEntries;
-	frequencyEntries.clear();
-	frequencyEntries.resize(numRanges*numIons,0);
-	//Load in each range file line
-	tempInt=0;
-	pair<float,float> massPair;
-
-	for(unsigned int i=0; i<numRanges; i++)
-	{
-
-		//grab the line
-		fgets(inBuffer,MAX_LINE_SIZE,fpRange);
-
 	
-		vector<string> entries;
-		std::string tmpStr;
-		tmpStr=stripWhite(inBuffer);
-		
-		splitStrsRef(tmpStr.c_str()," ",entries);
-		stripZeroEntries(entries);
-
-		//Should be two entries for the mass pair,
-		// one entry per ion, and optionally one 
-		// entry for the marker (not used)
-		if(entries.size() != numIons + 2 &&
-			entries.size() !=numIons+3)
-		{
-			delete[] inBuffer;
-			return RANGE_ERR_FORMAT_RANGETABLE;
-		}
-
-		size_t entryOff;
-		entryOff=0;
-		//if we have a leading entry, ignore it
-		if(entries.size() == numIons +3)
-			entryOff=1;
-		
-		if(stream_cast(massPair.first,entries[entryOff]))
-		{
-			delete[] inBuffer;
-			return RANGE_ERR_FORMAT_MASS_PAIR;
-		}
-		if(stream_cast(massPair.second,entries[entryOff+1]))
-		{
-			delete[] inBuffer;
-			return RANGE_ERR_FORMAT_MASS_PAIR;
-		}
-
-		if(massPair.first >= massPair.second)
-		{
-			delete[] inBuffer;
-			return RANGE_ERR_DATA_FLIPPED;
-		}
-
-		ranges.push_back(massPair);	
-		//Load the range data line
-
-		entryOff+=2;
-		for(unsigned int j=0; j<numIons; j++)
-		{
-			if(stream_cast(tempInt,entries[entryOff+j]))
-			{
-				delete[] inBuffer;
-				return RANGE_ERR_FORMAT_TABLE_ENTRY;
-			}
-			
-			if(tempInt)
-				frequencyEntries[numIons*i + j]=tempInt;
-			
-		}
-
-	}
-	
-	//Do some post-processing on the range table
-	//
-	//Prevent rangefiles that have no valid ranges
-	//from being loaded
-	size_t nMax=std::accumulate(frequencyEntries.begin(),frequencyEntries.end(),0);
-	if(!nMax)
 	{
-		delete[] inBuffer;
-		return RANGE_ERR_DATA_TOO_MANY_USELESS_RANGES;
+	vector<string> warnings;
+	vector<pair<float,float> > massData;
+	errCode=readRNGFreqTable(fpRange,numIons,numRanges,ionNames,
+				colHeaders, frequencyEntries,massData,warnings);
+	if(errCode)
+		return errCode;
+
+	warnings.swap(warnMessages);
+	ranges.swap(massData);
 	}
+
 
 
 	//Because of a certain software's output
@@ -966,7 +748,6 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 	}
 	//--
 		
-
 	//vector of entries that are multiples, but don't have a 
 	// matching compose key
 	std::vector<pair<size_t, map<size_t,size_t > > > unassignedMultiples;
@@ -1136,6 +917,453 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 	return 0;
 }
 
+unsigned int RangeFile::detectFileType(const char *rangeFile)
+{
+	enum
+	{
+		STATUS_NOT_CHECKED=0,
+		STATUS_IS_NOT,
+		STATUS_IS_MAYBE,
+	};
+
+	//create a fail-on-unimplemnted type detection scheme
+	vector<unsigned int > typeStatus(RANGE_FORMAT_END_OF_ENUM,STATUS_NOT_CHECKED);
+
+	//Check for RNG/Double RNG
+	//--
+	//first line in file should be two digits
+	{
+		std::ifstream f(rangeFile);
+
+		if(!f)
+			return RANGE_FORMAT_END_OF_ENUM;
+
+		std::string tmpStr;
+		size_t nCount;
+
+		//retrieve the line
+		getline(f,tmpStr);
+		//strip exterior whitespace
+		tmpStr=stripWhite(tmpStr);
+
+		//break it apart
+		vector<string> strs;
+		splitStrsRef(tmpStr.c_str()," ",strs);
+
+		//Drop the whitepace
+		stripZeroEntries(strs);	
+
+		if( strs.size() != 2)
+		{
+			//OK, quick parse failed. give up
+			typeStatus[RANGE_FORMAT_ORNL]=STATUS_IS_NOT;
+			typeStatus[RANGE_FORMAT_DBL_ORNL]=STATUS_IS_NOT;
+			goto skipoutRNGChecks;
+		}
+
+		//Check for two space separated markers, parsable as ints
+		size_t nIons,nRanges;
+		bool castRes[2];
+		castRes[0]=stream_cast(nIons,strs[0]);
+		castRes[1]=stream_cast(nRanges,strs[1]);
+		
+		if( castRes[0] || castRes[1])
+		{
+			//OK, quick parse failed. give up
+			typeStatus[RANGE_FORMAT_ORNL]=STATUS_IS_NOT;
+			typeStatus[RANGE_FORMAT_DBL_ORNL]=STATUS_IS_NOT;
+			goto skipoutRNGChecks;
+		}
+	
+
+		typeStatus[RANGE_FORMAT_ORNL]=STATUS_IS_MAYBE;
+		typeStatus[RANGE_FORMAT_DBL_ORNL]=STATUS_IS_MAYBE;
+
+		//spin forwards to find dash line
+		nCount=2*nIons+1;
+
+		while(nCount--)
+		{
+			getline(f,tmpStr);
+
+			//shouldn't hit eof
+			if(f.eof())
+			{
+				tmpStr.clear();
+				break;
+			}
+		}
+
+		if(!tmpStr.size() || tmpStr[0] != '-')
+		{
+			typeStatus[RANGE_FORMAT_ORNL]=STATUS_IS_NOT;
+			typeStatus[RANGE_FORMAT_DBL_ORNL]=STATUS_IS_NOT;
+			goto skipoutRNGChecks;
+
+		}
+
+		//Now, spin forwards until we either hit EOF or our double-dash marker
+
+		while(!f.eof())
+		{
+			getline(f,tmpStr);
+
+			if(tmpStr.size() > 2 &&
+				tmpStr[0] == '-' && tmpStr[1] == '-')
+			{
+				//OK, we saw a double dash. Thats forbidden under
+				// ORNL , and allowable under double ORNL
+				typeStatus[RANGE_FORMAT_ORNL]=STATUS_IS_NOT;
+				break;
+			}
+		}
+
+		if(f.eof())
+		{
+			//we did not see a double-dash, must be a vanilla ORNL file
+			typeStatus[RANGE_FORMAT_DBL_ORNL]=STATUS_IS_NOT;
+		}
+
+skipoutRNGChecks:
+		;
+	}
+	//--
+
+	//Check for RRNG, if RNG did not match
+	//--
+	if(typeStatus[RANGE_FORMAT_ORNL] != STATUS_IS_MAYBE && typeStatus[RANGE_FORMAT_DBL_ORNL] !=STATUS_IS_MAYBE)
+	{
+		std::ifstream f(rangeFile);
+
+		if(!f)
+			return RANGE_FORMAT_END_OF_ENUM;
+
+		//Check for existance of lines that match format section
+		std::vector<string> sections;
+		sections.push_back("[Ions]");
+		sections.push_back("[Ranges]");
+
+		vector<bool> haveSection(sections.size(),false);
+	
+		bool foundAllSections=false;
+
+		//Scan through each line, looking for a matching section header
+		while(!f.eof())
+		{
+
+			//Get line, stripped of whitspace
+			std::string tmpStr;
+			getline(f,tmpStr);
+			tmpStr=stripWhite(tmpStr);
+
+			//See if we have this header
+			for(size_t ui=0;ui<sections.size();ui++)
+			{
+				if(sections[ui] == tmpStr)
+				{
+					haveSection[ui]=true;
+
+					//Check to see if we have any sections left
+					if(std::find(haveSection.begin(),haveSection.end(),false)
+							== haveSection.end())
+						foundAllSections=true;
+
+					break;
+				}
+			}
+		
+			if(foundAllSections)
+				break;
+		}
+
+		if(foundAllSections)
+			typeStatus[RANGE_FORMAT_RRNG]=STATUS_IS_MAYBE;
+		else
+			typeStatus[RANGE_FORMAT_RRNG]=STATUS_IS_NOT;
+
+	}
+	else
+	{
+		//cannot be both maybe an RNG/Double RNG and an RRNG
+		typeStatus[RANGE_FORMAT_RRNG]=STATUS_IS_NOT;
+	}
+	//--
+
+	//Check for ENV
+	//--
+	if(typeStatus[RANGE_FORMAT_ORNL] != STATUS_IS_MAYBE && typeStatus[RANGE_FORMAT_DBL_ORNL] !=STATUS_IS_MAYBE &&
+			typeStatus[RANGE_FORMAT_RRNG] != STATUS_IS_MAYBE)
+	{
+		//TODO: Less lazy implementation
+		RangeFile tmpRng;
+		FILE *f;
+		f=fopen(rangeFile,"r");
+		
+		if(!f || tmpRng.openENV(f))
+			typeStatus[RANGE_FORMAT_ENV]=STATUS_IS_NOT;
+		else
+			typeStatus[RANGE_FORMAT_ENV]=STATUS_IS_MAYBE;
+		if(f)
+			fclose(f);
+	}
+	else
+	{
+		//cannot be both maybe an RNG/Double RNG/RRNG and an env
+		typeStatus[RANGE_FORMAT_ENV]=STATUS_IS_NOT;
+	}
+
+	//--
+
+	//Check there is only one STATUS_IS_MAYBE or STATUS_NOT_CHECKED
+	if(std::count(typeStatus.begin(),typeStatus.end(),(unsigned int)STATUS_IS_NOT) == typeStatus.size()-1)
+	{
+		//OK, there can only be one.  Return the format that has not
+		//  been rejected
+		for(size_t ui=0;ui<typeStatus.size();ui++)
+		{
+			if(typeStatus[ui]==STATUS_IS_MAYBE)
+				return ui;
+
+		}
+		//in this case, we only have  NOT_CHECKED remaning. So, we hvae no idea
+		return RANGE_FORMAT_END_OF_ENUM;
+
+	}
+
+
+	return RANGE_FORMAT_END_OF_ENUM;
+
+}
+
+
+unsigned int RangeFile::readRNGHeader(FILE *fpRange, vector<pair<string,string> > &strNames,
+			vector<RGBf> &fileColours, unsigned int &numRanges, unsigned int &numIons)
+{
+
+	char *inBuffer= new char[MAX_LINE_SIZE];
+	
+	//Read out the number of ions and ranges in the file	
+	if(fscanf(fpRange, "%64u %64u", &numIons, &numRanges) != 2)
+	{
+		
+		delete[] inBuffer;
+		return RANGE_ERR_FORMAT_HEADER;
+	}
+	
+	if (!(numIons && numRanges))
+	{
+		delete[] inBuffer;
+		return  RANGE_ERR_EMPTY;
+	}
+	
+
+	RGBf colourStruct;
+	pair<string,string> namePair;
+	//Read ion short and full names as well as colour info
+	for(unsigned int i=0; i<numIons; i++)
+	{
+		//Spin until we get to a new line. 
+		//Certain programs emit range files that have
+		//some string of unknown purpose
+		//after the colour specification
+		if(fpeek(fpRange)== ' ')
+		{
+			int peekVal;
+			//Gobble chars until we hit the newline
+			do
+			{
+				fgetc(fpRange);
+				peekVal=fpeek(fpRange);
+			}
+			while(peekVal != (int)'\n'&&
+				peekVal !=(int)'\r' && peekVal != EOF);
+
+			//eat another char if we are using 
+			//windows newlines
+			if(peekVal== '\r')
+				fgetc(fpRange);
+		}
+		//Read the input for long name (max 255 chars)
+		if(!fscanf(fpRange, " %255s", inBuffer))
+		{
+			delete[] inBuffer;
+			return RANGE_ERR_FORMAT_LONGNAME;
+		}
+			
+		namePair.second = inBuffer;
+
+
+		//Read short name
+		if(!fscanf(fpRange, " %255s", inBuffer))
+		{
+			delete[] inBuffer;
+			return RANGE_ERR_FORMAT_SHORTNAME;
+		}
+		
+		namePair.first= inBuffer;
+		//Read Red green blue data
+		if(!fscanf(fpRange,"%128f %128f %128f",&(colourStruct.red),
+			&(colourStruct.green),&(colourStruct.blue)))
+		{
+			delete[] inBuffer;
+			return RANGE_ERR_FORMAT_COLOUR;
+		}
+		
+		strNames.push_back(namePair);	
+		fileColours.push_back(colourStruct);	
+	}	
+
+	delete[] inBuffer;
+	return 0;
+}
+
+unsigned int RangeFile::readRNGFreqTable(FILE *fpRange, const unsigned int numIons, 
+			const unsigned int numRanges,const vector<pair<string,string> > &names, 
+			vector<string> &colHeaders, vector<unsigned int > &tableEntries,
+			vector<pair<float,float> > &massData, vector<string> &warnings)
+{
+	string entry;
+
+	char *inBuffer = new char[MAX_LINE_SIZE];
+	char *ptrBegin;
+	ptrBegin=inBuffer;
+	while(*ptrBegin && *ptrBegin == '-')
+		ptrBegin++;
+	splitStrsRef(ptrBegin," \n",colHeaders);
+	if(!colHeaders.size() )
+	{
+		delete[] inBuffer;
+		return RANGE_ERR_FORMAT_TABLESEPARATOR;
+	}
+	
+	//remove whitespace from each entry
+	for(size_t ui=0;ui<colHeaders.size();ui++)
+	{
+		stripChars(colHeaders[ui],"\f\n\r\t ");
+	}
+	
+	stripZeroEntries(colHeaders);
+
+
+	if(colHeaders.size() > 1)
+	{
+
+		if(colHeaders.size() !=numIons)
+		{
+			// Emit warning
+			delete[] inBuffer;
+			return RANGE_ERR_FORMAT_TABLEHEADER_NUMIONS;
+		}
+	
+		//Strip any trailing newlines off the last of the  colheaders,
+		// to avoid dos->unix conversion problems
+		std::string str = colHeaders[colHeaders.size() -1];
+
+		if(str[str.size() -1 ] == '\n')
+			colHeaders[colHeaders.size()-1]=str.substr(0,str.size()-1);
+
+		//Each column header should match the original ion name
+		for(size_t ui=1;ui<colHeaders.size();ui++)
+		{
+			//look for a corresponding entry in the column headers
+			if(names[ui-1].second != colHeaders[ui])
+			{
+				warnings.push_back(TRANS("Range headings do not match order of the ions listed in the name specifications. The name specification ordering will be used when reading the range table, as the range heading section is declared as a comment in the file-format specifications, and is not to be intepreted by this program. Check range-species associations actually match what you expect."));
+				break;
+			}
+
+		}
+
+	}
+
+	tableEntries.resize(numRanges*numIons,0);
+	//Load in each range file line
+	pair<float,float> massPair;
+
+	for(unsigned int i=0; i<numRanges; i++)
+	{
+
+		//grab the line
+		fgets(inBuffer,MAX_LINE_SIZE,fpRange);
+
+	
+		vector<string> entries;
+		std::string tmpStr;
+		tmpStr=stripWhite(inBuffer);
+		
+		splitStrsRef(tmpStr.c_str()," ",entries);
+		stripZeroEntries(entries);
+
+		//Should be two entries for the mass pair,
+		// one entry per ion, and optionally one 
+		// entry for the marker (not used)
+		if(entries.size() != numIons + 2 &&
+			entries.size() !=numIons+3)
+		{
+			delete[] inBuffer;
+			return RANGE_ERR_FORMAT_RANGETABLE;
+		}
+
+		size_t entryOff;
+		entryOff=0;
+		//if we have a leading entry, ignore it
+		if(entries.size() == numIons +3)
+			entryOff=1;
+		
+		if(stream_cast(massPair.first,entries[entryOff]))
+		{
+			delete[] inBuffer;
+			return RANGE_ERR_FORMAT_MASS_PAIR;
+		}
+		if(stream_cast(massPair.second,entries[entryOff+1]))
+		{
+			delete[] inBuffer;
+			return RANGE_ERR_FORMAT_MASS_PAIR;
+		}
+
+		if(massPair.first >= massPair.second)
+		{
+			delete[] inBuffer;
+			return RANGE_ERR_DATA_FLIPPED;
+		}
+
+		massData.push_back(massPair);
+
+		//Load the range data line
+		entryOff+=2;
+		for(unsigned int j=0; j<numIons; j++)
+		{
+			size_t tempInt;
+			if(stream_cast(tempInt,entries[entryOff+j]))
+			{
+				delete[] inBuffer;
+				return RANGE_ERR_FORMAT_TABLE_ENTRY;
+			}
+			
+			if(tempInt)
+				tableEntries[numIons*i + j]=tempInt;
+			
+		}
+
+		
+	}
+	
+	
+	//Do some post-processing on the range table
+	//
+	//Prevent rangefiles that have no valid ranges
+	//from being loaded
+	size_t nMax=std::accumulate(tableEntries.begin(),tableEntries.end(),0);
+	if(!nMax)
+	{
+		delete[] inBuffer;
+		return RANGE_ERR_DATA_TOO_MANY_USELESS_RANGES;
+	}
+
+	delete[] inBuffer;
+	return 0;
+}
+
 unsigned int RangeFile::openENV(FILE *fpRange)
 {
 	clear();
@@ -1143,7 +1371,6 @@ unsigned int RangeFile::openENV(FILE *fpRange)
 	//Ruoen group "environment file" format
 	//This is not a standard file format, so the
 	//reader is a best-effort implementation, based upon example
-	const unsigned int MAX_LINE_SIZE=4096;	
 	char *inBuffer = new char[MAX_LINE_SIZE];
 	unsigned int numRanges;
 	unsigned int numIons;	
@@ -1333,7 +1560,6 @@ unsigned int RangeFile::openRRNG(FILE *fpRange)
 {
 	clear();
 	
-	const unsigned int MAX_LINE_SIZE=4096;
 	char *inBuffer = new char[MAX_LINE_SIZE];
 	unsigned int numRanges;
 	unsigned int numBasicIons;
@@ -2157,40 +2383,6 @@ bool RangeFile::isRanged(string shortName, bool caseSensitive)
 	return false;
 }
 
-unsigned int RangeFile::atomicNumberFromRange(unsigned int range) const
-{
-	if(range > ranges.size())
-		return 0;
-
-	string str= getName(getIonID(range));
-
-	for(unsigned int ui=0; ui<NUM_ELEMENTS; ui++)
-	{
-		if(str ==  string(cpAtomNaming[ui][0])
-				|| str == string(cpAtomNaming[ui][1]))
-			return ui+1;
-	}
-
-	return 0;	
-}
-
-unsigned int RangeFile::atomicNumberFromIonID(unsigned int ionID) const
-{
-	if(ionID > ionIDs.size())
-		return 0;
-
-	string str= getName(ionID);
-
-	for(unsigned int ui=0; ui<NUM_ELEMENTS; ui++)
-	{
-		if(str ==  string(cpAtomNaming[ui][0])
-				|| str == string(cpAtomNaming[ui][1]))
-			return ui+1;
-	}
-
-	return 0;	
-}
-
 void RangeFile::setColour(unsigned int id, const RGBf &r) 
 {
 	ASSERT(id < colours.size());
@@ -2363,3 +2555,4 @@ void RangeFile::setIonID(unsigned int range, unsigned int newIonId)
 	ASSERT(newIonId < ionIDs.size());
 	ionIDs[range] = newIonId;
 }
+

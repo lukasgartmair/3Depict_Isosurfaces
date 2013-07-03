@@ -39,6 +39,7 @@ enum{
 	RANGE_ERR_DATA_FLIPPED,
 	RANGE_ERR_DATA_INCONSISTENT,
 	RANGE_ERR_DATA_NOMAPPED_IONNAME,
+	RANGE_ERR_NONUNIQUE_POLYATOMIC,
 	RANGE_ERR_ENUM_END
 };
 
@@ -53,7 +54,8 @@ typedef struct RGBf
 //Number of elements stored in the table
 const unsigned int NUM_ELEMENTS=119;
 
-enum{ RANGE_FORMAT_ORNL=1,
+enum{ RANGE_FORMAT_ORNL,
+	RANGE_FORMAT_DBL_ORNL,
 	RANGE_FORMAT_ENV,
 	RANGE_FORMAT_RRNG,
 	RANGE_FORMAT_END_OF_ENUM //not a format, just end of enumueration.
@@ -92,6 +94,25 @@ class RangeFile
 		//!Load an ORNL formatted "RNG" rangefile
 		// caller must supply and release file pointer
 		unsigned int openRNG(FILE *fp);
+		
+		//Read the header section of an RNG file
+		static unsigned int readRNGHeader(FILE *fpRange, 
+			std::vector<std::pair<std::string,std::string> > &strNames,
+			std::vector<RGBf> &fileColours, unsigned int &numRanges, 
+								unsigned int &numIons);
+
+		//Read the range frequency table
+		static unsigned int readRNGFreqTable(FILE *fpRange,
+				const unsigned int numIons, const unsigned int numRanges,
+				const std::vector<std::pair<std::string,std::string> > &names,
+					std::vector<std::string> &colHeaders, 
+					std::vector<unsigned int > &tableEntries,
+					std::vector<std::pair<float,float> > &massData,
+					std::vector<std::string> &warnings);
+
+		unsigned int openDoubleRNG(FILE *fp);
+
+
 		//!Load an RRNG file
 		// caller must supply and release file pointer
 		unsigned int openRRNG(FILE *fp);
@@ -110,6 +131,10 @@ class RangeFile
 		static bool extensionIsRange(const char *ext);
 		//!Grab a vector that contains all the extensions that are valid for range files
 		static void getAllExts(std::vector<std::string> &exts);
+
+		//Attempt to detect the file format of an unknown rangefile.
+		// returns enum value on success, or RANGE_FORMAT_END_OF_ENUM on failure
+		static unsigned int detectFileType(const char *file);
 
 		//!Print the translated error associated with the current range file state
 		void printErr(std::ostream &strm) const;
