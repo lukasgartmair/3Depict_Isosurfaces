@@ -5,6 +5,7 @@ PROGRAM_NAME=3Depict
 cp makeMacOSXApp ../..
 cp -R ${PROGRAM_NAME}.app ../..
 cd ../..
+make distclean > out.txt 2>&1
 
 #Pull version number out of configure
 VERSION=`cat ./configure.ac | grep '^\s*AC_INIT(' | awk -F, '{ print $2 } ' | sed 's/\s*\[//' | sed 's/\]\s*//' | sed 's/\ //g'`

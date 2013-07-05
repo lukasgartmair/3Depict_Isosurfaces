@@ -94,7 +94,7 @@ Due to the design of the program, the program should run under Linux, Mac, BSD a
 
 The minimum requirements for running \emph{3Depict} are not known. The author wrote a substantial portion of the program on a machine with only 4 and 12~GB drives, and a 1.6~GHz processor, which normally runs at 800~MHz and has 1~GB of RAM. There is no clear reason that it would not run on even lower-spec machines. Whilst a higher spec machine may run the program faster, intelligent use of the programs ``filter'' system may allow for complex analyses even on low-end machines. 
 
-If you are experiencing 3D graphics problems, first ensure that other 3D programs do not experience the same problems. Otherwise, please contact the authors for assistance -- there should be no requirement for vendor-specific hardware. Note however that the exact appearance of the 3D view is dependant upon your hardware, and may have small changes between different platforms. 
+If you are experiencing 3D graphics problems, first ensure that other 3D programs do not experience the same problems. Otherwise, please contact the authors for assistance -- there should be no requirement for vendor-specific hardware. Note however that the exact appearance of the 3D view is dependent upon your hardware, and may have small changes between different platforms. 
 
 \subsection{Platform specific notes}
 Note that whilst every effort is made to ensure that the program will run on a variety of systems, small system-specific quirks may be evident, particularly on platforms to which the authors do not use regularly (\emph{e.g.}\ windows). Secondly, due to slight differences between platforms some functions may be remapped to other mouse/key combinations.  
@@ -422,7 +422,8 @@ In this case either each string must be individually specified, as shown in the 
 \end{center}
 \end{figure}
 
-Once the desired properties have been set in the filter view, then one proceeds to the frame view in order to review the animation by examining the properties that will be obtained in each filter, frame-by-frame. If you are familiar with this dialog, then it is easy to simply examine this quickly to ensure that the properties that were intended have been obtained. Now, having ensured that this is the case, it can be seen that the "OK" button cannot be pressed at this time. Firstly, the desired outputs, and the directory that they will be sent to during the animation process must be specified. Once the output directory is set, the desired outputs, normally either images, or points are to be selected as required. The checkbox `` '',  if set, will cause only the changes that actually alter the computation internal computation to be saved. As an example, if one was to animate the ``Load Limit'' property of the ``Pos Data'' filter, and the file to be opened was only 1~MB, but the animation proceeded as 0.5, 0.6...,
+Once the desired properties have been set in the filter view, then one proceeds to the frame view in order to review the animation by examining the properties that will be obtained in each filter, frame-by-frame. If you are familiar with this dialog, then it is easy to simply examine this quickly to ensure that the properties that were intended have been obtained. Now, having ensured that this is the case, it can be seen that the "OK" button cannot be pressed at this time. Firstly, the desired outputs, and the directory that they will be sent to during the animation process must be specified. Once the output directory is set, the desired outputs, normally either images, or points are to be selected as required. The checkbox `` '',  if set, will cause only the changes that actually alter the computation internal computation to be saved. As an example, if one was to animate the ``Load Limit'' property of the ``Pos Data'' filter, and the file to be opened was only 1~MB, but the animation proceeded as 0.5, 0.6...
+,
  1.0,1.1... , when the sampling value exceeds 1~MB, there is no effect on the computation, thus the program will not save data on frames that do not alter the output.
 
 \section{Detailed Reference}
@@ -924,9 +925,23 @@ Voxel & No & No & No \\
 
 This filter discretises space into a series of 3D cubed regions, known as ``Voxels'' (Volume Pixels). Voxels can be used to alter a point cloud into a discrete volume of counts associated with each region. For example, the number of points inside each cube can be used as the counting metric, the number of points of a certain ion type, or the ratio of the number of points within a given region.
 
-At this time, there are two representations for Voxels -- Point cloud and Isosurface modes. Point cloud mode uses a colour value to display the value stored in the voxel, with the point based at the centre of the voxel. Point clouds can be used to visualise the entire volume at once (\emph{e.g}\ by using large translucent points), or to provide a quick-to-compute representation. Isosurfaces can be used to visually segment regions of high and low intensity within the data volume, by construction of an interpolated surface between your data volumes. 
+At this time, there are three representations for Voxels:
+\begin{itemize}
+ \item Point Cloud - usses a colour value to display the value stored in the voxel, with a grid of points based at the centre of each voxel.
+ \item Axial Slice - 
+ \item Isosurface - Visually segment regions of high and low intensity within the data volume, by building a dividing surface between these two regions
+\end{itemize}
 
-If a range file is present in the input, this can be used to perform per-range computations, such as ratio voxelisation specific to particular species.
+If a range file is present in the input, this can be used to perform per-range computations, such as ratio voxelisation specific to particular species. Figure~\ref{fig:voxeliseDisplayType} shows the different representations on the same input data.
+
+\begin{figure}
+ \centering
+  \includegraphics[keepaspectratio=true,width=0.9 \textwidth]{./figures/voxel-representations.png}
+
+ \caption{Voxelisation filter, showing different representations. Left to right shows point cloud, axial slice and isosurface mode on the same dataset}
+ \label{fig:voxeliseDisplayType}
+\end{figure}
+
 
 Note that the limits of the values associated with the voxels will be printed on the console after the filter has refreshed -- this can be used, for example, to set the limits for isosurface representation.
 
@@ -1033,9 +1048,9 @@ This document is licenced under the Creative Commons 3.0 ShareAlike licence. \ur
 \label{sec:3DepictPaths}
 \emph{3Depict} uses one of several different paths for storing configuration and autosave information, depending upon your host operating system. 
 \begin{itemize}
- \item Linux-like : your home directory, in th .3Depict folder. \emph{e.g.} \texttt{/home/someuser/.3Depict/}
- \item Mac OSX :\texttt{ /Users/someuser/Documents/.3Depict/}
- \item Windows : usually \texttt{C:\\Documents and settings\\someuser\\Documents\\.3Depict\\}
+ \item Linux-like : your home directory, in th .3Depict folder. \emph{e.g.} \path{/home/someuser/.3Depict/}
+ \item Mac OSX :\path{/Users/someuser/Documents/.3Depict/}
+ \item Windows : usually \path{C:\Documents} \path{and} \path{settings\someuser\Documents\.3Depict\} %Sigh - path macro doesn't work with whitespace!
 \end{itemize}
 
 \subsection{File formats}
@@ -1477,7 +1492,7 @@ appended file to output.pos
 \end{verbatim}
 
 \subsubsection{C/C++}
-For \emph{C/C++}, an example is given. The example here is somewhat more complex than the rest, as in this case, we do not simply treate the data as a series of bytes, bt we additionally perform the data transformation steps required to get it into a usable form (ie as a list of correctly ordered bytes in memory, in a useful variable). This was not done for the previous examples.
+For \emph{C/C++}, an example is given. The example here is somewhat more complex than the rest, as in this case, we do not simply treat the data as a series of bytes, bt we additionally perform the data transformation steps required to get it into a usable form (ie as a list of correctly ordered bytes in memory, in a useful variable). This was not done for the previous examples.
 
 Note that as C/C++ are compiled languages, it is necessary to be able to be able to generate a binary (executable) version of the program - this procedure is not described here, but users are encouraged to be comfortable with this process before attempting to implement the following examples for themselves. The exact procedure for doing this is outside of the scope for this document - you will require a compiler, such as \emph{gcc}'s \emph{g++} compiler, which you will most likely want to install from some form of package management system, such as the \emph{APT}, \emph{yum} or \emph{zypper} systems on linux, \emph{Xcode} or \emph{Macports} on Mac OSX, or \emph{Cygwin} or \emph{tdm-gcc/msys} under windows. Being able to compile a program file to produce an executable binary (under windows `EXE') that consists only of \texttt{int main() \{\} } is a definite prerequisite.
 

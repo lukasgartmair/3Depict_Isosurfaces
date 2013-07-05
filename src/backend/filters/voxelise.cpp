@@ -417,7 +417,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			if (is->getNumBasicObjects() < 2) continue;
 		
 			BoundCube bcTmp;
-			bcTmp=getIonDataLimits(is->data);
+			IonHit::getBoundCube(is->data,bcTmp);
 
 			//Bounds could be invalid if, for example, we had coplanar axis aligned points
 			if (!bcTmp.isValid()) continue;
@@ -2025,6 +2025,7 @@ void VoxeliseFilter::getTexturedSlice(const Voxels<float> &v,
 		//x-normal
 		case 0:
 			rotate3(dim[0],dim[1],dim[2]);
+			std::swap(dim[0],dim[1]);
 			break;
 		//y-normal
 		case 1:

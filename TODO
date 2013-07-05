@@ -6,12 +6,12 @@ TODO List - worlds simplest bugtracking system
 	To Implement:
 		== Next version ==
 		* Range editor
-		* Plot overlays
-		* Ruler annotation could use "enable" and control sphere size setting
 		* Unit tests for statefile with stashes
 		* Improved filter tree visibility behaviour 
+		* Unit testing of text data loading routines
 
 		== Eventually == 
+		* Plot overlays
 		* Support for XY scatter plots
 		* Status bar message queue
 		* Voxel export dialog 
@@ -60,9 +60,6 @@ TODO List - worlds simplest bugtracking system
 		* Cluster filter wont save state correctly if parent
 		  rangefile has disabled ions. It will output incorrect
 		  number of enabled ions, and get wiped during next ::initFilter
-		* Don't appear to be able to move ranges in plot
-		  below/above upper and lower bound of data, regardless
-		  of plot zoom status
 		
 		Windows:
 		* Drawing updates for resolution dialog are wonk
@@ -94,15 +91,9 @@ TODO List - worlds simplest bugtracking system
 			* icon on dock bounces very fast during some refreshes
 
 		== Needs reproducing ==
-		* Invalid range file being opened cause Package export to crash
-		* Windows appears to have weird front-back drawing behaviour for point clouds.
-		* Duplicate range at end when exporting range
-		* Large datasets causing crash?
 
 	Auditing:
 		== Next release ==
-		* Set keynames for property groupings
-		* Unit testing of text data loading routines
 
 	Performance:
 		* Scene is sometimes continuously refreshed during post effects, causing CPU usage
@@ -115,6 +106,8 @@ TODO List - worlds simplest bugtracking system
 		  cluster BB interactions.
 		* Examine performance characteristics of HULL_GRAB in ioninfo
 		* Conversion of double axis-angle rotations to single axis angle rotations - any value here?
+		* Ranging does two full passes, one to estimate output size, and one to actually range
+			- why not simply sample the input to estimate output size??
 	
 	Misc:
 
@@ -123,12 +116,6 @@ TODO List - worlds simplest bugtracking system
 	* updateFilterPropertyGrid is in a bad location, need new
 	  file that knows about filters and wx at the same time,
 	  but is not viscontrol ;)
-	* Interaction code needs to be cleaned up. Currently it is a substatiative hack.
-		- Viscontrol should store a copy of the original tree,
-		  then periodicially compare it to the current tree. if it
-		  is different, then it should invalidate the caches for
-		  the different bits, and then force a refresh. This would allow for removal 
-		  of the callback mechanism that is currently in use
 	* Plotting code is a nightmare. Data model for plot.h is not
 	   very well thought out, leading to large duplication, and elaborate special-case-ing
 		- Plots need log/non-log axes
@@ -146,3 +133,4 @@ TODO List - worlds simplest bugtracking system
 			- 3Depict versions prior to 1207:2a01b7e83d75
 		- VoxeliseFilter::readState(...) -> axial slice read will be silently skipped if it is missing
 			- 3Depict versions <= 1628:ffa0b851e966 don't know about this element 
+		- Annotation XML element "sphereanglesize" name doesn't match its purpose, and needs to be renamed "spheremarkersize"

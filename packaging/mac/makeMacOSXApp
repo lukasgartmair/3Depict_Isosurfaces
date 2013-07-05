@@ -38,14 +38,14 @@ fi
 
 echo "Updating .app bundle..."
 mkdir -p ./3Depict.app/Contents/MacOS/
-mkdir -p ./3Depict.app/Contents/Resources/
+mkdir -p ./3Depict.app/Contents/Resources/textures/
 mkdir -p ./3Depict.app/Contents/libs/
 cp ./src/3Depict ./3Depict.app/Contents/MacOS/3Depict
 cp data/textures/tex-source/3Depict-icon.icns ./3Depict.app/Contents/Resources/3Depict-icon.icns
 touch ./3Depict.app/Contents/PkgInfo
 touch ./3Depict.app/Contents/info.plist
 #copy textures
-cp ./data/textures/* ./3Depict.app/Contents/Resources
+cp ./data/textures/* ./3Depict.app/Contents/Resources/textures/
 cp ./data/textures/tex-source/3Depict-icon.icns ./3Depict.app/Contents/Resources
 
 
