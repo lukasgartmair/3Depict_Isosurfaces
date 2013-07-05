@@ -252,10 +252,18 @@ enum {
 
 };
 
+enum
+{
+	FILE_OPEN_TYPE_UNKNOWN=1,
+	FILE_OPEN_TYPE_XML=2,
+	FILE_OPEN_TYPE_POS=4,
+	FILE_OPEN_TYPE_TEXT=8
+};
+
 
 void setWxTreeImages(wxTreeCtrl *t, const map<size_t, wxArtID> &artFilters)
 {
-#if defined(__WIN32) || defined(__WIN64)
+#if defined(__WIN32) || defined(__WIN64) || defined(__APPLE__)
 	const int winTreeIconSize=9;
 	wxImageList *imList = new wxImageList(winTreeIconSize,winTreeIconSize);
 #else
@@ -879,6 +887,35 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
 END_EVENT_TABLE();
 
 
+unsigned int MainWindowFrame::guessFileType(const std::string &dataFile)
+{
+	
+	//Split the filename into chunks: path, volume, name and extension
+	//the format of this is OS dependant, but wxWidgets can deal with this.
+	wxFileName fname;
+	wxString volume,path,name,ext;
+	bool hasExt;
+	fname.SplitPath(wxStr(dataFile),&volume,
+			&path,&name,&ext, &hasExt);
+
+	//Test the extension to determine what we will do
+	//TODO: This is really lazy, and I should use something like libmagic.
+	std::string extStr;
+	extStr=stlStr(ext);
+
+	if( extStr == std::string("xml"))
+		return FILE_OPEN_TYPE_XML;
+	
+	if( extStr == std::string("txt"))
+		return FILE_OPEN_TYPE_TEXT;
+
+	if( extStr == std::string("pos"))
+		return FILE_OPEN_TYPE_POS;
+
+	return FILE_OPEN_TYPE_UNKNOWN;
+}
+
+
 bool MainWindowFrame::getTreeFilterId(const wxTreeItemId &tId, size_t &filterId) const
 {
 	if(!tId.IsOk())
@@ -894,12 +931,33 @@ bool MainWindowFrame::getTreeFilterId(const wxTreeItemId &tId, size_t &filterId)
 	return true;
 }
 
+void MainWindowFrame::checkAskSaveState()
+{
+
+	if(visControl.hasStateData() && visControl.stateModifyLevel() >=STATE_MODIFIED_ANCILLARY)
+	{
+		wxMessageDialog *wxD  =new wxMessageDialog(this,
+			wxTRANS("Current state has not been saved, would you like to save it now?")
+			,wxTRANS("State changed"),wxYES_NO|wxICON_QUESTION|wxYES_DEFAULT );
+		wxD->SetAffirmativeId(wxID_YES);
+		wxD->SetEscapeId(wxID_NO);
+
+		if ( wxD->ShowModal()== wxID_YES) 
+		{
+			wxCommandEvent event;
+			OnFileSave(event);
+		}
+	}
+}
 
 void MainWindowFrame::OnFileOpen(wxCommandEvent &event)
 {
 	//Do not allow any action if a scene update is in progress
 	if(currentlyUpdatingScene || visControl.isRefreshing())
 		return;
+
+
+
 
 	//Load a file, either a state file, or a new pos file
 	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Select Data or State File..."), wxT(""),
@@ -909,6 +967,14 @@ void MainWindowFrame::OnFileOpen(wxCommandEvent &event)
 	if( (wxF->ShowModal() == wxID_CANCEL))
 		return;
 
+	//See if the user would like to save state, if we are opening a state file
+	// which will overwrite our current state
+	std::string filePath = stlStr(wxF->GetPath());
+	if(guessFileType(filePath) == FILE_TYPE_XML)
+		checkAskSaveState();
+		
+	
+	
 	textConsoleOut->Clear();
 	//Get vis controller to update tree control to match internal
 	// structure. Retain tree selection & visibility if we currently
@@ -1083,24 +1149,13 @@ void MainWindowFrame::OnDropFiles(const wxArrayString &files, int x, int y)
 
 bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 {
-
 	//Don't try to alter viscontrol if we are refreshing. That would be bad.
 	ASSERT(!visControl.isRefreshing());
-	std::string dataFile = stlStr(fileStr);
 	
-	//Split the filename into chunks: path, volume, name and extension
-	//the format of this is OS dependant, but wxWidgets can deal with this.
-	wxFileName fname;
-	wxString volume,path,name,ext;
-	bool hasExt;
-	fname.SplitPath(fileStr,&volume,
-			&path,&name,&ext, &hasExt);
-
-	//Test the extension to determine what we will do
-	//TODO: This is really lazy, and I should use something like libmagic.
-	std::string extStr;
-	extStr=stlStr(ext);
-	if( extStr == std::string("xml"))
+	std::string dataFile = stlStr(fileStr);
+	unsigned int fileType=guessFileType(dataFile);
+	
+	if(fileType == FILE_OPEN_TYPE_XML)
 	{
 		std::stringstream ss;
 		
@@ -1220,7 +1275,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge)
 		//Bastardise the default settings such that it knows to use the correct
 		// file type, based upon file extension
 		unsigned int fileMode;
-		if(extStr == std::string("txt") || extStr == std::string("csv") )
+		if(fileType == FILE_OPEN_TYPE_TEXT)
 			fileMode=DATALOAD_TEXT_FILE;
 		else
 			fileMode=DATALOAD_FLOAT_FILE;
@@ -1266,15 +1321,21 @@ void MainWindowFrame::OnRecentFile(wxCommandEvent &event)
 		if(getTreeFilterId(treeFilters->GetSelection(),filterId))
 			visControl.setWxTreeFilterViewPersistence(filterId);
 
-
 		bool loadOK=false;
 		if(!wxFileExists(f))
 			statusMessage("File does not exist",MESSAGE_ERROR);
-		else if(loadFile(f))
+		else 
 		{
-			if(loadOK)
-				statusMessage(TRANS("Loaded file."),MESSAGE_INFO);
-			panelTop->Refresh();
+			//See if the user wants to save the current state
+			if(guessFileType(stlStr(f)) == FILE_TYPE_XML)
+				checkAskSaveState();
+		
+			if(loadFile(f))
+			{
+				if(loadOK)
+					statusMessage(TRANS("Loaded file."),MESSAGE_INFO);
+				panelTop->Refresh();
+			}
 		}
 		
 		if(!loadOK)
@@ -1284,9 +1345,10 @@ void MainWindowFrame::OnRecentFile(wxCommandEvent &event)
 			recentHistory->RemoveFileFromHistory(event.GetId()-wxID_FILE1);
 			configFile.removeRecentFile(stlStr(f));
 		}
+		
+		setSaveStatus();
 	}
 
-	setSaveStatus();
 }
 
 void MainWindowFrame::OnFileSave(wxCommandEvent &event)
@@ -3710,15 +3772,19 @@ void MainWindowFrame::OnAutosaveTimer(wxTimerEvent &event)
 	//Save to the autosave file
 	std::string s;
 	s=  stlStr(filePath);
-	std::map<string,string> dummyMap;
 
-	if(visControl.saveState(s.c_str(),dummyMap,false,false))
-		statusMessage(TRANS("Autosave complete."),MESSAGE_INFO);
-	else
+	//Only save if we have autosave data
+	if(visControl.hasStateData())
 	{
-		//The save failed, but may have left an incomplete file lying around
-		if(wxFileExists(filePath))
-			wxRemoveFile(filePath);
+		std::map<string,string> dummyMap;
+		if(visControl.saveState(s.c_str(),dummyMap,false,false))
+			statusMessage(TRANS("Autosave complete."),MESSAGE_INFO);
+		else
+		{
+			//The save failed, but may have left an incomplete file lying around
+			if(wxFileExists(filePath))
+				wxRemoveFile(filePath);
+		}
 	}
 
 

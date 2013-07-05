@@ -19,7 +19,11 @@
 #ifndef APTRANGES_H
 #define APTRANGES_H
 
-#include "APTClasses.h"
+#include <vector>
+#include <string>
+
+
+#include "backend/APT/ionhit.h"
 
 enum{	
 	RANGE_ERR_OPEN =1, 

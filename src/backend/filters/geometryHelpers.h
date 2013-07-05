@@ -18,9 +18,9 @@
 #ifndef GEOMETRYHELPER_H
 #define GEOMETRYHELPER_H
 
+#include "backend/APT/ionhit.h"
 
-#include "../APT/APTClasses.h"
-
+#include <vector>
 
 enum
 {
@@ -130,28 +130,28 @@ class CropHelper
 		//Run the input filtering in linear (single CPU) mode
 		// allocHint, if >0 , is the recommended fraction of input to reserve
 		// ahead of copying
-		unsigned int runFilterLinear(const vector<IonHit> &dataIn,
-				vector<IonHit> &dataOut,float allocHint);
+		unsigned int runFilterLinear(const std::vector<IonHit> &dataIn,
+				std::vector<IonHit> &dataOut,float allocHint);
 	
 		//Run the input filtering in parallel (multi CPU) mode
-		unsigned int runFilterParallel(const vector<IonHit> &dataIn,
-				vector<IonHit> &dataOut,float allocHint);
+		unsigned int runFilterParallel(const std::vector<IonHit> &dataIn,
+				std::vector<IonHit> &dataOut,float allocHint);
 	public:
 	
 		//Input vectors and scalars represent the fundamental
 		// basis for the desired geometry
 		CropHelper(bool (*callback)(bool), unsigned int *prog, 
 			size_t totalData,size_t filterMode,
-			vector<Point3D> &vectors, vector<float> &scalars);
+			std::vector<Point3D> &vectors, std::vector<float> &scalars);
 		
 		//Filter the input ion data in order to generate output points
 		// output data may contain previous data - this will be appended to,
 		// not overwritten
-		unsigned int runFilter(const vector<IonHit> &dataIn,
-				vector<IonHit> &dataOut);
+		unsigned int runFilter(const std::vector<IonHit> &dataIn,
+				std::vector<IonHit> &dataOut);
 
 
-		void setMapMaxima(size_t maxima){mapMax=maxima;};
+		void setMapMaxima(size_t maxima){ASSERT(maxima); mapMax=maxima;};
 		//Map an ion from its 3D coordinate to a 1D coordinate along the 
 		// selected geometric primitive. Returns true if the ion is mappable (i.e. inside selected primitive mode)
 		unsigned int mapIon1D(const IonHit &ionIn ) const;

@@ -16,9 +16,11 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "externalProgram.h"
-#include "../../wxcommon.h"
 
 #include "filterCommon.h"
+
+#include "../../wxcommon.h"
+#include "backend/APT/APTFileIO.h"
 
 #include <wx/filename.h>
 #include <wx/dir.h>
@@ -144,7 +146,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 
 				s = stlStr(tmpStr);
 				s+=".pos";
-				if(IonVectorToPos(i->data,s))
+				if(IonHit::makePos(i->data,s.c_str()))
 				{
 					//Uh-oh problem. Clean up and exit
 					return WRITEPOS_FAIL;

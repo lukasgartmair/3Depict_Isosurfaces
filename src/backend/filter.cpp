@@ -489,6 +489,12 @@ IonStreamData *IonStreamData::cloneSampled(float fraction) const
 	return out;
 }
 
+size_t IonStreamData::getNumBasicObjects() const
+{
+	return data.size();
+}
+
+
 
 VoxelStreamData::VoxelStreamData() : representationType(VOXEL_REPRESENT_POINTCLOUD),
 	r(1.0f),g(0.0f),b(0.0f),a(0.3f), splatSize(2.0f),isoLevel(0.5f)

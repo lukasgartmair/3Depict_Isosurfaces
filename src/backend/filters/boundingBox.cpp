@@ -1147,7 +1147,7 @@ bool boxVolumeTest()
 	}
 
 
-	TEST(havePrismDrawable, "bounding box existance test");
+	TEST(havePrismDrawable, "bounding box existence test");
 	
 	TEST(fabs(bc.volume() - 1.0f) 
 		< sqrt(std::numeric_limits<float>::epsilon()),

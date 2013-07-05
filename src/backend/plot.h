@@ -63,7 +63,7 @@ unsigned int plotID(const std::string &plotString);
 //!Return the error mode type, given the human readable string
 unsigned int plotErrmodeID(const std::string &s);
 		
-//!Nasty hack class to change mathgl API from named char pallette to rgb specification
+//!Nasty hack class to change mathgl API from named char palette to rgb specification
 class MGLColourFixer
 {
 	private:
@@ -77,7 +77,7 @@ class MGLColourFixer
 		//Get the best colour that is available
 		// returns the char to give to mathgl; may be exact,
 		// maybe nearest match, depending upon number of colours used
-		// and mgl pallette size
+		// and mgl palette size
 		char getNextBestColour(float r, float g, float b);
 
 		static unsigned int getMaxColours();
@@ -101,6 +101,7 @@ class PlotRegion
 		unsigned int id;
 		//!Unique ID for region across entire multiplot
 		unsigned int uniqueID;
+
 };
 
 //!Base class for data plotting
@@ -143,7 +144,10 @@ class PlotBase
 		//!integer to show which of the n plots that the parent generated
 		//that this data is represented by
 		unsigned int parentPlotIndex;
-		
+	
+		//True if the plot has data
+		virtual bool empty() const=0;
+
 		//Draw the plot onto a given MGL graph
 		virtual void drawPlot(mglGraph *graph, MGLColourFixer &fixer) const=0;
 
@@ -187,7 +191,7 @@ class Plot1D : public PlotBase
 		
 	public:
 		Plot1D();
-		
+		virtual bool empty() const;
 		
 		void getBounds(float &xMin,float &xMax,float &yMin,float &yMax) const;
 
@@ -286,6 +290,9 @@ class PlotWrapper
 		//!Destructor must delete target plots
 		~PlotWrapper();
 
+		//Returns true if the visible plots have no data
+		// in the case of no visible plots, returns true.
+		bool visibleEmpty() const;
 
 		bool isInteractionLocked() const { return interactionLocked;};
 

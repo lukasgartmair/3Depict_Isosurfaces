@@ -56,7 +56,7 @@ enum
 extern const char *TEXTURE_OVERLAY_PNG[]; 
 
 typedef struct {
-GLuint name; /* OpenGL name assigned by by glGenTexture*/
+GLuint glID; /* OpenGL name assigned by by glGenTexture*/
 GLuint width;
 GLuint height;
 GLuint depth;

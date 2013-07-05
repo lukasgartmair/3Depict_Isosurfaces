@@ -44,7 +44,7 @@ const size_t MAX_NUM_DRAWABLE_POINTS=10;
 
 
 //OK, the new FTGL is fucked up. It actually uses defines from
-//freetype  as arguments to #includes. Wierd. So this sequence is important
+//freetype  as arguments to #includes. Weird. So this sequence is important
 #include <ft2build.h>
 #include <FTGL/ftgl.h>
 
@@ -157,7 +157,7 @@ class DrawableObj
 		bool wantsLight;
 
 
-		static bool setUseAlphaBlending(bool willBlend) { useAlphaBlend =false;}
+		static bool setUseAlphaBlending(bool willBlend) { useAlphaBlend =willBlend;}
 
 		//!Is this an overlay? By default, no
 		virtual bool isOverlay() const { return false;}

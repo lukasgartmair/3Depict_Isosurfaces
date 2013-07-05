@@ -48,7 +48,7 @@ std::string escapeXML(const std::string &s);
 //Convert an xml escaped sequence into a normal string sequence
 std::string unescapeXML(const std::string &s);
 
-//!Jump to the next element of the given name and retreive the value for the specified attrip
+//!Jump to the next element of the given name and retrieve the value for the specified attrip
 //returns false on failure
 //NOTE: Do not use if your value may validly contain whitespace. stream_cast skips these cases
 template<class T> 

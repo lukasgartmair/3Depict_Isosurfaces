@@ -897,6 +897,9 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 			if(stream_cast(newRad,value))
 				return false;
 
+			if(newRad < sqrt(std::numeric_limits<float>::epsilon()))
+				return false;
+
 			if(scalarParams[0] != newRad )
 			{
 				scalarParams[0] = newRad;
@@ -909,6 +912,9 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 		{
 			Point3D newPt;
 			if(!newPt.parse(value))
+				return false;
+
+			if(newPt.sqrMag() < sqrt(std::numeric_limits<float>::epsilon()))
 				return false;
 
 			if(!(vectorParams[1] == newPt ))
@@ -1236,8 +1242,13 @@ void SpatialAnalysisFilter::setPropFromBinding(const SelectionBinding &b)
 			b.getValue(scalarParams[0]);
 			break;
 		case BINDING_CYLINDER_DIRECTION:
-			b.getValue(vectorParams[1]);
+		{
+			Point3D p;
+			b.getValue(p);
+			if(p.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()))
+				vectorParams[1]=p;
 			break;
+		}
 		case BINDING_CYLINDER_ORIGIN:
 			b.getValue(vectorParams[0]);
 			break;
@@ -2580,10 +2591,10 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 	
 	//Strip away the real value information, leaving just point data
 	vector<Point3D> src,dest;
-	getPointsFromIons(ionsInside,src);
+	IonHit::getPoints(ionsInside,src);
 	ionsInside.clear();
 	
-	getPointsFromIons(ionsOutside,dest);
+	IonHit::getPoints(ionsOutside,dest);
 	ionsOutside.clear();
 
 	K3DTree tree;

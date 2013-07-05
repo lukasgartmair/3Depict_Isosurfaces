@@ -58,13 +58,16 @@ bool TexturePool::openTexture(const char *texName, unsigned int &texID)
 	std::string texPath;
 
 	texPath = locateDataFile(texName);
-	
+
+	if(texPath.empty())
+		return false;
+
 	//See if we already have this texture (use first frame as keyname)
 	for(unsigned int ui=0;ui<openTextures.size();ui++)
 	{
 		if(openTextures[ui].first == texPath)
 		{
-			texID = openTextures[ui].second.name;
+			texID = openTextures[ui].second.glID;
 			return true;
 		}
 	}
@@ -79,7 +82,7 @@ bool TexturePool::openTexture(const char *texName, unsigned int &texID)
 	openTextures.push_back(
 		make_pair(texPath,tex));
 
-	texID=tex.name;
+	texID=tex.glID;
 	return true;
 }
 
@@ -104,7 +107,7 @@ bool TexturePool::openTexture3D(const std::vector<std::string> &fileNames, unsig
 		//Use the first name of the file as the key
 		if(openTextures[ui].first == fullNames[0])
 		{
-			texId = openTextures[ui].second.name;
+			texId = openTextures[ui].second.glID;
 			return true;
 		}
 	}
@@ -122,20 +125,21 @@ bool TexturePool::openTexture3D(const std::vector<std::string> &fileNames, unsig
 		std::make_pair(fullNames[0],tex));
 
 
-	texId=tex.name;
+	texId=tex.glID;
 	return true;
 }
 
 //TODO: Refactor to remove this routine
-void TexturePool::genTexID(unsigned int &textureID, size_t texType) 
+void TexturePool::genTexID(unsigned int &texID, size_t texType) 
 {
 	texture tex;
 	tex.data=0;
-	tex.name=-1;
+  
+	glGenTextures(1,&tex.glID);
+	texID = tex.glID;
+	
 	openTextures.push_back(
 		make_pair(std::string(""),tex));
-  
-	glGenTextures(1,&textureID);
 }
 
 
@@ -143,9 +147,9 @@ void TexturePool::closeTexture(unsigned int texId)
 {
 	for(unsigned int ui=0;ui<openTextures.size();ui++)
 	{
-		if(openTextures[ui].second.name== texId)
+		if(openTextures[ui].second.glID == texId)
 		{
-			glDeleteTextures(1,&openTextures[ui].second.name );
+			glDeleteTextures(1,&openTextures[ui].second.glID);
 			delete [] openTextures[ui].second.data;
 			openTextures.erase(openTextures.begin()+ui);
 			return;
@@ -160,7 +164,7 @@ void TexturePool::closeAll()
 		if(openTextures[ui].second.data)
 		{
 			delete[] openTextures[ui].second.data;
-			glDeleteTextures(1,&openTextures[ui].second.name);
+			glDeleteTextures(1,&openTextures[ui].second.glID);
 		}
 	}
 
@@ -206,8 +210,8 @@ int pngTexture(texture* dest, const char* filename, GLenum type)
 	else 
 		glGetIntegerv(GL_TEXTURE_BINDING_2D, &curtex);
 	
-	glGenTextures(1, &(dest->name));
-	glBindTexture(type, dest->name);
+	glGenTextures(1, &(dest->glID));
+	glBindTexture(type, dest->glID);
 	
 	//Send texture to video card
 	if (type == GL_TEXTURE_1D)
@@ -295,8 +299,8 @@ int pngTexture3D(texture *dest, const vector<string> &fileNames)
 
 	delete[] dataArray;
 	
-	glGenTextures(1, &(dest->name));
-	glBindTexture(GL_TEXTURE_3D, dest->name);
+	glGenTextures(1, &(dest->glID));
+	glBindTexture(GL_TEXTURE_3D, dest->glID);
 	
 	//Send texture to video card
 	glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, dest->width, dest->height, dest->depth, 0,

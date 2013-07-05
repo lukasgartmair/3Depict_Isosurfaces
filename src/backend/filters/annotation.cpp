@@ -26,6 +26,7 @@ enum
 {
 	KEY_POSITION=1,
 	KEY_MODE,
+	KEY_ENABLE,
 	KEY_UPVEC,
 	KEY_ACROSSVEC,
 	KEY_ANNOTATE_TEXT,
@@ -75,10 +76,10 @@ const char *annotationModeStrings[] =
 AnnotateFilter::AnnotateFilter() : annotationMode(ANNOTATION_TEXT),
 	position(Point3D(0,0,0)), target(Point3D(1,0,0)), upVec(Point3D(0,0,1)),
 	acrossVec(Point3D(0,1,0)), textSize(1.0f), annotateSize(1.0f),
-	sphereAngleSize(1.5f),r(0),g(0),b(1),a(1),active(true),showAngleText(true), 
+	sphereMarkerSize(1.5f),r(0),g(0),b(1),a(1),active(true),showAngleText(true), 
 	reflexAngle(true), angleFormatPreDecimal(0),angleFormatPostDecimal(0),
 	linearFixedTicks(true),linearMeasureTicks(10),linearMeasureSpacing(10.0f),
-	fontSizeLinearMeasure(5),linearMeasureMarkerSize(3)	
+	fontSizeLinearMeasure(5)
 {
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(annotationModeStrings) == ANNOTATION_MODE_END);
 
@@ -90,7 +91,7 @@ AnnotateFilter::AnnotateFilter() : annotationMode(ANNOTATION_TEXT),
 	
 	textSize=1;
 	annotateSize=1;
-	sphereAngleSize=1.5;
+	sphereMarkerSize=1.5;
 	
 	//Set the colour to default blue
 	r=g=0;b=a=1.0;
@@ -103,7 +104,6 @@ AnnotateFilter::AnnotateFilter() : annotationMode(ANNOTATION_TEXT),
 	linearMeasureTicks=10;
 	linearFixedTicks=true;
 	linearMeasureSpacing=10.0f;
-	linearMeasureMarkerSize=3.0f;
 	lineSize=1.0f;
 	angleFormatPreDecimal=angleFormatPostDecimal=0;
 
@@ -126,7 +126,7 @@ Filter *AnnotateFilter::cloneUncached() const
 
 	p->textSize=textSize;
 	p->annotateSize=annotateSize;
-	p->sphereAngleSize=sphereAngleSize;
+	p->sphereMarkerSize=sphereMarkerSize;
 
 	p->r=r;
 	p->g=g;
@@ -146,7 +146,6 @@ Filter *AnnotateFilter::cloneUncached() const
 	p->linearFixedTicks=linearFixedTicks;
 	p->linearMeasureSpacing=linearMeasureSpacing;
 	p->linearMeasureTicks=linearMeasureTicks;
-	p->linearMeasureMarkerSize=linearMeasureMarkerSize;
 	p->lineSize=lineSize;
 
 	//We are copying whether to cache or not,
@@ -253,7 +252,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 
 			dS=new DrawSphere;
 			dS->setOrigin(anglePos[ui]);
-			dS->setRadius(sphereAngleSize);
+			dS->setRadius(sphereMarkerSize);
 			dS->setColour(r,g,b,a);
 
 			dS->canSelect=true;
@@ -445,7 +444,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 			//Start marker
 			DrawSphere *dS;
 			dS = new DrawSphere;
-			dS->setRadius(linearMeasureMarkerSize);
+			dS->setRadius(sphereMarkerSize);
 			dS->setOrigin(position);
 			dS->setColour(r,g,b,a);
 
@@ -478,7 +477,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 			s= new SelectionDevice(this);
 			dS = new DrawSphere;
 			
-			dS->setRadius(linearMeasureMarkerSize);
+			dS->setRadius(sphereMarkerSize);
 			dS->setOrigin(target);
 			dS->setColour(r,g,b,a);
 
@@ -518,12 +517,25 @@ size_t AnnotateFilter::numBytesForCache(size_t nObjects) const
 
 void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 {
-	string str;
+	string tmpStr;
 	FilterProperty p;
 	size_t curGroup=0;
 
+	tmpStr=boolStrEnc(active);	
+
+	p.name=TRANS("Enable");
+	p.data=tmpStr;
+	p.key=KEY_ENABLE;
+	p.helpText=TRANS("Enable/disable annotation");
+	p.type=PROPERTY_TYPE_BOOL;
+	propertyList.addProperty(p,curGroup);
+
+	if(!active)
+		return;
+
+
+
 	vector<pair<unsigned int,string> > choices;
-	string tmpStr;
 	
 	for(unsigned int ui=0;ui<ANNOTATION_MODE_END; ui++)
 	{
@@ -782,7 +794,7 @@ void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 
 			}
 			
-			stream_cast(tmpStr,sphereAngleSize);
+			stream_cast(tmpStr,sphereMarkerSize);
 			p.name=TRANS("Sphere size");
 			p.data=tmpStr;
 			p.type=PROPERTY_TYPE_REAL;
@@ -868,6 +880,15 @@ void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 				p.helpText=TRANS("Distance between tick marks along ruler");
 				propertyList.addProperty(p,curGroup);
 			}
+			
+			
+			stream_cast(tmpStr,sphereMarkerSize);
+			p.name=TRANS("Sphere size");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_REAL;
+			p.key=KEY_SPHERE_ANGLE_SIZE;
+			p.helpText=TRANS("Marker sphere size for manipulating tool");
+			propertyList.addProperty(p,curGroup);
 
 			break;
 		}
@@ -877,10 +898,10 @@ void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 
 
 	genColString((unsigned char)(r*255.0),(unsigned char)(g*255.0),
-		(unsigned char)(b*255),(unsigned char)(a*255),str);
+		(unsigned char)(b*255),(unsigned char)(a*255),tmpStr);
 	p.key=KEY_COLOUR;
 	p.name=TRANS("Colour");
-	p.data=str;
+	p.data=tmpStr;
 	p.type=PROPERTY_TYPE_COLOUR;
 	p.helpText=TRANS("Colour for ruler and ticks");
 	propertyList.addProperty(p,curGroup);
@@ -893,6 +914,27 @@ bool AnnotateFilter::setProperty(  unsigned int key,
 	string stripped=stripWhite(value);
 	switch(key)
 	{
+		case KEY_ENABLE:
+		{
+			bool tmpV;
+			
+			if( value == "1")
+				tmpV=true;
+			else if(value == "0")
+				tmpV=false;
+			else
+			{
+				ASSERT(false);
+				return false;
+			}
+
+			if(tmpV!=active)
+			{
+				active=tmpV;
+				needUpdate=true;
+			}
+			break;
+		}
 		case KEY_MODE:
 		{
 			unsigned int newMode;
@@ -1129,10 +1171,10 @@ bool AnnotateFilter::setProperty(  unsigned int key,
 			float tmp;
 			stream_cast(tmp,value);
 
-			if(tmp == sphereAngleSize)
+			if(tmp == sphereMarkerSize)
 				return false;
 
-			sphereAngleSize=tmp;
+			sphereMarkerSize=tmp;
 			needUpdate=true;
 
 			break;
@@ -1293,7 +1335,8 @@ bool AnnotateFilter::writeState(std::ostream &f,unsigned int format, unsigned in
 			f << tabs(depth+1) << "<annotatetext value=\""<<escapeXML(annotateText)<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<textsize value=\""<<textSize<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<annotatesize value=\""<<annotateSize<< "\"/>"  << endl;
-			f << tabs(depth+1) << "<sphereanglesize value=\""<<sphereAngleSize<< "\"/>"  << endl;
+			//DEPRECATE: rename this element. It has been repurposed.
+			f << tabs(depth+1) << "<sphereanglesize value=\""<<sphereMarkerSize<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<linesize value=\""<<lineSize<< "\"/>"  << endl;
 			std::string colourString;
 			genColString((unsigned char)(r*255),(unsigned char)(g*255),
@@ -1409,9 +1452,9 @@ bool AnnotateFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 		return false;
 
 
-	if(!XMLGetNextElemAttrib(nodePtr,sphereAngleSize,"sphereanglesize","value"))
+	if(!XMLGetNextElemAttrib(nodePtr,sphereMarkerSize,"sphereanglesize","value"))
 		return false;
-	if(sphereAngleSize<0.0f)
+	if(sphereMarkerSize<0.0f)
 		return false;
 
 	if(!XMLGetNextElemAttrib(nodePtr,lineSize,"linesize","value"))
@@ -1515,7 +1558,7 @@ void AnnotateFilter::setPropFromBinding(const SelectionBinding &b)
 			b.getValue(anglePos[2]);
 			break;
 		case BINDING_ANGLE_SPHERERADIUS:
-			b.getValue(sphereAngleSize);
+			b.getValue(sphereMarkerSize);
 			break;
 		default:
 			ASSERT(false);

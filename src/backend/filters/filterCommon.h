@@ -24,7 +24,6 @@
 #include "common/stringFuncs.h"
 #include "common/xmlHelper.h"
 
-#include "backend/APT/APTClasses.h"
 #include "backend/APT/APTRanges.h"
 
 //QHull library
@@ -49,6 +48,8 @@ enum
 	HULL_ERR_USER_ABORT,
 	HULL_ERR_ENUM_END
 };
+
+const size_t PROGRESS_REDUCE=5000;
 
 //serialise 3D std::vectors to specified output stream in XML format
 void writeVectorsXML(std::ostream &f, const char *containerName,

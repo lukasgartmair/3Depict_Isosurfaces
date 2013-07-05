@@ -295,7 +295,7 @@ public:
     }
 
     //Set the cube to be "inside out" at the limits of numeric results;
-    void setInverseLimits();
+    void setInverseLimits(bool setAsValid=false);
 
     void setBound(unsigned int bound, unsigned int minMax, float value) ;
 
@@ -331,6 +331,8 @@ public:
     //Check to see if the point is contained in, or part of the walls
     //of the cube
     bool containsPt(const Point3D &pt) const;
+
+    bool contains(const BoundCube &b) const;
 
     //!Is this bounding cube completely contained within a sphere centred on pt of sqr size sqrRad?
     bool containedInSphere(const Point3D &pt, float sqrRad) const;

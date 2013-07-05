@@ -258,14 +258,44 @@ bool Point3D::orthogonalise(const Point3D &pt)
 Point3D Point3D::centroid(const Point3D *p, unsigned int n)
 {
 	ASSERT(p);
-	Point3D pc(0,0,0);
+	Point3D centroid(0,0,0);
+
+	/* This code should work, but is not profiled. No caller uses
+	   this code at time of writing.
+#ifdef _OPENMP
+
+	//Parallel version
+	//--
+	vector<Point3D> centroids(omp_get_max_threads(),Point3D(0,0,0));
+#pragma omp parallel for 
 	for(size_t ui=0;ui<n;ui++)
-		pc+=p[ui];
+		centroids[omp_get_thread_num()]+=p[ui];
 
-	pc*=1.0f/(float)n;
+	for(size_t ui=0;ui<centroids.size();ui++)
+		centroid+=centroids[ui];
+	//--
+#endif
+	*/
+	for(unsigned int ui=0;ui<n;ui++)
+		centroid+=p[ui];
 
-	return pc;
+	centroid*=1.0f/(float)n;
+
+	return centroid;
 }
+
+Point3D Point3D::centroid(const std::vector<Point3D> &p)
+{
+	Point3D centroid(0,0,0);
+
+	for(unsigned int ui=0;ui<p.size();ui++)
+		centroid+=p[ui];
+
+	centroid*=1.0f/(float)p.size();
+
+	return centroid;
+}
+
 
 bool Point3D::parse(const std::string &str)
 {

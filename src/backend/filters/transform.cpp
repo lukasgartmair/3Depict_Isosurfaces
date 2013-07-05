@@ -241,7 +241,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 					ions = (const IonStreamData*)dataIn[ui];
 					if(ions->data.size())
 					{
-						thisB = getIonDataLimits(ions->data);
+						IonHit::getBoundCube(ions->data,thisB);
 						#pragma omp critical
 						masterB.expand(thisB);
 					}
@@ -1908,8 +1908,8 @@ bool rotateTest()
 	// however we don't quite have  a sphere, so we could have (at the most extreme,
 	// a cube)
 	BoundCube bc[2];
-	bc[0]=getIonDataLimits(d->data);
-	bc[1]=getIonDataLimits(outData->data);
+	IonHit::getBoundCube(d->data,bc[0]);
+	IonHit::getBoundCube(outData->data,bc[1]);
 
 	float volumeRat;
 	volumeRat = bc[0].volume()/bc[1].volume();
@@ -1974,8 +1974,8 @@ bool translateTest()
 
 	//Bound cube should move exactly as per the translation
 	BoundCube bc[2];
-	bc[0]=getIonDataLimits(d->data);
-	bc[1]=getIonDataLimits(outData->data);
+	IonHit::getBoundCube(d->data,bc[0]);
+	IonHit::getBoundCube(outData->data,bc[1]);
 
 	for(unsigned int ui=0;ui<3;ui++)
 	{
@@ -2056,8 +2056,8 @@ bool scaleTest()
 	//Scaling around its centre of mass
 	// should scale the bounding box by the cube of the scale factor
 	BoundCube bc[2];
-	bc[0]=getIonDataLimits(d->data);
-	bc[1]=getIonDataLimits(outData->data);
+	IonHit::getBoundCube(d->data,bc[0]);
+	IonHit::getBoundCube(outData->data,bc[1]);
 
 	float cubeOfScale=scaleFact*scaleFact*scaleFact;
 

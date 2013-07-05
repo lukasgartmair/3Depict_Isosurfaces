@@ -188,7 +188,7 @@ class Scene
 		
 		//!Set the aspect ratio of the output window. Required.
 		void setAspect(float newAspect);
-		//!retreive aspect ratio (h/w) of output win
+		//!retrieve aspect ratio (h/w) of output win
 		float getAspect() const { return outWinAspect;};
 		
 		//!Add a drawable object 
@@ -198,9 +198,9 @@ class Scene
 		 */
 		void addDrawable(const DrawableObj *);
 		
-		//!Add a drawble to the refernce only section
-		/* Objects refferred to will not be modified or destroyed
-		 * by this class. It will onyl be used for drawing purposes
+		//!Add a drawable to the reference only section
+		/* Objects referred to will not be modified or destroyed
+		 * by this class. It will only be used for drawing purposes
 		 * It is up to the user to ensure that they are in a good state
 		 */
 		void addRefDrawable(const DrawableObj *);

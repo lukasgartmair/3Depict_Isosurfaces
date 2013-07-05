@@ -19,15 +19,17 @@
 #ifndef K3DTREEMK2_H
 #define K3DTREEMK2_H
 
+#include <vector>
+#include <utility>
+
+#include "common/basics.h"
+#include "backend/APT/ionhit.h"
+
 //This is the second revision of my KD tree implementation
 //The goals here are, as compared to the first
 //	- Improved build performance by minimising memory allocation calls
 //	  and avoiding recursive implementations
 //	- index based construction for smaller in-tree storage
-
-
-
-#include "../APT/APTClasses.h" //For IonHit
 
 
 //!Functor allowing for sorting of points in 3D

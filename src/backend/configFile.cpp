@@ -43,7 +43,7 @@ using std::string;
 
 
 ConfigFile::ConfigFile() : configLoadOK(false), panelMode(CONFIG_PANELMODE_REMEMBER),
-	haveIntialAppSize(false), mouseZoomRatePercent(100),mouseMoveRatePercent(100),
+	haveInitialAppSize(false), mouseZoomRatePercent(100),mouseMoveRatePercent(100),
 	allowOnline(true), allowOnlineVerCheck(true), leftRightSashPos(0),
 	topBottomSashPos(0),filterSashPos(0),plotListSashPos(0), haveMaxPoints(false),
 	maxPointsScene(0)
@@ -107,18 +107,18 @@ void ConfigFile::setFilterDefaults(const vector<Filter *>  &defs)
 
 bool ConfigFile::getInitialAppSize(unsigned int &x, unsigned int &y) const
 {
-	if(haveIntialAppSize)
+	if(haveInitialAppSize)
 	{
 		x=initialSizeX;
 		y=initialSizeY;
 	}
 	
-	return haveIntialAppSize;
+	return haveInitialAppSize;
 }
 
 void ConfigFile::setInitialAppSize(unsigned int x, unsigned int y)
 {
-	haveIntialAppSize=true;
+	haveInitialAppSize=true;
 	initialSizeX=x;
 	initialSizeY=y;
 }
@@ -199,7 +199,7 @@ unsigned int ConfigFile::read()
 				XMLGetAttrib(nodePtr,initialSizeY,"height"))
 			{
 				if( initialSizeX >0 && initialSizeY > 0)
-					haveIntialAppSize=true;
+					haveInitialAppSize=true;
 			}
 		}
 		nodePtr=nodeStack.top();
@@ -538,7 +538,7 @@ bool ConfigFile::write()
 	f<< "<threeDepictconfig>" << endl;
 	f<<tabs(1)<< "<writer version=\"" << PROGRAM_VERSION << "\"/>" << endl;
 
-	if(haveIntialAppSize)	
+	if(haveInitialAppSize)	
 	{
 		f<<tabs(1)<< "<initialwinsize width=\"" << initialSizeX << "\" height=\"" <<
 				initialSizeY << "\"/>" << endl;

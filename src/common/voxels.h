@@ -535,7 +535,7 @@ void Voxels<T>::getSize(size_t &x, size_t &y, size_t &z) const
 template<class T>
 size_t Voxels<T>::getEdgeIndex(size_t x,size_t y, size_t z, unsigned int index) const
 {
-	//This provides a reversable mapping of x,y,z 
+	//This provides a reversible mapping of x,y,z 
 	//X aligned edges are first
 	//Y second
 	//Z third
@@ -1992,7 +1992,7 @@ void Voxels<T>::makeSphericalKernel(size_t sideLen, float bound, const T &val, u
 						}
 
 						//Level 0 corresponds to 1/8th of the original voxel. Level n = 1/(2^3(n+1)) 
-						//each voxel has side lenght L_v = originalLen/(2^(level+1))
+						//each voxel has side length L_v = originalLen/(2^(level+1))
 						while(!positionStack.empty())
 						{
 							unsigned int thisLevel;
@@ -2481,7 +2481,7 @@ template<class T>
 void Voxels<T>::findNExtrema(std::vector<size_t> &x, std::vector<size_t> &y, 
 			std::vector<size_t> &z, size_t n, bool largest) const
 {
-	//Could be better if we didn't use indexed data aquisition (record opsition)
+	//Could be better if we didn't use indexed data acquisition (record position)
 	std::deque<size_t> bSx,bSy,bSz;
 
 	if(voxels.empty())

@@ -19,6 +19,7 @@
 
 #include "filterCommon.h"
 
+#include <algorithm>
 
 const unsigned int NUM_ROWS_ION=3;
 const unsigned int NUM_ROWS_RANGE=4;
@@ -108,314 +109,377 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 		return 0;
 	}
 
-	vector<IonStreamData *> d;
-
-	//Split the output up into chunks, one for each range, 
-	//Extra 1 for unranged ions	
-	d.resize(rng.getNumIons()+1);
-
-	//Generate output filter streams. 
-	for(unsigned int ui=0;ui<d.size(); ui++)
-	{
-		d[ui] = new IonStreamData;
-		d[ui]->parent=this;
-	}
-
-	bool haveDefIonColour=false;
-	//GCC complains about this, but this is protected by haveDefIonColour.
-	RGBf defIonColour;
-
-	//Try to maintain ion size if possible
-	bool haveIonSize,sameSize; // have we set the ionSize?
-	float ionSize;
-	haveIonSize=false;
-	sameSize=true;
-
-
-	progress.step=1;
-	progress.filterProgress=0;
-	progress.stepName=TRANS("Pre-Allocate");
-	progress.maxStep=2;	
-
-	vector<size_t> dSizes;
-	dSizes.resize(d.size(),0);
-	size_t totalSize=numElements(dataIn);
 	
-	//Step 1: Do a first sweep to obtain range sizes needed
-	// then reserve the same amount of mem as we need on the output
-	//========================
-	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
+	//See if we have enabled ranges and ions
+	bool haveEnabled;
+	haveEnabled= (std::find(enabledRanges.begin(),
+			   	enabledRanges.end(),(char)1) !=enabledRanges.end()) && 
+			(std::find(enabledIons.begin(),
+			   	enabledIons.end(),(char)1) !=enabledIons.end());
+
+	//Nothing enabled? Nothing to do!
+	if(!(!haveEnabled && dropUnranged))
 	{
-		switch(dataIn[ui]->getStreamType())
+		vector<IonStreamData *> d;
+
+		//Split the output up into chunks, one for each range, 
+		//Extra 1 for unranged ions	
+		d.resize(rng.getNumIons()+1);
+
+
+		bool haveDefIonColour=false;
+		//GCC complains about this, but this is protected by haveDefIonColour.
+		RGBf defIonColour;
+
+		//Try to maintain ion size if possible
+		bool haveIonSize,sameSize; // have we set the ionSize?
+		float ionSize;
+		haveIonSize=false;
+		sameSize=true;
+
+
+		progress.step=1;
+		progress.filterProgress=0;
+		progress.stepName=TRANS("Pre-Allocate");
+		progress.maxStep=2;	
+
+		vector<size_t> dSizes;
+		dSizes.resize(d.size(),0);
+		size_t totalSize=numElements(dataIn);
+
+
+		//Check to see if there are any enabled ranges
+		
+		//Generate output filter streams. 
+		for(unsigned int ui=0;ui<d.size(); ui++)
 		{
-			case STREAM_TYPE_IONS: 
-			{
-
-#ifdef _OPENMP
-				//Create a unique array for each thread, so they don't try
-				//to modify the same data structure
-				unsigned int nT =omp_get_max_threads(); 
-				vector<size_t> *dSizeArr = new vector<size_t>[nT];
-				for(unsigned int uk=0;uk<nT;uk++)
-					dSizeArr[uk].resize(dSizes.size(),0);
-#endif
-				const IonStreamData *src = ((const IonStreamData *)dataIn[ui]);
-				size_t n=0;
-
-
-				unsigned int curProg=NUM_CALLBACK;
-				bool spin=false;
-				#pragma omp parallel for firstprivate(curProg)
-				for(size_t uj=0; uj<src->data.size();uj++)
-				{
-#ifdef _OPENMP
-					unsigned int thisT=omp_get_thread_num();
-#endif
-					if(spin)
-						continue;
-					
-					//get the range ID for this particular ion.
-					unsigned int rangeID;
-					rangeID=rng.getRangeID(src->data[uj].getMassToCharge());
-
-					//If ion is unranged, then it will have a rangeID of -1
-					if(rangeID != (unsigned int)-1 && enabledRanges[rangeID] )
-					{
-						unsigned int ionID=rng.getIonID(rangeID);
-
-						//if we are going to keep the ion
-						//then increment this array size
-						if(enabledIons[ionID])
-						{
-							#ifdef _OPENMP
-								dSizeArr[thisT][ionID]++;
-							#else
-								dSizes[ionID]++;
-							#endif
-
-						}
-					}
-					
-					//update progress periodically
-					if(!curProg--)
-					{
-#pragma omp critical
-						{
-						n+=NUM_CALLBACK;
-						progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-						curProg=NUM_CALLBACK;
-
-
-						if(!(*callback)(false))
-							spin=true;
-						}
-					}
-				}
-
-				if(spin)
-					return RANGEFILE_ABORT_FAIL;
-#ifdef _OPENMP
-				//Merge the arrays back together
-				for(unsigned int uk=0;uk<nT;uk++)
-				{
-					for(unsigned int uj=0;uj<dSizes.size();uj++)
-						dSizes[uj] = dSizes[uj]+dSizeArr[uk][uj];
-				}
-				delete[] dSizeArr;
-#endif
-
-			}
+			d[ui] = new IonStreamData;
+			d[ui]->parent=this;
 		}
-	}
-
-
-	//reserve the vector to the exact size we need
-	try
-	{
-		for(size_t ui=0;ui<d.size();ui++)
-			d[ui]->data.reserve(dSizes[ui]);
-	}
-	catch(std::bad_alloc)
-	{
-		for(size_t ui=0;ui<d.size();ui++)
-			delete d[ui];
-		return RANGEFILE_BAD_ALLOC;
-	}
-
-	dSizes.clear();
-	//===================================
-
-	//Update progress info
-	progress.step=2;
-	progress.filterProgress=0;
-	progress.stepName=TRANS("Range");
-	size_t n=0;
-
-
-	
-
-	//Step 2: Go through each data stream, if it is an ion stream, range it.
-	//	I tried parallelising this a few different ways, but the linear performance wa simply better.
-	//		- Tried an array of openmp locks
-	//		- Tried keeping a unique offset number and fixing the size of the output vectors
-	//		- Tried straight criticalling the push_back
-	//	 Trying to merge vectors in // is tricky. result was 9-10x slower than linear
-	//=========================================
-	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
-	{
-		switch(dataIn[ui]->getStreamType())
+		
+		if(!haveEnabled)
 		{
-			case STREAM_TYPE_IONS: 
-			{
-				//Set the default (unranged) ion colour, by using
-				//the first input ion colour.
-				if(!haveDefIonColour)
-				{
-					defIonColour.red =  ((IonStreamData *)dataIn[ui])->r;
-					defIonColour.green =  ((IonStreamData *)dataIn[ui])->g;
-					defIonColour.blue =  ((IonStreamData *)dataIn[ui])->b;
-					haveDefIonColour=true;
-				}
-			
-				//Check for ion size consistency	
-				if(haveIonSize)
-				{
-					sameSize &= (fabs(ionSize-((const IonStreamData *)dataIn[ui])->ionSize) 
-									< std::numeric_limits<float>::epsilon());
-				}
-				else
-				{
-					ionSize=((const IonStreamData *)dataIn[ui])->ionSize;
-					haveIonSize=true;
-				}
-
-				unsigned int curProg=NUM_CALLBACK;
-				const size_t off=d.size()-1;
-
-				for(vector<IonHit>::const_iterator it=((const IonStreamData *)dataIn[ui])->data.begin();
-					       it!=((const IonStreamData *)dataIn[ui])->data.end(); ++it)
-				{
-					unsigned int rangeID;
-					rangeID=rng.getRangeID(it->getMassToCharge());
-
-					//If ion is unranged, then it will have a rangeID of -1
-					if(rangeID != (unsigned int)-1)
-					{
-						unsigned int ionID;
-						ionID=rng.getIonID(rangeID);
-
-						//Only retain the ion if the ionID and rangeID are enabled
-						if(enabledRanges[rangeID] && enabledIons[ionID])
-						{
-							ASSERT(ionID < enabledRanges.size());
-
-							d[ionID]->data.push_back(*it);
-						}
-					}
-					else if(!dropUnranged)//If it is unranged, then the rangeID is still -1 (as above).
-					{
-						d[off]->data.push_back(*it);
-					}
-
-					//update progress periodically
-					if(!curProg--)
-					{
-						n+=NUM_CALLBACK;
-						progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-						curProg=NUM_CALLBACK;
-
-						
-						if(!(*callback)(false))
-						{
-							//Free space allocated for output ion streams...
-							for(unsigned int ui=0;ui<d.size();ui++)
-								delete d[ui];
-							return RANGEFILE_ABORT_FAIL;
-						}
-					}
-
-				}
-
-
-			}
-				break;
-			case STREAM_TYPE_RANGE:
-				//Purposely do nothing. This blocks propagation of other ranges
-				//i.e. there can only be one in any given node of the tree.
-				break;
-			default:
-				getOut.push_back(dataIn[ui]);
-				break;
-		}
-	}
-	//=========================================
-
-
-	//Step 3 : Set up any properties for the output streams that we need, like colour, size, caching. Trim any empty results.
-	//======================================
-	//Set the colour of the output ranges
-	//and whether to cache.
-	for(unsigned int ui=0; ui<rng.getNumIons(); ui++)
-	{
-		RGBf rngCol;
-		rngCol = rng.getColour(ui);
-		d[ui]->r=rngCol.red;
-		d[ui]->g=rngCol.green;
-		d[ui]->b=rngCol.blue;
-		d[ui]->a=1.0;
-
-	}
-
-	//If all the ions are the same size, then propagate
-	//Otherwise use the default ionsize
-	if(haveIonSize && sameSize)
-	{
-		for(unsigned int ui=0;ui<d.size();ui++)
-			d[ui]->ionSize=ionSize;
-	}
-	
-	//Set the unranged colour
-	if(haveDefIonColour && d.size())
-	{
-		d[d.size()-1]->r = defIonColour.red;
-		d[d.size()-1]->g = defIonColour.green;
-		d[d.size()-1]->b = defIonColour.blue;
-		d[d.size()-1]->a = 1.0f;
-	}
-
-	//remove any zero sized ranges
-	for(unsigned int ui=0;ui<d.size();)
-	{
-		if(!(d[ui]->data.size()))
-		{
-			delete d[ui];
-			std::swap(d[ui],d.back());
-			d.pop_back();
+			//There are no enabled ranges at all.
+			dSizes.back()=totalSize;
 		}
 		else
-			ui++;
-	}
-
-	//======================================
-
-	//Having ranged all streams, merge them back into one ranged stream.
-	if(cache)
-	{
-		for(unsigned int ui=0;ui<d.size(); ui++)
 		{
-			d[ui]->cached=1; //IMPORTANT: ->cached must be set PRIOR to push back
-			filterOutputs.push_back(d[ui]);
+			//Step 1: Do a first sweep to obtain range sizes needed
+			// then reserve the same amount of mem as we need on the output
+			//========================
+			for(unsigned int ui=0;ui<dataIn.size() ;ui++)
+			{
+				switch(dataIn[ui]->getStreamType())
+				{
+					case STREAM_TYPE_IONS: 
+					{
+
+#ifdef _OPENMP
+						//Create a unique array for each thread, so they don't try
+						//to modify the same data structure
+						unsigned int nT =omp_get_max_threads(); 
+						vector<size_t> *dSizeArr = new vector<size_t>[nT];
+						for(unsigned int uk=0;uk<nT;uk++)
+							dSizeArr[uk].resize(dSizes.size(),0);
+#endif
+						const IonStreamData *src = ((const IonStreamData *)dataIn[ui]);
+						size_t n=0;
+
+
+						unsigned int curProg=NUM_CALLBACK;
+						bool spin=false;
+						#pragma omp parallel for firstprivate(curProg)
+						for(size_t uj=0; uj<src->data.size();uj++)
+						{
+#ifdef _OPENMP
+							unsigned int thisT=omp_get_thread_num();
+#endif
+							if(spin)
+								continue;
+							
+							//get the range ID for this particular ion.
+							unsigned int rangeID;
+							rangeID=rng.getRangeID(src->data[uj].getMassToCharge());
+
+							//If ion is unranged, then it will have a rangeID of -1
+							if(rangeID != (unsigned int)-1 && enabledRanges[rangeID] )
+							{
+								unsigned int ionID=rng.getIonID(rangeID);
+
+								//if we are going to keep the ion
+								//then increment this array size
+								if(enabledIons[ionID])
+								{
+									#ifdef _OPENMP
+										dSizeArr[thisT][ionID]++;
+									#else
+										dSizes[ionID]++;
+									#endif
+
+								}
+							}
+							
+							//update progress periodically
+							if(!curProg--)
+							{
+#pragma omp critical
+								{
+								n+=NUM_CALLBACK;
+								progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
+								curProg=NUM_CALLBACK;
+
+
+								if(!(*callback)(false))
+									spin=true;
+								}
+							}
+						}
+
+						if(spin)
+							return RANGEFILE_ABORT_FAIL;
+#ifdef _OPENMP
+						//Merge the arrays back together
+						for(unsigned int uk=0;uk<nT;uk++)
+						{
+							for(unsigned int uj=0;uj<dSizes.size();uj++)
+								dSizes[uj] = dSizes[uj]+dSizeArr[uk][uj];
+						}
+						delete[] dSizeArr;
+#endif
+
+					}
+				}
+			}
 		}
-	}
-	else
-	{
+
+		//reserve the vector to the exact size we need
+		try
+		{
+			for(size_t ui=0;ui<d.size();ui++)
+				d[ui]->data.reserve(dSizes[ui]);
+		}
+		catch(std::bad_alloc)
+		{
+			for(size_t ui=0;ui<d.size();ui++)
+				delete d[ui];
+			return RANGEFILE_BAD_ALLOC;
+		}
+
+		dSizes.clear();
+		//===================================
+
+		//Update progress info
+		progress.step=2;
+		progress.filterProgress=0;
+		progress.stepName=TRANS("Range");
+
+
+		
+
+		//Step 2: Go through each data stream, if it is an ion stream, range it.
+		//=========================================
+		if(haveEnabled)
+		{
+			//	I tried parallelising this a few different ways, but the linear performance wa simply better.
+			//		- Tried an array of openmp locks
+			//		- Tried keeping a unique offset number and fixing the size of the output vectors
+			//		- Tried straight criticalling the push_back
+			//	 Trying to merge vectors in // is tricky. result was 9-10x slower than linear
+		
+			size_t n=0;
+			for(unsigned int ui=0;ui<dataIn.size() ;ui++)
+			{
+				switch(dataIn[ui]->getStreamType())
+				{
+					case STREAM_TYPE_IONS: 
+					{
+						//Set the default (unranged) ion colour, by using
+						//the first input ion colour.
+						if(!haveDefIonColour)
+						{
+							defIonColour.red =  ((IonStreamData *)dataIn[ui])->r;
+							defIonColour.green =  ((IonStreamData *)dataIn[ui])->g;
+							defIonColour.blue =  ((IonStreamData *)dataIn[ui])->b;
+							haveDefIonColour=true;
+						}
+					
+						//Check for ion size consistency	
+						if(haveIonSize)
+						{
+							sameSize &= (fabs(ionSize-((const IonStreamData *)dataIn[ui])->ionSize) 
+											< std::numeric_limits<float>::epsilon());
+						}
+						else
+						{
+							ionSize=((const IonStreamData *)dataIn[ui])->ionSize;
+							haveIonSize=true;
+						}
+
+						unsigned int curProg=NUM_CALLBACK;
+						const size_t off=d.size()-1;
+
+						for(vector<IonHit>::const_iterator it=((const IonStreamData *)dataIn[ui])->data.begin();
+							       it!=((const IonStreamData *)dataIn[ui])->data.end(); ++it)
+						{
+							unsigned int rangeID;
+							rangeID=rng.getRangeID(it->getMassToCharge());
+
+							//If ion is unranged, then it will have a rangeID of -1
+							if(rangeID != (unsigned int)-1)
+							{
+								unsigned int ionID;
+								ionID=rng.getIonID(rangeID);
+
+								//Only retain the ion if the ionID and rangeID are enabled
+								if(enabledRanges[rangeID] && enabledIons[ionID])
+								{
+									ASSERT(ionID < enabledRanges.size());
+
+									d[ionID]->data.push_back(*it);
+								}
+							}
+							else if(!dropUnranged)//If it is unranged, then the rangeID is still -1 (as above).
+							{
+								d[off]->data.push_back(*it);
+							}
+
+							//update progress periodically
+							if(!curProg--)
+							{
+								n+=NUM_CALLBACK;
+								progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
+								curProg=NUM_CALLBACK;
+
+								
+								if(!(*callback)(false))
+								{
+									//Free space allocated for output ion streams...
+									for(unsigned int ui=0;ui<d.size();ui++)
+										delete d[ui];
+									return RANGEFILE_ABORT_FAIL;
+								}
+							}
+
+						}
+
+
+					}
+						break;
+					case STREAM_TYPE_RANGE:
+						//Purposely do nothing. This blocks propagation of other ranges
+						//i.e. there can only be one in any given node of the tree.
+						break;
+					default:
+						getOut.push_back(dataIn[ui]);
+						break;
+				}
+			}
+		}
+		else
+		{
+			//We have no ranges enabled, thus everything must go in the "unranged" section
+			d.back()->data.resize(totalSize);
+
+			size_t off=0;
+			for(unsigned int ui=0;ui<dataIn.size() ;ui++)
+			{
+				switch(dataIn[ui]->getStreamType())
+				{
+					case STREAM_TYPE_IONS:
+					{
+						const vector<IonHit> &ionHitVec=((const IonStreamData *)dataIn[ui])->data;
+						vector<IonHit> &outputVec=(d.back())->data;
+#pragma omp parallel for
+						for(size_t ui=0;ui<ionHitVec.size();ui++)
+							outputVec[off+ui]=ionHitVec[ui];
+						break;
+					}
+					case STREAM_TYPE_RANGE:
+						break;
+					default:
+						getOut.push_back(dataIn[ui]);
+						break;
+				}
+			}
+
+			if(!(*callback)(false))
+			{
+				//Free space allocated for output ion streams...
+				for(unsigned int ui=0;ui<d.size();ui++)
+					delete d[ui];
+				return RANGEFILE_ABORT_FAIL;
+			}
+		}
+		//=========================================
+
+
+		//Step 3 : Set up any properties for the output streams that we need, like colour, size, caching. Trim any empty results.
+		//======================================
+		//Set the colour of the output ranges
+		//and whether to cache.
+		for(unsigned int ui=0; ui<rng.getNumIons(); ui++)
+		{
+			RGBf rngCol;
+			rngCol = rng.getColour(ui);
+			d[ui]->r=rngCol.red;
+			d[ui]->g=rngCol.green;
+			d[ui]->b=rngCol.blue;
+			d[ui]->a=1.0;
+
+		}
+
+		//If all the ions are the same size, then propagate
+		//Otherwise use the default ionsize
+		if(haveIonSize && sameSize)
+		{
+			for(unsigned int ui=0;ui<d.size();ui++)
+				d[ui]->ionSize=ionSize;
+		}
+		
+		//Set the unranged colour
+		if(haveDefIonColour && d.size())
+		{
+			d[d.size()-1]->r = defIonColour.red;
+			d[d.size()-1]->g = defIonColour.green;
+			d[d.size()-1]->b = defIonColour.blue;
+			d[d.size()-1]->a = 1.0f;
+		}
+
+		//remove any zero sized ranges
+		for(unsigned int ui=0;ui<d.size();)
+		{
+			if(!(d[ui]->data.size()))
+			{
+				delete d[ui];
+				std::swap(d[ui],d.back());
+				d.pop_back();
+			}
+			else
+				ui++;
+		}
+
+		//======================================
+
+		//Having ranged all streams, merge them back into one ranged stream.
+		if(cache)
+		{
+			for(unsigned int ui=0;ui<d.size(); ui++)
+			{
+				d[ui]->cached=1; //IMPORTANT: ->cached must be set PRIOR to push back
+				filterOutputs.push_back(d[ui]);
+			}
+		}
+		else
+		{
+			for(unsigned int ui=0;ui<d.size(); ui++)
+				d[ui]->cached=0; //IMPORTANT: ->cached must be set PRIOR to push back
+			cacheOK=false;
+		}
+		
 		for(unsigned int ui=0;ui<d.size(); ui++)
-			d[ui]->cached=0; //IMPORTANT: ->cached must be set PRIOR to push back
-		cacheOK=false;
+			getOut.push_back(d[ui]);
 	}
-	
-	for(unsigned int ui=0;ui<d.size(); ui++)
-		getOut.push_back(d[ui]);
+
 
 	//Put out rangeData
 	RangeStreamData *rngData=new RangeStreamData;

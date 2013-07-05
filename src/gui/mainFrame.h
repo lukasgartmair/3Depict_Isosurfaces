@@ -359,7 +359,12 @@ public:
     virtual void SetCommandLineFiles(wxArrayString &files);
     virtual void updateLastRefreshBox();
 
+    //return type of file, based upon heuristic check
+    static unsigned int guessFileType(const std::string &file);
 
+    //See if the user wants to save the current state
+    void checkAskSaveState();
+    
     //Check to see if we need to reload an autosave file (and reload it, as needed)
     void checkReloadAutosave();
 

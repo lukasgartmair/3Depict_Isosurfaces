@@ -825,7 +825,7 @@ void CopyGrid::copyData()
 /*		else if(cells.size())
 		{
 			//FIXME: Needs more thought than I have time for right now. 
-			// the problem is that cells[] doesn't neccesarily sort tl->br,
+			// the problem is that cells[] doesn't necessarily sort tl->br,
 			// so you have to do this first
 			int lastRow=cells[0].GetRow();
 			int lastCol=cells[0].GetCol();

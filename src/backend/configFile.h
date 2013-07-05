@@ -68,7 +68,7 @@ class ConfigFile
 		//!Initial application window size in pixels
 		unsigned int initialSizeX,initialSizeY;
 		//!Do we have a valid initial app size?
-		bool haveIntialAppSize;
+		bool haveInitialAppSize;
 
 		//!Percentile speeds for mouse zoom and move 
 		unsigned int mouseZoomRatePercent,mouseMoveRatePercent;

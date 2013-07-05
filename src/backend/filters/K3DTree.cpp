@@ -17,8 +17,9 @@
  */
 #include "K3DTree.h"
 
-using std::vector;
+#include "backend/APT/ionhit.h"
 
+using std::vector;
 
 //Axis compare
 //==========

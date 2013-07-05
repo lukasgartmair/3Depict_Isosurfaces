@@ -322,6 +322,10 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 	float length;
 	unsigned int numBins, errCode;
 	errCode=getBinData(numBins,length);
+
+	if(!numBins)
+		return 0;
+
 	if(errCode)
 		return errCode;
 
@@ -648,7 +652,9 @@ bool CompositionProfileFilter::setProperty( unsigned int key,
 					newPt*=sqrt(vectorParams[1].sqrMag());
 				}
 			}
-			
+			if(newPt.sqrMag() < sqrt(std::numeric_limits<float>::epsilon()))
+				return false;
+
 			if(!(vectorParams[1] == newPt ))
 			{
 				vectorParams[1] = newPt;
@@ -760,6 +766,9 @@ bool CompositionProfileFilter::setProperty( unsigned int key,
 		{
 			float newRad;
 			if(stream_cast(newRad,value))
+				return false;
+
+			if(newRad < sqrt(std::numeric_limits<float>::epsilon()))
 				return false;
 
 			if(scalarParams[0] != newRad )
@@ -1515,8 +1524,22 @@ void CompositionProfileFilter::setPropFromBinding(const SelectionBinding &b)
 			b.getValue(vectorParams[0]);
 			break;
 		case BINDING_CYLINDER_DIRECTION:
+		{
+			Point3D pOld=vectorParams[1];
 			b.getValue(vectorParams[1]);
+			//Test getting the bin data.
+			// if something is wrong, abort
+			float length;
+			unsigned int numBins;
+			unsigned int errCode= getBinData(numBins,length);
+			if(errCode || !numBins)
+			{
+				vectorParams[1]=pOld;
+				return;
+			}
+
 			break;
+		}
 		default:
 			ASSERT(false);
 	}

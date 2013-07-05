@@ -28,6 +28,7 @@
 #include "backend/filters/allFilter.h"
 #include "backend/configFile.h"
 
+
 #include "common/stringFuncs.h"
 #include "common/xmlHelper.h"
 
@@ -370,7 +371,7 @@ bool rangeFileLoadTests()
 	testDir=testDir+wxT("rangefiles/");
 
 	wxArrayString arrayStr,tmpArr;
-	//Get all the files matching rng extentions
+	//Get all the files matching rng extensions
 	vector<string> rangeExts;
 	RangeFile::getAllExts(rangeExts);
 	for(unsigned int ui=0;ui<rangeExts.size();ui++)
@@ -414,6 +415,7 @@ bool rangeFileLoadTests()
 	ionCountMap["test9.rng"]=3; rangeCountMap["test9.rng"]=3;
 	ionCountMap["test10.rng"]=3; rangeCountMap["test10.rng"]=3;
 	ionCountMap["test11.rng"]=5; rangeCountMap["test11.rng"]=10;
+	ionCountMap["test12.rng"]=5; rangeCountMap["test12.rng"]=10;
 
 	ionCountMap["test1.rrng"]=1; rangeCountMap["test1.rrng"]=1;
 	ionCountMap["test2.rrng"]=3; rangeCountMap["test2.rrng"]=6; 
@@ -484,6 +486,56 @@ bool rangeFileLoadTests()
 		}
 	}
 
+
+
+	map<string,int> typeMapping;
+
+	typeMapping["test1.rng"]=RANGE_FORMAT_ORNL;
+	typeMapping["test2.rng"]=RANGE_FORMAT_ORNL; 
+	typeMapping["test3.rng"]=RANGE_FORMAT_ORNL;
+	typeMapping["test5.rng"]=RANGE_FORMAT_ORNL; 
+	typeMapping["test7.rng"]=RANGE_FORMAT_ORNL; 
+	typeMapping["test8.rng"]=RANGE_FORMAT_ORNL; 
+	typeMapping["test9.rng"]=RANGE_FORMAT_ORNL; 
+	typeMapping["test10.rng"]=RANGE_FORMAT_ORNL;
+	typeMapping["test11.rng"]=RANGE_FORMAT_ORNL;
+	typeMapping["test12.rng"]=RANGE_FORMAT_DBL_ORNL; 
+	typeMapping["test1.rrng"]=RANGE_FORMAT_RRNG;
+	typeMapping["test2.rrng"]=RANGE_FORMAT_RRNG;
+	typeMapping["test3.rrng"]=RANGE_FORMAT_RRNG;
+	typeMapping["test4.rrng"]=RANGE_FORMAT_RRNG;
+	typeMapping["test5.rrng"]=RANGE_FORMAT_RRNG;
+	typeMapping["test1.env"]=RANGE_FORMAT_ENV; 
+
+
+	for(unsigned int ui=0;ui<arrayStr.GetCount();ui++)
+	{
+		std::string fileLongname, fileShortname;
+		wxFileName filename;
+		
+		fileLongname=stlStr(arrayStr[ui]);
+		filename=wxStr(fileLongname);
+		fileShortname=stlStr(filename.GetFullName());
+
+		//Check to see that the auto-parser correctly identifies the type
+		if(typeMapping.find(fileShortname) != typeMapping.end())
+		{
+			std::string errString;
+			errString="Range type detection : ";
+			errString+=fileLongname;
+
+			if(!wxFileExists(wxStr(fileLongname)))
+			{
+				cerr << "File expected, but not found during test:" <<
+					fileLongname << endl;
+				continue;
+			}
+			
+
+			TEST(RangeFile::detectFileType(fileLongname.c_str()) == 
+					typeMapping[fileShortname], errString);
+		}
+	}
 	return true;
 }
 

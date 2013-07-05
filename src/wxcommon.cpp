@@ -27,6 +27,10 @@
 	#include <wx/msw/registry.h>  
 #endif
 
+#ifdef __APPLE__
+#include "CoreFoundation/CoreFoundation.h"
+#endif
+
 //Auto update checking RSS URL
 const char *RSS_FEED_LOCATION="http://threedepict.sourceforge.net/rss.xml";
 
@@ -45,7 +49,7 @@ std::string locateDataFile(const char *name)
 	//Linux:
 	//	- Look in cwd & some common hard-coded install locations.
 	//Mac:
-	// 	- look in cwd
+	// 	- look in bundle
 	//Windows
 	//	- Locate a registry key that has the install path, which is preset by
 	//	  application installer
@@ -69,13 +73,16 @@ std::string locateDataFile(const char *name)
 		if(s.size() > 11)
 		{
 			s=s.substr(0,s.size()-11);			
-			return s + std::string(name);
+
+			s+=name;
+
+			if(wxFileExists(wxStr(s)))
+				return s;
 		}
 	}
 
-#endif	
-
-#ifdef __linux__
+	return std::string("");
+#elif defined( __linux__)
 
 	//Possible search paths. Must have trailing slash. will
 	//be searched in sequence.
@@ -97,13 +104,29 @@ std::string locateDataFile(const char *name)
 			return s;
 	}
 
-	//Give up and force cur working dir.
-	return std::string(name);
+	//Return empty string, as we cna't find it
+	return std::string("");
+#elif defined (__APPLE__)
+    CFBundleRef mainBundle = CFBundleGetMainBundle();
+    CFURLRef resourcesURL = CFBundleCopyResourcesDirectoryURL(mainBundle);
+    char path[PATH_MAX];
+    if (!CFURLGetFileSystemRepresentation(resourcesURL, TRUE, (UInt8 *)path, PATH_MAX))
+    {
+        // error!
+	return std::string("");
+    }
+    CFRelease(resourcesURL);
+	std::string s=std::string(path) + "/" + name;
+		if(wxFileExists(wxStr(s)))
+			return s;
 #else
 
 	//E.g. Mac
 	//	- Look in cwd
-	return  std::string(name);
+	if(wxFileExists(wxCStr(name)))
+		return  std::string(name);
+	else
+		return std::string("");
 #endif
 }
 

@@ -33,9 +33,7 @@ class Scene;
 #include "backend/plot.h"
 #include "state.h"
 
-
-
-
+#include "backend/APT/APTFileIO.h"
 
 
 //!Visualisation controller
@@ -424,6 +422,8 @@ class VisController
 
 		//true if the state has been modified since last load/save.
 		int stateModifyLevel() const { return currentState.stateModifyLevel();};
+
+		bool hasStateData() const { return currentState.hasStateData(); }
 
 		//Return the current state's filename
 		string getFilename() const { return currentState.getFilename(); }

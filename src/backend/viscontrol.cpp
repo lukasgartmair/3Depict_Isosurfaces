@@ -1012,19 +1012,15 @@ bool VisController::reparentFilter(size_t filter, size_t newParent)
 
 bool VisController::setFilterString(size_t id,const std::string &s)
 {
+	//Save current filter state to undo stack
+	pushUndoStack();
 	
 	Filter *p=(Filter *)getFilterById(id);
 
 	if(s != p->getUserString())
 	{
-		//Save current filter state to undo stack
-		pushUndoStack();
-		
-		//Do the actual update
+		currentState.setStateModified(true);
 		p->setUserString(s);
-		
-		//Update the current state	
-		currentState.setFilterTreeByClone(filterTree);
 		return true;
 	}
 
@@ -1186,7 +1182,7 @@ unsigned int VisController::exportIonStreams(const std::vector<const FilterStrea
 					case IONFORMAT_POS:
 					{
 						//Append this ion stream to the posfile
-						appendPos(ionData->data,outFile.c_str());
+						IonHit::appendPos(ionData->data,outFile.c_str());
 
 						break;
 					}

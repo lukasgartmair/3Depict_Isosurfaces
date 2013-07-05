@@ -59,7 +59,7 @@ bool getRectilinearBounds(const std::vector<const FilterStreamData *> &dataIn, B
 			if(ions->data.size() >1)
 			{
 				ions = (const IonStreamData*)dataIn[ui];
-				c=getIonDataLimits(ions->data);
+				IonHit::getBoundCube(ions->data,c);
 
 				if(c.isValid())
 				{
@@ -832,7 +832,7 @@ bool volumeBoxTest()
 	f->getConsoleStrings(consoleStrings); 
 	
 	//weak test for the console string size
-	TEST(consoleStrings.size(), "console strings existance test");
+	TEST(consoleStrings.size(), "console strings existence test");
 
 
 	//Ensure that the rectilinear volume is the same as
@@ -901,7 +901,7 @@ bool volumeSphereTest()
 	f->getConsoleStrings(consoleStrings); 
 
 	//weak test for the console string size
-	TEST(consoleStrings.size(), "console strings existance test");
+	TEST(consoleStrings.size(), "console strings existence test");
 
 
 	float volMeasure,volReal;
@@ -926,7 +926,7 @@ bool volumeSphereTest()
 	volReal =4.0f/3.0f*M_PI*OUTLINE_RADIUS*OUTLINE_RADIUS*OUTLINE_RADIUS;
 	TEST(fabs(volMeasure -volReal) < 0.05*volReal, "volume test, convex est. of sphere");
 	
-	TEST(consoleStrings.size(), "console strings existance test");
+	TEST(consoleStrings.size(), "console strings existence test");
 
 	delete d;
 	delete f;

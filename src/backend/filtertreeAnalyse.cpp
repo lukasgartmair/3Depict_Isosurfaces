@@ -89,7 +89,7 @@ bool affectedBySampling(const Filter *f, bool haveRngParent)
 	FilterPropGroup props;
 	f->getProperties(props);
 	
-	bool affected;
+	bool affected=false;
 	//See if filter is configured to affect spatial analysis
 	switch(f->getType())
 	{
@@ -110,7 +110,6 @@ bool affectedBySampling(const Filter *f, bool haveRngParent)
 			break;
 		}
 		case FILTER_TYPE_SPATIAL_ANALYSIS:
-		case FILTER_TYPE_IONINFO:
 		{
 			affected=true;
 			break;

@@ -21,6 +21,8 @@
 #include <cmath>
 #include <limits>
 #include <iostream>
+#include <vector>
+
 
 #include "endianTest.h"
 
@@ -142,6 +144,8 @@ class Point3D
 		bool orthogonalise(const Point3D &p);
 
 		static Point3D centroid(const Point3D *p, unsigned int n);
+		
+		static Point3D centroid(const std::vector<Point3D> &p); 
 #ifdef __LITTLE_ENDIAN__
                 //!Flip the endian state for data stored in this point
                 void switchEndian();

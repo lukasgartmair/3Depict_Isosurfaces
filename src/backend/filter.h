@@ -17,10 +17,14 @@
 */
 #ifndef FILTER_H
 #define FILTER_H
+
 class Filter;
 class FilterStreamData;
+
 class ProgressData;
 class RangeFileFilter;
+
+#include "APT/ionhit.h"
 
 #include "APT/APTRanges.h"
 #include "common/constants.h"
@@ -256,7 +260,7 @@ public:
 	// caller. Cached status is *not* duplicated
 	IonStreamData *cloneSampled(float fraction) const;
 
-	size_t getNumBasicObjects() const  { return data.size();};
+	size_t getNumBasicObjects() const;
 	
 	unsigned int representationType;
 	float r,g,b,a;

@@ -25,6 +25,8 @@
 #include "filterCommon.h"
 
 
+#include "backend/APT/APTFileIO.h"
+
 //Default number of ions to load
 const size_t MAX_IONS_LOAD_DEFAULT=5*1024*1024/(4*sizeof(float)); //5 MB worth.
 
@@ -364,7 +366,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 
 
 	BoundCube dataCube;
-	dataCube = getIonDataLimits(ionData->data);
+	IonHit::getBoundCube(ionData->data,dataCube);
 
 	if(dataCube.isNumericallyBig())
 	{
@@ -1200,7 +1202,7 @@ bool posFileTest()
 		return true;
 	}
 
-	if(IonVectorToPos(hits,posName))
+	if(IonHit::makePos(hits,posName))
 	{
 		WARN(false,"Unable to create test output file. Unit test was indeterminate. Requires write access to excution path");
 		return true;

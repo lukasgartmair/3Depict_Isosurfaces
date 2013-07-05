@@ -105,6 +105,12 @@ MathGLPane::~MathGLPane()
 }
 
 
+bool MathGLPane::readyForInput() const
+{
+	return (thePlot && gr && 
+		!thePlot->isInteractionLocked() && !thePlot->visibleEmpty());
+}
+
 unsigned int MathGLPane::getAxisMask(int x, int y) const
 {
 	
@@ -229,7 +235,7 @@ void MathGLPane::render(wxPaintEvent &event)
 
 
 	//If the plot has changed, been resized or is performing
-	// a mouse action that requires updating, we need to update it
+	// a mouse action that reuqires updating, we need to update it
 	//likewise if we don't have a plot, we need one.
 	if(!gr || hasChanged || hasResized || 
 		MOUSE_ACTION_NEEDS_REDRAW[mouseDragMode])
@@ -329,8 +335,8 @@ void MathGLPane::render(wxPaintEvent &event)
 
 			const int END_MARKER_SIZE=5;
 
-		//If the cursor is wholly below
-			//the axis, draw a line rather than a box
+			//If the cursor is wholly below
+			//the axis, draw a line rather than abox
 
 			unsigned int startMask, endMask;
 			startMask=getAxisMask(draggingStart.x, draggingStart.y);
@@ -412,8 +418,8 @@ void MathGLPane::updateMouseCursor()
 		return;
 
 	//Set cursor to normal by default
-		SetCursor(wxNullCursor);
-	if(!thePlot->getNumVisible())
+	SetCursor(wxNullCursor);
+	if(!readyForInput())
 		return;
 
 	//Update mouse cursor
@@ -462,7 +468,8 @@ bool MathGLPane::getRegionUnderCursor(const wxPoint  &mousePos, unsigned int &pl
 
 	//Convert the mouse coordinates to data coordinates.
 	mglPoint pMouse= gr->CalcXYZ(mousePos.x,mousePos.y);
-
+	if(!readyForInput())
+		return false;
 
 	//Only allow  range interaction within the plot bb
 #ifdef USE_MGL2
@@ -483,7 +490,7 @@ bool MathGLPane::getRegionUnderCursor(const wxPoint  &mousePos, unsigned int &pl
 void MathGLPane::mouseMoved(wxMouseEvent& event)
 {
 	leftWindow=false;
-	if(!thePlot || !gr || thePlot->isInteractionLocked() )
+	if(!readyForInput())
 	{
 		mouseDragMode=MOUSE_MODE_ENUM_END;
 		return;
@@ -526,7 +533,7 @@ void MathGLPane::mouseMoved(wxMouseEvent& event)
 
 void MathGLPane::mouseDoubleLeftClick(wxMouseEvent& event)
 {
-	if(!thePlot || !gr || thePlot->isInteractionLocked())
+	if(!readyForInput())
 		return;
 
 	//Cancel any mouse drag mode
@@ -623,7 +630,7 @@ void MathGLPane::oneDMouseDownAction(bool leftDown,bool middleDown,
 
 void MathGLPane::leftMouseDown(wxMouseEvent& event)
 {
-	if(!gr || !thePlot->getNumVisible() || thePlot->isInteractionLocked())
+	if(!readyForInput())
 		return;
 
 	int w,h;
@@ -652,7 +659,7 @@ void MathGLPane::leftMouseDown(wxMouseEvent& event)
 
 void MathGLPane::middleMouseDown(wxMouseEvent &event)
 {
-	if(!gr || !thePlot->getNumVisible() || thePlot->isInteractionLocked())
+	if(!readyForInput())
 		return;
 	
 	int w,h;
@@ -683,7 +690,7 @@ void MathGLPane::middleMouseDown(wxMouseEvent &event)
 void MathGLPane::mouseWheelMoved(wxMouseEvent& event)
 {
 	//If no valid plot, don't do anything
-	if(!thePlot || !gr || thePlot->isInteractionLocked() )
+	if(!readyForInput())
 		return;
 	
 	//no action if currently dragging
@@ -788,7 +795,7 @@ void MathGLPane::mouseWheelMoved(wxMouseEvent& event)
 void MathGLPane::leftMouseReleased(wxMouseEvent& event)
 {
 
-	if(!thePlot || !gr || thePlot->isInteractionLocked() )
+	if(!readyForInput())
 		return;
 
 	switch(mouseDragMode)
@@ -828,7 +835,7 @@ void MathGLPane::leftMouseReleased(wxMouseEvent& event)
 void MathGLPane::middleMouseReleased(wxMouseEvent& event)
 {
 
-	if(!gr || thePlot->isInteractionLocked())
+	if(!readyForInput())
 		return;
 
 	if(mouseDragMode == MOUSE_MODE_DRAG_PAN)
@@ -970,14 +977,14 @@ void MathGLPane::mouseLeftWindow(wxMouseEvent& event)
 
 void MathGLPane::keyPressed(wxKeyEvent& event) 
 {
-	if(!gr || thePlot->isInteractionLocked() )
+	if(!readyForInput())
 		return;
 	updateMouseCursor();
 }
 
 void MathGLPane::keyReleased(wxKeyEvent& event) 
 {
-	if(!gr || thePlot->isInteractionLocked() )
+	if(!readyForInput())
 		return;
 	updateMouseCursor();
 }

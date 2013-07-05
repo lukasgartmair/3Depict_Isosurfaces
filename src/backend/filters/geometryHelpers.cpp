@@ -18,9 +18,15 @@
 
 
 #include "geometryHelpers.h"
+
+#include "backend/APT/ionhit.h"
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+
+
+using std::vector;
 
 const size_t DEFAULT_NUM_CALLBACK=5000;
 

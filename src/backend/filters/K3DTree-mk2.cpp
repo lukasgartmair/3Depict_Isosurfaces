@@ -18,6 +18,7 @@
 
 #include "K3DTree-mk2.h"
 
+#include "backend/APT/ionhit.h"
 
 #include <stack>
 #include <queue>
@@ -55,7 +56,7 @@ void K3DTreeMk2::resetPts(std::vector<IonHit> &p, bool clear)
 	
 
 	//Compute bounding box for indexedPoints
-	treeBounds=getIonDataLimits(p);
+	IonHit::getBoundCube(p,treeBounds);
 
 #pragma omp parallel for
 	for(size_t ui=0;ui<indexedPoints.size();ui++)
@@ -107,6 +108,8 @@ size_t K3DTreeMk2::size() const
 
 bool K3DTreeMk2::build()
 {
+
+	const size_t PROGRESS_REDUCE=5000;
 
 	using std::make_pair;
 

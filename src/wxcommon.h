@@ -46,7 +46,7 @@ inline std::string stlStr(const wxString& s){
 
 //--------
 //Perform validation of a wx text control, adjusting appearance as needed
-// can pass an additonal constraint function that needs to be satistfied (return true)
+// can pass an additional constraint function that needs to be satisfied (return true)
 // in order for validation to succeed
 template<class T> 
 bool validateTextAsStream(wxTextCtrl *t, T &i, bool (*conditionFunc)(const T&))
@@ -122,7 +122,7 @@ bool validateTextAsStream(wxTextCtrl *t, T &i)
 void wxErrMsg(wxWindow *, const std::string &title,
 		const std::string &mesg);
 
-//locate the file we are looking for in OS specfic paths
+//locate the file we are looking for in OS specific paths. Returns empty string if file cannot be found
 std::string locateDataFile(const char *name);
 
 //Custom event for remote update thread posting
@@ -132,7 +132,7 @@ extern wxEventType RemoteUpdateAvailEvent;
 bool processMatchesName(size_t processID, const std::string &procName);
 
 
-//!Remote version thread checker, downloads rss file from remote system and then
+//!Remote version thread checker, downloads RSS file from remote system and then
 // parses the file for the latest remote version number
 class VersionCheckThread : public wxThread
 {
@@ -152,10 +152,10 @@ class VersionCheckThread : public wxThread
 		//Returns true upon completion of thread.
 		bool isComplete()  const { return complete; }
 
-		//Returns true if version string was retreived succesfully
+		//Returns true if version string was retrieved successfully
 		bool isRetrieveOK() const { return retrieveOK; }
 
-		//Return the maximal version string obtained from the remote rss feed
+		//Return the maximal version string obtained from the remote RSS feed
 		std::string getVerStr() {  return versionStr; }
 };
 #endif

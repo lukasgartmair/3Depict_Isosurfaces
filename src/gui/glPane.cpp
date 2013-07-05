@@ -295,7 +295,7 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 	//left-right and up-down move values
 	float lrMove,udMove;	
 
-	//Movement rate multiplier -- intialise to user value
+	//Movement rate multiplier -- initialise to user value
 	float camMultRate=mouseMoveFactor;
 	if(event.m_shiftDown)
 	{

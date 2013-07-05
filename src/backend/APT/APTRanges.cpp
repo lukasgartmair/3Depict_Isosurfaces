@@ -16,17 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-
 #include "APTRanges.h"
+
+#include "ionhit.h"
 
 #include "../../common/constants.h"
 #include "../../common/stringFuncs.h"
 #include "../../common/translation.h"
 
 #include <map>
+#include <fstream>
 #include <clocale>
 #include <numeric>
+#include <cstring>
 
 using std::string;
 using std::vector;

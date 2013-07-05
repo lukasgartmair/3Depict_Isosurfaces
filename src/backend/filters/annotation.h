@@ -45,7 +45,7 @@ class AnnotateFilter : public Filter
 		//annotation text string
 		std::string annotateText;
 		//Text display style, arrow annotation size, handle size for angle spheres
-		float textSize,annotateSize,sphereAngleSize,lineSize;
+		float textSize,annotateSize,sphereMarkerSize,lineSize;
 
 		//Annotation colour
 		float r,g,b,a;
@@ -73,8 +73,6 @@ class AnnotateFilter : public Filter
 		//Font-size for linear measure object 
 		float fontSizeLinearMeasure;
 
-		//Measure end-marker size
-		float linearMeasureMarkerSize;
 	public:
 		//!Constructor
 		AnnotateFilter();

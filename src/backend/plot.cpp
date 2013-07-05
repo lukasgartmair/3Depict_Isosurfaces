@@ -43,6 +43,17 @@ using std::string;
 using std::pair;
 using std::vector;
 
+float makePositiveLog(float v)
+
+{
+	if(v <=1.0f)
+		v=0.0f;
+	else
+		v=log10(v);
+
+	return v;
+}
+
 
 //Axis min/max bounding box is disallowed to be exactly zero on any given axis
 // perform a little "push off" by this fudge factor
@@ -397,7 +408,7 @@ void PlotWrapper::setBounds(float xMin, float xMax,
 	ASSERT(xMin<xMax);
 	ASSERT(yMin<=yMax);
 	xUserMin=xMin;
-	yUserMin=std::max(0.0f,yMin);
+	yUserMin=yMin;
 	xUserMax=xMax;
 	yUserMax=yMax;
 
@@ -573,6 +584,21 @@ unsigned int PlotWrapper::getVisibleType() const
 	return visibleType;
 }
 
+bool PlotWrapper::visibleEmpty() const
+{
+	bool empty=true;
+	for(unsigned int ui=0;ui<plottingData.size() ; ui++)
+	{
+		if(plottingData[ui]->visible)
+		{
+			empty&=plottingData[ui]->empty();
+			if(!empty)
+				return false;
+		}
+	}
+
+}
+
 void PlotWrapper::drawPlot(mglGraph *gr) const
 {
 	unsigned int visType = getVisibleType();
@@ -603,11 +629,14 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 	{
 		if(plottingData[ui]->visible)
 		{
+			float tmpMinX,tmpMinY,tmpMaxX,tmpMaxY;
+			plottingData[ui]->getBounds(
+				tmpMinX,tmpMaxX,tmpMinY,tmpMaxY);
 
-			minX=std::min(minX,plottingData[ui]->minX);
-			maxX=std::max(maxX,plottingData[ui]->maxX);
-			minY=std::min(minY,plottingData[ui]->minY);
-			maxY=std::max(maxY,plottingData[ui]->maxY);
+			minX=std::min(minX,tmpMinX);
+			maxX=std::max(maxX,tmpMaxX);
+			minY=std::min(minY,tmpMinY);
+			maxY=std::max(maxY,tmpMaxY);
 
 
 			if(!xLabel.size())
@@ -699,11 +728,7 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 				min.x=minX;
 				min.y=minY;
 				max.x=maxX;
-
-				if(useLogPlot && maxY > 0.0f)
-					max.y =log10(maxY);
-				else
-					max.y=maxY;
+				max.y=maxY;
 
 				axisCross.x = minX;
 				axisCross.y=min.y;
@@ -959,7 +984,6 @@ void Plot1D::setData(const vector<float> &vX, const vector<float> &vY,
 		maxY+=AXIS_MIN_TOLERANCE;
 	}
 }
-//---
 
 
 void Plot1D::setData(const vector<std::pair<float,float> > &v)
@@ -969,6 +993,7 @@ void Plot1D::setData(const vector<std::pair<float,float> > &v)
 	setData(v,dummyVar);
 
 }
+
 void Plot1D::setData(const vector<std::pair<float,float> > &v,const vector<float> &vErr) 
 {
 	//Fill up vectors with data
@@ -988,22 +1013,22 @@ void Plot1D::setData(const vector<std::pair<float,float> > &v,const vector<float
 	//Compute minima and maxima of plot data, and keep a copy of it
 	float maxThis=-std::numeric_limits<float>::max();
 	float minThis=std::numeric_limits<float>::max();
+
+	// --------- X Values ---
 	for(unsigned int ui=0;ui<v.size();ui++)
 	{
 		minThis=std::min(minThis,v[ui].first);
 		maxThis=std::max(maxThis,v[ui].first);
 	}
-
 	minX=minThis;
 	maxX=maxThis;
-	if(maxX - minX < AXIS_MIN_TOLERANCE)
-	{
-		minX-=AXIS_MIN_TOLERANCE;
-		maxX+=AXIS_MIN_TOLERANCE;
-	}
+	//------------
 
-	maxThis=-std::numeric_limits<float>::max();
+
+	// Y values, taking into account any error bars
+	//------------------
 	minThis=std::numeric_limits<float>::max();
+	maxThis=-std::numeric_limits<float>::max();
 	if(vErr.size())
 	{
 		ASSERT(vErr.size() == v.size());
@@ -1023,32 +1048,32 @@ void Plot1D::setData(const vector<std::pair<float,float> > &v,const vector<float
 
 	}
 	minY=minThis;
-	maxY=1.10f*maxThis; //The 1.10 is because mathgl chops off data
-	
-	if(maxY - minY < AXIS_MIN_TOLERANCE)
-	{
-		minY-=AXIS_MIN_TOLERANCE;
-		maxY+=AXIS_MIN_TOLERANCE;
-	}
-
-
+	maxY=maxThis; 
+	//------------------
 }
 
 void Plot1D::getBounds(float &xMin,float &xMax,float &yMin,float &yMax) const
 {
-	//OK, we are going to have to scan for max/min
 	xMin=minX;
 	xMax=maxX;
 	yMin=minY;
 	yMax=maxY;
 
+	ASSERT(yMin <=yMax);
 	//If we are in log mode, then we need to set the
 	//log of that bound before emitting it.
-	if(logarithmic && yMax)
+	if(logarithmic)
 	{
-		yMin=log10(std::max(yMin,1.0f));
-		yMax=log10(yMax);
+		//Disallow negative logarithmic bounds
+		yMax=makePositiveLog(yMax);
 	}
+	ASSERT(yMin <=yMax);
+}
+
+bool Plot1D::empty() const
+{
+	ASSERT(xValues.size() == yValues.size());
+	return xValues.empty();
 }
 
 void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
@@ -1056,8 +1081,11 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 	bool showErrs;
 
 	mglData xDat,yDat,eDat;
+
 	ASSERT(visible);
-		
+	
+
+	//Make a copy of the data we need to use
 	float *bufferX,*bufferY,*bufferErr;
 	bufferX = new float[xValues.size()];
 	bufferY = new float[yValues.size()];
@@ -1066,16 +1094,14 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 	if(showErrs)
 		bufferErr = new float[errBars.size()];
 
+	//Pre-process the data, before handing to mathgl
+	//--
 	if(logarithmic)
 	{
 		for(unsigned int uj=0;uj<xValues.size(); uj++)
 		{
-		bufferX[uj] = xValues[uj];
-			
-			if(yValues[uj] > 0.0)
-				bufferY[uj] = log10(yValues[uj]);
-			else
-				bufferY[uj] = 0;
+			bufferX[uj] = xValues[uj];
+			bufferY[uj] = makePositiveLog(yValues[uj]);
 
 		}
 	}
@@ -1093,15 +1119,22 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 				bufferErr[uj] = errBars[uj];
 		}
 	}
+	//--
 	
 	//Mathgl needs to know where to put the error bars.	
 	ASSERT(!showErrs  || errBars.size() ==xValues.size());
 	
+	//Initialise the mathgl data
+	//--
 	xDat.Set(bufferX,xValues.size());
 	yDat.Set(bufferY,yValues.size());
 
 	eDat.Set(bufferErr,errBars.size());
-
+	//--
+	
+	
+	//Obtain a colour code to use for the plot, based upon
+	// the actual colour we wish to use
 	char colourCode[2];
 	colourCode[0]=fixer.getNextBestColour(r,g,b);
 	colourCode[1]='\0';
@@ -1164,6 +1197,7 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 			
 	
 }
+
 
 
 void Plot1D::addRegion(unsigned int parentPlot,unsigned int regionID,float start, float end, 

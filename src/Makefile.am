@@ -49,13 +49,13 @@ FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h
 		backend/filters/annotation.h backend/filters/geometryHelpers.h
 
 BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backend/filtertree.cpp \
-		     	backend/APT/APTClasses.cpp backend/APT/APTRanges.cpp \
+		     	backend/APT/ionhit.cpp backend/APT/APTFileIO.cpp backend/APT/APTRanges.cpp \
 			backend/filters/K3DTree.cpp backend/filters/K3DTree-mk2.cpp\
 			backend/filter.cpp backend/filters/rdf.cpp \
 		       backend/viscontrol.cpp backend/state.cpp backend/plot.cpp  backend/configFile.cpp 
 
 BACKEND_HEADER_FILES =  backend/animator.h backend/filtertreeAnalyse.h backend/filtertree.h\
-			backend/APT/APTClasses.h backend/APT/APTRanges.h \
+			backend/APT/ionhit.h backend/APT/APTFileIO.h backend/APT/APTRanges.h \
 			backend/filters/K3DTree.h backend/filters/K3DTree-mk2.h \
 			backend/filter.h backend/filters/rdf.h \
 			backend/viscontrol.h backend/state.h backend/plot.h backend/configFile.h \
@@ -66,6 +66,8 @@ BACKEND_HEADER_FILES =  backend/animator.h backend/filtertreeAnalyse.h backend/f
 #------------ OpenGL interface files
 OPENGL_HEADER_FILES = gl/scene.h gl/drawables.h gl/effect.h gl/textures.h gl/select.h gl/cameras.h gl/isoSurface.h
 OPENGL_SOURCE_FILES =  gl/scene.cpp gl/drawables.cpp gl/effect.cpp gl/textures.cpp gl/select.cpp gl/cameras.cpp gl/isoSurface.cpp
+
+
 #------------
 
 
@@ -77,7 +79,7 @@ DIALOG_SOURCE_FILES = gui/dialogs/ExportPos.cpp  gui/dialogs/ExportRngDialog.cpp
 		gui/dialogs/animateFilterDialog.cpp \
 		gui/dialogs/animateSubDialogs/colourKeyFrameDialog.cpp \
 		gui/dialogs/animateSubDialogs/stringKeyFrameDialog.cpp \
-		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.cpp 
+		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.cpp
 
 
 DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/dialogs/prefDialog.h \
@@ -87,7 +89,7 @@ DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/
 		gui/dialogs/animateSubDialogs/realKeyFrameDialog.h \
 		gui/dialogs/animateSubDialogs/colourKeyFrameDialog.h \
 		gui/dialogs/animateSubDialogs/stringKeyFrameDialog.h \
-		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.h 
+		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.h
 
 GUI_SOURCE_FILES=gui/mainFrame.cpp gui/mathglPane.cpp gui/cropPanel.cpp gui/glPane.cpp  $(DIALOG_SOURCE_FILES)
 GUI_HEADER_FILES=gui/mainFrame.h gui/mathglPane.h gui/cropPanel.h gui/art.h gui/glPane.h $(DIALOG_HEADER_FILES)

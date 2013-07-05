@@ -58,7 +58,7 @@ class RangeFileFilter : public Filter
 		void setFormat(unsigned int format);
 	
 		std::vector<char> getEnabledRanges() const {return enabledRanges;};
-		void setEnabledRanges(vector<char> i) {enabledRanges = i;};
+		void setEnabledRanges(const vector<char> &i) {enabledRanges = i;};
 		
 		std::vector<char> getEnabledIons() const {return enabledIons;};
 

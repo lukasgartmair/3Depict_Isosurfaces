@@ -328,7 +328,7 @@ void BoundCube::setBounds(const std::vector<Point3D> &points)
 #endif
 }
 
-void BoundCube::setInverseLimits()
+void BoundCube::setInverseLimits(bool setValid)
 {
 	bounds[0][0] = std::numeric_limits<float>::max();
 	bounds[1][0] = std::numeric_limits<float>::max();
@@ -338,13 +338,13 @@ void BoundCube::setInverseLimits()
 	bounds[1][1] = -std::numeric_limits<float>::max();
 	bounds[2][1] = -std::numeric_limits<float>::max();
 
-	valid[0][0] =false;
-	valid[1][0] =false;
-	valid[2][0] =false;
+	valid[0][0] =setValid;
+	valid[1][0] =setValid;
+	valid[2][0] =setValid;
 	
-	valid[0][1] =false;
-	valid[1][1] =false;
-	valid[2][1] =false;
+	valid[0][1] =setValid;
+	valid[1][1] =setValid;
+	valid[2][1] =setValid;
 }
 
 bool BoundCube::isValid() const
@@ -506,6 +506,12 @@ bool BoundCube::containsPt(const Point3D &p) const
 	return true;
 }
 
+bool BoundCube::contains(const BoundCube &b) const
+{
+	Point3D low,high;
+	b.getBounds(low,high);
+	return containsPt(low) && containsPt(high); 
+}
 float BoundCube::getSize(unsigned int dim) const
 {
 	ASSERT(dim < 3);

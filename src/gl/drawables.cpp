@@ -1236,7 +1236,7 @@ void DrawGLText::draw() const
 	}
 	else
 	{
-		//FIXME: The text ends up in a wierd location
+		//FIXME: The text ends up in a weird location
 		//2D coordinate storage for bitmap text
 		double xWin,yWin,zWin;
 		//Compute the 2D coordinates
@@ -1488,9 +1488,7 @@ DrawTexturedQuadOverlay::DrawTexturedQuadOverlay()
 
 DrawTexturedQuadOverlay::~DrawTexturedQuadOverlay()
 {
-#ifdef DEBUG
-	textureOK=false;
-#endif
+	texPool->closeTexture(textureId);
 }
 
 void DrawTexturedQuadOverlay::setSize(float s)
@@ -1942,8 +1940,15 @@ void DrawField3D::draw() const
 	//Draw the bounding box as required
 	if(drawBoundBox)
 	{
+		float alphaUse;
+
+		if(useAlphaBlend)
+			alphaUse=boxColourA;
+		else
+			alphaUse=1.0f;
+		
 		drawBox(field->getMinBounds(),field->getMaxBounds(),
-			boxColourR, boxColourG,boxColourB,boxColourA);
+			boxColourR, boxColourG,boxColourB,alphaUse);
 	}
 	//Draw the projections
 }

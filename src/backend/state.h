@@ -255,6 +255,9 @@ class AnalysisState
 		//true if the state has been modified since last load/save.
 		int stateModifyLevel() const { return modifyLevel;};
 
+		//Returns true if there is any data in the stash or the active tree
+		bool hasStateData() const { return (stashedTrees.size() || activeTree.size());}
+
 		//TODO: REMOVE ME - needed for viscontrol linkage
 		void setStateModified(int state) const { modifyLevel=state;}
 

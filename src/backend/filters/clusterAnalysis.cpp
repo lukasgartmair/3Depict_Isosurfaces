@@ -2908,8 +2908,8 @@ void ClusterAnalysisFilter::getSingularValues(const vector<vector<IonHit> > &clu
 
 			//Compute the cluster's centre of mass (assuming unit mass per object)
 			Point3D centroid[2];
-			getPointSum(clusteredCore[ui],centroid[0]);
-			getPointSum(clusteredBulk[ui],centroid[1]);
+			IonHit::getCentroid(clusteredCore[ui],centroid[0]);
+			IonHit::getCentroid(clusteredBulk[ui],centroid[1]);
 		
 			Point3D clusterCentre;
 			clusterCentre= centroid[0]+centroid[1];
@@ -2977,7 +2977,7 @@ void ClusterAnalysisFilter::getSingularValues(const vector<vector<IonHit> > &clu
 			}
 			//Compute the cluster's centre of mass (assuming unit mass per object)
 			Point3D centroid;
-			getPointSum(clusteredCore[ui],centroid);
+			IonHit::getCentroid(clusteredCore[ui],centroid);
 			centroid*=1.0f/(float)(clusteredCore[ui].size());
 			//Allocate space, by growing as needed
 			if(numEntries*DIMENSION > dataSize)

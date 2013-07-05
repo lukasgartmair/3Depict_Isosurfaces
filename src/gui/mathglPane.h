@@ -106,6 +106,8 @@ private:
 	//Action to perform when showing 1D plots and mouse down event occurs
 	void oneDMouseDownAction(bool leftDown,bool middleMouseDown,
 		bool alternateDown, int dragX,int dragY);
+
+	bool readyForInput() const;
 public:
 
 	MathGLPane(wxWindow* parent, int id);
