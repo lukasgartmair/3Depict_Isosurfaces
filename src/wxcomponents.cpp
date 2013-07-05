@@ -1103,7 +1103,7 @@ std::string TTFFinder::suggestFontName(unsigned int fontType, unsigned int index
 	return s;
 }
 
-std::string TTFFinder::getBestFontFile(unsigned int type) const
+std::string TTFFinder::getBestFontFile(unsigned int type) 
 {
 	unsigned int index=0;
 

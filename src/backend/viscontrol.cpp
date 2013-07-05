@@ -626,8 +626,7 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 								//add a region to the plot,
 								//using the region data stored
 								//in the plot stream
-								plotNew->addRegion(plotID,
-									plotData->regionID[ui],
+								plotNew->addRegion(plotData->regionID[ui],
 									plotData->regions[ui].first,
 									plotData->regions[ui].second,
 									plotData->regionR[ui],

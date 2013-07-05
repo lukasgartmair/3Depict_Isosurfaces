@@ -646,7 +646,7 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 	unsigned int numIons;	
 
 	//Load the range file header
-	if(errCode=readRNGHeader(fpRange, ionNames, colours,numRanges,numIons))
+	if((errCode=readRNGHeader(fpRange, ionNames, colours,numRanges,numIons)))
 		return errCode;
 
 	char *inBuffer = new char[MAX_LINE_SIZE];
@@ -685,7 +685,10 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 	errCode=readRNGFreqTable(fpRange,numIons,numRanges,ionNames,
 				colHeaders, frequencyEntries,massData,warnings);
 	if(errCode)
+	{
+		delete[] inBuffer;
 		return errCode;
+	}
 
 	warnings.swap(warnMessages);
 	ranges.swap(massData);

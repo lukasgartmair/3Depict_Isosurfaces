@@ -171,7 +171,7 @@ class AnalysisState
 		size_t getActiveCam() const  { return activeCamera;};
 
 		//Set
-		size_t setActiveCam(size_t offset) {ASSERT(offset < savedCameras.size()); activeCamera=offset; };
+		void setActiveCam(size_t offset) {ASSERT(offset < savedCameras.size()); activeCamera=offset; };
 
 		//Remove the  camera at the specified offset
 		void removeCam(size_t offset);

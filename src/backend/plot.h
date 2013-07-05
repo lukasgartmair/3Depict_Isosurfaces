@@ -204,9 +204,8 @@ class Plot1D : public PlotBase
 							const vector<float> &symYErr);
 
 		//!Append a region to the plot
-		void addRegion(unsigned int parentPlot, unsigned int regionId,
-			       		float start, float end,	float r,float g, 
-						float b, Filter *parentFilter);
+		void addRegion(unsigned int regionId, float start, float end,	
+				float r,float g, float b, Filter *parentFilter);
 		
 		//!Try to move a region from its current position to a new position
 		//return the test coord. valid methods are 0 (left extend), 1 (slide), 2 (right extend)

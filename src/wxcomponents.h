@@ -245,7 +245,7 @@ class TTFFinder
 
 		//!Returns a valid file that points to an installed ttf file, or an empty string
 		//NOTE: TTF file is not checked for content validity!
-		std::string getBestFontFile(unsigned int type) const ;
+		static std::string getBestFontFile(unsigned int type);
 };
 
 #endif

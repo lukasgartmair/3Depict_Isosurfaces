@@ -214,7 +214,8 @@ unsigned int CropPanel::getBestCropWidget(float xMouse, float yMouse,unsigned in
 	
 	float meanPx = 1.0/(1.0/(w-2) + 1.0/(h-2));
 	unsigned int minIndex;
-	float minDist,tmpDist,x,y;
+	float minDist=std::numeric_limits<float>::max();
+	float tmpDist,x,y;
 	//work our way clockwise around the corners
 	//finding the minimum distance
 	for(unsigned int ui=0;ui<4;ui++)
@@ -248,7 +249,7 @@ unsigned int CropPanel::getBestCropWidget(float xMouse, float yMouse,unsigned in
 		}
 
 		tmpDist=(xMouse-x)*(xMouse-x) + (yMouse-y)*(yMouse-y);
-		if(!ui || tmpDist < minDist) //first pass - no data
+		if(tmpDist < minDist) 
 		{
 			minIndex=ui;
 			minDist=tmpDist;

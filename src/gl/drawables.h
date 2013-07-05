@@ -157,7 +157,7 @@ class DrawableObj
 		bool wantsLight;
 
 
-		static bool setUseAlphaBlending(bool willBlend) { useAlphaBlend =willBlend;}
+		static void setUseAlphaBlending(bool willBlend) { useAlphaBlend =willBlend;}
 
 		//!Is this an overlay? By default, no
 		virtual bool isOverlay() const { return false;}

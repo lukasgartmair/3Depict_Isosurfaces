@@ -1129,7 +1129,8 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 	xDat.Set(bufferX,xValues.size());
 	yDat.Set(bufferY,yValues.size());
 
-	eDat.Set(bufferErr,errBars.size());
+	if(showErrs)
+		eDat.Set(bufferErr,errBars.size());
 	//--
 	
 	
@@ -1200,7 +1201,7 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 
 
 
-void Plot1D::addRegion(unsigned int parentPlot,unsigned int regionID,float start, float end, 
+void Plot1D::addRegion(unsigned int regionID,float start, float end, 
 			float rNew, float gNew, float bNew, Filter *parentFilter)
 {
 	ASSERT(start <end);
