@@ -21,8 +21,7 @@
 
 #include "common/basics.h"
 
-#include <cstring>//memcpy
-#include <new>//std::bad_alloc
+class IonHit;
 
 //!Allowable export ion formats
 enum
@@ -33,10 +32,6 @@ enum
 using std::vector;
 
 class IonHit;
-class Point3D;
-
-
-const unsigned int PROGRESS_REDUCE=5000;
 
 extern const char *POS_ERR_STRINGS[];
 
@@ -56,58 +51,6 @@ enum posErrors
 };
 
 
-//!make a pos file from a set of a set of IonHits
-unsigned int IonVectorToPos(const vector<IonHit> &points, const std::string &name);
-
-
-//obtain a vector of points from an ion hit vector, by stripping out only the 3D point information 
-void getPointsFromIons(const vector<IonHit> &ions, vector<Point3D> &pts);
-
-//!make/append to a pos file from a set of a set of IonHits
-void appendPos(const vector<IonHit> &points, const char *name);
-
-//!Set the bounds from an array of ion hits
-BoundCube getIonDataLimits(const vector<IonHit> &p);//
-
-//!Get the sum of all Point3Ds in an ion vector
-void getPointSum(const std::vector<IonHit> &points,Point3D &centroid);
-
-//!This is a data holding class for POS file ions, from
-/* Pos ions are typically obtained via reconstructed apt detector hits
- * and are of form (x,y,z mass/charge)
- */
-class IonHit
-{
-	private:
-		float massToCharge; // mass to charge ratio in Atomic Mass Units per (charge on electron)
-		Point3D pos; //position (xyz) in nm
-	public:
-		IonHit();
-		//copy constructor
-		IonHit(const IonHit &);
-		IonHit(const Point3D &p, float massToCharge);
-
-		void setHit(float *arr) { pos.setValueArr(arr); massToCharge=arr[3];};
-		void setMassToCharge(float newMassToCharge);
-		void setPos(const Point3D &pos);
-		void setPos(float fX, float fY, float fZ)
-			{ pos.setValue(fX,fY,fZ);};
-		Point3D getPos() const;
-		inline const Point3D &getPosRef() const {return pos;};
-		//returns true if any of the 4 data pts are NaN
-		bool hasNaN();
-
-#ifdef __LITTLE_ENDIAN__		
-		void switchEndian();
-#endif
-		//this does the endian switch for you
-		//but you must supply a valid array.
-		void makePosData(float *floatArr) const;
-		float getMassToCharge() const;
-		const IonHit &operator=(const IonHit &obj);
-		float operator[](unsigned int ui) const;	
-		IonHit operator+(const Point3D &obj);
-};	
 
 
 //!Load a pos file directly into a single ion list
