@@ -111,13 +111,14 @@ am__3Depict_SOURCES_DIST = 3Depict.cpp testing.cpp wxcomponents.cpp \
 	backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
 	backend/filters/annotation.h backend/filters/geometryHelpers.h \
 	backend/animator.cpp backend/filtertreeAnalyse.cpp \
-	backend/filtertree.cpp backend/APT/APTClasses.cpp \
-	backend/APT/APTRanges.cpp backend/filters/K3DTree.cpp \
-	backend/filters/K3DTree-mk2.cpp backend/filter.cpp \
-	backend/filters/rdf.cpp backend/viscontrol.cpp \
-	backend/state.cpp backend/plot.cpp backend/configFile.cpp \
-	backend/animator.h backend/filtertreeAnalyse.h \
-	backend/filtertree.h backend/APT/APTClasses.h \
+	backend/filtertree.cpp backend/APT/ionhit.cpp \
+	backend/APT/APTFileIO.cpp backend/APT/APTRanges.cpp \
+	backend/filters/K3DTree.cpp backend/filters/K3DTree-mk2.cpp \
+	backend/filter.cpp backend/filters/rdf.cpp \
+	backend/viscontrol.cpp backend/state.cpp backend/plot.cpp \
+	backend/configFile.cpp backend/animator.h \
+	backend/filtertreeAnalyse.h backend/filtertree.h \
+	backend/APT/ionhit.h backend/APT/APTFileIO.h \
 	backend/APT/APTRanges.h backend/filters/K3DTree.h \
 	backend/filters/K3DTree-mk2.h backend/filter.h \
 	backend/filters/rdf.h backend/viscontrol.h backend/state.h \
@@ -163,12 +164,12 @@ am__objects_6 = 3Depict-allFilter.$(OBJEXT) \
 	3Depict-annotation.$(OBJEXT) 3Depict-geometryHelpers.$(OBJEXT)
 am__objects_7 = 3Depict-animator.$(OBJEXT) \
 	3Depict-filtertreeAnalyse.$(OBJEXT) \
-	3Depict-filtertree.$(OBJEXT) 3Depict-APTClasses.$(OBJEXT) \
-	3Depict-APTRanges.$(OBJEXT) 3Depict-K3DTree.$(OBJEXT) \
-	3Depict-K3DTree-mk2.$(OBJEXT) 3Depict-filter.$(OBJEXT) \
-	3Depict-rdf.$(OBJEXT) 3Depict-viscontrol.$(OBJEXT) \
-	3Depict-state.$(OBJEXT) 3Depict-plot.$(OBJEXT) \
-	3Depict-configFile.$(OBJEXT)
+	3Depict-filtertree.$(OBJEXT) 3Depict-ionhit.$(OBJEXT) \
+	3Depict-APTFileIO.$(OBJEXT) 3Depict-APTRanges.$(OBJEXT) \
+	3Depict-K3DTree.$(OBJEXT) 3Depict-K3DTree-mk2.$(OBJEXT) \
+	3Depict-filter.$(OBJEXT) 3Depict-rdf.$(OBJEXT) \
+	3Depict-viscontrol.$(OBJEXT) 3Depict-state.$(OBJEXT) \
+	3Depict-plot.$(OBJEXT) 3Depict-configFile.$(OBJEXT)
 am__objects_8 = 3Depict-scene.$(OBJEXT) 3Depict-drawables.$(OBJEXT) \
 	3Depict-effect.$(OBJEXT) 3Depict-textures.$(OBJEXT) \
 	3Depict-select.$(OBJEXT) 3Depict-cameras.$(OBJEXT) \
@@ -393,13 +394,13 @@ FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h
 		backend/filters/annotation.h backend/filters/geometryHelpers.h
 
 BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backend/filtertree.cpp \
-		     	backend/APT/APTClasses.cpp backend/APT/APTRanges.cpp \
+		     	backend/APT/ionhit.cpp backend/APT/APTFileIO.cpp backend/APT/APTRanges.cpp \
 			backend/filters/K3DTree.cpp backend/filters/K3DTree-mk2.cpp\
 			backend/filter.cpp backend/filters/rdf.cpp \
 		       backend/viscontrol.cpp backend/state.cpp backend/plot.cpp  backend/configFile.cpp 
 
 BACKEND_HEADER_FILES = backend/animator.h backend/filtertreeAnalyse.h backend/filtertree.h\
-			backend/APT/APTClasses.h backend/APT/APTRanges.h \
+			backend/APT/ionhit.h backend/APT/APTFileIO.h backend/APT/APTRanges.h \
 			backend/filters/K3DTree.h backend/filters/K3DTree-mk2.h \
 			backend/filter.h backend/filters/rdf.h \
 			backend/viscontrol.h backend/state.h backend/plot.h backend/configFile.h \
@@ -411,6 +412,7 @@ BACKEND_HEADER_FILES = backend/animator.h backend/filtertreeAnalyse.h backend/fi
 #------------ OpenGL interface files
 OPENGL_HEADER_FILES = gl/scene.h gl/drawables.h gl/effect.h gl/textures.h gl/select.h gl/cameras.h gl/isoSurface.h
 OPENGL_SOURCE_FILES = gl/scene.cpp gl/drawables.cpp gl/effect.cpp gl/textures.cpp gl/select.cpp gl/cameras.cpp gl/isoSurface.cpp
+
 #------------
 
 #------------ Frontend (linked to UI in some way) files ---
@@ -420,7 +422,7 @@ DIALOG_SOURCE_FILES = gui/dialogs/ExportPos.cpp  gui/dialogs/ExportRngDialog.cpp
 		gui/dialogs/animateFilterDialog.cpp \
 		gui/dialogs/animateSubDialogs/colourKeyFrameDialog.cpp \
 		gui/dialogs/animateSubDialogs/stringKeyFrameDialog.cpp \
-		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.cpp 
+		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.cpp
 
 DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/dialogs/prefDialog.h \
 		gui/dialogs/StashDialog.h gui/dialogs/resolutionDialog.h \
@@ -429,7 +431,7 @@ DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/
 		gui/dialogs/animateSubDialogs/realKeyFrameDialog.h \
 		gui/dialogs/animateSubDialogs/colourKeyFrameDialog.h \
 		gui/dialogs/animateSubDialogs/stringKeyFrameDialog.h \
-		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.h 
+		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.h
 
 GUI_SOURCE_FILES = gui/mainFrame.cpp gui/mathglPane.cpp gui/cropPanel.cpp gui/glPane.cpp  $(DIALOG_SOURCE_FILES)
 GUI_HEADER_FILES = gui/mainFrame.h gui/mathglPane.h gui/cropPanel.h gui/art.h gui/glPane.h $(DIALOG_HEADER_FILES)
@@ -533,7 +535,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-3Depict.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-APTClasses.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-APTFileIO.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-APTRanges.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ExportPos.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ExportRngDialog.Po@am__quote@
@@ -570,6 +572,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ionColour.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ionDownsample.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ionInfo.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-ionhit.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-isoSurface.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-mainFrame.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/3Depict-mathfuncs.Po@am__quote@
@@ -1214,19 +1217,33 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-filtertree.obj `if test -f 'backend/filtertree.cpp'; then $(CYGPATH_W) 'backend/filtertree.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/filtertree.cpp'; fi`
 
-3Depict-APTClasses.o: backend/APT/APTClasses.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-APTClasses.o -MD -MP -MF $(DEPDIR)/3Depict-APTClasses.Tpo -c -o 3Depict-APTClasses.o `test -f 'backend/APT/APTClasses.cpp' || echo '$(srcdir)/'`backend/APT/APTClasses.cpp
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-APTClasses.Tpo $(DEPDIR)/3Depict-APTClasses.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backend/APT/APTClasses.cpp' object='3Depict-APTClasses.o' libtool=no @AMDEPBACKSLASH@
+3Depict-ionhit.o: backend/APT/ionhit.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ionhit.o -MD -MP -MF $(DEPDIR)/3Depict-ionhit.Tpo -c -o 3Depict-ionhit.o `test -f 'backend/APT/ionhit.cpp' || echo '$(srcdir)/'`backend/APT/ionhit.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ionhit.Tpo $(DEPDIR)/3Depict-ionhit.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backend/APT/ionhit.cpp' object='3Depict-ionhit.o' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-APTClasses.o `test -f 'backend/APT/APTClasses.cpp' || echo '$(srcdir)/'`backend/APT/APTClasses.cpp
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ionhit.o `test -f 'backend/APT/ionhit.cpp' || echo '$(srcdir)/'`backend/APT/ionhit.cpp
 
-3Depict-APTClasses.obj: backend/APT/APTClasses.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-APTClasses.obj -MD -MP -MF $(DEPDIR)/3Depict-APTClasses.Tpo -c -o 3Depict-APTClasses.obj `if test -f 'backend/APT/APTClasses.cpp'; then $(CYGPATH_W) 'backend/APT/APTClasses.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/APT/APTClasses.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-APTClasses.Tpo $(DEPDIR)/3Depict-APTClasses.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backend/APT/APTClasses.cpp' object='3Depict-APTClasses.obj' libtool=no @AMDEPBACKSLASH@
+3Depict-ionhit.obj: backend/APT/ionhit.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-ionhit.obj -MD -MP -MF $(DEPDIR)/3Depict-ionhit.Tpo -c -o 3Depict-ionhit.obj `if test -f 'backend/APT/ionhit.cpp'; then $(CYGPATH_W) 'backend/APT/ionhit.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/APT/ionhit.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-ionhit.Tpo $(DEPDIR)/3Depict-ionhit.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backend/APT/ionhit.cpp' object='3Depict-ionhit.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-APTClasses.obj `if test -f 'backend/APT/APTClasses.cpp'; then $(CYGPATH_W) 'backend/APT/APTClasses.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/APT/APTClasses.cpp'; fi`
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-ionhit.obj `if test -f 'backend/APT/ionhit.cpp'; then $(CYGPATH_W) 'backend/APT/ionhit.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/APT/ionhit.cpp'; fi`
+
+3Depict-APTFileIO.o: backend/APT/APTFileIO.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-APTFileIO.o -MD -MP -MF $(DEPDIR)/3Depict-APTFileIO.Tpo -c -o 3Depict-APTFileIO.o `test -f 'backend/APT/APTFileIO.cpp' || echo '$(srcdir)/'`backend/APT/APTFileIO.cpp
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-APTFileIO.Tpo $(DEPDIR)/3Depict-APTFileIO.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backend/APT/APTFileIO.cpp' object='3Depict-APTFileIO.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-APTFileIO.o `test -f 'backend/APT/APTFileIO.cpp' || echo '$(srcdir)/'`backend/APT/APTFileIO.cpp
+
+3Depict-APTFileIO.obj: backend/APT/APTFileIO.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-APTFileIO.obj -MD -MP -MF $(DEPDIR)/3Depict-APTFileIO.Tpo -c -o 3Depict-APTFileIO.obj `if test -f 'backend/APT/APTFileIO.cpp'; then $(CYGPATH_W) 'backend/APT/APTFileIO.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/APT/APTFileIO.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(am__mv) $(DEPDIR)/3Depict-APTFileIO.Tpo $(DEPDIR)/3Depict-APTFileIO.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='backend/APT/APTFileIO.cpp' object='3Depict-APTFileIO.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-APTFileIO.obj `if test -f 'backend/APT/APTFileIO.cpp'; then $(CYGPATH_W) 'backend/APT/APTFileIO.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/APT/APTFileIO.cpp'; fi`
 
 3Depict-APTRanges.o: backend/APT/APTRanges.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT 3Depict-APTRanges.o -MD -MP -MF $(DEPDIR)/3Depict-APTRanges.Tpo -c -o 3Depict-APTRanges.o `test -f 'backend/APT/APTRanges.cpp' || echo '$(srcdir)/'`backend/APT/APTRanges.cpp

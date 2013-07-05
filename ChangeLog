@@ -1,12 +1,13 @@
 * ?? Aug 2013 : 0.0.14
 	Features:
 	- 2D slice render mode for voxels. Can now visualise voxel data
-	  using colour mapped planes
+	  using colourised planes - show voxel values on a given slice
 	- Animated spin-progress icon to show refresh status
 	- Automatic, but optional, limiting of point count in 3D display 
 		- Improved responsiveness of program to user when
 		  working with large datasets. Enabled by default.
 		- Downsampling no longer added when loading datasets
+	- New "double-ORNL rng" rangefile support
 
 	User Visible Bugfixes/Changes:
 	- Fix "blinking"/flicker problems in 3D scene when changing properties
@@ -15,19 +16,24 @@
 		- Current directory
 		- Changes to state (eg, for asking to save at exit)
 	- Fix state load/save bugs
-		- Othogonal camera scaling
+		- Orthogonal camera scaling
 		- stash handling
 	- Add new tree warnings
 		- Composition biasing warning for rangefile->composition pairs
 		- Missing required parent filter (eg clustering)
+	- More caching in voxel filter, for better performance
+	- Better axis handling for plot window
+	- Better handling of cylinder objects during interaction
+	- Improved performance in some cases when ranging
+	- On Mac OSX, manual now stored locally
 
 	Technical Bugfixes/Features:
 	- Split viscontrol and analysis state into separate modules
-	- Minor improvments to rangefile loading
+	- Minor improvements to rangefile loading
 	- Improved assertion checking for selection bindings
 	- Remove needless templating of selection devices
 	- Continuous Integration script for cppcheck
-	- Minor opengl performance enhancments
+	- Minor opengl enhancement (performance & error reporting)
 
 * 12 Apr 2013 : 0.0.13
 	Features:
