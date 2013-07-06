@@ -1,13 +1,16 @@
-Index: 3depict-0.0.13/configure
+Description: Debian uses lowercase lib names.
+Forwarded: not-needed
+Author: D Haley <mycae - gmx - com>
+Index: 3depict-0.0.14/configure
 ===================================================================
---- 3depict-0.0.13.orig/configure	2013-03-23 17:54:40.000000000 +0100
-+++ 3depict-0.0.13/configure	2013-03-23 17:55:05.000000000 +0100
-@@ -5828,7 +5828,7 @@
+--- 3depict-0.0.14.orig/configure	2013-07-06 11:08:16.000000000 +0200
++++ 3depict-0.0.14/configure	2013-07-06 11:08:28.000000000 +0200
+@@ -5964,7 +5964,7 @@
  if test "x$ftgl_prefix" != "x" ; then
  	#use the supplied CFLAGS. assume LIBS
  	FTGL_CFLAGS="-I$ftgl_prefix/include/ -L$ftgl_prefix/lib/"
 -	FTGL_LIBS="-lFTGL"
 +	FTGL_LIBS="-lftgl"
  else
- 	if test "x$with_ftgl_no_pkg" = "xyes" ; then
  
+ 	HAVE_PKG=$(basename $(which pkg-config))

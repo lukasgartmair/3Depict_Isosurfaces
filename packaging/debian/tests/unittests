@@ -1,0 +1,68 @@
+#!/bin/bash
+
+CONFIGURE_PARAMS="--enable-mgl2"
+
+#apply all quilt patches, recording current status
+QUILT_APPLIED=`quilt applied`
+quilt push -a 
+
+#If manually running outside autopkgtest, then
+# just use /tmp
+if [ x"$ADTDMP" == x"" ] ; then
+	if [ x"$TMP" == x"" ] ; then
+		ADTDMP=/tmp/
+	else
+		ADTDMP=/tmp/
+	fi
+fi
+
+REBUILD_DIR=$ADTDMP/3depict-debug/
+
+#Go to top level dir
+#---
+TOP_LEVEL=` git rev-parse --show-toplevel`
+if [ $? -ne 0 ] ; then
+	$TOP_LEVEL=""
+else
+	pushd $TOP_LEVEL
+fi
+
+
+
+rm -rf $REBUILD_DIR || exit 1;
+mkdir  $REBUILD_DIR || exit 1;
+cp -R ./ $REBUILD_DIR 
+
+pushd $REBUILD_DIR
+
+#Rebuild program with debugging enabled.
+# Run tests in both single and multithreaded modes
+#----
+make clean ||  exit 1;
+./configure  $CONFIGURE_PARAMS ||  exit 1;   
+make -j2  ||  exit 1;
+./src/3Depict -t || exit 1; 
+
+make clean || exit 1;
+./configure $CONFIGURE_PARAMS --enable-openmp-parallel
+make -j2
+./src/3Depict -t || exit 1;
+make clean
+#----
+
+rm -rf $REBUILD_DIR/
+
+popd 
+
+#Restore patches to previous state
+quilt pop -a
+for i in $QUILT_APPLIED
+do
+	quilt push
+done
+
+if [ x"$TOP_LEVEL" != x"" ] ; then
+	popd
+fi
+
+

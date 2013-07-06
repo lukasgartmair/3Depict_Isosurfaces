@@ -1,13 +1,43 @@
+3depict (0.0.14-1) UNRELEASED; urgency=low
+
+  * Update to upstream
+
+ -- D Haley <mycae@gmx.com>  Sat, 06 Jul 2013 11:13:02 +0200
+
+3depict (0.0.13-2) unstable; urgency=low
+
+  * Enable mathgl2.x configure option
+  * Modify build-depends, libmgl-dev >= 2.1.32
+
+ -- D Haley <mycae@gmx.com>  Sat, 15 Jun 2013 20:44:01 +0200
+
 3depict (0.0.13-1) unstable; urgency=low
 
-  * New upstream release
+  * Upload to unstable 
 
- -- D Haley <mycae@yahoo.com>  Sat, 23 Mar 2013 16:06:15 +0100
+ -- D Haley <mycae@gmx.com>  Fri, 17 May 2013 00:52:39 +0200
+
+3depict (0.0.13-1~exp1) experimental; urgency=low
+
+  * New upstream release
+  * Update maintainer email
+  * Remove README.source
+  * Update to compat level 9
+  * Set standards version to 3.9.4
+  * Drop DM-Upload-Allowed
+  * Update debian copyright to DEP5
+  * Drop debian/dirs
+  * Convert rules to use dh override_
+  * Add DEP3-headers to patches
+
+
+ -- D Haley <mycae@gmx.com>  Sat, 13 Apr 2013 02:06:15 +0200
 
 3depict (0.0.12-1) experimental; urgency=low
 
   [ D Haley ]
   * New upstream release
+  * upstream-post-0.0.12-fixes.patch: new patch taken from upstream
 
   [ Sylvestre Ledru ]
   * Standards-Version updated to version 3.9.3

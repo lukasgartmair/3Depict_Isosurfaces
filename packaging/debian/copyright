@@ -1,42 +1,58 @@
-This package was debianized by D Haley <mycae@yahoo.com> on
-Sat, 24 Jul 2010 23:23:50 +0100.
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: 3Depict
+Upstream: http://threedepict.sourceforge.net
 
-It was downloaded from <http://threedepict.sourceforge.net>
+Files: *
+Copyright: 3Depict is Copyright (C) 2013 by D Haley.
+License: GPL-3+
+ On Debian systems the full text of the GNU General Public License v3 
+ can be found in the `/usr/share/common-licenses/GPL-3' file.
 
-Upstream Author(s):
+Files: docs/manual-latex/manual.tex
+Copyright: Copyright (C) 2013 by D Haley.
+License: CC-BY-SA 3.0 
+ The work (as defined below) is provided under the terms of this creative
+ commons public license ("CCPL"; or "license"). The work is protected by
+ copyright and/or other applicable law. any use of the work other than as
+ authorized under this license or copyright law is prohibited.
+ By exercising any rights to the work provided here, you accept and agree
+ to be bound by the terms of this license. to the extent this license may
+ be considered to be a contract, the licensor grants you the rights
+ contained here in consideration of your acceptance of such terms and
+ conditions.
 
-    D Haley <mycae@yahoo.com>
+Files: debian/*
+Copyright: Copyright 2013, D Haley <mycae gmx com>
+License: GPL-3+
+ On Debian systems the full text of the GNU General Public License v3 
+ can be found in the `/usr/share/common-licenses/GPL-3' file.
 
-Copyright:
+Files:data/textures/*rrow*png data/textures/*rrow*svg data/textures/tex-source/*rrow*svg data/textures/*enlarge*png data/textures/tex-source/*enlarge.svg
+Copyright: Copyright 2006, Everaldo Coelho
+Source: https://commons.wikimedia.org/wiki/Crystal_clear
+License: LGPL-2+
+ On Debian systems the full text of the Lesser GNU General Public License
+ v2 can be found in the `/usr/share/common-licenses/LGPL-2' file.
 
-    Copyright (C) 2012 D. Haley
+Files: data/textures/tex-source/*mouse.svg data/textures/*mouse*png
+Copyright: Copyright 2007, User:Darklama
+Source: https://commons.wikimedia.org/wiki/File:Left_clicked_mouse.svg
+License: GFDL-1.2
+ On Debian systems the full text of the GNU Free Documentation License
+ v1.2 can be found in the `/usr/share/common-licenses/GFDL-1.2' file.
 
-License:
+Files: data/textures/tex-source/*phere.svg data/textures/tex-source/*phere.png
+Copyright: Copyright 2003-2004, David Vignoni
+Source: www.icon-king.com/projects/nuvola//
+License: LGPL-2+
+ On Debian systems the full text of the Lesser GNU General Public License
+ v2 can be found in the `/usr/share/common-licenses/LGPL-2' file.
 
-    This program is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public
-    License as published by the Free Software Foundation; either
-    version 3 of the License, or (at your option) any later version.
-  
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    Library General Public License for more details.
-  
-    You should have received a copy of the GNU General Public
-    License along with this program; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,
-    USA.
+Files: docs/web/style.css
+Copyright: Copyright 2006, Minamalistic-design
+Source: http://www.minimalistic-design.com/minimalistic.zip
+License: GPL-2+
+ On Debian systems the full text of the Lesser GNU General Public License
+ v2 can be found in the `/usr/share/common-licenses/LGPL-2' file.
 
-    On your Debian GNU/Linux system, a copy of the GNU GPLv3 can be found in
-    /usr/share/common-licenses/GPL-3
 
-The Debian packaging is:
-
-    Copyright (C) 2012 D Haley <mycae@yahoo.com>
-
-and is licensed under the GPL version 3 or any later version, 
-see `/usr/share/common-licenses/GPL-3'.
-
-Icons are covered by the GNU Free Documentation Licence, GFDL. For this
-licence, please see '/usr/share/common-licencses/GFDL'

@@ -1,130 +1,54 @@
 #!/usr/bin/make -f
-# -*- makefile -*-
-# Sample debian/rules that uses debhelper.
-# This file was originally written by Joey Hess and Craig Small.
-# As a special exception, when this file is copied by dh-make into a
-# dh-make output file, you may use that output file without restriction.
-# This special exception was added by Craig Small in version 0.37 of dh-make.
 
-# Uncomment this to turn on verbose mode.
-#export DH_VERBOSE=1
+%:
+	dh $@ --parallel
+
+override_dh_auto_configure: 
+	dh_auto_configure -- --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --enable-openmp-parallel --disable-debug-checks --with-libpng-link="-lpng" --with-libpng-flags="-L/lib" --with-ftgl-prefix="/usr" --enable-mgl2
 
 
-# These are used for cross-compiling and for saving the configure script
-# from having to guess our platform (since we know it already)
-DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
-DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
-ifneq ($(DEB_HOST_GNU_TYPE),$(DEB_BUILD_GNU_TYPE))
-CROSS= --build $(DEB_BUILD_GNU_TYPE) --host $(DEB_HOST_GNU_TYPE)
-else
-CROSS= --build $(DEB_BUILD_GNU_TYPE)
-endif
-
-#Hardening
-DPKG_EXPORT_BUILDFLAGS = 1
-include /usr/share/dpkg/buildflags.mk
-
-
-config.status: configure
-	dh_testdir
-	#Compile package, disabling internal debug checking and enabling parallelism
-	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --enable-openmp-parallel --disable-debug-checks --with-libpng-link="-lpng" --with-libpng-flags="-L/lib" --with-ftgl-prefix="/usr"
-
-
-build: build-arch 
-
-build-arch: build-stamp
-
-build-stamp:  config.status 
-	dh_testdir
-
-	$(MAKE)
-
-	touch $@
-
-clean: 
+override_dh_clean:
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp 
 
-	# Add here commands to clean up after the build process.
 	[ ! -f Makefile ] || $(MAKE) distclean
 	rm -f config.status config.cache
-	#Prevent quilt 3.0 from annoyingly convoluting config.log with a patch
+	#Prevent quilt 3.0 from annoyingly convoluting config.log with
+	#a patch
 	rm -f config.log
 
 	dh_clean 
 
-install: build
-	dh_testdir
-	dh_testroot
-	dh_prep  
-	dh_installdirs
 
-	# Add here commands to install the package into debian/3depict.
-	$(MAKE) DESTDIR=$(CURDIR)/debian/3depict install
-
-	#Install the textures
-	mkdir -p $(CURDIR)/debian/3depict/usr/share/3depict/textures/
-	cp -p data/textures/*png $(CURDIR)/debian/3depict/usr/share/3depict/textures/
-
+override_dh_auto_install: 
+	dh_auto_install
+	
 	#rename 3Depict (real program name) to debian-friendly 3depict
 	mv $(CURDIR)/debian/3depict/usr/bin/3Depict $(CURDIR)/debian/3depict/usr/bin/3depict
 
 	mkdir -p $(CURDIR)/debian/3depict/usr/share/doc/3depict/
-	echo "Copyright 2011 D Haley <mycae@yahoo.com>" > $(CURDIR)/debian/3depict/usr/share/doc/3depict/copyright
+	echo "Copyright 2013 D Haley <mycae@yahoo.com>" > $(CURDIR)/debian/3depict/usr/share/doc/3depict/copyright
 	echo "See /usr/share/common-licenses/GPL-1 for copyright info" >> $(CURDIR)/debian/3depict/usr/share/doc/3depict/copyright
 
+	#Install files that cannot be handled by .install due to rename
+	#---
 	#Install .desktop file (for XFCE)
 	install -Dp -m 644 $(CURDIR)/packaging/3Depict.desktop $(CURDIR)/debian/3depict/usr/share/applications/3depict.desktop
 	#install icon (both SVG and XPM) into pixmaps
 	install -Dp -m 644 $(CURDIR)/data/3Depict.xpm $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.xpm
 	install -Dp -m 644 $(CURDIR)/data/textures/tex-source/3Depict-icon.svg $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.svg
+	#---
 	
 	#Install the pre-built locale files that are shipped with the tarball.
 	#translation sources (.po) files are in the translations/ folder.
-	
-	#remap a few locale names
+	#remap a few locale names as needed
+	#--
 	sh -c "mv locales/de_DE/ locales/de/"
 	mkdir -p $(CURDIR)/debian/3depict/usr/share/locale/
 	cp -R locales/* $(CURDIR)/debian/3depict/usr/share/locale/
 	#undo locale renaming
 	sh -c "mv locales/de/ locales/de_DE/"
-	
 	# convert installed 3Depict.mo files to lowercase	
 	find $(CURDIR)/debian/3depict/usr/share/locale/ -name 3Depict.mo | xargs rename 's/3Depict.mo/3depict.mo/'
-
-	#Install manual to 3depict dir
-	cp $(CURDIR)/docs/manual-latex/manual.pdf $(CURDIR)/debian/3depict/usr/share/3depict/
-
-	#delete some dirs that are generated.
-	rmdir $(CURDIR)/debian/3depict/usr/sbin
-
-
-# Build architecture-independent files here.
-binary-indep: install
-# We have nothing to do by default.
-
-# Build architecture-dependent files here.
-binary-arch: install
-	dh_testdir
-	dh_testroot
-	dh_installchangelogs 
-	dh_install
-	dh_installmenu
-	dh_installman
-	dh_link
-	dh_strip
-	dh_compress
-	dh_fixperms
-	dh_installdeb
-	dh_shlibdeps
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
-
-binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install 
-
-build-indep:
-
+	#--

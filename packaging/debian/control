@@ -2,13 +2,14 @@ Source: 3depict
 Section: science
 Priority: optional
 Maintainer: Debian Science Maintainers <debian-science-maintainers@lists.alioth.debian.org>
-Uploaders: D Haley <mycae@yahoo.com>
-DM-Upload-Allowed: yes
-Build-Depends: debhelper (>= 7), dpkg-dev (>= 1.16.1~), libgl1-mesa-dev | libgl-dev, libpng-dev | libpng15-dev, libqhull-dev, libwxgtk2.8-dev, libftgl-dev, autoconf, libxml2-dev, libmgl-dev, autotools-dev 
-Standards-Version: 3.9.3
+Uploaders: D Haley <mycae@gmx.com>
+Build-Depends: debhelper (>= 9), dpkg-dev (>= 1.16.1~), dh-autoreconf, libgl1-mesa-dev | libgl-dev, libpng-dev | libpng15-dev, libqhull-dev, libwxgtk2.8-dev, libftgl-dev, autoconf, libxml2-dev, libmgl-dev (>= 2.1.3.1), autotools-dev 
+Standards-Version: 3.9.4
 Homepage: http://threedepict.sourceforge.net/index.html
 Vcs-Git: git://git.debian.org/debian-science/packages/3depict.git
 Vcs-Browser: http://git.debian.org/?p=debian-science/packages/3depict.git
+XS-Testsuite: autopkgtest
+
 
 Package: 3depict
 Architecture: any
