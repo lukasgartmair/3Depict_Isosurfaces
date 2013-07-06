@@ -2,7 +2,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "3Depict"
-!define PRODUCT_VERSION "0.0.13"
+!define PRODUCT_VERSION "0.0.14"
 !define PRODUCT_PUBLISHER "D. Haley, A. Ceguerra"
 !define PRODUCT_WEB_SITE "http://threedepict.sourceforge.net"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\3Depict.exe"
@@ -87,19 +87,22 @@ Section "3Depict program" SEC01
   File /r locales\*.*
   
   SetOutPath "$INSTDIR\textures\"
-  File "data\textures\enlarge.png" 
-  File "data\textures\keyboard-alt.png" 
-  File "data\textures\keyboard-command.png" 
-  File "data\textures\keyboard-ctrl.png" 
-  File "data\textures\keyboard-shift.png" 
-  File "data\textures\keyboard-tab.png" 
-  File "data\textures\Left-Right-arrow.png" 
-  File "data\textures\Left_clicked_mouse.png" 
-  File "data\textures\middle_clicked_mouse.png" 
-  File "data\textures\Right-arrow.png" 
+  File "data\textures\animProgress0.png"
+  File "data\textures\animProgress1.png"
+  File "data\textures\animProgress2.png"
+  File "data\textures\enlarge.png"
+  File "data\textures\keyboard-alt.png"
+  File "data\textures\keyboard-command.png"
+  File "data\textures\keyboard-ctrl.png"
+  File "data\textures\keyboard-shift.png"
+  File "data\textures\keyboard-tab.png"
+  File "data\textures\Left_clicked_mouse.png"
+  File "data\textures\Left-Right-arrow.png"
+  File "data\textures\middle_clicked_mouse.png"
+  File "data\textures\Right-arrow.png"
   File "data\textures\Right_clicked_mouse.png"
   File "data\textures\rotateArrow.png"
-  File "data\textures\scroll_wheel_mouse.png" 
+  File "data\textures\scroll_wheel_mouse.png"
 SectionEnd
 
 Section -AdditionalIcons
@@ -133,6 +136,10 @@ FunctionEnd
 Section Uninstall
   Delete "$INSTDIR\${PRODUCT_NAME}.url"
   Delete "$INSTDIR\textures\uninst.exe"
+  
+  Delete "$INSTDIR\textures\animProgress0.png"
+  Delete "$INSTDIR\textures\animProgress1.png"
+  Delete "$INSTDIR\textures\animProgress2.png"
   Delete "$INSTDIR\textures\scroll_wheel_mouse.png"
   Delete "$INSTDIR\textures\rotateArrow.png"
   Delete "$INSTDIR\textures\Right_clicked_mouse.png"
@@ -146,6 +153,7 @@ Section Uninstall
   Delete "$INSTDIR\textures\keyboard-command.png"
   Delete "$INSTDIR\textures\keyboard-alt.png"
   Delete "$INSTDIR\textures\enlarge.png"
+ 
   Delete "$INSTDIR\3Depict.exe"
 
   Delete "$INSTDIR\manual.pdf"
