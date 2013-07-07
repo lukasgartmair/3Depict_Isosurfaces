@@ -1,0 +1,63 @@
+--- a/configure	2013-02-24 18:53:11.000000000 +0100
++++ b/configure	2013-02-23 13:07:55.000000000 +0100
+@@ -22481,7 +22481,6 @@
+ int
+ main ()
+ {
+-glBegin(GL_POINTS)
+   ;
+   return 0;
+ }
+@@ -22544,11 +22543,10 @@
+ #ifdef __cplusplus
+ extern "C"
+ #endif
+-char glBegin ();
+-int
++#include <GL/gl.h>
++	int
+ main ()
+ {
+-return glBegin ();
+   ;
+   return 0;
+ }
+@@ -22597,11 +22595,10 @@
+ #ifdef __cplusplus
+ extern "C"
+ #endif
+-char glBegin ();
++#include <GL/gl.h>
+ int
+ main ()
+ {
+-return glBegin ();
+   ;
+   return 0;
+ }
+@@ -23014,11 +23011,10 @@
+ #ifdef __cplusplus
+ extern "C"
+ #endif
+-char gluNewTess ();
+-int
++#include <GL/glu.h>
++	int
+ main ()
+ {
+-return gluNewTess ();
+   ;
+   return 0;
+ }
+@@ -23067,11 +23063,9 @@
+ #ifdef __cplusplus
+ extern "C"
+ #endif
+-char gluNewTess ();
+ int
+ main ()
+ {
+-return gluNewTess ();
+   ;
+   return 0;
+ }

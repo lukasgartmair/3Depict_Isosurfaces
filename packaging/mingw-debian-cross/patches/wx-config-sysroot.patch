@@ -4,7 +4,7 @@
  # delegate out to anything in that prefix, then reset the build
  # tree prefix to provide the correct output for using this
  # uninstalled wx build.  Or put more simply:
-+sysroot=/home/pcuser/mingw64-cross/
++sysroot=REPLACE_BASENAME
  prefix=${this_prefix-$prefix}
  exec_prefix=${this_exec_prefix-$exec_prefix}
  

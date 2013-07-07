@@ -1,5 +1,5 @@
---- configure	2013-04-06 23:46:42.000000000 +0200
-+++ /home/builder/mingw-debian-cross/deps/ftgl-2.1.3~rc5/configure	2013-03-24 15:08:57.000000000 +0100
+--- a/configure	2013-04-06 23:46:42.000000000 +0200
++++ b/configure	2013-03-24 15:08:57.000000000 +0100
 @@ -22541,12 +22541,15 @@
  /* Override any GCC internal prototype to avoid an error.
     Use char because int might match the return type of a GCC

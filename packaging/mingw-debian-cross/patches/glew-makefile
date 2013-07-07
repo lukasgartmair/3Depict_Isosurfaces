@@ -1,0 +1,35 @@
+--- a/Makefile	2013-07-07 15:37:19.000000000 +0200
++++ b/Makefile	2013-07-07 15:44:55.000000000 +0200
+@@ -28,19 +28,12 @@
+ ## ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ ## THE POSSIBILITY OF SUCH DAMAGE.
+ 
+-include config/version
++include config/Makefile.mingw
+ 
+ SHELL = /bin/sh
+-SYSTEM ?= $(shell config/config.guess | cut -d - -f 3 | sed -e 's/[0-9\.]//g;')
+-SYSTEM.SUPPORTED = $(shell test -f config/Makefile.$(SYSTEM) && echo 1)
++SYSTEM = i686-w64-mingw32
+ 
+-ifeq ($(SYSTEM.SUPPORTED), 1)
+-include config/Makefile.$(SYSTEM)
+-else
+-$(error "Platform '$(SYSTEM)' not supported")
+-endif
+-
+-GLEW_DEST ?= /usr
++GLEW_DEST ?= /home/pcuser/mingw32-cross
+ BINDIR ?= $(GLEW_DEST)/bin
+ LIBDIR ?= $(GLEW_DEST)/lib
+ INCDIR ?= $(GLEW_DEST)/include/GL
+--- a/config/Makefile.mingw	2013-07-07 15:43:48.000000000 +0200
++++ b/config/Makefile.mingw	2013-07-07 15:47:32.000000000 +0200
+@@ -1,7 +1,4 @@
+ NAME = glew32
+-CC = gcc
+-# use gcc for linking, with ld it does not work
+-LD = gcc
+ CFLAGS.SO = -DGLEW_BUILD
+ LDFLAGS.GL = -lglu32 -lopengl32 -lgdi32 -luser32 -lkernel32
+ LDFLAGS.EXTRA = -L/mingw/lib

@@ -3,15 +3,51 @@
 #Script to bootstrap 3Depict cross-compilation under debian
 # and debian-like systems	
 # Note that building wx requires ~8GB of ram (or swap)
-BASE=`pwd`
-#HOST_VAL=x86_64-w64-mingw32 #For mingw64
-#HOST_VAL=i686-w64-mingw32
 
-if [ x$HOST_VAL = x"" ] ; then
-	echo "Please uncomment the right HOST_VAL for your system"
+#--- Determine which system we wish to build for
+#HOST_VAL=x86_64-w64-mingw32 #For mingw64 (windows 64 bit)
+#HOST_VAL=i686-w64-mingw32 #For mingw32 (Windows 32 bit)
+
+if [ ! -f host_val ] ; then
+	echo "Please select 32 or 64 bit by typing \"32\" or \"64\" (32/64)"
+	read HOST_VAL
+	
+	case $HOST_VAL in
+		32)
+			HOST_VAL="i686-w64-mingw32"
+			;;
+		64)
+			HOST_VAL="x86_64-w64-mingw32"
+			;;
+		
+		*) 
+			echo "Didn't understand HOST_VAL. You can override this by editing the script"
+			exit 1
+		;;
+	esac
+
+	#Save for next run
+	echo $HOST_VAL > host_val
+else
+	HOST_VAL=`cat host_val`
+fi
+
+
+if [ $HOST_VAL != "x86_64-w64-mingw32" ] && [ $HOST_VAL != i686-w64-mingw32 ] ; then
+	echo "Unknown HOST_VAL"
 	exit 1
 fi
 
+#----
+
+if [ ! -d code/3Depict ] || [ ! -f code/3Depict/src/3Depict.cpp ] ; then
+	echo "3Depict code dir, \"code/3Depict\", appears to be missing. Please place 3Depict source code in this location"
+	echo "Aborting"
+	exit 1
+fi
+
+
+BASE=`pwd`
 PREFIX=/
 NUM_PROCS=4
 
@@ -29,8 +65,7 @@ PATCHES_WXWIDGETS_POST="wx-config-sysroot.patch"
 #1) Zlib no longer needs to explicitly link libc, and will fail if it tries
 PATCHES_ZLIB="zlib-no-lc.patch"
 #1) Override some configure patches to bypass false positive failures
-#2) mingw32 specific patch - mingw32 won't link with overridden prototypes
-PATCHES_FTGL="ftgl-override-configure ftgl-mingw32-prototype"
+PATCHES_FTGL="ftgl-override-configure"
 
 #1) gettext-tools fails in various places, but we don't actually need it, so turn it off
 #2) gettext fails to correctly determine windows function call prefix.
@@ -38,7 +73,9 @@ PATCHES_FTGL="ftgl-override-configure ftgl-mingw32-prototype"
 #   https://lists.gnu.org/archive/html/bug-gettext/2012-12/msg00071.html
 PATCHES_GETTEXT="gettext-disable-tools gettext-win32-prefix"
 
-PATCH_LIST="$PATCHES_WXWIDGETS_PRE $PATCHES_WXWIDGETS_POST $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL"
+PATCHES_GLEW="glew-makefile"
+
+PATCH_LIST="$PATCHES_WXWIDGETS_PRE $PATCHES_WXWIDGETS_POST $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL $PATCHES_GLEW"
 
 BUILD_STATUS_FILE="$BASE/build-status"
 PATCH_STATUS_FILE="$BASE/patch-status"
@@ -97,13 +134,13 @@ function install_mingw()
 function grabDeps()
 {
 	pushd deps 2>/dev/null
-	DEB_PACKAGES="expat freetype ftgl gettext gsl libjpeg8 libpng libxml2 mathgl qhull tiff3 wxwidgets2.8 zlib nsis"
+	DEB_PACKAGES="expat freetype ftgl gettext gsl libjpeg8 libpng libxml2 mathgl qhull tiff3 wxwidgets2.8 zlib glew"
 
 	GET_PACKAGES=""
 	for i in $DEB_PACKAGES
 	do
 		FNAME=`ls packages/$i-*.orig.* 2> /dev/null`
-		if [ x"" == x"" ] ; then
+		if [ x"$FNAME" == x"" ] ; then
 			GET_PACKAGES="${GET_PACKAGES} $i"
 		fi
 	done
@@ -123,19 +160,56 @@ function grabDeps()
 		mv *.orig.* *.debian.* *.dsc *.diff.* packages 
 	fi
 
+	#Check that we have untarred all the required packages
+	# (eg we downloaded one, and wiped it at some stage)
+	# if not, pull the package out, and re-build it
+	GET_PACKAGES=""
+	for i in $DEB_PACKAGES
+	do
+		#if we have a package file (dsc), and no folder, add it to the list of packages
+		FNAME=`ls packages/$i*dsc 2> /dev/null` 
+		DNAME=`ls -ld $i* | grep ^d | awk '{print $NF}'`
+		if [ x"$FNAME" != x"" ] && [ x"$DNAME" == x""  ] ; then
+			GET_PACKAGES="${GET_PACKAGES} $i"
+		fi
+	done
+	
+	#Unpack pre-existing package
+	for i in $GET_PACKAGES
+	do
+		mv packages/$i*.* . || { echo "existing package extraction failed "; exit 1; } 
+		dpkg-source -x $i*dsc
+		#move package back
+		mv $i*.*
+	done
+
+
 	#extract libiconv if needed
-	if [ ! -f packages/libiconv-1.14.tar.gz ] ; then
+	#--
+	LIBICONV=libiconv-1.14
+	if [ ! -f packages/${LIBICONV}.tar.gz ] ; then
 		wget "ftp://ftp.gnu.org/gnu/libiconv/libiconv-1.14.tar.gz" || { echo "Libiconv download failed "; exit 1; }
-		mv libiconv-1.14.tar.gz packages/
-		tar -zxf packages/libiconv-1.14.tar.gz || { echo "failed extracting iconv "; exit 1; }
+		mv ${LIBICONV}.tar.gz packages/
 	fi
 
 	#Check for SHA1 goodness
-	if [ x`sha1sum packages/libiconv-1.14.tar.gz | awk '{print $1}'` != x"be7d67e50d72ff067b2c0291311bc283add36965" ] ; then
+	if [ x`sha1sum packages/${LIBICONV}.tar.gz | awk '{print $1}'` != x"be7d67e50d72ff067b2c0291311bc283add36965" ] ; then
 		echo "SHA1 sum mismatch for libiconv"
 		exit 1
 	fi
+	
+	#Extract
+	if [ ! -d ${LIBICONV} ] ; then
+		tar -zxf packages/${LIBICONV}.tar.gz || { echo "failed extracting iconv "; exit 1; }
+	fi	
 
+	#---
+
+	#We also need to install nsis, though it is not a strict "dependency" per-se.
+	if [ x`which makensis` == x"" ] ; then
+		echo "Installing nsis via apt-get";
+		sudo apt-get install nsis || { echo "Failed installation"; exit 1; }
+	fi
 
 	
 	popd 2> /dev/null
@@ -235,6 +309,43 @@ function build_zlib()
 	echo "zlib" >> $BUILD_STATUS_FILE
 }
 
+function build_glew()
+{
+	ISBUILT_ARG="glew"
+	isBuilt
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
+
+	#Perform dynamic modification of patch
+	sed -i "s@HOST_VAL@$HOST_VAL@" patches/glew-makefile
+	sed -i "s@BASEDIR@$BASE@" patches/glew-makefile
+	
+	pushd deps >/dev/null
+	pushd glew-* >/dev/null
+
+
+	if [ $? -ne 0 ] ; then
+		echo "glew dir missing, or duplicated?"
+		exit 1
+	fi
+	
+	make clean
+	rm -f configure.log
+
+	APPLY_PATCH_ARG="$PATCHES_GLEW"
+	applyPatches
+
+	LD=$CC make -j $NUM_PROCS || { echo "glew build failed"; exit 1; } 
+
+	make install DESTDIR="$BASE"|| { echo "glew install failed"; exit 1; } 
+
+	popd >/dev/null
+	popd >/dev/null
+
+	echo "glew" >> $BUILD_STATUS_FILE
+}
+
 function build_libpng()
 {
 	ISBUILT_ARG="libpng"
@@ -318,7 +429,9 @@ function build_libxml2()
 	fi
 	make clean
 
-	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "Libxml2 configure failed"; exit 1; } 
+	#Modifications
+	#	Disable python, because sys/select.h is not in mingw
+	./configure --host=$HOST_VAL --without-python --enable-shared --disable-static --prefix=/ || { echo "Libxml2 configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "libxml2 build failed"; exit 1; } 
 	
@@ -567,13 +680,13 @@ function build_wx()
 	PATCH_LEVEL=0
 	applyPatches
 	PATCH_LEVEL=1
+	sed -i "s@REPLACE_BASENAME@${BASE}@" wx-config || { echo "Failed to update wx-config with build root,. Aborting";  exit 1; }
 	popd
 
 	pushd ./lib/
 	ln -s wx-2.8/wx/ wx
 	popd
 
-	sed -i "s@REPLACE_BASENAME@${BASE}@" wx-config
 
 	echo ${NAME} >> $BUILD_STATUS_FILE
 
@@ -763,8 +876,8 @@ function build_ftgl()
 	sed -i s/'\-lGLU'/-lglu32/ configure
 	sed -i s/'\-lGL'/-lopengl32/ configure
 
-#	APPLY_PATCH_ARG="$PATCHES_FTGL"
-#	applyPatches
+	APPLY_PATCH_ARG="$PATCHES_FTGL"
+	applyPatches
 
 	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "ftgl configure failed"; exit 1; } 
 
@@ -888,11 +1001,32 @@ function build_3Depict()
 
 	if [ $IS_RELEASE -ne 0 ] ; then
 		#Sanity check that we are actually in debug mode
-	TEST_FLAG=`./3Depict --help  2>&1 | grep "\-\-test"`
-	if [ x"$TEST_FLAG" != x"" ] ; then
-		echo "3Depict\'s Unit tests available, but should not be, when in release mode" 
-		exit 1
+		TEST_FLAG=`./3Depict --help  2>&1 | grep "\-\-test"`
+		if [ x"$TEST_FLAG" != x"" ] ; then
+			echo "3Depict\'s Unit tests available, but should not be, when in release mode" 
+			exit 1
+		fi
 	fi
+
+
+	#if the locales are missing, try to rebuild them
+	if [ x`find locales/ -name \*.mo` = x""  ] ; then
+		
+		if [ x`which msgmerge` == x"" ] ; then
+			echo "Translations do not appear to be built for 3depict. Need to install translation builder, gettext."
+			sudo apt-get install gettext
+		fi
+		pushd translations
+		./makeTranslations || { echo "Translation build failed."; exit 1; }
+
+		mkdir -p ../locales/
+		for i in *.mo
+		do
+			TARGDIR=../locales/`echo $i | sed ' s/\.mo//' | sed 's/3Depict_//'`  
+			mkdir -p $TARGDIR
+			cp $i $TARGDIR/
+		done
+		popd
 	fi
 
 	popd > /dev/null
@@ -903,7 +1037,7 @@ function make_package()
 {
 	pushd ./code/3Depict 2> /dev/null
 
-	NSI_FILE=./packaging/windows-installer/windows-installer.nsi
+	NSI_FILE=./packaging/mingw-debian-cross/windows-installer.nsi
 	if [ ! -f $NSI_FILE ] ; then
 		echo "NSI file missing whilst trying to build package"
 		exit 1;
@@ -913,7 +1047,7 @@ function make_package()
 	# Due to debian bug : #704828, makensis cannot correctly handle symlinks,
 	# so don't use symlinks
 	if [ ! -f `basename $NSI_FILE`  ] ; then
-		cp ./packaging/windows-installer/windows-installer.nsi .
+		cp ./packaging/mingw-debian-cross/windows-installer.nsi .
 	fi
 
 
@@ -1028,7 +1162,7 @@ build_libiconv
 build_gettext 
 build_mathgl 
 build_ftgl 
-
+build_glew
 
 build_3Depict
 
