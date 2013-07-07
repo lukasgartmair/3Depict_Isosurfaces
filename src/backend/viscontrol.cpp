@@ -1011,15 +1011,19 @@ bool VisController::reparentFilter(size_t filter, size_t newParent)
 
 bool VisController::setFilterString(size_t id,const std::string &s)
 {
-	//Save current filter state to undo stack
-	pushUndoStack();
 	
 	Filter *p=(Filter *)getFilterById(id);
 
 	if(s != p->getUserString())
 	{
-		currentState.setStateModified(true);
+		//Save current filter state to undo stack
+		pushUndoStack();
+		
+		//Do the actual update
 		p->setUserString(s);
+		
+		//Update the current state	
+		currentState.setFilterTreeByClone(filterTree);
 		return true;
 	}
 
