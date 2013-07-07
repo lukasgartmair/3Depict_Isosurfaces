@@ -1,5 +1,5 @@
 Name:		3Depict
-Version:	0.0.13
+Version:	0.0.14
 Release:	1%{?dist}
 Summary:	Valued 3D point cloud visualization and analysis
 Group:		Applications/Engineering
@@ -51,7 +51,7 @@ useful for general scalar valued point data purposes.
 %patch1
 
 %build
-%configure --disable-debug-checks --enable-openmp-parallel
+%configure --disable-debug-checks --enable-openmp-parallel --enable-mgl2
 make %{?_smp_mflags}
 
 %install
@@ -109,10 +109,16 @@ rm -rf %{buildroot}
 
 
 %changelog
-* Sun Mar 23 2013 D Haley <mycae(a!t)gmx.com> - 0.0.13-1
+* Sat Jul 6 2013 D Haley <mycae(a!t)gmx.com> - 0.0.14-1
+- Update to 0.0.14
+
+* Tue Jun 25 2013 D Haley <mycae(a!t)gmx.com> - 0.0.13-2
+- Enable mathgl2
+
+* Fri Apr 12 2013 D Haley <mycae(a!t)gmx.com> - 0.0.13-1
 - Update to 0.0.13
 
-* Sun Mar 23 2013 D Haley <mycae(a!t)gmx.com> - 0.0.12-4
+* Sat Mar 23 2013 D Haley <mycae(a!t)gmx.com> - 0.0.12-4
 - Add aarch 64 patch for bug 924960, until next version
 
 * Wed Feb 13 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.12-3
