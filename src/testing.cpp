@@ -448,7 +448,7 @@ bool rangeFileLoadTests()
 			// if its not in the set, it should load successfully
 			shouldSucceed=(failSet.find(fileShortname)==failSet.end());
 				
-			if((!f.openGuessFormat(fileLongname.c_str())) == shouldSucceed)
+			if(!(f.openGuessFormat(fileLongname.c_str()) == shouldSucceed))
 			{
 				cerr << "\t" << fileShortname.c_str() << "...";
 				cerr << f.getErrString() << endl;

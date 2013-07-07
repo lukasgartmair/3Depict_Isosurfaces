@@ -682,7 +682,7 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 	{
 	vector<string> warnings;
 	vector<pair<float,float> > massData;
-	errCode=readRNGFreqTable(fpRange,numIons,numRanges,ionNames,
+	errCode=readRNGFreqTable(fpRange,inBuffer,numIons,numRanges,ionNames,
 				colHeaders, frequencyEntries,massData,warnings);
 	if(errCode)
 	{
@@ -1222,14 +1222,12 @@ unsigned int RangeFile::readRNGHeader(FILE *fpRange, vector<pair<string,string> 
 	return 0;
 }
 
-unsigned int RangeFile::readRNGFreqTable(FILE *fpRange, const unsigned int numIons, 
+unsigned int RangeFile::readRNGFreqTable(FILE *fpRange, char *inBuffer,const unsigned int numIons, 
 			const unsigned int numRanges,const vector<pair<string,string> > &names, 
 			vector<string> &colHeaders, vector<unsigned int > &tableEntries,
 			vector<pair<float,float> > &massData, vector<string> &warnings)
 {
 	string entry;
-
-	char *inBuffer = new char[MAX_LINE_SIZE];
 	char *ptrBegin;
 	ptrBegin=inBuffer;
 	while(*ptrBegin && *ptrBegin == '-')
@@ -1237,7 +1235,6 @@ unsigned int RangeFile::readRNGFreqTable(FILE *fpRange, const unsigned int numIo
 	splitStrsRef(ptrBegin," \n",colHeaders);
 	if(!colHeaders.size() )
 	{
-		delete[] inBuffer;
 		return RANGE_ERR_FORMAT_TABLESEPARATOR;
 	}
 	
@@ -1256,7 +1253,6 @@ unsigned int RangeFile::readRNGFreqTable(FILE *fpRange, const unsigned int numIo
 		if(colHeaders.size() !=numIons)
 		{
 			// Emit warning
-			delete[] inBuffer;
 			return RANGE_ERR_FORMAT_TABLEHEADER_NUMIONS;
 		}
 	
@@ -1305,7 +1301,6 @@ unsigned int RangeFile::readRNGFreqTable(FILE *fpRange, const unsigned int numIo
 		if(entries.size() != numIons + 2 &&
 			entries.size() !=numIons+3)
 		{
-			delete[] inBuffer;
 			return RANGE_ERR_FORMAT_RANGETABLE;
 		}
 
@@ -1317,18 +1312,15 @@ unsigned int RangeFile::readRNGFreqTable(FILE *fpRange, const unsigned int numIo
 		
 		if(stream_cast(massPair.first,entries[entryOff]))
 		{
-			delete[] inBuffer;
 			return RANGE_ERR_FORMAT_MASS_PAIR;
 		}
 		if(stream_cast(massPair.second,entries[entryOff+1]))
 		{
-			delete[] inBuffer;
 			return RANGE_ERR_FORMAT_MASS_PAIR;
 		}
 
 		if(massPair.first >= massPair.second)
 		{
-			delete[] inBuffer;
 			return RANGE_ERR_DATA_FLIPPED;
 		}
 
@@ -1341,7 +1333,6 @@ unsigned int RangeFile::readRNGFreqTable(FILE *fpRange, const unsigned int numIo
 			size_t tempInt;
 			if(stream_cast(tempInt,entries[entryOff+j]))
 			{
-				delete[] inBuffer;
 				return RANGE_ERR_FORMAT_TABLE_ENTRY;
 			}
 			
@@ -1361,11 +1352,9 @@ unsigned int RangeFile::readRNGFreqTable(FILE *fpRange, const unsigned int numIo
 	size_t nMax=std::accumulate(tableEntries.begin(),tableEntries.end(),0);
 	if(!nMax)
 	{
-		delete[] inBuffer;
 		return RANGE_ERR_DATA_TOO_MANY_USELESS_RANGES;
 	}
 
-	delete[] inBuffer;
 	return 0;
 }
 

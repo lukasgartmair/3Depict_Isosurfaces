@@ -106,7 +106,7 @@ class RangeFile
 								unsigned int &numIons);
 
 		//Read the range frequency table
-		static unsigned int readRNGFreqTable(FILE *fpRange,
+		static unsigned int readRNGFreqTable(FILE *fpRange, char *inBuffer, 
 				const unsigned int numIons, const unsigned int numRanges,
 				const std::vector<std::pair<std::string,std::string> > &names,
 					std::vector<std::string> &colHeaders, 
@@ -128,7 +128,7 @@ class RangeFile
 		RangeFile();
 		//!Open a specified range file
 		unsigned int open(const char *rangeFile, unsigned int format=RANGE_FORMAT_ORNL);	
-		//!Open a specified range file
+		//!Open a specified range file - returns true on success
 		bool openGuessFormat(const char *rangeFile);
 
 		//!is the extension string the same as that for a range file? I don't advocate this method, but it is convenient in a pinch.
