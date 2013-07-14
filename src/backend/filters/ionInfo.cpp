@@ -233,15 +233,13 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 			str=std::string(TRANS("--Counts--") );
 			consoleOutput.push_back(str);
 			
-			size_t totalRanged;
+			//sum all ions *except* the unranged.
+			for(size_t ui=0;ui<numIons.size()-1;ui++)
+				numRanged+=numIons[ui];
+				
 			if(wantNormalise)
 			{
-				totalRanged=0;
-				//sum all ions *except* the unranged.
-				for(size_t ui=0;ui<numIons.size()-1;ui++)
-					totalRanged+=numIons[ui];
-				
-				stream_cast(str,totalRanged);
+				stream_cast(str,numRanged);
 				str=TRANS("Total Ranged\t")+str;
 			}
 			else
@@ -257,8 +255,8 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 			{
 				if(wantNormalise)
 				{
-					if(totalRanged)
-						stream_cast(str,((float)numIons[ui])/(float)totalRanged);
+					if(numRanged)
+						stream_cast(str,((float)numIons[ui])/(float)numRanged);
 					else
 						str=TRANS("n/a");
 				}
@@ -278,9 +276,6 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 			str=std::string("----------");
 			consoleOutput.push_back(str);
 	
-			
-			for(size_t ui=0;ui<numIons.size();ui++)
-				numRanged++;
 		}
 		else
 		{
