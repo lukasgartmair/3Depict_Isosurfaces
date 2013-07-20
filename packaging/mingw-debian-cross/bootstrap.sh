@@ -61,8 +61,12 @@ if [ `id -u` -eq 0 ]; then
 fi
 #1) Filezilla wxwidgets patch for 64 bit support under mingw
 #2) own patch for fixing wx-config's lack of sysroot support
-PATCHES_WXWIDGETS_PRE="wxWidgets-2.8.12-mingw64-1.patch"
-PATCHES_WXWIDGETS_POST="wx-config-sysroot.patch"
+PATCHES_WXWIDGETS_PRE="wxwidgets2.8-2.8.12-mingw64-1.patch"
+PATCHES_WXWIDGETS_POST="wxwidgets2.8-wx-config-sysroot.patch"
+
+
+#Only required for 2.7.8
+PATCHES_LIBXML="libxml-impfree.patch"
 #1) Zlib no longer needs to explicitly link libc, and will fail if it tries
 PATCHES_ZLIB="zlib-no-lc.patch"
 #1) Override some configure patches to bypass false positive failures
@@ -76,7 +80,7 @@ PATCHES_GETTEXT="gettext-disable-tools gettext-win32-prefix"
 
 PATCHES_GLEW="glew-makefile"
 
-PATCH_LIST="$PATCHES_WXWIDGETS_PRE $PATCHES_WXWIDGETS_POST $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL $PATCHES_GLEW"
+PATCH_LIST="$PATCHES_WXWIDGETS_PRE $PATCHES_WXWIDGETS_POST $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL $PATCHES_GLEW $PATCHES_LIBXML"
 
 BUILD_STATUS_FILE="$BASE/build-status"
 PATCH_STATUS_FILE="$BASE/patch-status"
@@ -95,7 +99,7 @@ function applyPatches()
 {
 	for i in $APPLY_PATCH_ARG
 	do
-		if [ x`cat $PATCH_STATUS_FILE | grep "$i"` != x"" ] ; then
+		if [ x"`cat $PATCH_STATUS_FILE | grep "$i"`" != x"" ] ; then
 			echo "Patch already applied :" $i
 			continue
 		fi
@@ -143,17 +147,21 @@ function grabDeps()
 {
 	pushd deps 2>/dev/null
 
-	DEB_PACKAGES="expat freetype ftgl gettext gsl libpng libxml2 mathgl qhull tiff3 wxwidgets2.8 zlib glew"
-	if [ x$DIST_NAME == x"Ubuntu" ] || [ x$DIST_NAME == x"LinuxMint" ] then ;
-		DEB_PACKAGES="$DEB_PACKAGES libjpeg-turbo"
-	else	
-		DEB_PACKAGES="$DEB_PACKAGES libjpeg8"
+	DEB_PACKAGES="expat freetype ftgl gettext gsl libpng libxml2 mathgl qhull tiff wxwidgets2.8 zlib glew"
+	if [ x$DIST_NAME == x"Ubuntu" ] || [ x$DIST_NAME == x"LinuxMint" ] ; then 
+		LIBJPEGNAME="libjpeg6b"
+	else
+		LIBJPEGNAME="libjpeg"
+	
 	fi
+	DEB_PACKAGES="$DEB_PACKAGES $LIBJPEGNAME"
 
 	GET_PACKAGES=""
 	for i in $DEB_PACKAGES
 	do
 		FNAME=`ls packages/${i}_*.orig.* 2> /dev/null`
+		#If filename is empty, we will need to retreive it from
+		# interwebs
 		if [ x"$FNAME" == x"" ] ; then
 			GET_PACKAGES="${GET_PACKAGES} $i"
 		fi
@@ -162,6 +170,17 @@ function grabDeps()
 	#grab packages if they are not already on-disk
 	if [ x"$GET_PACKAGES" != x"" ] ; then
 		apt-get source $GET_PACKAGES
+
+		for i in $GET_PACKAGES
+		do
+			grep -v $i ../build-status > tmp
+			mv tmp ../build-status
+			
+			grep -v $i ../patch-status > tmp
+			mv tmp ../patch-status
+
+
+		done
 
 		if [ $? -ne 0 ] ; then
 			echo "apt-get source failed... Maybe check internet connection, then try updating package database, then re-run?"
@@ -195,9 +214,16 @@ function grabDeps()
 		dpkg-source -x $i*dsc
 		#move package back
 		mv ${i}_*.* packages/
+		
+		#wipe record of any patches for this package
+		grep -v $i ../patch-status  > tmp
+		mv tmp ../patch-status
+		
+		#wipe record of build
+		grep -v $i ../build-status  > tmp
+		mv tmp ../build-status
 	done
-
-
+	
 	#extract libiconv if needed
 	#--
 	LIBICONV=libiconv-1.14
@@ -218,13 +244,12 @@ function grabDeps()
 	fi	
 
 	#---
-
 	#We also need to install nsis, though it is not a strict "dependency" per-se.
 	if [ x`which makensis` == x"" ] ; then
 		echo "Installing nsis via apt-get";
 		sudo apt-get install nsis || { echo "Failed installation"; exit 1; }
 	fi
-
+	
 	
 	popd 2> /dev/null
 
@@ -317,6 +342,7 @@ function build_zlib()
 
 	#Remove the static zlib. We don't want it
 	rm $BASE/lib/libz.a
+
 	popd >/dev/null
 	popd >/dev/null
 
@@ -435,17 +461,29 @@ function build_libxml2()
 	fi
 
 	pushd deps >/dev/null
+	LIBXMLVER=`ls -d libxml2-* | sed 's/libxml2-//'`
 	pushd libxml2-* >/dev/null
 	
 	if [ $? -ne 0 ] ; then
 		echo "libxml2 dir missing, or duplicated?"
 		exit 1
 	fi
+
+	#Libxml 2.8 and up doesn't need patching.
+	# note that --compare-versions returns 0 on truth, and 1 on false
+	dpkg --compare-versions  $LIBXMLVER lt 2.8
+	if [ $? -eq 0 ] ; then
+		echo "WARNING : Previous attempts to use libxml2 < 2.8 have failed."
+		echo " it is recommended to manually obtain the .dsc,.orig.tar.gz and .debian.tar.gz from"
+		echo " http://packages.debian.org/source/wheezy/libxml2 . download these, then replace the .dsc,.orig.tar.gz and .debian.tar.gz in deps/packages/"
+		exit 1
+	fi
+
 	make clean
 
 	#Modifications
 	#	Disable python, because sys/select.h is not in mingw
-	./configure --host=$HOST_VAL --without-python --enable-shared --disable-static --prefix=/ || { echo "Libxml2 configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --without-python --without-html --without-http --without-ftp --without-push --without-writer --without-push --without-legacy --without-xpath --without-iconv  --enable-shared=yes --enable-static=no --prefix=/ || { echo "Libxml2 configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "libxml2 build failed"; exit 1; } 
 	
@@ -481,7 +519,7 @@ function build_libjpeg()
 		return;
 	fi
 	pushd deps >/dev/null
-	pushd ${NAME}[0-9]*-* >/dev/null
+	pushd ${NAME}*[0-9]* >/dev/null
 	
 	if [ $? -ne 0 ] ; then
 		echo "${NAME} dir missing, or duplicated?"
@@ -516,7 +554,7 @@ function build_libtiff()
 		return;
 	fi
 	pushd deps >/dev/null
-	pushd tiff[0-9]*-* >/dev/null
+	pushd tiff*[0-9]* >/dev/null
 	
 	if [ $? -ne 0 ] ; then
 		echo "libtiff dir missing, or duplicated?"
@@ -1134,7 +1172,11 @@ createDirLayout
 #---
 case ${HOST_VAL}  in
 	x86_64-w64-mingw32)
-		MINGW_PACKAGES="mingw-w64-x86-64-dev g++-mingw-w64-x86-64"
+		if [ $DIST_NAME == "Ubuntu" ] || [ $DIST_NAME == "LinuxMint" ] ; then
+			MINGW_PACKAGES="mingw-w64-dev g++-mingw-w64-x86-64"
+		else
+			MINGW_PACKAGES="mingw-w64-x86-64-dev g++-mingw-w64-x86-64"
+		fi
 		HOST_EXT="win64"
 	;;
 	i686-w64-mingw32)
