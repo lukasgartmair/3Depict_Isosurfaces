@@ -26,6 +26,8 @@
 	- Better handling of cylinder objects during interaction
 	- Improved performance in some cases when ranging
 	- On Mac OSX, manual now stored locally
+	- New "quick start" section in documentation
+	- Ranged ions/volume now reported correctly by ion info filter
 
 	Technical Bugfixes/Features:
 	- Split viscontrol and analysis state into separate modules

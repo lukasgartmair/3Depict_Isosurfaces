@@ -47,6 +47,7 @@ if [ ! -d code/3Depict ] || [ ! -f code/3Depict/src/3Depict.cpp ] ; then
 fi
 
 
+DIST_NAME=""
 BASE=`pwd`
 PREFIX=/
 NUM_PROCS=4
@@ -141,7 +142,13 @@ function install_mingw()
 function grabDeps()
 {
 	pushd deps 2>/dev/null
-	DEB_PACKAGES="expat freetype ftgl gettext gsl libjpeg8 libpng libxml2 mathgl qhull tiff3 wxwidgets2.8 zlib glew"
+
+	DEB_PACKAGES="expat freetype ftgl gettext gsl libpng libxml2 mathgl qhull tiff3 wxwidgets2.8 zlib glew"
+	if [ x$DIST_NAME == x"Ubuntu" ] || [ x$DIST_NAME == x"LinuxMint" ] then ;
+		DEB_PACKAGES="$DEB_PACKAGES libjpeg-turbo"
+	else	
+		DEB_PACKAGES="$DEB_PACKAGES libjpeg8"
+	fi
 
 	GET_PACKAGES=""
 	for i in $DEB_PACKAGES
@@ -195,7 +202,7 @@ function grabDeps()
 	#--
 	LIBICONV=libiconv-1.14
 	if [ ! -f packages/${LIBICONV}.tar.gz ] ; then
-		wget "ftp://ftp.gnu.org/gnu/libiconv/libiconv-1.14.tar.gz" || { echo "Libiconv download failed "; exit 1; }
+		wget "http://ftp.gnu.org/gnu/libiconv/libiconv-1.14.tar.gz" || { echo "Libiconv download failed "; exit 1; }
 		mv ${LIBICONV}.tar.gz packages/
 	fi
 
@@ -466,27 +473,28 @@ function build_libxml2()
 
 function build_libjpeg()
 {
-	NAME="libjpeg"
+		
+	NAME=$LIBJPEGNAME
 	ISBUILT_ARG=${NAME}
 	isBuilt
 	if [ $ISBUILT -eq 1 ] ; then
 		return;
 	fi
 	pushd deps >/dev/null
-	pushd libjpeg[0-9]*-* >/dev/null
+	pushd ${NAME}[0-9]*-* >/dev/null
 	
 	if [ $? -ne 0 ] ; then
-		echo "libjpeg dir missing, or duplicated?"
+		echo "${NAME} dir missing, or duplicated?"
 		exit 1
 	fi
 
 	make clean
 
-	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "Libjpeg configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "$NAME configure failed"; exit 1; } 
 
-	make -j $NUM_PROCS || { echo "libjpeg build failed"; exit 1; } 
+	make -j $NUM_PROCS || { echo "$NAME build failed"; exit 1; } 
 	
-	make install DESTDIR="$BASE"|| { echo "libjpeg install failed"; exit 1; } 
+	make install DESTDIR="$BASE"|| { echo "$NAME install failed"; exit 1; } 
 	
 	#DLL needs to be copied into lib manually
 	cp -p .libs/${NAME}-[0-9]*.dll $BASE/lib/ 
@@ -494,7 +502,7 @@ function build_libjpeg()
 	popd >/dev/null
 	popd >/dev/null
 
-	FIX_LA_FILE_ARG=libjpeg
+	FIX_LA_FILE_ARG=$NAME
 	fix_la_file
 	echo ${NAME}  >> $BUILD_STATUS_FILE
 }
@@ -968,10 +976,13 @@ function checkHost()
 	done
 	
 	if [ x`which lsb_release` != x"" ] ; then
-		
+		#Possible results
+		# Debian, LinuxMint,Ubuntu,(others)
 		DIST_NAME=`lsb_release -i | awk -F: '{print $2}' | sed 's/\s//g'`
 		if [ x$DIST_NAME != x"Debian" ] ; then
 			echo "This is meant to target debian. I'm not sure if it will work on your system. You'll need to work that out."
+			echo "Sleeping for 4 seconds."
+			sleep 4
 		fi
 	fi
 	
@@ -1118,13 +1129,9 @@ checkPatchesExist
 #build the dirs we need
 createDirLayout
 
-#Create the binaries we need
-createBaseBinaries
-
-#Obtain the needed dependencies
-grabDeps
 
 #Install cross compiler
+#---
 case ${HOST_VAL}  in
 	x86_64-w64-mingw32)
 		MINGW_PACKAGES="mingw-w64-x86-64-dev g++-mingw-w64-x86-64"
@@ -1140,7 +1147,17 @@ case ${HOST_VAL}  in
 	;;
 esac
 
+#install the compiler
 install_mingw
+#---
+
+#Create the binaries we need
+createBaseBinaries
+
+#Obtain the needed dependencies
+grabDeps
+
+
 
 #set our needed environment variables
 PATH=${BASE}/bin/:/usr/$HOST_VAL/bin/:$PATH
