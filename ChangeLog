@@ -1,4 +1,4 @@
-* ?? Aug 2013 : 0.0.14
+* 20 Jul 2013 : 0.0.14
 	Features:
 	- 2D slice render mode for voxels. Can now visualise voxel data
 	  using colourised planes - show voxel values on a given slice
