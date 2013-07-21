@@ -37,6 +37,8 @@ unsigned int ANIMATE_PROGRESS_NUMFRAMES=3;
 
 Scene::Scene() : tempCam(0), cameraSet(true), outWinAspect(1.0f), r(0.0f), g(0.0f), b(0.0f)
 {
+	glewInited=false;
+
 	lastHovered=lastSelected=(unsigned int)(-1);
 	lockInteract=false;
 	hoverMode=selectionMode=false;
@@ -53,15 +55,6 @@ Scene::Scene() : tempCam(0), cameraSet(true), outWinAspect(1.0f), r(0.0f), g(0.0
 
 	activeCam = new CameraLookAt;
 
-	//Initialise GLEW
-#if defined(WIN32) || defined(WIN64)
-	if(glewInit())
-	{
-		cerr << "Opengl context could not be created, aborting." << endl;
-		//Blow up without opengl
-		exit(1);
-	}
-#endif
 
 
 	DrawableObj::setTexPool(new TexturePool);
@@ -76,6 +69,22 @@ Scene::~Scene()
 
 unsigned int Scene::initDraw()
 {
+	//Initialise GLEW
+#if defined(WIN32) || defined(WIN64)
+	if(!glewInited)
+	{
+		unsigned int errCode;
+		errCode=glewInit();
+		if(errCode!= GLEW_OK)
+		{
+			cerr << "Opengl context could not be created, aborting." << endl;
+			cerr << "Glew reports:" << glewGetErrorString(errCode) << endl;
+			//Blow up without opengl
+			exit(1);
+		}
+		glewInited=true;
+	}
+#endif
 	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
 
 	//Will it blend? That is the question...

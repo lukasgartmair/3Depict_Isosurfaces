@@ -72,6 +72,7 @@ Section "3Depict program" SEC01
   File "src\libstdc++-6.dll"
   File "src\libmgl-5.dll"
   File "src\libgcc_s_sjlj-1.dll"
+  File "src\glew32.dll"
   File "docs\manual-latex\manual.pdf"
 
   CreateDirectory "$SMPROGRAMS\3Depict"
@@ -184,6 +185,7 @@ Section Uninstall
   Delete "$INSTDIR\libstdc++-6.dll"
   Delete "$INSTDIR\libmgl-5.dll"
   Delete "$INSTDIR\libgcc_s_sjlj-1.dll"
+  Delete "$INSTDIR\glew32.dll"
 
   Delete "$INSTDIR\uninst.exe"  
  

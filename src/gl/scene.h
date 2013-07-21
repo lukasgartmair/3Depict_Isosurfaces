@@ -60,6 +60,7 @@ class SelectionBinding;
 class Scene
 {
 	private:
+		bool glewInited;
 		//!Viscontroller. Needed for notification of updates during selection binding
 		VisController *visControl;
 		//!Objects that will be used for drawing
