@@ -334,7 +334,7 @@ void wxPropertyGrid::OnMouseMove(wxMouseEvent &event)
 		const GRID_PROPERTY *p;
 		p=getProperty(getKeyFromRow(row));
 	
-		SetToolTip(wxStr(p->helpText));
+		GetGridWindow()->SetToolTip(wxStr(p->helpText));
 	}
 
 	event.Skip();
