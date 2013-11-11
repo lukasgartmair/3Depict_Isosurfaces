@@ -124,6 +124,7 @@ Filter *AnnotateFilter::cloneUncached() const
 	for(unsigned int ui=0;ui<3; ui++)
 		p->anglePos[ui]=anglePos[ui];
 
+	p->annotateText=annotateText;
 	p->textSize=textSize;
 	p->annotateSize=annotateSize;
 	p->sphereMarkerSize=sphereMarkerSize;
