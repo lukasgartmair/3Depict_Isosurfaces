@@ -40,7 +40,7 @@
 \begin{minipage}{0.3\textwidth}
 \begin{flushright} \large
 \emph{Version:} \\
- 0.0.14, Aug 2013\end{flushright}
+ 0.0.15, Nov 2013\end{flushright}
 \end{minipage}
 
 \vfill
@@ -133,12 +133,12 @@ We would always appreciate assistance with this work. You don't have to be able 
 \subsection{Getting started}
 \subsubsection{Licence}
 \label{sec:licence} 
-This program is distributed under the GNU General Public Licence Version 3 (GPLV3+), an \textit{open-source} licence. Information on the copyright of this program is available under the \texttt{COPYING} file in the program directory, or online (\emph{e.g.}\ \url{http://www.gnu.org/licenses/gpl-3.0.txt}).
+This program is distributed under the GNU General Public Licence Version 3 (GPLV3+), an \textit{open-source} licence. Information on the copyright of this program is available under the \texttt{COPYING} file in the program directory, or online (\emph{e.g.}\ \url{http://www.gnu.org/licenses/gpl-3.0.txt} or \url{https://en.wikipedia.org/wiki/GPLv3}).
 
-The basic premise is that you may copy the program, modify and distribute such modified versions or derivative works only under the same licence. The licence forbids technical restrictions on users further redistributing the program.
+The basic premise is that you may copy the program, modify and distribute such modified versions or derivative works only under the same licence, whether a part or the entirety of the program is used. The licence forbids technical restrictions on users further redistributing the program.
  
 \subsubsection{Installing the program}
-The installation method for the program depends upon your chosen operating system. The most up-to-date notes are available on the project website. It is highly recommended that, in general, you do not simply download random programs from the Internet and execute them if a version is available in a trusted software repository. 
+The installation method for the program depends upon your chosen operating system. The most up-to-date notes are available on the project website. It is highly recommended that, in general, you do not simply download random programs from the Internet and execute them if a version is available in a trusted software repository.  At time of writing (Oct, 2013), installers are available for windows, Debian and Fedora-like linuxes, and some versions of Mac OSX.
 
 \subsection{Understanding the interface}
 The program interface consists of three different views. On the left, there is the data, cameras and tools panes, with are used to generate data for visualisation, and to provide an interface into changing properties in a structured manner. On the right, the view is split into two sections; at the top, there is the 3D view. At the bottom are the plotting, raw data and console output panels.  
@@ -156,6 +156,26 @@ The program interface consists of three different views. On the left, there is t
 Each pane may be hidden, either by double clicking the ``sash'' between the two panes, by selecting the respective item from the view menu or by its keyboard shortcut key as listed in the menu.  
 
 At the very bottom of the program, a status bar is shown -- here messages are shown to provide hints on how to use the program, or to communicate information relating to the program's internal state. 
+
+\subsubsection{The Filter Tree}
+Understanding the filter tree is very important to being able to use \emph{3Depict} to meet your needs. The reason it is called a tree, is because it is a graphical representation of the mathematical ``Tree'' - where each node in the tree can have a ``parent'', or several ``child'' nodes.  In \emph{3Depict}, each node in the tree is called a ``filter'' --- the filter modifies data coming from its parent in some manner specific to the type of filter, and the options chosen for that filter.
+
+\begin{figure}[ht]
+  \centering
+ \includegraphics[width=0.6 \textwidth,keepaspectratio=true]{./figures/tree-layout.png}
+ % camera.pdf: 578x382 pixel, 72dpi, 20.39x13.48 cm, bb=0 0 578 382
+
+ \caption{General concept for the tree layout. Trees have ``parent'' and ``child'' relationships betwene members}
+\label{fig:treelayout}
+\end{figure}
+
+The filter tree is quite important in \emph{3Depict}, and the ability to change it is also a very powerful tool. You can copy, move (by dragging the nodes) or even store sections of the tree (by using the ``stash'' panel) , allowing you to assemble the tree in whatever manner you find useful to your analysis. Using the tree is discussed in more detail in Section~\ref{sec:treebehaviour}. You can also change the names of the filters to help you identify which filter is which, simply by clicking once on the label.
+
+The filter tree may, depending on how it is laid out, show small warning symbols next to the tree - these usually indicate that you have built the tree in a manner which may be either non-helpful (\emph{e.g.} the output of one filter cannot be used by the other), or that the configuration might generate misleading results. There are currently two levels for this - ``Error'' and ``Warning''. Warnings can be ignored safely if you know what they mean - for example you might be attempting to calculate the density of your point cloud, but you have only partially loaded the data -- 3Depict will detect this case and issue the warning.
+
+Not all incorrect configurations are warned about -- you must think about the construction of the tree carefully when working with the program. Different structures can generate radically different results.
+
+
 
 
 \FloatBarrier
@@ -288,7 +308,7 @@ The program can be used to mark particular sections of the spectrum as belonging
 \end{figure}
 
 
-To perform ranging, you must first have a valid rangefile. As of time of writing, (July, 2013 - 0.0.14), the program is unable to generate these. It is possible to write the file by hand, or using a separate program - details on manually writing the file can be found in Section~\ref{sec:rangeFormat}.
+To perform ranging, you must first have a valid rangefile. As of time of writing, (July, 2013 - 0.0.14), the program is unable to generate these from the UI. It is possible to write the file by hand, or using a separate program - details on manually writing the file can be found in Section~\ref{sec:rangeFormat}.
 
 To perform ranging, the data must be first loaded into the program. The range information can be loaded in two ways, by dropping a valid rangefile onto the program, or by using the filter dropdown (Figure~\ref{fig:rangeDropdown}), whereby a window will open that will allow for the selection of a valid range file. 
 
@@ -351,14 +371,14 @@ To generate iso-concentration surfaces, or to create 2D slices in your data for 
 
 Load some ranged data (Section~\ref{sec:quickStartRangedData}), and then select the range filter and choose ``Voxelisation''. This will cause the dataset to disappear until you configure the voxelisation parameters appropriately. To compute a concentration field, change the normalisation mode to ``All ions (Conc)'', then select the ions that are to be included.  To visualise the result, change the ``representation'' mode to either isosurface or 2D slice. The upper and lower bounds of the 2D slice are auto computed. 
 
-However, for the isosurface one must choose the value that the isosurface is spanning. For non-concentration modes, after computation of the voxel field, the upper and lower bounds of the field are shown in the console window, and can aid in selecting the desired isosurface value.
+However, for the isosurface one must choose the value that the isosurface is spanning. For non-concentration modes, after computation of the voxel field, the upper and lower bounds of the field are shown in the console window, and can aid in selecting the desired isosurface value. For normalised modes (\emph{i.e.} concentration), one would set the values between 0 and 1.
 
 \FloatBarrier
 
 \section{Understanding the program}
 \subsection{Filters}
 
-Filters form the key component of the program. These are the tools by which data is analysed and modified, in order to generate the visual representation that is needed by the end users. The basic idea behind a filter is that each filter may perform arbitrary operations on ``data streams''. These data streams are sent to and from each filter, flowing through the tree.
+Filters form \emph{the} key component of the program. These are the tools by which data is analysed and modified, in order to generate the visual representation that is needed by the end users. The basic idea behind a filter is that each filter may perform arbitrary operations on ``data streams''. These data streams are sent to and from each filter, flowing through the tree.
 
 \begin{figure}[htp]
  \centering
@@ -849,7 +869,16 @@ Drawable will be emitted if the ``Show Primitive'' option is selected.
 \item \textbf{Local Density}: This computes the local density of the ions on either a nearest neighbour, or a fixed distance metric. The density is then assigned as the point value. Note that the number of points to be examined increases rapidly in the fixed distance metric, and may rapidly become untenable. Clipping the volume of data to reduce the time is an option, however surface effects can occur.
 \item \textbf{Density filtering}: computes density as per local density, however ions are retained (or not) depending upon a chosen cutoff density,  whilst retaining the original point value.
 \item \textbf{Radial distribution}: Computes the local environment for each ion, and generates a histogram of the number of points within a spherical section surrounding each ion. 
+\item \textbf{Axial distribution} : Computes the so-called ``directional RDF'' or 1D RDF, which can be used to measure spatial correlations between points. 
+\item \textbf{Binomial distribution} : Computes the binomial distribution probabilities for the dataset, using the method of Moody et al~\cite{Moody2008}.
 \end{itemize}
+
+Local density and density filtering algorithms are relatively simple, and mostly are self-contained concepts. This can be used to identify the local density in your dataset, which in the case of APT, originates due to limitations in the technique. For the Radial Distribution Function (RDF) algorithm , this can be used to examine local correlations between points, which may or may not exist in your dataset. The  RDF technique is covered in several standard textbooks on APT~\cite{Gault2012}. 
+
+Axial distribution functions are covered in technical literature where they find use in APT and be referred to via a number of differing names, such as ``SDM''s~\cite{Geiser2007}, atom-vicinity~\cite{Boll2007}, or directional pair-correlation functions. The axial distrubution function implementation in 3Depict, allows for users to select and drag out the region to be analysed, with the axis of the cylinder providing both the cropping orientation and the axial direction in which to perform the calculation. 
+
+The binomial distribution function can be used to test for randomness in the spatial distribution of the points. The program computes a ``p'' value, which is the probability that the observed data was drawn from a  randomly distribtued (at the scale of the analysis) set of values on fixed data points. Grouping is performed by a grid-extrusion algorithm, which assigns each set of points in the dataset to a given bin, and thus a given count in the output histogram. The output histogram shows number of occurrences of the observation that a bin contains a given number of counts. This method (or any statistical test) cannot prove randomness, only non-randomness, which may come from many sources. One must be careful when using this mode (or any statistical test), and careful reading of the available literature is recommended. \emph{3Depict} does not implement the two-pass method of Moody for computing grid sizes at this time (October, 2013), but rather performs only the first pass.
+
 
 {%
 \newcommand{\mc}[3]{\multicolumn{#1}{#2}{#3}}
@@ -874,6 +903,8 @@ Voxel & No & No & No \\
 }%
 
 Ion, plot and range emit and usage patterns are dependant upon the selected algorithm. Local density and density filtering do not emit plots, and density filtering does allow range propagation.
+
+
 \FloatBarrier
 \subsubsection{Clustering analysis}
 
@@ -1200,7 +1231,6 @@ The filter tree is shown, with a pos load filter as the top level element, which
 
 A simple example file is given below, and is nominally in the ASCII 1 byte per character format. The original specification, to the authors knowledge, predates the UTF-8 and extended codepage support for non English languages. Thus non-English languages are not part of the file format - each should use the ``C'' locale for reading and writing, to avoid localisation concerns.
 
-\begin{table}
 \begin{verbatim}
 1 2
 Aluminium
@@ -1209,7 +1239,7 @@ Al 1 1 1 Al
 . 10.0 150 1
 . 150 200.2 1
 \end{verbatim}
-\end{table}
+
 
 The first line consists of two unsigned integers, separated by a space. The first integer is the number of unique ion types, and the second is the number of ranges. The next lines are taken as pairs. The first entry in the pair is the name of the ``ion''. The next entry consists of four parts. The first entry is a space terminated string, and is the shorthand name for the element. The next three elements are floating point values in the range of $[0,1]$, and are the colour of the ions that are ranged, with each element being the red, green and blue component in turn (\emph{i.e.} cubic RGB space). The final string is, to the authors' knowledge, unused, and is ignored by \emph{3Depict}. 
 

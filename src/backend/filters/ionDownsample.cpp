@@ -178,13 +178,9 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 	//use the cached copy if we have it.
 	if(cacheOK)
 	{
-		for(size_t ui=0;ui<dataIn.size();ui++)
-		{
-			if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
-				getOut.push_back(dataIn[ui]);
-		}
-		for(size_t ui=0;ui<filterOutputs.size();ui++)
-			getOut.push_back(filterOutputs[ui]);
+		propagateStreams(dataIn,getOut,STREAM_TYPE_IONS,true);
+		propagateCache(getOut);
+
 		return 0;
 	}
 

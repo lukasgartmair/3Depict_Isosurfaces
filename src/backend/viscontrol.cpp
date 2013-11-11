@@ -18,8 +18,8 @@
 
 #include "viscontrol.h"
 
-#include "wxcommon.h"
-#include "wxcomponents.h"
+#include "wx/wxcommon.h"
+#include "wx/wxcomponents.h"
 #include "gl/scene.h"
 
 
@@ -160,6 +160,8 @@ void VisController::switchoutFilterTree(FilterTree &f)
 //!Duplicate a branch of the tree to a new position. Do not copy cache,
 bool VisController::copyFilter(size_t toCopy, size_t newParent,bool copyToRoot) 
 {
+	pushUndoStack();
+	
 	bool ret;
 	if(copyToRoot)
 		ret=filterTree.copyFilter(filterMap[toCopy],0);
@@ -273,20 +275,29 @@ unsigned int VisController::refreshFilterTree(bool doUpdateScene)
 
 
 	const Filter *lastFilt=0;
+	//Copy the console mesages to the output text box
 	for(size_t ui=0;ui<consoleMessages.size(); ui++)
 	{
-		if(lastFilt !=consoleMessages[ui].first)
+		//If the consol messages are from a new filter
+		if(lastFilt !=consoleMessages[ui].first || !ui)
 		{
+			//If we are at a new filter, which is not the first,
+			//close out the "=" line
+			if(ui)
+				textConsole->AppendText(wxT("============\n\n\n"));
+
 			lastFilt=consoleMessages[ui].first;
 			textConsole->AppendText(wxStr(lastFilt->getUserString()));
-			textConsole->AppendText(wxT("\n------------\n"));
+			textConsole->AppendText(wxT("\n============\n"));
 		}
 		textConsole->AppendText(wxStr(consoleMessages[ui].second));
 		textConsole->AppendText(wxT("\n"));
 	}
 
 	if(consoleMessages.size())
-		textConsole->AppendText(wxT("\n"));
+	{
+		textConsole->AppendText(wxT("\n============\n"));
+	}
 
 
 	if(errCode)
@@ -439,6 +450,8 @@ void VisController::getFilterUpdates()
 		ASSERT(haveBind);
 
 	}
+
+	targetScene->resetModifiedBindings();
 
 	currentState.setFilterTreeByClone(filterTree);
 	//we have retrieved the updates.
@@ -626,7 +639,7 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 								//add a region to the plot,
 								//using the region data stored
 								//in the plot stream
-								plotNew->addRegion(plotData->regionID[ui],
+								plotNew->regionGroup.addRegion(plotData->regionID[ui],
 									plotData->regions[ui].first,
 									plotData->regions[ui].second,
 									plotData->regionR[ui],
@@ -681,12 +694,10 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 					//Loop through vector, Adding each object to the scene
 					if(drawData->cached)
 					{
-						ASSERT(false);
-						//FIXME: IMPLEMENT ME
 						//Create a *copy* for scene. Filter still holds
 						//originals, and will dispose of the pointers accordingly
-						//for(unsigned int ui=0;ui<drawObjs->size();ui++)
-						//	sceneDrawables.push_back((*drawObjs)[ui]->clone());
+						for(unsigned int ui=0;ui<drawObjs->size();ui++)
+							sceneDrawables.push_back((*drawObjs)[ui]->clone());
 					}
 					else
 					{
@@ -821,7 +832,7 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 			wxListUint *l;
 			unsigned int plotID;
 
-			//Retreive the uniqueID
+			//Retrieve the uniqueID
 			l=(wxListUint*)plotSelList->GetClientObject(ui);
 			plotID = l->value;
 			if(targetPlots->isPlotVisible(plotID))
@@ -1343,7 +1354,7 @@ void VisController::updateConsole(const std::vector<std::string> &v, const Filte
 		std::string s;
 		s = f->getUserString() + string(" : ") + v[ui];
 		textConsole->AppendText(wxStr(s));
-		textConsole->AppendText(_("\n"));
+		textConsole->AppendText(wxT("\n"));
 
 	}
 }

@@ -49,9 +49,9 @@ function setMacDeps {
 	#Dependency ID, URL and name
 	DEPIDS=( 0)
 	DEPNAMES=( mathgl)
-	DEPURLS=( http://sourceforge.net/projects/mathgl/files/mathgl/mathgl%201.11.2/mathgl-1.11.2.tar.gz/download)
-	DEPFILENAMES=( mathgl-1.11.2.tar.gz)
-	DEPMDSUM=( acd33e68911d9506f60d769dce23f95e)
+	DEPURLS=( http://sourceforge.net/projects/mathgl/files/mathgl/mathgl%202.1.3/mathgl-2.1.3.1.tar.gz/download)
+	DEPFILENAMES=( mathgl-2.1.3.1.tar.gz)
+	DEPMDSUM=( 1476ea6fd32938ab221fe169025747ed)
 	
 }
 
@@ -197,7 +197,7 @@ function handleMacDistro()
 
 	# install deps except mathgl
 	echo "installing 3Depict dependencies..."
-	sudo port install wget libpng freetype ftgl wxWidgets-devel dylibbundler qhull gsl  cmake libtool pkgconfig
+	sudo port install wget libpng freetype ftgl wxWidgets-3.0 dylibbundler qhull gsl  cmake libtool pkgconfig
 	if [ $? -ne 0 ] ; then
 		echo "macports was not successful in getting the dependencies"
 		exit 1
@@ -324,7 +324,7 @@ function handleLinuxDistro()
 				exit 1
 			fi
 
-			if [ ! -f ~/rpmbuild/SOURCES ]
+			if [ ! -f ~/rpmbuild/SOURCES ] ; then
 				rpmdev-setuptree
 				if [ $? -ne 0 ] ; then
 					echo "Could not set up rpm development tree ??"
@@ -746,12 +746,17 @@ do
 				PNGLIBS=" CXXFLAGS=-I$PNGDIR/include LDFLAGS=-L$PNGDIR/lib "
 				echo $PNGLIBS
 				pwd
-				patch mgl/mgl_eps.cpp < ../../sources/mgl_eps.patch 
-				patch mgl/mgl_export.cpp < ../../sources/mgl_export.patch 		
+				#patch mgl/mgl_eps.cpp < ../../sources/mgl_eps.patch 
+				#patch mgl/mgl_export.cpp < ../../sources/mgl_export.patch 		
 				#After upgrade to 1.5.13, this patch required. 
-				patch mgl/mgl_data_png.cpp < ../../sources/mgl_data_png.patch 
+				#patch mgl/mgl_data_png.cpp < ../../sources/mgl_data_png.patch 
+				patch src/obj.cpp < ../../patches/macosx/mathgl2/diff-obj.c.patch
+				patch src/prc/writePRC.h < ../../patches/macosx/mathgl2/diff-prc-writePRC.h.patch
 			fi
-			./configure --disable-gsl $PNGLIBS
+			#./configure --disable-gsl $PNGLIBS
+			cmake .
+			cmake .
+
 
 			if [ $? -ne 0 ] ; then
 				echo "Damn. unable to configure. aborting"
@@ -771,6 +776,7 @@ do
 			echo "I want to install ${DEPNAMES[$i]} to the system:"
 			#install
 			sudo make install
+			ldconfig
 			if [ $? -ne 0 ] ; then
 				echo "Mathgl said it failed, but is known to misreport. Continuing in 10 seconds"
 				sleep 10

@@ -27,6 +27,10 @@
 #include "tree.hh"
 #include "filtertree.h"
 
+//Unit tests
+#ifdef DEBUG
+bool runStateTests();
+#endif
 
 
 struct FilterTreeState
@@ -89,7 +93,7 @@ class AnalysisState
 		std::string workingDir;
 		//===
 
-		//true if modification to state has occured
+		//true if modification to state has occurred
 		mutable int modifyLevel;
 
 		//file to save to
@@ -110,6 +114,9 @@ class AnalysisState
 		void setModifyLevel(int newLevel) { modifyLevel=std::max(newLevel,modifyLevel);}
 	public:
 		AnalysisState();
+
+		~AnalysisState();
+
 		//Wipe the state clean
 		void clear();
 

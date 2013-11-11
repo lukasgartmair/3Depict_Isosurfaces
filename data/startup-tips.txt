@@ -1,0 +1,23 @@
+#This is the startup tips file that is passed to wxTipProvider, to generate the startup tips dialog
+# each tip must be of the form _("some tip"), the leading _(" must be the same for each tip.
+# wx docs say : blank lines, and lines starting with # are skipped
+
+_("You can reset the main view by tapping the space bar. Hold down modifier keys like shift,ctrl to change the axis. Double tap to switch which axis to look down")
+_("You can delete filters from the tree by selecting them, then tapping delete?")
+_("Multiple languages are supported? You can translate the program into your own language at https://www.transifex.com/projects/p/3depict/")
+_("Package files can be easily shared to allow others to view your analysis, using the File->Export->Package menu item")
+_("You can export plots to SVG \"Vector\" format, for easier editing - edit your plots in inkscape!")
+_("You can access the manual from the Help menu")
+_("You can change filter defaults using the Edit->Preferences menu item")
+_("You can overlay multiple plots at once, by selecting more than on plot at a time (e.g. using Ctrl)")
+_("Calculations are much faster (more than linear speedup) when working with smaller datasets - try sampling, or clipping out a small region to work faster, then remove the sampling when you are ready")
+_("You can abort most calculations by pressing Escape")
+_("That anyone can contribute to improving this program, even without knowing about computer programming?")
+_("You can load more than one file at a time, then either operate on the separately, or together")
+_("You can have more than one range file for different parts of your dataset")
+_("Cameras can be saved and retrieved whenever you like, using the camera tab")
+_("Subsections of the filter tree can be saved to the \"Stashed filters\" drop-down")
+_("The console tab along the bottom often shows useful messages from filters. When new messages appear, a small symbol is shown on the tab")
+_("The raw data used for any plot can be accessed from the \"Raw\" tab on the bottom panel")
+_("You can ask questions about the program, or using it on your data on our forums (http://sourceforge.net/apps/phpbb/threedepict/)")
+_("By creating a camera, you can switch between orthographic and perspective views")

@@ -22,7 +22,7 @@
 // begin wxGlade: ::dependencies
 // end wxGlade
 
-#include "wxcommon.h"
+#include "wx/wxcommon.h"
 
 enum
 {

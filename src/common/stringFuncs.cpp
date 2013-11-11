@@ -125,6 +125,21 @@ bool isVersionNumberString(const std::string &s)
 }
 
 
+bool boolStrDec(const std::string &s, bool &b)
+{
+	std::string tmp;
+	tmp=stripWhite(s);
+
+	if(tmp == "0")
+		b=false;
+	else if(tmp == "1")
+		b=true;
+	else 
+		return false; // Failed to decode
+
+	return true;
+}
+
 std::string onlyFilename( const std::string& path) 
 {
 #if defined(_WIN32) || defined(_WIN64)

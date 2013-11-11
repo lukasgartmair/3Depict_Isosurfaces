@@ -82,4 +82,15 @@ class IonHit
 		IonHit operator+(const Point3D &obj);
 };
 
+class IonAxisCompare
+{
+	private:
+		unsigned int axis;
+	public:
+		IonAxisCompare();
+		IonAxisCompare(unsigned int newAxis) ;
+		void setAxis(unsigned int newAxis);
+		inline bool operator()(const IonHit &p1,const IonHit &p2) const
+			{return p1.getPos()[axis]<p2.getPos()[axis];};
+};
 #endif

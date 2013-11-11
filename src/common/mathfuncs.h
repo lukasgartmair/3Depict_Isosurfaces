@@ -152,7 +152,6 @@ class Point3D
 #endif
 };
 
-
 //IMPORTANT!!!
 //===============
 //Do NOT use multiple instances of this in your code

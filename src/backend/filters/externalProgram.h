@@ -20,6 +20,15 @@
 
 #include "../filter.h"
 #include "../../common/translation.h"
+
+enum
+{
+	EXTERNALPROGRAM_KEY_COMMAND,
+	EXTERNALPROGRAM_KEY_WORKDIR,
+	EXTERNALPROGRAM_KEY_ALWAYSCACHE,
+	EXTERNALPROGRAM_KEY_CLEANUPINPUT
+};
+
 //!External program filter
 class ExternalProgramFilter : public Filter
 {

@@ -42,11 +42,8 @@ int check_if_png(const char *file_name, FILE **fp, unsigned int bytes_to_check)
    return(!png_sig_cmp((png_byte*)buf, (png_size_t)0, bytes_to_check));
 }
 
-/* Read a PNG file.  You may want to return an error code if the read
- * fails (depending upon the failure).  There are two "prototypes" given
- * here - one where we are given the filename, and we need to open the
- * file, and the other where we are given an open file (possibly with
- * some or all of the magic bytes read - see comments above).
+/* Read a PNG file. Returns 0 on success. Must destroy output with 
+ * free_pngrowpointers
  */
 int read_png(FILE *fp, unsigned int sig_read, png_bytep **row_pointers,
              png_uint_32 *width, png_uint_32 *height)  /* file is already open */
@@ -228,8 +225,7 @@ int read_png(FILE *fp, unsigned int sig_read, png_bytep **row_pointers,
 
    for (row = 0; row < *height; row++)
    {
-      (*row_pointers)[row] = (png_byte*)png_malloc(png_ptr, png_get_rowbytes(png_ptr,
-         info_ptr));
+      (*row_pointers)[row] = (png_byte*)malloc(png_get_rowbytes(png_ptr,info_ptr));
    }
 
    /* Read the entire image in one go */
@@ -247,6 +243,15 @@ int read_png(FILE *fp, unsigned int sig_read, png_bytep **row_pointers,
 
    /* that's it */
    return (0);
+}
+
+void free_pngrowpointers(png_bytep *row_pointers, png_uint_32 height)  
+{
+   unsigned int row;
+   for (row = 0; row < height; row++)
+	free(row_pointers[row]); //FIXME : Should this be png_free ?? 
+   
+   free(row_pointers);
 }
 
 #ifdef __cplusplus 

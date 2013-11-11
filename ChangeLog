@@ -1,3 +1,37 @@
+* 30 Oct 2013 : 0.0.15
+	Features
+	- Range editing dialog : Rangefiles can be modified via a dialog available from the "edit" menu
+		- A Range filter and a spectra filter must be present first!
+	- "Binomial analysis" algorithm, (Moody et al, 2011) for randomness testing
+	
+	User Visible Bugfixes/Changes:
+	- Image export fixed wrong aspect ratio ion output images
+	- Fix plot export dialog when (png/svg) extension given
+	- Fix tree/property grid not always synchronised
+	- Fix "jumping" of movable objects after interaction
+	- Fix custom filter names not being saved correctly 
+	- Fix undo not recorded after tree copy 
+	- Middle double click to zoomout on plots
+	- Improved user feedback in transform filter
+	- Better console output, messages now persistant
+	- Fix axial dist aborting problem
+	- Fix loading of .xy files from external program filter
+	- Fix hang when disabling weak/fast randomisation
+	- Progress dialog for animation
+
+
+	Technical bugfixes/changes:
+	- Fix hang when filters given directories as input (linux)
+	- Fix bug in extern filter where data would be output even on emtpy command
+	- Better out-of-memory exception handling at refresh level
+	- Various memory leak fixes
+	- Refactoring
+		- filter caching 
+		- unit testing 
+		- scene opengl init
+	- More unit testing 
+	- Remove plot pane polling for region change
+
 * 20 Jul 2013 : 0.0.14
 	Features:
 	- 2D slice render mode for voxels. Can now visualise voxel data

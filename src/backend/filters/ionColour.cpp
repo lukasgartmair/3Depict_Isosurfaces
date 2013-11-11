@@ -80,14 +80,9 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 	if(cacheOK)
 	{
 		ASSERT(filterOutputs.size());
-		for(unsigned int ui=0;ui<dataIn.size();ui++)
-		{
-			if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
-				getOut.push_back(dataIn[ui]);
-		}
+		propagateStreams(dataIn,getOut,STREAM_TYPE_IONS,false);
 
-		for(unsigned int ui=0;ui<filterOutputs.size();ui++)
-			getOut.push_back(filterOutputs[ui]);
+		propagateCache(getOut);
 
 		if(filterOutputs.size() && showColourBar)
 		{

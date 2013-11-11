@@ -80,7 +80,7 @@ extern const char *FILTER_NAMES[];
 //Current bitmask using functions are
 //	VisController::safeDeleteFilterList
 const unsigned int NUM_STREAM_TYPES=5;
-const unsigned int STREAMTYPE_MASK_ALL= (1<<(NUM_STREAM_TYPES)) -1;
+const unsigned int STREAMTYPE_MASK_ALL= ((1<<(NUM_STREAM_TYPES)) -1 ) & 0x000000FF;
 enum
 {
 	STREAM_TYPE_IONS=1,
@@ -137,6 +137,13 @@ enum
 	FILE_TYPE_POS
 };
 
+
+enum
+{
+	FILTER_ERR_ABORT=1, //User abort
+	FILTER_ERR_ENUM_END
+};
+
 //---
 //
 
@@ -158,7 +165,7 @@ class FilterStreamData
 		//!Parent filter pointer
 		const Filter *parent;
 
-		//!Tells us if the filter has cacehd this data for later use. 
+		//!Tells us if the filter has cached this data for later use. 
 		//this is a boolean value, but not declared as such, as there 
 		//are debug traps to tell us if this is not set by looking for non-boolean values.
 		unsigned int cached;
@@ -166,7 +173,7 @@ class FilterStreamData
 		FilterStreamData();
 		virtual ~FilterStreamData() {}; 
 		virtual size_t getNumBasicObjects() const =0;
-		//!Returns an integer unique to the clas to identify type (yes rttid...)
+		//!Returns an integer unique to the class to identify type (yes rttid...)
 		virtual unsigned int getStreamType() const {return streamType;} ;
 		//!Free mem held by objects
 		virtual void clear()=0;
@@ -256,7 +263,7 @@ public:
 	void sample(float fraction);
 
 	//Duplicate this object, but only using a sampling of the data
-	// vector. The retuend object must be deleted by the
+	// vector. The retuned object must be deleted by the
 	// caller. Cached status is *not* duplicated
 	IonStreamData *cloneSampled(float fraction) const;
 
@@ -330,7 +337,7 @@ class PlotStreamData : public FilterStreamData
 		//!Region colours
 		vector<float> regionR,regionB,regionG;
 
-		//!Region indicies from parent region
+		//!Region indices from parent region
 		vector<unsigned int> regionID;
 
 		//!Region parent filter pointer, used for matching interaction 
@@ -365,7 +372,7 @@ class DrawStreamData: public FilterStreamData
 		//!Returns 0, as this does not store basic object types -- i.e. is not for data storage per se.
 		size_t getNumBasicObjects() const { return 0; }
 
-		//!Erase the drawing vector, deleting its componets
+		//!Erase the drawing vector, deleting its components
 		void clear();
 #ifdef DEBUG
 		//Cross-checks fields to determine if (best guess)
@@ -412,10 +419,9 @@ class Filter
 		bool cache, cacheOK;
 		static bool strongRandom;
 
-		bool wantMonitor;
 
 		//!Array of the number of streams propagated on last refresh
-		//THis is initialised to -1, which is considered invalid
+		//This is initialised to -1, which is considered invalid
 		unsigned int numStreamsLastRefresh[NUM_STREAM_TYPES];
 	
 
@@ -427,6 +433,21 @@ class Filter
 		std::vector<FilterStreamData *> filterOutputs;
 		//!User interaction "Devices" associated with this filter
 		std::vector<SelectionDevice *> devices;
+
+
+
+		//Collate ions from filterstream data into an ionhit vector
+		static unsigned int collateIons(const vector<const FilterStreamData *> &dataIn,
+				vector<IonHit> &outVector, ProgressData &prog,
+				bool (*callback)(bool),size_t totalDataSize=(size_t)-1);
+
+		//!Propagate the given input data to an output vector
+		void propagateStreams(const vector<const FilterStreamData *> &dataIn,
+				vector<const FilterStreamData *> &dataOut,size_t mask=STREAMTYPE_MASK_ALL,bool invertMask=false) const;
+
+		//!Propagate the cache into output
+		void propagateCache(vector<const FilterStreamData *> &dataOut) const;
+
 	public:	
 		Filter() ;
 		virtual ~Filter();
@@ -460,7 +481,7 @@ class Filter
 
 		//!Set the properties for the nth filter, 
 		//!needUpdate tells us if filter output changes due to property set
-		//NOte that if you modify a result without clearing the cache,
+		//Note that if you modify a result without clearing the cache,
 		//then any downstream decision based upon that may not be noted in an update
 		//Take care.
 		virtual bool setProperty(unsigned int key,
@@ -490,8 +511,9 @@ class Filter
 		virtual unsigned int getRefreshEmitMask() const = 0;
 
 
-		//!Mask of filter streams that will not examined by the filter in its computation.
-		// note that these *may* be emitted as a pass-through - check emitmask if needed
+		//!Mask of filter streams that will be examined by the filter in its computation.
+		// note that output may be emitted as a pass-through even if the use is not set
+		// - check emitmask if needed
 		virtual unsigned int getRefreshUseMask() const =0;
 
 		//====
@@ -554,9 +576,9 @@ class Filter
 		//!Get the number of outputs for the specified type during the filter's last refresh
 		unsigned int getNumOutput(unsigned int streamType) const;
 
-		//!Get the filter messages from the console -- also deletes the 
-		// console messages as a side-effect
-		void getConsoleStrings(std::vector<std::string > &v) { v.resize(consoleOutput.size());std::copy(consoleOutput.begin(),consoleOutput.end(),v.begin()); consoleOutput.clear();};
+		//!Get the filter messages from the console. To erase strings, either call erase, or erase cahche
+		void getConsoleStrings(std::vector<std::string > &v) const { v=consoleOutput;};
+		void clearConsole() { consoleOutput.clear();};
 
 		//!Should filters use strong randomisation (where applicable) or not?
 		static void setStrongRandom(bool strongRand) {strongRandom=strongRand;}; 
@@ -589,7 +611,7 @@ class ProgressData
 	public:
 		//!Progress of filter (out of 100) for current filter
 		unsigned int filterProgress;
-		//!Number of filters (n) that we have proccessed (n out of m filters)
+		//!Number of filters (n) that we have processed (n out of m filters)
 		unsigned int totalProgress;
 
 		//!number of filters which need processing for this update

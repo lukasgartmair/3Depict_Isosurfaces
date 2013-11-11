@@ -25,6 +25,11 @@
 	#define HAVE_CPP1X 1
 #endif
 
+//Hack-ish variable for minimal size of data to execute
+// openMP conditionals as parallel regions. This is highly empirical!
+const unsigned int OPENMP_MIN_DATASIZE=1000;
+
+
 enum
 {
   PLOT_TRACE_LINES=0,
@@ -75,9 +80,9 @@ enum
 //!Movement types for plot
 enum
 {
-	REGION_MOVE_EXTEND_XMINUS,
-	REGION_MOVE_TRANSLATE_X,
-	REGION_MOVE_EXTEND_XPLUS
+	REGION_MOVE_EXTEND_XMINUS, //Moving (extend/shrink) lower bound of region
+	REGION_MOVE_TRANSLATE_X, // Moving regoin
+	REGION_MOVE_EXTEND_XPLUS, // Moving (extend/shrink) upper bound
 };
 
 

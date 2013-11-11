@@ -19,7 +19,30 @@ Interesting configure flags (see ./configure --help):
 --disable-debug-checks : Disable debug checks. This makes the program
 				much faster, but less likely to catch
 				program bugs
+--enable-mgl2 : Enable mathgl 2.x mode. By default, mathgl 1.x is assumed
+			to be installed
 
 
+Some Dependencies:
+	libxml2
+	qhull
+	gsl
+	ftgl 
+	mathgl
+	libpng
+	wxwidgets
+	gettext
 
+
+	Remember, for dependencies under linux platforms you must install
+	the -dev, or -devel packages, in order to allow compilation
+
+	For those with no idea how to install the dependencies, you can
+	*try* running the "getDeps.sh" script in the packaging/deps/
+	folder, but it is not guaranteed to work on your system.
+
+	For those under Windows, we recommend to install a different
+	OS (eg debian, ubuntu - maybe in a Virtual machine) then
+	"cross-compile". This is not trivial, but you can look at the
+	deps/mingw-debian-cross/bootstrap.sh script as a starting point.
 

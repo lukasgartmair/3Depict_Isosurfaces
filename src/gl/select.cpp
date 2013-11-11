@@ -81,6 +81,15 @@ void SelectionDevice::getModifiedBindings(vector<std::pair<const Filter *,Select
 	}
 }
 
+void SelectionDevice::resetModifiedBindings()
+{
+	ASSERT(target);
+	for(unsigned int ui=0;ui<bindingVec.size();ui++)
+	{
+		bindingVec[ui].resetModified();
+	}
+}
+
 bool SelectionDevice::getAvailBindings(const DrawableObj *d,vector<const SelectionBinding*> &b) const
 {
 	ASSERT(b.empty());

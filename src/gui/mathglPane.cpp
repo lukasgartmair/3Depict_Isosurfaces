@@ -18,11 +18,11 @@
 
 #include <wx/wx.h>
 #include <wx/dcbuffer.h>
-#include "wxcomponents.h"
+#include "wx/wxcomponents.h"
 
 #include "mathglPane.h"
 
-#include "wxcommon.h"
+#include "wx/wxcommon.h"
 #include "common/translation.h"
 
 #ifdef USE_MGL2
@@ -64,6 +64,7 @@ BEGIN_EVENT_TABLE(MathGLPane, wxPanel)
 	EVT_RIGHT_DOWN(MathGLPane::rightClick)
 	EVT_LEAVE_WINDOW(MathGLPane::mouseLeftWindow)
 	EVT_LEFT_DCLICK(MathGLPane::mouseDoubleLeftClick) 
+	EVT_MIDDLE_DCLICK(MathGLPane::mouseDoubleLeftClick) 
 	EVT_SIZE(MathGLPane::resized)
 	EVT_KEY_DOWN(MathGLPane::keyPressed)
 	EVT_KEY_UP(MathGLPane::keyReleased)
@@ -86,11 +87,14 @@ wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(MOUSE_ACTION_NEEDS_REDRAW) == MOUSE_MODE_ENUM_END);
 
 	hasResized=true;
-	limitInteract=haveUpdates=false;
+	limitInteract=false;
 	mouseDragMode=MOUSE_MODE_ENUM_END;	
 	leftWindow=true;
 	thePlot=0;	
 	gr=0;
+	ownPlotPtr=false;
+	lastEditedPlot=lastEditedRegion=-1;
+	regionSelfUpdate=false;
 
 	SetBackgroundStyle(wxBG_STYLE_CUSTOM);
 
@@ -98,7 +102,7 @@ wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 
 MathGLPane::~MathGLPane()
 {
-	if(thePlot)
+	if(thePlot && ownPlotPtr)
 		delete thePlot;
 	if(gr)
 		delete gr;
@@ -108,7 +112,7 @@ MathGLPane::~MathGLPane()
 bool MathGLPane::readyForInput() const
 {
 	return (thePlot && gr && 
-		!thePlot->isInteractionLocked() && !thePlot->visibleEmpty());
+		!thePlot->isInteractionLocked()  && thePlot->getNumTotal());
 }
 
 unsigned int MathGLPane::getAxisMask(int x, int y) const
@@ -147,12 +151,13 @@ unsigned int MathGLPane::getAxisMask(int x, int y) const
 	return retVal;
 }
 
-void MathGLPane::setPlotWrapper(PlotWrapper *newPlot)
+void MathGLPane::setPlotWrapper(PlotWrapper *newPlot,bool takeOwnPtr)
 {
-	if(thePlot)
+	if(thePlot && ownPlotPtr)
 		delete thePlot;
 
 	thePlot=newPlot;
+	ownPlotPtr=takeOwnPtr;
 
 	Refresh();
 }
@@ -164,7 +169,7 @@ void MathGLPane::render(wxPaintEvent &event)
 	
     wxAutoBufferedPaintDC   *dc=new wxAutoBufferedPaintDC(this);
 
-	if(!thePlot || !plotSelList || thePlot->isInteractionLocked() )
+	if(!thePlot || thePlot->isInteractionLocked() )
 	{
 		delete dc;
 		return;
@@ -185,10 +190,8 @@ void MathGLPane::render(wxPaintEvent &event)
 
 
 	//Set the enabled and disabled plots
-	wxArrayInt a;
-
-	unsigned int nItems =plotSelList->GetSelections(a);
-
+	unsigned int nItems=thePlot->getNumVisible();
+	
 	if(!nItems)
 	{
 #ifdef __WXGTK__
@@ -218,21 +221,6 @@ void MathGLPane::render(wxPaintEvent &event)
 		return;
 
 	}
-
-	//Set which plots should be visible
-	thePlot->hideAll();
-	std::vector<unsigned int> newVisible;
-	for(unsigned int ui=0;ui<nItems; ui++)
-	{
-		unsigned int plotID;
-		wxListUint *l =(wxListUint *) plotSelList->GetClientObject(a[ui]);
-		plotID = l->value;
-		newVisible.push_back(ui);
-		thePlot->setVisible(plotID,true);
-	}
-
-
-
 
 	//If the plot has changed, been resized or is performing
 	// a mouse action that reuqires updating, we need to update it
@@ -279,15 +267,6 @@ void MathGLPane::render(wxPaintEvent &event)
 		thePlot->drawPlot(gr);	
 		hasResized=false;
 	}
-
-	//If the visibility hasn't changed, then reset the 
-	//plot to "no changes" state. Otherwise,
-	//swap the visibility vectors
-	if(lastVisible.size() == newVisible.size() &&
-		std::equal(lastVisible.begin(),lastVisible.end(),newVisible.begin()))
-		thePlot->resetChange();
-	else
-		lastVisible.swap(newVisible);
 
 	//Copy the plot's memory buffer into a wxImage object, then draw it	
 #ifdef USE_MGL2
@@ -570,6 +549,11 @@ void MathGLPane::mouseDoubleLeftClick(wxMouseEvent& event)
 	Refresh();
 }
 
+void MathGLPane::mouseDoubleMiddleClick(wxMouseEvent &event)
+{
+	mouseDoubleLeftClick(event);
+}
+
 
 void MathGLPane::oneDMouseDownAction(bool leftDown,bool middleDown,
 		 bool alternateDown, int dragX,int dragY)
@@ -798,6 +782,9 @@ void MathGLPane::leftMouseReleased(wxMouseEvent& event)
 	if(!readyForInput())
 		return;
 
+	//!Do we have region updates?
+	bool haveUpdates=false;
+	
 	switch(mouseDragMode)
 	{
 		case MOUSE_MODE_DRAG:
@@ -814,10 +801,13 @@ void MathGLPane::leftMouseReleased(wxMouseEvent& event)
 				//we need to tell viscontrol that we have done a region
 				//update
 				mglPoint mglCurMouse= gr->CalcXYZ(curMouse.x,curMouse.y);
+				lastEditedRegion=startMouseRegion;
+				lastEditedPlot=startMousePlot;
 			
 				//Send the movement to the parent filter
-				thePlot->moveRegion(startMousePlot,
-					startMouseRegion,regionMoveType,mglCurMouse.x,mglCurMouse.y);	
+				thePlot->moveRegion(startMousePlot,startMouseRegion,
+							regionSelfUpdate,regionMoveType,
+								mglCurMouse.x,mglCurMouse.y);	
 				haveUpdates=true;	
 
 			}
@@ -828,8 +818,25 @@ void MathGLPane::leftMouseReleased(wxMouseEvent& event)
 		;
 	}
 
+
+
+
 	mouseDragMode=MOUSE_MODE_ENUM_END;
 	Refresh();
+	
+	if(haveUpdates)
+	{
+		for(size_t ui=0;ui<updateHandlers.size(); ui++)
+		{
+			pair<wxWindow*,UpdateHandler> u;
+			u=updateHandlers[ui];
+
+			//Call the function
+			UpdateHandler h = u.second;
+			wxWindow *w=u.first;
+			(w->*h)();
+		}
+	}
 }
 
 void MathGLPane::middleMouseReleased(wxMouseEvent& event)
@@ -1249,8 +1256,9 @@ void MathGLPane::drawRegionDraggingOverlay(wxDC *dc) const
 	float regionLimitX,regionLimitY;
 	regionLimitX=mglCurMouse.x;
 	regionLimitY=mglCurMouse.y;
+
 	//See where extending the region is allowed up to.
-	thePlot->moveRegionLimit(startMousePlot,startMouseRegion,
+	thePlot->findRegionLimit(startMousePlot,startMouseRegion,
 					regionMoveType, regionLimitX,regionLimitY);
 	
 	int deltaDrag;

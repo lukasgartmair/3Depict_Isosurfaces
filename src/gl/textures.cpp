@@ -22,7 +22,7 @@
 
 #include "textures.h"
 
-#include "wxcommon.h"
+#include "wx/wxcommon.h"
 #include "common/pngread.h"
 
 #include <string>
@@ -200,9 +200,8 @@ int pngTexture(texture* dest, const char* filename, GLenum type)
 		{
 			dest->data[z++] = texture_rows[y][x];
 		}
-		free(texture_rows[y]);
 	}
-	free(texture_rows);
+	free_pngrowpointers(texture_rows,height);
 
 	//Retrieve the in-use texture, which we will reset later
 	if (type == GL_TEXTURE_1D)
@@ -269,10 +268,12 @@ int pngTexture3D(texture *dest, const vector<string> &fileNames)
 			if(width != dest->width || height !=dest->height)
 			{
 				delete[] dataArray;
+				free_pngrowpointers(texture_rows,height);
 				return 3;
 			}
 		}
 
+		//Copy data into texture structure
 		dest->width = width;
 		dest->height = height;
 
@@ -284,7 +285,12 @@ int pngTexture3D(texture *dest, const vector<string> &fileNames)
 			for (size_t x=0; x<4*(width); x++)
 				dataArray[ui][arrayDest++] = texture_rows[y][x];
 		}
+
+		//Free PNG image pointers
+		free_pngrowpointers(texture_rows,height);
+
 	}
+				
 
 	size_t offset=0;
 	//Copy data into cube that we will send to video card

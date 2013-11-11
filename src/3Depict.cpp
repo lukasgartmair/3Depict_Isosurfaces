@@ -30,7 +30,7 @@
 #include "gui/mainFrame.h"
 
 //Unit testing code
-#include "testing.h"
+#include "testing/testing.h"
 
 enum
 {
@@ -108,7 +108,7 @@ winconsole winC;
 #ifdef __linux__
 #include <fenv.h>
 void trapfpe () {
-//  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
+  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
 }
 #endif
 #endif
@@ -216,7 +216,14 @@ int threeDepictApp::FilterEvent(wxEvent& event)
 	//Process global keyboard (non-accelerator) events
 	if ( event.GetEventType()==wxEVT_KEY_DOWN )
 	{
-		if(MainFrame)
+		bool mainActive;
+#ifdef __APPLE__
+		mainActive=true; //Any way to actually get this?? wxGetActiveWindow() apparently returns null here.
+#else
+		mainActive =( wxGetTopLevelParent((wxWindow*)(wxGetActiveWindow())) == (wxWindow*)MainFrame);
+#endif
+	
+		if(MainFrame && mainActive)
 		{
 			wxKeyEvent& keyEvent = (wxKeyEvent&)event;
 			//Under GTK, escape aborts refresh. under mac, 

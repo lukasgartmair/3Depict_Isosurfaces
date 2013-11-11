@@ -20,7 +20,7 @@
 //Needed for modification time
 #include <wx/file.h>
 #include <wx/filename.h>
-#include "../../wxcommon.h"
+#include "../../wx/wxcommon.h"
 
 #include "filterCommon.h"
 
@@ -80,7 +80,6 @@ Filter *DataLoadFilter::cloneUncached() const
 	p->g=g;	
 	p->b=b;	
 	p->a=a;	
-	p->fileType=fileType;
 	//Bounding volume
 	p->bound.setBounds(bound);
 	p->volumeRestrict=volumeRestrict;
@@ -98,14 +97,13 @@ Filter *DataLoadFilter::cloneUncached() const
 	p->userString=userString;
 
 	p->wantMonitor=wantMonitor;
-	// this is for a pos file
-	memcpy(p->index, index, sizeof(int) * 4);
 	p->numColumns=numColumns;
 
 	return p;
 }
 
 
+//TODO: Simplify me - enum not required
 void DataLoadFilter::setFileMode(unsigned int fileMode)
 {
 	switch(fileMode)
@@ -169,6 +167,7 @@ size_t DataLoadFilter::numBytesForCache(size_t nObjects) const
 unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
+
 	errStr="";
 	//use the cached copy if we have it.
 	if(cacheOK)
@@ -192,9 +191,9 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 				//have a valid load time?
 				ASSERT(monitorTimestamp!=-1 && monitorSize!=(size_t)-1);
 
-
 				size_t fileSizeVal;
 				getFilesize(ionFilename.c_str(),fileSizeVal);
+
 				if(wxFileModificationTime(wxStr(ionFilename)) ==monitorTimestamp
 					||  fileSizeVal!= monitorSize)
 				{
@@ -208,13 +207,9 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 		//the full function
 		if(doUseCache)
 		{
-			ASSERT(filterOutputs.size());
-			for(unsigned int ui=0;ui<dataIn.size();ui++)
-				getOut.push_back(dataIn[ui]);
+			propagateCache(getOut);
 
-			for(unsigned int ui=0;ui<filterOutputs.size();ui++)
-				getOut.push_back(filterOutputs[ui]);
-		
+			propagateStreams(dataIn,getOut);
 			return 0;
 		}
 	}
@@ -234,8 +229,8 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	{
 		monitorTimestamp=-1;
 		monitorSize=-1;
-		for(unsigned int ui=0;ui<dataIn.size();ui++)
-			getOut.push_back(dataIn[ui]);
+			
+		propagateStreams(dataIn,getOut);
 
 		return 0;
 	}
@@ -257,6 +252,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 		{
 			if(doSample)
 			{
+				
 				//Load the pos file, limiting how much you pull from it
 				if((uiErr = LimitLoadPosFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
 									maxIons,progress.filterProgress,callback,strongRandom)))
@@ -266,9 +262,11 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 					errStr=TRANS(POS_ERR_STRINGS[uiErr]);
 					return uiErr;
 				}
+		
 			}	
 			else
 			{
+				//Load the entirety of the file
 				if((uiErr = GenericLoadFloatFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
 									progress.filterProgress,callback)))
 				{
@@ -278,6 +276,29 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 					return uiErr;
 				}
 			}	
+			
+			//warn the user if we have not loaded all the data. Users keep missing this 
+			//--
+			size_t fileSizeVal;
+			getFilesize(ionFilename.c_str(),fileSizeVal);
+			size_t numAvailable=fileSizeVal/(numColumns*sizeof(float));
+			if(ionData->data.size() < numAvailable)
+			{
+				string strNumLoaded,strNumAvailable;
+				stream_cast(strNumLoaded,ionData->data.size());
+				stream_cast(strNumAvailable,numAvailable);
+				consoleOutput.push_back(string(TRANS("Sampling is active, loaded ")) + strNumLoaded + 
+					string( TRANS(" of " ) ) + strNumAvailable + string(TRANS(" available.")));
+
+			}
+			else
+			{
+				string strNumAvailable;
+				stream_cast(strNumAvailable,numAvailable);
+
+				consoleOutput.push_back(string(TRANS("Loaded entire dataset, " )) + strNumAvailable + string(TRANS(" points.")));
+			}
+			//--
 			break;
 		}
 		case FILEDATA_TYPE_TEXT:
@@ -347,7 +368,6 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 			ASSERT(false);
 	}
 
-
 	ionData->r = r;
 	ionData->g = g;
 	ionData->b = b;
@@ -376,9 +396,6 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 			       "(magnitude too large). Consider rescaling data before loading"));
 	}
 
-	string s;
-	stream_cast(s,ionData->data.size());
-	consoleOutput.push_back( string(TRANS("Loaded ") + s + TRANS(" Points")) );
 	if(cache)
 	{
 		ionData->cached=1;
@@ -388,12 +405,12 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	else
 		ionData->cached=0;
 
-	for(unsigned int ui=0;ui<dataIn.size();ui++)
-		getOut.push_back(dataIn[ui]);
-
 
 	//Append the ion data 
 	getOut.push_back(ionData);
+
+	
+	propagateStreams(dataIn,getOut);
 
 	return 0;
 }
@@ -599,6 +616,13 @@ bool DataLoadFilter::setProperty(  unsigned int key,
 		}
 		case DATALOAD_KEY_FILE:
 		{
+			//Ensure is not a dir (posix),
+			// as fstream will open dirs under linux
+#if !defined(WIN32) && !defined(WIN64)
+			if(isNotDirectory(value.c_str()) == false)
+				return false;
+
+#endif
 			//ensure that the new file can be found
 			//Try to open the file
 			std::ifstream f(value.c_str());

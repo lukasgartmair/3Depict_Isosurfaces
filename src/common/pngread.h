@@ -36,6 +36,7 @@
 
 int check_if_png(const char*, FILE**, unsigned int);
 int read_png(FILE*, unsigned int, png_bytep**, png_uint_32*, png_uint_32*);
+void free_pngrowpointers(png_bytep *row_pointers, png_uint_32 height); 
 
 
 #ifdef __cplusplus 

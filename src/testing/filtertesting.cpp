@@ -1,5 +1,5 @@
 /*
- *	testing.cpp - unit testing implementation
+ *	filtertesting.cpp - unit testing implementation for filter code
  *	Copyright (C) 2013, D Haley 
 
  *	This program is free software: you can redistribute it and/or modify
@@ -16,51 +16,43 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
-#include "testing.h"
-#ifdef DEBUG
-#include <wx/filename.h>
-#include <wx/dir.h>
-
-#include "wxcommon.h"
-
-
-#include "backend/filters/allFilter.h"
-#include "backend/configFile.h"
-
-
-#include "common/stringFuncs.h"
-#include "common/xmlHelper.h"
-
-
-const char *TESTING_RESOURCE_DIRS[] = {
-		"../test/",
-		"./test/"
-};
-
 //!Run each filter through its own unit test function
 bool filterTests();
 //!Try cloning the filter from itself, and checking the filter
 // clone is identical
 bool filterCloneTests();
 
-//!Try loading each range file in the testing folder
-bool rangeFileLoadTests();
-
-//!Some elementary function testing
-bool basicFunctionTests() ;
-
-//!Run a few checks on our XML helper functions
-bool XMLTests();
-
 //!basic filter tree topology tests
 bool filterTreeTests();
 
+//Test for bug present in 7199bb83f0ac (internal),
+// whereby Pos -> External -> Box would produce output, even if
+// external did nothing
+// Bug was due to incorrect handling of refresh input data stack
+bool filterRefreshNoOut();
+
+//!Test a given filter tree that the refresh works
+bool testFilterTree(const FilterTree &f);
+
+//!Test a given filter tree that the refresh is successful,
+// then return the output. Must delete output with safeDeleteFilterList
+bool testFilterTree(const FilterTree &f,
+	std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > &outData ) ;
 
 bool testFilterTree(const FilterTree &f)
 {
-	ASSERT(!f.hasHazardousContents());
 	std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > outData;
+
+	testFilterTree(f,outData);	
+	
+	f.safeDeleteFilterList(outData);
+
+	return true;
+}
+
+bool testFilterTree(const FilterTree &f,
+	std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > &outData )
+{
 	std::vector<SelectionDevice *> devices;
 	std::vector<std::pair<const Filter *, string > > consoleMessages;
 
@@ -101,86 +93,6 @@ bool testFilterTree(const FilterTree &f)
 	return true;
 }
 
-
-bool basicFunctionTests()
-{
-	testStringFuncs();
-
-	//Test point parsing routines
-	{
-	std::string testStr;
-	testStr="0.0,1.0,1";
-	Point3D p;
-	bool res=p.parse(testStr);
-	ASSERT(res);
-	ASSERT(p.sqrDist(Point3D(0,1,1)) < 0.1f);
-
-
-	//test case causes segfault : found 30/9/12
-	testStr="0,0,,";
-	res=p.parse(testStr);
-	ASSERT(!res);
-
-	testStr="(0,0,0)";
-	res=p.parse(testStr);
-	ASSERT(res);
-	ASSERT(p.sqrDist(Point3D(0,0,0))<0.01f);
-
-	}
-
-	//Test some basics routines
-	{
-	TEST(rangesOverlap(0,3,1,2),"Overlap test a contain b");
-	TEST(rangesOverlap(1,2,0,3),"Overlap test b contain a");
-	TEST(rangesOverlap(0,2,1,3),"Overlap test a partial b (low)");
-	TEST(rangesOverlap(1,3,0,2),"Overlap test b partial a (high)");
-	TEST(rangesOverlap(2,3,1,4),"Overlap test a partial b (high)");
-	TEST(rangesOverlap(1,3,2,4),"Overlap test b partial a (low)");
-	TEST(!rangesOverlap(1,2,3,4),"Overlap test");
-	TEST(!rangesOverlap(3,4,1,2),"Overlap test");
-	}
-
-	//Test the LFSR to a small extent (first 16 table entries)
-	// -test is brute-force so we can't test much more without being slow
-	LinearFeedbackShiftReg reg;
-	TEST(reg.verifyTable(16),"Check LFSR table integrity");
-
-	
-	return true;
-}
-
-bool runUnitTests()
-{
-
-	cerr << "Running unit tests..." ;
-
-	if(!filterTests())
-		return false;
-
-	if(!filterCloneTests())
-		return false;
-
-	if(!rangeFileLoadTests())
-		return false;
-
-
-	if(!basicFunctionTests())
-		return false;
-	
-	if(!XMLTests())
-		return false;
-
-	if(!filterTreeTests())
-		return false;
-
-	if(!runVoxelTests())
-		return false;
-
-	cerr << " OK" << endl << endl;
-
-	return true;
-}
-
 bool filterTests()
 {
 	//Instantiate various filters, then run their unit tests
@@ -198,6 +110,15 @@ bool filterTests()
 		return false;
 
 	if(!Filter::helpStringTests())
+		return false;
+
+	if(!filterRefreshNoOut())
+		return false;
+
+	if(!filterCloneTests())
+		return false;
+	
+	if(!filterTreeTests())
 		return false;
 
 	return true;
@@ -309,7 +230,7 @@ bool filterCloneTests()
 			}
 
 			//Open the XML file
-			doc = xmlCtxtReadFile(context, sClone.c_str(), NULL,0);
+			doc = xmlCtxtReadFile(context, sClone.c_str(), NULL,XML_PARSE_NONET|XML_PARSE_NOENT);
 
 			//release the context
 			xmlFreeParserCtxt(context);
@@ -343,215 +264,6 @@ bool filterCloneTests()
 		delete f;
 		delete g;
 	}
-	return true;
-}
-
-bool rangeFileLoadTests()
-{
-	//try to load all rng, rrng, and env files in ../tests or ./tests/
-	//whichever is first. 
-	wxString testDir;
-	bool haveDir=false;
-	for(unsigned int ui=0;ui<THREEDEP_ARRAYSIZE(TESTING_RESOURCE_DIRS);ui++)
-	{
-		testDir=wxCStr(TESTING_RESOURCE_DIRS[ui]);
-		if(wxDirExists(testDir))
-		{
-			haveDir=true;
-			break;
-		}
-	}
-
-	if(!haveDir)
-	{
-		WARN(false,"Unable to locate testing resource dir, unable to perform some tests");
-		return true;
-	}
-
-	testDir=testDir+wxT("rangefiles/");
-
-	wxArrayString arrayStr,tmpArr;
-	//Get all the files matching rng extensions
-	vector<string> rangeExts;
-	RangeFile::getAllExts(rangeExts);
-	for(unsigned int ui=0;ui<rangeExts.size();ui++)
-	{
-		std::string tmp;
-		tmp = std::string("*.") + rangeExts[ui];
-		
-		wxDir::GetAllFiles(testDir,&tmpArr,wxStr(tmp));
-		for(unsigned int uj=0;uj<tmpArr.GetCount();uj++)
-			arrayStr.Add(tmpArr[uj]);
-		tmpArr.clear();
-	}
-
-	if(!arrayStr.GetCount())
-	{
-		WARN(false,"Unable to locate test range files, unable to perform some tests");
-		return true;
-	}
-
-
-	//Map names of file (without dir) to number of ions/range
-	map<string,unsigned int> ionCountMap;
-	map<string,unsigned int> rangeCountMap;
-	//set that contains list of entries that should fail
-	set<string> failSet;
-
-	ionCountMap["test1.rng"]=10; rangeCountMap["test1.rng"]=6;
-	ionCountMap["test2.rng"]=7; rangeCountMap["test2.rng"]=9; 
-	ionCountMap["test3.rng"]=19; rangeCountMap["test3.rng"]=59;
-	failSet.insert("test4.rng");
-	ionCountMap["test5.rng"]=4; rangeCountMap["test5.rng"]=2;
-	//After discussion with a sub-author of 
-	// "Atom Probe Microscopy". ISBN 1461434351
-	// and author of the RNG entry in the book,
-	// it was agreed that the file shown in the book is invalid.
-	// Multiple ions cannot be assigned in this fashion,
-	// as there is no naming or colour data to match to
-	failSet.insert("test6.rng");
-	ionCountMap["test7.rng"]=2; rangeCountMap["test7.rng"]=2;
-	ionCountMap["test8.rng"]=2; rangeCountMap["test8.rng"]=2;
-	ionCountMap["test9.rng"]=3; rangeCountMap["test9.rng"]=3;
-	ionCountMap["test10.rng"]=3; rangeCountMap["test10.rng"]=3;
-	ionCountMap["test11.rng"]=5; rangeCountMap["test11.rng"]=10;
-	ionCountMap["test12.rng"]=5; rangeCountMap["test12.rng"]=10;
-
-	ionCountMap["test1.rrng"]=1; rangeCountMap["test1.rrng"]=1;
-	ionCountMap["test2.rrng"]=3; rangeCountMap["test2.rrng"]=6; 
-	ionCountMap["test3.rrng"]=8; rangeCountMap["test3.rrng"]=42; 
-	ionCountMap["test4.rrng"]=14; rangeCountMap["test4.rrng"]=15; 
-	ionCountMap["test5.rrng"]=1; rangeCountMap["test5.rrng"]=1; 
-	
-	ionCountMap["test1.env"]=1; rangeCountMap["test1.env"]=1; 
-
-	//Sort the array before we go any further, so that the output
-	//each time is the same, regardless of how the files were
-	//loaded into the dir. F.ex this makes diffing easier
-	arrayStr.Sort();
-	//Now, check to see if each file is in fact a valid, loadable range file
-	for(unsigned int ui=0;ui<arrayStr.GetCount();ui++)
-	{
-		std::string fileLongname, fileShortname;
-		fileLongname=stlStr(arrayStr[ui]);
-
-		wxFileName filename;
-		filename=wxStr(fileLongname);
-		//This returns the short name of the file. Yes, its badly named.
-		fileShortname=stlStr(filename.GetFullName());
-		{
-			RangeFile f;
-
-			bool shouldSucceed;
-
-			//check to see if we have a failure entry for this rangefile
-			// if its not in the set, it should load successfully
-			shouldSucceed=(failSet.find(fileShortname)==failSet.end());
-				
-			if(!(f.openGuessFormat(fileLongname.c_str()) == shouldSucceed))
-			{
-				cerr << "\t" << fileShortname.c_str() << "...";
-				cerr << f.getErrString() << endl;
-				TEST(false,"range file load test"); 
-			}
-
-
-			if(!shouldSucceed)
-				continue;
-
-			//Check against the hand-made map of ion and range counts
-			if(ionCountMap.find(fileShortname)!=ionCountMap.end())
-			{
-				std::string errMsg;
-				errMsg=string("ion count test : ") + fileShortname;
-				TEST(ionCountMap[fileShortname] == f.getNumIons(),errMsg.c_str());
-			}
-			else
-			{
-				cerr << "\t" << fileShortname.c_str() << "...";
-				WARN(false,"Did not know how many ions file was supposed to have. Test inconclusive");
-			}
-			
-			if(rangeCountMap.find(fileShortname)!=rangeCountMap.end())
-			{
-				std::string errMsg;
-				errMsg=string("range count test : ") + fileShortname;
-				TEST(rangeCountMap[fileShortname] == f.getNumRanges(),errMsg.c_str());
-			}
-			else
-			{
-				cerr << "\t" << fileShortname.c_str() << "...";
-				WARN(false,"Did not know how many ranges file was supposed to have. Test inconclusive");
-			}
-		}
-	}
-
-
-
-	map<string,int> typeMapping;
-
-	typeMapping["test1.rng"]=RANGE_FORMAT_ORNL;
-	typeMapping["test2.rng"]=RANGE_FORMAT_ORNL; 
-	typeMapping["test3.rng"]=RANGE_FORMAT_ORNL;
-	typeMapping["test5.rng"]=RANGE_FORMAT_ORNL; 
-	typeMapping["test7.rng"]=RANGE_FORMAT_ORNL; 
-	typeMapping["test8.rng"]=RANGE_FORMAT_ORNL; 
-	typeMapping["test9.rng"]=RANGE_FORMAT_ORNL; 
-	typeMapping["test10.rng"]=RANGE_FORMAT_ORNL;
-	typeMapping["test11.rng"]=RANGE_FORMAT_ORNL;
-	typeMapping["test12.rng"]=RANGE_FORMAT_DBL_ORNL; 
-	typeMapping["test1.rrng"]=RANGE_FORMAT_RRNG;
-	typeMapping["test2.rrng"]=RANGE_FORMAT_RRNG;
-	typeMapping["test3.rrng"]=RANGE_FORMAT_RRNG;
-	typeMapping["test4.rrng"]=RANGE_FORMAT_RRNG;
-	typeMapping["test5.rrng"]=RANGE_FORMAT_RRNG;
-	typeMapping["test1.env"]=RANGE_FORMAT_ENV; 
-
-
-	for(unsigned int ui=0;ui<arrayStr.GetCount();ui++)
-	{
-		std::string fileLongname, fileShortname;
-		wxFileName filename;
-		
-		fileLongname=stlStr(arrayStr[ui]);
-		filename=wxStr(fileLongname);
-		fileShortname=stlStr(filename.GetFullName());
-
-		//Check to see that the auto-parser correctly identifies the type
-		if(typeMapping.find(fileShortname) != typeMapping.end())
-		{
-			std::string errString;
-			errString="Range type detection : ";
-			errString+=fileLongname;
-
-			if(!wxFileExists(wxStr(fileLongname)))
-			{
-				cerr << "File expected, but not found during test:" <<
-					fileLongname << endl;
-				continue;
-			}
-			
-
-			TEST(RangeFile::detectFileType(fileLongname.c_str()) == 
-					typeMapping[fileShortname], errString);
-		}
-	}
-	return true;
-}
-
-bool XMLTests()
-{
-	vector<std::string> v;
-	v.push_back("<A & B>");
-	v.push_back(" \"\'&<>;");
-	v.push_back("&amp;");
-
-
-	for(unsigned int ui=0;ui<v.size();ui++)
-	{
-		TEST(unescapeXML(escapeXML(v[ui])) == v[ui],"XML unescape round-trip test");
-	}
-
 	return true;
 }
 
@@ -695,7 +407,7 @@ bool filterTreeTests()
 			}
 
 			//Open the XML file
-			doc = xmlCtxtReadFile(context, tmpName.c_str(), NULL,0);
+			doc = xmlCtxtReadFile(context, tmpName.c_str(), NULL,XML_PARSE_NONET|XML_PARSE_NOENT);
 
 			if(!doc)
 				throw false;
@@ -735,5 +447,62 @@ bool filterTreeTests()
 }
 
 
+bool filterRefreshNoOut()
+{
 
-#endif
+
+	//Create a file with some data in it
+	string strData;
+
+	wxString wxs,tmpStr;
+	tmpStr=wxT("3Depict-unit-test-");
+	wxs= wxFileName::CreateTempFileName(tmpStr);
+	tmpStr = tmpStr + wxs;
+
+	strData=stlStr(wxs) + string(".txt");
+
+	//Create a text file with some dummy data
+	{
+	ofstream f(strData.c_str());
+
+	if(!f)
+	{
+		WARN(false,"Unable to write to dir, skipped unit test");
+		return true;
+	}
+
+	//Write out some useable data
+	f << "1 2 3 4" << std::endl;
+	f << "2 1 3 5" << std::endl;
+	f << "3 2 1 6" << std::endl;
+	f.close();
+	}
+
+	DataLoadFilter *fData = new DataLoadFilter;
+	Filter *fB = new ExternalProgramFilter;
+	Filter *fC = new IonDownsampleFilter;
+
+	//Set the data load filter
+	fData->setFilename(strData);
+	fData->setFileMode(DATALOAD_TEXT_FILE);
+
+	bool needUp;
+
+	TEST(fB->setProperty(EXTERNALPROGRAM_KEY_COMMAND,"",needUp),"set prop");
+	
+	FilterTree fTree;
+	fTree.addFilter(fData,0);
+	fTree.addFilter(fB,fData);
+	fTree.addFilter(fC,fB);
+
+
+	std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > outData;
+	TEST(testFilterTree(fTree,outData),"ext program tree test");
+
+	TEST(outData.empty(),"Extenral program reresh test");
+	fTree.safeDeleteFilterList(outData);
+
+	wxRemoveFile(wxStr(strData));
+
+	return true;
+}

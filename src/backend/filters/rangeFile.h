@@ -35,7 +35,7 @@ class RangeFileFilter : public Filter
 {
 	private:
 		std::string rngName;
-		//!Vector of chars stating if user has enabled a particular vector or not
+		//!Vector of chars stating if user has enabled a particular range or not
 		std::vector<char> enabledRanges;
 		//!Vector of chars stating if user has enabled a particular Ion or not.
 		std::vector<char> enabledIons;
@@ -52,7 +52,6 @@ class RangeFileFilter : public Filter
 		RangeFile rng;
 
 	public:
-		const RangeFile &getRange() const { return rng;};
 
 		//!Set the format to assume when loading file
 		void setFormat(unsigned int format);
@@ -83,6 +82,7 @@ class RangeFileFilter : public Filter
 		//!Force a re-read of the rangefile, returning false on failure, true on success
 		bool updateRng();
 		
+		const RangeFile &getRange() const { return rng;};
 		//!Set the internal data using the specified range object
 		void setRangeData(const RangeFile &newRange);
 

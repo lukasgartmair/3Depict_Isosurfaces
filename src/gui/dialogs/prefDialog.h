@@ -23,7 +23,7 @@
 #include <wx/wx.h>
 // begin wxGlade: ::dependencies
 #include <wx/notebook.h>
-#include "wxcomponents.h"
+#include "wx/wxcomponents.h"
 // end wxGlade
 
 class Filter;
@@ -67,6 +67,7 @@ private:
 protected:
     // begin wxGlade: PrefDialog::attributes
     wxStaticBox* sizerCamSpeed_staticbox;
+    wxStaticBox* sizer_7_staticbox;
     wxStaticBox* updateSizer_staticbox;
     wxStaticBox* sizer_2_staticbox;
     wxStaticBox* filterPropSizer_staticbox;
@@ -84,18 +85,19 @@ protected:
     wxCheckBox* checkAllowOnlineUpdate;
 #endif
     wxPanel* panelStartup;
+    wxCheckBox* chkPreferOrtho;
     wxStaticText* lblMoveSpeed;
-    wxNotebook* notePrefPanels;
-    wxButton* btnOK;
-    wxButton* btnCancel;
+    wxStaticText* labelSlowCamMoveRate;
     wxSlider* sliderCamMoveRate;
     wxStaticText* labelFastCamMoveRate;
-    wxStaticText* labelSlowCamMoveRate;
     wxStaticText* lblZoomSpeed;
     wxStaticText* labelSlowCamZoomRate;
     wxSlider* sliderCamZoomRate;
     wxStaticText* labelSlowFastZoomRate;
     wxPanel* notePrefPanels_pane_3;
+    wxNotebook* notePrefPanels;
+    wxButton* btnOK;
+    wxButton* btnCancel;
     // end wxGlade
 
 	DECLARE_EVENT_TABLE();
@@ -103,10 +105,10 @@ protected:
 public:
 	// begin wxGlade: PrefDialog::ids
 	// end wxGlade
-	PrefDialog(wxWindow* parent, int id=wxID_ANY, const wxString& title=_(""), const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
+	PrefDialog(wxWindow* parent, int id=wxID_ANY, const wxString& title=wxT(""), const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
 	virtual ~PrefDialog();
-	virtual void OnFilterListClick(wxCommandEvent &event); // wxGlade: <event_handler>
 	virtual void OnFilterCellChange(wxGridEvent &event); // wxGlade: <event_handler>
+	virtual void OnFilterListClick(wxCommandEvent &event); // wxGlade: <event_handler>
 	virtual void OnFilterGridCellEditorShow(wxGridEvent &event); // wxGlade: <event_handler>
 	virtual void OnResetFilterButton(wxCommandEvent &event); // wxGlade: <event_handler>
 	virtual void OnResetFilterAllButton(wxCommandEvent &event); // wxGlade: <event_handler>
@@ -128,10 +130,14 @@ public:
 	void setMouseZoomRate(unsigned int rate) { mouseZoomRatePercent=rate;};
 	void setMouseMoveRate(unsigned int rate) { mouseMoveRatePercent=rate;};
 
+	bool getPreferOrthoCam() const { return chkPreferOrtho->IsChecked();}
+	void setPreferOrthoCam(bool prefer) const { return chkPreferOrtho->SetValue(prefer);}
+
 	unsigned int getMouseZoomRate() const { return  mouseZoomRatePercent;};
 	unsigned int getMouseMoveRate() const { return mouseMoveRatePercent;};
 
 	virtual void OnStartupPanelCombo(wxCommandEvent &event); // wxGlade: <event_handler>
+    	virtual void OnCheckPreferOrtho(wxCommandEvent &event); // wxGlade: <event_handler>
 	void OnMouseMoveSlider(wxScrollEvent &event);
 	void OnMouseZoomSlider(wxScrollEvent &event);
 

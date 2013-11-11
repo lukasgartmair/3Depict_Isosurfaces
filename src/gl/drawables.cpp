@@ -32,6 +32,11 @@ const float DEPTH_SORT_REORDER_EPSILON = 1e-2;
 //Static class variables
 //====
 const Camera *DrawableObj::curCamera = 0;
+
+float DrawableObj::backgroundR;
+float DrawableObj::backgroundG;
+float DrawableObj::backgroundB;
+
 bool DrawableObj::useAlphaBlend;
 TexturePool *DrawableObj::texPool;
 
@@ -141,6 +146,11 @@ DrawPoint::~DrawPoint()
 {
 }
 
+DrawableObj* DrawPoint::clone() const
+{
+	DrawPoint *d = new DrawPoint(*this);
+	return d;
+}
 
 
 
@@ -178,6 +188,11 @@ DrawVector::~DrawVector()
 {
 }
 
+DrawableObj* DrawVector::clone() const
+{
+	DrawVector *d = new DrawVector(*this);
+	return d;
+}
 
 void DrawVector::getBoundingBox(BoundCube &b) const 
 {
@@ -407,6 +422,13 @@ DrawTriangle::~DrawTriangle()
 {
 }
 
+
+DrawableObj* DrawTriangle::clone() const
+{
+	DrawTriangle *d = new DrawTriangle(*this);
+	return d;
+}
+
 void DrawTriangle::setVertex(unsigned int ui, const Point3D &pt)
 {
 	ASSERT(ui < 3);
@@ -429,6 +451,13 @@ void DrawTriangle::draw() const
 			glVertex3fv(vertices[ui].getValueArr());
 	glEnd();
 }
+
+DrawableObj* DrawQuad::clone() const
+{
+	DrawQuad *d = new DrawQuad(*this);
+	return d;
+}
+
 
 void DrawQuad::getBoundingBox(BoundCube &b) const
 {
@@ -581,7 +610,6 @@ DrawSphere::~DrawSphere()
 	if(q)
 		gluDeleteQuadric(q);
 }
-
 
 
 void DrawSphere::getBoundingBox(BoundCube &b) const
@@ -842,6 +870,13 @@ DrawManyPoints::DrawManyPoints() : r(1.0f),g(1.0f),b(1.0f),a(1.0f), size(1.0f)
 
 DrawManyPoints::~DrawManyPoints() 
 {
+}
+
+
+DrawableObj* DrawManyPoints::clone() const
+{
+	DrawManyPoints *d = new DrawManyPoints(*this);
+	return d;
 }
 
 void DrawManyPoints::getBoundingBox(BoundCube &b) const
@@ -1338,6 +1373,12 @@ DrawRectPrism::~DrawRectPrism()
 {
 }
 
+DrawableObj *DrawRectPrism::clone() const
+{
+	DrawRectPrism *dR= new DrawRectPrism(*this);
+	return dR;
+}
+
 void DrawRectPrism::getBoundingBox(BoundCube &b) const
 {
 	b.setBounds(pMin[0],pMin[1],pMin[2],
@@ -1704,9 +1745,35 @@ void DrawColourBarOverlay::draw() const
 
 	glEnd();
 
+	//Perform luminence check on background to try to create most appropriate
+	// colour
+	//-------
+	// TODO: I have this in a few places now, need to refactor into a single colour class
+
+	//weights
+ 	const float CHANNEL_LUM_WEIGHTS[3] = { 0.299f,0.587f,0.114f};
+	float totalBright=backgroundR*CHANNEL_LUM_WEIGHTS[0] +
+			backgroundG*CHANNEL_LUM_WEIGHTS[1] +
+			backgroundB*CHANNEL_LUM_WEIGHTS[2];
+
+	float textGrey;
+	if(totalBright > 0.5f)
+	{
+		//"bright" scene, use black text
+		textGrey=0.0f;
+	}
+	else
+	{
+		//"Dark" background, use white text
+		textGrey=1.0f;
+	}
+	
+
+	//-------
+
 	//Draw ticks on colour bar
 	glBegin(GL_LINES);
-		glColor4f(1.0,1.0,1.0f,1.0f);
+		glColor4f(textGrey,textGrey,textGrey,1.0f);
 		//Top tick
 		glVertex3f(tlX,tlY,0);
 		glVertex3f(tlX+width,tlY,0);
@@ -1758,8 +1825,6 @@ void DrawColourBarOverlay::draw() const
 	font->Render(s.c_str());
 	glPopMatrix();
 	glEnable(GL_CULL_FACE);
-
-
 
 }
 
@@ -2120,6 +2185,13 @@ DrawAxis::DrawAxis()
 
 DrawAxis::~DrawAxis()
 {
+}
+
+
+DrawableObj* DrawAxis::clone() const
+{
+	DrawAxis *d = new DrawAxis(*this);
+	return d;
 }
 
 void DrawAxis::setStyle(unsigned int s)

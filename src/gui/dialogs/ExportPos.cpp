@@ -18,9 +18,9 @@
 
 
 #include "ExportPos.h"
-#include "wxcommon.h"
+#include "wx/wxcommon.h"
 
-#include "wxcomponents.h"
+#include "wx/wxcomponents.h"
 #include "common/translation.h"
 
 #include <wx/treectrl.h>

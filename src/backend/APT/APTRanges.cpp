@@ -69,7 +69,7 @@ const char *RANGE_EXTS[] = { "rng",
 			  "rrng",
 				""};
 
-bool decomposeIonNames(const std::string &name,
+bool RangeFile::decomposeIonNames(const std::string &name,
 		std::vector<pair<string,size_t> > &fragments)
 {
 	size_t lastMarker=0;
@@ -167,6 +167,35 @@ bool decomposeIonNames(const std::string &name,
 		fragments.push_back(make_pair(s,multiplicity));
 	}
 
+
+	//Spin through dataset and collect the non-unique fragment
+	vector<bool> toKill(fragments.size(),false);
+	for(size_t ui=0;ui<fragments.size();ui++)
+	{
+		//skip empty framgnets
+		if(fragments[ui].first.empty())
+			ui++;
+
+		for(size_t uj=ui+1;uj<fragments.size();uj++)
+		{
+			//skip empty gragments
+			if(fragments[uj].first.empty())
+				uj++;
+
+			//Collect fragment multiplcities if they have the same name
+			if(fragments[uj].first == fragments[ui].first)
+			{
+				fragments[ui].second+=fragments[uj].second;
+				fragments[uj].first=""; //Zero out name so we don't hit it
+
+				toKill[uj]=true;
+
+			}
+		}
+	}
+
+	vectorMultiErase(fragments,toKill);
+	
 	return true;
 }
 
@@ -187,7 +216,7 @@ bool matchComposedName(const std::map<string,size_t> &composedNames,
 			it!=composedNames.end();++it)
 	{
 		vector<pair<string,size_t> > frags;
-		if(!decomposeIonNames(it->first,frags))
+		if(!RangeFile::decomposeIonNames(it->first,frags))
 			frags.clear();
 
 			
@@ -273,9 +302,28 @@ bool matchComposedName(const std::map<string,size_t> &composedNames,
 	return (matchOffset !=(size_t) - 1);
 }
 
-RangeFile::RangeFile() : errState(0)
+RangeFile::RangeFile() : enforceConsistency(true), errState(0)
 {
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(RANGE_EXTS)==RANGE_FORMAT_END_OF_ENUM+1);
+}
+
+const RangeFile &RangeFile::operator=(const RangeFile &oth)
+{
+	ionNames.clear();
+	colours.clear();
+	ranges.clear();
+	ionIDs.clear();
+
+		
+	ionNames=oth.ionNames;
+	colours=oth.colours;
+	ranges=oth.ranges;
+	ionIDs=oth.ionIDs;
+	enforceConsistency=oth.enforceConsistency;
+	errState=oth.errState;
+	warnMessages=oth.warnMessages;
+
+	return *this;
 }
 
 unsigned int RangeFile::write(std::ostream &f, size_t format) const
@@ -499,34 +547,36 @@ bool RangeFile::openGuessFormat(const char *rangeFilename)
 	//Try to auto-detect the filetype
 	assumedFileFormat=detectFileType(rangeFilename);
 
-	//Use the guessed format
-	if(open(rangeFilename,assumedFileFormat))
+	if(assumedFileFormat < RANGE_FORMAT_END_OF_ENUM)
 	{
-		unsigned int errStateRestore;
-		errStateRestore=errState;
-		//If that failed, go to plan B-- Brute force.
-		//try all readers
-		bool openOK=false;
+		if(!open(rangeFilename,assumedFileFormat))
+			return true;
+	}
+	//Use the guessed format
+	unsigned int errStateRestore;
+	errStateRestore=errState;
+	//If that failed, go to plan B-- Brute force.
+	//try all readers
+	bool openOK=false;
 
-		for(unsigned int ui=0;ui<RANGE_FORMAT_END_OF_ENUM; ui++)
-		{
-			if(ui == assumedFileFormat)
-				continue;
+	for(unsigned int ui=0;ui<RANGE_FORMAT_END_OF_ENUM; ui++)
+	{
+		if(ui == assumedFileFormat)
+			continue;
 
-			if(!open(rangeFilename,ui))
-			{
-				assumedFileFormat=ui;
-				openOK=true;
-				break;
-			}
-		}
-	
-		if(!openOK)
+		if(!open(rangeFilename,ui))
 		{
-			//Restore the error state for the assumed file format
-			errState=errStateRestore;
-			return false;
+			assumedFileFormat=ui;
+			openOK=true;
+			break;
 		}
+	}
+
+	if(!openOK)
+	{
+		//Restore the error state for the assumed file format
+		errState=errStateRestore;
+		return false;
 	}
 
 	return true;
@@ -931,6 +981,12 @@ unsigned int RangeFile::detectFileType(const char *rangeFile)
 		STATUS_IS_MAYBE,
 	};
 
+#if !defined(__WIN32__) && !defined(__WIN64)
+	//Under posix platforms (linux) directories can be opened by fopen. disallow
+	if(isNotDirectory(rangeFile) == false)
+		return RANGE_FORMAT_END_OF_ENUM;
+#endif
+
 	//create a fail-on-unimplemnted type detection scheme
 	vector<unsigned int > typeStatus(RANGE_FORMAT_END_OF_ENUM,STATUS_NOT_CHECKED);
 
@@ -1043,7 +1099,7 @@ skipoutRNGChecks:
 		if(!f)
 			return RANGE_FORMAT_END_OF_ENUM;
 
-		//Check for existance of lines that match format section
+		//Check for existence of lines that match format section
 		std::vector<string> sections;
 		sections.push_back("[Ions]");
 		sections.push_back("[Ranges]");
@@ -1056,7 +1112,7 @@ skipoutRNGChecks:
 		while(!f.eof())
 		{
 
-			//Get line, stripped of whitspace
+			//Get line, stripped of whitespace
 			std::string tmpStr;
 			getline(f,tmpStr);
 			tmpStr=stripWhite(tmpStr);
@@ -1130,7 +1186,7 @@ skipoutRNGChecks:
 				return ui;
 
 		}
-		//in this case, we only have  NOT_CHECKED remaning. So, we hvae no idea
+		//in this case, we only have  NOT_CHECKED remaining. So, we have no idea
 		return RANGE_FORMAT_END_OF_ENUM;
 
 	}
@@ -2073,11 +2129,8 @@ bool RangeFile::isSelfConsistent() const
 			return false;
 	
 		//Check that ranges don't overlap.
-		for(unsigned int uj=0; uj<ranges.size();uj++)
+		for(unsigned int uj=ui+1; uj<ranges.size();uj++)
 		{
-			if(ui==uj)
-				continue;
-
 			//check that not sitting inside a range
 			if(ranges[ui].first > ranges[uj].first &&
 					ranges[ui].first < ranges[uj].second )
@@ -2098,6 +2151,36 @@ bool RangeFile::isSelfConsistent() const
 
 		}
 	}
+
+	
+	//Ensure that the names don't clash
+	for(size_t ui=0;ui<ionNames.size();ui++)
+	{
+		for(size_t uj=ui+1;uj<ionNames.size();uj++)
+		{
+			if(ionNames[ui].first == ionNames[uj].first ||
+				ionNames[ui].second == ionNames[uj].second)
+				return false;
+		}
+	}
+
+
+	//Ensure that names conform to allowed naming scheme
+	for(size_t ui=0;ui<ionNames.size();ui++)
+	{
+		string tmp;
+		tmp=ionNames[ui].first;
+
+		const char *DISALLOWED_ION_NAMES=" \t\r\n";
+		//TODO : Use whitelist, rather than blacklist
+		if(tmp.find_first_of(DISALLOWED_ION_NAMES)!= string::npos)
+			return false;
+
+		tmp=ionNames[ui].second;
+		if(tmp.find_first_of(DISALLOWED_ION_NAMES)!= string::npos) 
+			return false;
+	}
+
 
 	return true;
 }
@@ -2258,6 +2341,11 @@ pair<float,float> RangeFile::getRange(unsigned int ui) const
 	return ranges[ui];
 }
 
+pair<float,float> &RangeFile::getRangeByRef(unsigned int ui) 
+{
+	return ranges[ui];
+}
+
 RGBf RangeFile::getColour(unsigned int ui) const
 {
 	ASSERT(ui <  colours.size());
@@ -2299,14 +2387,27 @@ unsigned int RangeFile::getIonID(unsigned int range) const
 	return ionIDs[range];
 }
 
-unsigned int RangeFile::getIonID(const char *name) const
+unsigned int RangeFile::getIonID(const char *name, bool useShortName) const
 {
-	for(unsigned int ui=0; ui<ionNames.size(); ui++)
+	if(useShortName)
 	{
-		if(ionNames[ui].first == name)
-			return ui;
+		//find the first element in the sequence
+		for(unsigned int ui=0; ui<ionNames.size(); ui++)
+		{
+			if(ionNames[ui].first == name)
+				return ui;
+		}
 	}
+	else
+	{
+		//Find using the second element in the sequence (longName)
+		for(unsigned int ui=0; ui<ionNames.size(); ui++)
+		{
+			if(ionNames[ui].second == name)
+				return ui;
+		}
 
+	}
 	return (unsigned int)-1;	
 }
 
@@ -2394,6 +2495,46 @@ void RangeFile::setIonLongName(unsigned int id, const std::string &newName)
 	ionNames[id].second = newName;
 }
 
+bool RangeFile::setRangeStart(unsigned int rangeId, float v)
+{
+	ASSERT(!enforceConsistency || isSelfConsistent());
+	
+	float &f=ranges[rangeId].first;
+	float tmp;
+	tmp=f;
+	f=v;
+	
+	//TODO: I think this does excess calculatioN?
+	if(enforceConsistency && !isSelfConsistent())
+	{
+		//restore original value
+		f=tmp;
+		return false;
+	}
+
+	return true;
+}
+
+bool RangeFile::setRangeEnd(unsigned int rangeId, float v)
+{
+
+	ASSERT(!enforceConsistency || isSelfConsistent());
+
+	float &f=ranges[rangeId].second;
+	float tmp;
+	tmp=f;
+	f=v;
+	
+	//TODO: I think this does excess calculatioN?
+	if(enforceConsistency && !isSelfConsistent())
+	{
+		//restore original value
+		f=tmp;
+		return false;
+	}
+
+	return true;
+}
 void  RangeFile::swap(RangeFile &r)
 {
 	using std::swap;
@@ -2406,57 +2547,60 @@ void  RangeFile::swap(RangeFile &r)
 
 }
 
-bool RangeFile::moveRange(unsigned int rangeId, bool limit, float newMass)
+bool RangeFile::moveRange(unsigned int rangeId, bool upperLimit, float newMass)
 {
-
-	//Check for moving past other part of range -- "inversion"
-	if(limit)
+	if(enforceConsistency)
 	{
-		//Move upper range
-		if(newMass <= ranges[rangeId].first)
-			return false;
-	}
-	else
-	{
-		if(newMass >= ranges[rangeId].second)
-			return false;
-	}
-
-	//Check that moving this range will not cause any overlaps with 
-	//other ranges
-	for(unsigned int ui=0; ui<ranges.size(); ui++)
-	{
-		if( ui == rangeId)
-			continue;
-
-		if(limit)
+		//Check for moving past other part of range -- "inversion"
+		if(upperLimit)
 		{
-			//moving high range
-			//check for overlap on first
-			if((ranges[rangeId].first < ranges[ui].first &&
-					newMass > ranges[ui].first))
-			       return false;
-			
-			if((ranges[rangeId].first < ranges[ui].second &&
-					newMass > ranges[ui].second))
-			       return false;
+			//Move upper range
+			if(newMass <= ranges[rangeId].first)
+				return false;
 		}
 		else
 		{
-			//moving low range
-			//check for overlap on first
-			if((ranges[rangeId].second > ranges[ui].first &&
-					newMass < ranges[ui].first))
-			       return false;
-			
-			if((ranges[rangeId].second > ranges[ui].second &&
-					newMass < ranges[ui].second))
-			       return false;
+			if(newMass >= ranges[rangeId].second)
+				return false;
+		}
+
+		//Check that moving this range will not cause any overlaps with 
+		//other ranges
+		for(unsigned int ui=0; ui<ranges.size(); ui++)
+		{
+			if( ui == rangeId)
+				continue;
+
+			if(upperLimit)
+			{
+				//moving high range
+				//check for overlap on first
+				if((ranges[rangeId].first < ranges[ui].first &&
+						newMass > ranges[ui].first))
+				       return false;
+				
+				if((ranges[rangeId].first < ranges[ui].second &&
+						newMass > ranges[ui].second))
+				       return false;
+			}
+			else
+			{
+				//moving low range
+				//check for overlap on first
+				if((ranges[rangeId].second > ranges[ui].first &&
+						newMass < ranges[ui].first))
+				       return false;
+				
+				if((ranges[rangeId].second > ranges[ui].second &&
+						newMass < ranges[ui].second))
+				       return false;
+			}
+
 		}
 
 	}
-
-	if(limit)
+	
+	if(upperLimit)
 		ranges[rangeId].second = newMass;
 	else
 		ranges[rangeId].first= newMass;
@@ -2502,35 +2646,42 @@ bool RangeFile::moveBothRanges(unsigned int rangeId, float newLow, float newHigh
 
 
 
-unsigned int RangeFile::addRange(float start, float end, unsigned int parentIonID)
+unsigned int RangeFile::addRange(float start, float end, unsigned int parentIonID) 
 {
 	ASSERT(start < end);
-	//Ensure that they do NOT overlap
-	for(unsigned int ui=0;ui<ranges.size();ui++)
+	if(enforceConsistency)
 	{
-		//Check for start end inside other range
-		if(start > ranges[ui].first && 
-				start<=ranges[ui].second)
-			return -1;
+		//Ensure that they do NOT overlap
+		for(unsigned int ui=0;ui<ranges.size();ui++)
+		{
+			//Check for start end inside other range
+			if(start > ranges[ui].first && 
+					start<=ranges[ui].second)
+				return -1;
 
-		if(end > ranges[ui].first && 
-				end<=ranges[ui].second)
-			return -1;
+			if(end > ranges[ui].first && 
+					end<=ranges[ui].second)
+				return -1;
 
-		//check for start/end spanning range entirely
-		if(start < ranges[ui].first && end > ranges[ui].second)
-			return -1;
+			//check for start/end spanning range entirely
+			if(start < ranges[ui].first && end > ranges[ui].second)
+				return -1;
+		}
 	}
-
 	//Got this far? Good - valid range. Insert it and move on
 	ionIDs.push_back(parentIonID);
 	ranges.push_back(std::make_pair(start,end));
 
-	ASSERT(isSelfConsistent());
+#ifdef DEBUG
+	if(enforceConsistency)
+	{
+		ASSERT(isSelfConsistent());
+	}
+#endif
 	return ranges.size();
 }
 
-unsigned int RangeFile::addIon(std::string &shortN, std::string &longN, RGBf &newCol)
+unsigned int RangeFile::addIon(const std::string &shortN, const std::string &longN, const RGBf &newCol)
 {
 	for(unsigned int ui=9; ui<ionNames.size() ;ui++)
 	{
@@ -2544,9 +2695,54 @@ unsigned int RangeFile::addIon(std::string &shortN, std::string &longN, RGBf &ne
 	ASSERT(isSelfConsistent());
 	return ionNames.size()-1;
 }
+
 void RangeFile::setIonID(unsigned int range, unsigned int newIonId)
 {
 	ASSERT(newIonId < ionIDs.size());
 	ionIDs[range] = newIonId;
 }
 
+void RangeFile::eraseRange(size_t rangeId)
+{
+	ASSERT(rangeId < ranges.size());
+	std::swap(ranges.back(),ranges[rangeId]);
+	ranges.pop_back();	
+	
+	std::swap(ionIDs.back(),ionIDs[rangeId]);
+	ionIDs.pop_back();	
+}
+
+void RangeFile::eraseIon(size_t ionId)
+{
+	
+	//Kill any ranges that belong to this ion
+	vector<bool> killRange(ranges.size(),false);
+	for(size_t ui=0;ui<ionIDs.size(); ui++)
+	{
+		if(ionIDs[ui]  == ionId)
+			killRange[ui]=true;
+	}
+
+	//Remove the desired range and ionID mappings.
+	vectorMultiErase(ranges,killRange);
+	vectorMultiErase(ionIDs,killRange);
+
+	//Remove the ion name and colour for the selected ion
+	ionNames.erase(ionNames.begin()+ionId);
+	colours.erase(colours.begin()+ionId);
+
+	//Now, we have to renumber the existing ionIDs, which have shifted down a peg
+	for(size_t ui=0;ui<ionIDs.size();ui++)
+	{
+		//We should have deleted this ionsID
+		ASSERT(ionIDs[ui] != ionId);
+		//Shift any ionIDs that are higher down one peg
+		if(ionIDs[ui]  >ionId)
+			ionIDs[ui]--;
+#ifdef DEBUG
+		ASSERT(ionIDs[ui] < ionNames.size());
+#endif
+	}
+
+
+}

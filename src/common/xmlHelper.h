@@ -33,6 +33,12 @@ using std::string;
 
 #include "common/basics.h"
 
+enum
+{
+	PROP_PARSE_ERR = 1,
+	PROP_BAD_ATT
+};
+
 //These functions return nonzero on failure,
 //zero on success
 //be warned that the node WILL be modified.
@@ -76,6 +82,29 @@ bool XMLGetNextElemAttrib(xmlNodePtr &nodePtr, T &v, const char *nodeName, const
 	return true;
 }
 
+
+//Returns 0 if successful, non zero if there is a property failure, or if the property is empty
+template<class T> unsigned int XMLHelpGetProp(T &prop,xmlNodePtr node, string propName)
+{
+	xmlChar *xmlString;
+
+	//grab the xml property
+	xmlString = xmlGetProp(node,(const xmlChar *)propName.c_str());
+
+	//Check string contents	
+	if(!xmlString)
+		return PROP_PARSE_ERR;
+
+	if(stream_cast(prop,xmlString))
+	{
+		xmlFree(xmlString);
+		return PROP_BAD_ATT;
+	}
+			
+	xmlFree(xmlString);
+
+	return 0;
+}
 
 //Returns false on failure 
 //Do not use on validly whitespace containing XML

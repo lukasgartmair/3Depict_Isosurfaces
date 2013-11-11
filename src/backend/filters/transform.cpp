@@ -173,7 +173,7 @@ DrawStreamData* TransformFilter::makeMarkerSphere(SelectionDevice* &s) const
 		s=new SelectionDevice(this);
 		SelectionBinding b;
 
-		b.setBinding(SELECT_BUTTON_LEFT,FLAG_CMD,DRAW_SPHERE_BIND_ORIGIN,
+		b.setBinding(SELECT_BUTTON_LEFT,0,DRAW_SPHERE_BIND_ORIGIN,
 		             BINDING_SPHERE_ORIGIN,dS->getOrigin(),dS);
 		b.setInteractionMode(BIND_MODE_POINT3D_TRANSLATE);
 		s->addBinding(b);
@@ -187,37 +187,11 @@ DrawStreamData* TransformFilter::makeMarkerSphere(SelectionDevice* &s) const
 unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
-	//Clear selection devices FIXME: Is this a memory leak???
-	clearDevices();
 	//use the cached copy if we have it.
 	if(cacheOK)
 	{
-		ASSERT(filterOutputs.size());
-		for(unsigned int ui=0;ui<dataIn.size();ui++)
-		{
-			if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
-				getOut.push_back(dataIn[ui]);
-		}
-
-		for(unsigned int ui=0;ui<filterOutputs.size();ui++)
-			getOut.push_back(filterOutputs[ui]);
-		
-		
-		if(filterOutputs.size() && showPrimitive)
-		{
-			//If the user is using a transform mode that requires origin selection 
-			if(showOrigin && (transformMode == MODE_ROTATE ||
-					transformMode == MODE_SCALE_ANISOTROPIC ||
-					transformMode == MODE_SCALE_ISOTROPIC) )
-			{
-				SelectionDevice *s;
-				getOut.push_back(makeMarkerSphere(s));
-				if(s)
-					devices.push_back(s);
-			}
-			
-		}
-
+		propagateStreams(dataIn,getOut, STREAM_TYPE_IONS,false);
+		propagateCache(getOut);
 		return 0;
 	}
 
@@ -296,15 +270,39 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 			transformMode == MODE_SCALE_ISOTROPIC) )
 	{
 		SelectionDevice *s;
-		getOut.push_back(makeMarkerSphere(s));
+		DrawStreamData *d=makeMarkerSphere(s);
 		if(s)
 			devices.push_back(s);
+		if(cache)
+		{
+			d->cached=1;
+			filterOutputs.push_back(d);
+		}
+		else
+			d->cached=0;
+		
+		getOut.push_back(d);
 	}
 			
 	//Apply the transformations to the incoming 
 	//ion streams, generating new outgoing ion streams with
 	//the modified positions
 	size_t totalSize=numElements(dataIn);
+
+	//If there are no ions, nothing to do.
+	// just copy non-ion input to output 
+	if(!totalSize)
+	{
+		for(unsigned int ui=0;ui<dataIn.size();ui++)
+		{
+			if(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS)
+				continue;
+
+			getOut.push_back(filterOutputs[ui]);
+		}
+		return 0;
+	}
+
 	if( transformMode != MODE_VALUE_SHUFFLE)
 	{
 		//Dont cross the streams. Why? It would be bad.
@@ -1655,7 +1653,7 @@ bool TransformFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 		return false;
 	//====
 	
-	//Retreive vector parameters
+	//Retrieve vector parameters
 	//===
 	if(XMLHelpFwdToElem(nodePtr,"vectorparams"))
 		return false;
@@ -1666,7 +1664,7 @@ bool TransformFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	//===	
 
 	nodePtr=tmpNode;
-	//Retreive scalar parameters
+	//Retrieve scalar parameters
 	//===
 	if(XMLHelpFwdToElem(nodePtr,"scalarparams"))
 		return false;
@@ -2041,7 +2039,6 @@ bool scaleTest()
 	//---
 
 
-	//OK, so now do the rotation
 	//Do the refresh
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
@@ -2115,7 +2112,6 @@ bool scaleAnisoTest()
 	//---
 
 
-	//OK, so now do the rotation
 	//Do the refresh
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");

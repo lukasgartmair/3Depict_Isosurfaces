@@ -55,9 +55,29 @@ inline int fpeek(FILE *stream)
 	return c;
 }
 
-bool rangesOverlap(size_t minA, size_t maxA,
-			size_t minB, size_t maxB);
+template<class T>
+bool rangesOverlap( const T &minA, const T &maxA,
+			const T &minB, const T &maxB)
+{
 
+	ASSERT(minA <= maxA);
+	ASSERT(minB<=maxB);
+
+	// A-  B- A+ 
+	// A- B+ A+
+	if( (minA <= minB && maxA >=minB )
+		|| (minA<=maxB && maxA >=maxB) )
+		return true;
+
+	// B-  A- B+ 
+	// B- A+ B+
+	if(( minB <= minA && maxB >=minA )
+		|| (minB<=maxA && maxB >=maxA) )
+		return true;
+
+	return false;
+
+}
 
 //!Text file loader errors
 enum
@@ -133,7 +153,7 @@ void tickSpacingsFromFixedNum(float start, float end,
 std::string veryFuzzyTimeSince( time_t origTime, time_t newTime);
 
 
-//!A routine for loading numeric data from a text file
+//!A routine for loading numeric data from a text file. Returns 0 on success
 unsigned int loadTextData(const char *cpFilename, 
 		std::vector<std::vector<float> > &dataVec,
 	       	std::vector<std::string> &header,const char *delim);
@@ -220,6 +240,10 @@ int getTotalRAM();
 //!Get available ram in MB
 size_t getAvailRAM();
 
+//!Determine if a given path is a not a directory, 
+bool isNotDirectory(const char *filename);
+
+bool rmFile(const std::string & filename);
 
 #ifdef DEBUG
 bool isValidXML(const char *filename);
@@ -301,6 +325,8 @@ public:
 
     //Retrieve a specified bound, minMax=0 for min, =1 for max
     float getBound(unsigned int bound, unsigned int minMax) const ;
+    
+    void getBound(Point3D &bound, unsigned int minMax) const ;
     //!Return the centroid 
     Point3D getCentroid() const;
 
@@ -475,31 +501,30 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 		GreaterWithCallback<size_t> gFunctor(callback,50000);
 		std::sort(ticks.begin(),ticks.end(),gFunctor);
 		EqualWithCallback<size_t> eqFunctor(callback,50000);
+
 		std::vector<size_t>::iterator newLast;
 		newLast=std::unique(ticks.begin(),ticks.end());	
 		ticks.erase(newLast,ticks.end());
 
-		std::vector<size_t> moreTicks;
 		//Top up with unique entries
-		while(ticks.size() +moreTicks.size() < numTicksNeeded)
+		//TODO: Overcommit & Discard implementation?
+		// - Should be possible to predict how many we need after collisions, and then overcommit and discard randomly. Removes need to loop-sort like this
+		while(ticks.size() < numTicksNeeded)
 		{
-			size_t index;
+			size_t moreTicks=numTicksNeeded-ticks.size();
+			for(size_t uk=0;uk<moreTicks;uk++)
+			{
+				//This is actually not too bad. the collision probability is at most 50%
+				//due the switching behaviour above, for any large number of items 
+				//So this is at worst case nlog(n) (I think)
+				ticks.push_back((size_t)(rng.genUniformDev()*(float)(source.size()-1)));
+	
+			}
 
-			//This is actually not too bad. the collision probability is at most 50%
-			//due the switching behaviour above, for any large number of items 
-			//So this is at worst case nlog(n) (I think)
-			index =(size_t)(rng.genUniformDev()*(float)(source.size()-1));
-			if(!binary_search(ticks.begin(),ticks.end(),index) &&
-				std::find(moreTicks.begin(),moreTicks.end(),index) ==moreTicks.end())
-				moreTicks.push_back(index);
-
+			std::sort(ticks.begin(),ticks.end(),gFunctor);
+			newLast=std::unique(ticks.begin(),ticks.end(),eqFunctor);	
+			ticks.erase(newLast,ticks.end());
 		}
-
-		ticks.reserve(numTicksNeeded);
-		for(size_t ui=0;ui<moreTicks.size();ui++)
-			ticks.push_back(moreTicks[ui]);
-
-		moreTicks.clear();
 
 		ASSERT(ticks.size() == numTicksNeeded);
 		//---------
@@ -637,6 +662,7 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 			numTicksNeeded=max-num;
 
 		//Randomly selected items 
+		//TODO: Benchmark against set<> implementation
 		//---------
 		std::vector<size_t> ticks;
 		ticks.resize(numTicksNeeded);
@@ -653,27 +679,25 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 		std::vector<size_t>::iterator itLast;
 		itLast=std::unique(ticks.begin(),ticks.end(),eqFunctor);	
 		ticks.erase(itLast,ticks.end());
-		std::vector<size_t> moreTicks;
+		
 		//Top up with unique entries
-		while(ticks.size() +moreTicks.size() < numTicksNeeded)
+		while(ticks.size() < numTicksNeeded)
 		{
-			size_t index;
+			size_t moreTicks=numTicksNeeded-ticks.size();
+			for(size_t uk=0;uk<moreTicks;uk++)
+			{
+				//This is actually not too bad. the collision probability is at most 50%
+				//due the switching behaviour above, for any large number of items 
+				//So this is at worst case nlog(n) (I think)
+				ticks.push_back((size_t)(rng.genUniformDev()*(float)(max-1)));
+	
+			}
 
-			//This is actually not too bad. the collision probability is at most 50%
-			//due the switching behaviour above, for any large number of items 
-			//So this is at worst case nlog(n) (I think)
-			index =(size_t)(rng.genUniformDev()*(float)(max-1));
-			if(!binary_search(ticks.begin(),ticks.end(),index) &&
-				std::find(moreTicks.begin(),moreTicks.end(),index) ==moreTicks.end())
-				moreTicks.push_back(index);
-
+			std::sort(ticks.begin(),ticks.end(),gFunctor);
+			itLast=std::unique(ticks.begin(),ticks.end(),eqFunctor);	
+			ticks.erase(itLast,ticks.end());
 		}
 
-		ticks.reserve(numTicksNeeded);
-		for(size_t ui=0;ui<moreTicks.size();ui++)
-			ticks.push_back(moreTicks[ui]);
-
-		moreTicks.clear();
 
 		ASSERT(ticks.size() == numTicksNeeded);
 		//---------
@@ -760,6 +784,27 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 		}
 	}
 	return num;
+}
+
+//Remove elements from the vector, without preserving order
+// the pattern of removal will be unique with a given kill pattern
+//Remove selected elements from vector, preserving order
+template<class T>
+void vectorMultiErase(std::vector<T> &vec, const std::vector<bool> &wantKill)
+{
+	ASSERT(vec.size() == wantKill.size());
+
+	if(!vec.size())
+		return;
+	size_t shift=0;	
+	for(size_t ui=0;ui<vec.size();ui++)
+	{
+		if(wantKill[ui])
+			shift++;
+		else if(shift)
+			vec[ui-shift] = vec[ui];
+	}
+	vec.resize(vec.size()-shift);
 }
 
 #endif

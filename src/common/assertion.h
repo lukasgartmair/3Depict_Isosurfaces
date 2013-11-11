@@ -80,7 +80,6 @@
 	#define COMPILE_ASSERT(f)
 	#define WARN(f,g) 
 	#define TEST(f,g)
-	#define glError()
 	
 
 #endif

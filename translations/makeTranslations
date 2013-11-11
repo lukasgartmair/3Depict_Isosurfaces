@@ -50,7 +50,7 @@ if [ $# -eq 1 ] ; then
 	
 	
 	if [ $1  == "update" ] ; then
-		xgettext --from-code=utf-8 -kTRANS -kwxTRANS -kNTRANS -kwxNTRANS `find ../src/ -name *.cpp` `find ../src/ -name *.h` -o update.pot
+		xgettext --from-code=utf-8 -k_ -kTRANS -kwxTRANS -kNTRANS -kwxNTRANS `find ../src/ -name *.cpp` `find ../src/ -name *.h` ../data/startup-tips.txt -o update.pot
 
 		echo "Merging with maintained locales"
 		for i in $MAINTAINED_LOCALES

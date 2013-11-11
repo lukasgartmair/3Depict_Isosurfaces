@@ -1,5 +1,5 @@
-AC_INIT([3Depict], [0.0.14], [mycae@yahoo.com])
-AM_INIT_AUTOMAKE([foreign])
+AC_INIT([3Depict], [0.0.15]) 
+AM_INIT_AUTOMAKE([foreign subdir-objects])
 AC_PROG_CXX
 AC_PROG_CC
 AC_CONFIG_HEADERS([config.h])
@@ -312,11 +312,9 @@ if test x"${enable_mgl2}" == x"yes" ; then
 fi
 
 case "${host_os}" in
-	darwin*)
-		;;
 	mingw*|windows*|winnt)
 		;;
-	linux*)
+	linux*|darwin*)
 		#if enable mgl2, substitute header
 		if test -z "${enable_mgl2}"  ; then
 				AC_MSG_RESULT(["mathgl check: assuming mathgl 1.x"])

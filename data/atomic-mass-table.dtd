@@ -1,0 +1,56 @@
+<!--
+ * Copyright (C) 2013  D Haley
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+
+<!-- This is a DTD for the natural abundance data file -->
+<!--root node -->
+<!ELEMENT atomic-mass-table (entry*) >
+<!-- natural abundance data node, used to encapsulate mass/fraction data--> 
+<!ELEMENT entry (natural-abundance*) > 
+
+<!ELEMENT natural-abundance (mass,isotope+) > 
+<!ELEMENT isotope (mass,abundance) > 
+
+<!ELEMENT mass EMPTY>
+<!ELEMENT abundance EMPTY>
+
+
+
+<!-- Mass units must be in unified atomic mass units, with value "u"
+	this option exists to hypothetically add support to other systems
+	at some later time. -->
+<!ATTLIST atomic-mass-table mass-units CDATA #REQUIRED>
+<!-- Abundance units must be in "Mole Fraction" -->
+<!ATTLIST atomic-mass-table abundance-units CDATA #REQUIRED>
+<!-- Symbol for element, eg hydrogen would be "H", helium "He" and so on-->
+<!ATTLIST entry symbol CDATA #REQUIRED>
+<!-- Atomic number for element, integer -->
+<!ATTLIST entry atomic-number CDATA #REQUIRED>
+<!-- Mass value for element/isotope, in units that are specified in atomic-mass-table: 
+	* From element, computed by A_r = \frac{\sigma m_i x_i}{\sigma x_i},
+	  where xi are the isotope natural abundances, and m_i are
+	  the isotopes
+	* When used in an isotope , for the specific isotope 
+	-->
+<!ATTLIST mass value CDATA #REQUIRED>
+<!-- Mass error for element - the exact statistical meaning of this value is not specified here --> 
+<!ATTLIST mass error CDATA #REQUIRED>
+<!-- Typical natural abundance value (0,1], for the reported isotope -->
+<!ATTLIST abundance value CDATA #REQUIRED>
+<!-- Abundance error - should be taken with a pinch of salt, as abundance values can change by material origin-->
+<!ATTLIST abundance error CDATA #REQUIRED>
+
+<!ATTLIST isotope mass-number CDATA #REQUIRED>

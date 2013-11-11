@@ -971,7 +971,7 @@ bool IonClipFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 		return false;
 	//====
 	
-	//Retreive vector parameters
+	//Retrieve vector parameters
 	//===
 	if(XMLHelpFwdToElem(nodePtr,"vectorparams"))
 		return false;
@@ -980,7 +980,7 @@ bool IonClipFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 		return false;
 	//===	
 
-	//Retreive scalar parameters
+	//Retrieve scalar parameters
 	//===
 	if(XMLHelpFwdToElem(nodePtr,"scalarparams"))
 		return false;

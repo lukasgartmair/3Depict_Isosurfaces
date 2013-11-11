@@ -23,6 +23,20 @@
 #endif
 using std::vector;
 
+IonAxisCompare::IonAxisCompare()
+{
+}
+
+IonAxisCompare::IonAxisCompare(unsigned int newAxis)
+{
+	ASSERT(newAxis<3);
+	axis=newAxis;
+}
+
+void IonAxisCompare::setAxis(unsigned int newAxis)
+{
+	axis=newAxis;
+}
 
 IonHit::IonHit() 
 {

@@ -57,7 +57,7 @@ std::string locateDataFile(const char *name)
 #if defined(WIN32) || defined(WIN64)
 
 	//This must match the key used in the installer
-	wxRegKey *pRegKey = new wxRegKey(_("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\3Depict.exe"));
+	wxRegKey *pRegKey = new wxRegKey(wxT("HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\3Depict.exe"));
 
 	if( pRegKey->Exists() )
 	{
@@ -65,7 +65,7 @@ std::string locateDataFile(const char *name)
 		//OK, lets see if this dir actually exists or if we are being lied to (old dead regkey, for example)
 		wxString keyVal;
 		//Get the default key
-		pRegKey->QueryValue(_(""),keyVal);
+		pRegKey->QueryValue(wxT(""),keyVal);
 		//Strip the "3Depict.exe" from the key string
 		std::string s;
 		s = (const char *)keyVal.mb_str();
@@ -398,11 +398,11 @@ bool processMatchesName(size_t processID, const std::string &procName)
 		ULONG ReturnLength;
 		PFN_NT_QUERY_SYSTEM_INFORMATION pfnNtQuerySystemInformation = (PFN_NT_QUERY_SYSTEM_INFORMATION)
 			GetProcAddress (GetModuleHandle(TEXT("ntdll.dll")), "NtQuerySystemInformation");
-		NTSTATUS status;
 
 				
 		//Grab the process ID stuff, expanding the buffer until we can do the job we need.
-		while (TRUE) {
+		while (true) {
+			NTSTATUS status;
 			status = pfnNtQuerySystemInformation (SystemProcessInformation, (PVOID)pspid,
 												  bufferSize, &ReturnLength);
 			if (status == STATUS_SUCCESS)

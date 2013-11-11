@@ -17,7 +17,7 @@
 */
 
 #include "ExportRngDialog.h"
-#include "wxcommon.h"
+#include "wx/wxcommon.h"
 
 
 #include "backend/filters/rangeFile.h"

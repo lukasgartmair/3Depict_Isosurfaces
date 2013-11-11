@@ -29,6 +29,10 @@ bool genRandomFilename(std::string &s,bool timerInitRand=true);
 //Convert a boolean to "1" or "0"
 std::string boolStrEnc(bool b);
 
+//Convert an input string "0" or "1" into its boolean value. 
+//	Whitespace is stripped from either end. If string cannot be understood, returns false
+bool boolStrDec(const std::string &s,bool &result);
+
 //!Generate string that can be parsed by wxPropertyGrid for combo control
 //String format is CHOICEID:id1|string 1,id2|string 2,id3|string 3,.....,idN|string_N
 // where id1->idN are integers

@@ -24,8 +24,8 @@
 #include "backend/viscontrol.h"
 #include "common/stringFuncs.h"
 
-#include "wxcommon.h"
-#include "wxcomponents.h"
+#include "wx/wxcommon.h"
+#include "wx/wxcomponents.h"
 
 #include <wx/colordlg.h>
 
@@ -46,6 +46,7 @@ enum
 	ID_START_CHECK_PLOTLIST,
 	ID_START_CHECK_RAWDATA,
 	ID_START_COMBO_PANEL,
+	ID_CHECK_PREFER_ORTHO,
 	ID_MOUSE_MOVE_SLIDER,
 	ID_MOUSE_ZOOM_SLIDER,
 };
@@ -69,11 +70,12 @@ PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wx
     notePrefPanels_pane_3 = new wxPanel(notePrefPanels, wxID_ANY);
 	panelStartup = new wxPanel(notePrefPanels, wxID_ANY);
 	panelFilters = new wxPanel(notePrefPanels, wxID_ANY);
+	sizer_2_staticbox = new wxStaticBox(panelStartup, -1, wxTRANS("Panel Display"));
 #ifndef DISABLE_ONLINE_UPDATE
 	updateSizer_staticbox = new wxStaticBox(panelStartup, -1, wxTRANS("Online Updates"));
 #endif
-	sizer_2_staticbox = new wxStaticBox(panelStartup, -1, wxTRANS("Panel Display"));
-    sizerCamSpeed_staticbox = new wxStaticBox(notePrefPanels_pane_3, -1, wxTRANS("Camera Speed"));
+    	sizer_7_staticbox = new wxStaticBox(notePrefPanels_pane_3, wxID_ANY, wxTRANS("Startup"));
+    	sizerCamSpeed_staticbox = new wxStaticBox(notePrefPanels_pane_3, -1, wxTRANS("Camera Speed"));
 	filterPropSizer_staticbox = new wxStaticBox(panelFilters, -1, wxTRANS("Filter Defaults"));
 	lblFilters = new wxStaticText(panelFilters, wxID_ANY, wxTRANS("Available Filters"));
 	listFilters = new wxListBox(panelFilters, ID_LIST_FILTERS, wxDefaultPosition, wxDefaultSize, 0, NULL, wxLB_SINGLE|wxLB_SORT);
@@ -92,6 +94,7 @@ PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wx
 #ifndef DISABLE_ONLINE_UPDATE
 	checkAllowOnlineUpdate = new wxCheckBox(panelStartup, wxID_ANY, wxTRANS("Periodically notify about available updates"));
 #endif
+    	chkPreferOrtho = new wxCheckBox(notePrefPanels_pane_3, wxID_ANY, wxTRANS("Prefer orthographic at startup"));
 	lblMoveSpeed = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, wxTRANS("Move Rate"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
 	labelSlowCamMoveRate = new wxStaticText(notePrefPanels_pane_3,wxID_ANY, wxTRANS("(slow)"));
 	sliderCamMoveRate = new wxSlider(notePrefPanels_pane_3, ID_MOUSE_MOVE_SLIDER, 25, 1, 400,wxDefaultPosition,wxDefaultSize,wxSL_HORIZONTAL|wxSL_LABELS);
@@ -136,6 +139,7 @@ BEGIN_EVENT_TABLE(PrefDialog, wxDialog)
     EVT_BUTTON(ID_BTN_RESET_FILTER,PrefDialog::OnResetFilterButton)
     EVT_BUTTON(ID_BTN_RESET_FILTER_ALL,PrefDialog::OnResetFilterAllButton)
     EVT_COMBOBOX(ID_START_COMBO_PANEL, PrefDialog::OnStartupPanelCombo)
+    EVT_CHECKBOX(ID_CHECK_PREFER_ORTHO, PrefDialog::OnCheckPreferOrtho)
     EVT_COMMAND_SCROLL(ID_MOUSE_ZOOM_SLIDER, PrefDialog::OnMouseZoomSlider)
     EVT_COMMAND_SCROLL(ID_MOUSE_MOVE_SLIDER, PrefDialog::OnMouseMoveSlider)
     // end wxGlade
@@ -462,6 +466,13 @@ void PrefDialog::updateFilterProp(const Filter *f)
 
 //-------------- End Filter page-----------------------
 
+void PrefDialog::OnCheckPreferOrtho(wxCommandEvent &event)
+{
+    event.Skip();
+    // notify the user that he hasn't implemented the event handler yet
+    wxLogDebug(wxT("Event handler (PrefDialog::OnCheckPreferOrtho) not implemented yet"));
+}
+
 //-------------- Startup panel page-----------------------
 
 void PrefDialog::OnStartupPanelCombo(wxCommandEvent &event)
@@ -545,6 +556,7 @@ void PrefDialog::set_properties()
 #ifndef DISABLE_ONLINE_UPDATE
     checkAllowOnlineUpdate->SetToolTip(wxTRANS("Lets the program check the internet to see if updates to the program version are available, then notifies you about updates now and again."));
 #endif
+    chkPreferOrtho->SetToolTip(wxTRANS("By default, use an orthographic camera at startup. State files will override this preference."));
     sliderCamMoveRate->SetToolTip(wxTRANS("Camera translation, orbit and swivel rates. "));
     sliderCamZoomRate->SetToolTip(wxTRANS("Camera zooming rate."));
 
@@ -560,9 +572,13 @@ void PrefDialog::do_layout()
 	// begin wxGlade: PrefDialog::do_layout
 	wxBoxSizer* panelSizer = new wxBoxSizer(wxVERTICAL);
 	wxBoxSizer* exitButtonSizer = new wxBoxSizer(wxHORIZONTAL);
+    	wxBoxSizer* sizer_5 = new wxBoxSizer(wxVERTICAL);
+    	sizerCamSpeed_staticbox->Lower();
 	wxStaticBoxSizer* sizerCamSpeed = new wxStaticBoxSizer(sizerCamSpeed_staticbox, wxVERTICAL);
 	wxBoxSizer* sizer_6_copy = new wxBoxSizer(wxHORIZONTAL);
 	wxBoxSizer* sizer_6 = new wxBoxSizer(wxHORIZONTAL);
+    	sizer_7_staticbox->Lower();
+    	wxStaticBoxSizer* sizer_7 = new wxStaticBoxSizer(sizer_7_staticbox, wxHORIZONTAL);
 	wxBoxSizer* sizer_1 = new wxBoxSizer(wxVERTICAL);
 #ifndef DISABLE_ONLINE_UPDATE
 	wxStaticBoxSizer* updateSizer = new wxStaticBoxSizer(updateSizer_staticbox, wxVERTICAL);
@@ -570,6 +586,7 @@ void PrefDialog::do_layout()
 	wxStaticBoxSizer* sizer_2 = new wxStaticBoxSizer(sizer_2_staticbox, wxVERTICAL);
 	wxBoxSizer* sizer_3 = new wxBoxSizer(wxHORIZONTAL);
 	wxBoxSizer* sizer_4 = new wxBoxSizer(wxVERTICAL);
+    filterPropSizer_staticbox->Lower();
 	wxStaticBoxSizer* filterPropSizer = new wxStaticBoxSizer(filterPropSizer_staticbox, wxHORIZONTAL);
 	wxBoxSizer* filterRightSideSizer = new wxBoxSizer(wxVERTICAL);
 	wxBoxSizer* resetButtonSizer = new wxBoxSizer(wxHORIZONTAL);
@@ -598,6 +615,8 @@ void PrefDialog::do_layout()
 	sizer_1->Add(updateSizer, 0, wxALL|wxEXPAND, 5);
 #endif
 	panelStartup->SetSizer(sizer_1);
+	sizer_7->Add(chkPreferOrtho, 0, wxALL, 5);
+	sizer_5->Add(sizer_7, 0, wxEXPAND, 0);
 	sizer_6->Add(lblMoveSpeed, 0, wxALIGN_CENTER_VERTICAL, 0);
 	sizer_6->Add(20, 20, 0, 0, 0);
 	sizer_6->Add(labelSlowCamMoveRate, 0, wxALIGN_CENTER_VERTICAL, 0);
@@ -610,7 +629,8 @@ void PrefDialog::do_layout()
 	sizer_6_copy->Add(sliderCamZoomRate, 1, wxEXPAND|wxALIGN_CENTER_VERTICAL, 0);
 	sizer_6_copy->Add(labelSlowFastZoomRate, 0, wxALIGN_CENTER_VERTICAL, 0);
 	sizerCamSpeed->Add(sizer_6_copy, 1, wxEXPAND, 0);
-	notePrefPanels_pane_3->SetSizer(sizerCamSpeed);
+    sizer_5->Add(sizerCamSpeed, 1, wxEXPAND, 0);
+    notePrefPanels_pane_3->SetSizer(sizer_5);
 	notePrefPanels->AddPage(panelFilters, wxTRANS("Pref"));
 	notePrefPanels->AddPage(panelStartup, wxTRANS("Startup"));
 	notePrefPanels->AddPage(notePrefPanels_pane_3, wxTRANS("Camera"));

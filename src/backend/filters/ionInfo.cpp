@@ -176,8 +176,6 @@ Filter *IonInfoFilter::cloneUncached() const
 	p->cache=cache;
 	p->cacheOK=false;
 	p->userString=userString;
-	p->wantVolume=wantVolume;
-	p->volumeAlgorithm=volumeAlgorithm;
 	return p;
 }
 

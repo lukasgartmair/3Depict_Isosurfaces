@@ -19,19 +19,12 @@
 
 #include "filterCommon.h"
 
-#include "../../wxcommon.h"
+#include "../../wx/wxcommon.h"
 #include "backend/APT/APTFileIO.h"
 
 #include <wx/filename.h>
 #include <wx/dir.h>
 
-enum
-{
-	KEY_COMMAND,
-	KEY_WORKDIR,
-	KEY_ALWAYSCACHE,
-	KEY_CLEANUPINPUT
-};
 
 //!Error codes
 enum
@@ -88,8 +81,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 	//use the cached copy if we have it.
 	if(cacheOK)
 	{
-		for(unsigned int ui=0;ui<filterOutputs.size();ui++)
-			getOut.push_back(filterOutputs[ui]);
+		propagateCache(getOut);
 
 		return 0;
 	}
@@ -310,7 +302,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 	}
 	else
 	{
-		if(!wxSetWorkingDirectory(_(".")))
+		if(!wxSetWorkingDirectory(wxT(".")))
 			return SETWORKDIR_FAIL;
 	}
 
@@ -348,9 +340,9 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 	wxDir *dir = new wxDir;
 	wxArrayString *a = new wxArrayString;
 	if(workingDir.size())
-		dir->GetAllFiles(wxStr(workingDir),a,_("*.pos"),wxDIR_FILES);
+		dir->GetAllFiles(wxStr(workingDir),a,wxT("*.pos"),wxDIR_FILES);
 	else
-		dir->GetAllFiles(wxGetCwd(),a,_("*.pos"),wxDIR_FILES);
+		dir->GetAllFiles(wxGetCwd(),a,wxT("*.pos"),wxDIR_FILES);
 
 
 	//read the output files, which is assumed to be any "pos" file
@@ -399,9 +391,9 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 
 	a->Clear();
 	if(workingDir.size())
-		dir->GetAllFiles(wxStr(workingDir),a,_("*.xy"),wxDIR_FILES);
+		dir->GetAllFiles(wxStr(workingDir),a,wxT("*.xy"),wxDIR_FILES);
 	else
-		dir->GetAllFiles(wxGetCwd(),a,_("*.xy"),wxDIR_FILES);
+		dir->GetAllFiles(wxGetCwd(),a,wxT("*.xy"),wxDIR_FILES);
 
 	//read the output files, which is assumed to be any "pos" file
 	//in the working dir
@@ -424,7 +416,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			//Possible delimiters to try when loading file
 			//try each in turn
 			const char *delimString ="\t, ";
-			if(!loadTextData(sTmp.c_str(),dataVec,header,delimString))
+			if(loadTextData(sTmp.c_str(),dataVec,header,delimString))
 				return READPLOT_FAIL;
 
 			//Check that the input has the correct size
@@ -451,6 +443,9 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 				d->g=1.0;
 				d->b=0;
 				d->a=1.0;
+				d->index=uj;
+				d->plotMode=PLOT_MODE_1D;
+				d->plotStyle=PLOT_TRACE_LINES;
 
 
 				//set the title to the filename (trim the .xy extension
@@ -516,14 +511,14 @@ void ExternalProgramFilter::getProperties(FilterPropGroup &propertyList) const
 	p.data= commandLine;
 	p.type=PROPERTY_TYPE_STRING;
 	p.helpText=TRANS("Full command to send to operating system. See manual for escape sequence meanings");
-	p.key=KEY_COMMAND;
+	p.key=EXTERNALPROGRAM_KEY_COMMAND;
 	propertyList.addProperty(p,curGroup);
 	
 	p.name=TRANS("Work Dir");
 	p.data= workingDir;
 	p.type=PROPERTY_TYPE_STRING;
 	p.helpText=TRANS("Directory to run the command in");
-	p.key=KEY_WORKDIR;		
+	p.key=EXTERNALPROGRAM_KEY_WORKDIR;		
 	propertyList.addProperty(p,curGroup);
 	
 
@@ -536,7 +531,7 @@ void ExternalProgramFilter::getProperties(FilterPropGroup &propertyList) const
 	p.data=tmpStr;
 	p.type=PROPERTY_TYPE_BOOL;
 	p.helpText=TRANS("Erase input files when command completed");
-	p.key=KEY_CLEANUPINPUT;		
+	p.key=EXTERNALPROGRAM_KEY_CLEANUPINPUT;		
 	propertyList.addProperty(p,curGroup);
 	
 	if(alwaysCache)
@@ -548,7 +543,7 @@ void ExternalProgramFilter::getProperties(FilterPropGroup &propertyList) const
 	p.data=tmpStr;
 	p.type=PROPERTY_TYPE_BOOL;
 	p.helpText=TRANS("Assume program does not alter its output, unless inputs from 3Depict are altered");
-	p.key=KEY_ALWAYSCACHE;		
+	p.key=EXTERNALPROGRAM_KEY_ALWAYSCACHE;		
 	propertyList.addProperty(p,curGroup);
 
 }
@@ -559,7 +554,7 @@ bool ExternalProgramFilter::setProperty(  unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
-		case KEY_COMMAND:
+		case EXTERNALPROGRAM_KEY_COMMAND:
 		{
 			if(commandLine!=value)
 			{
@@ -569,7 +564,7 @@ bool ExternalProgramFilter::setProperty(  unsigned int key,
 			}
 			break;
 		}
-		case KEY_WORKDIR:
+		case EXTERNALPROGRAM_KEY_WORKDIR:
 		{
 			if(workingDir!=value)
 			{
@@ -583,7 +578,7 @@ bool ExternalProgramFilter::setProperty(  unsigned int key,
 			}
 			break;
 		}
-		case KEY_ALWAYSCACHE:
+		case EXTERNALPROGRAM_KEY_ALWAYSCACHE:
 		{
 			string stripped=stripWhite(value);
 
@@ -604,7 +599,7 @@ bool ExternalProgramFilter::setProperty(  unsigned int key,
 			needUpdate=true;
 			break;
 		}
-		case KEY_CLEANUPINPUT:
+		case EXTERNALPROGRAM_KEY_CLEANUPINPUT:
 		{
 			string stripped=stripWhite(value);
 
@@ -785,7 +780,7 @@ bool echoTest()
 	wxString tmpFilename;
 	tmpFilename=wxFileName::CreateTempFileName(wxT(""));
 	s = string(" echo test > ") + stlStr(tmpFilename);
-	TEST(f->setProperty(KEY_COMMAND,s,needUp),"Set prop");
+	TEST(f->setProperty(EXTERNALPROGRAM_KEY_COMMAND,s,needUp),"Set prop");
 
 	//Simulate some data to send to the filter
 	vector<const FilterStreamData*> streamIn,streamOut;
@@ -851,8 +846,8 @@ bool posTest()
 
 	ASSERT(tmpFilename.size());
 	
-	TEST(f->setProperty(KEY_COMMAND,s,needUp),"Set prop");
-	TEST(f->setProperty(KEY_WORKDIR,stlStr(tmpDir),needUp),"Set prop");
+	TEST(f->setProperty(EXTERNALPROGRAM_KEY_COMMAND,s,needUp),"Set prop");
+	TEST(f->setProperty(EXTERNALPROGRAM_KEY_WORKDIR,stlStr(tmpDir),needUp),"Set prop");
 	//Simulate some data to send to the filter
 	vector<const FilterStreamData*> streamIn,streamOut;
 	streamIn.push_back(someData.get());

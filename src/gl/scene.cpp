@@ -35,14 +35,13 @@ unsigned int ANIMATE_PROGRESS_NUMFRAMES=3;
 
 
 
-Scene::Scene() : tempCam(0), cameraSet(true), outWinAspect(1.0f), r(0.0f), g(0.0f), b(0.0f)
+Scene::Scene() : tempCam(0), cameraSet(true), outWinAspect(1.0f)
 {
 	glewInited=false;
 
 	lastHovered=lastSelected=(unsigned int)(-1);
 	lockInteract=false;
 	hoverMode=selectionMode=false;
-	viewRestrict=false;
 	useAlpha=true;
 	useLighting=true;
 	useEffects=false;
@@ -55,6 +54,10 @@ Scene::Scene() : tempCam(0), cameraSet(true), outWinAspect(1.0f), r(0.0f), g(0.0
 
 	activeCam = new CameraLookAt;
 
+	lightPosition[0]= 1.0;
+	lightPosition[1]= 1.0;
+	lightPosition[2]= 1.0;
+	lightPosition[3]=0.0;
 
 
 	DrawableObj::setTexPool(new TexturePool);
@@ -85,12 +88,26 @@ unsigned int Scene::initDraw()
 		glewInited=true;
 	}
 #endif
+	glClearColor( rBack, gBack, bBack,1.0f );
 	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
 
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+
+	glEnable(GL_DEPTH_TEST);
+
+	glEnable(GL_COLOR_MATERIAL);
+	glColorMaterial ( GL_FRONT, GL_AMBIENT_AND_DIFFUSE ) ;
+
+	glEnable(GL_POINT_SMOOTH);
+	glEnable(GL_LINE_SMOOTH);
+	
 	//Will it blend? That is the question...
 	// let the objects know about this, so they
 	// can pick the right algorithm
 	DrawableObj::setUseAlphaBlending(useAlpha);
+	
+	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 	
 	if(useAlpha)
 		glEnable(GL_BLEND);
@@ -98,17 +115,18 @@ unsigned int Scene::initDraw()
 		glDisable(GL_BLEND);
 
 	glDisable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+	glShadeModel(GL_SMOOTH);
 	//Set up the scene lights
 	//==
+
 	//Set up default lighting
 	const float light_ambient[] = { 0.0, 0.0, 0.0, 1.0 };
 	const float light_diffuse[] = { 1.0, 1.0, 1.0, 1.0 };
-	const float light_specular[] = { 0.0, 0.0, 0.0, 0.0 };
-	float light_position[] = { 1.0, 1.0, 1.0, 0.0 };
 	glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
 	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
-	glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
-	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+	// The direction the light shines in
+	glLightfv(GL_LIGHT0, GL_POSITION, lightPosition); 
 
 
 	//==
@@ -157,26 +175,14 @@ unsigned int Scene::initDraw()
 	return passes;
 }
 
-void Scene::updateCam(const Camera *camToUse) const
+void Scene::updateCam(const Camera *camToUse, bool useIdent=true) const
 {
 	Point3D lightNormal;
 	
-
-	glLoadIdentity();
-	//If viewport restriction is on, inform camera to
-	//shrink viewport to specified region
-	if(viewRestrict)
-	{
-		camToUse->apply(outWinAspect,boundCube,true,
-				viewRestrictStart[0],viewRestrictEnd[0],
-				viewRestrictStart[1],viewRestrictEnd[1]);
-	}
-	else
-		camToUse->apply(outWinAspect,boundCube);
+	camToUse->apply(outWinAspect,boundCube,useIdent);
 
 	lightNormal=camToUse->getViewDirection();
 	glNormal3f(lightNormal[0],lightNormal[1],lightNormal[2]);	
-
 }
 
 void Scene::updateProgressOverlay()
@@ -191,53 +197,51 @@ void Scene::updateProgressOverlay()
 	progressAnimTex.setShowDelayTime(1.0f);
 }
 
-void Scene::draw() 
+void Scene::draw(bool noUpdateCam) 
 {
 
 	glPushMatrix();
-
 
 	Camera *camToUse;
 	if(tempCam)
 		camToUse=tempCam;
 	else
 		camToUse=activeCam;
-	//Inform text about current camera, so it can billboard if needed
+
+	//Inform text about current camera, 
+	// so it can eg billboard if needed
 	DrawableObj::setCurCamera(camToUse);
 	DrawableObj::setWindowSize(winX,winY);
+	DrawableObj::setBackgroundColour(rBack,gBack,bBack);
 	Effect::setCurCam(camToUse);
 
 
 	bool lightsOn=false;
+	//Find number of passes to  perform
 	unsigned int numberTotalPasses;
 	numberTotalPasses=initDraw();
 
-	unsigned int passNumber=0;
-
-	if(cameraSet)
+	if(cameraSet && !noUpdateCam)
 		updateCam(camToUse);
 
 
 
-	bool needCamUpdate=false;
-	while(passNumber < numberTotalPasses)
+	for(unsigned int passNumber=0; passNumber<numberTotalPasses; passNumber++)
 	{
 
 		if(useEffects)
 		{
+			bool needCamUpdate=false;
 			for(unsigned int ui=0;ui<effects.size();ui++)
 			{
 				effects[ui]->enable(passNumber);
 				needCamUpdate|=effects[ui]->needCamUpdate();
 			}
 
-			if(cameraSet && needCamUpdate)
-			{
-				glLoadIdentity();	
+			if(cameraSet && !noUpdateCam && needCamUpdate )
 				updateCam(camToUse);
-			}
 		}
-
+		
 
 		if(showAxis)
 		{
@@ -262,7 +266,7 @@ void Scene::draw()
 		drawObjectVector(objects,lightsOn,true);
 		//-----------	
 		
-		//Second pass with transparent objects
+		//Second sub-pass with transparent objects
 		//-----------	
 		//Draw the referenced objects
 		drawObjectVector(refObjects,lightsOn,false);
@@ -271,8 +275,6 @@ void Scene::draw()
 		//-----------	
 		
 		
-		glFlush();
-		passNumber++;
 	}
 	
 	
@@ -361,17 +363,7 @@ void Scene::drawOverlays() const
 
 	glDisable(GL_LIGHTING);
 	//Set the opengl camera state back into modelview mode
-	if(viewRestrict)
-	{
-
-		//FIXME: How does the aspect ratio fit in here?
-		gluOrtho2D(viewRestrictStart[0],
-				viewRestrictEnd[0],
-				viewRestrictStart[0],
-				viewRestrictStart[1]);
-	}
-	else
-		gluOrtho2D(0, outWinAspect, 1.0, 0);
+	gluOrtho2D(0, outWinAspect, 1.0, 0);
 
 
 
@@ -624,6 +616,18 @@ void Scene::clearBindings()
 void Scene::clearRefObjs()
 {
 	refObjects.clear();
+}
+
+void Scene::getLightPos(float *f) const
+{ 
+	for(unsigned int ui=0;ui<4;ui++)
+		f[ui] = lightPosition[ui];
+}
+
+void Scene::setLightPos(const float *f)
+{
+	for(unsigned int ui=0;ui<4;ui++)
+		lightPosition[ui]=f[ui];
 }
 
 void Scene::setShowProgress(bool show)
@@ -958,15 +962,10 @@ void Scene::getModifiedBindings(std::vector<std::pair<const Filter *, SelectionB
 		selectionDevices[ui]->getModifiedBindings(bindings);
 }
 
-void Scene::restrictView(float xS, float yS, float xFin, float yFin)
+void Scene::resetModifiedBindings()  
 {
-	viewRestrictStart[0]=xS;	
-	viewRestrictStart[1]=yS;	
-	
-	viewRestrictEnd[0]=xFin;	
-	viewRestrictEnd[1]=yFin;
-
-	viewRestrict=true;	
+	for(unsigned int ui=0;ui<selectionDevices.size();ui++)
+		selectionDevices[ui]->resetModifiedBindings();
 }
 
 

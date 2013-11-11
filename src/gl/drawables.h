@@ -104,7 +104,7 @@ enum
 	DRAW_TYPE_AXIS,
 };
 
-//TODO: It seems unneccesary to have multiple types for the bind
+//TODO: It seems unnecessary to have multiple types for the bind
 
 //!Binding enums. Needed to bind drawable selection
 //to internal modification actions inside the drawable
@@ -143,6 +143,9 @@ class DrawableObj
 		bool haveChanged;
 		//!Pointer to current scene camera
 		static const Camera *curCamera;	
+		
+		//Background colour
+		static float backgroundR,backgroundG,backgroundB;
 		//Pointer to texture pool object
 		static TexturePool *texPool;
 
@@ -165,8 +168,15 @@ class DrawableObj
 		//!Constructor
 		DrawableObj();
 
+		//Obtain the type mask for this drawable
 		virtual unsigned int getType() const =0;	
 		
+		//Obtain a copy of this object, which is still valid
+		// after destruction of the original
+		// Disallowed by default Implement in derived object!
+		//TODO: Once most sub-objects have this function, make pure virtual
+		virtual DrawableObj *clone() const {ASSERT(false);};
+
 		//!Do we need to do element based depth sorting?
 		virtual bool needsDepthSorting() const { return false; } ;
 
@@ -206,6 +216,8 @@ class DrawableObj
 		virtual Point3D getCentroid() const  ;
 
 		static void setWindowSize(unsigned int x, unsigned int y){winX=x;winY=y;};	
+		static void setBackgroundColour(float r, float g,float b)
+			{backgroundR=r; backgroundG=g;backgroundB=b;}
 
 };
 
@@ -224,6 +236,10 @@ class DrawPoint : public DrawableObj
 		DrawPoint(float,float,float);
 		//!Destructor
 		virtual ~DrawPoint();
+
+		unsigned int getType() const {return DRAW_TYPE_POINT;}	
+
+		virtual DrawableObj *clone() const;
 
 		//!Sets the color of the point to be drawn
 		void setColour(float r, float g, float b, float alpha);
@@ -257,6 +273,9 @@ class DrawManyPoints : public DrawableObj
 		virtual ~DrawManyPoints();
 		
 		virtual unsigned int getType() const {return DRAW_TYPE_MANYPOINT;};	
+
+		virtual DrawableObj *clone() const;
+		
 		//!Swap out the internal vector with an extenal one
 		void swap(std::vector<Point3D> &);
 		//!Remove all points
@@ -316,6 +335,8 @@ class DrawVector: public DrawableObj
 		//!Destructor
 		virtual ~DrawVector();
 	
+		virtual DrawableObj *clone() const;
+		
 		virtual unsigned int getType() const {return DRAW_TYPE_VECTOR;};	
 	
 		//!Set if we want to draw the arrow or not
@@ -370,6 +391,8 @@ class DrawTriangle : public DrawableObj
 		//!Destructor
 		virtual ~DrawTriangle();
 
+		virtual DrawableObj *clone() const;
+
 		virtual unsigned int getType() const {return DRAW_TYPE_TRIANGLE;};	
 		
 		//!Set one of three vertices (0-2) locations
@@ -407,6 +430,8 @@ class DrawQuad : public DrawableObj
 		DrawQuad() {};
 		//!Destructor
 		virtual ~DrawQuad() {};
+		
+		virtual DrawableObj *clone() const;
 		
 		virtual unsigned int getType() const {return DRAW_TYPE_QUAD;};	
 
@@ -856,14 +881,16 @@ class DrawRectPrism  : public DrawableObj
 		~DrawRectPrism();
 
 		virtual unsigned int getType() const {return DRAW_TYPE_RECTPRISM;}
-		
+	
+		virtual DrawableObj *clone() const;
+
 		//!Draw object
 		void draw() const;
 
 		//!Set the draw mode
 		void setDrawMode(unsigned int n) { drawMode=n;};
 		//!Set colour of box
-		void setColour(float rnew, float gnew, float bnew, float anew);
+		void setColour(float rnew, float gnew, float bnew, float anew=1.0f);
 		//!Set thickness of box
 		void setLineWidth(float lineWidth);
 		//!Set up box as axis-aligned rectangle using two points
@@ -906,6 +933,7 @@ class DrawColourBarOverlay : public DrawableObj
 		
 
 		virtual unsigned int getType() const {return DRAW_TYPE_COLOURBAR;}
+		
 	
 		void getBoundingBox(BoundCube &b) const ;
 
@@ -1110,6 +1138,8 @@ class DrawAxis : public DrawableObj
 		~DrawAxis();
 	
 		virtual unsigned int getType() const {return DRAW_TYPE_AXIS;}
+		
+		virtual DrawableObj *clone() const;
 
 		//!Draw object
 		void draw() const;

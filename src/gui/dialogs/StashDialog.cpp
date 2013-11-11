@@ -18,8 +18,8 @@
 
 #include "StashDialog.h"
 
-#include "wxcommon.h"
-#include "wxcomponents.h"
+#include "wx/wxcommon.h"
+#include "wx/wxcomponents.h"
 #include "common/translation.h"
 
 #include "./backend/viscontrol.h"

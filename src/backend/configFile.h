@@ -73,6 +73,9 @@ class ConfigFile
 		//!Percentile speeds for mouse zoom and move 
 		unsigned int mouseZoomRatePercent,mouseMoveRatePercent;
 
+		//!Want startup orthographic cam
+		bool wantStartupOrthoCam;
+
 		//!Master allow the program to do stuff online check. This is AND-ed, so cannot override disabled items
 		bool allowOnline;
 
@@ -90,6 +93,8 @@ class ConfigFile
 		// 0 for unlimited
 		size_t maxPointsScene;
 
+		//!Does the user want to be shown a startup tip dialog?
+		bool doWantStartupTips;
 	public:
 		ConfigFile(); 
 		~ConfigFile(); 
@@ -175,7 +180,15 @@ class ConfigFile
 		//!Set the position for the plot list panel
 		float getPlotListSashPos()const { return plotListSashPos;};
 
+		//!Does the user want startup tips
+		bool wantStartupTips() const { return doWantStartupTips;}
+		//!Set if tips are to be shown on startup
+		void setWantStartupTips(bool want)  { doWantStartupTips=want;}
 
+		//!Get if user wants an orhtographic camera on startup
+		bool getWantStartupOrthoCam() const { return wantStartupOrthoCam;} 
+
+		void setWantStartupOrthoCam(bool want) { wantStartupOrthoCam=want;}
 };
 
 #endif

@@ -23,7 +23,7 @@
 
 // end wxGlade
 
-#include "wxcommon.h"
+#include "wx/wxcommon.h"
 
 
 ChoiceKeyFrameDialog::ChoiceKeyFrameDialog(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):

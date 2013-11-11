@@ -164,10 +164,9 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 	clearDevices();
 
 	//Pipe everything through
-	getOut.resize(dataIn.size());
-	for(size_t ui=0;ui<dataIn.size();ui++)
-		getOut[ui] = dataIn[ui];
+	propagateStreams(dataIn,getOut);
 
+	//If we are not endabled, do not draw anyhting into the output
 	if(!active)
 		return 0;
 

@@ -306,20 +306,212 @@ void genErrBars(const std::vector<float> &x, const std::vector<float> &y,
 }
 //===
 
-		//!Constructor
+PlotRegion::PlotRegion()
+{
+	accessMode=ACCESS_MODE_ENUM_END;
+	parentObject=0;
+}
+
+PlotRegion::PlotRegion(size_t updateAccessMode,void *parentObj)
+{
+	setUpdateMethod(updateAccessMode,parentObj);
+}
+
+void PlotRegion::setUpdateMethod(size_t updateAccessMode,void *parentObj)
+{
+	ASSERT(updateAccessMode< ACCESS_MODE_ENUM_END);
+	ASSERT(parentObj);
+	
+	parentObject=parentObj;
+	accessMode=updateAccessMode;
+}
+
+const PlotRegion &PlotRegion::operator=(const PlotRegion &oth)
+{
+	accessMode=oth.accessMode;
+	parentObject=oth.parentObject;
+	id=oth.id;
+
+	r=oth.r; g=oth.g; b=oth.b;
+	bounds=oth.bounds;
+
+	return *this;
+}
+
+void PlotRegion::updateParent(size_t regionChangeType,
+		const vector<float> &newPositions, bool updateSelf) 
+{
+	ASSERT(newPositions.size() >= bounds.size());
+	ASSERT(parentObject);
+
+	//Update the parent object, using the requested access mode for the parent
+	switch(accessMode)
+	{
+		case ACCESS_MODE_FILTER:
+		{
+			Filter *f;
+			f = (Filter*)parentObject;
+			f->setPropFromRegion(regionChangeType,id,newPositions[0]);
+
+			break;
+		}
+		case ACCESS_MODE_RANGEFILE:
+		{
+			RangeFile *rng= (RangeFile *) parentObject;
+			switch(regionChangeType)
+			{
+				case REGION_MOVE_EXTEND_XMINUS:
+				{
+					//Disallow zero sided region
+					if(rng->getRangeByRef(id).second ==newPositions[0])
+						break;
+					
+					rng->getRangeByRef(id).first=newPositions[0];
+					break;
+				}
+				case REGION_MOVE_EXTEND_XPLUS:
+				{
+					//Disallow zero sided region
+					if(rng->getRangeByRef(id).first==newPositions[0])
+						break;
+
+					rng->getRangeByRef(id).second=newPositions[0];
+					break;
+				}
+				//move the centroid to the new absolute position
+				case REGION_MOVE_TRANSLATE_X:
+				{
+					float delta;
+					pair<float,float> &bound=rng->getRangeByRef(id);
+
+					delta = (bound.second-bound.first)/2;
+					bound.first=newPositions[0]-delta;
+					bound.second=newPositions[0]+delta;
+					break;
+				}
+				default:
+					ASSERT(false);
+			}
+			
+			//Check for inversion
+			if(rng->getRangeByRef(id).first  > rng->getRangeByRef(id).second)
+			{
+				std::swap(rng->getRangeByRef(id).first,
+					rng->getRangeByRef(id).second);
+			}
+			
+			break;
+		}
+		default:
+			ASSERT(false);
+	}
+
+
+	//Update own region data
+	if(updateSelf)
+	{
+		switch(regionChangeType)
+		{
+			case REGION_MOVE_EXTEND_XMINUS:
+			{
+				bounds[0].first = newPositions[0];
+				break;
+			}
+			case REGION_MOVE_EXTEND_XPLUS:
+			{
+				bounds[0].second= newPositions[0];
+				break;
+			}
+			//move the centroid to the new absolute position
+			case REGION_MOVE_TRANSLATE_X:
+			{
+				float delta;
+				delta = (bounds[0].second-bounds[0].first)/2;
+				bounds[0].first=newPositions[0]-delta;
+				bounds[0].second=newPositions[0]+delta;
+				break;
+			}
+			default:
+				ASSERT(false);
+		}
+
+		//Check for inversion
+		if(bounds[0].first  > bounds[0].second)
+		{
+			std::swap(bounds[0].first, bounds[0].second);
+		}
+
+	}
+}
+
 PlotWrapper::PlotWrapper()
 {
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(plotModeStrings) == PLOT_TRACE_ENDOFENUM);
+
 	applyUserBounds=false;
 	plotChanged=true;
 	drawLegend=true;
 	interactionLocked=false;
+	highlightRegionOverlaps=false;
 }
 
 PlotWrapper::~PlotWrapper()
 {
 	for(size_t ui=0;ui<plottingData.size();ui++)
 		delete plottingData[ui];
+}
+
+const PlotWrapper &PlotWrapper::operator=(const PlotWrapper &p)
+{
+	plotChanged=p.plotChanged;
+
+	plottingData.resize(p.plottingData.size());
+
+	for(size_t ui=0; ui<p.plottingData.size(); ui++)
+	{
+		PlotBase *pb;
+		pb=((p.plottingData[ui])->clone());
+
+		plottingData[ui] =pb; 
+	
+	}
+
+	plotChanged=p.plotChanged;
+	lastVisiblePlots=p.lastVisiblePlots;
+	
+	plotIDHandler=p.plotIDHandler;
+	
+	applyUserBounds=p.applyUserBounds;
+	xUserMin=p.xUserMin;
+	yUserMin=p.yUserMin;
+	xUserMax=p.xUserMax;
+	yUserMax=p.yUserMax;
+
+	highlightRegionOverlaps=p.highlightRegionOverlaps;
+	drawLegend=p.drawLegend;
+	interactionLocked=p.interactionLocked;
+
+	return *this;
+}
+
+std::wstring PlotWrapper::getTitle(size_t plotId) const
+{
+	unsigned int plotPos=plotIDHandler.getPos(plotId);
+	return plottingData[plotPos]->title;
+}
+
+void PlotWrapper::getPlotIDs(vector<unsigned int> &ids) const
+{
+	plotIDHandler.getIds(ids);
+}
+
+//TODO: Refactor. Should not make the assumption that parentObject is a filter,
+// in here. Could be anything.
+size_t PlotWrapper::getParentType(size_t plotId) const
+{
+	unsigned int plotPos=plotIDHandler.getPos(plotId);
+	return ((const Filter*)plottingData[plotPos]->parentObject)->getType();
+	
 }
 
 unsigned int PlotWrapper::addPlot(PlotBase *p)
@@ -584,18 +776,11 @@ unsigned int PlotWrapper::getVisibleType() const
 	return visibleType;
 }
 
-bool PlotWrapper::visibleEmpty() const
+void PlotWrapper::findRegionLimit(unsigned int plotId, unsigned int regionId,
+				unsigned int movementType, float &maxX, float &maxY) const
 {
-	bool empty=true;
-	for(unsigned int ui=0;ui<plottingData.size() ; ui++)
-	{
-		if(plottingData[ui]->visible)
-		{
-			empty&=plottingData[ui]->empty();
-			if(!empty)
-				return false;
-		}
-	}
+	unsigned int plotPos=plotIDHandler.getPos(plotId);
+	plottingData[plotPos]->regionGroup.findRegionLimit(regionId,movementType,maxX,maxY);
 
 }
 
@@ -681,7 +866,9 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 	sT.assign(plotTitle.begin(), plotTitle.end()); //unicode conversion
 	gr->Title(sT.c_str());
 	
-	
+
+	bool haveUsedLog=false;
+	mglPoint min,max;
 	switch(visType)
 	{
 		case PLOT_TYPE_ONED:
@@ -701,11 +888,12 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 						notLog=true;
 				}
 			}
+
+			haveUsedLog|=useLogPlot;
 		
 			//work out the bounding box for the plot,
 			//and where the axis should cross
 			mglPoint axisCross;
-			mglPoint min,max;
 			if(applyUserBounds)
 			{
 				ASSERT(yUserMax >=yUserMin);
@@ -783,7 +971,6 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 				if(!curPlot->visible)
 					continue;
 
-
 				curPlot->drawRegions(gr,colourFixer,min,max);
 				curPlot->drawPlot(gr,colourFixer);
 				
@@ -806,6 +993,49 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 			else if (useLogPlot && notLog)
 			{
 				sY = string(TRANS("Mixed log/non-log:")) + sY ;
+			}
+
+			//if we have to draw overlapping regions, do so
+			if(highlightRegionOverlaps)
+			{
+				vector<pair<size_t,size_t> > overlapId;
+				vector<pair<float,float> > overlapXCoords;
+
+				char colourCode=colourFixer.getNextBestColour(1.0f,0.0f,0.0f);
+				getRegionOverlaps(overlapId,overlapXCoords);
+
+				float rMinY,rMaxY;
+				const float ABOVE_AXIS_CONST = 0.1;
+				rMinY = max.y + (max.y-min.y)*(ABOVE_AXIS_CONST-0.025);
+				rMaxY = max.y + (max.y-min.y)*(ABOVE_AXIS_CONST+0.025);
+
+				for(size_t ui=0; ui<overlapXCoords.size();ui++)
+				{
+					float rMinX, rMaxX; 
+					
+					rMinX=overlapXCoords[ui].first;
+					rMaxX=overlapXCoords[ui].second;
+
+
+					//Make sure we don't leave the plot boundary
+					rMinX=std::max(rMinX,min.x);
+					rMaxX=std::min(rMaxX,max.x);
+
+					//If the region is of negligble size, don't bother drawing it
+					if(fabs(rMinX -rMaxX)
+						< sqrt(std::numeric_limits<float>::epsilon()))
+						continue;
+
+
+#ifdef USE_MGL2
+					gr->FaceZ(mglPoint(rMinX,rMinY,-1),rMaxX-rMinX,rMaxY-rMinY,
+							&colourCode);
+#else
+					gr->FaceZ(rMinX,rMinY,-1,rMaxX-rMinX,rMaxY-rMinY,
+							&colourCode);
+#endif
+				}
+
 			}
 
 			break;
@@ -840,6 +1070,7 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 #endif
 	}
 
+	overlays.draw(gr,colourFixer,min,max,haveUsedLog);
 }
 
 void PlotWrapper::hideAll()
@@ -857,6 +1088,21 @@ void PlotWrapper::setVisible(unsigned int uniqueID, bool setVis)
 	plotChanged=true;
 }
 
+void PlotWrapper::getRegions(vector<pair<size_t,vector<PlotRegion> > > &regions, bool visibleOnly) const
+{
+	vector<unsigned int> ids;
+	getPlotIDs(ids);
+	regions.resize(ids.size());
+
+	for(size_t ui=0;ui<ids.size();ui++)
+	{
+		PlotBase *b;
+		b=plottingData[ids[ui]];
+		if(b->visible || !visibleOnly)
+			regions[ui] = make_pair(ids[ui],b->regionGroup.regions);
+	}
+}
+
 bool PlotWrapper::getRegionIdAtPosition(float x, float y, unsigned int &pId, unsigned int &rId) const
 {
 	for(size_t ui=0;ui<plottingData.size(); ui++)
@@ -865,7 +1111,7 @@ bool PlotWrapper::getRegionIdAtPosition(float x, float y, unsigned int &pId, uns
 		if(!plottingData[ui]->visible)
 			continue;
 
-		if(plottingData[ui]->getRegionIdAtPosition(x,y,rId))
+		if(plottingData[ui]->regionGroup.getRegionIdAtPosition(x,y,rId))
 		{
 			pId=ui;
 			return true;
@@ -873,6 +1119,22 @@ bool PlotWrapper::getRegionIdAtPosition(float x, float y, unsigned int &pId, uns
 	}
 
 	return false;
+}
+
+
+void PlotWrapper::getRegionOverlaps(vector<pair<size_t,size_t> > &ids,
+					vector< pair<float,float> > &coords) const
+{
+	ids.clear();
+	coords.clear();
+
+	for(size_t uk=0;uk<plottingData.size(); uk++)
+	{
+		RegionGroup *r;
+		r=&(plottingData[uk]->regionGroup);
+
+		r->getOverlaps(ids,coords);
+	}
 }
 
 unsigned int PlotWrapper::getNumVisible() const
@@ -895,7 +1157,7 @@ bool PlotWrapper::isPlotVisible(unsigned int plotID) const
 
 void PlotWrapper::getRegion(unsigned int plotId, unsigned int regionId, PlotRegion &region) const
 {
-	plottingData[plotIDHandler.getPos(plotId)]->getRegion(regionId,region);
+	plottingData[plotIDHandler.getPos(plotId)]->regionGroup.getRegion(regionId,region);
 }
 
 unsigned int PlotWrapper::plotType(unsigned int plotId) const
@@ -904,19 +1166,44 @@ unsigned int PlotWrapper::plotType(unsigned int plotId) const
 }
 
 
-void PlotWrapper::moveRegionLimit(unsigned int plotId, unsigned int regionId,
-			unsigned int movementType, float &constrainX, float &constrainY) const
+void PlotWrapper::moveRegion(unsigned int plotID, unsigned int regionId, bool regionSelfUpdate,
+		unsigned int movementType, float newX, float newY) const
 {
-	plottingData[plotIDHandler.getPos(plotId)]->moveRegionLimit(
-				regionId,movementType,constrainX,constrainY);
+	plottingData[plotIDHandler.getPos(plotID)]->regionGroup.moveRegion(regionId,
+						movementType,regionSelfUpdate,newX,newY);
 }
 
 
-void PlotWrapper::moveRegion(unsigned int plotID, unsigned int regionId, unsigned int movementType, 
-							float newX, float newY) const
+void PlotWrapper::switchOutRegionParent(std::map<const RangeFileFilter *, RangeFile> &switchMap)
 {
-	plottingData[plotIDHandler.getPos(plotID)]->moveRegion(regionId,movementType,newX,newY);
+
+	for(size_t ui=0;ui<plottingData.size();ui++)
+	{
+		PlotBase *pb;
+		pb=plottingData[ui];
+		
+		RegionGroup *rg;
+		rg = &(pb->regionGroup);
+		for(size_t uj=0; uj<rg->regions.size();uj++)
+		{
+			//Obtain the parent filter f rthis region, then re-map it
+			// to the rangefile
+			Filter *parentFilt = rg->regions[uj].getParentAsFilter();
+
+			if(parentFilt->getType() != FILTER_TYPE_RANGEFILE)
+				continue;
+
+			RangeFileFilter *rngFilt = (RangeFileFilter *)parentFilt;
+			ASSERT(switchMap.find(rngFilt) != switchMap.end());
+
+			//Set the update method to use the new rangefile
+			rg->regions[uj].setUpdateMethod(PlotRegion::ACCESS_MODE_RANGEFILE,
+						&(switchMap[rngFilt]));
+		}
+	}
 }
+
+
 //-----------
 
 
@@ -930,6 +1217,38 @@ Plot1D::Plot1D()
 	yLabel=(strToWStr(""));
 	title=(strToWStr(""));
 	r=(0);g=(0);b=(1);
+}
+
+
+PlotBase *Plot1D::clone() const
+{
+	Plot1D *p = new Plot1D;
+
+	p->logarithmic=logarithmic;
+	p->xValues=xValues;
+	p->yValues=yValues;
+	p->errBars=errBars;
+
+	//TODO Move to base
+	p->plotType=plotType;
+	p->minX=minX;
+	p->maxX=maxX;
+	p->minY=minY;
+	p->maxY=maxY;
+	p->r=r;
+	p->g=g;
+	p->b=b;
+	p->visible=visible;
+	p->traceType=traceType;
+	p->xLabel=xLabel;
+	p->yLabel=yLabel;
+	p->title=title;
+	p->titleAsRawDataLabel=titleAsRawDataLabel;
+	p->parentObject=parentObject;
+	p->regionGroup=regionGroup;
+	p->parentPlotIndex=parentPlotIndex;
+
+	return p;
 }
 
 void Plot1D::setData(const vector<float> &vX, const vector<float> &vY, 
@@ -1199,36 +1518,6 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 	
 }
 
-
-
-void Plot1D::addRegion(unsigned int regionID,float start, float end, 
-			float rNew, float gNew, float bNew, Filter *parentFilter)
-{
-	ASSERT(start <end);
-	ASSERT( rNew>=0.0 && rNew <= 1.0);
-	ASSERT( gNew>=0.0 && gNew <= 1.0);
-	ASSERT( bNew>=0.0 && bNew <= 1.0);
-
-	PlotRegion region;
-	//1D plots only have one bounding direction
-	region.bounds.push_back(std::make_pair(start,end));
-	region.boundAxis.push_back(0); // the bounding direction is along the X axis
-	region.parentFilter = parentFilter;
-
-	//Set the ID and create a unique ID (one that is invariant if regions are added or removed)
-	//for the  region
-	region.id = regionID;
-	region.uniqueID = regionIDHandler.genId(regions.size());
-
-	region.r=rNew;
-	region.g=gNew;
-	region.b=bNew;
-
-	regions.push_back(region);
-}
-
-//----
-
 void Plot1D::getRawData(std::vector<std::vector< float> > &rawData,
 				std::vector<std::wstring> &labels) const
 {
@@ -1264,103 +1553,10 @@ void Plot1D::getRawData(std::vector<std::vector< float> > &rawData,
 }
 
 
-void Plot1D::moveRegionLimit(unsigned int regionID, 
-			unsigned int method, float &newPosX, float &newPosY)  const
+void Plot1D::clear( bool preserveVisiblity)
 {
-
-	unsigned int region=regionIDHandler.getPos(regionID);
-	
-	ASSERT(region<regions.size());
-
-	//Check that moving this range will not cause any overlaps with 
-	//other regions
-	float mean;
-	mean=(regions[region].bounds[0].first + regions[region].bounds[0].second)/2.0f;
-
-	//Who is the owner of the current plot -- we only want to interact with our colleagues
-	float xMin,xMax,yMin,yMax;
-	getBounds(xMin,xMax,yMin,yMax);
-
-	switch(method)
-	{
-		//Left extend
-		case REGION_MOVE_EXTEND_XMINUS:
-			//Check that the upper bound does not intersect any RHS of 
-			//region bounds
-			for(unsigned int ui=0; ui<regions.size(); ui++)
-			{
-				if((regions[ui].bounds[0].second < mean && ui !=region) )
-						newPosX=std::max(newPosX,regions[ui].bounds[0].second);
-			}
-			//Dont allow past self right
-			newPosX=std::min(newPosX,regions[region].bounds[0].second);
-			//Dont extend outside plot
-			newPosX=std::max(newPosX,xMin);
-			break;
-		//shift
-		case REGION_MOVE_TRANSLATE_X:
-			//Check that the upper bound does not intersect any RHS or LHS of 
-			//region bounds
-			if(newPosX > mean) 
-				
-			{
-				//Disallow hitting other bounds
-				for(unsigned int ui=0; ui<regions.size(); ui++)
-				{
-					if((regions[ui].bounds[0].first > mean && ui != region) )
-						newPosX=std::min(newPosX,regions[ui].bounds[0].first);
-				}
-				newPosX=std::max(newPosX,xMin);
-			}
-			else
-			{
-				//Disallow hitting other bounds
-				for(unsigned int ui=0; ui<regions.size(); ui++)
-				{
-					if((regions[ui].bounds[0].second < mean && ui != region))
-						newPosX=std::max(newPosX,regions[ui].bounds[0].second);
-				}
-				//Dont extend outside plot
-				newPosX=std::min(newPosX,xMax);
-			}
-			break;
-		//Right extend
-		case REGION_MOVE_EXTEND_XPLUS:
-			//Disallow hitting other bounds
-
-			for(unsigned int ui=0; ui<regions.size(); ui++)
-			{
-				if((regions[ui].bounds[0].second > mean && ui != region))
-					newPosX=std::min(newPosX,regions[ui].bounds[0].first);
-			}
-			//Dont allow past self left
-			newPosX=std::max(newPosX,regions[region].bounds[0].first);
-			//Dont extend outside plot
-			newPosX=std::min(newPosX,xMax);
-			break;
-		default:
-			ASSERT(false);
-	}
-
+	regionGroup.clear();
 }
-
-
-void Plot1D::moveRegion(unsigned int regionID, unsigned int method, float newPosX,float newPosY) const
-{
-	//Well, we should have called this externally to determine location
-	//let us confirm that this is the case 
-	moveRegionLimit(regionID,method,newPosX,newPosY);
-
-
-	unsigned int region=regionIDHandler.getPos(regionID);
-	ASSERT(regions[region].parentFilter);
-
-	//Pass the filter ID value stored in the region to the filter, along with the new
-	//value to take for that filter ID
-	regions[region].parentFilter->setPropFromRegion(method,regions[region].id,newPosX);	
-
-}
-
 
 void Plot1D::drawRegions(mglGraph *gr,MGLColourFixer &fixer,
 		const mglPoint &min,const mglPoint &max) const
@@ -1368,21 +1564,23 @@ void Plot1D::drawRegions(mglGraph *gr,MGLColourFixer &fixer,
 	//Mathgl palette colour name
 	char colourCode[2];
 	colourCode[1]='\0';
-	
-	for(unsigned int uj=0;uj<regions.size();uj++)
+
+
+	for(unsigned int uj=0;uj<regionGroup.regions.size();uj++)
 	{
 		//Compute region bounds, such that it will not exceed the axis
 		float rMinX, rMaxX, rMinY,rMaxY;
 		rMinY = min.y;
 		rMaxY = max.y;
-		rMinX = std::max((float)min.x,regions[uj].bounds[0].first);
-		rMaxX = std::min((float)max.x,regions[uj].bounds[0].second);
+		rMinX = std::max((float)min.x,regionGroup.regions[uj].bounds[0].first);
+		rMaxX = std::min((float)max.x,regionGroup.regions[uj].bounds[0].second);
 		
-		//Prevent drawing inverted regions
+		//Prevent drawing inverted regionGroup.regions
 		if(rMaxX > rMinX && rMaxY > rMinY)
 		{
-			colourCode[0] = fixer.getNextBestColour(regions[uj].r,
-						regions[uj].g,regions[uj].b);
+			colourCode[0] = fixer.getNextBestColour(regionGroup.regions[uj].r,
+						regionGroup.regions[uj].g,
+						regionGroup.regions[uj].b);
 			colourCode[1] = '\0';
 #ifdef USE_MGL2
 			gr->FaceZ(mglPoint(rMinX,rMinY,-1),rMaxX-rMinX,rMaxY-rMinY,
@@ -1396,22 +1594,12 @@ void Plot1D::drawRegions(mglGraph *gr,MGLColourFixer &fixer,
 	}
 }
 
+//--
 
-void Plot1D::clear( bool preserveVisiblity)
-{
-	regions.clear();
-	regionIDHandler.clear();
-}
-
-bool Plot1D::getRegionIdAtPosition(float x, float y, unsigned int &id) const
+bool RegionGroup::getRegionIdAtPosition(float x, float y, unsigned int &id) const
 {
 	for(unsigned int ui=0;ui<regions.size();ui++)
 	{
-		ASSERT(regions[ui].boundAxis.size() == regions[ui].bounds.size() &&
-				regions[ui].boundAxis.size()==1);
-		ASSERT(regions[ui].boundAxis[0] == 0);
-
-
 		if(regions[ui].bounds[0].first < x &&
 				regions[ui].bounds[0].second > x )
 		{
@@ -1424,9 +1612,254 @@ bool Plot1D::getRegionIdAtPosition(float x, float y, unsigned int &id) const
 	return false;
 }
 
-void Plot1D::getRegion(unsigned int id, PlotRegion &r) const
+void RegionGroup::getRegion(unsigned int offset, PlotRegion &r) const
 {
-	r = regions[regionIDHandler.getPos(id)];
+	r = regions[offset];
 }
 
+
+void RegionGroup::addRegion(unsigned int regionID,float start, float end, 
+			float rNew, float gNew, float bNew, Filter *parentFilter)
+{
+	ASSERT(start <end);
+	ASSERT( rNew>=0.0 && rNew <= 1.0);
+	ASSERT( gNew>=0.0 && gNew <= 1.0);
+	ASSERT( bNew>=0.0 && bNew <= 1.0);
+
+	PlotRegion region(PlotRegion::ACCESS_MODE_FILTER,parentFilter);
+	//1D plots only have one bounding direction
+	region.bounds.push_back(std::make_pair(start,end));
+	//Set the ID for the  region
+	region.id = regionID;
+#ifdef DEBUG
+	//Ensure ID value is unique per parent
+	for(size_t ui=0;ui<regions.size();ui++)
+	{
+		if(regions[ui].getParentAsFilter()== parentFilter)
+		{
+			ASSERT(regionID !=regions[ui].id);
+		}
+	}
+#endif
+
+	region.r=rNew;
+	region.g=gNew;
+	region.b=bNew;
+
+	regions.push_back(region);
+}
+
+void RegionGroup::findRegionLimit(unsigned int offset, 
+			unsigned int method, float &newPosX, float &newPosY)  const
+{
+
+	ASSERT(offset<regions.size());
+
+	//Check that moving this range will not cause any overlaps with 
+	//other regions
+	float mean;
+	mean=(regions[offset].bounds[0].first + regions[offset].bounds[0].second)/2.0f;
+
+	switch(method)
+	{
+		//Left extend
+		case REGION_MOVE_EXTEND_XMINUS:
+		{
+			//Check that the upper bound does not intersect any RHS of 
+			//region bounds
+			for(unsigned int ui=0; ui<regions.size(); ui++)
+			{
+				if((regions[ui].bounds[0].second < mean && ui !=offset) )
+						newPosX=std::max(newPosX,regions[ui].bounds[0].second);
+			}
+			//Dont allow past self right
+			newPosX=std::min(newPosX,regions[offset].bounds[0].second);
+			break;
+		}
+		//shift
+		case REGION_MOVE_TRANSLATE_X:
+		{
+			//Check that the upper bound does not intersect any RHS or LHS of 
+			//region bounds
+			if(newPosX > mean) 
+				
+			{
+				//Disallow hitting other bounds
+				for(unsigned int ui=0; ui<regions.size(); ui++)
+				{
+					if((regions[ui].bounds[0].first > mean && ui != offset) )
+						newPosX=std::min(newPosX,regions[ui].bounds[0].first);
+				}
+			}
+			else
+			{
+				//Disallow hitting other bounds
+				for(unsigned int ui=0; ui<regions.size(); ui++)
+				{
+					if((regions[ui].bounds[0].second < mean && ui != offset))
+						newPosX=std::max(newPosX,regions[ui].bounds[0].second);
+				}
+			}
+			break;
+		}
+		//Right extend
+		case REGION_MOVE_EXTEND_XPLUS:
+		{
+			//Disallow hitting other bounds
+
+			for(unsigned int ui=0; ui<regions.size(); ui++)
+			{
+				if((regions[ui].bounds[0].second > mean && ui != offset))
+					newPosX=std::min(newPosX,regions[ui].bounds[0].first);
+			}
+			//Dont allow past self left
+			newPosX=std::max(newPosX,regions[offset].bounds[0].first);
+			break;
+		}
+		default:
+			ASSERT(false);
+	}
+
+}
+
+
+void RegionGroup::moveRegion(unsigned int offset, unsigned int method, bool selfUpdate,
+						float newPosX,float newPosY) 
+{
+	//TODO:  Change function signature to handle vector directly,
+	// rather than repackaging it?
+	vector<float> v;
+
+	v.push_back(newPosX);
+	v.push_back(newPosY);
+	
+	regions[offset].updateParent(method,v,selfUpdate);
+
+	haveOverlapCache=false;
+}
+
+void RegionGroup::getOverlaps(vector<pair<size_t,size_t> > &ids,
+				vector< pair<float,float> > &coords) const
+{
+
+	//Rebuild the cache as needed
+	if(!haveOverlapCache)
+	{
+		overlapIdCache.clear();
+		overlapCoordsCache.clear();
+		//Loop through upper triangular region of cross, checking for overlap
+		for(unsigned int ui=0;ui<regions.size();ui++)
+		{
+			float minA,maxA;
+			minA=regions[ui].bounds[0].first;
+			maxA=regions[ui].bounds[0].second;
+			for(unsigned int uj=ui+1;uj<regions.size();uj++)
+			{
+				float minB,maxB;
+				minB=regions[uj].bounds[0].first;
+				maxB=regions[uj].bounds[0].second;
+				//If the coordinates overlap, then record their ID
+				// and their coordinates, in plot units
+				if(rangesOverlap(minA,maxA,minB,maxB))
+				{
+					overlapIdCache.push_back(make_pair(ui,uj));
+					overlapCoordsCache.push_back(
+						make_pair(std::max(minA,minB),std::min(maxA,maxB)) );
+				}
+			}
+		}
+
+		haveOverlapCache=true;
+	}
+
+	ids.reserve(ids.size() + overlapIdCache.size());
+	for(unsigned int ui=0;ui<overlapIdCache.size();ui++)
+		ids.push_back(overlapIdCache[ui]);
+
+	coords.reserve(coords.size() + overlapCoordsCache.size());
+	for(unsigned int ui=0;ui<overlapCoordsCache.size();ui++)
+		coords.push_back(overlapCoordsCache[ui]);
+
+}
+
+
+void PlotWrapper::setRegionGroup(size_t plotId,RegionGroup &r)
+{
+	size_t offset=plotIDHandler.getPos(plotId);
+	//Overwrite the plot's region group
+	plottingData[offset]->regionGroup=r;
+}
+
+
+void PlotOverlays::draw(mglGraph *gr,MGLColourFixer &fixer, 
+		const mglPoint &boundMin, const mglPoint &boundMax,bool logMode ) const
+{
+
+	if(!isEnabled)
+		return;
+
+	char colourCode[2];
+
+	//Draw the overlays in black
+	colourCode[0] = fixer.getNextBestColour(0.0,0.0,0.0);
+	colourCode[1]='\0';
+	
+	for(size_t ui=0;ui<overlayData.size();ui++)
+	{
+		if(!overlayData[ui].enabled)
+			continue;
+
+		vector<float> bufX,bufY;
+		float maxV;
+		maxV=-std::numeric_limits<float>::max();
+
+		bufX.resize(overlayData[ui].coordData.size());
+		bufY.resize(overlayData[ui].coordData.size());
+		for(size_t uj=0;uj<overlayData[ui].coordData.size();uj++)	
+		{
+			bufX[uj]=overlayData[ui].coordData[uj].first;
+			bufY[uj]=overlayData[ui].coordData[uj].second;
+			
+			maxV=std::max(maxV,bufY[uj]);
+		}
+
+		//Rescale to plot size
+		for(size_t uj=0;uj<overlayData[ui].coordData.size();uj++)
+		{
+			if(logMode)
+			{
+				//Compute log10(probability*maximum) = 
+				//	log10(probability) + log10(maximum)
+				// maximum = 10^boundMax.y
+
+				bufY[uj]=log10(bufY[uj]) +boundMax.y*0.95;
+				bufY[uj]=std::max(bufY[uj],0.0f);
+			}
+			else
+			{
+				bufY[uj]*=boundMax.y/maxV*0.95;
+			}
+		}
+
+		//Draw stems. can't use stem plot due to mathgl bug whereby single stems
+		// will not be drawn
+		for(size_t uj=0;uj<overlayData[ui].coordData.size();uj++)
+		{
+			if(bufX[uj]> boundMin.x && bufX[uj]< boundMax.x && 
+					boundMin.y < bufY[uj])
+			{
+				gr->Line (mglPoint(bufX[uj],std::max(0.0f,boundMin.y)),
+					mglPoint(bufX[uj],bufY[uj]),colourCode,100);
+				//Print labels near to the text
+				
+				//XY coordinates for the label
+				//Draw the text label at the desired position
+				//Font size in mathgl uses negative values to set a relative font size
+				const float STANDOFF_FACTOR=1.05;
+				gr->Text(mglPoint(bufX[uj],bufY[uj]*STANDOFF_FACTOR),
+					overlayData[ui].title.c_str(),"",-0.6);
+			}
+		}
+	}
+}
 

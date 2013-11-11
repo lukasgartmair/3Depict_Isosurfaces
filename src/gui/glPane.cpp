@@ -19,10 +19,11 @@
 
 #include <wx/progdlg.h>
 
-#include "wxcommon.h"
+#include "wx/wxcommon.h"
 
 #include "common/stringFuncs.h"
 #include "gl/select.h"
+#include "gl/tr.h"
 #include "glPane.h"
 
 
@@ -651,10 +652,7 @@ void BasicGLPane::setGlClearColour(float r, float g, float b)
 	ASSERT(r >= 0.0f && r <= 1.0f);
 	ASSERT(g >= 0.0f && g <= 1.0f);
 	ASSERT(b >= 0.0f && b <= 1.0f);
-
-	//Let openGL know that we have changed the colour.
-	glClearColor( r, g, b, 0.0f);
-
+	
 	currentScene.setBackgroundColour(r,g,b);
 	
 	Refresh();
@@ -741,52 +739,22 @@ bool BasicGLPane::prepare3DViewport(int tlx, int tly, int brx, int bry)
 
 	glViewport( tlx, tly, brx-tlx, bry-tly);
 
-	currentScene.setWinSize(brx-tlx,bry-tly);
-
-	//Assume no perspective transform
-	//use scene camera to achieve this
-	glMatrixMode( GL_PROJECTION );
-	glLoadIdentity();
-	
 	float aspect = (float)(brx-tlx)/(float)(bry-tly);
-
+	currentScene.setWinSize(brx-tlx,bry-tly);
 	currentScene.setAspect(aspect);
 
+	//Set modelview and projection matrices to the identity
+	// matrix
+	{
+	glMatrixMode( GL_PROJECTION );
+	glLoadIdentity();
+	}	
+
+	{
 	glMatrixMode( GL_MODELVIEW );
 	glLoadIdentity();
-	float r,g,b;
-	currentScene.getBackgroundColour(r,g,b);
-	glClearColor( r, g, b,1.0f );
-	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
-
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_LIGHTING);
-	    
-
+	}
 	
-	glEnable(GL_LIGHT0);
-
-	
-	glShadeModel(GL_SMOOTH);
-
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-	
-
-
-	glEnable(GL_COLOR_MATERIAL);
-	glColorMaterial ( GL_FRONT, GL_AMBIENT_AND_DIFFUSE ) ;
-
-	glEnable(GL_POINT_SMOOTH);
-	glEnable(GL_LINE_SMOOTH);
-
-
-
-//	  SetPosition( wxPoint(0,0) );
-
 	return true;
 }
  
@@ -854,174 +822,159 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	//We cannot seem to draw outside the current viewport.
 	//in a cross platform manner.
 	//fall back to stitching the image together by hand
-	char *pixels;
-	
-
-	pixels= new char[3*width*height];
 	int panelWidth,panelHeight;
 	GetClientSize(&panelWidth,&panelHeight);
 
-	float oldAspect = currentScene.getAspect();
-	currentScene.setAspect((float)panelHeight/(float)panelWidth);
+	unsigned char *imageBuffer= (unsigned char*) malloc(3*(width)*height);
 
-	//Check
-	if((unsigned int)width > panelWidth || (unsigned int)height> panelHeight)
+	glLoadIdentity();
+	//Create TR library tile context
+	TRcontext *tr = trNew();
+	const Camera *cm = currentScene.getActiveCam();
+
+	//Initialise tile data
 	{
-		unsigned int numTilesX,numTilesY;
-		numTilesX = width/panelWidth;
-		numTilesY = height/panelHeight;
-		if(panelWidth % width)
-			numTilesX++;
-		
-		if(panelHeight% height)
-			numTilesY++;
+	//Tile size
+	trTileSize(tr,panelWidth,panelHeight,0);
+	//Set overall image size
+	trImageSize(tr, width, height);
+	//Set buffer for overall image
+	trImageBuffer(tr, GL_RGB, GL_UNSIGNED_BYTE, imageBuffer);
+	//Set the row order for the image
+	trRowOrder(tr, TR_BOTTOM_TO_TOP);
 
-		//Construct the image using "tiles": what we do is
-		//use the existing viewport size (as we cannot reliably change it
-		//without handling an OnSize event to resize the underlying 
-		//system buffer (eg hwnd under windows.))
-		//and then use this to reconstruct the image in a piece wise manner
-		float tileStart[2];
-
-		float fractionWidth=(float)panelWidth/(float)width;
-		float fractionHeight=(float)panelHeight/(float)height;
-
-		unsigned int thisTileNum=0;
+	//Inform the tiling system about our camera config
+	BoundCube bc = currentScene.getBound();
+	float farPlane = 1.5*bc.getMaxDistanceToBox(cm->getOrigin());
 	
-		wxProgressDialog *wxD=0;	
-		if(showProgress)
+	if(cm->getProjectionMode() == PROJECTION_MODE_PERSPECTIVE)
+	{
+		if(cm->type() == CAM_LOOKAT)
 		{
-			wxD = new wxProgressDialog(wxTRANS("Image progress"), 
-						wxTRANS("Rendering tiles..."), numTilesX*numTilesY);
-
-			wxD->Show();
+			const CameraLookAt *cl =(const CameraLookAt*) currentScene.getActiveCam();
+			trPerspective(tr,cl->getFOV()/2.0,currentScene.getAspect(),
+							cl->getNearPlane(),farPlane);
 		}
-
-		std::string tmpStr,tmpStrTwo;
-		stream_cast(tmpStrTwo,numTilesX*numTilesY);
-
-		for(unsigned int tileX=0;tileX<numTilesX;tileX++)
+		else
 		{
-			tileStart[0]=(fractionWidth*(float)tileX-0.5);
-			for(unsigned int tileY=0;tileY<numTilesY; tileY++)
-			{
-				thisTileNum++;
-				stream_cast(tmpStr,thisTileNum);
-				//tell user which image tile we are making from the total image
-				tmpStr = std::string(TRANS("Tile ")) + tmpStr + std::string(TRANS(" of ")) + tmpStrTwo + "...";
-				//Update progress bar, if required
-				if(showProgress)
-					wxD->Update(thisTileNum,wxStr(tmpStr));
-
-
-				tileStart[1]=(fractionHeight*(float)tileY-0.5);
-				//Adjust the viewport such that the render generates the tile for
-				//this view. Coordinates are in normalised device coords (-1 to 1)
-				currentScene.restrictView(tileStart[0],tileStart[1],
-							  tileStart[0]+fractionWidth,tileStart[1]+fractionHeight);
-
-				//Clear the buffers and draw the openGL scene
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-				currentScene.draw();
-
-				//Force openGL to block execution until draw complete
-				glFlush();
-				glFinish();
-
-				//Grab the image generated for this tile
-				glReadBuffer(GL_BACK);
-				//Set the pixel alignment to one byte, so that openGL unpacks
-				//correctly into our buffer.
-				glPushAttrib(GL_PACK_ALIGNMENT);
-				glPixelStorei(GL_PACK_ALIGNMENT,1);
-
-				//Read image
-				glReadPixels(0, 0, panelWidth,panelHeight,
-					     GL_BGR, GL_UNSIGNED_BYTE, pixels);
-				glPopAttrib();
-
-
-				//Copy the data into its target location,
-				char *pixel;
-				unsigned int pixX,pixY;
-				pixX=0;
-				pixY=0;
-				unsigned int cutoffX,cutoffY;
-				cutoffX= std::min((tileX+1)*panelWidth,width);
-				cutoffY= std::min((tileY+1)*panelHeight,height);
-				for (unsigned int ui=tileX*panelWidth; ui<=cutoffX; ui++)
-				{
-					pixY=0;
-					for (unsigned int uj=tileY*panelHeight; uj<=cutoffY; uj++)
-					{
-						pixel=pixels+(3*(pixY*panelWidth+ pixX));
-						image->SetRGB(ui,(height-1)-uj,pixel[2],pixel[1],pixel[0]);
-						pixY++;
-					}
-					pixX++;
-				}
-			}
-
+			//At this time there are no cameras of this type
+			ASSERT(false);
 		}
-		//Disable the view restriction
-		currentScene.unrestrictView();
-		if(showProgress)
-			wxD->Destroy();
-
 	}
 	else
 	{
-		//"Resize" the viewport. This wont cause the underlying buffer to resize
-		//so the imae will reduce, but be surrounded by borders.
-		//Its a bit of a hack, but it should work
-		prepare3DViewport(0,0,width,height);
-	
-		//Clear the buffers and draw the openGL scene
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		currentScene.draw();
-		glFinish();
+		float aspect=currentScene.getAspect();
+		float orthoScale=cm->getOrthoScale();
+		trOrtho(tr,-orthoScale*aspect,orthoScale*aspect,
+				-orthoScale,orthoScale,0.0f,farPlane);
 
-		SwapBuffers();
-		glReadBuffer(GL_BACK);
-		
-		//Set the pixel alignment to one byte, so that openGL unpacks 
-		//correctly into our buffer.
-		glPushAttrib(GL_PACK_ALIGNMENT);
-		glPixelStorei(GL_PACK_ALIGNMENT,1);
-		//Read the image
-		glReadPixels(0, 0, width,height, 
-			GL_BGR, GL_UNSIGNED_BYTE, pixels);
-
-
-		glPopAttrib();
-	
-		char *pixel;
-		
-		//copy rows & columns into image
-		for(unsigned int ui=0;ui<width;ui++)
-		{
-			for(unsigned int uj=0;uj<height;uj++)
-			{
-				pixel=pixels+(3*(uj*width + ui));
-				image->SetRGB(ui,(height-1)-uj,pixel[2],pixel[1],pixel[0]);
-			}
-		}
-
-		//Restore viewport
-		prepare3DViewport(0,0,getWidth(),getHeight());
+	}
 	}
 
-	delete[] pixels;
 
+	//Obtain tile count
+	unsigned int nRow,nCol;
+	nRow=trGet(tr,TR_ROWS);
+	nCol=trGet(tr,TR_COLUMNS);
+
+	wxProgressDialog *wxD=0;	
+
+
+	//Only show progress for mutliple tiles
+	std::string tmpStr,tmpStrTwo;
+	stream_cast(tmpStrTwo,nRow*nCol);
+	
+	showProgress=showProgress & ( nRow*nCol > 1);
+	if(showProgress)
+	{
+		wxD = new wxProgressDialog(wxTRANS("Image progress"), 
+					wxTRANS("Rendering tiles..."), nRow*nCol);
+
+		wxD->Show();
+	}
+
+	//HACK: Flip the all but scene's light z coordinate
+	// for some reason, the frustrum has an inversion
+	// somwhere in the coordinate system, and I can't find it!
+	// inverting the tile frustrum ends up with the depth test 
+	// also inverting.
+	float oldLightPos[4];
+	currentScene.getLightPos(oldLightPos);
+	const int UNTRANS_AXIS=2;
+	for(size_t ui=0;ui<3;ui++)
+	{
+		if(ui == UNTRANS_AXIS)
+			continue;
+
+		oldLightPos[ui]=-oldLightPos[ui];
+	
+	}
+	currentScene.setLightPos(oldLightPos);
+	
+
+	//Loop through the tiles
+	unsigned int thisTileNum=0;
+	int haveMoreTiles=1;
+	while(haveMoreTiles)
+	{
+		
+		
+		thisTileNum++;
+		//tell user which image tile we are making from the total image
+		stream_cast(tmpStr,thisTileNum);
+		tmpStr = std::string(TRANS("Tile ")) + tmpStr + std::string(TRANS(" of ")) + tmpStrTwo + "...";
+		//Update progress bar, if required
+		if(showProgress)
+			wxD->Update(thisTileNum,wxStr(tmpStr));
+
+		//Manually set the camera
+		//--
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glLoadIdentity();
+		
+		if(cm->type() == CAM_LOOKAT)
+			((const CameraLookAt *)cm)->lookAt();
+		//--
+	
+		//Start the tile
+		trBeginTile(tr);
+		currentScene.draw(true);
+
+		glPopMatrix();
+
+		haveMoreTiles=trEndTile(tr);
+
+	}
+
+	//re-set light coordinates
+	for(size_t ui=0;ui<3;ui++)
+	{
+		if (ui == UNTRANS_AXIS)
+			continue;
+		oldLightPos[ui]=-oldLightPos[ui];
+	}
+	currentScene.setLightPos(oldLightPos);
+
+	if(showProgress)
+		wxD->Destroy();
+	trDelete(tr);
+
+	//Transfer pointer to image, which will perform free-ing of the buffer
+	image->SetData(imageBuffer);
+	
+	//HACK : Tiling function returns upside-down image. Fix in post-process
+	// argument is to set mirror axis such that x axis is unchanged
+	*image=image->Mirror(false);
+	
 	bool isOK=image->SaveFile(wxCStr(filename),wxBITMAP_TYPE_PNG);
 
-	currentScene.setAspect(oldAspect);
 	delete image;
 
-    if (needPostPaint) {
-        wxPaintEvent event;
-        wxPostEvent(this,event);
-    }
+	if (needPostPaint) {
+		wxPaintEvent event;
+		wxPostEvent(this,event);
+	}
 
 	return isOK;
 }

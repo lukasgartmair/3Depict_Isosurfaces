@@ -31,8 +31,8 @@
 // end wxGlade
 
 //Local stuff
-#include "wxcommon.h"
-#include "wxcomponents.h"
+#include "wx/wxcommon.h"
+#include "wx/wxcomponents.h"
 #include "glPane.h"
 #include "mathglPane.h"
 #include "cropPanel.h" // cropping tools
@@ -92,7 +92,7 @@ private:
 	//!Update the post-processing effects in the 3D scene. 
 	void updatePostEffects(); 
 	//!Load a file into the panel given the full path to the file
-	bool loadFile(const wxString &dataFile,bool merge=false);
+	bool loadFile(const wxString &dataFile,bool merge=false,bool noUpdate=false);
 
 	//!Load any errors that were detected in the last refresh into the filter tree
 	void setFilterTreeAnalysisImages(); 
@@ -142,7 +142,10 @@ private:
 
 	//Map to convert filter drop down choices to IDs
 	map<std::string,size_t> filterMap;
-    
+   
+	//TODO: Refactor -  remove me.
+	// True if there are pending updates for the mahthgl window
+	bool plotUpdates;
 protected:
     wxTimer *statusTimer;
     wxTimer *progressTimer;
@@ -156,6 +159,7 @@ protected:
     wxMenuItem *checkViewWorldAxis;
 
     wxMenuItem *editUndoMenuItem,*editRedoMenuItem;
+    wxMenuItem *editRangeMenuItem;
     wxMenuItem *fileSave;
     wxMenu *recentFilesMenu;
     wxMenu *fileMenu;
@@ -276,6 +280,7 @@ public:
     virtual void OnComboStash(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeEndDrag(wxTreeEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeKeyDown(wxTreeEvent &event); // wxGlade: <event_handler>
+    virtual void OnTreeSelectionPreChange(wxTreeEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeSelectionChange(wxTreeEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeDeleteItem(wxTreeEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeBeginDrag(wxTreeEvent &event); // wxGlade: <event_handler>
@@ -291,6 +296,7 @@ public:
 
     virtual void OnEditUndo(wxCommandEvent &event);    
     virtual void OnEditRedo(wxCommandEvent &event);    
+    virtual void OnEditRange(wxCommandEvent &event);    
     virtual void OnEditPreferences(wxCommandEvent &event);    
    
     virtual void OnButtonRemoveCam(wxCommandEvent &event); // wxGlade: <event_handler>
@@ -374,6 +380,8 @@ public:
     //Restore panel layout defaults
     void restoreConfigPanelDefaults();
 
+    void onPanelSpectraUpdate() {plotUpdates=true;} ;
+
     bool initOK() const {return initedOK;}
 
     //This is isolated from the layout code, due to "bug" 4815 in wx. The splitter window
@@ -382,6 +390,10 @@ public:
 	    	filterSplitter->SplitHorizontally(filterTreePane,filterPropertyPane);
 	    	restoreConfigPanelDefaults();
 	   	};
+
+
+    //Update the enabled status for the range entry in the edit menu
+    void updateEditRangeMenu();
 
 }; // wxGlade: end class
 

@@ -39,6 +39,7 @@ enum
 enum
 {
 	ERR_CROP_CALLBACK_FAIL=1,
+	ERR_CROP_INSUFFICIENT_MEM,
 };
 
 class CropHelper;

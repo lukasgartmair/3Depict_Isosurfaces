@@ -78,6 +78,32 @@ class SpatialAnalysisFilter : public Filter
 		void resetParamsAsNeeded();
 		//-------
 
+		//Binomial specific algorithms
+		//--------
+		//Number of ions to target when segmenting
+		unsigned int numIonsSegment;
+
+		//Maximum aspect ratio permissible for grid entry
+		float maxBlockAspect;
+
+		//The step size in the composition space
+		float binWidth;
+
+		//Direction in which to perform grid extrusion
+		size_t extrusionDirection;
+
+		//Do we show the frequency plot?
+		bool showBinomialFrequencies;
+
+		bool showNormalisedBinomialFrequencies;
+
+		//Do we show the theoretical frequency distributions?
+		bool showTheoreticFrequencies;
+
+		//Do we show the overlaid extruded grid?
+		bool showGridOverlay;
+
+		//--------
 
 
 	
@@ -99,6 +125,10 @@ class SpatialAnalysisFilter : public Filter
 			vector<const FilterStreamData * > &getOut);
 
 		size_t algorithmAxialDf(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
+			const vector<const FilterStreamData *>  &dataIn, 
+			vector<const FilterStreamData * > &getOut,const RangeFile *rngF);
+		
+		size_t algorithmBinomial(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
 			const vector<const FilterStreamData *>  &dataIn, 
 			vector<const FilterStreamData * > &getOut,const RangeFile *rngF);
 

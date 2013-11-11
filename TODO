@@ -5,18 +5,13 @@ TODO List - worlds simplest bugtracking system
 --Main app--
 	To Implement:
 		== Next version ==
-		* Range editor
-		* Unit tests for statefile with stashes
-		* Improved filter tree visibility behaviour 
-		* Unit testing of text data loading routines
 
 		== Eventually == 
-		* Plot overlays
+		* Improved filter tree visibility behaviour 
 		* Support for XY scatter plots
 		* Status bar message queue
 		* Voxel export dialog 
 		* VTK voxel data export
-		* Binomial? (MM edition)
 		* OPS and other 3DAP formats reader?
 		* Stream information filter (Easy fix, but needs time/thought)
 		* Polynomial error estimator in graph
@@ -56,14 +51,9 @@ TODO List - worlds simplest bugtracking system
 
 	Outstanding bugs:
 		== Next release==
-		* File -> export image -> Height*=2, results in aspect ratio of output image being distorted
 		* Cluster filter wont save state correctly if parent
 		  rangefile has disabled ions. It will output incorrect
 		  number of enabled ions, and get wiped during next ::initFilter
-		
-		Windows:
-		* Drawing updates for resolution dialog are wonk
-		
 			
 		== Eventually==
 		* Lighting calculations on isosurfaces can be problematic. See example package
@@ -91,6 +81,8 @@ TODO List - worlds simplest bugtracking system
 			* icon on dock bounces very fast during some refreshes
 
 		== Needs reproducing ==
+		* External program loading from XML doesn't seem to
+		  restore command?
 
 	Auditing:
 		== Next release ==
@@ -126,6 +118,8 @@ TODO List - worlds simplest bugtracking system
 	* work out which inline FIXMEs and TODOs are still valid, and need attention
 	* I have multiple colour classes floating about. might be an idea to unify them.
 	* K3DTree currently requires public access to members of boundcube
+	* Enums should be, where possible, moved into their relevant class' namespace
+	* Better error code behaviour for filters. There is a lot of needless duplication
 
 -- Deprecate --
 	* On Minor version change:

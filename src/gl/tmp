@@ -1,0 +1,48 @@
+diff -r 3655921afa36 src/gl/drawables.cpp
+--- a/src/gl/drawables.cpp	Mon Nov 11 01:01:01 2013 +0100
++++ b/src/gl/drawables.cpp	Mon Nov 11 01:06:36 2013 +0100
+@@ -17,12 +17,8 @@
+*/
+
+#if defined(WIN32) || defined(WIN64)
+-#ifdef __APPLE__
+-#include <OpenGL/glew.h>
+-#else
+#include <GL/glew.h>
+#endif
+-#endif
+
+#include "drawables.h"
+
+diff -r 3655921afa36 src/gl/scene.cpp
+--- a/src/gl/scene.cpp	Mon Nov 11 01:01:01 2013 +0100
++++ b/src/gl/scene.cpp	Mon Nov 11 01:06:36 2013 +0100
+@@ -17,12 +17,8 @@
+*/
+
+#if defined(WIN32) || defined(WIN64)
+-#ifdef __APPLE__
+-#include <OpenGL/glew.h>
+-#else
+#include <GL/glew.h>
+#endif
+-#endif
+
+#include "scene.h"
+
+diff -r 3655921afa36 src/gl/textures.cpp
+--- a/src/gl/textures.cpp	Mon Nov 11 01:01:01 2013 +0100
++++ b/src/gl/textures.cpp	Mon Nov 11 01:06:36 2013 +0100
+@@ -17,12 +17,8 @@
+*/
+
+#if defined(WIN32) || defined(WIN64)
+-#ifdef __APPLE__
+-#include <OpenGL/glew.h>
+-#else
+#include <GL/glew.h>
+#endif
+-#endif
+
+#include "textures.h"
+

@@ -21,7 +21,7 @@
 #include "common/stringFuncs.h"
 #include "common/translation.h"
 
-#include "wxcomponents.h"
+#include "wx/wxcomponents.h"
 
 #include <set>
 
@@ -415,6 +415,9 @@ void PlotStreamData::checkSelfConsistent() const
 	ASSERT(hardMinY<=hardMaxY);
 	//--
 
+	//Needs to have a title
+	ASSERT(dataLabel.size());
+
 	//If we have regions that can be interacted with, need to have parent
 	ASSERT(!(regionID.size() && !regionParent));
 
@@ -578,6 +581,77 @@ void Filter::getSelectionDevices(vector<SelectionDevice *> &outD) const
 	}
 #endif
 }
+
+void Filter::propagateCache(vector<const FilterStreamData *> &getOut) const
+{
+
+	ASSERT(filterOutputs.size());
+	//Convert to const pointers (C++ workaround)
+	//--
+	vector<const FilterStreamData *> tmpOut;
+	tmpOut.resize(filterOutputs.size());
+	std::copy(filterOutputs.begin(),filterOutputs.end(),tmpOut.begin());
+	//--
+
+	propagateStreams(tmpOut,getOut);
+}
+
+void Filter::propagateStreams(const vector<const FilterStreamData *> &dataIn,
+		vector<const FilterStreamData *> &dataOut,size_t mask,bool invertMask) const
+{
+	//Propagate any inputs that we don't normally block
+	if(invertMask)
+		mask=~mask;
+	for(size_t ui=0;ui<dataIn.size();ui++)
+	{
+		if(dataIn[ui]->getStreamType() & mask)
+			dataOut.push_back(dataIn[ui]);
+	}
+}
+
+unsigned int Filter::collateIons(const vector<const FilterStreamData *> &dataIn,
+				vector<IonHit> &outVector, ProgressData &prog,
+				bool (*callback)(bool),size_t totalDataSize)
+{
+	if(totalDataSize==(size_t)-1)
+		totalDataSize=numElements(dataIn,STREAM_TYPE_IONS);
+
+
+	ASSERT(totalDataSize== numElements(dataIn,STREAM_TYPE_IONS));
+
+
+	outVector.resize(totalDataSize);
+	size_t offset=0;
+
+
+	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
+	{
+		switch(dataIn[ui]->getStreamType())
+		{
+			case STREAM_TYPE_IONS: 
+			{
+				const IonStreamData *d;
+				d=((const IonStreamData *)dataIn[ui]);
+
+				size_t dataSize=d->data.size();
+
+				#pragma omp parallel for if(dataSize > OPENMP_MIN_DATASIZE)
+				for(size_t ui=0;ui<dataSize; ui++)
+					outVector[offset+ui]=d->data[ui];
+
+				if(!(*callback)(false))
+					return FILTER_ERR_ABORT;
+				offset+=d->data.size();
+
+
+				break;
+			}
+		}
+	}
+
+	return 0;
+}
+				
 
 void Filter::updateOutputInfo(const std::vector<const FilterStreamData *> &dataOut)
 {

@@ -32,6 +32,13 @@
 #elif defined __linux__
 	//Needed for getting ram total usage under Linux
 	#include <sys/sysinfo.h>
+
+#endif
+
+//Needed for stat call on posix systems
+#if !defined(__WIN32__) && !defined(__WIN64__)
+#include <sys/types.h>
+#include <sys/stat.h>
 #endif
 
 using std::string;
@@ -44,7 +51,7 @@ const char *DTD_NAME="threeDepict-state.dtd";
 //Program name
 const char *PROGRAM_NAME = "3Depict";
 //Program version
-const char *PROGRAM_VERSION = "0.0.14";
+const char *PROGRAM_VERSION = "0.0.15";
 //Path to font for Default FTGL  font
 const char *FONT_FILE= "FreeSans.ttf";
 
@@ -79,28 +86,6 @@ std::string boolStrEnc(bool b)
 		return "0";
 }
 
-bool rangesOverlap(size_t minA, size_t maxA,
-			size_t minB, size_t maxB)
-{
-
-	ASSERT(minA <= maxA);
-	ASSERT(minB<=maxB);
-
-	// A-  B- A+ 
-	// A- B+ A+
-	if( (minA <= minB && maxA >=minB )
-		|| (minA<=maxB && maxA >=maxB) )
-		return true;
-
-	// B-  A- B+ 
-	// B- A+ B+
-	if(( minB <= minA && maxB >=minA )
-		|| (minB<=maxA && maxB >=maxA) )
-		return true;
-
-	return false;
-
-}
 
 bool dummyCallback(bool)
 {
@@ -278,6 +263,15 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 	}
 
 	return TRANS("moments ago");
+}
+
+
+void BoundCube::getBound(Point3D &retBound, unsigned int minMax) const
+{
+	retBound=Point3D(bounds[0][minMax],
+			bounds[1][minMax],
+			bounds[2][minMax]);
+
 }
 
 float BoundCube::getBound(unsigned int bound, unsigned int minMax) const
@@ -867,6 +861,12 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 	
 	unsigned int num_fields=0;
 
+
+#if !defined(WIN32) && !defined(WIN64)
+	if(isNotDirectory(cpFilename) == false)
+		return ERR_FILE_OPEN;
+#endif
+
 	dataVec.clear();
 	//Open a file in text mode
 	std::ifstream CFile(cpFilename);
@@ -1006,12 +1006,18 @@ unsigned int loadTextStringData(const char *cpFilename, vector<vector<string> > 
 {
 	const unsigned int BUFFER_SIZE=4096;
 	
-	dataVec.clear();
+#if !defined(WIN32) && !defined(WIN64)
+	if(isNotDirectory(cpFilename) == false)
+		return ERR_FILE_OPEN;
+#endif
+	
 	//Open a file in text mode
 	std::ifstream CFile(cpFilename);
 
 	if(!CFile)
 		return ERR_FILE_OPEN;
+
+	dataVec.clear();
 
 	char *inBuffer= new char[BUFFER_SIZE];
 	//Grab a line from the file
@@ -1074,4 +1080,21 @@ bool isValidXML(const char *filename)
 }
 #endif
 
+#if !defined(__WIN32__) && !defined(__WIN64)
+	
+bool isNotDirectory(const char *filename)
+{
+	struct stat statbuf;
 
+	if(stat(filename,&statbuf) == -1)
+		return false;
+
+	return (statbuf.st_mode !=S_IFDIR);
+}
+
+bool rmFile(const std::string &filename)
+{
+	return remove(filename.c_str()) == 0;
+}
+
+#endif

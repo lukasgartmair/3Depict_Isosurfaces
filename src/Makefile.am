@@ -37,7 +37,8 @@ FILTER_FILES = backend/filters/allFilter.cpp backend/filters/filterCommon.cpp \
 		backend/filters/ionColour.cpp backend/filters/boundingBox.cpp  \
 		backend/filters/compositionProfile.cpp backend/filters/spatialAnalysis.cpp \
 		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
-		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp
+		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp \
+		backend/filters/algorithms/binomial.cpp 
 
 FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h \
 		backend/filters/dataLoad.h backend/filters/ionDownsample.h \
@@ -46,28 +47,27 @@ FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h
 		backend/filters/ionColour.h backend/filters/boundingBox.h  \
 		backend/filters/compositionProfile.h backend/filters/spatialAnalysis.h \
 		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
-		backend/filters/annotation.h backend/filters/geometryHelpers.h
+		backend/filters/annotation.h backend/filters/geometryHelpers.h \
+		backend/filters/algorithms/binomial.h
 
 BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backend/filtertree.cpp \
-		     	backend/APT/ionhit.cpp backend/APT/APTFileIO.cpp backend/APT/APTRanges.cpp \
-			backend/filters/K3DTree.cpp backend/filters/K3DTree-mk2.cpp\
-			backend/filter.cpp backend/filters/rdf.cpp \
+		     	backend/APT/ionhit.cpp backend/APT/APTFileIO.cpp backend/APT/APTRanges.cpp backend/APT/abundanceParser.cpp \
+			backend/filters/algorithms/K3DTree.cpp backend/filters/algorithms/K3DTree-mk2.cpp\
+			backend/filter.cpp backend/filters/algorithms/rdf.cpp \
 		       backend/viscontrol.cpp backend/state.cpp backend/plot.cpp  backend/configFile.cpp 
 
 BACKEND_HEADER_FILES =  backend/animator.h backend/filtertreeAnalyse.h backend/filtertree.h\
-			backend/APT/ionhit.h backend/APT/APTFileIO.h backend/APT/APTRanges.h \
-			backend/filters/K3DTree.h backend/filters/K3DTree-mk2.h \
-			backend/filter.h backend/filters/rdf.h \
+			backend/APT/ionhit.h backend/APT/APTFileIO.h backend/APT/APTRanges.h backend/APT/abundanceParser.h \
+			backend/filters/algorithms/K3DTree.h backend/filters/algorithms/K3DTree-mk2.h \
+			backend/filter.h backend/filters/algorithms/rdf.h \
 			backend/viscontrol.h backend/state.h backend/plot.h backend/configFile.h \
 		        backend/tree.hh
 
 #------------
 
 #------------ OpenGL interface files
-OPENGL_HEADER_FILES = gl/scene.h gl/drawables.h gl/effect.h gl/textures.h gl/select.h gl/cameras.h gl/isoSurface.h
-OPENGL_SOURCE_FILES =  gl/scene.cpp gl/drawables.cpp gl/effect.cpp gl/textures.cpp gl/select.cpp gl/cameras.cpp gl/isoSurface.cpp
-
-
+OPENGL_HEADER_FILES = gl/scene.h gl/drawables.h gl/effect.h gl/textures.h gl/select.h gl/cameras.h gl/isoSurface.h gl/tr.h gl/glDebug.h
+OPENGL_SOURCE_FILES =  gl/scene.cpp gl/drawables.cpp gl/effect.cpp gl/textures.cpp gl/select.cpp gl/cameras.cpp gl/isoSurface.cpp gl/tr.cpp
 #------------
 
 
@@ -79,7 +79,8 @@ DIALOG_SOURCE_FILES = gui/dialogs/ExportPos.cpp  gui/dialogs/ExportRngDialog.cpp
 		gui/dialogs/animateFilterDialog.cpp \
 		gui/dialogs/animateSubDialogs/colourKeyFrameDialog.cpp \
 		gui/dialogs/animateSubDialogs/stringKeyFrameDialog.cpp \
-		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.cpp
+		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.cpp \
+		gui/dialogs/rangeEditDialog.cpp
 
 
 DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/dialogs/prefDialog.h \
@@ -89,13 +90,14 @@ DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/
 		gui/dialogs/animateSubDialogs/realKeyFrameDialog.h \
 		gui/dialogs/animateSubDialogs/colourKeyFrameDialog.h \
 		gui/dialogs/animateSubDialogs/stringKeyFrameDialog.h \
-		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.h
+		gui/dialogs/animateSubDialogs/choiceKeyFrameDialog.h \
+		gui/dialogs/rangeEditDialog.h
 
 GUI_SOURCE_FILES=gui/mainFrame.cpp gui/mathglPane.cpp gui/cropPanel.cpp gui/glPane.cpp  $(DIALOG_SOURCE_FILES)
 GUI_HEADER_FILES=gui/mainFrame.h gui/mathglPane.h gui/cropPanel.h gui/art.h gui/glPane.h $(DIALOG_HEADER_FILES)
 
-BASE_SOURCE_FILES=   3Depict.cpp testing.cpp  wxcomponents.cpp wxcommon.cpp winconsole.cpp 
-BASE_HEADER_FILES=   testing.h winconsole.h   wxcomponents.h  wxcommon.h
+BASE_SOURCE_FILES=   3Depict.cpp testing/testing.cpp  wx/wxcomponents.cpp wx/wxcommon.cpp winconsole.cpp wx/checkedlistctrl.cpp
+BASE_HEADER_FILES=   testing/testing.h winconsole.h   wx/wxcomponents.h  wx/wxcommon.h wx/checkedlistctrl.h
 #-----------
 
 
@@ -114,6 +116,6 @@ else
 endif
 
 #Tarball options
-EXTRA_DIST = gui/glade-skeleton myAppIcon.ico
+EXTRA_DIST = gui/glade-skeleton myAppIcon.ico testing/filtertesting.cpp
  
 

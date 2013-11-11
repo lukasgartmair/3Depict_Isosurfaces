@@ -100,8 +100,8 @@ if [ x"` grep '^Version:' packaging/RPM/3Depict.spec  | grep $VER`"  = x"" ] ; t
 	echo " WARNING: Program version does not match between configure.ac and packaging/RPM/3Depict.spec" >> $MSG_FILE
 fi
 
-if [ x"` grep 'PRODUCT_VERSION'  packaging/windows-installer/windows-installer.nsi | grep $VER`"  = x"" ] ; then
-	echo " WARNING: Program version does not match between configure.ac and packaging/windows-installer/windows-installer.nsi" >> $MSG_FILE
+if [ x"` grep 'PRODUCT_VERSION'  packaging/mingw-debian-cross/windows-installer.nsi | grep $VER`"  = x"" ] ; then
+	echo " WARNING: Program version does not match between configure.ac and packaging/mingw-debian-cross/windows-installer.nsi" >> $MSG_FILE
 fi
 
 #Check latex manual

@@ -26,7 +26,7 @@
 
 #include <gsl/gsl_linalg.h>
 
-#include "K3DTree-mk2.h"
+#include "algorithms/K3DTree-mk2.h"
 
 
 enum
@@ -451,8 +451,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	//use the cached copy if we have it.
 	if(cacheOK)
 	{
-		for(unsigned int ui=0;ui<filterOutputs.size();ui++)
-			getOut.push_back(filterOutputs[ui]);
+		propagateCache(getOut);
 		return 0;
 	}
 

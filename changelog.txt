@@ -1,0 +1,532 @@
+* 20 Jul 2013 : 0.0.14
+	Features:
+	- 2D slice render mode for voxels. Can now visualise voxel data
+	  using colourised planes - show voxel values on a given slice
+	- Animated spin-progress icon to show refresh status
+	- Automatic, but optional, limiting of point count in 3D display 
+		- Improved responsiveness of program to user when
+		  working with large datasets. Enabled by default.
+		- Downsampling no longer added when loading datasets
+	- New "double-ORNL rng" rangefile support
+
+	User Visible Bugfixes/Changes:
+	- Fix "blinking"/flicker problems in 3D scene when changing properties
+	- Improved tracking of changes to state
+		- Current filename
+		- Current directory
+		- Changes to state (eg, for asking to save at exit)
+	- Fix state load/save bugs
+		- Orthogonal camera scaling
+		- stash handling
+	- Add new tree warnings
+		- Composition biasing warning for rangefile->composition pairs
+		- Missing required parent filter (eg clustering)
+	- More caching in voxel filter, for better performance
+	- Better axis handling for plot window
+	- Better handling of cylinder objects during interaction
+	- Improved performance in some cases when ranging
+	- On Mac OSX, manual now stored locally
+	- New "quick start" section in documentation
+	- Ranged ions/volume now reported correctly by ion info filter
+
+	Technical Bugfixes/Features:
+	- Split viscontrol and analysis state into separate modules
+	- Minor improvements to rangefile loading
+	- Improved assertion checking for selection bindings
+	- Remove needless templating of selection devices
+	- Continuous Integration script for cppcheck
+	- Minor opengl enhancement (performance & error reporting)
+
+* 12 Apr 2013 : 0.0.13
+	Features:
+	- Spherical composition profile support
+	- Added axial distribution mode to spatial analysis (directional RDF)
+	- New build for windows 64 (no parallel build available yet)
+
+	User Visible Bugfixes/Changes:
+	- Fix crash if unable to obtain RSS feed when checking for updates from behind proxy (Windows only)
+	- Rangefiles now correctly load when altering name property
+	- Copy/pasting from the raw data grid now works.
+	- Plot now updates when scrolling, rather than just during mouse motion
+	- Fix refresh loop in Data Load filter when "monitor" active and "enabled" inactive.
+	- Fix RDF generating error/crashes when passing < 4 points
+	- Fix voxel filtering not preserving intensity correctly
+	- Fix crash bug on OSX during animate
+	- Fix animate dialog, where wrong text box updated on frame change
+	- Animate dialog "remove" button now works correctly
+	- Clipping algorithm now uses multiple CPUs
+	- RDF algorithm (max dist) now uses multiple CPUs
+	- The default camera now is stored and loaded when saving state
+	- Ion information filter now emits warnings if sampling is enabled by a parent
+	- Warning on export of plot's without legend fixed
+	- Fix bug where gl window did not update after sash move on some video drivers
+	- Not providing an extention when exporting plots now causes prompt, rather than error
+	- Fixed filters not staying selected when loading new data files
+	- More locking of UI elements during refresh
+	- Improve view splitter startup behaviour
+
+	Technical Bugfixes/Features:
+	- Mathgl >= 1.11 (Nov 2010) now required as hard
+	  dependency, earlier versions will not compile
+	- Mathgl 2.x now supported
+	- Refactored clipping and concentration profile code
+	  into single geometry handler
+	- Refactored often copy-pasted XML writer code back to
+	  "filter common" functions
+	- Fixed bug whereby if user preference had been altered
+	  for pos data, with loadlimit=0, then loading would cancel
+	  if this value was not changed in the filter property,
+	  and sampling was set.
+	- Improved wx correctness in property grid
+	- Tentative support in "getDeps" script for CentOS6
+	- Refactor APTClasses & basics functions into several
+	  more manageable parts
+	- Better RNG support (negative ranges, range lines starting with a digit)
+	- More extensive unit testing
+	- Fix double-free bug for certain topologies in filter tree
+	- Fix memory leak when aborting refresh
+	- Cross compilation script for mingw-win64 and 32
+	- Source code relayout to reflect overall design
+	- Fix several minor assertion errors
+	- Remove several redundant scene update calls in main window
+	- Re-enable OSX checking for updates
+	- Fix incorrect progress reporting when ranging
+	- Improved release QA checking
+
+* Nov 2012 : 0.0.12
+	Features:
+	- Animation tool for performing "sweeps" of filter properties
+		- can change a filter properties and export images,
+		 point data, plots etc. for each step in the property
+		- Can sweep multiple properties simultaneously
+		- Use for exporting videos/animations of parameter changes
+	- Each filter property now has built-in tooltip help text
+	- New warning for possible compositional biasing in composition results
+
+	User Visible Bugfixes/Changes:
+	- Point input starting with "." no longer incorrectly rejected
+	- Fix arrow heads being shown for some objects where they should not be
+	- Improved RNG file reader, fixed some multiple ions being
+	   rejected when they should not be
+	- Performance increase in transform filter, ion shuffle mode,
+	  due to better shuffle strategy, and more parallelism
+	- Fix progress reporting in transform filter, shuffle mode
+	- RRNG files without colour data will now have random colour
+	  assignments, instead of black.
+	- Some performance increases in point generation and display
+	- More property group naming
+	- Fix spectrum plot resetting itself to default values if no valid input
+	- Fix some malformatted RRNG files could cause crash
+	- Fix vertical "sash"/splitter motion not causing 3D view to update
+	- Fix crash when loading large posfiles in external program filter
+
+
+	Technical Bugfixes/Features:
+	- Added Event logger code, for better user feedback from assertion failures
+	- More workarounds for mathgl library infinite loop problems,
+	  which occur due to floating point aliasing
+	- Fix segfault in point parsing routines
+	- Improved UI locking during scene refresh, limiting scope for 
+	  callback re-entrancy, which caused some crashes.
+	- Fixed several small memory leaks
+	- More unit testing, and fix some non-working unit tests,
+	  eg transform shuffle, which wansn't checking shuffled state
+	  correctly, and hence did very little
+	- Minor openMP fixes
+	- Many cppcheck fixes - mostly stylistic, or minor performance improvements
+
+
+		
+
+* 1 Jul, 2012  : 0.0.11 
+	Features:
+	- Filter tree is now scanned for common errors, with a clickable
+	  warning message for detected errors, e.g.:
+		- Filters connected that cannot have any effect
+		- Filters connected that may alter the outcome of 
+		  density dependant analyses, due to sampling.
+	- Spatial analysis now has "density filtering" mode.
+	- Bounding box has new draw modes "dimension" and "box only"
+	- User manual has been expanded, now provides more detail on filters,
+	  and specific examples for the External Program filter for multiple
+	  programming languages (Scilab/bash/python/C++).
+	
+	
+	User Visible Bugfixes/Changes:
+	- Clustering core mode in core-link algorithm has been fixed (Core dist > 0)
+		- Previously program would crash/generate nonsense results.
+	- Fixed voxels not showing if transparency set to zero in point cloud
+	  mode
+	- Multiple-autosave and resolution selection dialog usability improvements
+	- Fix Undo not working after deleting filters
+	- Recent files that do not exist are removed from recent files menu
+	- External Program option "Clear cache" now correctly updates after
+	  selection.
+	- Spatial analysis colour change for plot no long requires
+	  recomputation.
+	- Bulk distance > 0.5*Link distance now emits warning in cluster
+	  filter, previously was incorrectly set to > 1.0*Link distance.
+	- Tree no longer completely disables user interaction during refresh.
+	- Lines now have conical arrow heads where appropriate (eg
+	  annotation).
+	- Package state restores now correctly restore working directory
+	  information, fixing load failures for some external resources.
+	- Fix cluster cropping/nmin not loading correctly from state files.
+	- Fix bug where ion downsampler might not propagate range data
+	- Cluster filter restores ions better when dragging/dropping between
+	  different range file parents
+	- Fix ion export not working correctly, due to change in viscontrol
+	  behaviour for 0.0.10
+
+	Technical Bugfixes/Features:
+	- Improvements to dependency fetch script "getDeps" for Mac OSX Lion.
+	- Several small memory leaks fixed
+	- Speed improvements by removing initialiser on ionhit data class
+	- More unit test cases for filters
+	- More strict emit/use/block patterns for spatial analysis, bound box
+	  and external program
+
+* 1 Apr, 2012  : 0.0.10
+	Features:
+	- Improved aborting behaviour for filters
+
+	User Visible Bugfixes/Changes:
+	- In cluster filter, datasets consisting of "core" only can now be clustered. Previously some "bulk" was required, due to programming error.
+	- Fix drag/drop loading bugs
+	- Fix multiple data files not being accepted at command line
+	- Fix crash-on-exit in OSX 10.7 bug
+	- Improved rangefile reader - more tolerant of oddly formatted rangefiles
+	- Fix bug where downsample filter would not update ion selection if parent rangefile filter was altered.
+	- Data loading can now use custom string for data name - defaults to "mass-to-charge"
+	- Plot region dragging now disallowed if region not shown (ie lies outside visible data area).
+	- Fix bug in plot panel, where I beam would not show if user did Y zoom starting below plot X axis
+	- Fix bug in plot zooming, where a perfectly X or perfectly Y zoom (ie mouse moved exactly horizontally or vertically) would fail to zoom.
+	- Fix bug in clip & composition cylinder where perfectly horizontal (XY plane) would result in incorrect direction for analysis.
+	- Better drag/drop support when dropping into tree "base" - now will only allow filters that can be a data source on top level.
+	- Most buttons/checkboxes/spinbuttons etc ("controls") now have tool tips when hovering mouse.
+	- Several previously untranslated items added to translation database
+	- Minor layout change to ion info properties.
+
+	Technical Bugfixes/Features:	
+	- Major internal reorganisation (refactor) of viscontrol. Now split into two parts, a tree manipulator & refresher (FilterTree), and UI/backend sync (Viscontroller)- Some export dialogs now take advantage of tree cache, making exporting dialog appearance faster in complex filter trees.
+	- More unit tests for filters, rangefiles and filter trees.
+	- Some export dialogs now take advantage of tree cache, making exporting dialog appearance faster in complex filter trees.
+	- Improved dependency retrieval script, making porting a bit easier.
+	- More QA checking in release script
+	- Compiles against GCC 4.7.
+	- Re-enable convex hull based algorithms in OSX.
+	- Remove unnecessary #includes.
+	- Some code de-duplication, thanks to pmd.sourceforge.net
+	- Hidden debug only Autosave with ctrl+insert.
+	- Fix memory leaks in filter devices, rangefile filter 
+	- Property keys now throw assertion error if not unique.
+	- Fix small array overrun in NN histogram generation in RDF filter
+	- Fix MK1 KD tree stack underrun for some trees.
+	- Properties in XML files are now escaped and unescaped, avoiding malformatted/broken state and configuration files, if using any of "<>&" in saved elements.
+
+
+* Dec 17, 2011  : 0.0.9
+	Features:
+	- Rangefile filter now has "all ions/ranges" enable/disable option
+	- Autosave dialog now shows timestamp on file, eg "autosave.123.xml,
+	one day ago"
+	- Density computation in volume estimation filter 
+	- Implement scroll-to-zoom in plots
+	- Rangefiles can now be dropped onto program to open.
+
+	User Visible Bugfixes/Changes:
+	- Fix crash-on-load due to strict floating point checks under some
+	  wxGtk (linux) systems (Reported by users)
+	- Fix text file loading when loadlimit is 0.
+	- Fix hang when loading incorrectly formatted text files
+	- Fix bug where primitives might not show from transform filter until
+  	  forcing a refresh
+	- Spectrum filter no longer resets bincount when no data passed to it.
+	- Composition profile now matches 3D cylinder size when using fixed
+	  number of bins. (Reported by user)
+	- Fix bug where only line plots could be selected for plot dropdowns.
+	- Fix random crash/weirdness bug when dragging 3D items.
+	- Fix several internal debug dialogs being shown in wx2.9 (OSX 10.7)\
+	- Fix non-responsive dialogs in wx2.9 (OSX 10.7)
+	- Fix occasional corruption of volume estimate in IonInfo filter
+	- Better colouring of ranges in plot area (now uses exact colour, not
+	  closest from fixed palette)
+	- Better error messages when failing to load data files
+	- Fix config file error message for new 3Depict installs
+	- Fix double message dialog when failing to load autosave
+	- Fix bug where dataset would appear rotated when changing view axis
+	for certain orientations.
+	- Fix various bugs in autosave dialog
+
+	Technical Bugfixes/Features:
+	- Implement quality assurance code : unit testing of most filters, add
+  	  release build checks.
+	- Cluster filter now can do morphology (ellipse fit), but user frontend incomplete.
+	- Many small memory leak fixes 
+	- Fix corner case bug in  cluster analysis filter where small data
+	  corruption could occur for very small datasets.
+	- Fix duplication of final range in rangefile
+	- Fix large memory leak in convex hull estimation.
+	- More strict checking for source dependencies in configure script
+	- Marginally faster data loading by removing unneeded shuffle
+	  operation
+	- More correct and strict rangefile checking
+	- Fix bogus error in debug mode when dragging mouse move rate slider to max
+	in pref. dialog
+	- Fix bogus error in debug mode when using smoothing filter on voxels
+	- Colourbar overlay no longer affected by scene lighting.
+	- Fix bug where editing a property, then switching cameras can cause
+	  hang in debug mode.
+
+* Sep 30, 2011  : 0.0.8
+	Features:
+	- Data files can now be monitored for changes, prompting
+	  auto-reloading of filter tree if file changes.
+	- Multiple autosave files (per running program copy) are now
+	 supported
+	- Annotation filter, including angle measurement, text annotation,
+	  and linear measurement.
+	
+	User Visible Bugfixes/Changes:
+	- Voxel smoothing option now works if smoothing kernel is larger
+	 than dataset (i.e. small bin numbers or large sigma values).
+	- Fix bug in density scaling (this was prev. included in some builds)
+	- Fix bug in refreshing code which would not cause tree to be
+	  loaded correctly in some filter combination cases (such as pos
+	  Load->pos Load)
+	- Fix preferences not respected when loading data files
+	- Fix text files not selectable by default from load menu
+	- Minor changes to ion info filter
+	- Fix segfault if loading text data files with too few columns
+
+	Technical Bugfixes/Features:
+	- wxWidgets 2.9 support (incl. source build now supported under OSX 10.7, in theory)
+	- Minor correctness improvements to configure script
+	- wxWidgets correctness fixes (assertion failures etc).
+	- Fix build for libpng 1.4 (infopp_NULL -> NULL)
+	- Respect user choice of system background in plot area
+
+* Jul 30, 2011  : 0.0.7
+	Features:
+	- Improved isosurface computation, incl. data filtering.
+	- Foreign language support
+		- German translation (de_DE).
+	- Ion Info filter : volume and composition estimation.
+
+	User Visible Bugfixes/Changes:
+	- Periodic update checks (Unmanaged systems only, ie OSX, windows).
+	- Improved window positioning on startup.
+	- Fix voxel state saving - now restores range selections.
+	- Fix cropping with camera coordinates incorrect behaviour 
+	  due to numeric instabilities.
+	- Fix range file reading under locales with non-english decimal
+	  separators.
+	- Better handling of relative paths in analysis packages.
+	- Ion transform filter now has "value transform" mode
+	- Faster voxel computations (caching + cache introspection)
+	- Improved crop controls  -- better reset behaviour.
+	- Fix pointcloud representation off-by-1/2 voxel pitch.
+	- Fix bug where zooming repeatedly in 2D plot caused hang
+	- Manually changing composition profile Cylinder axis respects
+	  lock axis magnitude setting.
+	- Fix off-by-one in tick computation for bounding box.
+	- Fix value setting when changing between clip objects
+	- OpenGL status is now checked upon startup.
+
+	Technical Bugfixes/Features:
+	- Rewrote plot code to allow for more extensible plotting.
+	- Improved checking of filter stream outut.
+		- Checking of block masks against emit.
+		- Other misc. checking.
+	- Depth sorting framework for improved transparency rendering.
+	- Removed many small memory leaks in parsing & UI.
+	- Improved numerical stability in some rotation operations
+
+
+* May 16, 2011  : 0.0.6
+	Features:
+	- Text data file loading
+	- Cameras can now be locked
+	- Add noise mode to transform filter (gaussian/white)
+
+	User Visible Bugfixes/Changes:
+	- Clustering algorithm now gives sensible results. 
+		- Previous implementation was wrong in several respects. Now
+		  should behave correctly, even on corner cases.
+		- Now performs bounds-in-sphere check for large queries,
+		  significantly improving the scaling characteristics of
+		  the search when using large bulk link radii
+	- Fix crash when moving range on empty data 
+	- Workaround for wxWidgets bug where recent file list >9 items
+	  would not load
+	- Fix bug in undo/redo where tree may not reset correctly if it
+	  contains range data after undo/redo op.
+
+
+	Technical Bugfixes/Features:
+	- Significantly more complex refresh system, now performs type analysis
+	  on tree to determine minimal subsections of tree to refresh. Now filters
+	  that cannot cache well will penalise the refresh system much less.
+	- Fix corner case bug in LFSR selection routines (power of two
+ 	  selection from same size array results in single duplicate).
+	- Fix opengl bug with isosurface draw which appears up under some
+	  video card/driver combinations, which lead to undefined video
+	  behaviour (bad glPopAttrib()/glEnd() ordering)
+	- Fix incorrect "loaded file" message if uninterpretable pos file
+	  loaded.
+	- Fix error in plot causing assertion error during mouseover
+	- Fix plot behaviour when all data == 0.
+
+
+* March 27, 2011  : 0.0.5
+	Features:
+	- Clustering algorithm
+		- Modification of methods of Stephenson et al.; this
+		includes Max. Sep algorithm. See manual for algorithm
+		description and parameter details
+	- Value shuffle mode in transform filter
+	- Mouse preferences for zoom and other controls
+	
+	User Visible Bugfixes/Changes:
+	- Add hint to resolution dialog to maintain aspect ratio in output plots by default
+	- Mac binary now distributed through packagemaker.
+
+	Technical Bugfixes/Features:
+	- Major code refactor; simplify code layout to aid further code development, speed compilation
+	- Fix "press shift to refresh" hint not working
+	- Fix voxels not reporting cache size
+	- Fix possible crash bug in double click plot when no plot visible.
+	- Filters now support named sections in property sets
+	- Disallow zero sized ion streams from rangefiles	
+	- Fix off-by-one bug in boundcube set func (can cause assertion error)
+	- Improve progress reporting for LSFR random selections
+
+
+* January 23, 2011  : 0.0.4
+	Features:
+	- Preferences dialog 
+		- User defined defaults for each filter 
+		- Window startup behaviour
+	- Postprocessing effects
+		- Interactive/fast depth buffer based cropping
+		- Analgyphic (oldschool coloured glasses) stereo
+	- Fullscreen now has "partial" and "really" fullscreen modes
+	- Ion downsampling filter now aware of ranges
+
+
+	User Visible Bugfixes/Changes:
+	- Improved parsing of points, so more styles of 3D point entry is 
+	allowed, eg when cutting/pasting from scilab
+	- Plot now zooms in X or Y only by double clicking below axis
+	- Some sections that were supposed to be paralellised, but were not
+	due to typos, now actually are.
+	- Fix bugs in state file writing for ion clipping (non saved var)
+	- Fix parallelism in KD tree building
+	- RDF was not paralellised, and could not be aborted
+	- Voxels no longer crash due to non-ion input
+	- Fix assertion errors when working with cylinder clipping tools
+	- Fix overlays hints being drawn "below" other points in the scene (disable
+	depth buffer, and draw last)
+
+	
+	Technical Bugfixes/Features:
+	- Improve compilation structure to simplify builds under all
+	platforms, particularly when using paralell or similar
+	- Various crash fixes due to re-entry bugs
+	- Fix a few unititalised variables (eg spat. analysis ->cache on plot)
+	- Implement "effects" framework to allow insertion of arbitrary openGL
+	calls using derived effects classes.
+	- Some internal refactoring to reduce code duplication (Filter
+	generation)
+
+* November 29, 2010 : 0.0.3
+	Features:
+	- Added range interaction on-plot
+	- Show marker for transform in mass-centre && boundbox mode. Allow
+	user to show or hide marker.
+	- Add drag and drop support for files
+	- Add on-screen colourbar  for ion colour
+	- Add axis drawing
+	- Added better error messages to XML file read
+	- Added RDF filter
+	- Add mode to lock cylinder magnitude during rotation
+	- Plot panning (hold shift key)
+	- Filters can report stepwise progress
+	- Improvements to manual.
+
+	User Visible Bugfixes:
+	- Better error messages for PNG/SVG plot save
+	- Fix bug in binding which caused object to move more than it should
+	 during 3D drag
+	- Set dialog default item focus
+	- Fix escape key not working in dialogs
+	- Switch ms-windows camera roll to use alt, rather than tab, because
+	ctrl+tab advances through controls, regardless of focus
+	- Remove buggy parallel code in rotation filter
+	- Fix transform filter behaviour to +origin after rotate
+	- Fix bugs in transform filter
+		- origin behaviour
+		- copying/stashing filter
+	- Fix bug whereby region colours in mass spectrum had green and blue
+	channels swapped (typo)
+	- Fix for crash when exporting images at high resolutions,
+	due to uncaught std::bad_alloc in conjunction with a missing return
+	after popping up dialog box
+	- Fix bug with loading multiple files at command line
+	- Fix bug in voxels where axis aligned data caused crash
+	- Fixed animation tiling 
+	- Ensure visibility reset actually resets to looking down +ve axis
+	- Change plot axis to show log_10 rather than just log() during log
+	mode
+	- Fixed interaction overlay drawing transparency
+
+	Technical Bugs/Features:
+	- Really fast "random" sampling.
+	- Fix memory leak where textures were continually reloaded at every
+	use due to bad name handling
+	- Fix incorrect usage of std::unique that was leading to assertion
+	failure
+	- Make conjugation in quaternions implicit for even faster quaternion
+	rotations.
+	- Fix bug in GenericLoadFloatFile, where the output vector was too
+	small for cols<4, resulting in memory overflow
+	- Fix bug in transform filter where data limits were required for
+	ion data sizes < 2
+	- Fixes for spatial analysis filter
+		- Catch and report errors to console, rather than crash.
+	- Fixes to plot bound get function with multiple plots
+		- Only returns visible plots now
+	- Fix aspect ratio not set during scene overlay draw
+	- Added export analysis package
+	- Added abort to rendering sequence
+	- Fix assertion error during refresh due to bad total filter count
+	after ion export
+	- Fix bug in BoundCube::setBounds where incorrect assignment for z
+	was made
+	- Valgrind out two crash bugs due to uninitialised memory
+
+
+
+* September 24, 2010: 0.0.2
+
+	- Files with arbitrary number of data channels can now be loaded,
+	but only one channel at a time can be analysed.
+	- Many functions are now openMP parallelised, and thus will
+	take advantage of multiple CPUs, if enabled at compile time
+	- Simple animation support (PNG sequences in an orbit)
+	- Voxelisation support; voxel data can be generated using the new
+	Voxelise filter. Supported visualisation methods are Isosurfaces and
+	point clouds.
+	- Undo/redo support : filter operations can now be undone, and redone.
+	- Windows build: we now have a windows build.
+	- Improved rangefile parsing. This should now work on every range file
+	I have ever met. If you have one where it does not work, let us know.
+	- Several filters have been improved to be easier to use (eg transform
+	filter)
+	- Some core functions have been optimised (eg rotation, composition
+	profiles), and should be significantly faster.
+	- Many bugfixes -- program should be significantly more stable, but
+	requires testing (please help us with this if you can )
+
+* August 11, 2010 : Released 0.0.1
+	- Initial release

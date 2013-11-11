@@ -124,6 +124,9 @@ template<class T> class Voxels
 	
 		bool (*callback)(bool);
 			
+
+		void localPaddedConvolve(long long ui,long long uj, long long uk, 
+			const Voxels<T> &kernel,Voxels<T> &result, unsigned int mode) const;
 	public:
 		//!Constructor.
 		Voxels();
@@ -1265,21 +1268,55 @@ void Voxels<T>::swap(Voxels<T> &kernel)
 	std::swap(minBound,kernel.minBound);
 }
 
+//Helper function for performing convolution
 template<class T>
-size_t Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &result,  size_t boundMode) const
+void Voxels<T>::localPaddedConvolve(long long ui,long long uj, long long uk, 
+			const Voxels<T> &kernel,Voxels<T> &result, unsigned int mode) const
 {
-	ASSERT(voxels.size());
-	ASSERT(callback);
+	ASSERT(result.binCount[0] == binCount[0] && result.binCount[1]==binCount[1]
+		&& result.binCount[2] == binCount[2]);
 
-	//Check the kernel can fit within this datasest
+	long long halfX,halfY,halfZ;
+#ifdef DEBUG
+	for(size_t i=0;i<3;i++)
+	{
+		ASSERT(kernel.binCount[i] &1);
+	}
+#endif
+	halfX=kernel.binCount[0]/2; halfY=kernel.binCount[1]/2;halfZ=kernel.binCount[2]/2;
+
+	T tally(0.0);
+	for(size_t ul=0; ul<kernel.binCount[0]; ul++)
+	{
+	for(size_t um=0; um<kernel.binCount[1]; um++)
+	{
+	for(size_t un=0; un<kernel.binCount[2]; un++)
+	{
+		tally+=getPaddedData(ui+ul-halfX,uj+um-halfY,uk+un-halfZ,mode)*
+				kernel.getData(ul,um,un);
+	}
+	}
+	}
+
+	result.setData(ui,uj,uk,tally);	
+}
+
+template<typename T>
+size_t Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &result,  size_t boundMode)  const
+{
+
+	//Check the kernel can fit within this est
 	size_t x,y,z;
 	kernel.getSize(x,y,z);
 	if(binCount[0] <x || binCount[1]< y || binCount[2] < z)
 		return 1;
+	
+	long long halfX,halfY,halfZ;
+	halfX=kernel.binCount[0]/2; halfY=kernel.binCount[1]/2;halfZ=kernel.binCount[2]/2;
 
 	//Loop through all of the voxel elements, setting the
 	//result voxels to the convolution of the template
-	//with the data 
+	//with the data
 
 
 	switch(boundMode)
@@ -1301,8 +1338,9 @@ size_t Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &result,  size_t b
 			if(result.resize(sX,sY,sZ,resultMinBound, resultMaxBound))
 				return VOXELS_OUT_OF_MEMORY;
 
-			//loop through each data element
+			//loop through each element
 			//Forgive the poor indenting, but the looping is very deep
+			//FIXME: there is a shift in the output when doing this?
 			for (size_t ui=0;ui<(size_t)(binCount[0]-x+1); ui++)
 			{
 			for (size_t uj=0;uj<binCount[1]-y+1; uj++)
@@ -1330,12 +1368,130 @@ size_t Voxels<T>::convolve(const Voxels<T> &kernel, Voxels<T> &result,  size_t b
 			}
 			
 			}
+			break;
+		}
+		case BOUND_MIRROR:
+		case BOUND_HOLD:
+		case BOUND_DERIV_HOLD:
+		{
+			//Calculate the bounding size of the resultant box
+			//Set up the result box
+			if(result.resize(binCount[0],binCount[1],binCount[2],minBound,maxBound))
+				return VOXELS_OUT_OF_MEMORY;
+
+			//loop through each element in the interior
+			//Forgive the poor indenting, but the looping is very deep
+			{
+			for (long long ui=halfX;ui<(size_t)(binCount[0]-x+1); ui++)
+			{
+			for (long long uj=halfY;uj<binCount[1]-y+1; uj++)
+			{
+			for (long long uk=halfZ;uk<binCount[2]-z+1; uk++)
+			{
+				T tally;
+				tally=T(0.0);
+
+				//Convolve this element with the kernel 
+				for(long long ul=0; ul<x; ul++)
+				{
+				for(long long um=0; um<y; um++)
+				{
+				for(long long un=0; un<z; un++)
+				{
+					tally+=(getData(ui+ ul-halfX,uj + um -halfY,uk + un -halfZ))*
+							kernel.getData(ul,um,un);
+				}
+				}
+				}
+
+				result.setData(ui,uj,uk,tally);	
+			}
+			}
+			}
+			}
+
+			//Lower Boundaries
+			//----------
+			//x- boundary
+			for(long long ui=0;ui<halfX;ui++)
+			{
+			for(long long uj=0;uj<binCount[1];uj++)
+			{
+			for(long long uk=0;uk<binCount[2];uk++)
+			{
+				localPaddedConvolve(ui,uj,uk,kernel,result,boundMode);
+			}
+			}
+			}
+			
+			//y- boundary
+			for(long long ui=0;ui<binCount[0];ui++)
+			{
+			for(long long uj=0;uj<halfY;uj++)
+			{
+			for(long long uk=0;uk<binCount[2];uk++)
+			{
+				localPaddedConvolve(ui,uj,uk,kernel,result,boundMode);
+			}
+			}
+			}
+			
+			//z- boundary
+			for(long long ui=0;ui<binCount[0];ui++)
+			{
+			for(long long uj=0;uj<binCount[1];uj++)
+			{
+			for(long long uk=0;uk<halfZ;uk++)
+			{
+				localPaddedConvolve(ui,uj,uk,kernel,result,boundMode);
+			}
+			}
+			}
+			//----------
+	
+			//Upper boundary
+			//----------
+			//x+ boundary
+			for(long long ui=binCount[0]-x+1;ui<binCount[0];ui++)
+			{
+			for(long long uj=halfY;uj<binCount[1];uj++)
+			{
+			for(long long uk=halfZ;uk<binCount[2];uk++)
+			{	
+				localPaddedConvolve(ui,uj,uk,kernel,result,boundMode);
+			}
+			}
+			}
+
+			//y+ boundary
+			for(long long ui=halfX;ui<binCount[0];ui++)
+			{
+			for(long long uj=binCount[1]-y+1;uj<binCount[1];uj++)
+			{
+			for(long long uk=halfZ;uk<binCount[2];uk++)
+			{
+				localPaddedConvolve(ui,uj,uk,kernel,result,boundMode);
+			}
+			}
+			}
+			
+			//z+ boundary
+			for(long long ui=halfX;ui<binCount[0];ui++)
+			{
+			for(long long uj=halfY;uj<binCount[1];uj++)
+			{
+			for(long long uk=binCount[2]-z+1;uk<binCount[2];uk++)
+			{
+				localPaddedConvolve(ui,uj,uk,kernel,result,boundMode);
+			}
+			}
+			}
+			//----------
+			
+
 
 			break;
 		}
-		case BOUND_HOLD:
-		case BOUND_DERIV_HOLD:
-		case BOUND_MIRROR:
 		default:
 			ASSERT(false);
 			return 2;

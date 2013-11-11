@@ -158,6 +158,8 @@ class SelectionBinding
 
 		//!True if the binding has modified the data
 		bool modified() const {return valModified;};
+
+		void resetModified() { valModified=false; }
 };
 
 class SelectionDevice
@@ -181,8 +183,11 @@ public:
 				unsigned int keyFlags,	SelectionBinding* &b);
 
 		bool getAvailBindings(const DrawableObj *d, std::vector<const SelectionBinding*> &b) const;
-		void getModifiedBindings(std::vector<std::pair<const Filter *,SelectionBinding> > &bindings);
 
+		void getModifiedBindings(std::vector<std::pair<const Filter *,SelectionBinding> > &bindings);
+		//!Return any devices that have been modified since their creation
+		void resetModifiedBindings() ;
+			
 		size_t getNumBindings() const { return bindingVec.size(); }
 };
 

@@ -30,23 +30,21 @@
 #endif
 #include "common/translation.h"
 
+#include "glDebug.h"
+
+#include <iostream>
+
+
+#include <cstdlib>
+
+using std::cerr;
+using std::endl;
 
 //TODO: FIXME: Orthogonal camera zooming is very slow, compared to 
 // perspective camera dolly. Check equations of motion for equivalence
 const float ORTHO_SPEED_HACK=1.05;
 
 
-//!Key types for property setting and getting via property grids
-enum
-{
-	KEY_LOOKAT_LOCK,
-	KEY_LOOKAT_ORIGIN,
-	KEY_LOOKAT_TARGET,
-	KEY_LOOKAT_UPDIRECTION,
-	KEY_LOOKAT_FOV,
-	KEY_LOOKAT_PROJECTIONMODE,
-	KEY_LOOKAT_ORTHOSCALE
-};
 
 
 
@@ -207,49 +205,6 @@ Point3D CameraLookAt::getTarget() const
 	return target;
 }
 
-void CameraLookAt::doPerspCalcs(float aspectRatio, const BoundCube &bc,bool loadIdentity) const
-{
-	ASSERT(projectionMode == PROJECTION_MODE_PERSPECTIVE);
-
-	glMatrixMode (GL_PROJECTION);
-	if(loadIdentity)
-		glLoadIdentity();
-
-	//As the far plane is dynamically computed, similarly 
-	//bring the near plane to a constant factor of the far plane
-	// that way, when the far plane comes in, so should the near plane
-	// this factor is only somewhat arbitrary, as it is based upon the
-	// number of significant figures in a 32 bit float
-	const float NEAR_PLANE_FACTOR=1.0f/10000.0f; 
-	
-	farPlane = 1.5f*bc.getMaxDistanceToBox(origin);
-	gluPerspective(fovAngle/2.0,aspectRatio,farPlane*NEAR_PLANE_FACTOR,farPlane);
-	glMatrixMode(GL_MODELVIEW);
-
-	glTranslatef(origin[0],origin[1],origin[2]);
-
-	//As gluperspective defaults to viewing down the 0,0,-1 axis
-	//we must rotate the scene such that the view direction
-	//is brought into line with the default view vector
-	Point3D rotVec,defaultDir(0,0,-1.0f);
-	float rotAngle;
-
-
-	rotVec = viewDirection.crossProd(defaultDir);
-
-
-	rotAngle = 180.0f/M_PI * viewDirection.angle(defaultDir);
-
-	glRotatef(-rotAngle,rotVec[0],rotVec[1],rotVec[2]);
-
-	//Camera roll
-	//Default "up" direction
-	defaultDir[2] = 1.0f;
-	rotVec = upDirection.crossProd(defaultDir);
-	rotAngle = 180.0f/M_PI * upDirection.angle(defaultDir);
-	glRotatef(-rotAngle, rotVec[0], rotVec[1],rotVec[2]);
-
-}
 
 void CameraLookAt::setOrigin(const Point3D &newOrigin)
 {
@@ -291,71 +246,25 @@ void CameraLookAt::apply(float aspect, const BoundCube &bc, bool loadIdentity) c
 	}
 
 	ASSERT(origin.sqrDist(target)>std::numeric_limits<float>::epsilon());
-	gluLookAt(origin[0],origin[1],origin[2],
-				target[0],target[1],target[2],
-				upDirection[0],upDirection[1],upDirection[2]);
-}
-
-void CameraLookAt::apply(float aspect,const BoundCube &b,bool loadIdentity,
-						float leftRestrict,float rightRestrict, 
-						float bottomRestrict,float topRestrict) const
-{
-	ASSERT(leftRestrict < rightRestrict);
-	ASSERT(bottomRestrict< topRestrict);
-
-	glMatrixMode (GL_PROJECTION);
 	if(loadIdentity)
 		glLoadIdentity();
+	lookAt();
+}
 
-	farPlane = 1.5*b.getMaxDistanceToBox(origin);
-	switch(projectionMode)
-	{
-
-		case PROJECTION_MODE_PERSPECTIVE:
-		{
-			float width,height;
-			height = tan(fovAngle/2.0*M_PI/180.0f)*nearPlane;
-			width= height*aspect;
-			
-
-			//Frustum uses eye coordinates.	
-			if(fabs(frustumDistortion) < std::numeric_limits<float>::epsilon())
-				glFrustum(leftRestrict*width,rightRestrict*width,bottomRestrict*height,
-								topRestrict*height,nearPlane,farPlane);
-			else
-			{
-				float workingDist=farPlane;//sqrtf((target-origin).sqrMag());
-				glFrustum(leftRestrict*width+frustumDistortion*nearPlane/workingDist,
-						rightRestrict*width+frustumDistortion*nearPlane/workingDist,
-						bottomRestrict*height,	topRestrict*height,nearPlane,farPlane);
-			}
-			break;
-		}
-		case PROJECTION_MODE_ORTHOGONAL:
-		{
-			float l,r,b,t;
-
-			//FIXME:I have no idea why it is 2x...AFAIK it should just be ONE.
-			//but this works, and one does not.
-			l = 2*leftRestrict*orthoScale*aspect;
-			r= 2*rightRestrict*orthoScale*aspect;
-			b= 2*bottomRestrict*orthoScale;
-			t = 2*topRestrict*orthoScale;
-
-			glOrtho(l,r,b,t,nearPlane,farPlane);
-			break;
-		}
-		default:
-			ASSERT(false);
-	}
-	
-	glMatrixMode(GL_MODELVIEW);
-
-	ASSERT(origin.sqrDist(target)>std::numeric_limits<float>::epsilon());
+void CameraLookAt::lookAt() const
+{
+	//This check should be valid, but it causes problems at startup on Wine,
+	// for which I cannot track down the cause
+#if defined(DEBUG) && !(defined(__WIN32__) || defined(__WIN64__))
+	GLint mode;
+	glGetIntegerv( GL_MATRIX_MODE, &mode);
+	ASSERT(mode == GL_MODELVIEW || mode == GL_MODELVIEW_MATRIX);
+#endif
+	//Set up the "look-at" matrix onto the current matrix mode.
+	// this causes the camera to 
 	gluLookAt(origin[0],origin[1],origin[2],
 				target[0],target[1],target[2],
 				upDirection[0],upDirection[1],upDirection[2]);
-	
 }
 
 void CameraLookAt::translate(float moveLR, float moveUD)
@@ -690,23 +599,23 @@ void CameraLookAt::getProperties(CameraProperties &p) const
 		s.push_back(std::make_pair(TRANS("Lock"),"0"));
 
 	type.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(KEY_LOOKAT_LOCK);
+	keys.push_back(CAMERA_KEY_LOOKAT_LOCK);
 
 	string ptStr;
 	stream_cast(ptStr,origin);
 	s.push_back(std::make_pair(TRANS("Origin"), ptStr));
 	type.push_back(PROPERTY_TYPE_POINT3D);
-	keys.push_back(KEY_LOOKAT_ORIGIN);
+	keys.push_back(CAMERA_KEY_LOOKAT_ORIGIN);
 	
 	stream_cast(ptStr,target);
 	s.push_back(std::make_pair(TRANS("Target"), ptStr));
 	type.push_back(PROPERTY_TYPE_POINT3D);
-	keys.push_back(KEY_LOOKAT_TARGET);
+	keys.push_back(CAMERA_KEY_LOOKAT_TARGET);
 	
 	stream_cast(ptStr,upDirection);
 	s.push_back(std::make_pair(TRANS("Up Dir."), ptStr));
 	type.push_back(PROPERTY_TYPE_POINT3D);
-	keys.push_back(KEY_LOOKAT_UPDIRECTION);
+	keys.push_back(CAMERA_KEY_LOOKAT_UPDIRECTION);
 
 	std::vector<std::pair<unsigned int,string> > choices;
 	string tmp;
@@ -720,7 +629,7 @@ void CameraLookAt::getProperties(CameraProperties &p) const
 	
 	s.push_back(std::make_pair(TRANS("Projection"), tmp));
 	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(KEY_LOOKAT_PROJECTIONMODE);
+	keys.push_back(CAMERA_KEY_LOOKAT_PROJECTIONMODE);
 
 	switch(projectionMode)
 	{
@@ -728,13 +637,13 @@ void CameraLookAt::getProperties(CameraProperties &p) const
 			stream_cast(tmp,fovAngle);
 			s.push_back(std::make_pair(TRANS("Field of View (deg)"), tmp));
 			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_LOOKAT_FOV);
+			keys.push_back(CAMERA_KEY_LOOKAT_FOV);
 			break;
 		case PROJECTION_MODE_ORTHOGONAL:
 			stream_cast(tmp,orthoScale);
 			s.push_back(std::make_pair(TRANS("View size"), tmp));
 			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(KEY_LOOKAT_ORTHOSCALE);
+			keys.push_back(CAMERA_KEY_LOOKAT_ORTHOSCALE);
 			break;
 
 	}
@@ -749,7 +658,7 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 
 	switch(key)
 	{
-		case KEY_LOOKAT_LOCK:
+		case CAMERA_KEY_LOOKAT_LOCK:
 		{
 			if(value == "1")
 				lock=true;
@@ -760,7 +669,7 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 
 			break;
 		}
-		case KEY_LOOKAT_ORIGIN:
+		case CAMERA_KEY_LOOKAT_ORIGIN:
 		{
 			Point3D newPt;
 			if(!newPt.parse(value))
@@ -774,7 +683,7 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 
 			break;
 		}
-		case KEY_LOOKAT_TARGET:
+		case CAMERA_KEY_LOOKAT_TARGET:
 		{
 			Point3D newPt;
 			if(!newPt.parse(value))
@@ -787,7 +696,7 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 
 			break;
 		}
-		case KEY_LOOKAT_UPDIRECTION:
+		case CAMERA_KEY_LOOKAT_UPDIRECTION:
 		{
 			Point3D newDir;
 			if(!newDir.parse(value))
@@ -804,7 +713,7 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 			recomputeUpDirection();
 			break;
 		}
-		case KEY_LOOKAT_FOV:
+		case CAMERA_KEY_LOOKAT_FOV:
 		{
 			float newFOV;
 			if(stream_cast(newFOV,value))
@@ -813,7 +722,7 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 			fovAngle=newFOV;
 			break;
 		}
-		case KEY_LOOKAT_PROJECTIONMODE:
+		case CAMERA_KEY_LOOKAT_PROJECTIONMODE:
 		{
 			size_t ltmp;
 			if(value == TRANS("Perspective"))
@@ -843,7 +752,7 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 			
 			break;
 		}
-		case KEY_LOOKAT_ORTHOSCALE:
+		case CAMERA_KEY_LOOKAT_ORTHOSCALE:
 		{
 			float newOrthoScale;
 			if(stream_cast(newOrthoScale,value))

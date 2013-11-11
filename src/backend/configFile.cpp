@@ -17,7 +17,7 @@
 */
 
 #include "configFile.h"
-#include "wxcommon.h"
+#include "wx/wxcommon.h"
 
 
 #include "backend/filters/allFilter.h"
@@ -44,9 +44,9 @@ using std::string;
 
 ConfigFile::ConfigFile() : configLoadOK(false), panelMode(CONFIG_PANELMODE_REMEMBER),
 	haveInitialAppSize(false), mouseZoomRatePercent(100),mouseMoveRatePercent(100),
-	allowOnline(true), allowOnlineVerCheck(true), leftRightSashPos(0),
+	wantStartupOrthoCam(false),allowOnline(true), allowOnlineVerCheck(true), leftRightSashPos(0),
 	topBottomSashPos(0),filterSashPos(0),plotListSashPos(0), haveMaxPoints(false),
-	maxPointsScene(0)
+	maxPointsScene(0), doWantStartupTips(true)
 { 
 }
 
@@ -157,7 +157,7 @@ unsigned int ConfigFile::read()
 	}
 
 	//Open the XML file again, but without DTD validation
-	doc = xmlCtxtReadFile(context, filename.c_str(), NULL, 0);
+	doc = xmlCtxtReadFile(context, filename.c_str(), NULL, XML_PARSE_NONET|XML_PARSE_NOENT);
 
 	if(!doc)
 		return CONFIG_ERR_NOFILE;
@@ -469,6 +469,28 @@ unsigned int ConfigFile::read()
 		nodePtr=nodeStack.top();
 		nodeStack.pop();
 
+		//have we seen a startup tip entry?
+		if(!XMLHelpFwdToElem(nodePtr,"startuptips"))
+		{
+			std::string str;
+			XMLGetAttrib(nodePtr,str,"value");
+
+			//Check if the user wants startup tips. If we cant understand this, then say no.
+			if(!boolStrDec(str,doWantStartupTips))
+				doWantStartupTips=false;
+		}
+		
+		//Does the user want, by default, an orthographic camera
+		if(!XMLHelpFwdToElem(nodePtr,"wantorthocam"))
+		{
+			std::string str;
+			XMLGetAttrib(nodePtr,str,"value");
+
+			//Check if the user wants ortho camera, if no idea, revert to not 
+			if(!boolStrDec(str,wantStartupOrthoCam))
+				wantStartupOrthoCam=false;
+		}
+
 
 nodeptrEndJump:
 		;
@@ -599,6 +621,9 @@ bool ConfigFile::write()
 
 	if(haveMaxPoints)
 		f << tabs(1) << "<maxdisplaypoints value=\"" << maxPointsScene << "\"/>" << endl;
+
+	f << tabs(1) << "<startuptips value=\"" << boolStrEnc(doWantStartupTips) << "\"/>" <<endl;
+	f << tabs(1) << "<wantorthocam value=\"" << boolStrEnc(wantStartupOrthoCam) << "\"/>" <<endl;
 
 	f << "</threeDepictconfig>" << endl;
 

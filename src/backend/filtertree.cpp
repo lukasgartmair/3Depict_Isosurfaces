@@ -33,6 +33,8 @@ enum
 };
 
 
+
+
 //Simple garbage collector for FilterTree::refresh
 // does not have to be efficient, as it is assumed that this is not a bottleneck
 class FilterRefreshCollector
@@ -239,16 +241,23 @@ void FilterTree::swap(FilterTree &other)
 
 const FilterTree &FilterTree::operator=(const FilterTree &orig)
 {
+	clear();
+
 	cacheStrategy=orig.cacheStrategy;
 	maxCachePercent=orig.maxCachePercent;
 
+	//Make a duplicate of the filter pointers from the other tree
+	// we will overwrite them in a second
 	filters=orig.filters;
 
 	//Don't grab a direct copy of the tree, but rather an cloned duplicate,
-	// without the internal cache data
+	// without the internal cache data.
+	// No need to free here, as the orig tree still has the pointers
 	for(tree<Filter *>::pre_order_iterator it=filters.begin();
 		it!=filters.end();++it)
+	{
 		(*it)=(*it)->cloneUncached();
+	}
 
 	return *this;
 }
@@ -328,7 +337,7 @@ void FilterTree::getAccumulatedPropagationMaps(map<Filter*, size_t> &emitTypes, 
 	//Build the  emit type map. This describes
 	//what possible types can be emitted at any point in the tree.
 	for(tree<Filter *>::iterator it=filters.begin_breadth_first();
-	it!=filters.end_breadth_first(); ++it)
+					it!=filters.end_breadth_first(); ++it)
 	{
 		//FIXME: HACK -- why does the BFS not terminate correctly?
 		if(!filters.is_valid(it))
@@ -360,6 +369,8 @@ void FilterTree::getAccumulatedPropagationMaps(map<Filter*, size_t> &emitTypes, 
 	//Build the accumulated block map;  this describes
 	//what types, if emitted, will NOT be propagated to the final output
 	//Nor affect any downstream filters
+
+	//TODO: Why not implement as  a reverse BFS?? Would be more efficient...
 	for(size_t ui=filters.max_depth()+1; ui; )
 	{
 		ui--;
@@ -448,6 +459,11 @@ void FilterTree::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propS
 		vector<tree<Filter *>::iterator > seedFilts;
 
 
+		//BUild a filter->iterator mapping
+		map<Filter *,tree<Filter *>::iterator > leafMap;
+		for(tree<Filter*>::leaf_iterator  it=filters.begin_leaf();
+				it!=filters.end_leaf(); ++it)
+			leafMap[*it]=it;
 
 
 		for(tree<Filter *>::iterator it=filters.begin_breadth_first();
@@ -460,6 +476,8 @@ void FilterTree::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propS
 			//Check to see if we have an insertion point above us.
 			//if so, we cannot press on, as we have determined that
 			//we must start higher up.
+			// (TODO : Just terminate child enumeration for BFS 
+			// for seed filter iterators, instead of this hack-ish method
 			bool isChildFilt;
 			isChildFilt=false;
 			for(unsigned int ui=0; ui<seedFilts.size(); ui++)
@@ -474,24 +492,15 @@ void FilterTree::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propS
 			if(isChildFilt)
 				continue;
 
-			//If we are a leaf, then we have to do our work, or nothing will be generated
+			//If we are a leaf, and not a child of a seed,
+			//then we have to do our work, or nothing will be generated
 			//so check that
-			bool isLeaf;
-			isLeaf=false;
-			for(tree<Filter*>::leaf_iterator  itJ= filters.begin_leaf();
-			itJ!=filters.end_leaf(); ++itJ)
-
+			if(leafMap.find(*it) != leafMap.end())
 			{
-				if(itJ == it)
-				{
-					isLeaf=true;
-					seedFilts.push_back(it);
-					break;
-				}
+				seedFilts.push_back(it);
+				continue;
 			}
 
-			if(isLeaf)
-				continue;
 
 			//Check to see if we can use these children as insertion
 			//points in the tree
@@ -582,11 +591,15 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 	//size to be non-zero)
 	inDataStack.push(curData);
 
+
+	std::set<Filter*> leafFilters;
+	for(tree<Filter*>::leaf_iterator  it=filters.begin_leaf();
+			it!=filters.end_leaf(); ++it)
+		leafFilters.insert(*it);
 	
+
 	//Keep redoing the refresh until the user stops fiddling with the filter tree.
-
 	vector<tree<Filter *>::iterator> baseTreeNodes;
-
 	baseTreeNodes.clear();
 
 	//Find the minimal starting locations for the refresh - eg. we can skip certain filters
@@ -614,6 +627,8 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 				!isChild(filters,baseTreeNodes[itPos],filtIt))
 				continue;
 
+			Filter *currentFilter;
+			currentFilter=*filtIt;
 
 			//Step 0 : Pop the cache until we reach our current level, 
 			//	delete any pointers that would otherwise be lost.
@@ -629,17 +644,19 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			//Step 1: Set up the progress system
 			//---
 			curProg.clock();
-			curProg.curFilter=*filtIt;	
+			curProg.curFilter=currentFilter;	
 			//---
-			
+		
+		
+
 			//Step 2: Check if we should cache this filter or not.
 			//Get the number of bytes that the filter expects to use
 			//---
 			unsigned long long cacheBytes;
 			if(inDataStack.empty())
-				cacheBytes=(*filtIt)->numBytesForCache(0);
+				cacheBytes=currentFilter->numBytesForCache(0);
 			else
-				cacheBytes=(*filtIt)->numBytesForCache(numElements(inDataStack.top()));
+				cacheBytes=currentFilter->numBytesForCache(numElements(inDataStack.top()));
 
 			if(cacheBytes != (unsigned long long)(-1))
 			{
@@ -648,16 +665,16 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 				switch(cacheStrategy)
 				{
 					case CACHE_NEVER:
-						(*filtIt)->setCaching(false);
+						currentFilter->setCaching(false);
 						break;
 					case CACHE_DEPTH_FIRST:
-						(*filtIt)->setCaching(cacheBytes/(1024*1024) < maxCachePercent*getAvailRAM());
+						currentFilter->setCaching(cacheBytes/(1024*1024) < maxCachePercent*getAvailRAM());
 						break;
 
 				}
 			}
 			else
-				(*filtIt)->setCaching(false);
+				currentFilter->setCaching(false);
 
 			//---
 
@@ -669,14 +686,29 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			//
 			(*callback)(false);
 
+			if(!currentFilter->haveCache())
+				currentFilter->clearConsole();
 
 			//Take the stack top, filter it and generate "curData"
-			errCode=(*filtIt)->refresh(inDataStack.top(),
-						curData,curProg,callback);
+			try
+			{
+
+				errCode=currentFilter->refresh(inDataStack.top(),
+							curData,curProg,callback);
+
+				//error codes above this value are reserved
+				ASSERT(errCode <=FILTERTREE_REFRESH_ERR_BEGIN);
+			}
+			catch(std::bad_alloc)
+			{
+				//Should catch bad mem cases in filter, wherever possible
+				WARN(false,"Memory exhausted during refresh");
+				errCode=FILTERTREE_REFRESH_ERR_MEM;
+			}
 
 #ifdef DEBUG
 			//Perform sanity checks on filter output
-			checkRefreshValidity(curData,*filtIt);
+			checkRefreshValidity(curData,currentFilter);
 			ASSERT(curProg.step == curProg.maxStep || errCode);
 #endif
 			//Ensure that (1) yield is called, regardless of what filter does
@@ -687,7 +719,7 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 
 			vector<SelectionDevice *> curDevices;
 			//Retrieve the user interaction "devices", and send them to the scene
-			(*filtIt)->getSelectionDevices(curDevices);
+			currentFilter->getSelectionDevices(curDevices);
 
 			//Add them to the total list of devices
 			for(size_t ui=0;ui<curDevices.size();ui++)
@@ -697,11 +729,11 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 
 			//Retrieve any console messages from the filter
 			vector<string> tmpMessages;
-			(*filtIt)->getConsoleStrings(tmpMessages);
+			currentFilter->getConsoleStrings(tmpMessages);
 			//Accumulate the messages
 			consoleMessages.reserve(consoleMessages.size()+tmpMessages.size());
 			for(size_t ui=0;ui<tmpMessages.size();ui++)
-				consoleMessages.push_back(make_pair(*filtIt,tmpMessages[ui]));
+				consoleMessages.push_back(make_pair(currentFilter,tmpMessages[ui]));
 
 			//check for any error in filter update (including user abort)
 			if(errCode)
@@ -728,44 +760,29 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 
 
 			//Update the filter output statistics, eg num objects of each type output 
-			(*filtIt)->updateOutputInfo(curData);
+			currentFilter->updateOutputInfo(curData);
 			
 			
-			//is this node a leaf of the tree?
-			bool isLeaf;
-			isLeaf=false;
-			for(tree<Filter *>::leaf_iterator leafIt=filters.begin_leaf();
-					leafIt!=filters.end_leaf(); ++leafIt)
+			
+			//If this is not a leaf, keep track of intermediary pointers
+			if(leafFilters.find(currentFilter)== leafFilters.end())
 			{
-				if(*leafIt == *filtIt)
-				{
-					isLeaf=true;
-					break;
-				}
+				//The filter will generate a list of new pointers. If any out-going data 
+				//streams are un-cached, track them
+				refreshCollector.trackPointers(curData);
+				
+				//Put this in the intermediary stack, 
+				//so it is available for any other children at this leve.
+				inDataStack.push(curData);
 			}
-	
-			if(curData.size())
+			else if(curData.size())
 			{
-				//If this is not a leaf, keep track of intermediary pointers
-				if(!isLeaf)
-				{
-					//The filter will generate a list of new pointers. If any out-going data 
-					//streams are un-cached, track them
-					refreshCollector.trackPointers(curData);
-					
-					//Put this in the intermediary stack, 
-					//so it is available for any other children at this leve.
-					inDataStack.push(curData);
-				}
-				else
-				{
-					//The filter has created an output. Record it for passing to updateScene
-					outData.push_back(make_pair(*filtIt,curData));
-					refreshCollector.forgetPointers(curData);
-				}	
-				//Cur data is recorded either in outDta or on the data stack
-				curData.clear();
-			}
+				//The filter has created an output. Record it for passing to updateScene
+				outData.push_back(make_pair(currentFilter,curData));
+				refreshCollector.forgetPointers(curData);
+			}	
+			//Cur data is recorded either in outDta or on the data stack
+			curData.clear();
 			//---
 			
 		}
@@ -818,6 +835,18 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 
 
 	return 0;
+}
+
+string FilterTree::getRefreshErrString(unsigned int code)
+{
+	ASSERT(code >FILTERTREE_REFRESH_ERR_BEGIN && code < FILTERTREE_REFRESH_ERR_ENUM_END);
+	const char *REFRESH_ERR_STRINGS[] = {"",
+		"Insufficient memory for refresh",
+		};
+	
+	unsigned int delta=code-FILTERTREE_REFRESH_ERR_BEGIN;
+
+	return string(REFRESH_ERR_STRINGS[delta]);
 }
 
 bool FilterTree::setFilterProperty(Filter *targetFilter, unsigned int key,
@@ -1167,16 +1196,7 @@ void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> &c
 	//Filter outputs should have a parent that exists somewhere in the tree
 	for(size_t ui=0;ui<curData.size();ui++)
 	{
-		bool found;
-		found=false;
-		for(tree<Filter * >::iterator it=filters.begin(); 
-							it!=filters.end(); ++it)
-		{
-			if(*it == curData[ui]->parent)
-				found=true;
-		}
-
-		ASSERT(found);
+		ASSERT(contains(curData[ui]->parent));
 	}
 
 	//Filter outputs should
@@ -1191,11 +1211,16 @@ void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> &c
 
 
 	//Filter outputs should
+	//	- only use valid stream types
 	//	- Not contain zero sized point streams
 	for(size_t ui=0; ui<curData.size(); ui++)
 	{
 		const FilterStreamData *f;
 		f=(curData[ui]);
+
+		//No stream type mask bits, other than valid stream types,  should be set
+		ASSERT( (f->getStreamType() & ~( STREAMTYPE_MASK_ALL)) == 0);
+
 
 		switch(f->getStreamType())
 		{
@@ -1303,10 +1328,11 @@ void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> &c
 				{
 					ASSERT(devices[uk]->getNumBindings());
 				}
+				
+				//Drawables with selection devices cannot be cached
+				ASSERT(!p->cached);
 			}
 		
-			//Drawables with selection devices cannot be cached
-			ASSERT(!p->cached);
 		}
 
 	}
@@ -1324,73 +1350,20 @@ void FilterTree::safeDeleteFilterList( std::list<FILTER_OUTPUT_DATA> &outData,
 		//Note the No-op at the loop iterator. this is needed so we can safely .erase()
 		for(size_t ui=0;ui<it->second.size();ui++)
 		{
+			const FilterStreamData* f;
+			f= it->second[ui];
 			//Don't operate on streams if we have a nonzero mask, and the (mask is active XOR mask mode)
 			//NOTE: the XOR flips the action of the mask. if maskprevents is true, then this logical switch
 			//prevents the masked item from being deleted. If not, ONLY the masked types are deleted.
 			//In any case, a zero mask makes this whole thing not do anything, and everything gets deleted.
-			if(typeMask && ( ((bool)(it->second[ui]->getStreamType() & typeMask)) ^ !maskPrevents)) 
+			if(typeMask && ( ((bool)(f->getStreamType() & typeMask)) ^ !maskPrevents)) 
 				continue;
 			
-			switch(it->second[ui]->getStreamType())
-			{
-				case STREAM_TYPE_IONS:
-				{
-					//Iterator points to vector. Typecast elements in vector to IonStreamData 
-					const IonStreamData *ionData;
-					ionData=((const IonStreamData *)(it->second[ui]));
-					
-					ASSERT(ionData->cached == 1 ||
-						ionData->cached == 0);
-
-					if(!ionData->cached)
-						delete ionData;
-					break;
-				}
-				case STREAM_TYPE_PLOT:
-				{
-					const PlotStreamData *plotData;
-					plotData=((PlotStreamData *)it->second[ui]);
-
-					ASSERT(plotData->cached == 1 ||
-						plotData->cached == 0);
-					if(!plotData->cached)
-						delete plotData;
-					
-					break;
-				}
-				case STREAM_TYPE_DRAW:
-				{
-					DrawStreamData *drawData;
-					drawData=((DrawStreamData *)it->second[ui]);
-					
-					ASSERT(drawData->cached == 1 ||
-						drawData->cached == 0);
-					if(drawData->cached)
-						delete drawData;
-					break;
-				}
-				case STREAM_TYPE_RANGE:
-					//Range data has no allocated pointer
-					break;
-				case STREAM_TYPE_VOXEL:
-				{
-					//Iterator points to vector. Typecast elements in vector to VoxelStreamData 
-					const VoxelStreamData *voxelData;
-					voxelData=((const VoxelStreamData *)(it->second[ui]));
-					
-					ASSERT(voxelData->cached == 1 ||
-						voxelData->cached == 0);
-
-					if(!voxelData->cached)
-						delete voxelData;
-					break;
-				}
-				default:
-					ASSERT(false);
-			}
-		
+			//Output data is uncached - delete it
+			if(!f->cached)
+				delete f;
 	
-			std::swap((it->second[ui]),it->second.back());
+			std::swap(f,it->second.back());
 			it->second.pop_back();
 		}
 
@@ -1485,7 +1458,7 @@ void FilterTree::addFilterTree(FilterTree &f, const Filter *parent)
 
 bool FilterTree::copyFilter(Filter *toCopy,const Filter *newParent)
 {
-	//Copy a filter child to a filter child
+	//Copy a filter child to a different filter child
 	if(newParent)
 	{
 
@@ -1493,65 +1466,41 @@ bool FilterTree::copyFilter(Filter *toCopy,const Filter *newParent)
 			!(toCopy==newParent));
 
 		//Look for both newparent and sibling iterators	
-		bool found[2] = {false,false};
 		tree<Filter *>::iterator moveFilterIt,parenterIt;
-		for(tree<Filter * >::iterator it=filters.begin(); 
-							it!=filters.end(); ++it)
-		{
-			if(!found[0])
-			{
-				if(*it == toCopy)
-				{
-					moveFilterIt=it;
-					found[0]=true;
-				}
-			}
-			if(!found[1])
-			{
-				if(*it == newParent)
-				{
-					parenterIt=it;
-					found[1]=true;
-				}
-			}
-
-			if(found[0] && found[1] )
-				break;
-		}
+		moveFilterIt=std::find(filters.begin(),filters.end(),toCopy);
+		parenterIt=std::find(filters.begin(),filters.end(),newParent);
 		
-		ASSERT(found[0] && found[1] );
+		ASSERT(moveFilterIt !=filters.end() &&
+			parenterIt != filters.end());
 
-		//ensure that this is actually a parent-child relationship
-		for(tree<Filter *>::pre_order_iterator it(moveFilterIt);it!= filters.end(); ++it)
-		{
-			//Do not traverse siblings
-			if(filters.depth(moveFilterIt) >= filters.depth(it) && it!=moveFilterIt )
-				break;
-			
-			if(it == parenterIt)
-				return false;
-		}
+		if(parenterIt == moveFilterIt)
+			return false;
+
+
+
+
+		//ensure that we are not trying to move a parent filter to one
+		// of its children
+		if(isChild(filters,moveFilterIt,parenterIt))
+			return false;
 		
 		//Move the "tomove" filter, and its children to be a child of the
 		//newly nominated parent (DoCS* "adoption" you might say.) 
 		//*DoCs : Department of Child Services (bad taste .au joke)
-		if(parenterIt != moveFilterIt)
-		{
-			//Create a temporary tree and copy the contents into here
-			tree<Filter *> tmpTree;
-			tree<Filter *>::iterator node= tmpTree.insert(tmpTree.begin(),0);
-			tmpTree.replace(node,moveFilterIt); //Note this doesn't kill the original
-			
-			//Replace each of the filters in the temporary_tree with a clone of the original
-			for(tree<Filter*>::iterator it=tmpTree.begin();it!=tmpTree.end(); ++it)
-				*it= (*it)->cloneUncached();
+		//Create a temporary tree and copy the contents into here
+		tree<Filter *> tmpTree;
+		tree<Filter *>::iterator node= tmpTree.insert(tmpTree.begin(),0);
+		tmpTree.replace(node,moveFilterIt); //Note this doesn't kill the original
+		
+		//Replace each of the filters in the temporary_tree with a clone of the original
+		for(tree<Filter*>::iterator it=tmpTree.begin();it!=tmpTree.end(); ++it)
+			*it= (*it)->cloneUncached();
 
-			//In the original tree, create a new null node
-			node = filters.append_child(parenterIt,0);
-			//Replace the node with the tmpTree's contents
-			filters.replace(node,tmpTree.begin()); 
+		//In the original tree, create a new null node
+		node = filters.append_child(parenterIt,0);
+		//Replace the node with the tmpTree's contents
+		filters.replace(node,tmpTree.begin()); 
 
-		}
 		
 		initFilterTree();
 		return parenterIt != moveFilterIt;
@@ -1685,16 +1634,7 @@ bool FilterTree::reparentFilter(Filter *f, const Filter *newParent)
 	//If we are moving to the base, then that is a special case.
 	if(!newParent)
 	{
-		for(tree<Filter * >::iterator it=filters.begin(); 
-							it!=filters.end(); ++it)
-		{
-			if(*it == f)
-			{
-				moveFilterIt=it;
-				break;
-			}
-		}
-
+		moveFilterIt=std::find(filters.begin(),filters.end(),f);
 	}
 	else
 	{
@@ -1832,6 +1772,31 @@ void FilterTree::clearCacheByType(unsigned int type)
 	{
 		if((*it)->getType() == type)
 			clearCache(*it);
+	}
+
+}
+
+
+		
+void FilterTree::modifyRangeFiles(const map<const RangeFile *, const RangeFile *> &toModify)
+{
+	for(tree<Filter *>::iterator it=filters.begin();it!=filters.end();++it)
+	{
+		//TODO: refactor to introduce filter->hasRange () ? 
+		if((*it)->getType() != FILTER_TYPE_RANGEFILE)
+			continue;
+
+		RangeFileFilter *rngFilt=(RangeFileFilter* )(*it);
+
+		const RangeFile *r = &(rngFilt->getRange());
+		if( toModify.find(r) == toModify.end() )
+			continue;
+		
+		const RangeFile *modRng =toModify.at(r);
+		rngFilt->setRangeData(*modRng);
+
+		//Erase all downstream objects' caches
+		clearCache(rngFilt,true);
 	}
 
 }

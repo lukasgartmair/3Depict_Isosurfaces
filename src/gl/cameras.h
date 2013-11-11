@@ -44,6 +44,18 @@ enum
 	PROJECTION_MODE_ENUM_END //not a valid mode.
 };
 
+//!Key types for property setting and getting properties
+enum
+{
+	CAMERA_KEY_LOOKAT_LOCK,
+	CAMERA_KEY_LOOKAT_ORIGIN,
+	CAMERA_KEY_LOOKAT_TARGET,
+	CAMERA_KEY_LOOKAT_UPDIRECTION,
+	CAMERA_KEY_LOOKAT_FOV,
+	CAMERA_KEY_LOOKAT_PROJECTIONMODE,
+	CAMERA_KEY_LOOKAT_ORTHOSCALE
+};
+
 class CameraProperties 
 {
 	public:
@@ -100,6 +112,8 @@ class Camera
 
 		//!return the projection mode
 		unsigned int getProjectionMode() const{ return projectionMode;};
+
+		float getOrthoScale() const { return orthoScale; }
 		
 		//!Set the camera's position
 		virtual void setOrigin(const Point3D &);
@@ -133,10 +147,6 @@ class Camera
 		//!Applies the camera settings to openGL. Ensures the far planes
 		//is set to make the whole scene visible
 		virtual void apply(float outputRatio,const BoundCube &b,bool loadIdentity=true) const=0;
-		//!Applies the camera settings to openGL, restricting the viewport (range (-1, 1))
-		virtual void apply(float outputRatio,const BoundCube &b,bool loadIdentity,
-						float leftRestrict,float rightRestrict, 
-						float bottomRestrict, float topRestrict) const=0;
 		//!Ensures that the given boundingbox should look nice, and be visible
 		virtual void ensureVisible(const BoundCube &b, unsigned int face=3)=0;
 
@@ -175,9 +185,6 @@ class CameraLookAt : public Camera
 		//!Distort to the viewing frustum. (eg for stero) ( a frustum is a rectangular pyramid with the top cut off)
 		float frustumDistortion;
 
-		//!Do the perspective calculations
-		void doPerspCalcs(float aspect,const BoundCube &bc,bool loadIdentity) const;
-	
 	public:
 		//!Constructor
 		CameraLookAt();
@@ -198,9 +205,13 @@ class CameraLookAt : public Camera
 		//!Get the camera's FOV angle (full angle across)
 		float getFOV() const {return fovAngle;}
 
+		float getNearPlane() const { return nearPlane; }
+
 		//!Applies the view transform 
 		void apply(float outAspect, const BoundCube &boundCube,bool loadIdentity=true) const;
-		
+	
+		//!Only apply the look-at opengl transform
+		void lookAt() const;
 		//!Do a forwards "dolly",where the camera moves along its viewing axis
 		void forwardsDolly(float dollyAmount);
 
@@ -244,10 +255,6 @@ class CameraLookAt : public Camera
 		//!Read the state of the camera
 		bool readState(xmlNodePtr nodePtr) ;
 		
-		//!Apply, restricting viewport to subresgion	
-		virtual void apply(float outputRatio,const BoundCube &b,bool loadIdentity,
-						float leftRestrict,float rightRestrict, 
-						float topRestrict, float bottomRestrict) const;
 
 		float getViewWidth(float depth) const;
 

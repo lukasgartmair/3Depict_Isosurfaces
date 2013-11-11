@@ -32,7 +32,7 @@
 #include <wx/filename.h>
 #include "common/translation.h"
 #include "common/stringFuncs.h"
-#include "wxcomponents.h"
+#include "wx/wxcomponents.h"
 
 enum
 {
@@ -743,7 +743,7 @@ void ExportAnimationDialog::OnFilterGridCellEditorShow(wxGridEvent &event)
 		{
 			//Create and show the string keyframe input dialog
 			StringKeyFrameDialog *sd = new StringKeyFrameDialog(this,
-					wxID_ANY,_(""));
+					wxID_ANY,wxT(""));
 
 			if(sd->ShowModal() != wxID_OK)
 			{
@@ -1031,7 +1031,7 @@ void ExportAnimationDialog::OnBtnResolution(wxCommandEvent &event)
 {
 	ResolutionDialog *r = new ResolutionDialog(this,wxID_ANY,wxT("Choose Resolution"));
 
-	r->setRes(imageWidth,imageHeight);
+	r->setRes(imageWidth,imageHeight,true);
 
 	if(r->ShowModal() != wxID_OK)
 	{

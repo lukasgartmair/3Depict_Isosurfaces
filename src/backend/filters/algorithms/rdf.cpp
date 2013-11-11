@@ -18,7 +18,7 @@
 
 #include "rdf.h"
 
-#include "filterCommon.h"
+#include "../filterCommon.h"
 
 using std::vector;
 

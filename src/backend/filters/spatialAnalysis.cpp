@@ -19,10 +19,10 @@
 
 
 
-#include "rdf.h"
+#include "algorithms/rdf.h"
 #include "geometryHelpers.h"
 #include "filterCommon.h"
-
+#include "algorithms/binomial.h"
 
 
 enum
@@ -41,7 +41,14 @@ enum
 	KEY_ENABLE_TARGET,
 	KEY_ORIGIN,
 	KEY_NORMAL,
-	KEY_RADIUS
+	KEY_RADIUS,
+	KEY_NUMIONS,
+	KEY_SHOW_BINOM_FREQ,
+	KEY_SHOW_BINOM_NORM_FREQ,
+	KEY_SHOW_BINOM_THEOR_FREQ,
+	KEY_SHOW_BINOM_3D_GRID,
+	KEY_BINOMIAL_MAX_ASPECT,
+	KEY_BINOMIAL_EXTRUDE_DIR,
 };
 
 enum {
@@ -49,6 +56,7 @@ enum {
 	ALGORITHM_DENSITY_FILTER, //Local density filtering
 	ALGORITHM_RDF, //Radial Distribution Function
 	ALGORITHM_AXIAL_DF, //Axial Distribution Function (aka atomvicinity, sdm, 1D rdf)
+	ALGORITHM_BINOMIAL, //Binomial block method for statistical randomness testing
 	ALGORITHM_ENUM_END,
 };
 
@@ -62,7 +70,10 @@ enum{
 enum
 {
 	ABORT_ERR=1,
+	ERR_BINOMIAL_NO_MEM,
+	ERR_BINOMIAL_BIN_FAIL,
 	INSUFFICIENT_SIZE_ERR,
+	SPAT_ERR_END_OF_ENUM,
 };
 // == NN analysis filter ==
 
@@ -72,17 +83,19 @@ const char *SPATIAL_ALGORITHMS[] = {
 	NTRANS("Local Density"),
 	NTRANS("Density Filtering"),
 	NTRANS("Radial Distribution"),
-	NTRANS("Axial Distribution")
+	NTRANS("Axial Distribution"),
+	NTRANS("Binomial Distribution")
 	};
 
 const char *STOP_MODES[] = {
-	NTRANS("Fixed Neighbour Count"),
-	NTRANS("Fixed Radius")
+	NTRANS("Neighbour Count"),
+	NTRANS("Radius")
 };
 
 //Switch to determine if algorithms need range propagation or not
 const bool WANT_RANGE_PROPAGATION[] = { false, 
 					true,
+					false,
 					false,
 					false
 					};
@@ -123,6 +136,17 @@ SpatialAnalysisFilter::SpatialAnalysisFilter()
 	densityCutoff=1.0f;
 	keepDensityUpper=true;
 
+	//Binomial parameters
+	//--
+	numIonsSegment = 200;
+	showBinomialFrequencies=true;
+	showNormalisedBinomialFrequencies=true;
+	showTheoreticFrequencies=true;
+	extrusionDirection=0;
+	maxBlockAspect=2;
+	showGridOverlay=true;
+	//--
+
 	reductionDistance=distMax;
 
 	cacheOK=false;
@@ -150,7 +174,15 @@ Filter *SpatialAnalysisFilter::cloneUncached() const
 	
 	p->keepDensityUpper=keepDensityUpper;
 	p->densityCutoff=densityCutoff;
-
+	
+	p->numIonsSegment=numIonsSegment;
+	p->maxBlockAspect=maxBlockAspect;
+	p->binWidth=binWidth;
+	p->extrusionDirection=extrusionDirection;
+	p->showBinomialFrequencies=showBinomialFrequencies;
+	p->showNormalisedBinomialFrequencies=showNormalisedBinomialFrequencies;
+	p->showTheoreticFrequencies=showTheoreticFrequencies;
+	p->showGridOverlay=showGridOverlay;
 
 	//We are copying whether to cache or not,
 	//not the cache itself
@@ -246,40 +278,15 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 	//use the cached copy if we have it.
 	if(cacheOK)
 	{
-		for(unsigned int ui=0;ui<dataIn.size();ui++)
-		{
-			if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
-			{
-				//Only propagate ranges if we want range propagation
-				if(dataIn[ui]->getStreamType() !=STREAM_TYPE_RANGE
-					|| WANT_RANGE_PROPAGATION[algorithm])
-					getOut.push_back(dataIn[ui]);
-			}
-		}
-		for(unsigned int ui=0;ui<filterOutputs.size();ui++)
-			getOut.push_back(filterOutputs[ui]);
+		size_t mask=STREAM_TYPE_IONS;
+		if(WANT_RANGE_PROPAGATION[algorithm])
+			mask|=STREAM_TYPE_RANGE;
 
-
-		switch(algorithm)
-		{
-			case ALGORITHM_AXIAL_DF:
-			{
-				//Create the user interaction device required for the user
-				// to interact with the algorithm parameters 
-				// as this is not cached at this time
-				SelectionDevice *s;
-				DrawStreamData *d= new DrawStreamData;
-				d->parent=this;
-				d->cached=0;
-
-				createCylinder(d,s);
-				devices.push_back(s);
-				getOut.push_back(d);
-				break;
-			}
-			default:
-				;
-		}
+		//Propagate input streams as desired 
+		propagateStreams(dataIn,getOut,mask,true);
+	
+		//Propagate cached objects
+		propagateCache(getOut);
 		return 0;
 	}
 
@@ -290,12 +297,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 	//Nothing to do, but propagate inputs
 	if(!totalDataSize)
 	{
-		//Propagate any inputs that we don't normally block
-		for(size_t ui=0;ui<dataIn.size();ui++)
-		{
-			if(!(dataIn[ui]->getStreamType() & getRefreshBlockMask()))
-				getOut.push_back(dataIn[ui]);
-		}
+		propagateStreams(dataIn,getOut,getRefreshBlockMask());
 		return 0;
 	}
 
@@ -334,6 +336,10 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		case ALGORITHM_AXIAL_DF:
 			result=algorithmAxialDf(progress,callback,totalDataSize,
 					dataIn,getOut,rngF);
+			break;
+		case ALGORITHM_BINOMIAL:
+			result=algorithmBinomial(progress,callback,totalDataSize,
+						dataIn,getOut,rngF);
 			break;
 		default:
 			ASSERT(false);
@@ -424,10 +430,7 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			p.key=KEY_NUMBINS;
 			propertyList.addProperty(p,curGroup);
 
-			if(excludeSurface)
-				tmpStr="1";
-			else
-				tmpStr="0";
+			tmpStr=boolStrEnc(excludeSurface);
 
 			p.name=TRANS("Surface Remove");
 			p.data=tmpStr;
@@ -487,10 +490,7 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 				//once to set sources, once to set targets
 				for(unsigned int ui=0;ui<ionSourceEnabled.size();ui++)
 				{
-					if(ionSourceEnabled[ui])
-						sTmp="1";
-					else
-						sTmp="0";
+					sTmp=boolStrEnc(ionSourceEnabled[ui]);
 					p.name=ionNames[ui];
 					p.data=sTmp;
 					p.type=PROPERTY_TYPE_BOOL;
@@ -519,10 +519,7 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 				//once to set sources, once to set targets
 				for(unsigned int ui=0;ui<ionTargetEnabled.size();ui++)
 				{
-					if(ionTargetEnabled[ui])
-						sTmp="1";
-					else
-						sTmp="0";
+					sTmp=boolStrEnc(ionTargetEnabled[ui]);
 					p.name=ionNames[ui];
 					p.data=sTmp;
 					p.type=PROPERTY_TYPE_BOOL;
@@ -533,6 +530,8 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 				}
 
 			}
+	
+			propertyList.setGroupTitle(curGroup,TRANS("Alg. Params."));
 			break;
 		}	
 		case ALGORITHM_DENSITY_FILTER:
@@ -546,12 +545,8 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			p.key=KEY_CUTOFF;
 			propertyList.addProperty(p,curGroup);
 			
-			
-			if(keepDensityUpper)
-				tmpStr="1";
-			else
-				tmpStr="0";
-
+		
+			tmpStr=boolStrEnc(keepDensityUpper);
 			p.name=TRANS("Retain Upper");
 			p.data=tmpStr;
 			p.type=PROPERTY_TYPE_BOOL;
@@ -559,10 +554,14 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			p.key=KEY_RETAIN_UPPER;
 			propertyList.addProperty(p,curGroup);
 			
+			propertyList.setGroupTitle(curGroup,TRANS("Alg. Params."));
 			break;
 		}
 		case ALGORITHM_DENSITY:
+		{
+			propertyList.setGroupTitle(curGroup,TRANS("Alg. Params."));
 			break;
+		}
 		case ALGORITHM_AXIAL_DF:
 		{
 			stream_cast(tmpStr,numBins);
@@ -612,14 +611,92 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			p.type=PROPERTY_TYPE_POINT3D;
 			p.helpText=TRANS("Radius of cylinder");
 			propertyList.addProperty(p,curGroup);
+	
+			propertyList.setGroupTitle(curGroup,TRANS("Alg. Params."));
 			break;
 		}
+		case ALGORITHM_BINOMIAL:
+		{
+			//--
+			stream_cast(tmpStr,numIonsSegment);	
+			p.name=TRANS("Block size");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_INTEGER;
+			p.helpText=TRANS("Number of ions to use per block");
+			p.key=KEY_NUMIONS;
+			propertyList.addProperty(p,curGroup);
+			//--
+			
+			//--
+			stream_cast(tmpStr,maxBlockAspect);	
+			p.name=TRANS("Max Block Aspect");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_REAL;
+			p.helpText=TRANS("Maximum allowable block aspect ratio. Blocks above this aspect are discarded. Setting too high decreases correlation strength. Too low causes loss of statistical power.");
+			p.key=KEY_BINOMIAL_MAX_ASPECT;
+			propertyList.addProperty(p,curGroup);
+			//--
+			
+			//--
+			vector<pair<unsigned int, string> > choices;
+			choices.push_back(make_pair(1,"x"));	
+			choices.push_back(make_pair(2,"y"));	
+			choices.push_back(make_pair(0,"z"));	
+			
+			p.name=TRANS("Extrusion Direction");
+			p.data=choiceString(choices,extrusionDirection);
+			p.type=PROPERTY_TYPE_CHOICE;
+			p.helpText=TRANS("Direction in which blocks are extended during construction.");
+			p.key=KEY_BINOMIAL_EXTRUDE_DIR;
+			propertyList.addProperty(p,curGroup);
+			//--
+	
+			propertyList.setGroupTitle(curGroup,TRANS("Alg. Params."));
+			
+			curGroup++;
+	
+			p.name=TRANS("Plot Counts");
+			p.data=boolStrEnc(showBinomialFrequencies);
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Show the counts in the binomial histogram");
+			p.key=KEY_SHOW_BINOM_FREQ;
+			propertyList.addProperty(p,curGroup);
+
+			if(showBinomialFrequencies)
+			{
+				p.name=TRANS("Normalise");
+				p.data=boolStrEnc(showNormalisedBinomialFrequencies);
+				p.type=PROPERTY_TYPE_BOOL;
+				p.helpText=TRANS("Normalise the counts in the binomial histogram to a probability density function");
+				p.key=KEY_SHOW_BINOM_NORM_FREQ;
+				propertyList.addProperty(p,curGroup);
+
+				/* TODO: IMPLEMENT ME
+				p.name=TRANS("Expected Freq");
+				p.data=boolStrEnc(showTheoreticFrequencies);
+				p.type=PROPERTY_TYPE_BOOL;
+				p.helpText=TRANS("Normalise the counts in the binomial histogram to a probability density function");
+				p.key=KEY_SHOW_BINOM_THEOR_FREQ;
+				propertyList.addProperty(p,curGroup);
+				*/
 
 
+				p.name=TRANS("Display Grid");
+				p.data=boolStrEnc(showGridOverlay);
+				p.type=PROPERTY_TYPE_BOOL;
+				p.helpText="Show the extruded grid in the 3D view. This may be slow";
+				p.key=KEY_SHOW_BINOM_3D_GRID;
+				propertyList.addProperty(p,curGroup);
+
+			}
+
+			propertyList.setGroupTitle(curGroup,TRANS("View Options"));
+			break;	
+		}
 		default:
 			ASSERT(false);
 	}
-	propertyList.setGroupTitle(curGroup,TRANS("Alg. Params."));
+	
 	//---
 }
 
@@ -940,6 +1017,127 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 
 			return true;
 		}
+		case KEY_NUMIONS:
+		{
+			unsigned int ltmp;
+			if(stream_cast(ltmp,value))
+				return false;
+			
+			if(ltmp<=1)
+				return false;
+			
+			numIonsSegment=ltmp;
+			needUpdate=true;
+			clearCache();
+
+			break;
+		}
+		case KEY_SHOW_BINOM_FREQ:
+		{
+			string stripped=stripWhite(value);
+
+			if(!(stripped == "1"|| stripped == "0"))
+				return false;
+
+			bool lastVal=showBinomialFrequencies;
+			showBinomialFrequencies=(stripped=="1");
+
+			//if the result is different, the
+			//cache should be invalidated
+			if(lastVal!=showBinomialFrequencies)
+			{
+				needUpdate=true;
+				clearCache();
+			}
+			
+			break;
+		}
+		case KEY_SHOW_BINOM_NORM_FREQ:
+		{
+			string stripped=stripWhite(value);
+
+			if(!(stripped == "1"|| stripped == "0"))
+				return false;
+
+			bool lastVal=showNormalisedBinomialFrequencies;
+			showNormalisedBinomialFrequencies=(stripped=="1");
+
+			//if the result is different, the
+			//cache should be invalidated
+			if(lastVal!=showNormalisedBinomialFrequencies)
+			{
+				needUpdate=true;
+				clearCache();
+			}
+			
+			break;
+		}
+		case KEY_SHOW_BINOM_THEOR_FREQ:
+		{
+			bool lastVal=showTheoreticFrequencies;
+			
+			if(!boolStrDec(value,showTheoreticFrequencies))
+				return false;
+
+			//if the result is different, the
+			//cache should be invalidated
+			if(lastVal!=showTheoreticFrequencies)
+			{
+				needUpdate=true;
+				clearCache();
+			}
+			
+			break;
+		}
+		case KEY_BINOMIAL_MAX_ASPECT:
+		{
+			float ltmp;
+			if(stream_cast(ltmp,value))
+				return false;
+			
+			if(ltmp<=1)
+				return false;
+			
+			maxBlockAspect=ltmp;
+			needUpdate=true;
+			clearCache();
+
+			break;
+		}
+		case KEY_BINOMIAL_EXTRUDE_DIR:
+		{
+			map<string,unsigned int> choices;
+			choices["x"]=0;
+			choices["y"]=1;
+			choices["z"]=2;
+
+			map<string,unsigned int>::iterator it;
+			it=choices.find(value);
+			
+			if(it == choices.end())
+				return false;
+			
+			extrusionDirection=it->second;
+			needUpdate=true;
+			clearCache();
+			break;
+		}
+		case KEY_SHOW_BINOM_3D_GRID:
+		{
+			bool lastVal=showGridOverlay;
+			if(!boolStrDec(value,showGridOverlay))
+				return false;
+
+			//if the result is different, the
+			//cache should be invalidated
+			if(lastVal!=showGridOverlay)
+			{
+				needUpdate=true;
+				clearCache();
+			}
+			
+			break;
+		}
 		default:
 		{
 			ASSERT(haveRangeParent);
@@ -1022,6 +1220,10 @@ std::string  SpatialAnalysisFilter::getErrString(unsigned int code) const
 			return std::string(TRANS("Spatial analysis aborted by user"));
 		case INSUFFICIENT_SIZE_ERR:
 			return std::string(TRANS("Insufficient data to complete analysis."));
+		case ERR_BINOMIAL_BIN_FAIL:
+			return std::string(TRANS("Insufficient bins in histogram for analysis."));
+		case ERR_BINOMIAL_NO_MEM:
+			return std::string(TRANS("Insufficient memory for binomial. Reduce input size?"));
 		default:
 			ASSERT(false);
 
@@ -1032,7 +1234,8 @@ std::string  SpatialAnalysisFilter::getErrString(unsigned int code) const
 
 void SpatialAnalysisFilter::setUserString(const std::string &str)
 {
-	const bool ALGORITHM_HAS_PLOTS[] = { false,false,true,true};
+	//Which algorithms have plot outputs?
+	const bool ALGORITHM_HAS_PLOTS[] = { false,false,true,true,true};
 
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(ALGORITHM_HAS_PLOTS) == ALGORITHM_ENUM_END);
 
@@ -1061,6 +1264,8 @@ unsigned int SpatialAnalysisFilter::getRefreshEmitMask() const
 	{
 		case ALGORITHM_RDF:
 			return STREAM_TYPE_IONS | STREAM_TYPE_PLOT;
+		case ALGORITHM_BINOMIAL:
+			return STREAM_TYPE_PLOT | STREAM_TYPE_DRAW;
 		case ALGORITHM_AXIAL_DF:
 			return STREAM_TYPE_IONS | STREAM_TYPE_PLOT | STREAM_TYPE_DRAW;
 		default:
@@ -1093,6 +1298,20 @@ bool SpatialAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsi
 				<< "\" a=\"" << a << "\"/>" <<endl;
 			f << tabs(depth+1) << "<densitycutoff value=\""<<densityCutoff<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<keepdensityupper value=\""<<(int)keepDensityUpper<< "\"/>"  << endl;
+
+
+			//-- Binomial paramters ---
+			f << tabs(depth+1) << "<binomial numions=\""<<numIonsSegment<< "\" maxblockaspect=\"" 
+						<< maxBlockAspect << "\" extrusiondirection=\"" 
+						<< extrusionDirection << "\"/>"  << endl;
+			f << tabs(depth+1) << "<binomialdisplay freqs=\""<<(int)showBinomialFrequencies
+						<< "\" normalisedfreqs=\"" << (int)showNormalisedBinomialFrequencies
+						<< "\" theoreticfreqs=\""<< (int)showTheoreticFrequencies
+						<< "\" gridoverlay=\""<< (int)showGridOverlay 
+						<< "\"/>" << endl;
+
+			//--------------------------
+
 			
 			writeVectorsXML(f,"vectorparams",vectorParams,depth);
 			writeScalarsXML(f,"scalarparams",scalarParams,depth);
@@ -1168,16 +1387,12 @@ bool SpatialAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 		return false;
 	//===
 	
-	//Retreive exclude surface on/off
+	//Retrieve exclude surface on/off
 	//===
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"excludesurface","value"))
 		return false;
 	//check that new value makes sense 
-	if(tmpStr == "1")
-		excludeSurface=true;
-	else if( tmpStr == "0")
-		excludeSurface=false;
-	else
+	if(!boolStrDec(tmpStr,excludeSurface))
 		return false;
 	//===
 	
@@ -1208,23 +1423,85 @@ bool SpatialAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"keepdensityupper","value"))
 		return false;
 	//check that new value makes sense 
-	if(tmpStr == "1")
-		keepDensityUpper=true;
-	else if( tmpStr == "0")
-		keepDensityUpper=false;
-	else
+	if(!boolStrDec(tmpStr,keepDensityUpper))
 		return false;
 
 
-	//FIXME: Earlier versions of the state file <= 1441:adaa3a3daa80
+	//FIXME:COMPAT_BREAK : 3Depict <= 1796:5639f6d50732 does not contain
+	// this section
+	xmlNodePtr tmpNode;
+
+	tmpNode=nodePtr;
+	if(!XMLHelpFwdToElem(nodePtr,"binomial"))
+	{
+		unsigned int nSegment;
+		float maxAspect;
+
+		//Retrieve segmentation count
+		if(!XMLGetAttrib(nodePtr,nSegment,"numions"))
+			return false;
+		if(nSegment <= 1)
+			return false;
+		numIonsSegment=nSegment;
+
+
+		//Retrieve and verify aspect ratio
+		if(!XMLGetAttrib(nodePtr,maxAspect,"maxblockaspect"))
+			return false;
+
+		if(maxAspect<1.0f)
+			return false;
+		maxBlockAspect=maxAspect;
+
+		//Get the extrusion direction
+		unsigned int tmpExtr;
+		if(!XMLGetAttrib(nodePtr,tmpExtr,"extrusiondirection"))
+			return false;
+
+		if(tmpExtr >=3)
+			return false;
+		extrusionDirection=tmpExtr;
+
+
+		//Spin to binomial display
+		if(XMLHelpFwdToElem(nodePtr,"binomialdisplay"))
+			return false;
+
+
+		if(!XMLGetAttrib(nodePtr,tmpStr,"freqs"))
+			return false;
+
+		if(!boolStrDec(tmpStr,showBinomialFrequencies))
+			return false;
+		
+		if(!XMLGetAttrib(nodePtr,tmpStr,"normalisedfreqs"))
+			return false;
+		
+		if(!boolStrDec(tmpStr,showNormalisedBinomialFrequencies))
+			return false;
+		
+		if(!XMLGetAttrib(nodePtr,tmpStr,"theoreticfreqs"))
+			return false;
+		
+		if(!boolStrDec(tmpStr,showTheoreticFrequencies))
+			return false;
+
+
+	}
+	else
+		nodePtr=tmpNode;
+
+
+	//FIXME: COMPAT_BREAK : Earlier versions of the state file <= 1441:adaa3a3daa80
 	// do not contain this section, so we must be fault tolerant
 	// when we bin backwards compatability, do this one too.
-	xmlNodePtr tmpNode;
 
 	tmpNode=nodePtr;
 	if(!XMLHelpFwdToElem(nodePtr,"scalarparams"))
 		readScalarsXML(nodePtr,scalarParams);
-	nodePtr=tmpNode;
+	else
+		nodePtr=tmpNode;
+
 	if(!XMLHelpFwdToElem(nodePtr,"vectorparams"))
 		readVectorsXML(nodePtr,vectorParams);
 
@@ -2462,6 +2739,8 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 	progress.filterProgress=0;
 	progress.maxStep=4;
 
+	bool wantAbort=false;
+
 	//Ions inside the selected cylinder,
 	// which are to be used as source points for dist. function query
 	vector<IonHit> ionsInside;
@@ -2478,10 +2757,32 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 			{
 				const IonStreamData* d;
 				d=(const IonStreamData *)dataIn[ui];
-				cropHelp.runFilter(d->data,ionsInside);
+				size_t errCode;
+				errCode=cropHelp.runFilter(d->data,ionsInside);
+			
+				if(errCode == ERR_CROP_INSUFFICIENT_MEM)
+					return INSUFFICIENT_SIZE_ERR;
+				else if(errCode)
+				{
+					//If we fail, abort, but we should use
+					// the appropriate error code
+					ASSERT(errCode == ERR_CROP_CALLBACK_FAIL);
+					wantAbort=true;
+					break;
+				}
 			}
+
+			if(!(*callback)(false))
+			{
+				wantAbort=true;
+				break;
+			}
+		
 		}
 	}
+
+	if(wantAbort)
+		return ABORT_ERR;
 
 	//Now, the ions outside the targeting volume may be reduced 
 	vector<IonHit> ionsOutside;
@@ -2536,7 +2837,21 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 					vP,sP);
 
 			vector<IonHit> tmp;
-			cropHelp.runFilter(ionsOutside,tmp);
+			size_t errCode=cropHelp.runFilter(ionsOutside,tmp);
+
+			switch(errCode)
+			{
+				case 0:
+					break;
+				case ERR_CROP_INSUFFICIENT_MEM:
+					return INSUFFICIENT_SIZE_ERR;
+				case ERR_CROP_CALLBACK_FAIL:
+					return ABORT_ERR;
+				default: 
+					ASSERT(false);
+					return ABORT_ERR;
+
+			}
 			tmp.swap(ionsOutside);
 			break;
 		}
@@ -2611,24 +2926,28 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 
 	float binWidth;
 	//OK, so now we have two datasets that need to be analysed. Lets do it
+	unsigned int errCode;
+
+	bool histOK=false;
 	switch(stopMode)
 	{
 		case STOP_MODE_NEIGHBOUR:
 		{
-			unsigned int errCode;
-
 			Point3D axisNormal=vectorParams[1];
 			axisNormal.normalise();
 
 			errCode=generate1DAxialNNHist(src,tree,axisNormal, histogram,
 					binWidth,nnMax,numBins,&progress.filterProgress,callback);
 
+			//Remap the underlying function code ot that for this function
 			switch(errCode)
 			{
 				case 0:
+					histOK=true;
 					break;
 				case RDF_ERR_INSUFFICIENT_INPUT_POINTS:
 					consoleOutput.push_back(TRANS("Insufficient points to complete analysis"));
+					errCode=0;
 					break;
 				default:
 					ASSERT(false);
@@ -2637,75 +2956,71 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 		}
 		case STOP_MODE_RADIUS:
 		{
-			unsigned int errCode;
-
 			Point3D axisNormal=vectorParams[1];
 			axisNormal.normalise();
 
 			errCode=generate1DAxialDistHist(src,tree,axisNormal, histogram,
 					distMax,numBins,&progress.filterProgress,callback);
 
-			switch(errCode)
-			{
-				case 0:
-					break;
-				case RDF_ABORT_FAIL:
-					return  ABORT_ERR;
-				default:
-					ASSERT(false);
-			}
+			histOK = (errCode !=0);
 			break;
 		}
 		default:
 			ASSERT(false);
 	}
 
-
-	PlotStreamData *plotData = new PlotStreamData;
-
-	plotData->plotMode=PLOT_MODE_1D;
-	plotData->index=0;
-	plotData->parent=this;
-	plotData->xLabel=TRANS("Axial Distance");
-	plotData->yLabel=TRANS("Count");
-	plotData->dataLabel=getUserString() + TRANS(" 1D Dist. Func.");
-
-	plotData->r=r;
-	plotData->g=g;
-	plotData->b=b;
-	plotData->xyData.resize(numBins);
-
-	for(unsigned int uj=0;uj<numBins;uj++)
+	if(errCode)
 	{
-		float dist;
-		switch(stopMode)
+		delete[] histogram;
+		return errCode;
+	}
+
+	if(histOK)
+	{
+		PlotStreamData *plotData = new PlotStreamData;
+
+		plotData->plotMode=PLOT_MODE_1D;
+		plotData->index=0;
+		plotData->parent=this;
+		plotData->xLabel=TRANS("Axial Distance");
+		plotData->yLabel=TRANS("Count");
+		plotData->dataLabel=getUserString() + TRANS(" 1D Dist. Func.");
+
+		plotData->r=r;
+		plotData->g=g;
+		plotData->b=b;
+		plotData->xyData.resize(numBins);
+
+		for(unsigned int uj=0;uj<numBins;uj++)
 		{
-			case STOP_MODE_RADIUS:
-				dist = ((float)uj - (float)numBins/2.0f)/(float)numBins*distMax*2.0;
-				break;
-			case STOP_MODE_NEIGHBOUR:
-				dist= (float)uj*binWidth;
-				break;
-			default:
-				ASSERT(false);
+			float dist;
+			switch(stopMode)
+			{
+				case STOP_MODE_RADIUS:
+					dist = ((float)uj - (float)numBins/2.0f)/(float)numBins*distMax*2.0;
+					break;
+				case STOP_MODE_NEIGHBOUR:
+					dist= (float)uj*binWidth;
+					break;
+				default:
+					ASSERT(false);
+			}
+			plotData->xyData[uj] = std::make_pair(dist,
+					histogram[uj]);
 		}
-		plotData->xyData[uj] = std::make_pair(dist,
-				histogram[uj]);
+
+		if(cache)
+		{
+			plotData->cached=1;
+			filterOutputs.push_back(plotData);
+			cacheOK=true;
+		}
+		else
+			plotData->cached=0;	
+		getOut.push_back(plotData);
 	}
 
 	delete[] histogram;
-	
-
-	if(cache)
-	{
-		plotData->cached=1;
-		filterOutputs.push_back(plotData);
-		cacheOK=true;
-	}
-	else
-		plotData->cached=0;	
-	getOut.push_back(plotData);
-
 
 	//Propagate non-ion/range data
 	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
@@ -2736,11 +3051,286 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 	return 0;
 }
 
+size_t SpatialAnalysisFilter::algorithmBinomial(ProgressData &progress, 
+		bool (*callback)(bool), size_t totalDataSize, 
+		const vector<const FilterStreamData *>  &dataIn, 
+		vector<const FilterStreamData * > &getOut,const RangeFile *rngF)
+{
+	vector<IonHit> ions;
+
+	progress.step=1;
+	progress.stepName=TRANS("Collate");
+	progress.filterProgress=0;
+	progress.maxStep=2;
+
+	//Merge the ions form the incoming streams
+	Filter::collateIons(dataIn,ions,progress,callback,totalDataSize);
+
+	//Tell user we are on next step
+	progress.step++;
+	progress.stepName=TRANS("Binomial");
+	progress.filterProgress=0;
+	(*callback)(true);
+
+	size_t errCode;
+
+	SEGMENT_OPTION segmentOpts;
+
+	segmentOpts.nIons=numIonsSegment;
+	segmentOpts.strategy=BINOMIAL_SEGMENT_AUTO_BRICK;
+	segmentOpts.extrusionDirection=extrusionDirection;
+	segmentOpts.extrudeMaxRatio=maxBlockAspect;
+
+	vector<GRID_ENTRY> gridEntries;
+
+	vector<size_t> selectedIons;
+
+	for(size_t ui=0;ui<ionSourceEnabled.size();ui++)
+	{
+		if(ionSourceEnabled[ui])
+			selectedIons.push_back(ui);
+	}
+
+
+	errCode=countBinnedIons(ions,rngF,selectedIons,segmentOpts,gridEntries);
+
+	switch(errCode)
+	{
+		case 0:
+			break;
+		case BINOMIAL_NO_MEM:
+			return ERR_BINOMIAL_NO_MEM;
+		default:
+			ASSERT(false);
+			return SPAT_ERR_END_OF_ENUM;
+	}
+
+
+	//If the user wants to see the overlaid grid, show this
+	if(showGridOverlay)
+	{
+		DrawStreamData *draw=new DrawStreamData;
+		draw->parent=this;
+
+		for(size_t ui=0;ui<gridEntries.size();ui++)
+		{
+			DrawRectPrism *dR = new DrawRectPrism;
+
+			dR->setAxisAligned(gridEntries[ui].startPt,
+						gridEntries[ui].endPt);
+			dR->setColour(0.0f,1.0f,0.0f,1.0f);
+			dR->setLineWidth(2);
+
+			draw->drawables.push_back(dR);
+		}
+		
+		draw->cached=1;
+		filterOutputs.push_back(draw);
+
+		getOut.push_back(draw);
+	}
+
+
+	//Vector of ion frequencies in histogram of segment counts, 
+	// each element in vector is for each ion type
+	BINOMIAL_HIST binHist;
+	genBinomialHistogram(gridEntries,selectedIons.size(),binHist);
+
+	//If the histogram is empty, we cannot do any more
+	if(!gridEntries.size())
+		return ERR_BINOMIAL_BIN_FAIL;
+
+	BINOMIAL_STATS binStats;
+	computeBinomialStats(gridEntries,binHist,selectedIons.size(),binStats);
+
+	//Show binomial statistics
+	consoleOutput.push_back(" ------ Binomial statistics ------");
+	string tmpStr;
+	stream_cast(tmpStr,gridEntries.size());
+	consoleOutput.push_back(string("Block count:\t") + tmpStr);
+	consoleOutput.push_back("Name\t\tMean\t\tChiSquare\t\tP_rand\t\tmu");
+	for(size_t ui=0;ui<binStats.mean.size();ui++)
+	{
+		string lineStr;
+		lineStr=rngF->getName(selectedIons[ui]) + std::string("\t\t");
+
+		if(!binStats.pValueOK[ui])
+		{
+			lineStr+="\t\t Not computable ";
+			consoleOutput.push_back(lineStr);
+			continue;
+		}
+		
+		stream_cast(tmpStr,binStats.mean[ui]);
+		lineStr+=tmpStr + string("\t\t");
+
+		stream_cast(tmpStr,binStats.chiSquare[ui]);
+		lineStr+=tmpStr + string("\t\t");
+
+		stream_cast(tmpStr,binStats.pValue[ui]);
+		lineStr+=tmpStr + string("\t\t");
+
+		stream_cast(tmpStr,binStats.comparisonCoeff[ui]);
+		lineStr+=tmpStr ;
+
+		consoleOutput.push_back(lineStr);
+
+	}
+	consoleOutput.push_back(" ---------------------------------");
+
+
+	ASSERT(binHist.mapIonFrequencies.size() ==
+			binHist.normalisedFrequencies.size());
+
+	if(!showBinomialFrequencies)
+		return 0;
+
+
+	for(size_t ui=0;ui<binHist.mapIonFrequencies.size(); ui++)
+	{
+		if(binHist.mapIonFrequencies[ui].empty())
+			continue;
+
+		//Create a plot for this range
+		PlotStreamData* plt;
+		plt = new PlotStreamData;
+		plt->index=ui;
+		plt->parent=this;
+		plt->plotMode=PLOT_MODE_1D;
+		plt->plotStyle=PLOT_TRACE_STEM;
+		plt->xLabel=TRANS("Block size");
+		if(showNormalisedBinomialFrequencies)
+			plt->yLabel=TRANS("Rel. Frequency");
+		else
+			plt->yLabel=TRANS("Count");
+
+		//set the title
+		string ionName;
+		ionName+=rngF->getName(selectedIons[ui]);
+		plt->dataLabel = string("Binomial:") + ionName;
+
+		//Set the colour to match that of the range
+		RGBf colour;	
+		colour=rngF->getColour(selectedIons[ui]);
+				
+		plt->r=colour.red;
+		plt->g=colour.green;
+		plt->b=colour.blue;
+		plt->xyData.resize(binHist.mapIonFrequencies[ui].size());
+
+		size_t offset=0;
+		if(showNormalisedBinomialFrequencies)
+		{
+			for(map<unsigned int, double>::const_iterator it=binHist.normalisedFrequencies[ui].begin();
+					it!=binHist.normalisedFrequencies[ui].end();++it)
+			{
+				plt->xyData[offset]=std::make_pair(it->first,it->second);
+				offset++;
+			}
+		}
+		else
+		{
+			for(map<unsigned int, unsigned int >::const_iterator it=binHist.mapIonFrequencies[ui].begin();
+					it!=binHist.mapIonFrequencies[ui].end();++it)
+			{
+				plt->xyData[offset]=std::make_pair(it->first,it->second);
+				offset++;
+			}
+		}
+
+		if(cache)
+		{
+			plt->cached=1;
+			filterOutputs.push_back(plt);
+			cacheOK=true;
+		}	
+		else
+		{
+			plt->cached=0;
+		}
+
+		getOut.push_back(plt);
+
+	}
+
+	if(!showTheoreticFrequencies)
+		return 0;
+	for(size_t ui=0;ui<binHist.theoreticNormalisedFrequencies.size(); ui++)
+	{
+		if(binHist.theoreticFrequencies[ui].empty())
+			continue;
+
+		//Create a plot for this range
+		PlotStreamData* plt;
+		plt = new PlotStreamData;
+		plt->index=ui + binHist.mapIonFrequencies.size();
+		plt->parent=this;
+		plt->plotMode=PLOT_MODE_1D;
+		plt->plotStyle=PLOT_TRACE_STEM;
+		plt->xLabel=TRANS("Block size");
+		if(showNormalisedBinomialFrequencies)
+			plt->yLabel=TRANS("Rel. Frequency");
+		else
+			plt->yLabel=TRANS("Count");
+
+		//set the title
+		string ionName;
+		ionName+=rngF->getName(selectedIons[ui]);
+		plt->dataLabel = string("Binomial (theory):") + ionName;
+
+		//Set the colour to match that of the range
+		RGBf colour;	
+		colour=rngF->getColour(selectedIons[ui]);
+				
+		plt->r=colour.red;
+		plt->g=colour.green;
+		plt->b=colour.blue;
+		plt->xyData.resize(binHist.theoreticFrequencies[ui].size());
+
+		size_t offset=0;
+		if(showNormalisedBinomialFrequencies)
+		{
+			for(map<unsigned int, double>::const_iterator it=binHist.theoreticNormalisedFrequencies[ui].begin();
+					it!=binHist.theoreticNormalisedFrequencies[ui].end();++it)
+			{
+				plt->xyData[offset]=std::make_pair(it->first,it->second);
+				offset++;
+			}
+		}
+		else
+		{
+			for(map<unsigned int, double >::const_iterator it=binHist.theoreticFrequencies[ui].begin();
+					it!=binHist.theoreticFrequencies[ui].end();++it)
+			{
+				plt->xyData[offset]=std::make_pair(it->first,it->second);
+				offset++;
+			}
+		}
+
+		if(cache)
+		{
+			plt->cached=1;
+			filterOutputs.push_back(plt);
+			cacheOK=true;
+		}	
+		else
+		{
+			plt->cached=0;
+		}
+
+		getOut.push_back(plt);
+
+	}
+	
+	return 0;
+}
+
 #ifdef DEBUG
 
 bool densityPairTest();
 bool nnHistogramTest();
 bool rdfPlotTest();
+bool axialDistTest();
 
 bool SpatialAnalysisFilter::runUnitTests()
 {
@@ -2751,6 +3341,9 @@ bool SpatialAnalysisFilter::runUnitTests()
 		return false;
 
 	if(!rdfPlotTest())
+		return false;
+
+	if(!axialDistTest())
 		return false;
 	
 	return true;
@@ -2935,6 +3528,88 @@ bool rdfPlotTest()
 	return true;
 }
 
+bool axialDistTest()
+{
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+
+
+	//Create some inptu data
+	//--
+	IonStreamData*d = new IonStreamData;
+	IonHit h;
+	h.setMassToCharge(1);
+
+	//create two points along axis
+	h.setPos(Point3D(0,0,0));
+	d->data.push_back(h);
+
+	h.setPos(Point3D(0.5,0.5,0.5));
+	d->data.push_back(h);
+
+	streamIn.push_back(d);
+	//--
+	
+	
+	//Create a spatial analysis filter
+	SpatialAnalysisFilter *f=new SpatialAnalysisFilter;
+	f->setCaching(false);	
+
+	//Set it to do an axial-dist calculation, 
+	// - NN mode termination,
+	// - Axial mode
+	// - /0 origin, /1 direction, r=1
+	// 
+	//---
+	bool needUp;
+	string s;
+	s=TRANS(SPATIAL_ALGORITHMS[ALGORITHM_AXIAL_DF]);
+	TEST(f->setProperty(KEY_ALGORITHM,s,needUp),"Set prop (algorithm)");
+	
+	s=TRANS(STOP_MODES[STOP_MODE_NEIGHBOUR]);
+	TEST(f->setProperty(KEY_STOPMODE,s,needUp),"Set prop (stopmode)");
+	
+	Point3D originPt(0,0,0), axisPt(1.1,1.1,1.1);
+	float radiusCyl;
+	radiusCyl = 1.0f;
+
+
+	stream_cast(s,originPt);
+	TEST(f->setProperty(KEY_ORIGIN,s,needUp),"Set prop (origin)");
+	
+	stream_cast(s,axisPt);
+	TEST(f->setProperty(KEY_NORMAL,s,needUp),"Set prop (axis)");
+
+	stream_cast(s,radiusCyl);
+	TEST(f->setProperty(KEY_RADIUS,s,needUp),"Set prop (radius)");
+	
+	TEST(f->setProperty(KEY_REMOVAL,"0",needUp),"Set prop (disable surface removal)");
+	//Do the refresh
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Checking refresh code");
+	delete f;
+	//Kill the input ion stream
+	delete d; 
+	streamIn.clear();
+	
+	//1 plot, one set of ions	
+	TEST(streamOut.size() == 2,"stream count");
+
+
+	size_t streamMask=0;
+
+	for(size_t ui=0;ui<streamOut.size();ui++)
+	{
+		streamMask|=streamOut[ui]->getStreamType();
+		delete streamOut[ui];
+	}
+
+
+
+	TEST(streamMask == ( STREAM_TYPE_DRAW | STREAM_TYPE_PLOT) , "Stream type checking");
+
+	return true;
+}
 
 #endif
 

@@ -147,6 +147,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 								bool (*callback)(bool))
 {
 	//Clear selection devices
+	// FIXME: Leaking drawables.
 	clearDevices();
 	
 	if(showPrimitive)
@@ -291,17 +292,12 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 	if(cacheOK)
 	{
 		//propagate our cached plot data.
-		for(unsigned int ui=0;ui<filterOutputs.size();ui++)
-			getOut.push_back(filterOutputs[ui]);
+		propagateCache(getOut);
 
 		ASSERT(filterOutputs.back()->getStreamType() == STREAM_TYPE_PLOT);
 
-		//Propagate all the incoming data (including ions)
-		for(unsigned int ui=0;ui<dataIn.size() ;ui++)
-		{
-			if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
-				getOut.push_back(dataIn[ui]);
-		}
+		//Propagate all the incoming data (excluding ions)
+		propagateStreams(dataIn,getOut,STREAM_TYPE_IONS,true);
 			
 		return 0;
 	}
@@ -1294,7 +1290,7 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	xmlFree(xmlString);
 	//====
 	
-	//Retreive vector parameters
+	//Retrieve vector parameters
 	//===
 	if(XMLHelpFwdToElem(nodePtr,"vectorparams"))
 		return false;
@@ -1344,7 +1340,7 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	//===	
 
 	nodePtr=tmpNode;
-	//Retreive scalar parameters
+	//Retrieve scalar parameters
 	//===
 	if(XMLHelpFwdToElem(nodePtr,"scalarparams"))
 		return false;

@@ -104,8 +104,8 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 	if(cacheOK)
 	{
 		//Only report the spectrum plot
-		for(unsigned int ui=0;ui<filterOutputs.size(); ui++)
-			getOut.push_back(filterOutputs[ui]);
+		propagateCache(getOut);
+
 		return 0;
 	}
 

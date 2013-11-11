@@ -45,7 +45,7 @@ private:
     // Non-zero if event is being generated programatically
     int programmaticEvent;  
 
-    //!aspect ratio for when locking aspect. Zero if undefined
+    //!aspect ratio that is to be used for locking user input
     float aspect;
 
     // begin wxGlade: ResolutionDialog::methods
@@ -65,9 +65,6 @@ protected:
     wxTextCtrl* textWidth;
     wxStaticText* labelHeight;
     wxTextCtrl* textHeight;
-    wxCheckBox* checkLockAspect;
-    wxStaticLine* static_line_1;
-    wxPanel* panelImage;
     wxStaticLine* static_line_2;
     wxButton* btnReset;
     wxButton* btnOK;
@@ -80,13 +77,11 @@ protected:
 public:
     virtual void OnTextWidth(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnTextHeight(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnCheckLockAspect(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnBtnReset(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnBtnOK(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnBtnCancel(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnMouseWheelWidth(wxMouseEvent &event);
     virtual void OnMouseWheelHeight(wxMouseEvent &event);
-    virtual void OnPaint(wxPaintEvent &event);
 
     virtual void OnKeypress(wxKeyEvent &evt);
     

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-export PATH=/opt/local/bin:$PATH
+export PATH=/opt/local/bin:$PATH:/opt//local/Library/Frameworks/wxWidgets.framework/Versions/wxWidgets/3.0/bin
 #This will make the mac .app bundle
 
 if [ $1 = '--update-config=yes' ]; then
@@ -18,7 +18,7 @@ if [ $1 = '--update-config=yes' ]; then
 
 	CFLAGS="$CFLAGS -I/opt/local/include -I/usr/local/include" \
 	LDFLAGS="$LDFLAGS -L/opt/local/lib -L/usr/local/lib -headerpad_max_install_names" \
-	./configure $SHOULD_PARALLEL $DISABLE_DEBUG 
+	./configure $SHOULD_PARALLEL $DISABLE_DEBUG --enable-mgl2=yes
 
 	if [ $? -ne 0 ]; then
 		echo "Configure unsuccessful - exiting"
@@ -29,7 +29,7 @@ if [ $1 = '--update-config=yes' ]; then
 	make clean
 fi
 
-make -j8
+make
 
 if [ $? -ne 0 ]; then
 	echo "Make unsuccessful - exiting"

@@ -21,7 +21,7 @@
 
 #include "common/translation.h"
 
-#include "wxcommon.h"
+#include "wx/wxcommon.h"
 
 using std::string;
 using std::vector;

@@ -51,6 +51,7 @@ void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
 	}
 
 	stack<wxTreeItemId> treeIDs;
+	t->Freeze();
 	//Warning: this generates an event, 
 	//most of the time (some windows versions do not according to documentation)
 	t->DeleteAllItems();
@@ -127,6 +128,7 @@ void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
 	}
 	t->GetParent()->Layout();
 
+	t->Thaw();
 }
 
 //Convert my internal choice string format to wx's
@@ -325,7 +327,7 @@ void wxPropertyGrid::OnMouseMove(wxMouseEvent &event)
 		//column, then bail out
 		if(isSeparatorRow(row) || row == -1  || col == 1)
 		{
-			SetToolTip(NULL); //Hide the tooltip
+			GetGridWindow()->SetToolTip(NULL); //Hide the tooltip
 			event.Skip();
 			return;
 		}
@@ -368,7 +370,7 @@ void wxPropertyGrid::clear()
 	propertyKeys.clear();
 	this->EndBatch();
 
-	SetToolTip(wxT(""));
+	GetGridWindow()->SetToolTip(wxT(""));
 	lastGridHoverRow=lastGridHoverCol=-1;
 }
 

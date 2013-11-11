@@ -19,7 +19,7 @@
 
 #include "resolutionDialog.h"
 
-#include "wxcommon.h"
+#include "wx/wxcommon.h"
 #include "common/translation.h"
 
 #include <wx/dcbuffer.h>
@@ -34,7 +34,6 @@ enum
   ID_RESET=wxID_ANY+1,
   ID_TEXT_WIDTH,
   ID_TEXT_HEIGHT,
-  ID_LOCK_ASPECT
 };
 
 const float MOUSEWHEEL_RATE_MULTIPLIER=1.0f;
@@ -47,9 +46,6 @@ ResolutionDialog::ResolutionDialog(wxWindow* parent, int id, const wxString& tit
     textWidth = new wxTextCtrl(this, ID_TEXT_WIDTH, wxT(""));
     labelHeight = new wxStaticText(this, wxID_ANY, wxTRANS("Height :"));
     textHeight = new wxTextCtrl(this, ID_TEXT_HEIGHT, wxT(""));
-    checkLockAspect = new wxCheckBox(this, ID_LOCK_ASPECT, wxTRANS("Lock Aspect"));
-    static_line_1 = new wxStaticLine(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL);
-    panelImage = new wxPanel(this, wxID_ANY);
     static_line_2 = new wxStaticLine(this, wxID_ANY);
     btnReset = new wxButton(this, ID_RESET, wxTRANS("Reset"));
     btnOK = new wxButton(this, wxID_OK, wxEmptyString);
@@ -84,11 +80,9 @@ BEGIN_EVENT_TABLE(ResolutionDialog, wxDialog)
     // begin wxGlade: ResolutionDialog::event_table
     EVT_TEXT(ID_TEXT_WIDTH, ResolutionDialog::OnTextWidth)
     EVT_TEXT(ID_TEXT_HEIGHT, ResolutionDialog::OnTextHeight)
-    EVT_CHECKBOX(ID_LOCK_ASPECT, ResolutionDialog::OnCheckLockAspect)
     EVT_BUTTON(ID_RESET, ResolutionDialog::OnBtnReset)
     EVT_BUTTON(wxID_OK, ResolutionDialog::OnBtnOK)
     EVT_BUTTON(wxID_CANCEL, ResolutionDialog::OnBtnCancel)
-    EVT_PAINT(ResolutionDialog::OnPaint)
     EVT_KEY_DOWN(ResolutionDialog::OnKeypress)
     // end wxGlade
 END_EVENT_TABLE();
@@ -120,10 +114,8 @@ void ResolutionDialog::setRes(unsigned int w, unsigned int h, bool asReset)
 		resOrigWidth=w;
 		resOrigHeight=h;
 
-		if(resOrigWidth)
-			aspect=(float)resOrigHeight/(float)resOrigWidth;
-		else
-			aspect=0;
+		ASSERT(resOrigWidth);
+		aspect=(float)resOrigHeight/(float)resOrigWidth;
 	}
 
 	programmaticEvent--;
@@ -163,12 +155,11 @@ void ResolutionDialog::OnTextWidth(wxCommandEvent &event)
 	resWidth=width;
 
 	//if we are locking the aspect ratio, set the other text box to have the same ratio
-	if(checkLockAspect->IsChecked() && aspect > std::numeric_limits<float>::epsilon())
-	{
-		resHeight=(unsigned int)(width*aspect);
-		stream_cast(textStr,resHeight);
-		textHeight->SetValue(wxStr(textStr));
-	}
+	ASSERT(aspect > std::numeric_limits<float>::epsilon());
+
+	resHeight=(unsigned int)(width*aspect);
+	stream_cast(textStr,resHeight);
+	textHeight->SetValue(wxStr(textStr));
 
 
 	updateImage();
@@ -212,12 +203,11 @@ void ResolutionDialog::OnTextHeight(wxCommandEvent &event)
 	resHeight=height;
 	
 	//if we are locking the aspect ratio, set the other text box to preserve the same ratio
-	if(checkLockAspect->IsChecked() && aspect > std::numeric_limits<float>::epsilon())
-	{
-		resWidth=(unsigned int)(height/aspect);
-		stream_cast(textStr,resWidth);
-		textWidth->SetValue(wxStr(textStr));
-	}
+	ASSERT(aspect > std::numeric_limits<float>::epsilon());
+
+	resWidth=(unsigned int)(height/aspect);
+	stream_cast(textStr,resWidth);
+	textWidth->SetValue(wxStr(textStr));
 
 	updateImage();
 
@@ -225,25 +215,10 @@ void ResolutionDialog::OnTextHeight(wxCommandEvent &event)
 }
 
 
-void ResolutionDialog::OnCheckLockAspect(wxCommandEvent &event)
-{
-	//Recompute the desired aspect
-	if(resWidth)
-		aspect=(float)resHeight/(float)resWidth;
-	else
-		aspect=0;
-}
-
 
 void ResolutionDialog::OnBtnReset(wxCommandEvent &event)
 {
 	setRes(resOrigWidth,resOrigHeight);
-	
-	//Recompute the desired aspect as per the original
-	if(resOrigWidth)
-		aspect=(float)resOrigHeight/(float)resOrigWidth;
-	else
-		aspect=0;
 }
 
 
@@ -289,13 +264,12 @@ void ResolutionDialog::OnMouseWheelWidth(wxMouseEvent &event)
 	setRes((unsigned int)(resWidth+moveRate),resHeight);
 
 	//if we are locking the aspect ratio, set the other text box to preserve the same ratio
-	if(checkLockAspect->IsChecked() && aspect > std::numeric_limits<float>::epsilon())
-	{
-		std::string textStr;
-		resHeight=(unsigned int)(resWidth*aspect);
-		stream_cast(textStr,resHeight);
-		textHeight->SetValue(wxStr(textStr));
-	}
+	ASSERT(aspect > std::numeric_limits<float>::epsilon());
+	
+	std::string textStr;
+	resHeight=(unsigned int)(resWidth*aspect);
+	stream_cast(textStr,resHeight);
+	textHeight->SetValue(wxStr(textStr));
 	
 	updateImage();
 	programmaticEvent--;
@@ -335,102 +309,17 @@ void ResolutionDialog::OnMouseWheelHeight(wxMouseEvent &event)
 	setRes(resWidth,(unsigned int)(resHeight+moveRate));
 
 	//if we are locking the aspect ratio, set the other text box to preserve the same ratio
-	if(checkLockAspect->IsChecked() && aspect > std::numeric_limits<float>::epsilon())
-	{
-		std::string textStr;
-		resWidth=(unsigned int)(resHeight/aspect);
-		stream_cast(textStr,resWidth);
-		textWidth->SetValue(wxStr(textStr));
-	}
+	ASSERT(aspect > std::numeric_limits<float>::epsilon());
+
+	std::string textStr;
+	resWidth=(unsigned int)(resHeight/aspect);
+	stream_cast(textStr,resWidth);
+	textWidth->SetValue(wxStr(textStr));
 
 	updateImage();
 	programmaticEvent--;
 }
 
-void ResolutionDialog::OnPaint(wxPaintEvent &event)
-{
-#ifdef __APPLE__
-	wxDC *dialogDC = new wxClientDC(this);
-#else
-	wxDC *dialogDC = new wxAutoBufferedPaintDC(this);
-#endif
-
-	int widthLabelY,heightLabelY,checkBoxY,connectorX;
-	int tmpY,tmpX,tmp;
-	
-	labelWidth->GetPosition(&connectorX,&tmpY);
-	labelWidth->GetSize(&tmpX,&tmp);
-	widthLabelY=tmpY + tmp/2;
-	
-	labelHeight->GetPosition(&tmpX,&tmpY);
-	labelHeight->GetSize(&tmpX,&tmp);
-	heightLabelY=tmpY + tmp/2;
-	
-	checkLockAspect->GetPosition(&tmpX,&tmpY);
-	checkLockAspect->GetSize(&tmpX,&tmp);
-	checkBoxY=tmpY + tmp/2;
-
-	//Draw the connecting lines in an "E" shape
-	const int LINE_STANDOFF=8;
-
-	dialogDC->DrawLine(connectorX-LINE_STANDOFF/2,widthLabelY,
-			connectorX-LINE_STANDOFF,widthLabelY);
-	dialogDC->DrawLine(connectorX-LINE_STANDOFF/2,heightLabelY,
-			connectorX-LINE_STANDOFF,heightLabelY);
-	dialogDC->DrawLine(connectorX-LINE_STANDOFF/2,checkBoxY,
-			connectorX-LINE_STANDOFF,checkBoxY);
-
-	dialogDC->DrawLine(connectorX-LINE_STANDOFF,checkBoxY,
-			connectorX-LINE_STANDOFF,widthLabelY);
-
-
-	delete dialogDC;
-
-#ifdef __APPLE__
-	wxDC *paintDC = new wxClientDC(panelImage);
-#else
-	wxDC *paintDC = new wxAutoBufferedPaintDC(panelImage);
-#endif
-
-	drawImageRectangle(paintDC);
-	
-	delete paintDC;
-}
-
-void ResolutionDialog::drawImageRectangle(wxDC *paintDC)
-{
-	paintDC->Clear();
-	int width,height;
-	width=resWidth;
-	height=resHeight;
-	
-
-	if(!(width && height))
-		return;
-
-
-	int panelHeight,panelWidth;
-
-	panelImage->GetClientSize(&panelWidth,&panelHeight);
-
-
-	float scaleFactor;
-	//Rescale the dimensions to fit 
-	// into image panel
-	scaleFactor=std::min((float)panelHeight/(float)height,
-			(float)panelWidth/(float)width);
-
-	width=(unsigned int)(width*scaleFactor);
-	height=(unsigned int)(height*scaleFactor);
-
-	int startX,startY;
-
-	startX = (int)((float)(panelWidth - width)*0.5f);
-	startY = (int)((float)(panelHeight - height)*0.5f);
-
-	paintDC->DrawRectangle(startX,startY,width,height);
-
-}
 
 void ResolutionDialog::OnKeypress(wxKeyEvent &evt)
 {
@@ -481,12 +370,9 @@ void ResolutionDialog::do_layout()
     heightTextSizer->Add(labelHeight, 0, wxALIGN_CENTER_VERTICAL, 0);
     heightTextSizer->Add(textHeight, 0, wxALL|wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 5);
     leftSizer->Add(heightTextSizer, 1, wxEXPAND, 0);
-    leftSizer->Add(checkLockAspect, 0, wxALIGN_CENTER_VERTICAL, 3);
     leftSizer->Add(20, 20, 2, 0, 0);
     upperSizer->Add(leftSizer, 0, wxLEFT|wxEXPAND, 8);
     upperSizer->Add(10, 10, 0, 0, 0);
-    upperSizer->Add(static_line_1, 0, wxEXPAND, 0);
-    upperSizer->Add(panelImage, 5, wxALL|wxEXPAND, 5);
     mainSizer->Add(upperSizer, 1, wxEXPAND, 0);
     mainSizer->Add(static_line_2, 0, wxEXPAND, 0);
     buttonSizer->Add(btnReset, 0, wxALL, 5);

@@ -74,6 +74,11 @@ void AnalysisState::operator=(const AnalysisState &oth)
 
 }
 
+AnalysisState::~AnalysisState()
+{
+	clear();
+}
+
 
 void AnalysisState::clear()
 {
@@ -145,7 +150,6 @@ bool AnalysisState::save(const char *cpFilename, std::map<string,string> &fileMa
 		//- we don't want to leak path names to remote systems 
 		//and
 		//- we cannot assume that directory structures are preserved between systems
-		//
 		//so don't keep working directory in this case.
 		if(writePackage || workingDir.empty() )
 		{
@@ -250,7 +254,7 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream, bool m
 	}
 
 	//Open the XML file
-	doc = xmlCtxtReadFile(context, cpFilename, NULL,0);
+	doc = xmlCtxtReadFile(context, cpFilename, NULL,XML_PARSE_NOENT|XML_PARSE_NONET);
 
 	if(!doc)
 		return false;
@@ -983,3 +987,50 @@ void AnalysisState::eraseStash(size_t offset)
 	stashedTrees.erase(stashedTrees.begin() + offset);
 }
 
+
+
+#ifdef DEBUG
+
+#include "./filters/ionDownsample.h"
+bool testStateReload();
+
+bool runStateTests()
+{
+	return testStateReload();
+}
+
+bool testStateReload()
+{
+
+	AnalysisState someState;
+	FilterTree tree;
+	IonDownsampleFilter *f = new IonDownsampleFilter;
+	tree.addFilter(f,NULL);
+
+	someState.setFilterTreeByClone(tree);
+	someState.addStashedTree(make_pair("someStash",tree));
+
+	std::string saveString;
+	genRandomFilename(saveString);
+
+	map<string,string> dummyMapping;
+	someState.save(saveString.c_str(),dummyMapping,false);
+	someState.clear();
+
+	std::ofstream strm;
+	someState.load(saveString.c_str(),strm,false);
+
+
+	TEST(someState.getStashCount() == 1,"Stash save+load");
+	std::pair<string,FilterTree> stashOut;
+	someState.copyStashedTree(0,stashOut);
+	TEST(stashOut.first == "someStash","Stash name conservation");
+
+	TEST(stashOut.second.size() == tree.size(),"reloaded stash count");
+	
+	rmFile(saveString);
+
+	return true;
+}
+
+#endif

@@ -83,7 +83,10 @@ class RangeFile
 		//The ion ID number for each range 
 		//FIXME: Convert to proper uniqueID system
 		std::vector<size_t> ionIDs;
-	
+
+		//Should we enforce range consistency?
+		bool enforceConsistency;
+
 		unsigned int errState;
 		//Warning messages, used when loading rangefiles
 		std::vector<std::string> warnMessages;
@@ -92,8 +95,6 @@ class RangeFile
 		//!Erase the contents of the rangefile
 		void clear();
 
-		//!Performs limited checks for self consistency.
-		bool isSelfConsistent() const;
 
 		//!Load an ORNL formatted "RNG" rangefile
 		// caller must supply and release file pointer
@@ -126,6 +127,8 @@ class RangeFile
 
 	public:
 		RangeFile();
+
+		const RangeFile& operator=(const RangeFile &other);
 		//!Open a specified range file
 		unsigned int open(const char *rangeFile, unsigned int format=RANGE_FORMAT_ORNL);	
 		//!Open a specified range file - returns true on success
@@ -140,10 +143,18 @@ class RangeFile
 		// returns enum value on success, or RANGE_FORMAT_END_OF_ENUM on failure
 		static unsigned int detectFileType(const char *file);
 
+		void setEnforceConsistent(bool shouldEnforce=true) { enforceConsistency=shouldEnforce;}
+
+		//!Performs checks for self consistency.
+		bool isSelfConsistent() const;
+		
 		//!Print the translated error associated with the current range file state
 		void printErr(std::ostream &strm) const;
 		//!Retrieve the translated error associated with the current range file state
 		std::string getErrString() const;
+
+		
+
 		//!Get the number of unique ranges
 		unsigned int getNumRanges() const;
 		//!Get the number of ranges for a given ion ID
@@ -152,6 +163,9 @@ class RangeFile
 		unsigned int getNumIons() const;
 		//!Retrieve the start and end of a given range as a pair(start,end)
 		std::pair<float,float> getRange(unsigned int ) const;
+
+		//!Retrieve the start and end of a given range as a pair(start,end)
+		std::pair<float,float> &getRangeByRef(unsigned int );
 		//!Retrieve a given colour from the ion ID
 		RGBf getColour(unsigned int) const;
 		//!Set the colour using the ion ID
@@ -169,8 +183,10 @@ class RangeFile
 		/*!No validation checks are performed outside debug mode. Ion
 		 range *must* exist*/
 		unsigned int getIonID(unsigned int range) const;
-		//!Get the ion ID from its short name
-		unsigned int getIonID(const char *name) const;	
+		//!Get the ion ID from its short or long name, returns -1 if name does not exist. Case must match
+		
+		unsigned int getIonID(const char *name, bool useShortName=true) const;	
+		unsigned int getIonID(const std::string &name) const {return getIonID(name.c_str());};	
 		
 		//!Set the ion ID for a given range
 		void setIonID(unsigned int range, unsigned int newIonId);
@@ -212,7 +228,7 @@ class RangeFile
 
 		//!Check to see if an atom is ranged
 		/*! Returns true if rangefile holds at least one range with shortname
-		 * corresponding input value. Case sensitivite search is default
+		 * corresponding input value. Case sensitivity search is default
 		 */
 		bool isRanged(std::string shortName, bool caseSensitive=true);
 
@@ -246,12 +262,28 @@ class RangeFile
 		bool moveBothRanges(unsigned int range, float newLow, float newHigh);
 
 		//!Add a range to the rangefile. Returns ID number of added range
-		// if adding successful, (unsigned int)-1 otherwise
+		// if adding successful, (unsigned int)-1 otherwise.
+		/// If enforceConsistency is true, this will disallow addition of ranges that
+		// collide with existing ranges
 		unsigned int addRange(float start, float end, unsigned int ionID);
 
 		//Add the ion to the database returns ion ID if successful, -1 otherwise
-		unsigned int addIon(std::string &shortName, std::string &longName, RGBf &ionCol);
-		
+		unsigned int addIon(const std::string &shortName, const std::string &longName, const RGBf &ionCol);
+	
+		bool setRangeStart(unsigned int rangeID, float v);
+
+		bool setRangeEnd(unsigned int rangeID, float v);
+
+		//Erase given range
+		void eraseRange(size_t rangeId) ;
+
+		//erase given ions and associated rnagefes)
+		void eraseIon(size_t ionId);
+
+		//Break a given string down into a series of substring-count pairs depicting basic ionic components
+		static bool decomposeIonNames(const std::string &name,
+
+			std::vector<std::pair<std::string,size_t> > &fragments);
 };
 
 #endif

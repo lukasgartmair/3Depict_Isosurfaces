@@ -201,7 +201,7 @@ VoxeliseFilter::VoxeliseFilter()
 	colourMapBounds[1]=1;
 
 
-	//Ficticious bounds.
+	//Fictitious bounds.
 	bc.setBounds(Point3D(0,0,0),Point3D(1,1,1));
 
 	for (unsigned int i = 0; i < INDEX_LENGTH; i++) 
@@ -244,7 +244,6 @@ Filter *VoxeliseFilter::cloneUncached() const
 	p->gaussDev=gaussDev;
 
 	p->representation=representation;
-	p->splatSize=splatSize;
 
 	p->normaliseType=normaliseType;
 	p->numeratorAll=numeratorAll;
@@ -384,18 +383,13 @@ void VoxeliseFilter::initFilter(const std::vector<const FilterStreamData *> &dat
 unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 		  std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
-	for(size_t ui=0;ui<dataIn.size();ui++)
-	{
-		//Disallow copying of anything in the blockmask. Copy everything else
-		if(!(dataIn[ui]->getStreamType() & getRefreshBlockMask() ))
-			getOut.push_back(dataIn[ui]);
-	}
+	//Disallow copying of anything in the blockmask. Copy everything else
+	propagateStreams(dataIn,getOut,getRefreshBlockMask(),true);
 	
 	//use the cached copy if we have it.
 	if(cacheOK)
 	{
-		for(size_t ui=0;ui<filterOutputs.size();ui++)
-			getOut.push_back(filterOutputs[ui]);
+		propagateCache(getOut);
 		return 0;
 	}
 
@@ -569,13 +563,19 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 				float sum;
 				sum=kernel.getSum();
 				kernel/=sum;
+
+				cerr << "Kernel (min/max):" << kernel.min() << "," << kernel.max() << endl;
 			
 				if(res.resize(voxelData))
 					return VOXELISE_MEMORY_ERR; 
+				
 
+				cerr << "Data:" << voxelData.min() << "," << voxelData.max() << endl;
 				//Gaussian kernel is separable (rank 1)
-				if(voxelData.separableConvolve(kernel,res,modeMap[filterBoundaryMode]))
+				if(voxelData.convolve(kernel,res,BOUND_MIRROR))
 					return VOXELISE_CONVOLVE_ERR;
+				
+				cerr << "Result (min/max):" << res.min() << "," << res.max() << endl;
 
 				voxelData.swap(res);
 
@@ -1000,7 +1000,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 		}
 		case VOXEL_REPRESENT_ISOSURF:
 		{
-			//-- Isosurface paramters --
+			//-- Isosurface parameters --
 			propertyList.setGroupTitle(curGroup,TRANS("Surf. param."));
 
 			stream_cast(tmpStr,isoLevel);

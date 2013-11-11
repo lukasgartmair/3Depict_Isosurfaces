@@ -30,30 +30,8 @@ class SelectionBinding;
 //Custom includes
 #include "effect.h"
 
-//OpenGL debugging macro
-#if DEBUG
-#define glError() { \
-		GLenum err = glGetError(); \
-		while (err != GL_NO_ERROR) { \
-					fprintf(stderr, "glError: %s caught at %s:%u\n", (char *)gluErrorString(err), __FILE__, __LINE__); \
-					err = glGetError(); \
-				} \
-		std::cerr << "glErr Clean " << __FILE__ << ":" << __LINE__ << std::endl; \
-}
-#else
-#define glError()
-#endif
+#include "glDebug.h"
 
-#ifdef DEBUG
-	#define glStackDepths() { \
-		int gldepthdebug[3];glGetIntegerv (GL_MODELVIEW_STACK_DEPTH, gldepthdebug);\
-	       	glGetIntegerv (GL_PROJECTION_STACK_DEPTH, gldepthdebug+1);\
-	       	glGetIntegerv (GL_TEXTURE_STACK_DEPTH, gldepthdebug+2);\
-		std::cerr << "OpenGL Stack Depths: ModelV:" << gldepthdebug[0] << " Pr: "\
-		 << gldepthdebug[1] << " Tex:" << gldepthdebug[2] << std::endl;}
-#else
-	#define glStackDepths()
-#endif
 
 //!The scene class brings together elements such as objects, lights, and cameras
 //to enable scene rendering
@@ -92,9 +70,6 @@ class Scene
 		//!Aspect ratio of output window (x/y) -- needed for cams
 		float outWinAspect;
 
-		//!Blank canvas colour
-		float r,g,b;
-
 		//!Effect ID handler
 		UniqueIDHandler effectIDs;
 
@@ -110,15 +85,13 @@ class Scene
 		//!Tells us if we are in hover mode (should we draw hover overlays?)
 		bool hoverMode;
 
-		//!Is the camera to be restricted to only draw a particular portion of the viewport?
-		bool viewRestrict;
-
-		float viewRestrictStart[2], viewRestrictEnd[2];
-			
 		//!Last selected object from call to glSelect(). -1 if last
 		// call failed to identify an item
 		unsigned int lastSelected;
-	
+
+		//Prevent camera updates from being passed to opengl
+		bool witholdCamUpdate;
+
 		//!Last hoeverd object	
 		unsigned int lastHovered;
 
@@ -144,6 +117,9 @@ class Scene
 		//texture to use for pgoress animation
 		DrawAnimatedOverlay progressAnimTex;
 
+		//Lighting vector
+		float lightPosition[4];
+
 		///!Draw the hover overlays
 		void drawHoverOverlay();
 
@@ -155,7 +131,7 @@ class Scene
 		//!initialise the drawing window
 		unsigned int initDraw();
 
-		void updateCam(const Camera *camToUse) const;
+		void updateCam(const Camera *camToUse, bool loadIdentity) const;
 
 		//reset the position of the overlay
 		void updateProgressOverlay(); 
@@ -175,7 +151,7 @@ class Scene
 		//!Set the vis control
 		void setViscontrol(VisController *v) { visControl=v;};
 		//!Draw the objects in the active window. May adjust cameras and compute bounding as needed.
-		void draw();
+		void draw(bool noUpdateCam=false);
 
 	
 		//!clear rendering vectors
@@ -186,7 +162,16 @@ class Scene
 		void clearRefObjs();
 		//!Clear object bindings vector
 		void clearBindings();
+	
+
+		//!Obtain the scene's light coordinates in camera relative space
+		// requires an array os size 4  (xyzw)
+		void getLightPos(float *f) const;
 		
+		//!Obtain the scene's light coordinates in camera relative space
+		// requires an array os size 4  (xyzw)
+		void setLightPos(const float *f);
+
 		//!Set the aspect ratio of the output window. Required.
 		void setAspect(float newAspect);
 		//!retrieve aspect ratio (h/w) of output win
@@ -300,10 +285,8 @@ class Scene
 		//!Return any devices that have been modified since their creation
 		void getModifiedBindings(std::vector<std::pair<const Filter *,SelectionBinding > > &bindings) const;
 
-		//!Restrict the openGL drawing view when using the camera
-		void restrictView(float xS,float yS, float xFin, float yFin);
-		//!Disable view restriction
-		void unrestrictView() { viewRestrict=false;};
+		//!Reset any modifiecations to bindings back to the unmodified state
+		void resetModifiedBindings();
 
 		//!Set whether to use alpha blending
 		void setAlpha(bool newAlpha) { useAlpha=newAlpha;};

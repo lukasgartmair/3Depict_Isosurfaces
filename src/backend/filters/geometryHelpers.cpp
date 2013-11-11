@@ -144,7 +144,8 @@ void CropHelper::setAlgorithm()
 unsigned int CropHelper::runFilter(const vector<IonHit> &dataIn,
 				vector<IonHit> &dataOut ) 
 {
-
+	//FIXME!: Shouldn't be using this here - should be obeying
+	// system-wide rng preferences
 	RandNumGen rng;
 	rng.initTimer();
 
@@ -253,8 +254,15 @@ unsigned int CropHelper::runFilterParallel(const vector<IonHit> &dataIn,
 
 	if(allocHint > 0.0f)
 	{
+		try
+		{
 		for(size_t ui=0;ui<nThreads;ui++)
 			inside[ui].reserve((unsigned int)( (float)dataIn.size()*allocHint)/nThreads);
+		}
+		catch(std::bad_alloc)
+		{
+			return ERR_CROP_INSUFFICIENT_MEM;
+		}
 	}
 	bool spin=false;
 #pragma omp parallel for 

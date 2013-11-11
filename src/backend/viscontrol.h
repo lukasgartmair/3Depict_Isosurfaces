@@ -67,7 +67,7 @@ class VisController
 		//--- Data storage ----
 		AnalysisState currentState;
 		
-		//TODO: Migrate to analyis state
+		//TODO: Migrate to analysis state
 		//!Primary data storage for filter tree
 		FilterTree filterTree;
 	
@@ -136,6 +136,8 @@ class VisController
 		//-----------------
 		//!Run a refresh of the underlying tree. Returns 0 on success
 		// iff return value == 0, then scene update has been initiated
+		// otherwise returns error code value for filter, pr
+		// one of the "higher" value error code, ( >=FILTERTREE_REFRESH_ERR_MEM);
 		unsigned int refreshFilterTree(bool doUpdateScene=true);
 
 		
@@ -158,7 +160,7 @@ class VisController
 					size_t typeMask=0, bool maskPrevents=true) const;
 
 
-		//!Add a new filter to the tree. set isbase=false and parentID for not
+		//!Add a new filter to the tree. Set isbase=false and parentID for not
 		//setting a parent (ie making filter base)
 		void addFilter(Filter *f, bool isBase, size_t parentId);
 		
@@ -191,7 +193,7 @@ class VisController
 
 		const Filter* getFilterById(size_t filterId) const; 
 
-		//!Return all of a given type of filter from the filter tree
+		//!Return all of a given type of filter from the filter tree. Type must be the exact type of filter - it is not a mask
 		void getFiltersByType(std::vector<const Filter *> &filters, unsigned int type)  const;
 
 		//!Returns true if the tree contains any state overrides (external entity referrals)
@@ -234,6 +236,10 @@ class VisController
 		//!Clear all caches
 		void clearCacheByType(unsigned int type) { filterTree.clearCacheByType(type);};
 
+		//Overwrite the contents of the pointed-to range files with
+		// the map contents
+		void modifyRangeFiles(const map<const RangeFile *, const RangeFile *> &toModify) { filterTree.modifyRangeFiles(toModify);};
+
 		//-----------------
 
 
@@ -249,6 +255,8 @@ class VisController
 		void setScene(Scene *theScene);
 		//!Set the backend plot
 		void setPlotWrapper(PlotWrapper *thePlots){targetPlots=thePlots;};
+		
+		PlotWrapper *getPlotWrapper(){return targetPlots;};
 		//!Set the listbox for plot selection
 		void setPlotList(wxListBox *box){plotSelList=box;};
 		
@@ -260,7 +268,7 @@ class VisController
 		//!Write out the filters into a wxtreecontrol.
 		// optional argument is the fitler to keep visible in the control
 		void updateWxTreeCtrl(wxTreeCtrl *t,const Filter *f=0);
-		//!Update a wxtGrid with the properties for a given filter
+		//!Update a wxPropertyGrid with the properties for a given filter
 		void updateFilterPropGrid(wxPropertyGrid *g,size_t filterId) const;
 			
 
@@ -360,10 +368,10 @@ class VisController
 		//!Delete a stash using its uniqueID
 		void eraseStash(unsigned int stashID);
 
-		//!Retreive the stash filters
+		//!Retrieve the stash filters
 		void getStashes(std::vector<std::pair<std::string,unsigned int > > &stashes) const;
 
-		//!Retreive a given stash tree by ID
+		//!Retrieve a given stash tree by ID
 		void getStashTree(unsigned int stashId, FilterTree &) const;
 
 		//!Get the number of stashes

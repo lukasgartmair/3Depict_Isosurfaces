@@ -41,8 +41,13 @@ enum
 };
 
 
+typedef int (wxWindow::*UpdateHandler)(); 
+
 class MathGLPane: public wxPanel {
 private:
+	
+	vector<pair<wxWindow*,UpdateHandler> > updateHandlers;
+
 	//Current mouse position
 	wxPoint curMouse;
 	//!Has the mouse left the window?
@@ -51,6 +56,9 @@ private:
 	std::string lastMglErr;
 	//!What is the user currently doing with the mouse?
 	unsigned int mouseDragMode;
+
+	//Last region that was interacted with
+	size_t lastEditedRegion,lastEditedPlot;
 
 	//!Has the window resized since the last draw?
 	bool hasResized;
@@ -62,8 +70,6 @@ private:
 	//!region used at mouse down
 	unsigned int startMouseRegion,startMousePlot,regionMoveType;
 
-	//!Do we have region updates?
-	bool haveUpdates;
 
 	//!Should we be limiting interaction to 
 	//things that won't modify filters (eg region dragging)
@@ -71,8 +77,13 @@ private:
 
 	//!Pointer to the plot data holding class
 	PlotWrapper *thePlot;
-	//!Pointer to the listbox that is used for plot selection
-	wxListBox *plotSelList;
+	
+	//!Should we take ownership of deleting the plot pointer
+	bool ownPlotPtr;
+
+	//!True if regions should update themselves
+	bool regionSelfUpdate;
+
 	//!Pointer to the mathgl renderer
 #ifdef USE_MGL2
 	mglGraph *gr;	
@@ -113,12 +124,14 @@ public:
 	MathGLPane(wxWindow* parent, int id);
 	virtual ~MathGLPane();
 
+	void setVisibleItems(std::vector<bool> &newVisible) ;
+
 	//Set the plot pointer for this class to manipulate
-	void setPlotWrapper(PlotWrapper *plots);
-	//!Set the plot listbox for this class to use
-	void setPlotList(wxListBox *box){plotSelList=box;};
+	void setPlotWrapper(PlotWrapper *plots, bool takeOwnPtr=true);
 
 	std::string getErrString(unsigned int code); 
+
+	void enableRegionSelfUpdate(bool enable) { regionSelfUpdate=enable;}
 
 	//save an SVG file
 	unsigned int saveSVG(const std::string &filename);
@@ -132,10 +145,11 @@ public:
 	//numeric_limits<unsigned int>::max() if nothing.
 	bool getRegionUnderCursor(const wxPoint &mousePos, unsigned int &plotId, unsigned int &regionId) const;
 
-	//!Do we have updates?
-	bool hasUpdates() const { return haveUpdates;}
-	//Instruct the plot that we no loger have updates available.
-	void clearUpdates() { haveUpdates=false;}
+	//Returns the ID of the last edited region
+	size_t getLastEdited(size_t &lastPlot,size_t &lastRegion) const { lastRegion=lastEditedRegion; lastPlot=lastEditedPlot;};
+	//Add a callback for the given window that will be called when the panel needs updating
+	void registerUpdateHandler(wxWindow *w, UpdateHandler handler) { updateHandlers.push_back(make_pair(w,handler));};
+
 	//Resize event for window
 	void resized(wxSizeEvent& evt);
 	//Draw window event
@@ -148,6 +162,8 @@ public:
 	void leftMouseDown(wxMouseEvent& event);
 	//Mouse doubleclick on window
 	void mouseDoubleLeftClick(wxMouseEvent& event);
+	//Mouse doubleclick on window
+	void mouseDoubleMiddleClick(wxMouseEvent& event);
 	//Mousewheel Scroll event
 	void mouseWheelMoved(wxMouseEvent& event);
 	//Button being released inside box

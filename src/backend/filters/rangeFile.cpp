@@ -20,6 +20,9 @@
 #include "filterCommon.h"
 
 #include <algorithm>
+#include <map>
+
+using std::map;
 
 const unsigned int NUM_ROWS_ION=3;
 const unsigned int NUM_ROWS_RANGE=4;
@@ -63,12 +66,17 @@ Filter *RangeFileFilter::cloneUncached() const
 void RangeFileFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &dataOut)
 {
+
 	//Copy any input, except range files to output
 	for(size_t ui=0;ui<dataIn.size();ui++)
 	{
 		if(dataIn[ui]->getStreamType() != STREAM_TYPE_RANGE)
 			dataOut.push_back(dataIn[ui]);
 	}
+	
+	//Reset any changed number of ions
+	ASSERT(rng.getNumRanges() ==  enabledRanges.size() &&
+			rng.getNumIons() == enabledIons.size());
 
 	//Create a rangestream data to push through the init phase
 	if(rng.getNumIons() && rng.getNumRanges())
@@ -94,22 +102,20 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 	//use the cached copy of the data if we have it.
 	if(cacheOK)
 	{
-		for(unsigned int ui=0;ui<filterOutputs.size(); ui++)
-			getOut.push_back(filterOutputs[ui]);
+		propagateCache(getOut);
 
-		for(unsigned int ui=0;ui<dataIn.size() ;ui++)
-		{
-			//We don't cache anything but our modification
-			//to the ion stream data types. so we propagate
-			//these.
-			if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
-				getOut.push_back(dataIn[ui]);
-		}
+		//We don't cache anything but our modification
+		//to the ion stream data types. so we propagate
+		//these.
+		propagateStreams(dataIn,getOut,STREAM_TYPE_IONS,false);
 			
 		return 0;
 	}
 
-	
+
+	ASSERT(enabledRanges.size() == rng.getNumRanges());
+	ASSERT(enabledIons.size() == rng.getNumIons());
+
 	//See if we have enabled ranges and ions
 	bool haveEnabled;
 	haveEnabled= (std::find(enabledRanges.begin(),
@@ -536,6 +542,8 @@ void RangeFileFilter::setRangeData(const RangeFile &rngNew)
 	//Turn all ions to "on" 
 	for(unsigned int ui=0;ui<enabledIons.size(); ui++)
 		enabledIons[ui]=(char)1;
+
+	clearCache();
 }
 
 size_t RangeFileFilter::numBytesForCache(size_t nObjects) const
@@ -1152,7 +1160,8 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	unsigned int ionID;
 	bool enabled;
 	//By default, turn ions off, but use state file to turn them on
-	enabledIons.resize(rng.getNumIons(),false);
+	map<unsigned int ,char> tmpEnabledIons;
+	map<unsigned int, RGBf> tmpCol;
 	while(!XMLHelpFwdToElem(nodePtr,"ion"))
 	{
 		//Get ID value
@@ -1181,7 +1190,7 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 		else
 			return false;
 
-		enabledIons[ionID]=enabled;
+		tmpEnabledIons[ionID]=enabled;
 		xmlFree(xmlString);
 		
 		
@@ -1200,9 +1209,10 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 		col.red=(float)r/255.0f;
 		col.green=(float)g/255.0f;
 		col.blue=(float)b/255.0f;
-		rng.setColour(ionID,col);	
+		tmpCol[ionID]=col;	
 		xmlFree(xmlString);
 	}
+
 
 	//===
 
@@ -1217,7 +1227,7 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	nodePtr=nodePtr->xmlChildrenNode;
 
 	//By default, turn ranges off (cause there are lots of them), and use state to turn them on
-	enabledRanges.resize(rng.getNumRanges(),true);
+	map<unsigned int, char> tmpEnabledRanges;
 	unsigned int rngID;
 	while(!XMLHelpFwdToElem(nodePtr,"range"))
 	{
@@ -1248,10 +1258,24 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 			return false;
 
 		xmlFree(xmlString);
-		enabledRanges[rngID]=enabled;
+		tmpEnabledRanges[rngID]=enabled;
 	}
 	//===
 
+	enabledIons.resize(rng.getNumIons(),1);
+	enabledRanges.resize(rng.getNumRanges(),1);
+	
+	//FIXME: HACK: store more data, to confirm validation
+	//If we have the same number of ions, and the same number of ranges,
+	// then update the values
+	if(tmpEnabledIons.size() == rng.getNumIons())
+	{
+		for(size_t ui=0;ui<tmpEnabledIons.size(); ui++)
+			enabledIons[ui] = tmpEnabledIons[ui];
+		
+		for(size_t ui=0;ui<tmpEnabledRanges.size(); ui++)
+			enabledRanges[ui] = tmpEnabledRanges[ui];
+	}
 	return true;
 }
 
