@@ -469,6 +469,7 @@ unsigned int ConfigFile::read()
 		nodePtr=nodeStack.top();
 		nodeStack.pop();
 
+		nodeStack.push(nodePtr);
 		//have we seen a startup tip entry?
 		if(!XMLHelpFwdToElem(nodePtr,"startuptips"))
 		{
@@ -479,7 +480,10 @@ unsigned int ConfigFile::read()
 			if(!boolStrDec(str,doWantStartupTips))
 				doWantStartupTips=false;
 		}
+		nodePtr=nodeStack.top();
+		nodeStack.pop();
 		
+		nodeStack.push(nodePtr);
 		//Does the user want, by default, an orthographic camera
 		if(!XMLHelpFwdToElem(nodePtr,"wantorthocam"))
 		{
@@ -490,6 +494,8 @@ unsigned int ConfigFile::read()
 			if(!boolStrDec(str,wantStartupOrthoCam))
 				wantStartupOrthoCam=false;
 		}
+		nodePtr=nodeStack.top();
+		nodeStack.pop();
 
 
 nodeptrEndJump:
