@@ -1,28 +1,32 @@
 * 30 Oct 2013 : 0.0.15
 	Features
 	- Range editing dialog : Rangefiles can be modified via a dialog available from the "edit" menu
-		- A Range filter and a spectra filter must be present first!
-	- "Binomial analysis" algorithm, (Moody et al, 2011) for randomness testing
+		- A Range filter and a spectra filter must be present first
+		- "Overlays" can be used to generate isotopic distributions for comparison
+	- "Binomial analysis" algorithm, (Moody et al, 2011) for data randomness testing
 	
-	User Visible Bugfixes/Changes:
+	User Visible Changes:
+	- Middle double click to zoomout on plots
+	- Improved user feedback in transform filter
+	- Better console output, messages now persistent
+	- Progress dialog for animation
+	- Colour bar auto-changes colour on light backgrounds
+	- Orthogonal camera can be selected by default
+	
+	User Visible Bugfixes:
 	- Image export fixed wrong aspect ratio ion output images
 	- Fix plot export dialog when (png/svg) extension given
 	- Fix tree/property grid not always synchronised
 	- Fix "jumping" of movable objects after interaction
 	- Fix custom filter names not being saved correctly 
 	- Fix undo not recorded after tree copy 
-	- Middle double click to zoomout on plots
-	- Improved user feedback in transform filter
-	- Better console output, messages now persistant
 	- Fix axial dist aborting problem
 	- Fix loading of .xy files from external program filter
 	- Fix hang when disabling weak/fast randomisation
-	- Progress dialog for animation
-
 
 	Technical bugfixes/changes:
 	- Fix hang when filters given directories as input (linux)
-	- Fix bug in extern filter where data would be output even on emtpy command
+	- Fix bug in extern filter where data would be output even on empty command
 	- Better out-of-memory exception handling at refresh level
 	- Various memory leak fixes
 	- Refactoring
