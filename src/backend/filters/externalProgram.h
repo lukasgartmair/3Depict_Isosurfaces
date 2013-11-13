@@ -44,6 +44,10 @@ class ExternalProgramFilter : public Filter
 		//!Erase generated input files for ext. program after running?
 		bool cleanInput;
 
+		static size_t substituteVariables(const std::string &commandStr,
+				const vector<string> &ions, const vector<string> &plots, 
+							std::string &substitutedCommand);
+
 	public:
 		//!As this launches external programs, this could be misused.
 		bool canBeHazardous() const {return true;}
@@ -94,6 +98,8 @@ class ExternalProgramFilter : public Filter
 
 #ifdef DEBUG
 		bool runUnitTests();
+
+		bool substituteTest();
 #endif
 };
 

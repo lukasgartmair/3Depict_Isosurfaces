@@ -75,6 +75,137 @@ size_t ExternalProgramFilter::numBytesForCache(size_t nObjects) const
 		return (size_t)-1; //Say we don't know, we are not going to cache anyway.
 }
 
+size_t ExternalProgramFilter::substituteVariables(const std::string &commandStr,
+			const vector<string> &ionOutputNames, const vector<string> &plotOutputNames,std::string &substitutedCommand) 
+{
+	vector<string> commandLineSplit;
+
+	splitStrsRef(commandStr.c_str(),' ',commandLineSplit);
+	//Nothing to do
+	if(commandLineSplit.empty())
+		return 0;
+
+	//Construct the command, using substitution
+	string command;
+	unsigned int ionOutputPos,plotOutputPos;
+	ionOutputPos=plotOutputPos=0;
+	command = commandLineSplit[0];
+	for(unsigned int ui=1;ui<commandLineSplit.size();ui++)
+	{
+		if(commandLineSplit[ui].find('%') == std::string::npos)
+		{
+			command+= string(" ") + commandLineSplit[ui];
+		}
+		else
+		{
+			size_t pos,lastPos;
+			lastPos=pos=0;
+
+			string thisCommandEntry;
+			pos =commandLineSplit[ui].find("%",pos);
+			while(pos != string::npos)
+			{
+				//OK, so we found a % symbol.
+				//lets do some substitution
+				
+				//% must be followed by something otherwise this is an error
+				if(pos == commandLineSplit[ui].size())
+					return COMMANDLINE_FAIL;
+
+				char code;
+				code = commandLineSplit[ui][pos+1];
+
+				thisCommandEntry+=commandLineSplit[ui].substr(lastPos,pos-lastPos);
+
+				switch(code)
+				{
+					case '%':
+						//Escape '%%' to '%' symbol
+						thisCommandEntry+="%";
+						pos+=2;
+						break;
+					case 'i':
+					{
+						//Substitute '%i' with ion file name
+						if(ionOutputPos == ionOutputNames.size())
+						{
+							//User error; not enough pos files to fill.
+							return SUBSTITUTE_FAIL;
+						}
+
+						thisCommandEntry+=ionOutputNames[ionOutputPos];
+						ionOutputPos++;
+						pos++;
+						break;
+					}
+					case 'I':
+					{
+						//Substitute '%I' with all ion file names, space separated
+						if(ionOutputPos == ionOutputNames.size())
+						{
+							//User error. not enough pos files to fill
+							return SUBSTITUTE_FAIL;
+						}
+						for(unsigned int ui=ionOutputPos; ui<ionOutputNames.size();ui++)
+							thisCommandEntry+=ionOutputNames[ui] + " ";
+
+						ionOutputPos=ionOutputNames.size();
+						pos++;
+						break;
+					}
+					case 'p':
+					{
+						//Substitute '%p' with all plot file names, space separated
+						if(plotOutputPos == plotOutputNames.size())
+						{
+							//User error. not enough pos files to fill
+							return SUBSTITUTE_FAIL;
+						}
+						for(unsigned int ui=plotOutputPos; ui<plotOutputNames.size();ui++)
+							thisCommandEntry+=plotOutputNames[ui];
+
+						plotOutputPos=plotOutputNames.size();
+						pos++;
+						break;
+					}
+					case 'P': 
+					{
+						//Substitute '%I' with all plot file names, space separated
+						if(plotOutputPos == plotOutputNames.size())
+						{
+							//User error. not enough pos files to fill
+							return SUBSTITUTE_FAIL;
+						}
+						for(unsigned int ui=plotOutputPos; ui<plotOutputNames.size();ui++)
+							thisCommandEntry+=plotOutputNames[ui]+ " ";
+
+						plotOutputPos=plotOutputNames.size();
+						pos++;
+						break;
+					}
+					default:
+						//Invalid user input string. % must be escaped or recognised.
+						return SUBSTITUTE_FAIL;
+				}
+
+
+				lastPos=pos;
+				pos =commandLineSplit[ui].find("%",pos);
+			}
+		
+			thisCommandEntry+=commandLineSplit[ui].substr(lastPos+1);
+
+			command+= string(" ") + thisCommandEntry;
+		}
+
+	}
+
+
+	command.swap(substitutedCommand);
+
+	return 0;
+}
+
 unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
@@ -86,11 +217,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 		return 0;
 	}
 
-	vector<string> commandLineSplit;
-
-	splitStrsRef(commandLine.c_str(),' ',commandLineSplit);
-	//Nothing to do
-	if(commandLineSplit.empty())
+	if(commandLine.empty())
 		return 0;
 
 	vector<string> ionOutputNames,plotOutputNames;
@@ -181,116 +308,12 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 		ionOutputNames.empty())
 		return 0;
 
-
-	//Construct the command, using substitution
-	string command;
-	unsigned int ionOutputPos,plotOutputPos;
-	ionOutputPos=plotOutputPos=0;
-	command = commandLineSplit[0];
-	for(unsigned int ui=1;ui<commandLineSplit.size();ui++)
-	{
-		if(commandLineSplit[ui].find('%') == std::string::npos)
-		{
-			command+= string(" ") + commandLineSplit[ui];
-		}
-		else
-		{
-			size_t pos;
-			pos=0;
-
-			string thisCommandEntry;
-			pos =commandLineSplit[ui].find("%",pos);
-			while(pos != string::npos)
-			{
-				//OK, so we found a % symbol.
-				//lets do some substitution
-				
-				//% must be followed by something otherwise this is an error
-				if(pos == commandLineSplit[ui].size())
-					return COMMANDLINE_FAIL;
-
-				char code;
-				code = commandLineSplit[ui][pos+1];
-
-				switch(code)
-				{
-					case '%':
-						//Escape '%%' to '%' symbol
-						thisCommandEntry+="%";
-						pos+=2;
-						break;
-					case 'i':
-					{
-						//Substitute '%i' with ion file name
-						if(ionOutputPos == ionOutputNames.size())
-						{
-							//User error; not enough pos files to fill.
-							return SUBSTITUTE_FAIL;
-						}
-
-						thisCommandEntry+=ionOutputNames[ionOutputPos];
-						ionOutputPos++;
-						pos++;
-						break;
-					}
-					case 'I':
-					{
-						//Substitute '%I' with all ion file names, space separated
-						if(ionOutputPos == ionOutputNames.size())
-						{
-							//User error. not enough pos files to fill
-							return SUBSTITUTE_FAIL;
-						}
-						for(unsigned int ui=ionOutputPos; ui<ionOutputNames.size();ui++)
-							thisCommandEntry+=ionOutputNames[ui] + " ";
-
-						ionOutputPos=ionOutputNames.size();
-						pos++;
-						break;
-					}
-					case 'p':
-					{
-						//Substitute '%p' with all plot file names, space separated
-						if(plotOutputPos == plotOutputNames.size())
-						{
-							//User error. not enough pos files to fill
-							return SUBSTITUTE_FAIL;
-						}
-						for(unsigned int ui=plotOutputPos; ui<plotOutputNames.size();ui++)
-							thisCommandEntry+=plotOutputNames[ui];
-
-						plotOutputPos=plotOutputNames.size();
-						pos++;
-						break;
-					}
-					case 'P': 
-					{
-						//Substitute '%I' with all plot file names, space separated
-						if(plotOutputPos == plotOutputNames.size())
-						{
-							//User error. not enough pos files to fill
-							return SUBSTITUTE_FAIL;
-						}
-						for(unsigned int ui=plotOutputPos; ui<plotOutputNames.size();ui++)
-							thisCommandEntry+=plotOutputNames[ui]+ " ";
-
-						plotOutputPos=plotOutputNames.size();
-						pos++;
-						break;
-					}
-					default:
-						//Invalid user input string. % must be escaped or recognised.
-						return SUBSTITUTE_FAIL;
-				}
-
-
-				pos =commandLineSplit[ui].find("%",pos);
-			}
-			
-			command+= string(" ") + thisCommandEntry;
-		}
-
-	}
+	std::string substitutedCommand;
+	size_t errCode;
+	errCode=substituteVariables(commandLine,ionOutputNames,plotOutputNames,
+					substitutedCommand);
+	if(errCode)
+		return errCode;
 
 	//If we have a specific working dir; use it. Otherwise just use curdir
 	wxString origDir = wxGetCwd();
@@ -308,7 +331,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 
 	bool result;
 	//Execute the program
-	result=wxShell(wxStr(command));
+	result=wxShell(wxStr(substitutedCommand));
 
 	if(cleanInput)
 	{
@@ -882,12 +905,39 @@ bool posTest()
 }
 
 
+bool ExternalProgramFilter::substituteTest()
+{
+	
+	vector<string> ionNames,plotNames;
+	plotNames.push_back("some Plot.xy");
+	ionNames.push_back("my \"pos file.pos");
+
+	string commandLine;
+	commandLine="echo \"My ions are \'%i\'\"";
+
+
+	string resultString;
+	TEST(!substituteVariables(commandLine,ionNames,plotNames,resultString),"substitution fail");
+	TEST(resultString == "echo \"My ions are \'my \"pos file.pos\'\"","substitution fail");
+
+	commandLine=" echo (\"%i\")";
+	TEST(!substituteVariables(commandLine,ionNames,plotNames,resultString),"substitution fail");
+	TEST(resultString == " echo (\"my \"pos file.pos\")","substitution fail");
+
+
+	return true;
+
+}
+
 bool ExternalProgramFilter::runUnitTests() 
 {
 	if(!echoTest())
 		return false;
 	
 	if(!posTest())
+		return false;
+
+	if(!substituteTest())
 		return false;
 
 	return true;

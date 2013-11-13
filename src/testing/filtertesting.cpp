@@ -499,7 +499,7 @@ bool filterRefreshNoOut()
 	std::list<std::pair<Filter *, std::vector<const FilterStreamData * > > > outData;
 	TEST(testFilterTree(fTree,outData),"ext program tree test");
 
-	TEST(outData.empty(),"Extenral program reresh test");
+	TEST(outData.empty(),"External program refresh test");
 	fTree.safeDeleteFilterList(outData);
 
 	wxRemoveFile(wxStr(strData));
