@@ -17,6 +17,7 @@ if [ $1 = '--update-config=yes' ]; then
 	fi
 
 	CFLAGS="$CFLAGS -I/opt/local/include -I/usr/local/include" \
+	CXXFLAGS="$CXXFLAGS -I/opt/local/include -I/usr/local/include -std=c++11" \
 	LDFLAGS="$LDFLAGS -L/opt/local/lib -L/usr/local/lib -headerpad_max_install_names" \
 	./configure $SHOULD_PARALLEL $DISABLE_DEBUG --enable-mgl2=yes
 
@@ -29,7 +30,7 @@ if [ $1 = '--update-config=yes' ]; then
 	make clean
 fi
 
-make
+make -j8
 
 if [ $? -ne 0 ]; then
 	echo "Make unsuccessful - exiting"

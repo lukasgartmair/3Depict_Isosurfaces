@@ -1019,8 +1019,8 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 
 
 					//Make sure we don't leave the plot boundary
-					rMinX=std::max(rMinX,min.x);
-					rMaxX=std::min(rMaxX,max.x);
+					rMinX=std::max(rMinX,(float)min.x);
+					rMaxX=std::min(rMaxX,(float)max.x);
 
 					//If the region is of negligble size, don't bother drawing it
 					if(fabs(rMinX -rMaxX)
@@ -1849,7 +1849,7 @@ void PlotOverlays::draw(mglGraph *gr,MGLColourFixer &fixer,
 			if(bufX[uj]> boundMin.x && bufX[uj]< boundMax.x && 
 					boundMin.y < bufY[uj])
 			{
-				gr->Line (mglPoint(bufX[uj],std::max(0.0f,boundMin.y)),
+				gr->Line (mglPoint(bufX[uj],std::max(0.0f,(float)boundMin.y)),
 					mglPoint(bufX[uj],bufY[uj]),colourCode,100);
 				//Print labels near to the text
 				
@@ -1857,8 +1857,15 @@ void PlotOverlays::draw(mglGraph *gr,MGLColourFixer &fixer,
 				//Draw the text label at the desired position
 				//Font size in mathgl uses negative values to set a relative font size
 				const float STANDOFF_FACTOR=1.05;
-				gr->Text(mglPoint(bufX[uj],bufY[uj]*STANDOFF_FACTOR),
-					overlayData[ui].title.c_str(),"",-0.6);
+#ifdef USE_MGL2
+				gr->Text(mglData(bufX[uj]),mglData(bufY[uj]*STANDOFF_FACTOR),
+					overlayData[ui].title.c_str());
+#else
+				gr->Text(mglData(bufX[uj]),mglData(bufY[uj]*STANDOFF_FACTOR),
+							overlayData[ui].title.c_str(),"",-0.6);
+
+
+#endif
 			}
 		}
 	}

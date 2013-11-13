@@ -200,7 +200,7 @@ void PendingIon::commit() const
 }
 
 RangeEditorDialog::RangeEditorDialog(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
-    wxDialog(parent, id, title, pos, size, wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER|wxMAXIMIZE_BOX|wxMINIMIZE_BOX|wxTHICK_FRAME)
+    wxDialog(parent, id, title, pos, size, wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER|wxMAXIMIZE_BOX|wxMINIMIZE_BOX)
 {
     // begin wxGlade: RangeEditorDialog::RangeEditorDialog
     splitVertical = new wxSplitterWindow(this, ID_SPLIT_LEFTRIGHT, wxDefaultPosition, wxDefaultSize, wxSP_3D|wxSP_BORDER);
@@ -257,7 +257,7 @@ RangeEditorDialog::RangeEditorDialog(wxWindow* parent, int id, const wxString& t
 RangeEditorDialog::~RangeEditorDialog()
 {
 #if wxCHECK_VERSION(2, 9, 0)
-    textOverlayCmpnt->Unbind(wxEVT_SET_FOCUS, &MainWindowFrame::OnTextOverlaySetFocus, this);
+    textOverlayCmpnt->Unbind(wxEVT_SET_FOCUS, &RangeEditorDialog::OnTextOverlaySetFocus, this);
 #else
     textOverlayCmpnt->Disconnect();
 #endif
@@ -1280,8 +1280,13 @@ void RangeEditorDialog::OnBtnRangeIonAdd(wxCommandEvent &event)
 		wxStrs.Add(wxCStr("Ion"));
 		wxStrs.Add(wxCStr("Range"));
 
+#if wxCHECK_VERSION(2, 9, 0)
+		wxSingleChoiceDialog *wxD = new wxSingleChoiceDialog(this, wxTRANS("Range or ion?"),
+				wxTRANS("Select type to add"),wxStrs,(void **)NULL,wxDEFAULT_DIALOG_STYLE|wxOK|wxCENTRE);
+#else
 		wxSingleChoiceDialog *wxD = new wxSingleChoiceDialog(this, wxTRANS("Range or ion?"),
 				wxTRANS("Select type to add"),wxStrs,NULL,wxDEFAULT_DIALOG_STYLE|wxOK|wxCENTRE);
+#endif
 
 		wxD->ShowModal();
 
