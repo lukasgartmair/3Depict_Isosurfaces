@@ -42,12 +42,12 @@ public:
 		RangeFile *getRangePtr() const { return rngPtr;}
 
 		//Set the end of the range
-		float setEnd(float f) { end=f; validEnd=true;}
+		void setEnd(float f) { end=f; validEnd=true;}
 		
 		//Set the Start of the range
-		float setStart(float f) { start=f;validStart=true;}
+		void setStart(float f) { start=f;validStart=true;}
 		//Set the parent ion in the owning rangefile
-		float setParentId(size_t v) {ASSERT(v < rngPtr->getNumIons()); parentId=v; validParent=true;}
+		void setParentId(size_t v) {ASSERT(v < rngPtr->getNumIons()); parentId=v; validParent=true;}
 
 		//Returns true if all the data set for the pending range is valid
 		bool isFinished() const;

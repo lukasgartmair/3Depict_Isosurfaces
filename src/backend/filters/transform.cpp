@@ -1393,7 +1393,7 @@ bool TransformFilter::setProperty(  unsigned int key,
 				if(value == TRANS(TRANSFORM_MODE_STRING[ui]))
 					tmp=ui;
 			}
-			if(tmp==-1)
+			if(tmp==(size_t)-1)
 			{
 				ASSERT(false); // This should not happen
 				return false;

@@ -773,7 +773,7 @@ void CopyGrid::copyData()
 	{
 		const wxArrayInt& rows(GetSelectedRows());
 		const wxArrayInt& cols(GetSelectedCols());
-		const wxGridCellCoordsArray& cells(GetSelectedCells());
+//		const wxGridCellCoordsArray& cells(GetSelectedCells());
 
 		//Copy title from header
 		if(cols.size())

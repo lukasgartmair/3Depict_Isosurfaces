@@ -146,7 +146,7 @@ public:
 	bool getRegionUnderCursor(const wxPoint &mousePos, unsigned int &plotId, unsigned int &regionId) const;
 
 	//Returns the ID of the last edited region
-	size_t getLastEdited(size_t &lastPlot,size_t &lastRegion) const { lastRegion=lastEditedRegion; lastPlot=lastEditedPlot;};
+	void getLastEdited(size_t &lastPlot,size_t &lastRegion) const { lastRegion=lastEditedRegion; lastPlot=lastEditedPlot;};
 	//Add a callback for the given window that will be called when the panel needs updating
 	void registerUpdateHandler(wxWindow *w, UpdateHandler handler) { updateHandlers.push_back(make_pair(w,handler));};
 

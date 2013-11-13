@@ -200,7 +200,7 @@ std::string PropertyAnimator::getInterpolatedFilterData(size_t filterId,
 		}
 	}
 
-	if(modifyingId == -1)
+	if(modifyingId == (size_t)-1)
 		return std::string("");
 
 	//Scan to see which keyframe has our time in mind

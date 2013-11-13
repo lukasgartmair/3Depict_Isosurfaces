@@ -815,9 +815,10 @@ unsigned int generate1DAxialNNHist(const vector<Point3D> &pointList, const K3DTr
 		{
 			float temp;
 			temp=(*nnPoints[uj]-pointList[ui]).dotProd(axisDir);
+			//Use int type to catch small underflows
 			int offset=(int)(((0.5f*temp)/maxOfMaxDists+0.5f)*numBins);
 
-			if(offset < numBins && offset >=0)	
+			if(offset < (int)numBins && offset >=0)	
 			{
 				//TODO: OpenMP could use multiple histograms
 				// rather than locking

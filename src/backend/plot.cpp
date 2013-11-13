@@ -276,10 +276,11 @@ void genErrBars(const std::vector<float> &x, const std::vector<float> &y,
 				//Compute the local mean
 				for(int uj=0;uj<(int)errMode.movingAverageNum;uj++)
 				{
+					//TODO: Why are we using (int) here?
 					int idx;
 					idx= std::max(ui+uj-(int)errMode.movingAverageNum/2,0);
 					idx=std::min(idx,(int)(y.size()-1));
-					ASSERT(idx<y.size());
+					ASSERT(idx<(int)y.size());
 					mean+=y[idx];
 				}
 

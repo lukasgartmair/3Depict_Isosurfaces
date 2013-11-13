@@ -1176,7 +1176,7 @@ skipoutRNGChecks:
 	//--
 
 	//Check there is only one STATUS_IS_MAYBE or STATUS_NOT_CHECKED
-	if(std::count(typeStatus.begin(),typeStatus.end(),(unsigned int)STATUS_IS_NOT) == typeStatus.size()-1)
+	if((size_t)std::count(typeStatus.begin(),typeStatus.end(),(unsigned int)STATUS_IS_NOT) == typeStatus.size()-1)
 	{
 		//OK, there can only be one.  Return the format that has not
 		//  been rejected

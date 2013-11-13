@@ -175,7 +175,7 @@ class DrawableObj
 		// after destruction of the original
 		// Disallowed by default Implement in derived object!
 		//TODO: Once most sub-objects have this function, make pure virtual
-		virtual DrawableObj *clone() const {ASSERT(false);};
+		virtual DrawableObj *clone() const {ASSERT(false); return 0;}
 
 		//!Do we need to do element based depth sorting?
 		virtual bool needsDepthSorting() const { return false; } ;

@@ -29,7 +29,7 @@
 #include "backend/state.h"
 #include "backend/configFile.h"
 #include "backend/filters/algorithms/binomial.h"
-
+#include "backend/APT/ionhit.h"
 
 #include "common/stringFuncs.h"
 #include "common/xmlHelper.h"
@@ -104,6 +104,10 @@ bool runUnitTests()
 {
 
 	cerr << "Running unit tests..." ;
+
+
+	if(!testIonHit())
+		return false;
 
 	if(!filterTests())
 		return false;

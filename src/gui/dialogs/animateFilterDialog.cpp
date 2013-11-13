@@ -853,7 +853,6 @@ void ExportAnimationDialog::OnButtonKeyFrameRemove(wxCommandEvent &event)
 
 	//Row prefix or header selection
 	const wxArrayInt& selectedRows(animationGrid->GetSelectedRows());
-	const wxGridCellCoordsArray& cells(animationGrid->GetSelectedCells());
 
 	vector<size_t> rowsToKill;
 	

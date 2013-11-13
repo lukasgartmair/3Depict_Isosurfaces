@@ -572,7 +572,7 @@ void DrawTexturedQuad::rebindTexture()
 {
 	ASSERT(texPool);
 	ASSERT(textureData);
-	if(textureId == -1)
+	if(textureId == (unsigned int)-1)
 		texPool->genTexID(textureId);
 	
 	//Construc the texture

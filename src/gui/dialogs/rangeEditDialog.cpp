@@ -984,6 +984,7 @@ void RangeEditorDialog::OnGridIonsEditorShown(wxGridEvent &event)
 					r=rgbf.red*255.0f;
 					g=rgbf.green*255.0f;
 					b=rgbf.blue*255.0f;
+					a=255;
 
 					gridIons->SetCellBackgroundColour(event.GetRow(),
 						ION_COL_COLOUR,wxColour(r,g,b,a));
@@ -1523,7 +1524,7 @@ void RangeEditorDialog::OnTextOverlayEnter(wxCommandEvent &event)
 	// of combinations is (species)^fragmentCount. Eg C2 has two
 	// species, 12^C and 13^C, and with 10 items, you get 2^10 combinations
 	size_t MAX_FRAGMENT_COUNT=10;
-	if(totalFragments > 10)
+	if(totalFragments > MAX_FRAGMENT_COUNT)
 	{
 		textOverlayCmpnt->SetBackgroundColour(wxColour(*wxCYAN));
 		return;

@@ -23,6 +23,8 @@
 	- Fix axial dist aborting problem
 	- Fix loading of .xy files from external program filter
 	- Fix hang when disabling weak/fast randomisation
+	- Fix intermittent problems with spatial analysis filter aborting
+	- Fix incorrect parsing of ext. program commands
 
 	Technical bugfixes/changes:
 	- Fix hang when filters given directories as input (linux)

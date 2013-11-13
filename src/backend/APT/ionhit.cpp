@@ -256,13 +256,6 @@ void IonHit::getBoundCube(const std::vector<IonHit> &points,BoundCube &b)
 
 
 #ifdef DEBUG
-bool testIonHit();
-
-
-bool testAPTClasses()
-{
-	return testIonHit();
-}
 
 bool testIonHit()
 {
@@ -273,7 +266,7 @@ bool testIonHit()
 	
 	for(size_t ui=0;ui<8;ui++)
 	{
-		hit.setPos(Point3D(ui&4,ui&2,ui&1));
+		hit.setPos(Point3D(ui&4 >> 2,ui&2 >> 1,ui&1));
 		h.push_back(hit);
 	}
 
@@ -285,11 +278,12 @@ bool testIonHit()
 	for(size_t ui=0;ui<3;ui++)
 	{
 		biggerBox.setBound(ui,0,-1.5f);
-		biggerBox.setBound(ui,0,1.5f);
+		biggerBox.setBound(ui,1,1.5f);
 	}
 
 	TEST(biggerBox.contains(bc),"Check boundcube size");
 
+	return true;
 }
 
 #endif

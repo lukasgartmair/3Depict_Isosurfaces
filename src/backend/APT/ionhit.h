@@ -93,4 +93,10 @@ class IonAxisCompare
 		inline bool operator()(const IonHit &p1,const IonHit &p2) const
 			{return p1.getPos()[axis]<p2.getPos()[axis];};
 };
+
+#ifdef DEBUG
+//unit testing
+bool testIonHit();
+#endif
+
 #endif

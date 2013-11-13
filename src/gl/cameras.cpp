@@ -799,11 +799,12 @@ bool CameraLookAt::writeState(std::ostream &f, unsigned int format,
 			f<< tabs(nTabs+1) <<  "<nearplane value=\"" << nearPlane << "\"/>" << endl;
 			f << tabs(nTabs) << "</persplookat>" << endl;
 
-			return true;
 		}
 		default:
 			ASSERT(false);
 	}
+	
+	return true;
 }
 		
 bool CameraLookAt::readState(xmlNodePtr nodePtr)

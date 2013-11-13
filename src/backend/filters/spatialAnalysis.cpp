@@ -472,7 +472,7 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 				
 				string sTmp;
 
-				if(std::count(ionSourceEnabled.begin(),
+				if((size_t)std::count(ionSourceEnabled.begin(),
 					ionSourceEnabled.end(),true) == ionSourceEnabled.size())
 					sTmp="1";
 				else
@@ -502,7 +502,7 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 
 				curGroup++;
 				
-				if(std::count(ionTargetEnabled.begin(),
+				if((size_t)std::count(ionTargetEnabled.begin(),
 					ionTargetEnabled.end(),true) == ionTargetEnabled.size())
 					sTmp="1";
 				else
@@ -1662,6 +1662,8 @@ size_t SpatialAnalysisFilter::buildSplitPoints(const vector<const FilterStreamDa
 		}
 	}
 
+
+	return 0;
 }
 
 void SpatialAnalysisFilter::filterSelectedRanges(const vector<IonHit> &ions, bool sourceFilter, const RangeFile *rngF,
@@ -1673,9 +1675,9 @@ void SpatialAnalysisFilter::filterSelectedRanges(const vector<IonHit> &ions, boo
 	{
 		for(size_t ui=0;ui<ions.size();ui++)
 		{
-			size_t id;
+			unsigned int id;
 			id=rngF->getIonID(ions[ui].getMassToCharge());
-			if(id == -1)
+			if(id == (unsigned int )-1)
 				continue;
 			if(ionSourceEnabled[id])
 				output.push_back(ions[ui]);
@@ -1685,9 +1687,9 @@ void SpatialAnalysisFilter::filterSelectedRanges(const vector<IonHit> &ions, boo
 	{
 		for(size_t ui=0;ui<ions.size();ui++)
 		{
-			size_t id;
+			unsigned int id;
 			id=rngF->getIonID(ions[ui].getMassToCharge());
-			if(id == -1)
+			if(id == (unsigned int)-1)
 				continue;
 			if(ionTargetEnabled[id])
 				output.push_back(ions[ui]);
@@ -1763,8 +1765,8 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 
 	needSplitting=false;
 	//We only need to split up the data if we have to 
-	if(std::count(ionSourceEnabled.begin(),ionSourceEnabled.end(),true)!=ionSourceEnabled.size()
-		|| std::count(ionTargetEnabled.begin(),ionTargetEnabled.end(),true)!=ionTargetEnabled.size() )
+	if((size_t)std::count(ionSourceEnabled.begin(),ionSourceEnabled.end(),true)!=ionSourceEnabled.size()
+		|| (size_t)std::count(ionTargetEnabled.begin(),ionTargetEnabled.end(),true)!=ionTargetEnabled.size() )
 		needSplitting=true;
 
 	if(haveRangeParent && needSplitting)
@@ -2875,7 +2877,7 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 		#pragma omp task
 		{
 		bool sourceReduce;
-		sourceReduce=(std::count(ionSourceEnabled.begin(),ionSourceEnabled.end(),true)
+		sourceReduce=((size_t)std::count(ionSourceEnabled.begin(),ionSourceEnabled.end(),true)
 						!=ionSourceEnabled.size());
 		if(sourceReduce)
 		{
@@ -2888,7 +2890,7 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 		#pragma omp task
 		{
 		bool targetReduce;
-		targetReduce=(std::count(ionTargetEnabled.begin(),ionTargetEnabled.end(),true)
+		targetReduce=((size_t)std::count(ionTargetEnabled.begin(),ionTargetEnabled.end(),true)
 						!=ionTargetEnabled.size() );
 		if(targetReduce)
 		{
