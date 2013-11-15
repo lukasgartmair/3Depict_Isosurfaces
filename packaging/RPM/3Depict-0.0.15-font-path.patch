@@ -1,6 +1,6 @@
 diff -r 1b997a96b779 src/wxcomponents.cpp
---- src/wxcomponents.cpp	Sat Mar 23 17:50:44 2013 +0000
-+++ src/wxcomponents.cpp	Sat Mar 23 17:56:14 2013 +0000
+--- src/wx/wxcomponents.cpp	Sat Mar 23 17:50:44 2013 +0000
++++ src/wx/wxcomponents.cpp	Sat Mar 23 17:56:14 2013 +0000
 @@ -857,16 +857,17 @@
  	//(Oh look Ma, I'm autoconf!)
  

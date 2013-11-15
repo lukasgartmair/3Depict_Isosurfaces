@@ -1,5 +1,5 @@
 Name:		3Depict
-Version:	0.0.14
+Version:	0.0.15
 Release:	1%{?dist}
 Summary:	Valued 3D point cloud visualization and analysis
 Group:		Applications/Engineering
@@ -109,7 +109,13 @@ rm -rf %{buildroot}
 
 
 %changelog
-* Sat Jul 6 2013 D Haley <mycae(a!t)gmx.com> - 0.0.14-1
+* Fri Nov 15 2013 D Haley <mycae(a!t)gmx.com> - 0.0.15-1
+- Update to 0.0.15
+
+* Fri Aug 02 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.14-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
+
+* Sat Jul 20 2013 D Haley <mycae(a!t)gmx.com> - 0.0.14-1
 - Update to 0.0.14
 
 * Tue Jun 25 2013 D Haley <mycae(a!t)gmx.com> - 0.0.13-2
