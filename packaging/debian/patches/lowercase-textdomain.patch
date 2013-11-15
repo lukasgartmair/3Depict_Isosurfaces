@@ -3,8 +3,8 @@ Forwarded: not-needed
 Author: D Haley <mycae - gmx - com>
 Index: 3depict-0.0.14/src/3Depict.cpp
 ===================================================================
---- 3depict-0.0.14.orig/src/3Depict.cpp	2013-07-06 11:08:20.000000000 +0200
-+++ 3depict-0.0.14/src/3Depict.cpp	2013-07-06 11:08:25.000000000 +0200
+--- 3depict-0.0.14.orig/src/3Depict.cpp	2013-07-20 14:41:45.000000000 +0200
++++ 3depict-0.0.14/src/3Depict.cpp	2013-07-20 18:36:33.000000000 +0200
 @@ -165,7 +165,7 @@
  		else
  		{

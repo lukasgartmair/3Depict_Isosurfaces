@@ -1,2 +1,5 @@
 data/textures/*png usr/share/3depict/textures/
 docs/manual-latex/manual.pdf usr/share/3depict/
+data/*dtd usr/share/3depict/
+data/*txt usr/share/3depict/
+data/*xml usr/share/3depict/

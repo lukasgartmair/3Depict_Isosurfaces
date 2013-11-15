@@ -1,11 +1,11 @@
 Description: Debian uses lowercase lib names.
 Forwarded: not-needed
 Author: D Haley <mycae - gmx - com>
-Index: 3depict-0.0.14/configure
+Index: 3depict-0.0.15/configure
 ===================================================================
---- 3depict-0.0.14.orig/configure	2013-07-06 11:08:16.000000000 +0200
-+++ 3depict-0.0.14/configure	2013-07-06 11:08:28.000000000 +0200
-@@ -5964,7 +5964,7 @@
+--- 3depict-0.0.15.orig/configure	2013-11-15 21:19:07.000000000 +0100
++++ 3depict-0.0.15/configure	2013-11-15 21:19:10.000000000 +0100
+@@ -6121,7 +6121,7 @@
  if test "x$ftgl_prefix" != "x" ; then
  	#use the supplied CFLAGS. assume LIBS
  	FTGL_CFLAGS="-I$ftgl_prefix/include/ -L$ftgl_prefix/lib/"

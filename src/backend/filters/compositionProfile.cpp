@@ -456,7 +456,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 			if(rngData)
 				plotData[ui]->yLabel= TRANS("Fraction");
 			else
-				plotData[ui]->yLabel= TRANS("Density (\\#.len^3)");
+				plotData[ui]->yLabel= TRANS("Density (\\frac{\\#}{len^3})");
 		}
 		else
 			plotData[ui]->yLabel= TRANS("Count");
