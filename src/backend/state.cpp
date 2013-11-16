@@ -32,6 +32,8 @@ AnalysisState::AnalysisState()
 	modifyLevel=STATE_MODIFIED_NONE;
 	useRelativePathsForSave=false;
 	activeCamera=0;
+
+	rBack=gBack=bBack=0;
 }
 
 
@@ -839,7 +841,7 @@ void AnalysisState::copyEffects(vector<Effect *> &e) const
 }
 
 
-void AnalysisState::setBackgroundColour(float &r, float &g, float &b)
+void AnalysisState::setBackgroundColour(float r, float g, float b)
 {
 	if(rBack != r || gBack!=g || bBack!=b)
 		setModifyLevel(STATE_MODIFIED_VIEW);
@@ -1003,6 +1005,9 @@ bool testStateReload()
 {
 
 	AnalysisState someState;
+	someState.setWorldAxisMode(0);
+	someState.setBackgroundColour(0,0,0);
+
 	FilterTree tree;
 	IonDownsampleFilter *f = new IonDownsampleFilter;
 	tree.addFilter(f,NULL);
