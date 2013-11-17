@@ -161,7 +161,7 @@ class AnalysisState
 		void copyEffects(vector<Effect *> &effects) const;
 
 		//Set the background colour for the 
-		void setBackgroundColour(float &r, float &g, float &b);
+		void setBackgroundColour(float r, float g, float b);
 
 		//set the display mode for the world XYZ axes
 		void setWorldAxisMode(unsigned int mode);
