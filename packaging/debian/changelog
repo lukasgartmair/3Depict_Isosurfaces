@@ -1,8 +1,14 @@
+3depict (0.0.15-1) unstable; urgency=low
+
+  * Update to 0.0.15
+
+ -- D Haley <mycae@gmx.com>  Fri, 15 Nov 2013 20:42:37 +0100
+
 3depict (0.0.14-1) unstable; urgency=low
 
   * Update to upstream
 
- -- D Haley <mycae@gmx.com>  Sat, 06 Jul 2013 11:13:02 +0200
+ -- D Haley <mycae@gmx.com>  Sat, 20 Jul 2013 18:31:32 +0200
 
 3depict (0.0.13-2) unstable; urgency=low
 
