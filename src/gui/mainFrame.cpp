@@ -572,12 +572,12 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
     btnFilterTreeErrs = new wxBitmapButton(filterTreePane,ID_BTN_FILTERTREE_ERRS,wxArtProvider::GetBitmap(wxART_INFORMATION),wxDefaultPosition,wxSize(40,40));
 
     propGridLabel = new wxStaticText(filterPropertyPane, wxID_ANY, wxTRANS("Filter settings"));
-    gridFilterPropGroup = new wxPropertyGrid(filterPropertyPane, ID_GRID_FILTER_PROPERTY);
+    gridFilterPropGroup = new wxCustomPropGrid(filterPropertyPane, ID_GRID_FILTER_PROPERTY);
     labelCameraName = new wxStaticText(noteCamera, wxID_ANY, wxTRANS("Camera Name"));
     comboCamera = new wxComboBox(noteCamera, ID_COMBO_CAMERA, wxT(""), wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_DROPDOWN|wxTE_PROCESS_ENTER );
     buttonRemoveCam = new wxButton(noteCamera, wxID_REMOVE, wxEmptyString);
     cameraNamePropertySepStaticLine = new wxStaticLine(noteCamera, wxID_ANY);
-    gridCameraProperties = new wxPropertyGrid(noteCamera, ID_GRID_CAMERA_PROPERTY);
+    gridCameraProperties = new wxCustomPropGrid(noteCamera, ID_GRID_CAMERA_PROPERTY);
 #ifndef APPLE_EFFECTS_WORKAROUND
     checkPostProcessing = new wxCheckBox(notePost, ID_EFFECT_ENABLE, wxTRANS("3D Post-processing"));
 #endif
@@ -865,8 +865,13 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_BUTTON(ID_BTN_EXPAND, MainWindowFrame::OnBtnExpandTree)
     EVT_BUTTON(ID_BTN_COLLAPSE, MainWindowFrame::OnBtnCollapseTree)
     EVT_BUTTON(ID_BTN_FILTERTREE_ERRS, MainWindowFrame::OnBtnFilterTreeErrs)
+#if wxCHECK_VERSION(2,9,0)
+    EVT_GRID_CMD_CELL_CHANGED(ID_GRID_FILTER_PROPERTY, MainWindowFrame::OnGridFilterPropertyChange)
+    EVT_GRID_CMD_CELL_CHANGED(ID_GRID_CAMERA_PROPERTY, MainWindowFrame::OnGridCameraPropertyChange)
+#else
     EVT_GRID_CMD_CELL_CHANGE(ID_GRID_FILTER_PROPERTY, MainWindowFrame::OnGridFilterPropertyChange)
     EVT_GRID_CMD_CELL_CHANGE(ID_GRID_CAMERA_PROPERTY, MainWindowFrame::OnGridCameraPropertyChange)
+#endif
     EVT_TEXT(ID_COMBO_CAMERA, MainWindowFrame::OnComboCameraText)
     EVT_TEXT_ENTER(ID_COMBO_CAMERA, MainWindowFrame::OnComboCameraEnter)
     EVT_CHECKBOX(ID_CHECK_ALPHA, MainWindowFrame::OnCheckAlpha)
@@ -4640,7 +4645,11 @@ void MainWindowFrame::OnButtonGridCopy(wxCommandEvent &event)
 
 void MainWindowFrame::OnButtonGridSave(wxCommandEvent &event)
 {
+#if wxCHECK_VERSION(2,9,0)
+	if(!gridRawData->GetNumberRows()||!gridRawData->GetNumberCols())
+#else
 	if(!gridRawData->GetRows()||!gridRawData->GetCols())
+#endif
 	{
 		statusMessage(TRANS("No data to save"),MESSAGE_ERROR);
 		return;

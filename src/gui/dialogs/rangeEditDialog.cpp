@@ -273,8 +273,13 @@ BEGIN_EVENT_TABLE(RangeEditorDialog, wxDialog)
     EVT_TEXT(ID_TEXT_FILTER_CMPNT,RangeEditorDialog::OnTextOverlay)
     EVT_TEXT_ENTER(ID_TEXT_FILTER_CMPNT,RangeEditorDialog::OnTextOverlayEnter)
     EVT_CHECKBOX(ID_CHECK_SHOW_OVERLAY, RangeEditorDialog::OnCheckShowOverlay)
+#if wxCHECK_VERSION(2,9,0)
+    EVT_GRID_CMD_CELL_CHANGED(ID_GRID_RANGES, RangeEditorDialog::OnGridRangesCellChange)
+    EVT_GRID_CMD_CELL_CHANGED(ID_GRID_IONS, RangeEditorDialog::OnGridIonsCellChange)
+#else
     EVT_GRID_CMD_CELL_CHANGE(ID_GRID_RANGES, RangeEditorDialog::OnGridRangesCellChange)
     EVT_GRID_CMD_CELL_CHANGE(ID_GRID_IONS, RangeEditorDialog::OnGridIonsCellChange)
+#endif
     EVT_GRID_CMD_CELL_LEFT_CLICK(ID_GRID_RANGES,RangeEditorDialog::OnGridRangeClick) 
     EVT_GRID_CMD_CELL_LEFT_CLICK(ID_GRID_IONS,RangeEditorDialog::OnGridIonClick) 
     EVT_GRID_CMD_EDITOR_SHOWN(ID_GRID_RANGES,RangeEditorDialog::OnGridRangesEditorShown)

@@ -24,7 +24,7 @@
 
 class VisController;
 class wxGrid;
-class wxPropertyGrid;
+class wxCustomPropGrid;
 class wxTreeCtrl;
 
 class Scene;
@@ -219,7 +219,7 @@ class VisController
 		//Move a filter from one part of the tree to another
 		bool reparentFilter(size_t filterID, size_t newParentID);
 
-		//!Set the properties using a key-value result (as obtained from updatewxPropertyGrid)
+		//!Set the properties using a key-value result (as obtained from updatewxCustomPropGrid)
 		/*
 		 * The return code tells whether to reject or accept the change. 
 		 * need update tells us if the change to the filter resulted in a change to the scene
@@ -268,8 +268,8 @@ class VisController
 		//!Write out the filters into a wxtreecontrol.
 		// optional argument is the fitler to keep visible in the control
 		void updateWxTreeCtrl(wxTreeCtrl *t,const Filter *f=0);
-		//!Update a wxPropertyGrid with the properties for a given filter
-		void updateFilterPropGrid(wxPropertyGrid *g,size_t filterId) const;
+		//!Update a wxCustomPropGrid with the properties for a given filter
+		void updateFilterPropGrid(wxCustomPropGrid *g,size_t filterId) const;
 			
 
 
@@ -284,12 +284,12 @@ class VisController
 		unsigned int addCam(const std::string &camName);
 
 		//!Update a wxtGrid with the properties for a given filter
-		void updateCamPropertyGrid(wxPropertyGrid *g,unsigned int camId) const;
+		void updateCamPropertyGrid(wxCustomPropGrid *g,unsigned int camId) const;
 		
 		//!Return the number of cameras
 		unsigned int numCams() const ;
 
-		//!Set the properties using a key-value result (as obtaed from updatewxPropertyGrid)
+		//!Set the properties using a key-value result (as obtaed from updatewxCustomPropGrid)
 		/*! The return code tells whether to reject or accept the change. 
 		 */
 		bool setCamProperties(size_t camId, 

@@ -67,7 +67,7 @@ protected:
     wxStaticText* label_6;
     wxTreeCtrl* treeFilters;
     wxStaticText* label_7;
-    wxPropertyGrid* gridProperties;
+    wxCustomPropGrid* gridProperties;
     wxButton* btnOK;
     // end wxGlade
 

@@ -28,6 +28,11 @@
 class BasicGLPane : public wxGLCanvas
 {
 private:
+
+#if wxCHECK_VERSION(2,9,0)
+	wxGLContext *context;
+#endif
+
 	wxStatusBar *parentStatusBar;
 	wxTimer *parentStatusTimer;
 	unsigned int statusDelay;	
@@ -96,7 +101,7 @@ public:
     
 	int getWidth();
 	int getHeight();
-  
+ 
 
 	void setMouseMoveFactor(float f) { mouseMoveFactor=f;};
 	void setMouseZoomFactor(float f) { mouseZoomFactor=f;};

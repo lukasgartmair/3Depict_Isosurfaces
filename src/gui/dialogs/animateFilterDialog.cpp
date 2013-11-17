@@ -153,7 +153,7 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
     filterPropertySizer_staticbox = new wxStaticBox(filterLeftPane, -1, wxTRANS("Filters and properties"));
     filterTreeCtrl =new wxTreeCtrl(filterLeftPane,ID_FILTER_TREE_CTRL , wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_HIDE_ROOT|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER|wxTR_EDIT_LABELS);
 
-    propertyGrid = new wxPropertyGrid(filterLeftPane, ID_PROPERTY_GRID);
+    propertyGrid = new wxCustomPropGrid(filterLeftPane, ID_PROPERTY_GRID);
     animationGrid = new wxGrid(filterRightPane, ID_ANIMATION_GRID_CTRL);
     keyFrameRemoveButton = new wxButton(filterRightPane, wxID_REMOVE, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
     labelWorkDir = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("Dir : "));

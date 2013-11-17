@@ -148,13 +148,13 @@ enum
 //
 
 //Forward dec.
-class wxPropertyGrid;
+class wxCustomPropGrid;
 
 //!Return the number of elements in a vector of filter data - i.e. the sum of the number of objects within each stream. Only masked streams (STREAM_TYPE_*) will be counted
 size_t numElements(const vector<const FilterStreamData *> &vm, unsigned int mask=STREAMTYPE_MASK_ALL);
 
 
-void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f);
+void updateFilterPropertyGrid(wxCustomPropGrid *g, const Filter *f);
 
 //!Abstract base class for data types that can propagate through filter system
 class FilterStreamData

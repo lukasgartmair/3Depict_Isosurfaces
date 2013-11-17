@@ -165,7 +165,7 @@ protected:
     wxStaticBox* keyFramesSizer_staticbox;
     wxStaticBox* filterPropertySizer_staticbox;
     wxTreeCtrl* filterTreeCtrl;
-    wxPropertyGrid* propertyGrid;
+    wxCustomPropGrid* propertyGrid;
     wxPanel* filterLeftPane;
     wxGrid* animationGrid;
     wxButton* keyFrameRemoveButton;

@@ -79,7 +79,7 @@ PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wx
 	filterPropSizer_staticbox = new wxStaticBox(panelFilters, -1, wxTRANS("Filter Defaults"));
 	lblFilters = new wxStaticText(panelFilters, wxID_ANY, wxTRANS("Available Filters"));
 	listFilters = new wxListBox(panelFilters, ID_LIST_FILTERS, wxDefaultPosition, wxDefaultSize, 0, NULL, wxLB_SINGLE|wxLB_SORT);
-	filterGridProperties = new wxPropertyGrid(panelFilters, ID_GRID_PROPERTIES);
+	filterGridProperties = new wxCustomPropGrid(panelFilters, ID_GRID_PROPERTIES);
 	filterBtnResetAllFilters = new wxButton(panelFilters, ID_BTN_RESET_FILTER_ALL, wxTRANS("Reset All"));
 	filterResetDefaultFilter = new wxButton(panelFilters, ID_BTN_RESET_FILTER, wxTRANS("Reset"));
 	const wxString comboPanelStartMode_choices[] = {
@@ -134,7 +134,11 @@ PrefDialog::~PrefDialog()
 BEGIN_EVENT_TABLE(PrefDialog, wxDialog)
     // begin wxGlade: PrefDialog::event_table
     EVT_LISTBOX(ID_LIST_FILTERS, PrefDialog::OnFilterListClick)
+#if wxCHECK_VERSION(2,9,0)
+    EVT_GRID_CMD_CELL_CHANGED(ID_GRID_PROPERTIES, PrefDialog::OnFilterCellChange)
+#else
     EVT_GRID_CMD_CELL_CHANGE(ID_GRID_PROPERTIES, PrefDialog::OnFilterCellChange)
+#endif
     EVT_GRID_CMD_EDITOR_SHOWN(ID_GRID_PROPERTIES,PrefDialog::OnFilterGridCellEditorShow)
     EVT_BUTTON(ID_BTN_RESET_FILTER,PrefDialog::OnResetFilterButton)
     EVT_BUTTON(ID_BTN_RESET_FILTER_ALL,PrefDialog::OnResetFilterAllButton)

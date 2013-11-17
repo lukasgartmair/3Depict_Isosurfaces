@@ -165,41 +165,45 @@ std::string wxChoiceParamString(std::string choiceString)
 	return retStr;
 }
 
-BEGIN_EVENT_TABLE(wxPropertyGrid, wxGrid)
-	EVT_GRID_CELL_LEFT_CLICK(wxPropertyGrid::OnCellLeftClick )
-	EVT_GRID_LABEL_LEFT_DCLICK(wxPropertyGrid::OnLabelDClick) 
-	EVT_MOTION(wxPropertyGrid::OnMouseMove) 
+BEGIN_EVENT_TABLE(wxCustomPropGrid, wxGrid)
+	EVT_GRID_CELL_LEFT_CLICK(wxCustomPropGrid::OnCellLeftClick )
+	EVT_GRID_LABEL_LEFT_DCLICK(wxCustomPropGrid::OnLabelDClick) 
+	EVT_MOTION(wxCustomPropGrid::OnMouseMove) 
 END_EVENT_TABLE()
 
-wxPropertyGrid::wxPropertyGrid(wxWindow* parent, wxWindowID id, 
+wxCustomPropGrid::wxCustomPropGrid(wxWindow* parent, wxWindowID id, 
 		const wxPoint& pos , const wxSize& size , long style ) :
 					wxGrid(parent, id, pos, size , style)
 {
 	lastGridHoverCol=lastGridHoverRow=-1;
 	//Perform wx event connecting/binding
 #if wxCHECK_VERSION(2, 9, 0)
-	GetGridWindow()->Bind(wxEVT_MOTION, &wxPropertyGrid::OnMouseMove, this);
+	GetGridWindow()->Bind(wxEVT_MOTION, &wxCustomPropGrid::OnMouseMove, this);
 #else
     	GetGridWindow()->Connect(wxID_ANY,
-                 wxEVT_MOTION, wxMouseEventHandler(wxPropertyGrid::OnMouseMove), NULL, this);
+                 wxEVT_MOTION, wxMouseEventHandler(wxCustomPropGrid::OnMouseMove), NULL, this);
 #endif
 }
 
 
-void wxPropertyGrid::setGroupName(unsigned int set, const std::string &name) 
+void wxCustomPropGrid::setGroupName(unsigned int set, const std::string &name) 
 {
 	ASSERT(set < sectionNames.size());
 	sectionNames[set]=name;
 }
 
-void wxPropertyGrid::OnSize(wxSizeEvent &event)
+void wxCustomPropGrid::OnSize(wxSizeEvent &event)
 {
 
 }
 
-void wxPropertyGrid::OnLabelDClick(wxGridEvent &event)
+void wxCustomPropGrid::OnLabelDClick(wxGridEvent &event)
 {
+#if wxCHECK_VERSION(2,9,0)
+	if(!this->GetNumberCols())
+#else
 	if(!this->GetCols())
+#endif
 		return;
 	wxSize s;
 	s=this->GetSize();
@@ -207,7 +211,7 @@ void wxPropertyGrid::OnLabelDClick(wxGridEvent &event)
 	SelectBlock(-1,-1,-1,-1); //Select empty block
 }
 
-void wxPropertyGrid::fitCols(wxSize &size)
+void wxCustomPropGrid::fitCols(wxSize &size)
 {
 	int wc = size.GetWidth()-this->GetScrollThumb(wxVERTICAL)-15;
 	this->SetColSize(1, wc-this->GetColSize(0)); 
@@ -215,10 +219,10 @@ void wxPropertyGrid::fitCols(wxSize &size)
 	Refresh();
 }
 
-wxPropertyGrid::~wxPropertyGrid()
+wxCustomPropGrid::~wxCustomPropGrid()
 {
 #if wxCHECK_VERSION(2, 9, 0)
-   GetGridWindow()->Unbind(wxEVT_MOTION, &wxPropertyGrid::OnMouseMove, this);
+   GetGridWindow()->Unbind(wxEVT_MOTION, &wxCustomPropGrid::OnMouseMove, this);
 #else
    GetGridWindow()->Disconnect();
 #endif
@@ -296,14 +300,14 @@ void wxGridCellChoiceRenderer::Draw(wxGrid& grid, wxGridCellAttr& attr, wxDC& dc
 	}
 }
 
-bool wxPropertyGrid::isSeparatorRow(int row) const
+bool wxCustomPropGrid::isSeparatorRow(int row) const
 {
 	//TODO: Consider moving to map, this does not scale well.
 	// for now we have usually five or six items tho
 	return std::find(sepRows.begin(),sepRows.end(),row)!=sepRows.end();
 }
 
-void wxPropertyGrid::OnMouseMove(wxMouseEvent &event)
+void wxCustomPropGrid::OnMouseMove(wxMouseEvent &event)
 {
 
 	int xPos,yPos;
@@ -343,7 +347,7 @@ void wxPropertyGrid::OnMouseMove(wxMouseEvent &event)
 }
 
 //Function adapted from nomadsync.sourceforge.net (GPL)
-void wxPropertyGrid::OnCellLeftClick(wxGridEvent &ev)
+void wxCustomPropGrid::OnCellLeftClick(wxGridEvent &ev)
 {
 	// This forces the cell to go into edit mode directly
 	m_waitForSlowClick = true;
@@ -357,7 +361,7 @@ void wxPropertyGrid::OnCellLeftClick(wxGridEvent &ev)
 	ev.Skip();
 }
 
-void wxPropertyGrid::clear()
+void wxCustomPropGrid::clear()
 {
 	this->BeginBatch();
 	//Empty the grid
@@ -374,12 +378,19 @@ void wxPropertyGrid::clear()
 	lastGridHoverRow=lastGridHoverCol=-1;
 }
 
-bool wxPropertyGrid::isComboEditing() 
+bool wxCustomPropGrid::isComboEditing() 
 {
-	return IsCellEditControlEnabled() && getTypeFromRow(this->GetCursorRow()) == PROPERTY_TYPE_CHOICE;
+	bool retVal;
+	retVal= IsCellEditControlEnabled();
+#if wxCHECK_VERSION(2,9,0)
+	retVal = retVal &&getTypeFromRow(this->GetGridCursorRow()) == PROPERTY_TYPE_CHOICE;
+#else
+	retVal = retVal && getTypeFromRow(this->GetCursorRow()) == PROPERTY_TYPE_CHOICE;
+#endif
+	return retVal;
 };
 
-unsigned int wxPropertyGrid::getTypeFromRow(int row) const
+unsigned int wxCustomPropGrid::getTypeFromRow(int row) const
 {
 	for(unsigned int ui=0;ui<propertyKeys.size();ui++)
 	{
@@ -395,13 +406,13 @@ unsigned int wxPropertyGrid::getTypeFromRow(int row) const
 	return 0; // Shut gcc up
 }
 
-void  wxPropertyGrid::clearKeys()
+void  wxCustomPropGrid::clearKeys()
 {
 	propertyKeys.clear();
 	sectionNames.clear();
 }
 
-void wxPropertyGrid::addKey(const std::string &name, unsigned int group,
+void wxCustomPropGrid::addKey(const std::string &name, unsigned int group,
 		unsigned int newKey, unsigned int type, const std::string &data,
 		const std::string &helpText)
 {
@@ -416,7 +427,7 @@ void wxPropertyGrid::addKey(const std::string &name, unsigned int group,
 }
 
 //Layout the property vector
-void wxPropertyGrid::propertyLayout()
+void wxCustomPropGrid::propertyLayout()
 {
 	this->BeginBatch();
 
@@ -575,7 +586,7 @@ void wxPropertyGrid::propertyLayout()
 	fitCols(s);
 }
 
-unsigned int  wxPropertyGrid::getKeyFromRow(int row) const
+unsigned int  wxCustomPropGrid::getKeyFromRow(int row) const
 {
 	for(unsigned int ui=0;ui<propertyKeys.size();ui++)
 	{
@@ -591,7 +602,7 @@ unsigned int  wxPropertyGrid::getKeyFromRow(int row) const
 	return 0; // Shut gcc up
 }
 
-const GRID_PROPERTY *wxPropertyGrid::getProperty(unsigned int key) const
+const GRID_PROPERTY *wxCustomPropGrid::getProperty(unsigned int key) const
 {
 	for(unsigned int group=0;group<propertyKeys.size();group++)
 	{
@@ -663,8 +674,13 @@ void CopyGrid::saveData()
 
         // Number of rows and cols
         int rows,cols;
+#if wxCHECK_VERSION(2,9,0)
+	rows=GetNumberRows();
+	cols=GetNumberCols();
+#else
 	rows=GetRows();
 	cols=GetCols();
+#endif
         // data variable contain text that must be set in the clipboard
         // For each cell in selected range append the cell value in the data
 	//variable

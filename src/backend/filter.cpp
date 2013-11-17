@@ -64,7 +64,7 @@ const char *FILTER_NAMES[] = { "posload",
 				"annotation"
 				};
 
-void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f)
+void updateFilterPropertyGrid(wxCustomPropGrid *g, const Filter *f)
 {
 
 	ASSERT(f);

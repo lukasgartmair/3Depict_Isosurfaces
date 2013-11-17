@@ -90,7 +90,11 @@ int attribList[] = {WX_GL_RGBA,
 			0,0};
 
 BasicGLPane::BasicGLPane(wxWindow* parent) :
+#if wxCHECK_VERSION(2,9,0)
+wxGLCanvas(parent, wxID_ANY,  attribList)
+#else
 wxGLCanvas(parent, wxID_ANY,  wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"),attribList)
+#endif
 {
 	haveCameraUpdates=false;
 	applyingDevice=false;
@@ -98,6 +102,9 @@ wxGLCanvas(parent, wxID_ANY,  wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas
 
 	keyDoubleTapTimer=new wxTimer(this,ID_KEYPRESS_TIMER);
 	lastKeyDoubleTap=(unsigned int)-1;
+#if wxCHECK_VERSION(2,9,0)
+	context=0;
+#endif
 
 	mouseMoveFactor=mouseZoomFactor=1.0f;	
 	dragging=false;
@@ -246,13 +253,21 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 		if(wxm.ShiftDown())
 			keyFlags|=FLAG_SHIFT;
 
+#if wxCHECK_VERSION(2,9,0)
+		if(wxm.LeftIsDown())
+		       	mouseFlags|= SELECT_BUTTON_LEFT;
+		if(wxm.RightIsDown())
+		       	mouseFlags|= SELECT_BUTTON_RIGHT;
+		if(wxm.MiddleIsDown())
+		       	mouseFlags|= SELECT_BUTTON_MIDDLE;
+#else
 		if(wxm.LeftDown())
 		       	mouseFlags|= SELECT_BUTTON_LEFT;
 		if(wxm.RightDown())
 		       	mouseFlags|= SELECT_BUTTON_RIGHT;
 		if(wxm.MiddleDown())
 		       	mouseFlags|= SELECT_BUTTON_MIDDLE;
-
+#endif
 		//We can get  a mouse move event which reports no buttons before a mouse-up event,
 		//this occurs frequently under windows, but sometimes under GTK
 		if(!mouseFlags)
@@ -708,8 +723,9 @@ void BasicGLPane::charEvent(wxKeyEvent& event)
  
 void BasicGLPane::resized(wxSizeEvent& evt)
 {
+#if !wxCHECK_VERSION(2,9,0)
 	wxGLCanvas::OnSize(evt);
-
+#endif
 	prepare3DViewport(0,0,getWidth(),getHeight()); 
 	wxClientDC *dc=new wxClientDC(this);
 	Refresh();
@@ -773,8 +789,16 @@ void BasicGLPane::render( wxPaintEvent& evt )
 	//Prevent calls to openGL if pane not visible
 	if (!IsShown()) 
 		return;
-		
+	
+#if wxCHECK_VERSION(2,9,0)
+	if(!context)
+	{
+		context = new wxGLContext(this);
+		SetCurrent(*context);
+	}
+#else
 	wxGLCanvas::SetCurrent();
+#endif
 	if(!paneInitialised)
 	{
 		paneInitialised=true;

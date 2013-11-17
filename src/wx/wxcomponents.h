@@ -115,7 +115,7 @@ struct GRID_PROPERTY
 	std::string helpText; //Hover tool-tip help text
 };
 
-class wxPropertyGrid;
+class wxCustomPropGrid;
 
 //!WxGrid derived class to hold and display property data
 //So it turns out that someone has MADE a property grid.
@@ -124,7 +124,7 @@ class wxPropertyGrid;
 //use their code instead, its bound to be better. 
 //Also, this appears up in the wxwidgets SVN, 
 //so maybe there will be a name clash in future
-class wxPropertyGrid : public wxGrid
+class wxCustomPropGrid : public wxGrid
 {
 	protected:
 		//First element is key number. Second element is key type
@@ -143,9 +143,9 @@ class wxPropertyGrid : public wxGrid
 		//Is the nth row a separator row?
 		bool isSeparatorRow(int row) const;
 	public:
-		wxPropertyGrid(wxWindow* parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition, 
+		wxCustomPropGrid(wxWindow* parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition, 
 					const wxSize& size = wxDefaultSize, long style = wxWANTS_CHARS);
-		~wxPropertyGrid();
+		~wxCustomPropGrid();
 		
 		void OnSize(wxSizeEvent &size);
 		void OnLabelDClick(wxGridEvent &size);

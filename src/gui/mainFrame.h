@@ -186,7 +186,7 @@ protected:
     wxBitmapButton* btnFilterTreeErrs;
     wxPanel* filterTreePane;
     wxStaticText* propGridLabel;
-    wxPropertyGrid* gridFilterPropGroup;
+    wxCustomPropGrid* gridFilterPropGroup;
     wxPanel* filterPropertyPane;
     wxSplitterWindow* filterSplitter;
     wxPanel* noteData;
@@ -194,7 +194,7 @@ protected:
     wxComboBox* comboCamera;
     wxButton* buttonRemoveCam;
     wxStaticLine* cameraNamePropertySepStaticLine;
-    wxPropertyGrid* gridCameraProperties;
+    wxCustomPropGrid* gridCameraProperties;
     wxScrolledWindow* noteCamera;
     wxCheckBox* checkPostProcessing;
     wxCheckBox* checkFxCrop;

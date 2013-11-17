@@ -48,7 +48,7 @@ StashDialog::StashDialog(wxWindow* parent, int id, const wxString& title, const 
     label_6 = new wxStaticText(this, wxID_ANY, wxTRANS("Stashed Tree"));
     treeFilters = new wxTreeCtrl(this, ID_TREE_FILTERS, wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER|wxTR_HIDE_ROOT);
     label_7 = new wxStaticText(this, wxID_ANY, wxTRANS("Properties"));
-    gridProperties = new wxPropertyGrid(this, ID_GRID_FILTER);
+    gridProperties = new wxCustomPropGrid(this, ID_GRID_FILTER);
     btnOK = new wxButton(this, wxID_OK, wxEmptyString);
 
     set_properties();

@@ -366,7 +366,7 @@ void VisController::updateWxTreeCtrl(wxTreeCtrl *t, const Filter *visibleFilt)
 	upWxTreeCtrl(filterTree,t,filterMap,persistentFilters,visibleFilt);
 }
 
-void VisController::updateFilterPropGrid(wxPropertyGrid *g,size_t filterId) const	
+void VisController::updateFilterPropGrid(wxCustomPropGrid *g,size_t filterId) const	
 {
 	//The filterID can never be set to zero,
 	//except for the root item, as set by
@@ -967,7 +967,7 @@ bool VisController::setCam(unsigned int offset)
 	return true;
 }
 
-void VisController::updateCamPropertyGrid(wxPropertyGrid *g,unsigned int offset) const
+void VisController::updateCamPropertyGrid(wxCustomPropGrid *g,unsigned int offset) const
 {
 
 	//Erase the grid

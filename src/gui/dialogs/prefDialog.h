@@ -73,7 +73,7 @@ protected:
     wxStaticBox* filterPropSizer_staticbox;
     wxStaticText* lblFilters;
     wxListBox* listFilters;
-    wxPropertyGrid* filterGridProperties;
+    wxCustomPropGrid* filterGridProperties;
     wxButton* filterBtnResetAllFilters;
     wxButton* filterResetDefaultFilter;
     wxPanel* panelFilters;
