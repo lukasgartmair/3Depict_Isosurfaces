@@ -1,0 +1,31 @@
+diff -r 798a38fb8fc4 Makefile.am
+--- a/Makefile.am	Sat Nov 16 16:50:20 2013 +0100
++++ b/Makefile.am	Sat Nov 16 16:50:44 2013 +0100
+@@ -1,7 +1,7 @@
+ 
+ ACLOCAL_AMFLAGS = -I m4
+ 
+-SUBDIRS = src test demo docs
++SUBDIRS = src 
+ DIST_SUBDIRS = $(SUBDIRS) msvc
+ 
+ pkgconfigdir = $(libdir)/pkgconfig
+diff -r b330fd541a40 configure.ac
+--- a/configure.ac	Sat Nov 16 16:54:52 2013 +0100
++++ b/configure.ac	Sat Nov 16 16:55:34 2013 +0100
+@@ -65,6 +65,7 @@
+ 
+ # Build HTML documentatin?
+ AC_PATH_PROG(DOXYGEN, doxygen, no)
++DOXYGEN="no"
+ AM_CONDITIONAL(HAVE_DOXYGEN, test "x$DOXYGEN" != "xno")
+ 
+ # Build PDF documentation?
+@@ -91,6 +92,7 @@
+     AC_MSG_RESULT(no)
+   fi
+ fi
++LATEX="no"
+ AM_CONDITIONAL(HAVE_LATEX, test "x${LATEX}" != "xno")
+ 
+ AC_CONFIG_FILES([

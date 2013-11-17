@@ -22,19 +22,6 @@
    ;
    return 0;
  }
-@@ -22597,11 +22595,10 @@
- #ifdef __cplusplus
- extern "C"
- #endif
--char glBegin ();
-+#include <GL/gl.h>
- int
- main ()
- {
--return glBegin ();
-   ;
-   return 0;
- }
 @@ -23014,11 +23011,10 @@
  #ifdef __cplusplus
  extern "C"
@@ -43,18 +30,6 @@
 -int
 +#include <GL/glu.h>
 +	int
- main ()
- {
--return gluNewTess ();
-   ;
-   return 0;
- }
-@@ -23067,11 +23063,9 @@
- #ifdef __cplusplus
- extern "C"
- #endif
--char gluNewTess ();
- int
  main ()
  {
 -return gluNewTess ();

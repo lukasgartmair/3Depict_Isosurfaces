@@ -1,0 +1,12 @@
+diff -r 0d1de5a122f4 src/common/imagjpeg.cpp
+--- a/src/common/imagjpeg.cpp	Sat Nov 16 00:10:29 2013 +0100
++++ b/src/common/imagjpeg.cpp	Sat Nov 16 00:11:02 2013 +0100
+@@ -46,7 +46,7 @@
+ }
+ 
+ #ifndef HAVE_WXJPEG_BOOLEAN
+-typedef boolean wxjpeg_boolean;
++typedef jpeg_boolean wxjpeg_boolean;
+ #endif
+ 
+ #include "wx/filefn.h"

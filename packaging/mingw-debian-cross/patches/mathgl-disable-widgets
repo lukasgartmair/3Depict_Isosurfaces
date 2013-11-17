@@ -1,0 +1,10 @@
+diff -r 87e795f6a771 Makefile.am
+--- a/Makefile.am	Sat Nov 16 16:45:55 2013 +0100
++++ b/Makefile.am	Sat Nov 16 16:46:30 2013 +0100
+@@ -1,5 +1,5 @@
+ ACLOCAL_AMFLAGS = -I config
+-SUBDIRS = mgl lang widgets utils examples include
++SUBDIRS = mgl lang utils include
+ 
+ doctargets =
+ 

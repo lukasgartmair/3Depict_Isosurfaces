@@ -47,7 +47,6 @@ if [ ! -d code/3Depict ] || [ ! -f code/3Depict/src/3Depict.cpp ] ; then
 fi
 
 
-DIST_NAME=""
 BASE=`pwd`
 PREFIX=/
 NUM_PROCS=4
@@ -61,23 +60,25 @@ if [ `id -u` -eq 0 ]; then
 fi
 #1) Filezilla wxwidgets patch for 64 bit support under mingw
 #2) own patch for fixing wx-config's lack of sysroot support
-PATCHES_WXWIDGETS_PRE="wxwidgets2.8-2.8.12-mingw64-1.patch"
-PATCHES_WXWIDGETS_POST="wxwidgets2.8-wx-config-sysroot.patch"
-
+PATCHES_WXWIDGETS_PRE="wxWidgets-2.8.12-mingw64-1.patch configure-wxbool-patch"
+PATCHES_WXWIDGETS_POST="wx-config-sysroot.patch"
 #1) Zlib no longer needs to explicitly link libc, and will fail if it tries
 PATCHES_ZLIB="zlib-no-lc.patch"
 #1) Override some configure patches to bypass false positive failures
-PATCHES_FTGL="ftgl-override-configure"
-
+PATCHES_FTGL="ftgl-disable-doc"
+PATCHES_FTGL_POSTCONF="ftgl-override-configure-2"
 #1) gettext-tools fails in various places, but we don't actually need it, so turn it off
 #2) gettext fails to correctly determine windows function call prefix.
 #   should be fixed for gettext > 0.18.1.1 ?
 #   https://lists.gnu.org/archive/html/bug-gettext/2012-12/msg00071.html
-PATCHES_GETTEXT="gettext-disable-tools gettext-win32-prefix"
+PATCHES_GETTEXT="gettext-disable-tools"    #gettext-win32-prefix
 
-PATCHES_GLEW="glew-makefile"
+PATCHES_GLEW="glew-makefile.base"
 
-PATCH_LIST="$PATCHES_WXWIDGETS_PRE $PATCHES_WXWIDGETS_POST $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL $PATCHES_GLEW $PATCHES_LIBXML"
+#Disable broken build for "widgets" directory, which we don't need
+PATCHES_MATHGL="mathgl-disable-widgets"
+
+PATCH_LIST="$PATCHES_WXWIDGETS_PRE $PATCHES_WXWIDGETS_POST $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL $PATCHES_GLEW $PATCHES_MATHGL $PATCHES_FTGL_POSTCONF"
 
 BUILD_STATUS_FILE="$BASE/build-status"
 PATCH_STATUS_FILE="$BASE/patch-status"
@@ -96,7 +97,7 @@ function applyPatches()
 {
 	for i in $APPLY_PATCH_ARG
 	do
-		if [ x"`cat $PATCH_STATUS_FILE | grep "$i"`" != x"" ] ; then
+		if [ x"`cat $PATCH_STATUS_FILE | grep -x "$i"`" != x"" ] ; then
 			echo "Patch already applied :" $i
 			continue
 		fi
@@ -122,13 +123,7 @@ function install_mingw()
 	GET_PACKAGES="";
 	for i in $MINGW_PACKAGES
 	do
-		APT_RESULT=`LANG=C apt-cache policy $i | grep Installed | awk '{print $2}'`
-		if [ x"$APT_RESULT" == x"" ] ; then
-			echo "couldn't find package $i in sources, but we need it..." 
-			exit 1;
-		fi
-
-		if [ x"${APT_RESULT}" == x"(none)" ] ; then
+		if [ x`apt-cache pkgnames --installed $i` != x"$i" ] ; then
 			GET_PACKAGES="$GET_PACKAGES $i";
 		fi
 	done
@@ -178,11 +173,11 @@ function grabDeps()
 
 
 		done
-
-		if [ $? -ne 0 ] ; then
-			echo "apt-get source failed... Maybe check internet connection, then try updating package database, then re-run?"
-			exit 1
-		fi
+	fi
+	
+	if [ $? -ne 0 ] ; then
+		echo "apt-get source failed... Maybe check internet connection, then try updating package database, then re-run?"
+		exit 1
 	fi
 
 	#Move debian stuff into packages folder
@@ -241,13 +236,13 @@ function grabDeps()
 	fi	
 
 	#---
+
 	#We also need to install nsis, though it is not a strict "dependency" per-se.
 	if [ x`which makensis` == x"" ] ; then
 		echo "Installing nsis via apt-get";
 		sudo apt-get install nsis || { echo "Failed installation"; exit 1; }
 	fi
-	
-	
+
 	popd 2> /dev/null
 
 }
@@ -355,10 +350,15 @@ function build_glew()
 	fi
 
 	#Perform dynamic modification of patch
-	cp patches/glew-makefile patches/glew-makefile.orig
+	if [ x`grep patches/glew-makefile.base HOST_VAL` == x""   ||  x`grep patches/glew-makefile.base BASEDIR` == x"" ] ; then
+		echo "patches/glew-makefile did not contain replacement keywords"
+		exit 1
+	fi
+
+	#Modify the patch appropriately
+	cp patches/glew-makefile.base patches/glew-makefile
 	sed -i "s@HOST_VAL@$HOST_VAL@" patches/glew-makefile
 	sed -i "s@BASEDIR@$BASE@" patches/glew-makefile
-	
 	
 	pushd deps >/dev/null
 	pushd glew-* >/dev/null
@@ -370,14 +370,11 @@ function build_glew()
 	fi
 	
 
-	APPLY_PATCH_ARG="$PATCHES_GLEW"
+	APPLY_PATCH_ARG="glew-makefile"
 	applyPatches
-	
+
 	make clean
 	rm -f configure.log
-	#Restore original patch
-	cp ../../patches/glew-makefile patches/glew-makefile.modified
-	cp ../../patches/glew-makefile.orig patches/glew-makefile
 	
 	LD=$CC make -j $NUM_PROCS || { echo "glew build failed"; exit 1; } 
 
@@ -712,6 +709,7 @@ function build_wx()
 
 	APPLY_PATCH_ARG=$PATCHES_WXWIDGETS_PRE
 	applyPatches
+#WX_DISABLE="--disable-compat26 --disable-ole --disable-dataobj --disable-ipc --disable-apple_ieee --disable-zipstream --disable-protocol_ftp --disable-mshtmlhelp --disable-aui --disable-mdi --disable-postscript --disable-datepick --disable-splash --disable-wizarddlg --disable-joystick --disable-loggui --disable-debug --disable-logwin --disable-logdlg --disable-tarstream --disable-fs_archive --disable-fs_inet --disable-fs_zip --disable-snglinst --disable-sound --disable-variant --without-regex"
 
 	./configure --host=$HOST_VAL --enable-shared --disable-static --with-opengl --enable-unicode --without-regex --prefix=/ || { echo "wxwidgets configure failed"; exit 1; } 
 
@@ -881,11 +879,15 @@ function build_mathgl()
 	fi
 	make clean
 
+	APPLY_PATCH_ARG=$PATCHES_MATHGL
+	applyPatches
+
 	libtoolize --copy --force
 	aclocal
+	automake --add-missing
 
 	autoreconf
-	LIBS="${LIBS} -lz" ./configure --host=$HOST_VAL --disable-pthread --enable-shared --disable-static --prefix=/ || { echo "mathgl configure failed"; exit 1; } 
+	LIBS="${LIBS} -lz" ./configure --host=$HOST_VAL --disable-gsl --disable-pthread --enable-shared --disable-static --prefix=/ || { echo "mathgl configure failed"; exit 1; } 
 
 	#RPATH disable hack
 	sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|g' libtool
@@ -927,17 +929,34 @@ function build_ftgl()
 	fi
 	make clean
 
+	APPLY_PATCH_ARG="$PATCHES_FTGL"
+	applyPatches
 
+	autoreconf
+	libtoolize
+
+	APPLY_PATCH_ARG="$PATCHES_FTGL_POSTCONF"
+	applyPatches
 	#rename GLU to glu32 and gl to opengl32
 	sed -i s/'\-lGLU'/-lglu32/ configure
 	sed -i s/'\-lGL'/-lopengl32/ configure
 
-	APPLY_PATCH_ARG="$PATCHES_FTGL"
-	applyPatches
+	#configure tries to link against wrong prototypes. Override this
+	sed -i 's/char glBegin() ;//' configure
+	sed -i 's/char gluNewTess ();//' configure
+
+	sed -i 's/return glBegin ()/return 0;/' configure
+	sed -i 's/return gluNewTess ()/return 0;/' configure
+	sed -i 's/return glBegin(GL_POINTS)/return 0;/' configure
+
+
 
 	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "ftgl configure failed"; exit 1; } 
 
-	
+
+	#MAkefile refers to ECHO variable for reporting completion, which does not exist
+	sed -i 's/ECHO_C =/ECHO=echo/' Makefile
+
 	make -j $NUM_PROCS || { echo "ftgl build failed"; exit 1; } 
 	
 	make install DESTDIR="$BASE"|| { echo "ftgl install failed"; exit 1; } 
@@ -1050,6 +1069,7 @@ function build_3Depict()
 	fi
 
 	#HACK - strip all makefiles of -D_GLIBCXX_DEBUG
+	#	mingw & GLIBCXX_DEBG don't play nice
 	find ./ -name Makefile -exec sed -i 's/-D_GLIBCXX_DEBUG//g' {} \;
 
 	make -j$NUM_PROCS
@@ -1096,7 +1116,7 @@ function make_package()
 {
 	pushd ./code/3Depict 2> /dev/null
 
-	NSI_FILE=./packaging/mingw-debian-cross/windows-installer.nsi
+	NSI_FILE=./windows-installer.nsi
 	if [ ! -f $NSI_FILE ] ; then
 		echo "NSI file missing whilst trying to build package"
 		exit 1;
@@ -1111,34 +1131,53 @@ function make_package()
 
 
 	echo -n " Copying dll files... "
-	DLL_FILES=`grep File windows-installer.nsi | egrep '(\.dll|\.so)' | sed 's/.*src.//' | sed 's/\"//' | sed 's/\r/ /g'`
+	SYSTEM_DLLS="(ADVAPI32.dll|COMCTL32.DLL|COMDLG32.DLL|GDI32.dll|KERNEL32.dll|ole32.dll|OLEAUT32.dll|RPCRT4.dll|SHELL32.DLL|USER32.dll|WINMM.DLL|WINSPOOL.DRV|WSOCK32.DLL|GLU32.dll|OPENGL32.dll|msvcrt.dll)"
 
+	DLL_FILES=`${HOST_VAL}-objdump -x src/3Depict.exe | grep 'DLL Name:' | awk '{print $3}' | egrep -i -v ${SYSTEM_DLLS}`
+	FOUND_DLLS=""
 	SYS_DIR=/usr/lib/gcc/${HOST_VAL}/
+
+	echo "DEBUG :" $DLL_FILES
+	rm -f tmp-dlls tmp-found-dlls
+
 	#copy the DLL files from system or 
 	# from the build locations
-	for i in ${DLL_FILES}
+	while [ x"$DLL_FILES" != x"" ] ;
 	do
-		HAVE_DLL=0
-		for j in ${BASE}/lib/ ${BASE}/bin/ $SYS_DIR
+		echo $DLL_FILES | tr '\ ' '\n' > tmp-dlls
+		DLL_FILES=`cat tmp-dlls | sort | uniq`
+
+		echo "Looking for these:" $DLL_FILES
+		echo "Have found these:" $FOUND_DLLS
+		for i in $DLL_FILES
 		do
-			FIND_RES=`find $j -name $i | head -n 1`
-			if [ x$FIND_RES != x"" ] ; then
-				HAVE_DLL=1;
-				cp $FIND_RES ./src/
-				break;
+			HAVE_DLL=0
+			for j in ${BASE}/lib/ ${BASE}/bin/ $SYS_DIR
+			do
+				FIND_RES=`find $j -name $i | head -n 1`
+				if [ x$FIND_RES != x"" ] ; then
+					HAVE_DLL=1;
+					cp $FIND_RES ./src/
+					FOUND_DLLS="$FOUND_DLLS `basename $FIND_RES`"
+					break;
+				fi
+			done
+
+			if [ $HAVE_DLL -eq 0 ] ; then
+				echo "Couldnt find DLL :" 
+				echo " $i "
+				echo " looked in ${BASE}/lib/ and $SYS_DIR"
+				exit 1;
 			fi
 		done
 
-		if [ $HAVE_DLL -eq 0 ] ; then
-			echo "Couldnt find DLL :" 
-			echo " $i "
-			echo " looked in ${BASE}/lib/ and $SYS_DIR"
-			exit 1;
-		fi
+		#Update the list of dll files
+		echo $FOUND_DLLS |tr '\ ' '\n' | sort | uniq > tmp-found-dlls
+		DLL_FILES=`${HOST_VAL}-objdump -x ./src/3Depict.exe ./src/*dll | grep 'DLL Name:' | awk '{print $3}' | egrep -i -v ${SYSTEM_DLLS} | grep -iv -f tmp-found-dlls | sort | uniq`
+
 	done
 	echo "done."
 
-	
 	if [ $IS_RELEASE -ne 0 ] ; then
 		#Strip debugging information
 		pushd src/ > /dev/null
@@ -1146,11 +1185,31 @@ function make_package()
 		popd > /dev/null
 	fi
 
+	if [ x"`cat windows-installer.nsi | grep INSERT_DLLS_HERE`" == x"" ]  ||  [ x"`cat windows-installer.nsi | grep INSERT_UNINST_DLLS_HERE`" == x"" ] ; then
+		echo "DLL insertion/removal tokens not found. Was looking for INSERT_DLLS_HERE and INSERT_UNINST_DLLS_HERE"
+		exit 1
+	fi
+
+	#Insert DLL names automatically
+	cp windows-installer.nsi tmp.nsi
+	echo $FOUND_DLLS | sed 's/ /\n/g' |  sed 's@^@  File \"src\\@' | sed 's/$/\"/' > tmp-insert
+	perl -ne 's/^  ;INSERT_DLLS_HERE/`cat tmp-insert$1`/e;print' tmp.nsi >tmp2.nsi
+	mv tmp2.nsi tmp.nsi
+
+
+	echo $FOUND_DLLS | sed 's/ /\n/g' |  sed 's@^@  Delete \"$INSTDIR\\@' | sed 's/$/\"/' > tmp-insert
+	perl -ne 's/^  ;INSERT_UNINST_DLLS_HERE/`cat tmp-insert$1`/e;print' tmp.nsi > tmp2.nsi
+	mv tmp2.nsi tmp.nsi
+
+	#TODO: Why is perl converting this to dos?
+	dos2unix tmp.nsi
+
+	NSI_FILE=tmp.nsi
 
 	makensis `basename $NSI_FILE` ||  { echo "makensis failed" ; exit 1; }
 
 	if [ $IS_RELEASE -ne 0 ] ; then
-		VERSION=`cat $NSI_FILE | grep "define PRODUCT_VERSION " | awk '{print $3}' | sed s/\"//g | sed s/.$//`
+		VERSION=`cat $NSI_FILE | grep "define PRODUCT_VERSION " | awk '{print $3}' | sed s/\"//g | sed s/\s*$//`
 		TARGET_FILE=3Depict-$VERSION-$HOST_EXT.exe
 		mv Setup.exe  $TARGET_FILE
 		echo "-------------------"
@@ -1225,13 +1284,13 @@ build_libxml2
 build_gsl
 build_qhull
 build_expat
-build_wx	# I'm not sure I've done this 100% right. Check wx-config output 
 build_freetype
 build_libiconv
 build_gettext 
 build_mathgl 
 build_ftgl 
 build_glew
+build_wx	# I'm not sure I've done this 100% right. Check wx-config output 
 
 build_3Depict
 

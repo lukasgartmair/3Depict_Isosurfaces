@@ -10,7 +10,7 @@
  SHELL = /bin/sh
 -SYSTEM ?= $(shell config/config.guess | cut -d - -f 3 | sed -e 's/[0-9\.]//g;')
 -SYSTEM.SUPPORTED = $(shell test -f config/Makefile.$(SYSTEM) && echo 1)
-+SYSTEM = i686-w64-mingw32
++SYSTEM = HOST_VAL
  
 -ifeq ($(SYSTEM.SUPPORTED), 1)
 -include config/Makefile.$(SYSTEM)
@@ -19,7 +19,7 @@
 -endif
 -
 -GLEW_DEST ?= /usr
-+GLEW_DEST ?= /home/pcuser/mingw32
++GLEW_DEST ?= BASEDIR
  BINDIR ?= $(GLEW_DEST)/bin
  LIBDIR ?= $(GLEW_DEST)/lib
  INCDIR ?= $(GLEW_DEST)/include/GL

@@ -1,0 +1,12 @@
+diff -r b625ea013cd8 configure
+--- a/configure	Sat Nov 16 00:00:48 2013 +0100
++++ b/configure	Sat Nov 16 00:01:50 2013 +0100
+@@ -26629,7 +26629,7 @@
+             else
+                                 wxUSE_LIBJPEG=sys
+ 
+-                if test "$wxUSE_MSW" = 1; then
++                if test 0 = 1; then
+                                                                                                     echo "$as_me:$LINENO: checking for boolean" >&5
+ echo $ECHO_N "checking for boolean... $ECHO_C" >&6
+ if test "${ac_cv_type_boolean+set}" = set; then
