@@ -17,7 +17,7 @@
 #include <set>
 #include <string>
 
-#include "wx/checkedlistctrl.h"
+//#include "wx/checkedlistctrl.h"
 
 #include "backend/plot.h"
 #include "../mathglPane.h"
@@ -179,7 +179,7 @@ protected:
     wxPanel* noteLeftRanges;
     wxCheckBox* checkShowOverlay;
     wxTextCtrl* textOverlayCmpnt;
-    wxCheckedListCtrl* listOverlay;
+    wxCheckListBox* listOverlay;
     wxPanel* noteLeftOverlay;
     wxNotebook* notebookLeft;
     wxPanel* panelSplitLeft;
@@ -209,7 +209,7 @@ public:
     virtual void OnBtnOK(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnBtnCancel(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnSashVerticalUnsplit(wxSplitterEvent &event); // wxGlade: <event_handler>
-    virtual void OnListOverlaySelected(wxListEvent &event);
+    virtual void OnListOverlayCheck(wxCommandEvent &event);
     virtual void OnListOverlayKeyDown(wxListEvent &event);
     virtual void OnTextOverlay(wxCommandEvent &event);
     virtual void OnTextOverlayEnter(wxCommandEvent &event);

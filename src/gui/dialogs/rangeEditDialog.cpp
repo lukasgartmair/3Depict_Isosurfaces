@@ -219,7 +219,7 @@ RangeEditorDialog::RangeEditorDialog(wxWindow* parent, int id, const wxString& t
     checkShowOverlay = new wxCheckBox(noteLeftOverlay, ID_CHECK_SHOW_OVERLAY, wxTRANS("Show Overlays"));
     textOverlayCmpnt = new wxTextCtrl(noteLeftOverlay, ID_TEXT_FILTER_CMPNT, wxEmptyString,
     						wxDefaultPosition,wxDefaultSize,wxTE_PROCESS_ENTER);
-    listOverlay = new wxCheckedListCtrl(noteLeftOverlay, ID_LIST_OVERLAY, wxDefaultPosition, wxDefaultSize, wxSUNKEN_BORDER);
+    listOverlay = new wxCheckListBox(noteLeftOverlay, ID_LIST_OVERLAY, wxDefaultPosition, wxDefaultSize, 0);
     plotPanel = new MathGLPane(panelSplitRight, ID_PLOT_AREA);
     btnOK = new wxButton(panelSplitRight, wxID_OK, wxEmptyString);
     btnCancel = new wxButton(panelSplitRight, wxID_CANCEL, wxEmptyString);
@@ -267,7 +267,7 @@ RangeEditorDialog::~RangeEditorDialog()
 BEGIN_EVENT_TABLE(RangeEditorDialog, wxDialog)
     // begin wxGlade: RangeEditorDialog::event_table
     EVT_LISTBOX(ID_LIST_PLOTS, RangeEditorDialog::OnListPlots)
-    EVT_LIST_ITEM_SELECTED(ID_LIST_OVERLAY, RangeEditorDialog::OnListOverlaySelected)
+//    EVT_LIST_ITEM_SELECTED(ID_LIST_OVERLAY, RangeEditorDialog::OnListOverlaySelected)
     EVT_LIST_KEY_DOWN(ID_LIST_OVERLAY, RangeEditorDialog::OnListOverlayKeyDown) 
     EVT_TEXT(ID_TEXT_FILTER_CMPNT,RangeEditorDialog::OnTextOverlay)
     EVT_TEXT(ID_TEXT_FILTER_CMPNT,RangeEditorDialog::OnTextOverlay)
@@ -286,7 +286,7 @@ BEGIN_EVENT_TABLE(RangeEditorDialog, wxDialog)
     EVT_GRID_CMD_EDITOR_SHOWN(ID_GRID_IONS,RangeEditorDialog::OnGridIonsEditorShown)
     EVT_BUTTON(wxID_ADD, RangeEditorDialog::OnBtnRangeIonAdd)
     EVT_BUTTON(wxID_REMOVE, RangeEditorDialog::OnBtnRangeIonRemove)
-    EVT_CHECKBOX(ID_CHECK_SHOW_OVERLAY, RangeEditorDialog::OnCheckShowOverlay)
+    EVT_CHECKLISTBOX(ID_LIST_OVERLAY, RangeEditorDialog::OnListOverlayCheck)
     EVT_BUTTON(wxID_OK, RangeEditorDialog::OnBtnOK)
     EVT_BUTTON(wxID_CANCEL, RangeEditorDialog::OnBtnCancel)
     EVT_SPLITTER_UNSPLIT(ID_SPLIT_LEFTRIGHT, RangeEditorDialog::OnSashVerticalUnsplit)
@@ -547,21 +547,13 @@ void RangeEditorDialog::generateOverlayList(const vector<OVERLAY_DATA> &overlays
 {
 
 	//Build the list of enabled overlays
-	listOverlay->ClearAll();
+	listOverlay->Clear();
 
-
-	// Add first column       
-	wxListItem col0;
-	col0.SetId(0);
-	col0.SetText( wxTRANS("Species") );
-	col0.SetWidth(50);
-	listOverlay->InsertColumn(0, col0);
 
 	for(size_t ui=0;ui<overlays.size();ui++)
 	{
-		long idx;
-		idx=listOverlay->InsertItem(ui,wxStr(overlays[ui].title));
-		listOverlay->Check(idx,overlays[ui].enabled);
+		listOverlay->Insert(wxStr(overlays[ui].title),ui);
+		listOverlay->Check(ui,overlays[ui].enabled);
 	}
 
 }
@@ -1428,9 +1420,9 @@ void RangeEditorDialog::OnBtnCancel(wxCommandEvent &event)
 	EndModal(wxID_CANCEL);
 }
 
-void RangeEditorDialog::OnListOverlaySelected(wxListEvent &event)
+void RangeEditorDialog::OnListOverlayCheck(wxCommandEvent &event)
 {
-	long index=event.GetIndex();
+	long index=event.GetInt();
 
 	bool isChecked;
 	isChecked=listOverlay->IsChecked(index);
