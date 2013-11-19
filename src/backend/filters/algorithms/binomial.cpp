@@ -61,6 +61,7 @@ int countBinnedIons(const std::vector<IonHit> &ions, const RangeFile *rng,
 			const std::vector<size_t> &selectedIons, const SEGMENT_OPTION &segmentOptions,
 			vector<GRID_ENTRY> &completedGridEntries)
 {
+	ASSERT(rng);
 
 	//Step 1 - filter the ions to only the ranges we want to examine
 	std::vector<IonHit> filteredIons;
