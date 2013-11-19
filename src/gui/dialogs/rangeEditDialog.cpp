@@ -210,8 +210,7 @@ RangeEditorDialog::RangeEditorDialog(wxWindow* parent, int id, const wxString& t
     noteLeftOverlay = new wxPanel(notebookLeft, wxID_ANY);
     noteLeftRanges = new wxPanel(notebookLeft, wxID_ANY);
     noteLeftPlots = new wxPanel(notebookLeft, wxID_ANY);
-    const wxString *listPlots_choices = NULL;
-    listPlots = new wxListBox(noteLeftPlots, ID_LIST_PLOTS, wxDefaultPosition, wxDefaultSize, 0, listPlots_choices );
+    listPlots = new wxListBox(noteLeftPlots, ID_LIST_PLOTS, wxDefaultPosition, wxDefaultSize, 0, NULL);
     gridIons= new wxGrid(noteLeftRanges, ID_GRID_IONS);
     gridRanges = new wxGrid(noteLeftRanges, ID_GRID_RANGES);
     btnRangeIonAdd = new wxButton(noteLeftRanges,wxID_ADD, wxEmptyString);
@@ -395,16 +394,14 @@ void RangeEditorDialog::setPlotWrapper(const PlotWrapper  &p)
 	//Hack to ensure we select something at startup
 	// only if there is nothing selected, and the plot list has items
 	if(currentRange && !plotPanel->getNumVisible() && 
-				listPlots->GetCount())
+				listPlots->GetCount() > 0)
 	{
 		{
 			ASSERT(listPlots->GetSelection() !=wxNOT_FOUND);
-		
-			//Retrieve the plot ID for the current selected item
-			// in the list, then force plotto update
-			wxListUint *l;
-			l=(wxListUint*)listPlots->GetClientData(listPlots->GetSelection());
-			plotWrap.setVisible(l->value);
+	
+			unsigned int plotID;
+			plotID=listToPlotIDs[listPlots->GetSelection()];
+			plotWrap.setVisible(plotID);
 
 	
 			plotPanel->Refresh();
@@ -424,7 +421,7 @@ void RangeEditorDialog::setCurrentRange(size_t forceSelected)
 	}
 
 	//Get the currently selected plot
-	wxListUint *l;
+	unsigned int curPlotID;
 	if(forceSelected == (size_t) -1)
 	{
 		ASSERT(listPlots->GetCount());
@@ -437,15 +434,16 @@ void RangeEditorDialog::setCurrentRange(size_t forceSelected)
 			currentRange=0;
 			return;
 		}
+		cerr << "Selected item not wxNOT_FOUND" << endl;
 
-		l=(wxListUint*)listPlots->GetClientData(selectedItem);
+		curPlotID=listToPlotIDs[selectedItem];
 	}
 	else
 	{
-		l=(wxListUint*)listPlots->GetClientData(forceSelected);
+		cerr << "Not force selected" << endl;
+		curPlotID=listToPlotIDs[forceSelected];
 	}
 	
-	unsigned int curPlotID=l->value;
 
 
 	//If we don't have a new range for this plot, alter
@@ -496,9 +494,7 @@ void RangeEditorDialog::generatePlotRegions()
 
 	//Send the current range data to the current plot
 	unsigned int plotID;
-	wxListUint *l;
-	l=(wxListUint*)listPlots->GetClientObject(listPlots->GetSelection());
-	plotID = l->value;
+	plotID = listToPlotIDs[listPlots->GetSelection()]; 
 
 	//reassign new region group
 	plotWrap.setRegionGroup(plotID,r);
@@ -531,8 +527,9 @@ void RangeEditorDialog::generateListEntries()
 
 		//Append the plot to the list in the user interface,
 		// with the plot Id embeded in the element
-		wxListUint *l = new wxListUint(plotIDs[ui]);
-		listPlots->Append(wxStr(title),l);
+		int idx;
+		idx=listPlots->Append(wxStr(title));
+		listToPlotIDs[idx]=plotIDs[ui];
 	}
 
 	//If there is only one spectrum, select it
@@ -814,10 +811,7 @@ void RangeEditorDialog::OnListPlots(wxCommandEvent &event)
 	for(unsigned int ui=0;ui<listPlots->GetCount(); ui++)
 	{
 		unsigned int plotID;
-		
-		wxListUint *l;
-		l=(wxListUint*)listPlots->GetClientObject(ui);
-		plotID = l->value;
+		plotID = listToPlotIDs[ui];
 
 		//Set the plot visibility to match selection
 		plotWrap.setVisible(plotID,listPlots->IsSelected(ui));

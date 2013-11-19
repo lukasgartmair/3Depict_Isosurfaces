@@ -114,6 +114,8 @@ private:
     void set_properties();
     void do_layout();
     // end wxGlade
+		
+    std::map<int,size_t> listToPlotIDs;
 
     //Store the mapping between grid offsets and the 
     // ionID (2nd in pair) for the current range
