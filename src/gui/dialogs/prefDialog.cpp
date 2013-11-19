@@ -606,7 +606,12 @@ void PrefDialog::do_layout()
 	filterRightSideSizer->Add(resetButtonSizer, 0, wxEXPAND, 0);
 	filterPropSizer->Add(filterRightSideSizer, 2, wxEXPAND, 0);
 	panelFilters->SetSizer(filterPropSizer);
-	sizer_2->Add(comboPanelStartMode, 0, 0, 0);
+#if defined(__WIN32) || defined(__WIN64)
+	sizer_2->Add(comboPanelStartMode, 0, wxBOTTOM|wxFIXED_MINSIZE, 4);
+#else
+	sizer_2->Add(comboPanelStartMode, 0, 0,0);
+
+#endif
 	sizer_3->Add(20, 20, 0, 0, 0);
 	sizer_4->Add(chkControl, 0, 0, 0);
 	sizer_4->Add(chkRawData, 0, 0, 0);
@@ -621,18 +626,29 @@ void PrefDialog::do_layout()
 	panelStartup->SetSizer(sizer_1);
 	sizer_7->Add(chkPreferOrtho, 0, wxALL, 5);
 	sizer_5->Add(sizer_7, 0, wxEXPAND, 0);
-	sizer_6->Add(lblMoveSpeed, 0, wxALIGN_CENTER_VERTICAL, 0);
+	sizer_6->Add(lblMoveSpeed, 0, 0, 0);
 	sizer_6->Add(20, 20, 0, 0, 0);
-	sizer_6->Add(labelSlowCamMoveRate, 0, wxALIGN_CENTER_VERTICAL, 0);
-	sizer_6->Add(sliderCamMoveRate, 1, wxEXPAND|wxALIGN_CENTER_VERTICAL, 0);
-	sizer_6->Add(labelFastCamMoveRate, 0, wxALIGN_CENTER_VERTICAL, 0);
+	sizer_6->Add(labelSlowCamMoveRate, 0, 0, 0);
+#if defined(__WIN32) || defined(__WIN64)
+	sizer_6->Add(sliderCamMoveRate, 1, 0, 0);
+#else
+	sizer_6->Add(sliderCamMoveRate, 1, wxEXPAND|0, 0);
+#endif
+	sizer_6->Add(labelFastCamMoveRate, 0, 0, 0);
+	sizerCamSpeed->AddStretchSpacer();
 	sizerCamSpeed->Add(sizer_6, 1, wxEXPAND, 0);
-	sizer_6_copy->Add(lblZoomSpeed, 0, wxALIGN_CENTER_VERTICAL, 0);
+	sizerCamSpeed->AddStretchSpacer();
+	sizer_6_copy->Add(lblZoomSpeed, 0, 0, 0);
 	sizer_6_copy->Add(20, 20, 0, 0, 0);
-	sizer_6_copy->Add(labelSlowCamZoomRate, 0, wxALIGN_CENTER_VERTICAL, 0);
-	sizer_6_copy->Add(sliderCamZoomRate, 1, wxEXPAND|wxALIGN_CENTER_VERTICAL, 0);
-	sizer_6_copy->Add(labelSlowFastZoomRate, 0, wxALIGN_CENTER_VERTICAL, 0);
+	sizer_6_copy->Add(labelSlowCamZoomRate, 0, 0, 0);
+#if defined(__WIN32) || defined(__WIN64)
+	sizer_6_copy->Add(sliderCamZoomRate, 1, wxEXPAND|0, 0);
+#else
+	sizer_6_copy->Add(sliderCamZoomRate, 1, 0, 0);
+#endif
+	sizer_6_copy->Add(labelSlowFastZoomRate, 0, 0, 0);
 	sizerCamSpeed->Add(sizer_6_copy, 1, wxEXPAND, 0);
+	sizerCamSpeed->AddStretchSpacer();
     sizer_5->Add(sizerCamSpeed, 1, wxEXPAND, 0);
     notePrefPanels_pane_3->SetSizer(sizer_5);
 	notePrefPanels->AddPage(panelFilters, wxTRANS("Pref"));

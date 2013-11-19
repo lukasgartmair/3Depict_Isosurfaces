@@ -189,7 +189,7 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
     comboRangeFormat = new wxChoice(frameViewPane, ID_COMBO_RANGE_TYPE, wxDefaultPosition, wxDefaultSize, rangeNames);
     static_line_1 = new wxStaticLine(frameViewPane, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL);
     labelFrame = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("Frame"));
-    frameSlider = new wxSlider(frameViewPane, ID_FRAME_SLIDER, 1, 1, 1);
+    frameSlider = new wxSlider(frameViewPane, ID_FRAME_SLIDER, 0, 0, 1);
     textFrame = new wxTextCtrl(frameViewPane, ID_FRAME_TEXTBOX, wxEmptyString);
     framePropGrid = new wxGrid(frameViewPane, ID_FILTER_PROPERTY_VALUE_GRID);
     cancelButton = new wxButton(this, wxID_CANCEL, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);

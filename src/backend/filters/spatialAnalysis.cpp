@@ -71,6 +71,7 @@ enum
 {
 	ABORT_ERR=1,
 	ERR_BINOMIAL_NO_MEM,
+	ERR_BINOMIAL_NO_RANGE,
 	ERR_BINOMIAL_BIN_FAIL,
 	INSUFFICIENT_SIZE_ERR,
 	SPAT_ERR_END_OF_ENUM,
@@ -338,9 +339,15 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 					dataIn,getOut,rngF);
 			break;
 		case ALGORITHM_BINOMIAL:
+		{
+			if(!rngF)
+			{
+				return ERR_BINOMIAL_NO_RANGE;
+			}
 			result=algorithmBinomial(progress,callback,totalDataSize,
 						dataIn,getOut,rngF);
 			break;
+		}
 		default:
 			ASSERT(false);
 	}
@@ -1224,6 +1231,8 @@ std::string  SpatialAnalysisFilter::getErrString(unsigned int code) const
 			return std::string(TRANS("Insufficient bins in histogram for analysis."));
 		case ERR_BINOMIAL_NO_MEM:
 			return std::string(TRANS("Insufficient memory for binomial. Reduce input size?"));
+		case ERR_BINOMIAL_NO_RANGE:
+			return std::string(TRANS("Binomial requires a parent range file"));
 		default:
 			ASSERT(false);
 

@@ -798,6 +798,7 @@ bool CameraLookAt::writeState(std::ostream &f, unsigned int format,
 			f<< tabs(nTabs+1) <<  "<fovangle value=\"" << fovAngle << "\"/>" << endl;
 			f<< tabs(nTabs+1) <<  "<nearplane value=\"" << nearPlane << "\"/>" << endl;
 			f << tabs(nTabs) << "</persplookat>" << endl;
+			break;
 
 		}
 		default:

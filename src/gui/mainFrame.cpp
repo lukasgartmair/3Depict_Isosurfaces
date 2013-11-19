@@ -721,8 +721,6 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
     else
 	    restoreConfigDefaults();
 	
-	//Try to set the window size to a nice size
-	SetSize(getNiceWindowSize());
 	
 	
 	//Attempt to load the auto-save file, if it exists
@@ -730,6 +728,8 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
 	checkReloadAutosave();
 	//-----------------
 
+	//Try to set the window size to a nice size
+	SetSize(getNiceWindowSize());
 
 	initedOK=true;   
 
@@ -3023,7 +3023,9 @@ void MainWindowFrame::OnTreeSelectionChange(wxTreeEvent &event)
 	updateLastRefreshBox();
 	
 
+#if !wxCHECK_VERSION(2,9,0)
 	treeFilters->Fit();	
+#endif
 	panelTop->Refresh();
 
 }
@@ -3731,6 +3733,7 @@ bool MainWindowFrame::doSceneUpdate()
 
 	setSaveStatus();
 
+	panelTop->Refresh();
 	//Return a value dependant upon whether we successfully loaded 
 	//the data or not
 	return errCode == 0;
@@ -3790,7 +3793,9 @@ void MainWindowFrame::setFilterTreeAnalysisImages()
 	
 #if defined(__WIN32) || defined(__WIN64)
 	//HACK: Under MSW, force button to correct positioning, by forcing a relayout
+#if !wxCHECK_VERSION(2,9,0)
 	treeFilters->GetParent()->Layout();
+#endif
 #endif
 }
 

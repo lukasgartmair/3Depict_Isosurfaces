@@ -96,8 +96,7 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__3Depict_SOURCES_DIST = 3Depict.cpp testing/testing.cpp \
 	wx/wxcomponents.cpp wx/wxcommon.cpp winconsole.cpp \
-	wx/checkedlistctrl.cpp testing/testing.h winconsole.h \
-	wx/wxcomponents.h wx/wxcommon.h wx/checkedlistctrl.h \
+	testing/testing.h winconsole.h wx/wxcomponents.h wx/wxcommon.h \
 	gui/mainFrame.cpp gui/mathglPane.cpp gui/cropPanel.cpp \
 	gui/glPane.cpp gui/dialogs/ExportPos.cpp \
 	gui/dialogs/ExportRngDialog.cpp gui/dialogs/prefDialog.cpp \
@@ -174,8 +173,7 @@ am__dirstamp = $(am__leading_dot)dirstamp
 am__objects_1 = 3Depict-3Depict.$(OBJEXT) \
 	testing/3Depict-testing.$(OBJEXT) \
 	wx/3Depict-wxcomponents.$(OBJEXT) \
-	wx/3Depict-wxcommon.$(OBJEXT) 3Depict-winconsole.$(OBJEXT) \
-	wx/3Depict-checkedlistctrl.$(OBJEXT)
+	wx/3Depict-wxcommon.$(OBJEXT) 3Depict-winconsole.$(OBJEXT)
 am__objects_2 =
 am__objects_3 = gui/dialogs/3Depict-ExportPos.$(OBJEXT) \
 	gui/dialogs/3Depict-ExportRngDialog.$(OBJEXT) \
@@ -549,8 +547,8 @@ DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/
 
 GUI_SOURCE_FILES = gui/mainFrame.cpp gui/mathglPane.cpp gui/cropPanel.cpp gui/glPane.cpp  $(DIALOG_SOURCE_FILES)
 GUI_HEADER_FILES = gui/mainFrame.h gui/mathglPane.h gui/cropPanel.h gui/art.h gui/glPane.h $(DIALOG_HEADER_FILES)
-BASE_SOURCE_FILES = 3Depict.cpp testing/testing.cpp  wx/wxcomponents.cpp wx/wxcommon.cpp winconsole.cpp wx/checkedlistctrl.cpp
-BASE_HEADER_FILES = testing/testing.h winconsole.h   wx/wxcomponents.h  wx/wxcommon.h wx/checkedlistctrl.h
+BASE_SOURCE_FILES = 3Depict.cpp testing/testing.cpp  wx/wxcomponents.cpp wx/wxcommon.cpp winconsole.cpp 
+BASE_HEADER_FILES = testing/testing.h winconsole.h   wx/wxcomponents.h  wx/wxcommon.h 
 #-----------
 SOURCE_FILES = $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(GUI_SOURCE_FILES) $(GUI_HEADER_FILES) \
 	       $(FILTER_FILES) $(FILTER_HEADER_FILES) \
@@ -657,8 +655,6 @@ wx/$(DEPDIR)/$(am__dirstamp):
 wx/3Depict-wxcomponents.$(OBJEXT): wx/$(am__dirstamp) \
 	wx/$(DEPDIR)/$(am__dirstamp)
 wx/3Depict-wxcommon.$(OBJEXT): wx/$(am__dirstamp) \
-	wx/$(DEPDIR)/$(am__dirstamp)
-wx/3Depict-checkedlistctrl.$(OBJEXT): wx/$(am__dirstamp) \
 	wx/$(DEPDIR)/$(am__dirstamp)
 gui/$(am__dirstamp):
 	@$(MKDIR_P) gui
@@ -967,7 +963,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@gui/dialogs/animateSubDialogs/$(DEPDIR)/3Depict-colourKeyFrameDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@gui/dialogs/animateSubDialogs/$(DEPDIR)/3Depict-stringKeyFrameDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@testing/$(DEPDIR)/3Depict-testing.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@wx/$(DEPDIR)/3Depict-checkedlistctrl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@wx/$(DEPDIR)/3Depict-wxcommon.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@wx/$(DEPDIR)/3Depict-wxcomponents.Po@am__quote@
 
@@ -1086,20 +1081,6 @@ wx/3Depict-wxcommon.obj: wx/wxcommon.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='winconsole.cpp' object='3Depict-winconsole.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-winconsole.obj `if test -f 'winconsole.cpp'; then $(CYGPATH_W) 'winconsole.cpp'; else $(CYGPATH_W) '$(srcdir)/winconsole.cpp'; fi`
-
-wx/3Depict-checkedlistctrl.o: wx/checkedlistctrl.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT wx/3Depict-checkedlistctrl.o -MD -MP -MF wx/$(DEPDIR)/3Depict-checkedlistctrl.Tpo -c -o wx/3Depict-checkedlistctrl.o `test -f 'wx/checkedlistctrl.cpp' || echo '$(srcdir)/'`wx/checkedlistctrl.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) wx/$(DEPDIR)/3Depict-checkedlistctrl.Tpo wx/$(DEPDIR)/3Depict-checkedlistctrl.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='wx/checkedlistctrl.cpp' object='wx/3Depict-checkedlistctrl.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o wx/3Depict-checkedlistctrl.o `test -f 'wx/checkedlistctrl.cpp' || echo '$(srcdir)/'`wx/checkedlistctrl.cpp
-
-wx/3Depict-checkedlistctrl.obj: wx/checkedlistctrl.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT wx/3Depict-checkedlistctrl.obj -MD -MP -MF wx/$(DEPDIR)/3Depict-checkedlistctrl.Tpo -c -o wx/3Depict-checkedlistctrl.obj `if test -f 'wx/checkedlistctrl.cpp'; then $(CYGPATH_W) 'wx/checkedlistctrl.cpp'; else $(CYGPATH_W) '$(srcdir)/wx/checkedlistctrl.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) wx/$(DEPDIR)/3Depict-checkedlistctrl.Tpo wx/$(DEPDIR)/3Depict-checkedlistctrl.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='wx/checkedlistctrl.cpp' object='wx/3Depict-checkedlistctrl.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o wx/3Depict-checkedlistctrl.obj `if test -f 'wx/checkedlistctrl.cpp'; then $(CYGPATH_W) 'wx/checkedlistctrl.cpp'; else $(CYGPATH_W) '$(srcdir)/wx/checkedlistctrl.cpp'; fi`
 
 gui/3Depict-mainFrame.o: gui/mainFrame.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT gui/3Depict-mainFrame.o -MD -MP -MF gui/$(DEPDIR)/3Depict-mainFrame.Tpo -c -o gui/3Depict-mainFrame.o `test -f 'gui/mainFrame.cpp' || echo '$(srcdir)/'`gui/mainFrame.cpp

@@ -96,8 +96,8 @@ DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/
 GUI_SOURCE_FILES=gui/mainFrame.cpp gui/mathglPane.cpp gui/cropPanel.cpp gui/glPane.cpp  $(DIALOG_SOURCE_FILES)
 GUI_HEADER_FILES=gui/mainFrame.h gui/mathglPane.h gui/cropPanel.h gui/art.h gui/glPane.h $(DIALOG_HEADER_FILES)
 
-BASE_SOURCE_FILES=   3Depict.cpp testing/testing.cpp  wx/wxcomponents.cpp wx/wxcommon.cpp winconsole.cpp wx/checkedlistctrl.cpp
-BASE_HEADER_FILES=   testing/testing.h winconsole.h   wx/wxcomponents.h  wx/wxcommon.h wx/checkedlistctrl.h
+BASE_SOURCE_FILES=   3Depict.cpp testing/testing.cpp  wx/wxcomponents.cpp wx/wxcommon.cpp winconsole.cpp 
+BASE_HEADER_FILES=   testing/testing.h winconsole.h   wx/wxcomponents.h  wx/wxcommon.h 
 #-----------
 
 
