@@ -4712,6 +4712,9 @@ void MainWindowFrame::OnCheckLimitOutput(wxCommandEvent &event)
 
 void MainWindowFrame::OnTextLimitOutput(wxCommandEvent &event)
 {
+	//Under GTK wx3.0, this fires during object construction
+	if(!initedOK)
+		return;
 	size_t limitVal;
 	bool isOK=validateTextAsStream(textLimitOutput,limitVal);
 
