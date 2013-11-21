@@ -3228,6 +3228,90 @@ void MainWindowFrame::OnBtnFilterTreeErrs(wxCommandEvent &event)
 
 }
 
+//There appears to be a bug in MSW wx 3.0. Key down events don't work
+// in MSW (including in the wx official samples). To work around, use generic
+// KEY_DOWN event
+#if wxCHECK_VERSION(2,9,0) && (defined(__WIN32) || defined(__WIN64))
+void MainWindowFrame::OnTreeKeyDown(wxKeyEvent &event)
+ {
+ 	if(currentlyUpdatingScene)
+ 	{
+ 		return;
+ 	}
+	const wxKeyEvent k = event; 
+ 	switch(k.GetKeyCode())
+	{
+		case WXK_BACK:
+		case WXK_DELETE:
+		{
+			wxTreeItemId id;
+
+			if(!treeFilters->GetCount())
+				return;
+
+			id=treeFilters->GetSelection();
+
+			if(!id.IsOk() || id == treeFilters->GetRootItem())
+				return;
+
+
+			//TODO: Refactor out wxTreeItem... code, into separate routine
+			// that only spits out viscontrol Ids
+			//Rebuild the tree control, ensuring that the parent is visible,
+			//if it has a parent (recall root node  of wx control is hidden)
+			
+			//Get the parent & its data
+			wxTreeItemId parent = treeFilters->GetItemParent(id);
+			wxTreeItemData *parentData=treeFilters->GetItemData(parent);
+
+			//Ask viscontrol to ensure that the parent stays persistently
+			// visible when next rebuilding the tree control
+			visControl.setWxTreeFilterViewPersistence(
+					((wxTreeUint*)parentData)->value);	
+
+			//Tree data contains unique identifier for vis control to do matching
+			wxTreeItemData *tData=treeFilters->GetItemData(id);
+			//Remove the item from the Tree 
+			visControl.removeFilterSubtree(((wxTreeUint *)tData)->value);
+			//Clear property grid
+			gridFilterPropGroup->clear();
+			if(parent !=treeFilters->GetRootItem())
+			{
+				ASSERT(parent.IsOk()); // should be - base node should always exist.
+
+				//Ensure that the parent stays visible 
+				visControl.setWxTreeFilterViewPersistence(
+						((wxTreeUint*)parentData)->value);
+				visControl.updateWxTreeCtrl(treeFilters);
+
+				
+				//OK, so those old Id s are no longer valid,
+				//as we just rebuilt the tree. We need new ones
+				//Parent is now selected
+				parent=treeFilters->GetSelection();
+				parentData=treeFilters->GetItemData(parent);
+
+
+				//Update the filter property grid with the parent's data
+				visControl.updateFilterPropGrid(gridFilterPropGroup,
+							((wxTreeUint *)parentData)->value);
+			}
+			else
+			{
+				if(parent.IsOk())
+					visControl.updateWxTreeCtrl(treeFilters);
+			}
+	
+			//Force a scene update, independent of if autoUpdate is enabled. 
+			doSceneUpdate();	
+		
+			break;
+		}
+		default:
+			event.Skip();
+	}
+ }
+#else
 void MainWindowFrame::OnTreeKeyDown(wxTreeEvent &event)
 {
 	if(currentlyUpdatingScene)
@@ -3308,6 +3392,7 @@ void MainWindowFrame::OnTreeKeyDown(wxTreeEvent &event)
 			event.Skip();
 	}
 }
+#endif
 
 void MainWindowFrame::OnGridFilterPropertyChange(wxGridEvent &event)
 {
@@ -5578,9 +5663,9 @@ void MainWindowFrame::set_properties()
     
     comboFilters->SetToolTip(wxTRANS("List of available filters"));
 #ifdef __APPLE__
-    treeFilters->SetToolTip(wxTRANS("Tree - drag to move items, hold ⌘ for copy"));
+    treeFilters->SetToolTip(wxTRANS("Tree - drag to move items, hold ⌘ for copy. Tap delete to remove items"));
 #else
-    treeFilters->SetToolTip(wxTRANS("Tree - drag to move items, hold Ctrl for copy"));
+    treeFilters->SetToolTip(wxTRANS("Tree - drag to move items, hold Ctrl for copy. Tap delete to remove items."));
 #endif
     checkAutoUpdate->SetToolTip(wxTRANS("Enable/Disable automatic updates of data when filter change takes effect"));
     checkAutoUpdate->SetValue(true);
