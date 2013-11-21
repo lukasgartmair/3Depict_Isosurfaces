@@ -3,15 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>BuildMachineOSBuild</key>
-	<string>11A511a</string>
+	<string>13A603</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
-	<key>CFBundleDocumentTypes</key>
-	<array/>
 	<key>CFBundleExecutable</key>
 	<string>3Depict</string>
 	<key>CFBundleIconFile</key>
-	<string>3Depict-icon.icns</string>
+	<string>3Depict-icon</string>
 	<key>CFBundleIdentifier</key>
 	<string>net.sourceforge.threedepict.3Depict</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -24,28 +22,26 @@
 	<string>BUNDLE_VERSION</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
-	<key>CFBundleURLTypes</key>
-	<array/>
 	<key>CFBundleVersion</key>
 	<string>BUNDLE_VERSION</string>
 	<key>DTCompiler</key>
-	<string></string>
+	<string>com.apple.compilers.llvm.clang.1_0</string>
 	<key>DTPlatformBuild</key>
-	<string>4B110</string>
+	<string>5A3005</string>
 	<key>DTPlatformVersion</key>
 	<string>GM</string>
 	<key>DTSDKBuild</key>
-	<string>11A511a</string>
+	<string>13A595</string>
 	<key>DTSDKName</key>
-	<string>macosx10.7</string>
+	<string>macosxMAC_OS_VER</string>
 	<key>DTXcode</key>
-	<string>0410</string>
+	<string>0502</string>
 	<key>DTXcodeBuild</key>
-	<string>4B110</string>
+	<string>5A3005</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>10.7</string>
+	<string>MAC_OS_VER</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>3Depict  Copyright (C) 2011  3Depict team
+	<string>3Depict Copyright (C) 2013  3Depict team
 This program comes with ABSOLUTELY NO WARRANTY
 This is free software, and you are welcome to redistribute it
 under certain conditions</string>
@@ -53,11 +49,5 @@ under certain conditions</string>
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-	<key>NSServices</key>
-	<array/>
-	<key>UTExportedTypeDeclarations</key>
-	<array/>
-	<key>UTImportedTypeDeclarations</key>
-	<array/>
 </dict>
 </plist>
