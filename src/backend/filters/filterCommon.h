@@ -130,6 +130,6 @@ unsigned int computeConvexHull(const std::vector<Point3D> &data,
 			std::vector<Point3D> &hullPts, bool freeHull=true);
 
 //Draw a colour bar
-DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_t colourMap) ;
+DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_t colourMap, bool reverseMap=false) ;
 
 #endif

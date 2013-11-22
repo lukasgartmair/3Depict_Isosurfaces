@@ -32,7 +32,8 @@ const unsigned int NUM_COLOURMAPS=8;
  *
  * returns char in 0->255 range 
  */
-void colourMapWrap(unsigned int mapID,unsigned char *rgb, float value, float min,float max);
+void colourMapWrap(unsigned int mapID,unsigned char *rgb, 
+		float value, float min,float max,bool reverse);
 
 std::string getColourMapName(unsigned int mapID);
 

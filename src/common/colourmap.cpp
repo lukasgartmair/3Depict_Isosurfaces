@@ -191,12 +191,18 @@ void grayColorMap(unsigned char *rgb,float value,float min,float max)
   rgb[0]=rgb[1]=rgb[2]=(unsigned char)(255*value/max);
 }
 
-void colourMapWrap(unsigned int mapID,unsigned char *rgb, float v, float min, float max)
+void colourMapWrap(unsigned int mapID,unsigned char *rgb, float v, 
+				float min, float max, bool reverse)
+
 {
 	//Colour functions assume  positive value, so remap
 	v= v-min;
 	max-=min;
 	min=0;
+
+	if(reverse)
+		v= max-v;
+
 	//Select the desired colour map
 	switch(mapID)
 	{
@@ -225,6 +231,8 @@ void colourMapWrap(unsigned int mapID,unsigned char *rgb, float v, float min, fl
 			 randColorMap(rgb, v, min, max);
 			break;
 	}
+
+
 
 }
 

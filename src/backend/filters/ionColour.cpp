@@ -30,6 +30,7 @@ enum
 	KEY_IONCOLOURFILTER_MAPSTART,
 	KEY_IONCOLOURFILTER_MAPEND,
 	KEY_IONCOLOURFILTER_NCOLOURS,
+	KEY_IONCOLOURFILTER_REVERSE,
 	KEY_IONCOLOURFILTER_SHOWBAR,
 };
 
@@ -38,8 +39,8 @@ enum
 	IONCOLOUR_ABORT_ERR
 };
 
-IonColourFilter::IonColourFilter() : colourMap(0), nColours(MAX_NUM_COLOURS),
-	showColourBar(true)
+IonColourFilter::IonColourFilter() : colourMap(0),reverseMap(false), 
+		nColours(MAX_NUM_COLOURS),showColourBar(true)
 {
 	mapBounds[0] = 0.0f;
 	mapBounds[1] = 100.0f;
@@ -57,6 +58,7 @@ Filter *IonColourFilter::cloneUncached() const
 	p->mapBounds[1]=mapBounds[1];
 	p->nColours =nColours;	
 	p->showColourBar =showColourBar;	
+	p->reverseMap=reverseMap;	
 	
 	//We are copying wether to cache or not,
 	//not the cache itself
@@ -108,14 +110,16 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 		float value;
 		value = (float)ui*(mapBounds[1]-mapBounds[0])/(float)nColours + mapBounds[0];
 		//Pick the desired colour map
-		colourMapWrap(colourMap,rgb,value,mapBounds[0],mapBounds[1]);
+		colourMapWrap(colourMap,rgb,value,mapBounds[0],mapBounds[1],reverseMap);
 	
 		d[ui]->r=rgb[0]/255.0f;
 		d[ui]->g=rgb[1]/255.0f;
 		d[ui]->b=rgb[2]/255.0f;
 		d[ui]->a=1.0f;
 	}
-	
+
+
+
 	//Try to maintain ion size if possible
 	bool haveIonSize,sameSize; // have we set the ionSize?
 	float ionSize;
@@ -187,7 +191,7 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 	if(foundIons && showColourBar)
 	{
 		DrawStreamData *d = new DrawStreamData;
-		d->drawables.push_back(makeColourBar(mapBounds[0],mapBounds[1],nColours,colourMap));
+		d->drawables.push_back(makeColourBar(mapBounds[0],mapBounds[1],nColours,colourMap,reverseMap));
 		d->parent=this;
 		d->cached=0;
 		getOut.push_back(d);
@@ -258,14 +262,18 @@ void IonColourFilter::getProperties(FilterPropGroup &propertyList) const
 	p.helpText=TRANS("Colour scheme used to assign points colours by value");
 	propertyList.addProperty(p,curGroup);
 
-	if(showColourBar)
-		tmpStr="1";
-	else
-		tmpStr="0";
 	
+	p.name=TRANS("Reverse map");
+	p.helpText=TRANS("Reverse the colour scale");
+	p.data= boolStrEnc(reverseMap);
+	p.key=KEY_IONCOLOURFILTER_REVERSE;
+	p.type=PROPERTY_TYPE_BOOL;
+	propertyList.addProperty(p,curGroup);
+	
+
 	p.name=TRANS("Show Bar");
 	p.key=KEY_IONCOLOURFILTER_SHOWBAR;
-	p.data=tmpStr;
+	p.data=boolStrEnc(showColourBar);
 	p.type=PROPERTY_TYPE_BOOL;
 	propertyList.addProperty(p,curGroup);
 
@@ -292,6 +300,7 @@ void IonColourFilter::getProperties(FilterPropGroup &propertyList) const
 	p.key=KEY_IONCOLOURFILTER_MAPEND;
 	p.type=PROPERTY_TYPE_REAL;
 	propertyList.addProperty(p,curGroup);
+	
 
 }
 
@@ -323,6 +332,22 @@ bool IonColourFilter::setProperty(  unsigned int key,
 			colourMap=tmpMap;
 			break;
 		}
+		case KEY_IONCOLOURFILTER_REVERSE:
+		{
+			bool newVal;
+			if(!boolStrDec(value,newVal))
+				return false;
+
+			//Only need update if changed
+			if(newVal!=reverseMap)
+			{
+				clearCache();
+				needUpdate=true;
+			}
+
+			reverseMap=newVal;
+			break;
+		}	
 		case KEY_IONCOLOURFILTER_MAPSTART:
 		{
 			float tmpBound;
@@ -363,17 +388,16 @@ bool IonColourFilter::setProperty(  unsigned int key,
 		}
 		case KEY_IONCOLOURFILTER_SHOWBAR:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			bool newVal;
+			if(!boolStrDec(value,newVal))
 				return false;
-
-			bool lastVal=showColourBar;
-			showColourBar=(stripped == "1");
-
 			//Only need update if changed
-			if(lastVal!=showColourBar)
+			if(newVal!=showColourBar)
+			{
 				needUpdate=true;
+				clearCache();
+			}
+			showColourBar=newVal;
 			break;
 		}	
 
@@ -410,12 +434,8 @@ bool IonColourFilter::writeState(std::ostream &f,unsigned int format, unsigned i
 				<< mapBounds[1] << "\"/>" << endl;
 			f << tabs(depth+1) << "<ncolours value=\"" << nColours << "\"/>" << endl;
 
-			string str;
-			if(showColourBar)
-				str="1";
-			else
-				str="0";
-			f << tabs(depth+1) << "<showcolourbar value=\"" << str << "\"/>" << endl;
+			f << tabs(depth+1) << "<showcolourbar value=\"" << boolStrEnc(showColourBar)<< "\"/>" << endl;
+			f << tabs(depth+1) << "<reversemap value=\"" << boolStrEnc(reverseMap)<< "\"/>" << endl;
 			
 			f << tabs(depth) << "</" << trueName() << ">" << endl;
 			break;
@@ -526,6 +546,28 @@ bool IonColourFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	//convert from string to digit
 	if(stream_cast(showColourBar,tmpStr))
 		return false;
+
+	xmlFree(xmlString);
+	//====
+	
+	//Check for colour map reversal
+	//=====
+	if(XMLHelpFwdToElem(nodePtr,"reversemap"))
+	{
+		//Didn't exist prior to 0.0.15, assume off
+		reverseMap=false;
+	}
+	else
+	{
+		xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
+		if(!xmlString)
+			return false;
+		tmpStr=(char *)xmlString;
+
+		//convert from string to bool 
+		if(!boolStrDec(tmpStr,reverseMap))
+			return false;
+	}
 
 	xmlFree(xmlString);
 	//====

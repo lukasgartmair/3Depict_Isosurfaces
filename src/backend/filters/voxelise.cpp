@@ -2071,7 +2071,7 @@ void VoxeliseFilter::getTexturedSlice(const Voxels<float> &v,
 		for(size_t uj=0;uj<dim[1];uj++)
 		{
 			colourMapWrap(colourMap,rgb, data[ui*dim[1] + uj],
-					minV,maxV);
+					minV,maxV,false);
 			
 			texQ.setData(ui,uj,rgb);	
 		}

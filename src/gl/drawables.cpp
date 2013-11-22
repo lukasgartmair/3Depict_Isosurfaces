@@ -1927,7 +1927,7 @@ void DrawField3D::draw() const
 								//Set colour and point loc
 								colourMapWrap(colourMapID,rgb.v,
 										field->getData(uiX,uiY,uiZ), 
-										colourMapBound[0],colourMapBound[1]);
+										colourMapBound[0],colourMapBound[1],false);
 								
 								ptsCache.push_back(make_pair(field->getPoint(uiX,uiY,uiZ)+delta,rgb));
 							}

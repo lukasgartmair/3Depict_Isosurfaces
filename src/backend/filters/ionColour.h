@@ -33,6 +33,8 @@ class IonColourFilter: public Filter
 		 * 8 randColorMap |  9 grayColorMap
 		 */
 		unsigned int colourMap;
+
+		bool reverseMap;
 		//!map start & end (spectrum value to align start and end of map to)
 		float mapBounds[2];
 

@@ -663,7 +663,7 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 }
 
 
-DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_t colourMap) 
+DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_t colourMap, bool reverseMap) 
 {
 	//Set up the colour bar. Place it in a draw stream type
 	DrawColourBarOverlay *dc = new DrawColourBarOverlay;
@@ -679,7 +679,7 @@ DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_
 		float value;
 		value = (float)(ui)*(maxV-minV)/(float)nColours + minV;
 		//Pick the desired colour map
-		colourMapWrap(colourMap,rgb,value,minV,maxV);
+		colourMapWrap(colourMap,rgb,value,minV,maxV,reverseMap);
 		r[ui]=rgb[0]/255.0f;
 		g[ui]=rgb[1]/255.0f;
 		b[ui]=rgb[2]/255.0f;
