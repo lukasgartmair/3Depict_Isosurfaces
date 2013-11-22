@@ -4041,10 +4041,17 @@ void MainWindowFrame::statusMessage(const char *message, unsigned int type)
 	switch(type)
 	{
 		case MESSAGE_ERROR:
+		//Wx does not support statusbar colouring under MSW
+		// using this can result in visual oddness
+		#if !(defined(__WIN32) || defined(__WIN64))
 			MainFrame_statusbar->SetBackgroundColour(*wxGREEN);
+		#endif
 			break;
 		case MESSAGE_INFO:
+		//Wx does not support statusbar colouring under MSW, and using this can result in visual oddness
+		#if !(defined(__WIN32) || defined(__WIN64))
 			MainFrame_statusbar->SetBackgroundColour(*wxCYAN);
+		#endif
 			break;
 		case MESSAGE_HINT:
 			break;
