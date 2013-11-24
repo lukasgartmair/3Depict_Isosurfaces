@@ -218,6 +218,7 @@ bool rangeFileLoadTests()
 	ionCountMap["test3.rrng"]=8; rangeCountMap["test3.rrng"]=42; 
 	ionCountMap["test4.rrng"]=14; rangeCountMap["test4.rrng"]=15; 
 	ionCountMap["test5.rrng"]=1; rangeCountMap["test5.rrng"]=1; 
+	ionCountMap["test6.rrng"]=2; rangeCountMap["test6.rrng"]=4; 
 	
 	ionCountMap["test1.env"]=1; rangeCountMap["test1.env"]=1; 
 
@@ -301,6 +302,7 @@ bool rangeFileLoadTests()
 	typeMapping["test3.rrng"]=RANGE_FORMAT_RRNG;
 	typeMapping["test4.rrng"]=RANGE_FORMAT_RRNG;
 	typeMapping["test5.rrng"]=RANGE_FORMAT_RRNG;
+	typeMapping["test6.rrng"]=RANGE_FORMAT_RRNG;
 	typeMapping["test1.env"]=RANGE_FORMAT_ENV; 
 
 

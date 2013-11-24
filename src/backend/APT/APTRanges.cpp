@@ -1101,8 +1101,8 @@ skipoutRNGChecks:
 
 		//Check for existence of lines that match format section
 		std::vector<string> sections;
-		sections.push_back("[Ions]");
-		sections.push_back("[Ranges]");
+		sections.push_back("[ions]");
+		sections.push_back("[ranges]");
 
 		vector<bool> haveSection(sections.size(),false);
 	
@@ -1120,7 +1120,7 @@ skipoutRNGChecks:
 			//See if we have this header
 			for(size_t ui=0;ui<sections.size();ui++)
 			{
-				if(sections[ui] == tmpStr)
+				if(sections[ui] == lowercase(tmpStr))
 				{
 					haveSection[ui]=true;
 
@@ -1644,12 +1644,12 @@ unsigned int RangeFile::openRRNG(FILE *fpRange)
 		if (!s.size())
 			continue;
 
-		if (s == "[Ions]")
+		if (lowercase(s) == "[ions]")
 		{
 			curBlock=BLOCK_IONS;
 			continue;
 		}
-		else if (s == "[Ranges]")
+		else if (lowercase(s) == "[ranges]")
 		{
 			curBlock=BLOCK_RANGES;
 			continue;
@@ -1803,37 +1803,26 @@ unsigned int RangeFile::openRRNG(FILE *fpRange)
 					//of range start and end
 					//Range1=31.8372 32.2963 Vol:0.01521 Zn:1 Color:999999
 					//	 	^rngmid ^rngend
-					size_t rngMidIdx,rngEndIdx;
 					string rngStart,rngEnd;
-					split[1]=stripWhite(split[1]);
-					rngMidIdx = split[1].find_first_of(' ');
+					string strTmp=stripWhite(split[1]);
 
-					if (rngMidIdx == std::string::npos)
-					{
-						delete[] inBuffer;
-						return RANGE_ERR_FORMAT;
-					}
-
-					rngEndIdx=split[1].find_first_of(' ',rngMidIdx+1);
-					if (rngEndIdx == std::string::npos)
-					{
-						delete[] inBuffer;
-						return RANGE_ERR_FORMAT;
-					}
-
-					rngStart = split[1].substr(0,rngMidIdx);
-					rngEnd = split[1].substr(rngMidIdx+1,rngEndIdx-(rngMidIdx+1));
-
-
-					//Strip the range
-					string strTmp;
-					strTmp = split[1].substr(rngEndIdx+1);//,split[1].size()-(rngEndIdx+1));
-
-					//Split the remaining field into key:value pairs
+					//Split the remaining field into key:value pairs, with whitespace delimiters
 					split.clear();
-					splitStrsRef(strTmp.c_str(),' ',split);
-
+					splitStrsRef(strTmp.c_str(),"\t ",split);
 					stripZeroEntries(split);
+					//Need a minimum of 4 entries here
+					if(split.size() < 4)
+						return RANGE_ERR_FORMAT;
+					
+					//First two contains the range data
+					rngStart=split[0];
+					rngEnd=split[1];
+
+					//Remove the two leading elements, the rest are : separated
+					split.erase(split.begin());
+					split.erase(split.begin());
+
+					//Retrieve the  remaining fields
 					RGBf col;
 					bool haveColour,haveNameField;
 					haveColour=false;

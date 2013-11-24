@@ -1,0 +1,12 @@
+
+# Number of elements and Number of mass ranges
+[IONS]
+Number=2
+Ion1=A
+Ion2=B
+[Ranges]
+Number=4
+Range1=    12.345    13.456    vol:12.110 Name:A A:1.000
+Range2=    22.220    23.100    vol:12.110 Name:A A:1.000
+Range3= 100.142    101.330    vol:12.110 Name:B B:1.000
+Range4=    44.320    56.680    vol:12.110 Name:B B:1.000
