@@ -199,6 +199,23 @@ bool RangeFile::decomposeIonNames(const std::string &name,
 	return true;
 }
 
+
+//ENV files sometimes have charge state information in the ion
+// names, use this function as a helper to strip it out
+std::string RangeFile::envDropChargeState(const std::string &strName)
+{
+	std::string res=strName;
+	if(strName[strName.size()-1] == '+')
+	{
+		size_t chargeStateOffset;
+		chargeStateOffset=strName.find_last_of("_");
+		if(chargeStateOffset != std::string::npos)
+			res=strName.substr(0,chargeStateOffset);
+	}
+
+	return res;
+}
+
 //Given the name-frequency pairing vector, see if there
 // is a match in the map of composed names
 bool matchComposedName(const std::map<string,size_t> &composedNames,
@@ -1420,7 +1437,7 @@ unsigned int RangeFile::openENV(FILE *fpRange)
 	
 	//Ruoen group "environment file" format
 	//This is not a standard file format, so the
-	//reader is a best-effort implementation, based upon example
+	//reader is a best-effort implementation, based upon examples
 	char *inBuffer = new char[MAX_LINE_SIZE];
 	unsigned int numRanges;
 	unsigned int numIons;	
@@ -1452,11 +1469,28 @@ unsigned int RangeFile::openENV(FILE *fpRange)
 
 		//Try different delimiters to split string
 		splitStrsRef(s.c_str(),"\t ",strVec);
-	
-		stripZeroEntries(strVec);
 
+		stripZeroEntries(strVec);
+		
+		//Drop any entry data including and after ';'.
+		// Revision 0.3 files show this ;, but it is not clear what
+		// it is supposed to be for. Sample files I have show only zeros in these positions
+		for(size_t ui=0;ui<strVec.size();ui++)
+		{
+			size_t offset;
+			offset=strVec[ui].find(';');
+			if(offset == std::string::npos)
+				continue;
+
+			strVec[ui]=strVec[ui].substr(0,offset);
+		}
+
+
+		stripZeroEntries(strVec);
+		
 		if(strVec.empty())
 			continue;
+		
 
 		if(!haveNumRanges)
 		{
@@ -1497,6 +1531,9 @@ unsigned int RangeFile::openENV(FILE *fpRange)
 						return RANGE_ERR_FORMAT;
 					}
 
+					//Strip the charge state, if it exists
+					strVec[0]=envDropChargeState(strVec[0]);
+
 					//Check that name consists only of 
 					//readable ascii chars, or period
 					for(unsigned int ui=0; ui<strVec[0].size(); ui++)
@@ -1509,7 +1546,26 @@ unsigned int RangeFile::openENV(FILE *fpRange)
 							return RANGE_ERR_FORMAT;
 						}
 					}
-					//Env file contains only the long name, so use that for both the short and long names
+
+					//Env file contains only the
+					// long name, so use that for both
+					// the short and long names
+					bool nameExists=false;
+					for(size_t ui=0;ui<ionNames.size();ui++)
+					{
+						if (ionNames[ui].first == strVec[0])
+						{
+							nameExists=true;
+							break;
+						}
+					}
+
+					//ion name already exists (eg as another charge state). nothing to do.
+					// Note that env files can have two colours for same ion at different states
+					// but we don't support this
+					if(nameExists)
+						continue;
+
 					ionNames.push_back(std::make_pair(strVec[0],strVec[0]));
 					//Use the colours (positions 1-3)
 					RGBf colourStruct;
@@ -1551,6 +1607,7 @@ unsigned int RangeFile::openENV(FILE *fpRange)
 				{
 					unsigned int thisIonID;
 					thisIonID=(unsigned int)-1;
+					strVec[0] = envDropChargeState(strVec[0]);
 					for(unsigned int ui=0;ui<ionNames.size();ui++)
 					{
 						if(strVec[0] == ionNames[ui].first)
@@ -1579,6 +1636,13 @@ unsigned int RangeFile::openENV(FILE *fpRange)
 						return RANGE_ERR_FORMAT;
 					}
 
+					//Disallow reversed ranges
+					if(rangeStart > rangeEnd)
+					{
+						delete[] inBuffer;
+						return RANGE_ERR_FORMAT;
+					}
+
 					ranges.push_back(std::make_pair(rangeStart,rangeEnd));
 
 					ionIDs.push_back(thisIonID);
@@ -1593,15 +1657,17 @@ unsigned int RangeFile::openENV(FILE *fpRange)
 		
 	}	
 
+	delete[] inBuffer;
+	//Note that the in-file reported number of ions might actually be too bug
+	//as we "fold" some ions together (eg Si_+ and Si_2+ for us are both considered Si)
+	if(ionNames.size() > numIons || ranges.size() > numRanges)
+		return RANGE_ERR_FORMAT;
+
 	//There should be more data following the range information.
 	// if not, this is not really an env file
 	if(feof(fpRange))
-	{
-		delete[] inBuffer;
 		return RANGE_ERR_FORMAT;
-	}	
 
-	delete[] inBuffer;
 
 	return 0;
 }

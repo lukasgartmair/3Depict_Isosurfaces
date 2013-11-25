@@ -125,6 +125,9 @@ class RangeFile
 		// caller must supply and release file pointer
 		unsigned int openENV(FILE *fp);
 
+		//Strip charge state from ENV ion names
+		static std::string envDropChargeState(const std::string &strName);
+
 	public:
 		RangeFile();
 
