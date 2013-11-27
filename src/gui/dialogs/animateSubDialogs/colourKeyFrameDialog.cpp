@@ -167,6 +167,8 @@ void ColourKeyFrameDialog::OnBtnStartColour(wxCommandEvent &event)
 		
 		updateButtonColours();
 	}
+
+	delete colDg;
 }
 
 

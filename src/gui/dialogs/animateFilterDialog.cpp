@@ -163,7 +163,7 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
     outputDataSepLine = new wxStaticLine(frameViewPane, wxID_ANY);
     labelDataType = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("Data Types:"));
     checkImageOutput = new wxCheckBox(frameViewPane, ID_CHECK_IMAGE_OUT, wxTRANS("3D Images"));
-    lblImageName = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("File Prefix: "));
+    lblImageName = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("File Suffix: "));
     textImageName = new wxTextCtrl(frameViewPane, ID_TEXTBOX_IMAGEPREFIX, wxEmptyString);
     labelImageSize = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("Size : "));
     textImageSize = new wxTextCtrl(frameViewPane, ID_TEXTBOX_IMAGESIZE, wxEmptyString);
@@ -1118,8 +1118,8 @@ void ExportAnimationDialog::set_properties()
     textWorkDir->SetToolTip(wxTRANS("Enter where the animation frames will be exported to"));
     buttonWorkDir->SetToolTip(wxTRANS("Browse to directory where the animation frames will be exported to"));
     checkImageOutput->SetValue(1);
-    textImageName->SetToolTip(wxTRANS("Enter a descriptive name for output files"));
-    textImageSize->SetToolTip(wxTRANS("Enter the target resoltuion (image size)"));
+    textImageName->SetToolTip(wxTRANS("Title for files, result will be saved as #-name.png, where # is image number."));
+    textImageSize->SetToolTip(wxTRANS("Target resolution (image size)"));
     comboRangeFormat->SetSelection(-1);
     frameSlider->SetToolTip(wxTRANS("Select frame for property display"));
     textFrame->SetToolTip(wxTRANS("Enter frame number to change frame (eg 1/20)"));
