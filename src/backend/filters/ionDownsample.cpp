@@ -539,11 +539,10 @@ bool IonDownsampleFilter::setProperty(  unsigned int key,
 		{
 			string stripped=stripWhite(value);
 
-			if(!(stripped == "1"|| stripped == "0"))
-				return false;
-
 			bool lastVal=fixedNumOut;
-			fixedNumOut=(stripped=="1");
+
+			if(!boolStrDec(stripped,fixedNumOut))
+				return false;
 
 			//if the result is different, the
 			//cache should be invalidated
@@ -599,12 +598,9 @@ bool IonDownsampleFilter::setProperty(  unsigned int key,
 		{
 			string stripped=stripWhite(value);
 
-			if(!(stripped == "1"|| stripped == "0"))
-				return false;
-
 			bool lastVal=perSpecies;
-
-			perSpecies=(stripped=="1");
+			if(!boolStrDec(stripped,perSpecies))
+				return false;
 
 			//if the result is different, the
 			//cache should be invalidated
@@ -733,12 +729,8 @@ bool IonDownsampleFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	//Retrieve number out (yes/no) mode
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"fixednumout","value"))
 		return false;
-	
-	if(tmpStr == "1") 
-		fixedNumOut=true;
-	else if(tmpStr== "0")
-		fixedNumOut=false;
-	else
+
+	if(!boolStrDec(tmpStr,fixedNumOut))
 		return false;
 	//===
 		
@@ -760,15 +752,12 @@ bool IonDownsampleFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	//Retrieve "perspecies" attrib
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"perspecies","value"))
 		return false;
-	
-	if(tmpStr == "1") 
-		perSpecies=true;
-	else if(tmpStr== "0")
-		perSpecies=false;
-	else
+
+	if(!boolStrDec(tmpStr,perSpecies))
 		return false;
 
 	//Retrieve the ion per-species fractions
+	//--
 	if(XMLHelpFwdToElem(nodePtr,"fractions"))
 		return false;
 
@@ -783,6 +772,8 @@ bool IonDownsampleFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	if(!readScalarsXML(nodePtr,ionLimits))
 		return false;
 
+	//--
+	
 	if(ionLimits.size()!=ionFractions.size())
 		return false;
 
