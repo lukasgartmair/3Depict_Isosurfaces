@@ -54,7 +54,6 @@ ResolutionDialog::ResolutionDialog(wxWindow* parent, int id, const wxString& tit
 #if wxCHECK_VERSION(2, 9, 0)
     textWidth->Bind(wxEVT_MOUSEWHEEL, &ResolutionDialog::OnMouseWheelWidth, this);
     textHeight->Bind(wxEVT_MOUSEWHEEL, &ResolutionDialog::OnMouseWheelHeight, this);
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
 #else
     textWidth->Connect(wxID_ANY, wxEVT_MOUSEWHEEL,
 		    wxMouseEventHandler(ResolutionDialog::OnMouseWheelWidth),NULL,this);
