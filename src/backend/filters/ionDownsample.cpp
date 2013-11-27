@@ -750,7 +750,12 @@ bool IonDownsampleFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	if(fraction < 0.0f || fraction > 1.0f)
 		return false;
 	//===
-	
+
+	//Retreive maxafterfilter
+	//---
+	if(!XMLGetNextElemAttrib(nodePtr,maxAfterFilter,"maxafterfilter","value"))
+		return false;
+	//---
 	
 	//Retrieve "perspecies" attrib
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"perspecies","value"))
