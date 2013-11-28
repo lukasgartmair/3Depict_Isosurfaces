@@ -119,8 +119,9 @@ threeDepictApp::threeDepictApp()
 {
        	MainFrame=0;usrLocale=0;
 #ifndef DEBUG
-#if wxCHECK_VERSION(2,9,0) && defined(__APPLE__)
-	//Macports wx seems to be built with assertions enabled? Disable for release builds
+#if wxCHECK_VERSION(2,9,0)
+	//Wx 2.9 and up now has assertions auto-enabled. 
+	//Disable for release builds
 	wxSetAssertHandler(NULL);
 #endif
 #endif

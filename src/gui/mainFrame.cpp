@@ -1863,6 +1863,7 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 			{
 				if(exportDialog->wantsImages())
 				{
+
 					vector<SelectionDevice *> dummy;
 					//update the output streams, but do not release
 					// the contents.
@@ -2038,6 +2039,7 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 			//Clean up date from this run, releasing stream pointers.
 			visControl.safeDeleteFilterList(outData);
 			outStreams.clear();
+
 		}
 
 	}

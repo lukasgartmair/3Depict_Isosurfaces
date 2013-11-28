@@ -173,8 +173,9 @@ class VisController
 						size_t parentId=(unsigned int)-1); 
 
 		//!Grab the filter tree from the internal one, and swap the 
-		// internal with a cloned copy. Can be used eg, to steal the cache
-		// Note that the passed filter tree will be destroyed.
+		// internal with a cloned copy of the internal.
+		// Can be used eg, to steal the cache
+		// Note that the contents of the incoming filter tree will be destroyed.
 		//  -> This implies the tree comes *OUT* of viscontrol,
 		//     and a tree  cannot be inserted in via this function
 		void switchoutFilterTree(FilterTree &f);

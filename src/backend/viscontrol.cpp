@@ -548,7 +548,7 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 	//Names for plots
 	vector<std::pair<size_t,string> > plotLabels;
 
-
+	//rate-limit the number of drawables to show in the scene
 	throttleSceneInput(sceneData);
 
 
