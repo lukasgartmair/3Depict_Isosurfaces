@@ -908,7 +908,7 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	std::string tmpStr,tmpStrTwo;
 	stream_cast(tmpStrTwo,nRow*nCol);
 	
-	showProgress=showProgress & ( nRow*nCol > 1);
+	showProgress=showProgress && ( nRow*nCol > 1);
 	if(showProgress)
 	{
 		wxD = new wxProgressDialog(wxTRANS("Image progress"), 
