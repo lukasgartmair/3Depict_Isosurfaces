@@ -1638,7 +1638,7 @@ void MainWindowFrame::OnFileExportVideo(wxCommandEvent &event)
 
 	//Force a paint update for the scene, to  ensure aspect ratio information is preserved
 	wxPaintEvent ptEvent;
-	wxPostEvent(panelTop,event);
+	wxPostEvent(panelTop,ptEvent);
 }
 
 
