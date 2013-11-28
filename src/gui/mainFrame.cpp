@@ -1767,14 +1767,15 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 
 	int w, h;
 	panelTop->GetClientSize(&w,&h);
-	FilterTree origTree;
+	FilterTree treeWithCache;
 
 	//Steal the filter tree, and give the pointer to the export dialog
 	// viscontrol now has an empty tree, so watch out.
-	visControl.swapFilterTree(origTree);
-	exportDialog->setTree(origTree);
+	visControl.swapFilterTree(treeWithCache);
+
+	exportDialog->setTree(treeWithCache);
 	exportDialog->prepare();
-	visControl.swapFilterTree(origTree);
+	visControl.swapFilterTree(treeWithCache);
 
 	//Animate dialog
 	if( (exportDialog->ShowModal() == wxID_CANCEL))
@@ -1784,46 +1785,57 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 	}
 
 
-	setLockUI();
-	panelTop->Enable(false);
+	//Stop timer based events, and lock UI
+	//--
+	updateTimer->Stop();
+	autoSaveTimer->Stop();
+	//--
 
 	size_t numFrames;
 	numFrames=exportDialog->getNumFrames();
 
-
+	//Display modal progress dialog
+	//--
 	wxProgressDialog *prog;
-	prog = new wxProgressDialog(wxTRANS("Animating"),wxTRANS("Performing refresh"),numFrames);
+	prog = new wxProgressDialog(wxTRANS("Animating"),
+		wxTRANS("Performing refresh"),numFrames,this,wxPD_CAN_ABORT|wxPD_APP_MODAL );
 	prog->Show();
+	//--
 
 	currentlyUpdatingScene=true;
+
+	string errMessage;
+	bool needAbortDlg=false;
+
+
+	//Ensure that viscontrol returns control to progress window
+	visControl.setYieldWindow(prog);
+
 	//Modify the tree.
 	for(size_t ui=0;ui<numFrames;ui++)
 	{
-		prog->Update(ui);
-		bool needsUp;
-		//steal tree from viscontrol
-		visControl.swapFilterTree(origTree);
-		
-		//Modify the tree, as needed
-		if(!exportDialog->getModifiedTree(ui,origTree,needsUp))
-		{
-			prog->Destroy();
+		//If user presses abort, abort procedure
+		if(!prog->Update(ui))
+			break;
 
+		bool needsUp;
+		//steal tree, including caches, from viscontrol
+		visControl.swapFilterTree(treeWithCache);
+		
+		//Modify the tree, as needed, altering cached data
+		if(!exportDialog->getModifiedTree(ui,treeWithCache,needsUp))
+		{
 			std::string s;
 			stream_cast(ui,s);
-			s = TRANS("Filter property change failed") + s;
-			wxMessageDialog wxMesD(this,wxStr(s),
-					wxTRANS("Filter change error"),wxOK|wxICON_ERROR);
-			wxMesD.ShowModal();
-
-			setLockUI(false);
-			panelTop->Enable(true);
-			return;
+			errMessage = TRANS("Filter property change failed") + s;
+			needAbortDlg=true;
+			break;
 		}
 
 		//restore tree to viscontrol
-		visControl.swapFilterTree(origTree);
-	
+		visControl.swapFilterTree(treeWithCache);
+
+		//Perform update
 		if(needsUp || !exportDialog->wantsOnlyChanges())
 		{
 			typedef std::vector<const FilterStreamData * >  STREAMOUT;
@@ -1833,21 +1845,15 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 			//First try to refresh the tree
 			if(visControl.refreshFilterTree(outData))
 			{
-				prog->Destroy();
-				std::string errMesg,tmpStr;
+				std::string tmpStr;
 				stream_cast(tmpStr,ui);
-				errMesg=TRANS("Refresh failed on frame :") + tmpStr;
-				
-				wxErrMsg(this,TRANS("Refresh failed"),errMesg);
-
-				currentlyUpdatingScene=false;
-				setLockUI(false);
-				panelTop->Enable(true);
-				return;
+				errMessage=TRANS("Refresh failed on frame :") + tmpStr;
+				needAbortDlg=true;
+				break;
 			}
 			
 		
-			//Now update the scene, if needed
+			//Now obtain the output streams as a flat list
 			for(list<FILTER_OUTPUT_DATA>::iterator it=outData.begin();
 					it!=outData.end();++it)
 				outStreams.push_back(it->second);
@@ -1874,7 +1880,7 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 					{
 						if(!panelTop->saveImage(exportDialog->getImageWidth(),
 							exportDialog->getImageHeight(),
-							exportDialog->getFilename(ui,FILENAME_IMAGE).c_str(),true,false))
+							exportDialog->getFilename(ui,FILENAME_IMAGE).c_str(),false,false))
 						{
 							pair<string,string> errMsg;
 							string tmpStr;
@@ -2022,19 +2028,11 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 			}
 			catch(std::pair<string,string> errMsg)
 			{
-				prog->Destroy();
-
-				//Display an error dialog to the user
-				wxErrMsg(this,errMsg.first,errMsg.second);
-				
+				errMessage=errMsg.first + "\n" + errMsg.second;
 				//clean up data
 				visControl.safeDeleteFilterList(outData);
-				exportDialog->Destroy();
-				currentlyUpdatingScene=false;
-				setLockUI(false);
-				panelTop->Enable(true);
-
-				return;
+				needAbortDlg=true;
+				break;
 			}
 
 			//Clean up date from this run, releasing stream pointers.
@@ -2044,17 +2042,28 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 
 	}
 
-
-	prog->Destroy();
+	visControl.setYieldWindow(this);
 	
+	if(needAbortDlg)
+		wxErrMsg(this,TRANS("Animate failed"),errMessage);
+
 	currentlyUpdatingScene=false;
-	exportDialog->Destroy();
-	setLockUI(false);
-	panelTop->Enable(true);
 
 	//Re-run the scene update for the original case,
 	// this allows for things like the selection bindings to be reinitialised.
 	doSceneUpdate();
+	
+	//Restore UI and timers
+	//--
+	prog->Destroy();
+	exportDialog->Destroy();
+	
+	panelTop->Enable(true);
+	
+	updateTimer->Start(UPDATE_TIMER_DELAY,wxTIMER_CONTINUOUS);
+	autoSaveTimer->Start(AUTOSAVE_DELAY*1000,wxTIMER_CONTINUOUS);
+	//--
+
 }
 
 void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
@@ -3818,7 +3827,10 @@ bool MainWindowFrame::doSceneUpdate()
 
 	setSaveStatus();
 
-	panelTop->Refresh();
+	
+	//Force a paint update for the scene
+	wxPaintEvent ptEvent;
+	wxPostEvent(panelTop,ptEvent);
 	//Return a value dependant upon whether we successfully loaded 
 	//the data or not
 	return errCode == 0;

@@ -1019,7 +1019,7 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 	ASSERT(!currentScene.haveTempCam());
 	std::string outFile;
 	wxProgressDialog *wxD = new wxProgressDialog(wxTRANS("Animation progress"), 
-					wxTRANS("Rendering sequence..."), nFrames,this,wxPD_CAN_ABORT );
+					wxTRANS("Rendering sequence..."), nFrames,this,wxPD_CAN_ABORT|wxPD_APP_MODAL );
 
 	wxD->Show();
 	std::string tmpStr,tmpStrTwo;
