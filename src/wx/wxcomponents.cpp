@@ -30,10 +30,16 @@
 using std::ofstream;
 using std::vector;
 
-#if defined(__APPLE__) || defined(__WIN32__) || defined(__WIN64__)
-const float FONT_HEADING_SCALEFACTOR=1.0f;
+#if defined(__APPLE__) 
+	const float FONT_HEADING_SCALEFACTOR=1.0f;
+#elif defined(__WIN32__) || defined(__WIN64__)
+	#if wxCHECK_VERSION(2,9,0)
+		const float FONT_HEADING_SCALEFACTOR=0.75f;
+	#else
+		const float FONT_HEADING_SCALEFACTOR=1.0f;
+	#endif
 #else
-const float FONT_HEADING_SCALEFACTOR=0.75f;
+	const float FONT_HEADING_SCALEFACTOR=0.75f;
 #endif
 
 void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
