@@ -404,8 +404,8 @@ std::string InterpData::getInterpolatedData(const vector<pair<size_t,
 				tmp=(interpLinearRamp(startF,endF,frame,
 							colStart[ui],colEnd[ui])*255.0f);
 
-				tmp = std::max(tmp,255.0f);
-				tmp=std::min(tmp,0.0f);
+				tmp = std::min(tmp,255.0f);
+				tmp=std::max(tmp,0.0f);
 
 				colInterp[ui] = (unsigned char)tmp;
 			}

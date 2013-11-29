@@ -31,6 +31,7 @@
 	- Fix state file loading in downsample filter, fixed count mode
 	- Fix camera animation continually asking if you want to save,
 	  after animation completion
+	- Fix colour interpolation in animate dialog
 
 	Technical bugfixes/changes:
 	- Fix hang when filters given directories as input (linux)
