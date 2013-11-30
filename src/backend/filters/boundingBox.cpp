@@ -366,8 +366,7 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 
 	if(!isVisible)
 	{
-		propagateCache(getOut);
-
+		propagateStreams(dataIn,getOut);
 		return 0;
 	}
 

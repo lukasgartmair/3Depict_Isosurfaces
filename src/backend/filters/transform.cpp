@@ -138,8 +138,7 @@ Filter *TransformFilter::cloneUncached() const
 
 size_t TransformFilter::numBytesForCache(size_t nObjects) const
 {
-	//Say we don't know, we are not going to cache anyway.
-	return (size_t)-1;
+	return nObjects*sizeof(IonHit);
 }
 
 DrawStreamData* TransformFilter::makeMarkerSphere(SelectionDevice* &s) const
@@ -298,7 +297,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 			if(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS)
 				continue;
 
-			getOut.push_back(filterOutputs[ui]);
+			getOut.push_back(dataIn[ui]);
 		}
 		return 0;
 	}
