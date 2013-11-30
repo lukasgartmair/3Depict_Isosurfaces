@@ -43,6 +43,11 @@
 #ifndef THREEDEPICT_H 
 #define THREEDEPICT_H
 
+//Workaround for keypress not detected under MSW wx3.0
+#if wxCHECK_VERSION(2,9,0) && ( defined(__WIN32) || defined(__WIN64))
+#define WX_TREE_WORKAROUND
+#endif
+
 class FileDropTarget;
 
 enum
@@ -279,7 +284,7 @@ public:
     virtual void OnComboStashEnter(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnComboStash(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeEndDrag(wxTreeEvent &event); // wxGlade: <event_handler>
-#if wxCHECK_VERSION(2,9,0) && (defined(__WIN32) || defined(__WIN64))
+#if defined(WX_TREE_WORKAROUND)
     virtual void OnTreeKeyDown(wxKeyEvent &event); // wxGlade: <event_handler>
 #else
      virtual void OnTreeKeyDown(wxTreeEvent &event); // wxGlade: <event_handler>

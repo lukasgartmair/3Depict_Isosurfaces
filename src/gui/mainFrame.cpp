@@ -794,6 +794,7 @@ MainWindowFrame::~MainWindowFrame()
     comboCamera->Unbind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboCameraSetFocus, this);
     comboStash->Unbind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboStashSetFocus, this);
     noteDataView->Unbind(wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED, &MainWindowFrame::OnNoteDataView, this);
+    treeFilters->Unbind(wxEVT_KEY_DOWN,&MainWindowFrame::OnTreeKeyDown,this);
 #else
 	noteDataView->Disconnect();
 	comboStash->Disconnect();
@@ -857,7 +858,9 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_TEXT_ENTER(ID_COMBO_STASH, MainWindowFrame::OnComboStashEnter)
     EVT_COMBOBOX(ID_COMBO_STASH, MainWindowFrame::OnComboStash)
     EVT_TREE_END_DRAG(ID_TREE_FILTERS, MainWindowFrame::OnTreeEndDrag)
+#if !defined(WX_TREE_WORKAROUND)
     EVT_TREE_KEY_DOWN(ID_TREE_FILTERS, MainWindowFrame::OnTreeKeyDown)
+#endif
     EVT_TREE_SEL_CHANGING(ID_TREE_FILTERS, MainWindowFrame::OnTreeSelectionPreChange)
     EVT_TREE_SEL_CHANGED(ID_TREE_FILTERS, MainWindowFrame::OnTreeSelectionChange)
     EVT_TREE_DELETE_ITEM(ID_TREE_FILTERS, MainWindowFrame::OnTreeDeleteItem)
@@ -3244,9 +3247,9 @@ void MainWindowFrame::OnBtnFilterTreeErrs(wxCommandEvent &event)
 //There appears to be a bug in MSW wx 3.0. Key down events don't work
 // in MSW (including in the wx official samples). To work around, use generic
 // KEY_DOWN event
-#if wxCHECK_VERSION(2,9,0) && (defined(__WIN32) || defined(__WIN64))
+#if defined(WX_TREE_WORKAROUND)
 void MainWindowFrame::OnTreeKeyDown(wxKeyEvent &event)
- {
+{
  	if(currentlyUpdatingScene)
  	{
  		return;
@@ -3323,8 +3326,10 @@ void MainWindowFrame::OnTreeKeyDown(wxKeyEvent &event)
 		default:
 			event.Skip();
 	}
- }
+}
+
 #else
+
 void MainWindowFrame::OnTreeKeyDown(wxTreeEvent &event)
 {
 	if(currentlyUpdatingScene)
@@ -5758,6 +5763,7 @@ void MainWindowFrame::set_properties()
     comboCamera->Bind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboCameraSetFocus, this);
     comboStash->Bind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboStashSetFocus, this);
     noteDataView->Bind(wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED, &MainWindowFrame::OnNoteDataView, this);
+    treeFilters->Bind(wxEVT_KEY_DOWN,&MainWindowFrame::OnTreeKeyDown, this);
 #else
     comboCamera->Connect(wxID_ANY,
                  wxEVT_SET_FOCUS,
