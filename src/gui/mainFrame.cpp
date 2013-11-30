@@ -1026,7 +1026,7 @@ void MainWindowFrame::OnFileOpen(wxCommandEvent &event)
 
 	statusMessage(TRANS("Loaded file."),MESSAGE_INFO);
 
-	panelTop->Refresh();
+	panelTop->forceRedraw();
 }
 
 void MainWindowFrame::OnFileMerge(wxCommandEvent &event)
@@ -1050,7 +1050,7 @@ void MainWindowFrame::OnFileMerge(wxCommandEvent &event)
 
 	statusMessage(TRANS("Merged file."),MESSAGE_INFO);
 
-	panelTop->Refresh();
+	panelTop->forceRedraw();
 
 	setSaveStatus();
 }
@@ -1354,7 +1354,7 @@ void MainWindowFrame::OnRecentFile(wxCommandEvent &event)
 			{
 				if(loadOK)
 					statusMessage(TRANS("Loaded file."),MESSAGE_INFO);
-				panelTop->Refresh();
+				panelTop->forceRedraw();
 			}
 		}
 		
@@ -2574,6 +2574,8 @@ void MainWindowFrame::OnViewBackground(wxCommandEvent &event)
 		//Scale colour ranges to 0-> 1 and set in the gl pane	
 		panelTop->setGlClearColour(c.Red()/255.0f,c.Green()/255.0f,c.Blue()/255.0f);
 	}
+
+	panelTop->forceRedraw();
 }
 
 void MainWindowFrame::OnViewControlPane(wxCommandEvent &event)
@@ -2663,7 +2665,7 @@ void MainWindowFrame::OnViewPlotLegend(wxCommandEvent &event)
 void MainWindowFrame::OnViewWorldAxis(wxCommandEvent &event)
 {
 	panelTop->currentScene.setWorldAxisVisible(event.IsChecked());
-	panelTop->Refresh();
+	panelTop->forceRedraw();
 }
 
 void MainWindowFrame::OnHelpHelp(wxCommandEvent &event)
@@ -3037,7 +3039,7 @@ void MainWindowFrame::OnTreeSelectionChange(wxTreeEvent &event)
 #if !wxCHECK_VERSION(2,9,0)
 	treeFilters->Fit();	
 #endif
-	panelTop->Refresh();
+	panelTop->forceRedraw();
 
 }
 
@@ -3490,7 +3492,7 @@ void MainWindowFrame::OnGridCameraPropertyChange(wxGridEvent &event)
 	else
 		event.Veto();
 
-	panelTop->Refresh(true);
+	panelTop->forceRedraw();
 	programmaticEvent=false;
 
 
@@ -3549,7 +3551,7 @@ void MainWindowFrame::OnComboCameraEnter(wxCommandEvent &event)
 		setSaveStatus();
 
 		//force redraw in 3D pane
-		panelTop->Refresh(false);
+		panelTop->forceRedraw();
 		return ;
 	}
 
@@ -3564,7 +3566,7 @@ void MainWindowFrame::OnComboCameraEnter(wxCommandEvent &event)
 
 	visControl.setCam(u);
 	visControl.updateCamPropertyGrid(gridCameraProperties,u);
-	panelTop->Refresh(false);
+	panelTop->forceRedraw();
 
 	setSaveStatus();
 }
@@ -3583,7 +3585,7 @@ void MainWindowFrame::OnComboCamera(wxCommandEvent &event)
 	std::string s = std::string(TRANS("Restored camera: ") ) +stlStr(comboCamera->GetValue());	
 	statusMessage(s.c_str(),MESSAGE_INFO);
 	
-	panelTop->Refresh(false);
+	panelTop->forceRedraw();
 	
 	setSaveStatus();
 	return ;
@@ -3802,7 +3804,7 @@ bool MainWindowFrame::doSceneUpdate()
 	//Restore the UI elements to their interactive state
 	setLockUI(false);
 
-	panelTop->Refresh(false);
+	panelTop->forceRedraw();
 	panelSpectra->Refresh(false);	
 
 	updateLastRefreshBox();
@@ -3831,8 +3833,8 @@ bool MainWindowFrame::doSceneUpdate()
 
 	
 	//Force a paint update for the scene
-	wxPaintEvent ptEvent;
-	wxPostEvent(panelTop,ptEvent);
+	panelTop->forceRedraw();
+
 	//Return a value dependant upon whether we successfully loaded 
 	//the data or not
 	return errCode == 0;
@@ -4313,7 +4315,7 @@ void MainWindowFrame::updatePostEffects()
 		panelTop->currentScene.addEffect(anaglyph);
 	}
 
-	panelTop->Refresh();
+	panelTop->forceRedraw();
 }
 
 void MainWindowFrame::updateFxUI(const vector<const Effect*> &effs)
@@ -4529,7 +4531,7 @@ void MainWindowFrame::OnControlSplitMove(wxSplitterEvent &event)
 void MainWindowFrame::OnTopBottomSplitMove(wxSplitterEvent &event)
 {
 	Refresh();
-	panelTop->Refresh();
+	panelTop->forceRedraw();
 }
 
 void MainWindowFrame::OnControlUnsplit(wxSplitterEvent &event)
@@ -4744,7 +4746,7 @@ void MainWindowFrame::OnCameraGridCellEditorShow(wxGridEvent &event)
 			break;
 	}
 
-	panelTop->Refresh(false);
+	panelTop->forceRedraw();
 
 	setSaveStatus();
 }
@@ -4772,14 +4774,14 @@ void MainWindowFrame::OnCheckAlpha(wxCommandEvent &event)
 {
 	panelTop->currentScene.setAlpha(event.IsChecked());
 
-	panelTop->Refresh();
+	panelTop->forceRedraw();
 }
 
 void MainWindowFrame::OnCheckLighting(wxCommandEvent &event)
 {
 	panelTop->currentScene.setLighting(event.IsChecked());
 	
-	panelTop->Refresh();
+	panelTop->forceRedraw();
 }
 
 void MainWindowFrame::OnCheckCacheEnable(wxCommandEvent &event)
@@ -5054,7 +5056,7 @@ void MainWindowFrame::OnCheckPostProcess(wxCommandEvent &event)
 		
 	setSaveStatus();
 	
-	panelTop->Refresh();
+	panelTop->forceRedraw();
 }
 
 

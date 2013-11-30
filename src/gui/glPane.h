@@ -101,7 +101,12 @@ public:
     
 	int getWidth();
 	int getHeight();
- 
+
+	//Panel will not update if a child window for some platforms, using
+	// normal wx reresh code. Force it.
+	// See, eg http://stackoverflow.com/questions/6458451/force-repaint-of-wxpython-window-wxmpl-plot
+	void forceRedraw();
+
 
 	void setMouseMoveFactor(float f) { mouseMoveFactor=f;};
 	void setMouseZoomFactor(float f) { mouseZoomFactor=f;};
