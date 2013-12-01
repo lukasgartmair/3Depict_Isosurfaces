@@ -1851,19 +1851,16 @@ void PlotOverlays::draw(mglGraph *gr,MGLColourFixer &fixer,
 			{
 				gr->Line (mglPoint(bufX[uj],std::max(0.0f,(float)boundMin.y)),
 					mglPoint(bufX[uj],bufY[uj]),colourCode,100);
+
 				//Print labels near to the text
-				
-				//XY coordinates for the label
-				//Draw the text label at the desired position
-				//Font size in mathgl uses negative values to set a relative font size
 				const float STANDOFF_FACTOR=1.05;
 #ifdef USE_MGL2
 				gr->Text(mglData(bufX[uj]),mglData(bufY[uj]*STANDOFF_FACTOR),
 					overlayData[ui].title.c_str());
 #else
-				gr->Text(mglData(bufX[uj]),mglData(bufY[uj]*STANDOFF_FACTOR),
-							overlayData[ui].title.c_str(),"",-0.6);
-
+				//Font size in mathgl uses negative values to set a relative font size
+				gr->Text(mglPoint(bufX[uj],bufY[uj]*STANDOFF_FACTOR),
+					overlayData[ui].title.c_str(),"",-0.6);
 
 #endif
 			}
