@@ -1,9 +1,7 @@
 MSYS_PATH=/c/msys/1.0/local/include/
 
-.rc.o:
+%.rc.o: 
 	$(WX_RESCOMP) $^ -o $@
-%.o : %.rc
-	 $(WX_RESCOMP) $^ -o $@
 
 3Depict_LDFLAGS=$(LDFLAGS) $(FT_LDFLAGS) $(GSL_LIBS) $(MGL_LIBS)
 
@@ -15,9 +13,9 @@ MSYS_PATH=/c/msys/1.0/local/include/
 	       $(XML_CFLAGS) $(GSL_CFLAGS)  $(MGL_CFLAGS) $(PNG_CFLAGS) $(QHULL_CFLAGS) \
 	      $(OPENMP_FLAGS) $(DEBUG_FLAGS) -pipe
 
-
 3Depict_LDADD=$(LIBS) $(GETTEXT_LIBS) $(WX_LIBS) $(MGL_LIBS)  $(FTGL_LIBS) \
-		 $(FT_LIBS) $(XML_LIBS) $(GSL_LIBS) $(GL_LIBS) $(GLU_LIBS) $(QHULL_LIBS) $(PNG_LIBS) 
+		 $(FT_LIBS) $(XML_LIBS) $(GSL_LIBS) $(GL_LIBS) $(GLU_LIBS) $(QHULL_LIBS) $(PNG_LIBS)
+
 
 bin_PROGRAMS= 3Depict
 
@@ -107,12 +105,12 @@ SOURCE_FILES=  $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(GUI_SOURCE_FILES) $(G
 	       ${BACKEND_SOURCE_FILES} ${BACKEND_HEADER_FILES} $(OPENGL_SOURCE_FILES) $(OPENGL_HEADER_FILES) \
 	       $(COMMON_SOURCE_FILES) $(COMMON_HEADER_FILES)
 
+3Depict_SOURCES=$(SOURCE_FILES)
 
 #Do we have or need windows-XP "resource" files for look and feel?
 if HAVE_WINDRES
-3Depict_SOURCES=$(SOURCE_FILES)  3Depict.rc
-else
-3Depict_SOURCES=$(SOURCE_FILES)
+3Depict_SOURCES+=3Depict.rc
+3Depict_LDADD+= 3Depict.rc.o
 endif
 
 #Tarball options

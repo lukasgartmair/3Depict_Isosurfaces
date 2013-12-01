@@ -79,6 +79,10 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = 3Depict$(EXEEXT)
+
+#Do we have or need windows-XP "resource" files for look and feel?
+@HAVE_WINDRES_TRUE@am__append_1 = 3Depict.rc
+@HAVE_WINDRES_TRUE@am__append_2 = 3Depict.rc.o
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.am \
 	$(top_srcdir)/depcomp
@@ -241,9 +245,7 @@ am__objects_10 = $(am__objects_1) $(am__objects_2) $(am__objects_4) \
 	$(am__objects_5) $(am__objects_6) $(am__objects_2) \
 	$(am__objects_7) $(am__objects_2) $(am__objects_8) \
 	$(am__objects_2) $(am__objects_9) $(am__objects_2)
-@HAVE_WINDRES_FALSE@am_3Depict_OBJECTS = $(am__objects_10)
-@HAVE_WINDRES_TRUE@am_3Depict_OBJECTS = $(am__objects_10) \
-@HAVE_WINDRES_TRUE@	3Depict.$(OBJEXT)
+am_3Depict_OBJECTS = $(am__objects_10) $(am__objects_2)
 3Depict_OBJECTS = $(am_3Depict_OBJECTS)
 am__DEPENDENCIES_1 =
 3Depict_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
@@ -251,7 +253,7 @@ am__DEPENDENCIES_1 =
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
-	$(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_1) $(am__append_2)
 3Depict_LINK = $(CXXLD) $(3Depict_CXXFLAGS) $(CXXFLAGS) \
 	$(3Depict_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
@@ -470,9 +472,9 @@ MSYS_PATH = /c/msys/1.0/local/include/
 	       $(XML_CFLAGS) $(GSL_CFLAGS)  $(MGL_CFLAGS) $(PNG_CFLAGS) $(QHULL_CFLAGS) \
 	      $(OPENMP_FLAGS) $(DEBUG_FLAGS) -pipe
 
-3Depict_LDADD = $(LIBS) $(GETTEXT_LIBS) $(WX_LIBS) $(MGL_LIBS)  $(FTGL_LIBS) \
-		 $(FT_LIBS) $(XML_LIBS) $(GSL_LIBS) $(GL_LIBS) $(GLU_LIBS) $(QHULL_LIBS) $(PNG_LIBS) 
-
+3Depict_LDADD = $(LIBS) $(GETTEXT_LIBS) $(WX_LIBS) $(MGL_LIBS) \
+	$(FTGL_LIBS) $(FT_LIBS) $(XML_LIBS) $(GSL_LIBS) $(GL_LIBS) \
+	$(GLU_LIBS) $(QHULL_LIBS) $(PNG_LIBS) $(am__append_2)
 
 #------- Common header files for all sub-modules
 COMMON_SOURCE_FILES = common/pngread.c common/stringFuncs.cpp common/xmlHelper.cpp common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp
@@ -555,17 +557,14 @@ SOURCE_FILES = $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(GUI_SOURCE_FILES) $(G
 	       ${BACKEND_SOURCE_FILES} ${BACKEND_HEADER_FILES} $(OPENGL_SOURCE_FILES) $(OPENGL_HEADER_FILES) \
 	       $(COMMON_SOURCE_FILES) $(COMMON_HEADER_FILES)
 
-@HAVE_WINDRES_FALSE@3Depict_SOURCES = $(SOURCE_FILES)
-
-#Do we have or need windows-XP "resource" files for look and feel?
-@HAVE_WINDRES_TRUE@3Depict_SOURCES = $(SOURCE_FILES)  3Depict.rc
+3Depict_SOURCES = $(SOURCE_FILES) $(am__append_1)
 
 #Tarball options
 EXTRA_DIST = gui/glade-skeleton myAppIcon.ico testing/filtertesting.cpp
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .c .cpp .o .obj .rc
+.SUFFIXES: .c .cpp .o .obj
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
@@ -2205,10 +2204,8 @@ uninstall-am: uninstall-binPROGRAMS
 	uninstall-binPROGRAMS
 
 
-.rc.o:
+%.rc.o: 
 	$(WX_RESCOMP) $^ -o $@
-%.o : %.rc
-	 $(WX_RESCOMP) $^ -o $@
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -32,7 +32,6 @@ AC_MSG_ERROR([
 ])
 fi
 
-AM_CONDITIONAL(HAVE_WINDRES, which ${host_os}windres > /dev/null && which windres >> /dev/null)
 
 #Append the --gl-libs flag
 WX_LIBS="$WX_LIBS `$WX_CONFIG_PATH --gl-libs`"
@@ -43,8 +42,10 @@ case "${host_os}" in
 		# Manually append -DUNICODE to cppflags/cxxflags
 		WX_CXXFLAGS="$WX_CXXFLAGS -DUNICODE"
 		WX_CPPFLAGS="$WX_CPPFLAGS -DUNICODE"
+		AM_CONDITIONAL([HAVE_WINDRES], [test 1] )
 		;;
 	*)
+		AM_CONDITIONAL([HAVE_WINDRES], [ FALSE ] )
 	;;
 esac
 

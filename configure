@@ -5539,14 +5539,6 @@ as_fn_error $? "
 " "$LINENO" 5
 fi
 
- if which ${host_os}windres > /dev/null && which windres >> /dev/null; then
-  HAVE_WINDRES_TRUE=
-  HAVE_WINDRES_FALSE='#'
-else
-  HAVE_WINDRES_TRUE='#'
-  HAVE_WINDRES_FALSE=
-fi
-
 
 #Append the --gl-libs flag
 WX_LIBS="$WX_LIBS `$WX_CONFIG_PATH --gl-libs`"
@@ -5557,8 +5549,24 @@ case "${host_os}" in
 		# Manually append -DUNICODE to cppflags/cxxflags
 		WX_CXXFLAGS="$WX_CXXFLAGS -DUNICODE"
 		WX_CPPFLAGS="$WX_CPPFLAGS -DUNICODE"
+		 if test 1 ; then
+  HAVE_WINDRES_TRUE=
+  HAVE_WINDRES_FALSE='#'
+else
+  HAVE_WINDRES_TRUE='#'
+  HAVE_WINDRES_FALSE=
+fi
+
 		;;
 	*)
+		 if  FALSE  ; then
+  HAVE_WINDRES_TRUE=
+  HAVE_WINDRES_FALSE='#'
+else
+  HAVE_WINDRES_TRUE='#'
+  HAVE_WINDRES_FALSE=
+fi
+
 	;;
 esac
 
@@ -7683,6 +7691,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${USE_PRECOMPILED_HEADERS_TRUE}" && test -z "${USE_PRECOMPILED_HEADERS_FALSE}"; then
   as_fn_error $? "conditional \"USE_PRECOMPILED_HEADERS\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${HAVE_WINDRES_TRUE}" && test -z "${HAVE_WINDRES_FALSE}"; then
+  as_fn_error $? "conditional \"HAVE_WINDRES\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${HAVE_WINDRES_TRUE}" && test -z "${HAVE_WINDRES_FALSE}"; then
