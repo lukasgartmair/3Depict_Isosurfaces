@@ -710,8 +710,17 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream, bool m
 			// camera (one that does not show up to the users,
 			// and cannot be erased from the scene)
 			// set it directly. Otherwise, its a user camera.
-			savedCameras.push_back(newCameraVec[ui]);
-			activeCamera=ui;
+			if(newCameraVec[ui]->getUserString().size())
+			{
+				savedCameras.push_back(newCameraVec[ui]);
+				activeCamera=ui;
+			}
+			else
+			{
+				ASSERT(savedCameras.size());
+				delete savedCameras[0];
+				savedCameras[0]=newCameraVec[ui];
+			}
 		}
 
 	}
