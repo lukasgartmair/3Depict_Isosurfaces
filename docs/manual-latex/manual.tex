@@ -282,7 +282,7 @@ Once an item is added, the filter tree is thus modified and a recomputation of t
 
 
 \section{Quick start}
-Several quick notes are provided here as examples of how to perform specific measurements/calcuations. Whilst this is not an exhaustive list of measurements that can be made in \emph{3Depict}, this section is targeted towards new users who wish to use the program to perform quick or common measurments.
+Several quick notes are provided here as examples of how to perform specific measurements/calculations. Whilst this is not an exhaustive list of measurements that can be made in \emph{3Depict}, this section is targeted towards new users who wish to use the program to perform quick or common measurements.
 
 \subsection{Loading data}
 \label{sec:quickStartLoadData}
@@ -293,7 +293,7 @@ You may have an existing analysis file, which you can use to load both the data,
 
 To load it, you require a ``package'' from the previous user, which will be a folder containing a XML file, and any data files that are required. As for loading data, you can either directly open the analysis with File$\rightarrow$Open, or by dropping it onto the program. 
 
-Note that by default, the program will not load all the data in the file - a sampling will be performed. Careful use of data sampling will allow for a much more rapid and interactive analysis of large datasets - many of the algorithms running times do not scale directly with the size of the dataset. Reducing the number of ions can, in some cases, result in a signfificant reduction in run time (eg halving number of ions for some algoritms can result in a run time of a quarter required for the full dataset).
+Note that by default, the program will not load all the data in the file - a sampling will be performed. Careful use of data sampling will allow for a much more rapid and interactive analysis of large datasets - many of the algorithms running times do not scale directly with the size of the dataset. Reducing the number of ions can, in some cases, result in a significant reduction in run time (\emph{e.g.} halving the number of ions for some algorithms can result in a run time of a quarter required for the full dataset).
 
 \subsection{Ranging}
 \label{sec:quickStartRangedData}
@@ -475,8 +475,40 @@ More complex, filter based animations are covered in more detail in~\ref{sec:ani
 
 Finally one can export the entire analysis state, including all required data using the export analysis package option. This will create  a folder which contains all the files needed to reproduce the current program state elsewhere. Note that this imports all referenced data files, so the package can become quite large, but should be fully portable to any other system by simply copying the created folder. Inside the folder, the program state will be stored as a state file, and can be accessed by simply opening this state file.
 
+\subsubsection{Ranging dialog}
+The ranging dialog allows for the complete editing of range files within the program. The range files can be arbitrarily modified, as desired. To access the range dialog, this can be obtained from the Edit->Range menu. However, this is only accessible if there are range and spectra available from within the range tree. Note that, at this time (0.0.15), the altered ranges will not be persistent between 3Depict sessions. An initial range file that can be loaded into the filter tree is required at this time.
+
+The dialog is split in two, with a tab panel on the left and a spectrum on the right. If there are several spectra that are rangeable, the spectrum can be selected from the tab panel. Once selected, any existing ranges can be moved and interacted with using the right hand view. Unlike the ranging area, the ranges shown in the spectrum can be moved arbitrarily - \emph{i.e.}, they may overlap, or otherwise be moved past one another. This allows for completely unconstrained editing of the spectrum. Clashes will be shown with a red marker a the top of the spectrum (Figure~\ref{fig:rangeEditClash}), and must be resolved before the changes can be committed.
+
+New species and ranges can be added using the Add/Remove buttons in the ``Ranges'' tab. First select the grid you wish to edit, then add the new range. Note that if the range is not fully specified, it will be highlighted in the grid - you must set each field in the grid prior to use. 
+
+
+\begin{figure}
+\begin{center}
+ \includegraphics[width=0.9 \textwidth,keepaspectratio=true]{./figures/rangeedit-clash.png}
+ \caption{Range editing dialog, showing clash between species}
+\label{fig:rangeEditClash}
+\end{center}
+\end{figure}
+
+
+From the overlay tab, custom ``molecular'' combinations can be shown on the plot as stick markers, each stick's amplitude shows the natural abundance for the predicted isotopes\footnote{This is set by the naturalAbundance.xml file. Customised abundances can be set there, \emph{e.g.} for isotopic studies.}. To specify a multiple ion, you need to provide the chemical formula in the tab. In Figure~\ref{fig:rangeEditOverlay}, the species ``TiO'' is shown. Similarly, ions such as ``TiO2'' ($\mathrm{TiO}_2$) and ``Ti2O'' ($\mathrm{Ti}_2\mathrm{O}$)could be displayed. Note that the overlay to be specified is case sensitive, \emph{e.g.} ``PB2'' (hypothetically, Phosphorous diboride) is different to ``Pb2'' (Lead-2 complex), and thus only the appropriate case will be accepted by the program. Due to the exponential (and thus highly computationally costly) nature of large fragments, only fragments with 10 components will be accepted (\emph{e.g.} C20 will be rejected, as with 2 C species, there are $2^{20}$ solutions).
+
+
+\begin{figure}
+\begin{center}
+ \includegraphics[width=0.9 \textwidth,keepaspectratio=true]{./figures/rangeEditOverlay.png}
+ \caption{Range editing dialog, showing molecular overlays.}
+\label{fig:rangeEditOverlay}
+\end{center}
+\end{figure}
+
+
+
+
+
 \subsubsection{Autosave}
-The program will generate an autosave file periodically. If the program crashes, it will look for an autosave file and prompt you to restore it. Note that only the program settings are saved, not the intermediate data, so recomputation will be necessary. If the autosave fails to load, then the autosave file will be archived in your 3depict configuration folder; in this case, please consider sending the failed file to the developers. For configuration locations, see the paths Section~\ref{sec:3DepictPaths}
+The program will generate an autosave file periodically. If the program crashes, it will look for an autosave file and prompt you to restore it. Note that only the program settings are saved, not the intermediate data, so recomputation will be necessary. If the autosave fails to load, then the autosave file will be archived in your 3Depict configuration folder; in this case, please consider sending the failed file to the developers. For configuration locations, see the paths Section~\ref{sec:3DepictPaths}
 
 
 \subsubsection{Export Animation}
@@ -875,9 +907,9 @@ Drawable will be emitted if the ``Show Primitive'' option is selected.
 
 Local density and density filtering algorithms are relatively simple, and mostly are self-contained concepts. This can be used to identify the local density in your dataset, which in the case of APT, originates due to limitations in the technique. For the Radial Distribution Function (RDF) algorithm , this can be used to examine local correlations between points, which may or may not exist in your dataset. The  RDF technique is covered in several standard textbooks on APT~\cite{Gault2012}. 
 
-Axial distribution functions are covered in technical literature where they find use in APT and be referred to via a number of differing names, such as ``SDM''s~\cite{Geiser2007}, atom-vicinity~\cite{Boll2007}, or directional pair-correlation functions. The axial distrubution function implementation in 3Depict, allows for users to select and drag out the region to be analysed, with the axis of the cylinder providing both the cropping orientation and the axial direction in which to perform the calculation. 
+Axial distribution functions are covered in technical literature where they find use in APT and be referred to via a number of differing names, such as ``SDM''s~\cite{Geiser2007}, atom-vicinity~\cite{Boll2007}, or directional pair-correlation functions. The axial distribution function implementation in 3Depict, allows for users to select and drag out the region to be analysed, with the axis of the cylinder providing both the cropping orientation and the axial direction in which to perform the calculation. 
 
-The binomial distribution function can be used to test for randomness in the spatial distribution of the points. The program computes a ``p'' value, which is the probability that the observed data was drawn from a  randomly distribtued (at the scale of the analysis) set of values on fixed data points. Grouping is performed by a grid-extrusion algorithm, which assigns each set of points in the dataset to a given bin, and thus a given count in the output histogram. The output histogram shows number of occurrences of the observation that a bin contains a given number of counts. This method (or any statistical test) cannot prove randomness, only non-randomness, which may come from many sources. One must be careful when using this mode (or any statistical test), and careful reading of the available literature is recommended. \emph{3Depict} does not implement the two-pass method of Moody for computing grid sizes at this time (October, 2013), but rather performs only the first pass.
+The binomial distribution function can be used to test for randomness in the spatial distribution of the points. The program computes a ``p'' value, which is the probability that the observed data was drawn from a  randomly distributed (at the scale of the analysis) set of values on fixed data points. Grouping is performed by a grid-extrusion algorithm, which assigns each set of points in the dataset to a given bin, and thus a given count in the output histogram. The output histogram shows number of occurrences of the observation that a bin contains a given number of counts. This method (or any statistical test) cannot prove randomness, only non-randomness, which may come from many sources. One must be careful when using this mode (or any statistical test), and careful reading of the available literature is recommended. \emph{3Depict} does not implement the two-pass method of Moody for computing grid sizes at this time (October, 2013), but rather performs only the first pass.
 
 
 {%
@@ -1158,6 +1190,8 @@ Voxel & No & No & No\\
 \end{table}
 }%
 
+
+
 A drawable will only be emitted if the ``show marker'' option is selected.
 \section{Attributions}
 
@@ -1289,7 +1323,7 @@ Note that due to the need to do multiple passes over the text file to interpret 
 \label{sec:externalProgExample}
 The ``external program'' filter can be used to transfer data on-the-fly between \emph{3Depict} and a separate program, allowing for an extension of the capabilities of \emph{3Depict}, without requiring direct modification of \emph{3Depict} itself. This is targeted at advanced users who wish to connect other programs to \emph{3Depict}, as part of their analysis toolchain. Here short, simple example programs are given in several languages. Specifically, we provide examples for  \emph{Scilab}, \emph{Python}, \emph{Bash} and \emph{C/C++} - representing an accessible breadth of differing programming languages. In each language the fundamental principles of loading and returning data to and from \emph{3Depict} is the same.
 
-Each example will load an input file, generated from \emph{3Depict}, optinally alter the data, and then return the modified data back to \emph{3Depict}. The examples are for instructive purposes only, and do not reflect the optimal implementation of the specific task, in order to simplify the presented program. Not all features of the external program filter are presented in this Appendix. For the full documentation on the filter, see Section~\ref{sec:rangeFilter}.
+Each example will load an input file, generated from \emph{3Depict}, optionally alter the data, and then return the modified data back to \emph{3Depict}. The examples are for instructive purposes only, and do not reflect the optimal implementation of the specific task, in order to simplify the presented program. Not all features of the external program filter are presented in this Appendix. For the full documentation on the filter, see Section~\ref{sec:rangeFilter}.
 
 Files for the sample programs can be generated from the following inline examples, or alternately, can be downloaded form their respective URLs
 
@@ -1603,7 +1637,7 @@ exit 0
 
 The output from running the refresh cycle is given, as it appears on the program console (to replicate this mac/windows users may need to redirect the output to a file in order to see the output text (this can be done in bash), or mac users may launch \emph{3Depict} from terminal.app).
 
-Firstly, note that the \emph{same file} is written to each time - \emph{3Depict} does not delete the ``script-output-3Depict-input.pos``, so if this is named differently between refreshes, multiple pos files would be generated and \emph{3Depict} would load them all. Finally, the statement \texttt{exit 0} is used to ensure that \emph{3Depict} knows that the program terminated succesfully. Recall that returning a nonzero value will inform \emph{3Depict} that some error occured during processing, and thus it will abort further data processing.
+Firstly, note that the \emph{same file} is written to each time - \emph{3Depict} does not delete the ``script-output-3Depict-input.pos``, so if this is named differently between refreshes, multiple pos files would be generated and \emph{3Depict} would load them all. Finally, the statement \texttt{exit 0} is used to ensure that \emph{3Depict} knows that the program terminated successfully. Recall that returning a nonzero value will inform \emph{3Depict} that some error occurred during processing, and thus it will abort further data processing.
 
 \begin{verbatim}
 Working Directory: /home/username/3Depict/src
