@@ -208,7 +208,7 @@ bool genRandomFilename(std::string &s,bool seedRand)
 
 	//some valid chars for generating random strings
 	static const char validChars[] =
-	    "0123456789_-"
+	    "0123456789_"
 	    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	    "abcdefghijklmnopqrstuvwxyz";
 
