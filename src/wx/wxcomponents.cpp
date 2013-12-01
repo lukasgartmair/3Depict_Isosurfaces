@@ -26,21 +26,10 @@
 
 #include <wx/clipbrd.h>
 
-
 using std::ofstream;
 using std::vector;
 
-#if defined(__APPLE__) 
-	const float FONT_HEADING_SCALEFACTOR=1.0f;
-#elif defined(__WIN32__) || defined(__WIN64__)
-	#if wxCHECK_VERSION(2,9,0)
-		const float FONT_HEADING_SCALEFACTOR=0.75f;
-	#else
-		const float FONT_HEADING_SCALEFACTOR=1.0f;
-	#endif
-#else
-	const float FONT_HEADING_SCALEFACTOR=0.75f;
-#endif
+const float FONT_HEADING_SCALEFACTOR=1.25f;
 
 void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
 		std::map<size_t,Filter *> &filterMap,vector<const Filter *> &persistentFilters,
@@ -562,6 +551,7 @@ void wxCustomPropGrid::propertyLayout()
 			{
 				this->SetCellValue(sepRows[ui],0,wxStr(sectionNames[ui+1]));
 				wxFont f;
+				f=*wxSMALL_FONT;
 				f.SetStyle(wxFONTSTYLE_ITALIC);
 				f.SetPointSize((int)(f.GetPointSize()*FONT_HEADING_SCALEFACTOR));
 				this->SetCellFont(sepRows[ui],0,f);
