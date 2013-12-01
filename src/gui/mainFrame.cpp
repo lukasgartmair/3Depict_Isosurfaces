@@ -3114,10 +3114,7 @@ void MainWindowFrame::OnTreeBeginLabelEdit(wxTreeEvent &event)
 void MainWindowFrame::OnTreeEndLabelEdit(wxTreeEvent &event)
 {
 	if(event.IsEditCancelled())
-	{
-		treeFilters->Fit();
 		return;
-	}
 
 
 	//There is a case where the tree doesn't quite clear
@@ -3146,7 +3143,6 @@ void MainWindowFrame::OnTreeEndLabelEdit(wxTreeEvent &event)
 		}
 	}
 
-	treeFilters->Fit();
 }
 
 void MainWindowFrame::OnTreeBeginDrag(wxTreeEvent &event)
