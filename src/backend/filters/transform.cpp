@@ -189,7 +189,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 	//use the cached copy if we have it.
 	if(cacheOK)
 	{
-		propagateStreams(dataIn,getOut, STREAM_TYPE_IONS,false);
+		//Propagate non-ion-types into output
+		propagateStreams(dataIn,getOut, getRefreshBlockMask(),true);
 		propagateCache(getOut);
 		return 0;
 	}

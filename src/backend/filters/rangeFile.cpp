@@ -107,7 +107,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 		//We don't cache anything but our modification
 		//to the ion stream data types. so we propagate
 		//these.
-		propagateStreams(dataIn,getOut,STREAM_TYPE_IONS,false);
+		propagateStreams(dataIn,getOut,getRefreshBlockMask(),true);
 			
 		return 0;
 	}

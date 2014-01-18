@@ -82,7 +82,7 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 	if(cacheOK)
 	{
 		ASSERT(filterOutputs.size());
-		propagateStreams(dataIn,getOut,STREAM_TYPE_IONS,false);
+		propagateStreams(dataIn,getOut,getRefreshBlockMask(),true);
 
 		propagateCache(getOut);
 
