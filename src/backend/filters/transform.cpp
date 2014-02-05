@@ -1110,7 +1110,15 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 			return ERR_CALLBACK_FAIL;
 		}
 		//Shuffle the value data.TODO: callback functor	
+
+#ifndef HAVE_CPP1X
+		std::srand(time(0));
 		std::random_shuffle(massData.begin(),massData.end());
+#else
+		std::mt19937_64 r;
+		r.seed(time(0));
+		std::shuffle(massData.begin(),massData.end(),r);
+#endif
 		if(!(*callback)(true))
 		{
 			delete d;
