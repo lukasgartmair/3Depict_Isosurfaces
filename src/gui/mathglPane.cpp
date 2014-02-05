@@ -27,7 +27,6 @@
 
 #ifdef USE_MGL2
 	#include <mgl2/canvas_wnd.h>
-	#include <mgl2/canvas_wnd.h>
 #else
 	#include <mgl/mgl_eps.h>
 #endif
@@ -1091,7 +1090,13 @@ unsigned int MathGLPane::saveSVG(const std::string &filename)
 	grS->SetWarn(0);
 	grS->Message=mglWarnMsgBuf;
 #endif	
+
+	//Mathgl does not set locale prior to writing SVG
+	// do this by hand
+	pushLocale("C",LC_NUMERIC);
 	grS->WriteSVG(filename.c_str());
+	popLocale();
+
 
 	bool doWarn;
 #ifdef USE_MGL2

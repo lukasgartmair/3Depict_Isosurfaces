@@ -26,7 +26,6 @@
 
 #include <map>
 #include <fstream>
-#include <clocale>
 #include <numeric>
 #include <cstring>
 
@@ -484,15 +483,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 	}
 
 
-	//switch to "C" style decimal notation (English),
-	//as needed
-	char *oldLocale=setlocale(LC_NUMERIC,NULL);
-
-	//setlocale reserves the right to trash the returned pointer
-	//on subsequent calls (it totally makes sense, or something..).
-	oldLocale=strdup(oldLocale);
-	if(strcmp(oldLocale,"C"))
-		setlocale(LC_NUMERIC,"C");	
+	pushLocale("C",LC_NUMERIC);
 		
 	size_t errCode;
 	switch(fileFormat)
@@ -521,31 +512,19 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 		default:
 			ASSERT(false);
 			fclose(fpRange);
-			if(strcmp(oldLocale,"C"))
-				setlocale(LC_NUMERIC,oldLocale);
-			free(oldLocale);
+			popLocale();
 			return RANGE_ERR_FORMAT;
 	}
 
+	popLocale();
 	fclose(fpRange);
 	if(errCode)
 	{
 		errState=errCode;
-		
-		if(strcmp(oldLocale,"C"))
-			setlocale(LC_NUMERIC,oldLocale);
-		free(oldLocale);
 
 		return errState;
 	}
 
-	//revert back to user's locale, as needed
-	if(strcmp(oldLocale,"C"))
-		setlocale(LC_NUMERIC,oldLocale);
-
-	free(oldLocale);
-	
-	
 	//Run self consistency check on freshly loaded data
 	if(!isSelfConsistent())
 	{

@@ -42,6 +42,13 @@ extern const char *PROGRAM_VERSION;
 extern const char *FONT_FILE;
 
 
+//Set new locale code. Must be followed by a popLocale call before completion
+// Only one locale type can be pushed at a time this way
+void pushLocale(const char *newLocale, int type);
+
+//Restore old locale code
+void popLocale();
+
 
 
 //C file peek function

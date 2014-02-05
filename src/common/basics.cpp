@@ -41,6 +41,9 @@
 #include <sys/stat.h>
 #endif
 
+#include <cstring>
+#include <clocale>
+
 using std::string;
 using std::vector;
 using std::list;
@@ -65,6 +68,9 @@ const char *TEXT_LOAD_ERR_STRINGS[] = { "",
 //default font to use.
 std::string defaultFontFile;
 
+static char *oldLocaleStatic;
+static int localeStaticType;
+
 unsigned int getBitNum(unsigned int u)
 {
 	ASSERT(u);
@@ -84,6 +90,45 @@ std::string boolStrEnc(bool b)
 		return "1";
 	else
 		return "0";
+}
+
+void pushLocale(const char *newLocale, int type)
+{
+	ASSERT(!oldLocaleStatic);
+	ASSERT(!localeStaticType);
+
+	ASSERT(type == LC_NUMERIC || type == LC_MONETARY || type == LC_CTYPE 
+		|| type == LC_COLLATE || type == LC_ALL || type == LC_TIME
+		|| type== LC_MESSAGES);
+
+	oldLocaleStatic=setlocale(type,NULL);   
+
+	//setlocale reserves the right to trash the returned pointer      
+	// on subsequent calls (i.e. use the returned pointer for later)
+	// thus we must duplicate the pointer to own it
+	oldLocaleStatic=strdup(oldLocaleStatic);      
+	if(strcmp(oldLocaleStatic,newLocale)) 
+	{
+		setlocale(type,newLocale);        
+		localeStaticType=type;
+	}
+	else
+	{
+		//record that we did not set this
+		localeStaticType=-1;
+	}
+
+}
+
+void popLocale()
+{
+	if(localeStaticType != -1)
+		setlocale(localeStaticType,oldLocaleStatic);
+
+	localeStaticType=0;
+
+	free(oldLocaleStatic);
+	oldLocaleStatic=0;
 }
 
 
