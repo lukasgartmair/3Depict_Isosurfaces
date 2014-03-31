@@ -42,6 +42,13 @@ extern const char *PROGRAM_VERSION;
 extern const char *FONT_FILE;
 
 
+//Set new locale code. Must be followed by a popLocale call before completion
+// Only one locale type can be pushed at a time this way
+void pushLocale(const char *newLocale, int type);
+
+//Restore old locale code
+void popLocale();
+
 
 
 //C file peek function
@@ -381,8 +388,8 @@ public:
     void expand(const Point3D &p);
     //!Expand by a specified thickness 
     void expand(float v);
-
-
+    //!Obtain the corner points of the cube
+    void getVertices(std::vector<Point3D> &p,bool centre=false) const;
     friend  std::ostream &operator<<(std::ostream &stream, const BoundCube& b);
 
     //FIXME: Hack!
@@ -436,8 +443,6 @@ class EqualWithCallback
 		unsigned int redMax;
 		//!Current reduction counter
 		unsigned int reduction;
-		//!pointer to progress value
-		unsigned int *prgPtr;
 	public:
 		//!Second argument is a "reduction" value to set the number of calls
 		//to the random functor before initiating a callback

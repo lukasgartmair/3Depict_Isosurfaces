@@ -112,6 +112,8 @@ class PlotRegion
 
 		//The ID value for this region, used when interacting with parent object
 		unsigned int id;
+
+		std::string label;
 		
 		PlotRegion();
 
@@ -129,6 +131,8 @@ class PlotRegion
 		Filter *getParentAsFilter() const { ASSERT(accessMode==ACCESS_MODE_FILTER); return (Filter*)parentObject;};
 
 		RangeFile *getParentAsRangeFile() const { ASSERT(accessMode==ACCESS_MODE_RANGEFILE); return (RangeFile*)parentObject;};
+
+		std::string getName() const;
 
 };
 
@@ -151,7 +155,7 @@ class RegionGroup
 		void clear() {regions.clear(); };
 		
 		//!Append a region to the plot
-		void addRegion(unsigned int regionId, float start, float end,	
+		void addRegion(unsigned int regionId, const std::string &name, float start, float end,	
 				float r,float g, float b, Filter *parentFilter);
 		//!Retrieve the ID of the non-overlapping region in X-Y space
 		bool getRegionIdAtPosition(float x, float y, unsigned int &id) const;
@@ -348,6 +352,7 @@ class PlotWrapper
 
 		//! Data regarding plots were visible previously
 		// first pair entry is the parent object pointer. second is the parent plot index
+		//TODO: Convert to serialised parent path 
 		std::vector<std::pair< const void *, unsigned int> > lastVisiblePlots;
 	
 		//Position independant ID handling for the 
@@ -423,7 +428,7 @@ class PlotWrapper
 		//!Get the bounds for the plot
 		void scanBounds(float &xMin,float &xMax,float &yMin,float &yMax) const;
 		//Draw the plot onto a given MGL graph. Only one type (1D,2D etc) of plot may be visible
-		void drawPlot(mglGraph *graph) const;
+		void drawPlot(mglGraph *graph, bool &usingLogMode) const;
 
 		//!Set the X Y and title strings
 		void setStrings(unsigned int plotID,
@@ -433,10 +438,12 @@ class PlotWrapper
 		//!Set the parent information for a given plot
 		void setParentData(unsigned int plotID,
 				const void *parentObj, unsigned int plotIndex);
-	
+
+		//TODO: Type hack - should return const Filter *
 		//!Get the parent object fo rthis plot
 		const void *getParent(unsigned int plotID) { ASSERT(plotID < plottingData.size()); return plottingData[plotID]->parentObject;}
 
+		unsigned int getParentIndex(unsigned int plotId) const { ASSERT(plotId < plottingData.size()); return plottingData[plotId]->parentPlotIndex;}
 		//!Set the plotting mode.
 		void setTraceStyle(unsigned int plotID,unsigned int mode);
 
@@ -460,6 +467,9 @@ class PlotWrapper
 
 		//!Returns true if plot is visible, based upon its uniqueID.
 		bool isPlotVisible(unsigned int plotID) const;
+		
+		
+		void getVisibleIDs(vector<unsigned int> &plotID) const;
 
 		//!Disable user bounds
 		void disableUserBounds(){plotChanged=true;applyUserBounds=false;};
@@ -475,6 +485,9 @@ class PlotWrapper
 
 		//!Set whether to enable the legend or not
 		void setLegendVisible(bool vis) { drawLegend=vis;plotChanged=true;};
+		
+		bool getLegendVisible() const { return drawLegend; }
+		
 
 		//!Add a plot to the list of available plots. Control of the pointer becomes
 		//transferred to this class, so do *NOT* delete it after calling this function
@@ -520,6 +533,11 @@ class PlotWrapper
 		void switchOutRegionParent(std::map<const RangeFileFilter *, RangeFile> &switchMap);
 
 		void setRegionGroup(size_t plotId, RegionGroup &r);
+
+
+		//TODO: convert to serialised parent path
+		//Override the last-visible selection. This allows for overriding which plots were selected, which is normally handled internally
+		void overrideLastVisible(vector< pair<const void *,unsigned int>  > &overridden); 
 };
 
 #endif

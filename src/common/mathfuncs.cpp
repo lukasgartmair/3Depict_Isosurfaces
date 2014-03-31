@@ -71,6 +71,14 @@ const Point3D &Point3D::operator+=(const Point3D &pt)
 	return *this;
 }
 
+const Point3D &Point3D::operator-=(const Point3D &pt)
+{
+	for(unsigned int ui=0;ui<3; ui++)
+		value[ui]-= pt.value[ui];
+	
+	return *this;
+}
+
 const Point3D Point3D::operator+(const Point3D &pt) const
 {
 	Point3D ptTmp;
@@ -545,7 +553,21 @@ void quat_pointmult(Point3f *result, const Quaternion *q1, const Quaternion *q2)
 	result->fz = (-q1->a*q2->d -q1->b*q2->c +q1->c*q2->b +q1->d*q2->a);
 
 }
- 
+
+//Inefficient Point3D version
+void quat_rot(Point3D &p, const Point3D &r, float angle)
+{
+	Point3f pP,rR;
+
+	pP.fx =p[0]; pP.fy =p[1]; pP.fz =p[2]; 	
+	rR.fx =r[0]; rR.fy =r[1]; rR.fz =r[2];
+
+	quat_rot(&pP,&rR,angle);
+
+	p[0] = pP.fx; p[1] =pP.fy; p[2] = pP.fz;
+}
+
+
 //Uses quaternion mathematics to perform a rotation around your favourite axis
 //IMPORTANT: Rotvec must be normalised before passing to this function 
 //failure to do so will have weird results. 
@@ -589,6 +611,75 @@ void quat_rot(Point3f *point, const Point3f *rotVec, float angle)
 
 }
 
+//TODO: Make as efficient as possible
+
+void quat_rot_array(Point3D  *pointArr, unsigned int n, 
+			const Point3f *rotVec, float angle)
+{
+	Point3f *fArr;
+	fArr = new Point3f[n];
+
+	for(size_t ui=0;ui<n;ui++)
+	{
+		fArr[ui].fx = pointArr[ui][0];
+		fArr[ui].fy = pointArr[ui][1];
+		fArr[ui].fz = pointArr[ui][2];
+	}
+
+	quat_rot_array(fArr,n,rotVec,angle);
+
+	for(size_t ui=0;ui<n;ui++)
+	{
+		 pointArr[ui][0]=fArr[ui].fx; 
+		 pointArr[ui][1]=fArr[ui].fy;
+		 pointArr[ui][2]=fArr[ui].fz;
+	}
+
+	delete[] fArr;
+}
+void quat_rot_array(Point3f *pointArr, unsigned int n,
+			const Point3f *rotVec, float angle)
+{
+	Quaternion rotQuat;
+	Quaternion pointQuat;
+	Quaternion temp;
+	{
+		ASSERT(rotVec->fx*rotVec->fx + rotVec->fy*rotVec->fy + rotVec->fz*rotVec->fz - 1.0f < 
+				5.0f*sqrt(std::numeric_limits<float>::epsilon()));
+
+		double sinCoeff;
+		
+		//remember this value so we don't recompute it
+	#ifdef _GNU_SOURCE
+		double cosCoeff;
+		//GNU provides sincos which is about twice the speed of sin/cos separately
+		sincos(angle*0.5f,&sinCoeff,&cosCoeff);
+		rotQuat.a=cosCoeff;
+	#else
+		angle*=0.5f;
+		sinCoeff=sin(angle);
+		
+		rotQuat.a = cos(angle);
+	#endif	
+		rotQuat.b=sinCoeff*rotVec->fx;
+		rotQuat.c=sinCoeff*rotVec->fy;
+		rotQuat.d=sinCoeff*rotVec->fz;
+
+		for(unsigned int ui=0;ui<n; ui++)
+		{
+		//	pointQuat.a =0.0f; This is implied in the pointQuat multiplcation function
+			pointQuat.b = pointArr[ui].fx;
+			pointQuat.c = pointArr[ui].fy;
+			pointQuat.d = pointArr[ui].fz;
+
+
+			//perform  rotation
+			quat_mult_no_second_a(&temp,&rotQuat,&pointQuat);
+			quat_pointmult(pointArr+ui, &temp,&rotQuat);
+
+		}
+	}
+}
 
 //Retrieve the quaternion for repeated rotation. Pass to the quat_rot_apply_quats
 void quat_get_rot_quat(const Point3f *rotVec, float angle,Quaternion *rotQuat) 

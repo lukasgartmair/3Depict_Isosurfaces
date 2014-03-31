@@ -44,6 +44,13 @@ IonHit::IonHit()
 	//as in DEBUG mode, the point class will catch failure to init
 }
 
+IonHit::IonHit(float *buffer)
+{
+	pos.setValueArr(buffer);
+	massToCharge=buffer[3];
+}
+
+
 IonHit::IonHit(const IonHit &obj2) : massToCharge(obj2.massToCharge), pos(obj2.pos)
 {
 }

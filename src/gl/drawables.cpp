@@ -46,6 +46,132 @@ unsigned int DrawableObj::winY;
 //==
 
 
+//Draw a cone pointing in the axisVec direction, positioned at 
+//	- (if translateAxis is true, origin+axisVec, otherwise origin)
+//	- 
+void drawCone(const Point3D &axisVec, const Point3D &origin, 
+		float radius, float numConeRadiiLen, size_t numSegments,bool translateAxis=false)
+{
+	Point3D axis;
+	axis =axisVec;
+	if(axis.sqrMag() < sqrt(std::numeric_limits<float>::epsilon()))
+		axis=Point3D(0,0,1);
+	else
+		axis.normalise();
+
+
+	//Tilt space to align to cone axis
+	Point3D zAxis(0,0,1);
+	float tiltAngle;
+	tiltAngle = zAxis.angle(axis);
+	
+	Point3D rotAxis;
+	rotAxis=zAxis.crossProd(axis);
+	
+	Point3D *ptArray = new Point3D[numSegments];
+
+	const float ROT_TOL=sqrt(std::numeric_limits<float>::epsilon()) ;
+
+	//Only rotate if the angle is nonzero (note 2PI wraparound is possible from acos)
+	if((tiltAngle > ROT_TOL	|| fabs(tiltAngle - 2*M_PI) > ROT_TOL) && 
+			rotAxis.sqrMag() > ROT_TOL)
+	{
+
+		//Draw an angled cone
+		Point3f vertex,r;	
+		rotAxis.normalise();
+
+
+		r.fx=rotAxis[0];
+		r.fy=rotAxis[1];
+		r.fz=rotAxis[2];
+
+	
+		//we have to rotate the cone points around the apex point
+		for(unsigned int ui=0; ui<numSegments; ui++)
+		{
+			//Note that the ordering for theta defines the orientation
+			// for the generated triangles. CCW triangles in opengl 
+			// are required
+			float theta;
+			theta = -2.0f*M_PI*(float)ui/(float)(numSegments-1);
+
+			//initial point is at r*(cos(theta),r*sin(theta),-numConeRadiiLen),
+			vertex.fx=sin(theta);
+			vertex.fy=cos(theta);
+			vertex.fz=-numConeRadiiLen;
+		
+			//rotate to new position
+			quat_rot(&vertex,&r,tiltAngle);
+
+			//store the coord
+			ptArray[ui]=Point3D(radius*vertex.fx,radius*vertex.fy,radius*vertex.fz);
+		}
+	}
+	else
+	{
+		if(tiltAngle > ROT_TOL)
+		{
+			//Downwards pointing cone - note "-radius"
+			for(unsigned int ui=0; ui<numSegments; ui++)
+			{
+				float theta;
+				theta = 2.0f*M_PI*(float)ui/(float)(numSegments-1);
+				ptArray[ui] =Point3D(-radius*cos(theta),
+					radius*sin(theta),numConeRadiiLen*radius);
+			}
+		}
+		else
+		{
+			//upwards pointing cone
+			for(unsigned int ui=0; ui<numSegments; ui++)
+			{
+				float theta;
+				theta = 2.0f*M_PI*(float)ui/(float)(numSegments-1);
+				ptArray[ui] =Point3D(radius*cos(theta),
+					radius*sin(theta),-numConeRadiiLen*radius);
+			}
+		}
+	}
+
+
+	//Translation vector
+	Point3D trans;
+	if(translateAxis)
+		trans=(origin+axisVec);
+	else
+		trans=origin;
+	glPushMatrix();
+	glTranslatef(trans[0],trans[1],trans[2]);
+	
+	//Now, having the needed coords, we can draw the cone
+	glBegin(GL_TRIANGLE_FAN);
+	glNormal3fv(axis.getValueArr());
+	glVertex3f(0,0,0);
+	for(unsigned int ui=0; ui<numSegments; ui++)
+	{
+		Point3D n;
+		n=ptArray[ui];
+		n.normalise();
+		glNormal3fv(n.getValueArr());
+		glVertex3fv(ptArray[ui].getValueArr());
+	}
+
+	glEnd();
+
+	//Now draw the base of the cone, to make it solid
+	// Note that traversal order of pt array is also important
+	glBegin(GL_TRIANGLE_FAN);
+	glNormal3f(-axis[0],-axis[1],-axis[2]);
+	for(unsigned int ui=numSegments; ui--;) 
+		glVertex3fv(ptArray[ui].getValueArr());
+	glEnd();
+
+	glPopMatrix();
+	delete[] ptArray;
+}
+
+
 //Common functions
 //
 void drawBox(Point3D pMin, Point3D pMax, float r,float g, float b, float a)
@@ -95,8 +221,6 @@ void drawBox(Point3D pMin, Point3D pMax, float r,float g, float b, float a)
 	glEnd();
 }
 
-
-using std::vector;
 
 DrawableObj::DrawableObj() : active(true), haveChanged(true), canSelect(false), wantsLight(false)
 {
@@ -240,144 +364,53 @@ void DrawVector::draw() const
 
 	glLineWidth(lineSize);
 	glBegin(GL_LINES);
-	glVertex3fv(origin.getValueArr());
-	
-	if(arrowSize < sqrt(std::numeric_limits<float>::epsilon()) || !drawArrow)
+
+	if(drawArrow)
 	{
-		glVertex3f(vector[0]+origin[0],vector[1]+origin[1],vector[2]+origin[2]);
-		glEnd();
-		//restore the old line size
-		glLineWidth(oldLineWidth);
-		glPopAttrib();
-		return ;
-	}
-	glVertex3f(vector[0]+origin[0],vector[1]+origin[1],vector[2]+origin[2]);
-	glEnd();
-	//restore the old line size
-	glLineWidth(oldLineWidth);
-	
-	glPopAttrib();
-
-
-
-
-
-	//Now compute & draw the cone tip
-	//----
-
-	Point3D axis;
-	axis = vector;
-
-	if(axis.sqrMag() < sqrt(std::numeric_limits<float>::epsilon()))
-		axis=Point3D(0,0,1);
-	else
-		axis.normalise();
-
-
-	//Tilt space to align to cone axis
-	Point3D zAxis(0,0,1);
-	float tiltAngle;
-	tiltAngle = zAxis.angle(axis);
-	
-	Point3D rotAxis;
-	rotAxis=zAxis.crossProd(axis);
-	
-	Point3D *ptArray = new Point3D[NUM_CONE_SEGMENTS];
-	if(tiltAngle > sqrt(std::numeric_limits<float>::epsilon()) && 
-			rotAxis.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()))
-	{
-
-		//Draw an angled cone
-		Point3f vertex,r;	
-		rotAxis.normalise();
-
-
-		r.fx=rotAxis[0];
-		r.fy=rotAxis[1];
-		r.fz=rotAxis[2];
-
-	
-		//we have to rotate the cone points around the apex point
-		for(unsigned int ui=0; ui<NUM_CONE_SEGMENTS; ui++)
-		{
-			//Note that the ordering for theta defines the orientation
-			// for the generated triangles. CCW triangles in opengl 
-			// are required
-			float theta;
-			theta = -2.0f*M_PI*(float)ui/(float)(NUM_CONE_SEGMENTS-1);
-
-			//initial point is at r*(cos(theta),r*sin(theta),-numConeRadiiLen),
-			vertex.fx=sin(theta);
-			vertex.fy=cos(theta);
-			vertex.fz=-numConeRadiiLen;
+		//Back off the distance a little, because otherwise the line can poke out
+		// the sides of the cone.
+		float backoffFactor = std::max(radius/sqrt(vector.sqrMag()),0.0f);
+		Point3D tmpVec=vector*(1.0f-backoffFactor) + origin;
 		
-			//rotate to new position
-			quat_rot(&vertex,&r,tiltAngle);
-
-			//store the coord
-			ptArray[ui]=Point3D(radius*vertex.fx,radius*vertex.fy,radius*vertex.fz);
-		}
-	}
-	else
-	{
-		if(tiltAngle > sqrt(std::numeric_limits<float>::epsilon()))
+		if(doubleEnded)
 		{
-			//Downwards pointing cone
-			for(unsigned int ui=0; ui<NUM_CONE_SEGMENTS; ui++)
-			{
-				float theta;
-				theta = -2.0f*M_PI*(float)ui/(float)(NUM_CONE_SEGMENTS-1);
-				ptArray[ui] =Point3D(-radius*cos(theta),
-					radius*sin(theta),numConeRadiiLen*radius);
-			}
+			Point3D tmpOrigin;
+			tmpOrigin = origin+vector*(backoffFactor);
+			glVertex3fv(tmpOrigin.getValueArr());
+			glVertex3fv(tmpVec.getValueArr());
 		}
 		else
 		{
-			//upwards pointing cone
-			for(unsigned int ui=0; ui<NUM_CONE_SEGMENTS; ui++)
-			{
-				float theta;
-				theta = -2.0f*M_PI*(float)ui/(float)(NUM_CONE_SEGMENTS-1);
-				ptArray[ui] =Point3D(radius*cos(theta),
-					radius*sin(theta),-numConeRadiiLen*radius);
-			}
+			glVertex3fv(origin.getValueArr());
+			glVertex3fv(tmpVec.getValueArr());
 		}
 	}
-
-
-	Point3D trans;
-	trans=(origin+vector);
-	glPushMatrix();
-	glTranslatef(trans[0],trans[1],trans[2]);
-	
-	//Now, having the needed coords, we can draw the cone
-	glBegin(GL_TRIANGLE_FAN);
-	glNormal3fv(axis.getValueArr());
-	glVertex3f(0,0,0);
-	for(unsigned int ui=0; ui<NUM_CONE_SEGMENTS; ui++)
+	else
 	{
-		Point3D n;
-		n=ptArray[ui];
-		n.normalise();
-		glNormal3fv(n.getValueArr());
-		glVertex3fv(ptArray[ui].getValueArr());
+		glVertex3fv(origin.getValueArr());
+		glVertex3f(vector[0]+origin[0],vector[1]+origin[1],vector[2]+origin[2]);
 	}
-
 	glEnd();
 
-	//Now draw the base of the cone, to make it solid
-	// Note that traversal order of pt array is also important
-	glBegin(GL_TRIANGLE_FAN);
-	glNormal3f(-axis[0],-axis[1],-axis[2]);
-	for(unsigned int ui=NUM_CONE_SEGMENTS; ui--;) 
-		glVertex3fv(ptArray[ui].getValueArr());
-	glEnd();
+	//restore the old line size
+	glLineWidth(oldLineWidth);
+	glPopAttrib();
 
-	glPopMatrix();
+	//If we only wanted the line, then we are done here.
+	if(arrowSize < sqrt(std::numeric_limits<float>::epsilon()) || !drawArrow)
+		return ;
+
+	//Now compute & draw the cone tip
+	//----
+	drawCone(vector, origin, arrowSize,
+		numConeRadiiLen,NUM_CONE_SEGMENTS,true);
+
+	if(doubleEnded)
+		drawCone(-vector,origin,arrowSize,numConeRadiiLen,NUM_CONE_SEGMENTS);
+
 	//----
 
 
-	delete[] ptArray;
 }
 
 void DrawVector::recomputeParams(const std::vector<Point3D> &vecs, 
@@ -900,7 +933,7 @@ void DrawManyPoints::clear()
 
 void DrawManyPoints::addPoints(const vector<Point3D> &vp)
 {
-	pts.reserve(pts.size()+vp.size());
+	pts.resize(pts.size()+vp.size());
 	std::copy(vp.begin(),vp.end(),pts.begin());
 	haveCachedBounds=false;
 }
@@ -1135,15 +1168,16 @@ void DrawGLText::draw() const
 
 	//Translate the drawing position to the origin
 	Point3D offsetVec=textDir;
-	float advance;
-	float halfHeight;
-	
+	float advance, halfHeight;
+
+	{
 	FTBBox box;
 	box=font->BBox(strText.c_str());
 	advance=box.Upper().X()-box.Lower().X();
 	
 	halfHeight=box.Upper().Y()-box.Lower().Y();
 	halfHeight/=2.0f;
+	}
 
 	switch(alignMode)
 	{
@@ -1180,11 +1214,11 @@ void DrawGLText::draw() const
 		ASSERT(textDir.dotProd(up) < sqrtf(std::numeric_limits<float>::epsilon()));
 
 		//rotate around textdir cross X, if the two are not the same
-		Point3D rotateAxis;
 		Point3D newUp=up;
 		float angle=textDir.angle(Point3D(1,0,0) );
 		if(angle > sqrtf(std::numeric_limits<float>::epsilon()))
 		{
+			Point3D rotateAxis;
 			rotateAxis = textDir.crossProd(Point3D(-1,0,0));
 			rotateAxis.normalise();
 			
@@ -1198,6 +1232,7 @@ void DrawGLText::draw() const
 			axis.fz=rotateAxis[2];
 
 
+//			cerr << "Gl rotate (1):" << rotateAxis << " , " << angle << endl;
 			glRotatef(angle*180.0f/M_PI,rotateAxis[0],rotateAxis[1],rotateAxis[2]);
 			quat_rot(&tmp,&axis,angle); //angle is in radiians
 
@@ -1211,9 +1246,11 @@ void DrawGLText::draw() const
 		if(angle > sqrtf(std::numeric_limits<float>::epsilon()) &&
 			fabs(angle - M_PI) > sqrtf(std::numeric_limits<float>::epsilon())) 
 		{
+			Point3D rotateAxis;
 			rotateAxis = newUp.crossProd(Point3D(0,-1,0));
 			rotateAxis.normalise();
 			glRotatef(angle*180.0f/M_PI,rotateAxis[0],rotateAxis[1],rotateAxis[2]);
+			//cerr << "Gl rotate (2):" << rotateAxis << " , " << angle << endl;
 		}
 
 		//Ensure that the text is not back-culled (i.e. if the
@@ -1313,6 +1350,17 @@ void DrawGLText::draw() const
 	glPopAttrib();
 	
 	glPopMatrix();
+
+/*	//DEBUG ONLY
+	//--
+	//Draw the b-box
+	DrawRectPrism d;
+	BoundCube b;
+	getBoundingBox(b);
+	d.setAxisAligned(b);
+	d.draw();
+	//--
+*/
 }
 
 DrawGLText::~DrawGLText()
@@ -1331,14 +1379,109 @@ void DrawGLText::setColour(float rnew, float gnew, float bnew, float anew)
 
 void DrawGLText::getBoundingBox(BoundCube &b) const
 {
-
+	//Box forwards transformations
+	// * Translation by [origin-textDir*  (maxx - minx)]
+	// * Rotate by textDir.angle([1 0 0 ]), around [ textdir x [ -1 0 0 ] ]  
+	// * Rotate by newUp.angle([0,1,0]), around [ newUp x [ 0 -1 0 ] ]
 	if(isOK)
 	{
+		//Obtain the vertices around the untransformed text
 		float minX,minY,minZ;
 		float maxX,maxY,maxZ;
 		font->BBox(strText.c_str(),minX,minY,minZ,maxX,maxY,maxZ);
-		b.setBounds(minX+origin[0],minY+origin[1],minZ+origin[2],
-				maxX+origin[0],maxY+origin[1],maxZ+origin[2]);
+
+		//cerr << "Dx :" << maxX-minX << endl;
+		float dy=maxY-minY;
+		//cerr << "Dy :" << maxY-minY << endl;
+		//cerr << "Dz :" << maxZ-minZ << endl;
+
+
+		b.setBounds(minX,minY,minZ,
+				maxX,maxY,maxZ);
+		vector<Point3D> p;
+		b.getVertices(p,true);
+
+		for(size_t ui=0;ui<p.size();ui++)
+			p[ui]-=Point3D(0,-dy*0.5,0);
+
+		const float TOL_EPS=sqrtf(std::numeric_limits<float>::epsilon());
+		
+		Point3D r1Axis,r2Axis;
+		bool degenR1,degenR2;
+		r1Axis=Point3D(1,0,0);
+	
+		//Compute R1 axis, but do not apply
+		//--
+		float r1Angle=r1Axis.angle(textDir);
+		degenR1=( r1Angle < TOL_EPS || fabs(r1Angle-M_PI) < TOL_EPS ) ;
+
+		Point3D newUp=up;
+		if(!degenR1)
+		{
+			r1Axis=textDir.crossProd(r1Axis);
+			r1Axis.normalise();
+
+			quat_rot(newUp,r1Axis,r1Angle);
+
+		}
+		//--
+		DrawManyPoints manyP;
+		manyP.setSize(6.0f);
+
+		//Compute R2 axis
+		//--
+		r2Axis=Point3D(0,-1,0);
+		//In degenerate case, we don't do anything
+		// otherwise we compute R2
+		//rotate new up direction into y around x axis
+		float angle = newUp.angle(Point3D(0,1,0));
+		if(!degenR1 && (angle > sqrtf(std::numeric_limits<float>::epsilon()) &&
+			fabs(angle - M_PI) > sqrtf(std::numeric_limits<float>::epsilon())) )
+		{
+			r2Axis= newUp.crossProd(Point3D(0,-1,0));
+			r2Axis.normalise();
+		}
+		else
+			r2Axis=up;
+
+		//cerr <<  "r2 Axis :" << r2Axis <<  " :" << angle << endl;
+		//--
+
+		//Compute R2'(P)
+		//--
+		float r2Angle=angle;
+		degenR2 = r2Angle < TOL_EPS;
+		if(!degenR2)
+		{
+			Point3f rotAx;
+			rotAx.fx = r2Axis[0]; rotAx.fy = r2Axis[1]; rotAx.fz=r2Axis[2];
+			quat_rot_array(&p[0], p.size(), &rotAx,r2Angle);
+		}
+		//--
+
+		//Compute R1'(p)
+		if(!degenR1)
+		{
+			Point3f rotAx;
+			rotAx.fx = r1Axis[0]; rotAx.fy = r1Axis[1]; rotAx.fz=r1Axis[2];
+			quat_rot_array(&p[0], p.size(), &rotAx,-r1Angle);
+
+		}
+
+
+		manyP.clear(); manyP.addPoints(p); manyP.draw();
+		
+		for(size_t ui=0;ui<p.size();ui++)
+		{
+			p[ui]+=origin ; 
+		}
+
+		manyP.clear();
+		manyP.addPoints(p);
+		manyP.setColour(0,1,0,1);
+		manyP.draw();
+	
+		b.setBounds(p);
 	}
 	else
 		b.setInverseLimits();	

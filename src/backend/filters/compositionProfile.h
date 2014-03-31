@@ -27,6 +27,7 @@ enum
 	COMPOSITION_KEY_BINWIDTH=1,
 	COMPOSITION_KEY_FIXEDBINS,
 	COMPOSITION_KEY_NORMAL,
+	COMPOSITION_KEY_MINEVENTS,
 	COMPOSITION_KEY_NUMBINS,
 	COMPOSITION_KEY_ORIGIN,
 	COMPOSITION_KEY_PLOTTYPE,
@@ -65,19 +66,25 @@ class CompositionProfileFilter : public Filter
 		
 		//!number of bins (if using fixed bins)
 		unsigned int nBins;
-	//!Width of each bin (if using fixed width)
+		//!Width of each bin (if using fixed width)
 		float binWidth;
+
+		//!Number of events required for an entry to be logged in a normalised
+		// histogram
+		unsigned int minEvents;
 		
 		//Plotting stuff
-		//Vector of spectra. Each spectra is comprised of a sorted Y data
-		std::vector< std::vector<float > > spectraCache;
+		//--
+		//colour of plot
 		float r,g,b,a;
+		//Mode for plotting (eg lines, steps)
 		unsigned int plotStyle;
 	
 		PLOT_ERROR errMode;
 
 		//!Do we have a range file above us in our filter tree? This is set by ::initFilter
 		bool haveRangeParent;
+		//--
 		
 		//!internal function for binning an ion dependant upon range data
 		static void binIon(unsigned int targetBin, const RangeStreamData* rng, const std::map<unsigned int,unsigned int> &ionIDMapping,

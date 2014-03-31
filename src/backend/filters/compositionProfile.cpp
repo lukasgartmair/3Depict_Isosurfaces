@@ -45,10 +45,12 @@ const char *PRIMITIVE_NAME[]={
 
 const float DEFAULT_RADIUS = 10.0f;
 
+const unsigned int MINEVENTS_DEFAULT =10;
+
 
 CompositionProfileFilter::CompositionProfileFilter() : primitiveType(PRIMITIVE_CYLINDER),
 	showPrimitive(true), lockAxisMag(false),normalise(true), fixedBins(0),
-	nBins(1000), binWidth(0.5f), r(0.0f),g(0.0f),b(1.0f),a(1.0f), plotStyle(0)
+	nBins(1000), binWidth(0.5f), minEvents(MINEVENTS_DEFAULT), r(0.0f),g(0.0f),b(1.0f),a(1.0f), plotStyle(0)
 {
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(PRIMITIVE_NAME) == PRIMITIVE_END);
 	
@@ -288,6 +290,9 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 	}
 
 
+	//Propagate all the incoming data (excluding ions)
+	propagateStreams(dataIn,getOut,STREAM_TYPE_IONS,true);
+	
 	//use the cached copy of the data if we have it.
 	if(cacheOK)
 	{
@@ -296,11 +301,10 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 
 		ASSERT(filterOutputs.back()->getStreamType() == STREAM_TYPE_PLOT);
 
-		//Propagate all the incoming data (excluding ions)
-		propagateStreams(dataIn,getOut,STREAM_TYPE_IONS,true);
 			
 		return 0;
 	}
+			
 
 	//Ion Frequencies (composition specific if rangefile present)
 	vector<vector<size_t> > ionFrequencies;
@@ -438,8 +442,91 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 				
 	}
 
+#ifdef DEBUG
+	ASSERT(ionFrequencies.size());
+	//Ion frequencies must be of equal length
+	for(unsigned int ui=1;ui<ionFrequencies.size();ui++)
+	{
+		ASSERT(ionFrequencies[ui].size() == ionFrequencies[0].size());
+	}
+#endif
+	
+
+	vector<float> normalisationFactor;
+	vector<unsigned int> normalisationCount;
+	normalisationFactor.resize(ionFrequencies[0].size());
+	normalisationCount.resize(ionFrequencies[0].size());
+	bool needNormalise=false;
+	bool needNormaliseCount=false;
+
+	//Perform the appropriate normalisation
+	if(!rngData && normalise)
+	{
+		float dx;
+		if(fixedBins)
+			dx=(length/(float)numBins);
+		else
+			dx=binWidth;
+		// For density plots, normalise by
+		//  the volume of the primitive's shell
+		switch(primitiveType)
+		{
+			case PRIMITIVE_CYLINDER:
+			{
+				needNormalise=true;
+				for(unsigned int uj=0;uj<ionFrequencies[0].size(); uj++)
+				{
+					//Normalise by cylinder volume, pi*r^2*h
+					normalisationFactor[uj] = 1.0/(M_PI*
+						scalarParams[0]*scalarParams[0]*dx);
+				}
+				break;
+			}
+			case PRIMITIVE_SPHERE:
+			{
+				for(unsigned int uj=0;uj<ionFrequencies[0].size(); uj++)
+				{
+					//Normalise by sphere shell volume, 
+					// 4/3 *PI*dx^3*((n+1)^3-n^3)
+					//  note -> (n+1)^3 -n^3  = (3*n^2) + (3*n) + 1
+					normalisationFactor[uj] = 1.0/(4.0/3.0*M_PI*
+						dx*(3.0*((float)uj*(float)uj + uj) + 1.0));
+				}
+				break;
+			}
+			default:
+				ASSERT(false);
+		}
+	}
+	else if(normalise && rngData) //compute normalisation values, if we are in composition mode
+	{
+		// the loops' nesting is reversed as we need to sum over distinct plots
+		//Density profiles (non-ranged plots) have a fixed normalisation factor
+		needNormalise=true;
+		needNormaliseCount = true; // we also need to have at least one count to normalise
+
+		for(unsigned int uj=0;uj<ionFrequencies[0].size(); uj++)
+		{
+			float sum;
+			sum=0;
+			//Loop across each bin type, summing result
+			for(unsigned int uk=0;uk<ionFrequencies.size();uk++)
+				sum +=(float)ionFrequencies[uk][uj];
+			normalisationCount[uj]=sum;
+
+	
+			//Compute the normalisation factor
+			if(sum)
+				normalisationFactor[uj]=1.0/sum;
+			else
+				normalisationFactor[uj] = 0;
+		}
+
+	}
+
+	
+	//Create the plots
 	PlotStreamData *plotData[ionFrequencies.size()];
-	float normFactor=1.0f;
 	for(unsigned int ui=0;ui<ionFrequencies.size();ui++)
 	{
 		plotData[ui] = new PlotStreamData;
@@ -490,74 +577,36 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 			plotData[ui]->a = a;
 		}
 
-		plotData[ui]->xyData.resize(ionFrequencies[ui].size());
+		plotData[ui]->xyData.reserve(ionFrequencies[ui].size());
 	
-		//Density profiles (non-ranged plots) have a fixed normalisation factor
-		if(!rngData && normalise)
-		{
-			switch(primitiveType)
-			{
-				case PRIMITIVE_CYLINDER:
-					if(fixedBins)
-						normFactor = 1.0/(M_PI*scalarParams[0]*scalarParams[0]*(length/(float)numBins));
-					else
-						normFactor = 1.0/(M_PI*scalarParams[0]*scalarParams[0]*binWidth);
-					break;
-				case PRIMITIVE_SPHERE:
-					break;
-				default:
-					ASSERT(false);
-			}
-		}	
 
 		//Go through each bin, then perform the appropriate normalisation
 		for(unsigned int uj=0;uj<ionFrequencies[ui].size(); uj++)
 		{
 			float xPos;
 			xPos = (((float)uj+0.5f)/(float)ionFrequencies[ui].size())*length;
-			if(rngData)
+			//Recompute normalisation value for this bin, if needed
+			if(needNormalise)
 			{
-				//Composition profile: do inter bin normalisation
-				//Recompute normalisation value for this bin
-				if(normalise)
+				float normFactor=normalisationFactor[uj];
+
+				//keep the data if we are not using minimum threshold for normalisation, or we met the 
+				// threhsold
+				if(!needNormaliseCount || normalisationCount[uj] > minEvents)
 				{
-					float sum;
-					sum=0;
-
-					//Loop across each bin type, summing result
-					for(unsigned int uk=0;uk<ionFrequencies.size();uk++)
-						sum +=(float)ionFrequencies[uk][uj];
-
-					if(sum)
-						normFactor=1.0/sum;
+					plotData[ui]->xyData.push_back(
+						std::make_pair(xPos,
+						normFactor*(float)ionFrequencies[ui][uj]));
 				}
-
-				plotData[ui]->xyData[uj] = std::make_pair(xPos,normFactor*(float)ionFrequencies[ui][uj]);
 			}
 			else
-			{
-				//This is a frequency profile (factor ==1), or density profile 
-			
-				//Update the normalisation factor, if required
-				if(normalise)
-				{
-					switch(primitiveType)
-					{
-						case PRIMITIVE_SPHERE:
-							normFactor=1.0/(xPos*xPos);
-							break;
-						case PRIMITIVE_CYLINDER:
-							break;
-						default:
-							ASSERT(false);
-					}
-				}
-				
-				plotData[ui]->xyData[uj] = std::make_pair(
-					xPos,normFactor*(float)ionFrequencies[ui][uj]);
-
+			{	
+				plotData[ui]->xyData.push_back(
+					std::make_pair(xPos,ionFrequencies[ui][uj]) );
 			}
 		}
+
+
 
 		if(cache)
 		{
@@ -569,10 +618,18 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 
 		plotData[ui]->plotStyle = plotStyle;
 		plotData[ui]->plotMode=PLOT_MODE_1D;
-		getOut.push_back(plotData[ui]);
+
+		//If we ended up with any data, display it
+		// otherwise, trash the plot info
+		if(plotData[ui]->xyData.size())
+		{
+			cacheOK=cache;
+			getOut.push_back(plotData[ui]);
+		}
+		else
+			delete plotData[ui];
 	}
 
-	cacheOK=cache;
 	return 0;
 }
 
@@ -659,6 +716,26 @@ bool CompositionProfileFilter::setProperty( unsigned int key,
 			}
 			return true;
 		}
+		case COMPOSITION_KEY_MINEVENTS:
+		{
+			unsigned int valueInt;
+			if(stream_cast(valueInt,value))
+				return false;
+
+			if(minEvents!= valueInt)
+			{
+				needUpdate=true;
+				minEvents=valueInt;
+			}
+			else
+				needUpdate=false;
+
+			clearCache();
+			needUpdate=true;	
+			break;	
+		}
+	
+		
 		case COMPOSITION_KEY_NUMBINS:
 		{
 			unsigned int newNumBins;
@@ -873,9 +950,11 @@ bool CompositionProfileFilter::setProperty( unsigned int key,
 		case COMPOSITION_KEY_AVGWINSIZE:
 		{
 			unsigned int tmpNum;
-			stream_cast(tmpNum,value);
+			if(stream_cast(tmpNum,value))
+				return false;
+
 			if(tmpNum<=1)
-				return 1;
+				return false;
 
 			errMode.movingAverageNum=tmpNum;
 			needUpdate=true;
@@ -1032,6 +1111,17 @@ void CompositionProfileFilter::getProperties(FilterPropGroup &propertyList) cons
 	p.helpText=TRANS("Convert bin counts into relative frequencies in each bin");
 	propertyList.addProperty(p,curGroup);
 
+	stream_cast(tmpStr,minEvents);
+	p.name= TRANS("Min. events");	
+	p.data=tmpStr;
+	p.key=COMPOSITION_KEY_MINEVENTS;
+	p.type=PROPERTY_TYPE_INTEGER;
+	p.helpText=TRANS("Drop data that does not have this many events");
+	propertyList.addProperty(p,curGroup);
+
+
+
+
 	curGroup++;
 	
 	//use set 2 to store the plot properties
@@ -1187,7 +1277,7 @@ bool CompositionProfileFilter::writeState(std::ostream &f,unsigned int format, u
 				f << tabs(depth+2) << "<scalar value=\"" << scalarParams[0] << "\"/>" << endl; 
 			
 			f << tabs(depth+1) << "</scalarparams>" << endl;
-			f << tabs(depth+1) << "<normalise value=\"" << normalise << "\"/>" << endl;
+			f << tabs(depth+1) << "<normalise value=\"" << normalise << "\" minevents=\"" << minEvents << "\" />" << endl;
 			f << tabs(depth+1) << "<fixedbins value=\"" << (int)fixedBins << "\"/>" << endl;
 			f << tabs(depth+1) << "<nbins value=\"" << nBins << "\"/>" << endl;
 			f << tabs(depth+1) << "<binwidth value=\"" << binWidth << "\"/>" << endl;
@@ -1431,15 +1521,16 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	if(XMLHelpFwdToElem(nodePtr,"nbins"))
 		return false;
 
-	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
-	if(!xmlString)
-		return false;
-	tmpStr=(char *)xmlString;
-
-	if(stream_cast(nBins,tmpStr))
+	
+	if(XMLHelpGetProp(nBins,nodePtr,"value"))
 		return false;
 
-	xmlFree(xmlString);
+
+	if(XMLHelpGetProp(minEvents,nodePtr,"minevents"))
+	{
+		//FIXME: Deprecate me.
+		minEvents=MINEVENTS_DEFAULT;
+	}
 	//====
 
 	//Retrieve bin width
@@ -1637,13 +1728,15 @@ bool testCompositionCylinder()
 	ProgressData p;
 	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
 
-	TEST(streamOut.size() == 3, "output stream count");
+	//2* plot, 1*rng, 1*draw
+	TEST(streamOut.size() == 4, "output stream count");
 
 	delete d;
 
 	std::map<unsigned int, unsigned int> countMap;
 	countMap[STREAM_TYPE_PLOT] = 0;
 	countMap[STREAM_TYPE_DRAW] = 0;
+	countMap[STREAM_TYPE_RANGE] = 0;
 
 	for(unsigned int ui=0;ui<streamOut.size();ui++)
 	{
@@ -1653,6 +1746,7 @@ bool testCompositionCylinder()
 
 	TEST(countMap[STREAM_TYPE_PLOT] == 2,"Plot count");
 	TEST(countMap[STREAM_TYPE_DRAW] == 1,"Draw count");
+	TEST(countMap[STREAM_TYPE_RANGE] == 1,"Range count");
 	
 	const PlotStreamData* plotData=0;
 	for(unsigned int ui=0;ui<streamOut.size();ui++)
@@ -1672,13 +1766,12 @@ bool testCompositionCylinder()
 			plotData->xyData[ui].second >=0.0f,"normalised data range test"); 
 	}
 
+	delete rngStream->rangeFile;
 	for(unsigned int ui=0;ui<streamOut.size();ui++)
 		delete streamOut[ui];
 
 
 	delete f;
-	delete rngStream->rangeFile;
-	delete rngStream;
 
 	return true;
 }

@@ -35,6 +35,7 @@ using std::make_pair;
 
 const size_t PROGRESS_REDUCE=5000;
 
+//---------
 const char *POS_ERR_STRINGS[] = { "",
        				NTRANS("Memory allocation failure on POS load"),
 				NTRANS("Error opening pos file"),
@@ -44,7 +45,10 @@ const char *POS_ERR_STRINGS[] = { "",
 				NTRANS("Error - Found NaN in pos file"),
 				NTRANS("Pos load aborted by interrupt.")
 };
+//---------
 
+//Text file error codes and strings
+//---------
 enum
 {
 	TEXT_ERR_OPEN=1,
@@ -66,7 +70,30 @@ const char *ION_TEXT_ERR_STRINGS[] = { "",
 					NTRANS("Incorrect number of fields in file"),
 					NTRANS("Unable to allocate memory to store data"),
 					};
+//---------
 
+//ATO formatted files error codes and asscoiated strings
+//---------
+enum
+{
+	LAWATAP_ATO_OPEN_FAIL=1,
+	LAWATAP_ATO_EMPTY_FAIL,
+	LAWATAP_ATO_SIZE_ERR,
+	LAWATAP_ATO_VERSIONCHECK_ERR,
+	LAWATAP_ATO_MEM_ERR,
+	LAWATAP_ATO_BAD_ENDIAN_DETECT,
+	LAWATAP_ATO_ENUM_END
+};
+
+const char *LAWATAP_ATO_ERR_STRINGS[] = { "",
+				NTRANS("Error opening file"),
+				NTRANS("File is empty"),
+				NTRANS("Filesize does not match expected format"),
+				NTRANS("File version number not <4, as expected"),
+				NTRANS("Unable to allocate memory to store data"),
+				NTRANS("Unable to detect endian-ness in file")
+				};
+//---------
 
 unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumcols, unsigned int index[], vector<IonHit> &posIons,const char *posFile, size_t limitCount,
 	       	unsigned int &progress, bool (*callback)(bool),bool strongSampling)
@@ -183,7 +210,11 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 			memcpy(&(buffer2[i * sizeof(float)]), &(buffer[index[i] * sizeof(float)]), sizeof(float));
 		
 		if(!CFile.good())
+		{
+			delete[] buffer;
+			delete[] buffer2;
 			return POS_READ_FAIL;
+		}
 		posIons[ui].setHit((float*)buffer2);
 		//Data bytes stored in pos files are big
 		//endian. flip as required
@@ -207,6 +238,7 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 			if(!(*callback)(false))
 			{
 				delete[] buffer;
+				delete[] buffer2;
 				posIons.clear();
 				return POS_ABORT_FAIL;
 				
@@ -372,12 +404,12 @@ unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int output
 
 
 //TODO: Add progress
-unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedCols[], 
-			vector<IonHit> &posIons,const char *textFile, const char *delim, const size_t limitCount,
+unsigned int limitLoadTextFile(unsigned int maxCols, 
+			vector<vector<float> > &data,const char *textFile, const char *delim, const size_t limitCount,
 				unsigned int &progress, bool (*callback)(bool),bool strongRandom)
 {
 
-	ASSERT(numColsTotal);
+	ASSERT(maxCols);
 	ASSERT(textFile);
 
 	vector<size_t> newLinePositions;
@@ -387,17 +419,6 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 	//to locate newlines.
 	char *buffer;
 	const int BUFFER_SIZE=16384; //This is totally a guess. I don't know what is best.
-
-
-	//sort the selected columns into increasing order
-	vector<int> sortedCols;
-	for(unsigned int ui=0;ui<numColsTotal;ui++)
-		sortedCols.push_back(selectedCols[ui]);
-
-	std::sort(sortedCols.begin(),sortedCols.end());
-	//the last entry in the sorted list tells us how many
-	// entries we need in each line at a minimum
-	unsigned int maxCol=sortedCols[sortedCols.size()-1];
 
 	ifstream CFile(textFile,std::ios::binary);
 
@@ -434,32 +455,13 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 		splitStrsRef(s.c_str(),delim,subStrs);	
 		stripZeroEntries(subStrs);
 
-		//Not enough entries in this line
-		//to be interpretable
-		if(subStrs.size() <maxCol)
-			continue;
-
-		bool enoughSubStrs;
-		enoughSubStrs=true;
-		for(unsigned int ui=0;ui<numColsTotal; ui++)
-		{
-			if(selectedCols[ui] >=subStrs.size())
-			{
-				enoughSubStrs=false;
-				break;	
-			}
-		}
-
-		if(!enoughSubStrs)
-			continue;
-
-		//Unable to stream
+		//Skip unstreamable lines
 		bool unStreamable;
 		unStreamable=false;
-		for(unsigned int ui=0; ui<numColsTotal; ui++)
+		for(unsigned int ui=0; ui<subStrs.size(); ui++)
 		{
 			float f;
-			if(stream_cast(f,subStrs[selectedCols[ui]]))
+			if(stream_cast(f,subStrs[ui]))
 			{
 				unStreamable=true;
 				break;
@@ -546,29 +548,11 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 	{
 		delete[] buffer;
 
-		vector<vector<float> > data;
 		vector<string> header;
 	
 		//Just use the non-sampling method to load.	
 		if(loadTextData(textFile,data,header,delim))
 			return TEXT_ERR_FORMAT;
-
-		if(data.size() !=4)
-			return TEXT_ERR_NUM_FIELDS;
-
-		posIons.resize(data[0].size());
-		for(size_t ui=0;ui<data[0].size();ui++)
-		{
-
-			ASSERT(numColsTotal==4);
-			//This is output specific
-			//and assumes that we have exactly 4 input cols
-			//to match ot our output vector of pos ions
-			posIons[ui].setPos(Point3D(data[selectedCols[0]][ui],
-						data[selectedCols[1]][ui],
-						data[selectedCols[2]][ui]));
-			posIons[ui].setMassToCharge(data[selectedCols[3]][ui]);
-		}
 
 		return 0;	
 	}
@@ -577,7 +561,7 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 	std::vector<size_t> dataToLoad;
 	try
 	{
-		posIons.resize(limitCount);
+		data.resize(limitCount);
 
 		RandNumGen rng;
 		rng.initTimer();
@@ -637,29 +621,24 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 		//split around whatever delimiter we can find
 		splitStrsRef(s.c_str(),delim,subStrs);	
 
-		if(subStrs.size() < numColsTotal)
+		size_t maxStrs;
+		maxStrs=std::min(subStrs.size(),(size_t)maxCols);
+		if(data.size() < maxStrs)
+			data.resize(maxStrs);
+		
+		for(size_t uj=0;uj<maxStrs;uj++)
 		{
-			//FIXME: Allow skipping of bad lines
-			delete[] buffer;
-			return TEXT_ERR_NUM_FIELDS;
-		}
-
-		float f[4];
-
-		for(size_t uj=0;uj<sortedCols.size();uj++)
-		{
-
-			if(stream_cast(f[uj],subStrs[sortedCols[uj]]))
+			float tmp;
+			if(stream_cast(tmp,subStrs[uj]))
 			{
 				//FIXME: Allow skipping bad lines
 				//Can't parse line.. Abort.
 				delete[] buffer;
 				return TEXT_ERR_FORMAT;
 			}
-		}
 
-		ASSERT(ui<posIons.size());
-		posIons[ui].setHit(f);
+			data[uj].push_back(tmp);
+		}
 	}
 
 	delete[] buffer;
@@ -667,3 +646,359 @@ unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedC
 
 }
 
+
+
+unsigned int LoadATOFile(const char *fileName, vector<IonHit> &ions, unsigned int &progress, bool (*callback)(bool),unsigned int forceEndian)
+{
+
+
+	//open pos file
+	std::ifstream CFile(fileName,std::ios::binary);
+
+	if(!CFile)
+		return LAWATAP_ATO_OPEN_FAIL;
+
+	//Get the filesize
+	CFile.seekg(0,std::ios::end);
+	size_t fileSize=CFile.tellg();
+
+
+	//There are differences in the format, unfortunately.
+	// Gault et al, Atom Probe Microscopy says 
+	// - there are 14 entries of 4 bytes, 
+	//   totalling "44" bytes - which cannot be correct. They however,
+	//   say that the XYZ is added later.
+	// - Header is 2 32 binary
+	// - File is serialised as little-endian
+	// - Various incompatible versions exist. Unclear how to distinguish
+
+	// Larson et al say that 
+	// - there are 14 fields
+	// - Header byte 0x05 (0-indexed) is version number, and only version 3 is outlined
+	// - Pulsenumber can be subject to FP aliasing (bad storage, occurs for values > ~16.7M ), 
+	//	- Aliasing errors must be handled, if reading this field
+	// - File is in big-endian
+
+
+	//In summary, we assume there are 14 entries, 4 bytes each, after an 8 byte header.
+	// we assume that the endian-ness must be auto-detected somehow, as no sources
+	// agree on file endian-ness. If we cannot detect it, we assume little endian
+
+	//Header (8 bytes), record 14 entries, 4 bytes each
+
+	const size_t LAWATAP_ATO_HEADER_SIZE=8;
+	const size_t LAWATAP_ATO_RECORD_SIZE = 14*4;
+	const size_t LAWATAP_ATO_MIN_FILESIZE = 8 + LAWATAP_ATO_RECORD_SIZE;
+
+	if(fileSize < LAWATAP_ATO_MIN_FILESIZE)
+		return LAWATAP_ATO_EMPTY_FAIL;
+	
+	
+	//calculate the number of points stored in the POS file
+	IonHit hit;
+	size_t pointCount=0;
+	if((fileSize - LAWATAP_ATO_HEADER_SIZE)  % (LAWATAP_ATO_RECORD_SIZE))
+		return LAWATAP_ATO_SIZE_ERR;	
+
+
+	//Check that the version number, stored at offxet 0x05 (1-indexed), is 3.
+	CFile.seekg(4);
+	unsigned int versionByte;
+	CFile.read((char*)&versionByte,sizeof(unsigned int));
+
+	//Assume that we can have a new version that doesn't affect the readout
+	// assume that earlier versions are compatible. This means, for a random byte
+	// in a random length (modulo) file, 
+	// we have a 1-4/255 chance of rejection from this test, and a 1/56 chance of
+	// rejection from filesize, giving a ~0.02% chance of incorrect acceptance.
+	if(!versionByte || versionByte > 4)
+		return LAWATAP_ATO_VERSIONCHECK_ERR;
+
+
+	pointCount = (fileSize-LAWATAP_ATO_HEADER_SIZE)/LAWATAP_ATO_RECORD_SIZE;
+	
+	try
+	{
+		ions.resize(pointCount);
+	}
+	catch(std::bad_alloc)
+	{
+		return LAWATAP_ATO_MEM_ERR;
+	}
+
+
+	//Heuristic fo detect endianness.
+	// - Randomly sample 100 pts from file, and check to see if, when interpreted either wa
+	// there are any NaN
+	//   
+
+
+	bool endianFlip;
+	
+	if(forceEndian)
+	{
+		ASSERT(forceEndian < 3);
+#ifdef __LITTLE_ENDIAN__
+		endianFlip=(forceEndian == 2);
+#elif __BIG_ENDIAN
+		endianFlip=(forceEndian == 1);
+#endif
+	}
+	else
+	{
+		//Auto-detect endianness from file content
+		size_t numToCheck=std::min(pointCount,(size_t)100);
+	
+		//Indicies of points to check
+		vector<unsigned int> randomNumbers;
+		unsigned int dummy;
+		RandNumGen rng;
+		rng.initTimer();
+		randomDigitSelection(randomNumbers,pointCount,rng, 
+					numToCheck,dummy,dummyCallback);
+
+		//Make the travese in ascending order
+		std::sort(randomNumbers.begin(),randomNumbers.end());
+
+		//One for no endian-flip, one for flip
+		bool badFloat[2]={ false,false };
+		//Track the presence of unreasonably large numbers
+		bool veryLargeNumber[2] = { false,false };
+	
+		//Skip through several records, looking for bad float data,
+		float *buffer = new float[LAWATAP_ATO_RECORD_SIZE/4];
+		for(size_t ui=0;ui<numToCheck;ui++)
+		{
+			size_t offset;
+			offset=randomNumbers[ui];
+			
+			CFile.seekg(LAWATAP_ATO_HEADER_SIZE + LAWATAP_ATO_RECORD_SIZE*offset);
+			CFile.read((char*)buffer,LAWATAP_ATO_RECORD_SIZE);
+
+			const unsigned int BYTES_TO_CHECK[] = { 0,1,2,3,5,6,8,9,10 };
+			const size_t CHECKBYTES = 9;
+
+			//Check each field for inf/nan presence
+			for(size_t uj=0;uj<CHECKBYTES;uj++)
+			{
+				if(std::isnan(buffer[BYTES_TO_CHECK[uj]]) ||
+					std::isinf(buffer[BYTES_TO_CHECK[uj]]))
+					badFloat[0]=true;
+
+				//Flip the endian-ness
+				floatSwapBytes(buffer+BYTES_TO_CHECK[uj]);
+
+				if(std::isnan(buffer[BYTES_TO_CHECK[uj]]) ||
+					std::isinf(buffer[BYTES_TO_CHECK[uj]]))
+					badFloat[1]=true;
+				
+				//Swap it back
+				floatSwapBytes(buffer+BYTES_TO_CHECK[uj]);
+
+
+			}
+		
+			
+			//Check for some very likely values.
+			//Check for large negative masses
+			if( buffer[3] < -1000.0f)
+				veryLargeNumber[0] = true;
+
+			// unlikely to exceed 1000 kV
+			if( fabs(buffer[6]) > 1000.0f || fabs(buffer[10]) > 1000.0f)
+				veryLargeNumber[0] = true;
+
+			//Swap and try again
+			floatSwapBytes(buffer+3);
+			floatSwapBytes(buffer+6);
+			floatSwapBytes(buffer+10);
+			if( buffer[3] < -1000.0f) 
+				veryLargeNumber[1] = true;
+
+			if( fabs(buffer[6]) > 1000.0f || fabs(buffer[10]) > 1000.0f)
+				veryLargeNumber[1] = true;
+		}
+
+		delete[] buffer;
+
+
+		//Now summarise the results
+
+		//If we have a disagreement about bad-float-ness,
+		// or stupid-number ness.  then choose the good one.
+		// Otherwise abandon detection
+		if(badFloat[0] != badFloat[1])
+		{
+			endianFlip=(badFloat[0]);
+		}
+		else if(veryLargeNumber[0] != veryLargeNumber[1])
+		{
+			endianFlip=veryLargeNumber[0];
+		}
+		else
+		{
+			//Assume little endian
+#ifdef __LITTLE_ENDIAN__
+			endianFlip= false;
+#else
+			endianFlip=true;
+#endif
+		}
+	}
+
+	//File records consist of 14 fields, some of which may not be initialised.
+	// each being 4-byte IEEE little-endian float
+	// It is unknown how to detect initalisated state.
+	// Field 	Data	
+	// 0-3		x,y,z,m/c in Angstrom (x,yz) or Da (m/c)
+	// 4		clusterID, if set
+	//			- Ignore this field, as this information is redundant
+	// 5 		Approximate Pulse #, due to Float. Pt. limitation 
+	// 6		Standing Voltage (kV)
+	// 7		TOF (us) (maybe corrected? maybe not?)
+	// 8-9		Detector position (cm)
+	// 10		Pulse voltage (kV)
+	// 11		"Virtual voltage" for reconstruction.
+	//			- Ignore this field, as this information is redundant
+	// 12,13	Fourier intensity
+	//			- Ignore theese fields, as this information is redundant
+	//Attempt to detect
+	CFile.seekg(8);
+
+	float *buffer = new float[LAWATAP_ATO_RECORD_SIZE/4];
+	size_t curPos=0;	
+
+	if(endianFlip)
+	{
+		//Read and swap
+		while((size_t)CFile.tellg() < fileSize)
+		{
+			CFile.read((char*)buffer,LAWATAP_ATO_RECORD_SIZE);
+
+			for(size_t ui=0;ui<LAWATAP_ATO_RECORD_SIZE;ui++)
+				floatSwapBytes(buffer+ui);
+
+			ions[curPos] = IonHit(buffer);
+			curPos++;
+			
+		}
+	}
+	else
+	{
+		//read wthout swapping
+		while((size_t)CFile.tellg() < fileSize)
+		{	
+			CFile.read((char*)buffer,LAWATAP_ATO_RECORD_SIZE);
+			ions[curPos] = IonHit(buffer);
+			curPos++;
+		}
+	}
+
+	delete[] buffer;
+
+
+	return 0;
+}
+
+
+
+#ifdef DEBUG
+bool testATOFormat();
+
+
+bool testFileIO()
+{
+	if(!testATOFormat())
+		return false;
+
+	return true;
+}
+
+
+bool writeATO(const std::string &filename,bool flip, unsigned int nPoints)
+{
+	std::ofstream outF(filename.c_str(),std::ios::binary);
+
+	if(!outF)
+		return false;
+
+
+	IonHit h;
+	h.setMassToCharge(100);
+	h.setPos(Point3D(1,1,0));
+
+	const unsigned int LAWATAP_ATO_RECORD_COUNT=14;
+
+	float *buffer = new float[LAWATAP_ATO_RECORD_COUNT];
+	//zero buffer
+	memset(buffer,0,LAWATAP_ATO_RECORD_COUNT*sizeof(float));
+
+	//unpack ion data into buffer, in big-endian form
+	h.makePosData(buffer);
+
+	if(!flip)
+	{
+		//Fkip the endinanness
+		for(size_t ui=0;ui<4;ui++)
+			floatSwapBytes(buffer+ui);
+	}
+	unsigned int intData=0;
+	
+	outF.write((char*)&intData,4);
+
+	intData=3;
+	//Write out verion num  as "3"
+	outF.write((char*)&intData,4);
+
+	for(size_t ui=0;ui<nPoints;ui++)
+	{
+
+		outF.write((char*)buffer,LAWATAP_ATO_RECORD_COUNT*sizeof(float));
+	}
+	delete[] buffer;
+
+	return true;
+}
+
+bool testATOFormat()
+{
+	std::string filename;
+	genRandomFilename(filename);
+
+	if(!writeATO(filename,0,100))
+	{
+		//Assume we couldn't write due to some non-terminal problem
+		// like missing write permissions
+		WARN(false,"Unable to create file for testing ATO format. skipping");
+		return true;
+	}
+	unsigned int dummyProgress;
+
+
+	vector<IonHit> ions;
+	//Load using auto-detection of endinanness
+	TEST(!LoadATOFile(filename.c_str(),ions,dummyProgress,dummyCallback),"ATO load test  (auto endianness)");
+
+	TEST(ions.size() == 100,"ion size check");
+
+	TEST((ions[0].getPos().sqrDist(Point3D(1,1,0)) < sqrt(std::numeric_limits<float>::epsilon())),"Checking read/write OK");
+	//Load using auto-detection of endinanness
+
+	//Load, forcing assuming cont4ents are little endianness as requried
+	TEST(!LoadATOFile(filename.c_str(),ions,dummyProgress,dummyCallback,1),"ATO load test (forced endianness)");
+	TEST(ions.size() == 100,"ion size check");
+	TEST((ions[0].getPos().sqrDist(Point3D(1,1,0)) < sqrt(std::numeric_limits<float>::epsilon())),"checking read/write OK");
+
+
+	
+
+	rmFile(filename.c_str());
+
+
+
+
+	return true;
+
+}
+
+#endif

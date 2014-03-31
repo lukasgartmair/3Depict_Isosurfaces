@@ -29,7 +29,6 @@
 	#undef ATTRIBUTE_PRINTF
 #endif
 #include <string>
-using std::string;
 
 #include "common/basics.h"
 
@@ -84,7 +83,7 @@ bool XMLGetNextElemAttrib(xmlNodePtr &nodePtr, T &v, const char *nodeName, const
 
 
 //Returns 0 if successful, non zero if there is a property failure, or if the property is empty
-template<class T> unsigned int XMLHelpGetProp(T &prop,xmlNodePtr node, string propName)
+template<class T> unsigned int XMLHelpGetProp(T &prop,xmlNodePtr node, std::string propName)
 {
 	xmlChar *xmlString;
 
@@ -105,6 +104,10 @@ template<class T> unsigned int XMLHelpGetProp(T &prop,xmlNodePtr node, string pr
 
 	return 0;
 }
+
+//Specialisation for std::string, 
+// By default, whitespace  is dropped by << operator. Use assignment instead
+template<> unsigned int XMLHelpGetProp(std::string &prop,xmlNodePtr node, std::string propName);
 
 //Returns false on failure 
 //Do not use on validly whitespace containing XML

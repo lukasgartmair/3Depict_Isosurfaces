@@ -33,6 +33,7 @@ class IonHit
 		Point3D pos; //position (xyz) in nm
 	public:
 		IonHit();
+		IonHit(float *);
 		//copy constructor
 		IonHit(const IonHit &);
 		IonHit(const Point3D &p, float massToCharge);

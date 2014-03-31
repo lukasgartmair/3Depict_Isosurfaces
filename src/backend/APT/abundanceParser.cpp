@@ -35,7 +35,7 @@ using std::vector;
 using std::pair;
 using std::make_pair;
 using std::map;
-
+using std::string;
 const char *ABUNDANCE_ERROR[] = { "Unable to read abundance data (opening file)",
 				 "Unable to create XML reader.",
 				 "Bad property found in XML file",

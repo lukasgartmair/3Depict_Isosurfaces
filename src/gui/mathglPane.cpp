@@ -25,15 +25,18 @@
 #include "wx/wxcommon.h"
 #include "common/translation.h"
 
+#ifndef pow10
+#define pow10(x) pow(10,x)
+#endif
+
 #ifdef USE_MGL2
-	#include <mgl2/canvas_wnd.h>
 	#include <mgl2/canvas_wnd.h>
 #else
 	#include <mgl/mgl_eps.h>
 #endif
 
 //Panning speed modifier
-const float MGL_PAN_SPEED=0.8f;
+const float MGL_PAN_SPEED=2.0f;
 //Mathgl uses floating point loop computation, and can get stuck. Limit zoom precision
 const float MGL_ZOOM_LIMIT=10.0f*sqrt(std::numeric_limits<float>::epsilon());
 
@@ -50,7 +53,20 @@ enum
 //Do the particular enums require a redraw?
 const bool MOUSE_ACTION_NEEDS_REDRAW[] = { false,true,true};
 
+enum
+{
+	PLOT_TEXTURE_ZOOM_X,
+	PLOT_TEXTURE_ZOOM_Y,
+	PLOT_TEXTURE_ZOOM_RESET,
+	PLOT_TEXTURE_SLIDE_X,
+	PLOT_TEXTURE_ENUM_END
+};
 
+const char *mglTextureFile[] = { "textures/plot_zoom_x.png",
+				"textures/plot_zoom_y.png",
+				"textures/plot_zoom_reset.png",
+				"textures/plot_slide_x.png"
+				};
 
 using std::ifstream;
 using std::ios;
@@ -85,6 +101,7 @@ MathGLPane::MathGLPane(wxWindow* parent, int id) :
 wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 {
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(MOUSE_ACTION_NEEDS_REDRAW) == MOUSE_MODE_ENUM_END);
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(mglTextureFile) == PLOT_TEXTURE_ENUM_END);
 
 	hasResized=true;
 	limitInteract=false;
@@ -95,6 +112,7 @@ wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 	ownPlotPtr=false;
 	lastEditedPlot=lastEditedRegion=-1;
 	regionSelfUpdate=false;
+	plotIsLogarithmic=false;
 
 	SetBackgroundStyle(wxBG_STYLE_CUSTOM);
 
@@ -117,31 +135,26 @@ bool MathGLPane::readyForInput() const
 
 unsigned int MathGLPane::getAxisMask(int x, int y) const
 {
-	
-	ASSERT(thePlot && gr);
-	int w,h;
-	w=0;h=0;
-
-	//Retrieve wx coordinates for window rectangle size
-	GetClientSize(&w,&h);
 
 	//Retrieve XY position in graph coordinate space
 	// from XY coordinate in window space.
-	mglPoint mglCurMouse= gr->CalcXYZ(x,y);
+	float mglCurX, mglCurY;
+	if(!toPlotCoords(x,y,mglCurX,mglCurY))
+		return 0;
 
 	unsigned int retVal=0;
 
 #ifdef USE_MGL2
-	if(mglCurMouse.x < gr->Self()->GetOrgX('x'))
+	if(mglCurX < gr->Self()->GetOrgX('x'))
 		retVal |=AXIS_POSITION_LOW_X;
 
-	if(mglCurMouse.y < gr->Self()->GetOrgY('y'))
+	if(mglCurY < gr->Self()->GetOrgY('y'))
 		retVal |=AXIS_POSITION_LOW_Y;
 #else
-	if(mglCurMouse.x < gr->Org.x)
+	if(mglCurX < gr->Org.x)
 		retVal |=AXIS_POSITION_LOW_X;
 
-	if(mglCurMouse.y < gr->Org.y)
+	if(mglCurY < gr->Org.y)
 		retVal |=AXIS_POSITION_LOW_Y;
 #endif
 
@@ -167,7 +180,7 @@ void MathGLPane::setPlotWrapper(PlotWrapper *newPlot,bool takeOwnPtr)
 void MathGLPane::render(wxPaintEvent &event)
 {
 	
-    wxAutoBufferedPaintDC   *dc=new wxAutoBufferedPaintDC(this);
+	wxAutoBufferedPaintDC   *dc=new wxAutoBufferedPaintDC(this);
 
 	if(!thePlot || thePlot->isInteractionLocked() )
 	{
@@ -192,6 +205,12 @@ void MathGLPane::render(wxPaintEvent &event)
 	//Set the enabled and disabled plots
 	unsigned int nItems=thePlot->getNumVisible();
 	
+
+	wxFont font;
+	font.SetFamily(wxFONTFAMILY_SWISS);
+	if(font.IsOk())
+		dc->SetFont(font);
+	
 	if(!nItems)
 	{
 #ifdef __WXGTK__
@@ -208,7 +227,6 @@ void MathGLPane::render(wxPaintEvent &event)
 		int clientW,clientH;
 		GetClientSize(&clientW,&clientH);
 		
-		
 		wxString str=wxTRANS("No plots selected.");
 		dc->GetMultiLineTextExtent(str,&w,&h);
 		dc->DrawText(str,(clientW-w)/2, (clientH-h)/2);
@@ -223,21 +241,32 @@ void MathGLPane::render(wxPaintEvent &event)
 	}
 
 	//If the plot has changed, been resized or is performing
-	// a mouse action that reuqires updating, we need to update it
+	// a mouse action that requires updating, we need to update it
 	//likewise if we don't have a plot, we need one.
 	if(!gr || hasChanged || hasResized || 
 		MOUSE_ACTION_NEEDS_REDRAW[mouseDragMode])
 	{
-
+		//TODO: There appears to be a bug in mathgl
+		// where attempting to clear the plot with ->SetSize()
+		// causes objects to become zero sized (eg ticks).
+		// using a brand "new" plot entity bypasses this
+		// at some computational cost.
+		// Need to make a minimal example.
+	
 		//clear the plot drawing entity
-		if(gr)
-			delete gr;
-
+		if(!gr)
+		{
 #ifdef USE_MGL2
 		gr = new mglGraph(0,w,h);
 #else
 		gr = new mglGraphZB(w,h);
 #endif
+		}
+		else 
+		{
+			gr->SetSize(w,h);
+		}
+		
 		//change the plot by panningOneD it before we draw.
 		//if we need to 
 		if(mouseDragMode==MOUSE_MODE_DRAG_PAN)
@@ -245,16 +274,15 @@ void MathGLPane::render(wxPaintEvent &event)
 			float xMin,xMax,yMin,yMax;
 			thePlot->getBounds(xMin,xMax,yMin,yMax);
 		
-			mglPoint pEnd,pStart;
-			pEnd = gr->CalcXYZ(draggingCurrent.x,draggingCurrent.y);
-			pStart = gr->CalcXYZ(draggingStart.x,draggingStart.y);
+			float pEndX, pStartX,dummy;
+			toPlotCoords(draggingCurrent.x,draggingCurrent.y,pEndX,dummy);
+			toPlotCoords(draggingStart.x,draggingStart.y,pStartX,dummy);
 			
-			float offX = pEnd.x-pStart.x;
+			float offX = pEndX-pStartX;
 
-			//I cannot for the life of me work out why
-			//this extra transformation is needed.
-			//but without this the code produces a scale-dependant pan speed.
-			offX*=xMax-xMin;
+			//This is not needed if re-using mgl object!
+			// - not sure why!
+			//offX*=xMax-xMin;
 
 			//Modify for speed
 			offX*=MGL_PAN_SPEED;
@@ -264,21 +292,23 @@ void MathGLPane::render(wxPaintEvent &event)
 		}
 
 		//Draw the plot
-		thePlot->drawPlot(gr);	
+		thePlot->drawPlot(gr,plotIsLogarithmic);	
+		thePlot->resetChange();
 		hasResized=false;
+
+		//Copy the plot's memory buffer into a wxImage object, then draw it	
+	#ifdef USE_MGL2
+		char *rgbdata = (char*)malloc(w*h*3);
+		gr->GetRGB((char*)rgbdata,w*h*3);
+		
+		imageCacheBmp=wxImage(w,h,(unsigned char*)rgbdata,true);
+		free(rgbdata);
+	#else
+		imageCacheBmp=wxImage(w,h,const_cast<unsigned char*>(gr->GetBits()),true);
+	#endif
 	}
 
-	//Copy the plot's memory buffer into a wxImage object, then draw it	
-#ifdef USE_MGL2
-	char *rgbdata = (char*)malloc(w*h*3);
-	gr->GetRGB((char*)rgbdata,w*h*3);
-	
-	wxImage img(w,h,(unsigned char*)rgbdata,true);
-	free(rgbdata);
-#else
-	wxImage img(w,h,const_cast<unsigned char*>(gr->GetBits()),true);
-#endif
-	dc->DrawBitmap(wxBitmap(img),0,0);
+	dc->DrawBitmap(wxBitmap(imageCacheBmp),0,0);
 	//If we are engaged in a dragging operation
 	//draw the nice little bits we need
 	switch(mouseDragMode)
@@ -349,8 +379,8 @@ void MathGLPane::render(wxPaintEvent &event)
 						tlX,draggingStart.y+END_MARKER_SIZE);
 
 			}
-				else
-					dc->DrawRectangle(tlX,tlY,wRect,hRect);
+			else
+				dc->DrawRectangle(tlX,tlY,wRect,hRect);
 		
 			break;
 		}    
@@ -364,12 +394,7 @@ void MathGLPane::render(wxPaintEvent &event)
 			break;
 		case MOUSE_MODE_ENUM_END:
 		{
-			unsigned int axisMask;
-			axisMask=getAxisMask(curMouse.x,curMouse.y);
-
-			//Draw any overlays
-			if(axisMask == AXIS_POSITION_INTERIOR)
-				drawInteractOverlay(dc);
+			drawInteractOverlay(dc);
 			break;
 		}
 		default:
@@ -446,7 +471,12 @@ bool MathGLPane::getRegionUnderCursor(const wxPoint  &mousePos, unsigned int &pl
 	ASSERT(gr);
 
 	//Convert the mouse coordinates to data coordinates.
-	mglPoint pMouse= gr->CalcXYZ(mousePos.x,mousePos.y);
+	float xM,yM;
+	toPlotCoords(mousePos.x,mousePos.y,xM,yM);
+	mglPoint pMouse(xM,yM); 
+
+
+
 	if(!readyForInput())
 		return false;
 
@@ -560,11 +590,6 @@ void MathGLPane::oneDMouseDownAction(bool leftDown,bool middleDown,
 {
 	ASSERT(thePlot->getNumVisible());
 	
-	int w,h;
-	w=0;h=0;
-
-	GetClientSize(&w,&h);
-
 	float xMin,xMax,yMin,yMax;
 	thePlot->getBounds(xMin,xMax,yMin,yMax);
 
@@ -586,11 +611,13 @@ void MathGLPane::oneDMouseDownAction(bool leftDown,bool middleDown,
 			//TODO: Implement a more generic region handler?
 			ASSERT(thePlot->plotType(plotId) == PLOT_TYPE_ONED);
 
-			mglPoint mglDragStart = gr->CalcXYZ(draggingStart.x,draggingStart.y);
+			float mglStartX,mglStartY;
+			toPlotCoords(draggingStart.x, draggingStart.y,mglStartX,mglStartY);
+
 			//Get the type of move, and the region
 			//that is being moved, as well as the plot that this
 			//region belongs to.
-			regionMoveType=computeRegionMoveType(mglDragStart.x,mglDragStart.y, r);
+			regionMoveType=computeRegionMoveType(mglStartX,mglStartY, r);
 			startMouseRegion=regionId;
 			startMousePlot=plotId;
 			mouseDragMode=MOUSE_MODE_DRAG_REGION;
@@ -621,6 +648,11 @@ void MathGLPane::leftMouseDown(wxMouseEvent& event)
 	w=h=0;
 	GetClientSize(&w,&h);
 	if(!w || !h)
+		return;
+
+	//mathgl can't handle coordinate transformations with negative values
+	if(event.GetPosition().x > w || event.GetPosition().y > h ||
+		event.GetPosition().x < 0 || event.GetPosition().y < 0)
 		return;
 
 	switch(thePlot->getVisibleType())
@@ -703,7 +735,9 @@ void MathGLPane::mouseWheelMoved(wxMouseEvent& event)
 
 
 	mglPoint mousePos;
-	mousePos=gr->CalcXYZ(curMouse.x,curMouse.y);
+	float mglX,mglY;
+	toPlotCoords(curMouse.x,curMouse.y,mglX,mglY);
+	mousePos=mglPoint(mglX,mglY);
 
 	float xPlotMin,xPlotMax,yPlotMin,yPlotMax;
 	float xMin,xMax,yMin,yMax;
@@ -800,14 +834,16 @@ void MathGLPane::leftMouseReleased(wxMouseEvent& event)
 			{
 				//we need to tell viscontrol that we have done a region
 				//update
-				mglPoint mglCurMouse= gr->CalcXYZ(curMouse.x,curMouse.y);
+				float mglX,mglY;
+
+				toPlotCoords(curMouse.x,curMouse.y,mglX,mglY);
 				lastEditedRegion=startMouseRegion;
 				lastEditedPlot=startMousePlot;
 			
 				//Send the movement to the parent filter
 				thePlot->moveRegion(startMousePlot,startMouseRegion,
 							regionSelfUpdate,regionMoveType,
-								mglCurMouse.x,mglCurMouse.y);	
+								mglX,mglY);	
 				haveUpdates=true;	
 
 			}
@@ -891,8 +927,14 @@ void MathGLPane::updateDragPos(const wxPoint &draggingEnd) const
 
 	//Compute the MGL coords
 	mglPoint pStart,pEnd;
-	pStart = gr->CalcXYZ(startX,startY);
-	pEnd = gr->CalcXYZ(endX,endY);
+	float mglX,mglY;
+	if(!toPlotCoords(startX,startY,mglX,mglY))
+		return;
+	pStart= mglPoint(mglX,mglY);
+
+	if(!toPlotCoords(endX,endY,mglX,mglY))
+		return;
+	pEnd = mglPoint(mglX,mglY);
 
 
 	mglPoint cA;
@@ -1018,34 +1060,42 @@ unsigned int MathGLPane::savePNG(const std::string &filename,
 		gr=0;
 		return MGLPANE_ERR_BADALLOC;
 	}
+
+#ifdef USE_MGL2
+	gr->SetWarn(0,"");
+#else
 	char *mglWarnMsgBuf=new char[1024];
 	*mglWarnMsgBuf=0;
-#ifdef USE_MGL2
-	gr->Self()->SetWarn(0,mglWarnMsgBuf);
-#else
 	gr->SetWarn(0);
 	gr->Message=mglWarnMsgBuf;
 #endif
-	thePlot->drawPlot(gr);	
+	bool dummy;
+	thePlot->drawPlot(gr,dummy);	
 
 	gr->WritePNG(filename.c_str());
 
 	bool doWarn;
 #ifdef USE_MGL2
-	doWarn=gr->Self()->GetWarn();
+	doWarn=gr->GetWarn();
 #else
 	doWarn=gr->WarnCode;
 #endif
 	if(doWarn)
 	{
+#ifdef USE_MGL2
+		lastMglErr= gr->Self()->Mess;
+#else
 		lastMglErr=mglWarnMsgBuf;
 		delete[] mglWarnMsgBuf;
+#endif
 		delete gr;
 		gr=0;
 		return MGLPANE_ERR_MGLWARN;
 	}
 
+#ifndef USE_MGL2
 	delete[] mglWarnMsgBuf;
+#endif
 	delete gr;
 	gr=0;
 	//Hack. mathgl does not return an error value from its writer
@@ -1081,29 +1131,40 @@ unsigned int MathGLPane::saveSVG(const std::string &filename)
 	grS = new mglGraphPS(1024,768);
 #endif
 
-	thePlot->drawPlot(grS);
+	bool dummy;
+	thePlot->drawPlot(grS,dummy);
 
+#ifdef USE_MGL2
+	grS->SetWarn(0,"");
+#else
 	char *mglWarnMsgBuf=new char[1024];
 	*mglWarnMsgBuf=0;
-#ifdef USE_MGL2
-	grS->Self()->SetWarn(0,mglWarnMsgBuf);
-#else
 	grS->SetWarn(0);
 	grS->Message=mglWarnMsgBuf;
 #endif	
+
+	//Mathgl does not set locale prior to writing SVG
+	// do this by hand
+	pushLocale("C",LC_NUMERIC);
 	grS->WriteSVG(filename.c_str());
+	popLocale();
+
 
 	bool doWarn;
 #ifdef USE_MGL2
-	doWarn=grS->Self()->GetWarn();
+	doWarn=grS->GetWarn();
 #else
 	doWarn=grS->WarnCode;
 #endif
 
 	if(doWarn)
 	{
+#ifdef USE_MGL2
+		lastMglErr=grS->Self()->Mess;
+#else
 		lastMglErr=mglWarnMsgBuf;
 		delete[] mglWarnMsgBuf;
+#endif
 		delete grS;
 		grS=0;
 		return MGLPANE_ERR_MGLWARN;
@@ -1177,69 +1238,208 @@ void MathGLPane::drawInteractOverlay(wxDC *dc) const
 
 	ASSERT(w && h);
 
+
+	if(curMouse.x < 0 || curMouse.y < 0 || curMouse.x > w || curMouse.y > h)
+		return;
+
+	//Draw the overlay if outside the 
+	// axes
+	unsigned int axisMask=getAxisMask(curMouse.x,curMouse.y);
 	unsigned int regionId,plotId;
 	if(getRegionUnderCursor(curMouse,plotId,regionId))
 	{
-		PlotRegion r;
-		thePlot->getRegion(plotId,regionId,r);
-		
-		wxPen *arrowPen;
-		if(limitInteract)
-			arrowPen= new wxPen(*wxLIGHT_GREY,2,wxSOLID);
-		else
-			arrowPen= new wxPen(*wxBLACK,2,wxSOLID);
-		dc->SetPen(*arrowPen);
-		//Use inverse drawing function so that we don't get 
-		//black-on-black type drawing.
-		//Other option is to use inverse outlines.
-		dc->SetLogicalFunction(wxINVERT);
 
-		const int ARROW_SIZE=8;
-		
-
-		//Convert the mouse coordinates to data coordinates.
-		mglPoint pMouse= gr->CalcXYZ(curMouse.x,curMouse.y);
-		unsigned int regionMoveType=computeRegionMoveType(pMouse.x,pMouse.y,r);
-
-		switch(regionMoveType)
+		if(axisMask == AXIS_POSITION_INTERIOR)
 		{
-			//Left hand side of region
-			case REGION_MOVE_EXTEND_XMINUS:
-				dc->DrawLine(curMouse.x-ARROW_SIZE,h/2-ARROW_SIZE,
-					     curMouse.x-2*ARROW_SIZE, h/2);
-				dc->DrawLine(curMouse.x-2*ARROW_SIZE, h/2,
-					     curMouse.x-ARROW_SIZE,h/2+ARROW_SIZE);
-				break;
-			//right hand side of region
-			case REGION_MOVE_EXTEND_XPLUS:
-				dc->DrawLine(curMouse.x+ARROW_SIZE,h/2-ARROW_SIZE,
-					     curMouse.x+2*ARROW_SIZE, h/2);
-				dc->DrawLine(curMouse.x+2*ARROW_SIZE, h/2,
-					     curMouse.x+ARROW_SIZE,h/2+ARROW_SIZE);
-				break;
 
-			//centre of region
-			case REGION_MOVE_TRANSLATE_X:
-				dc->DrawLine(curMouse.x-ARROW_SIZE,h/2-ARROW_SIZE,
-					     curMouse.x-2*ARROW_SIZE, h/2);
-				dc->DrawLine(curMouse.x-2*ARROW_SIZE, h/2,
-					     curMouse.x-ARROW_SIZE,h/2+ARROW_SIZE);
-				dc->DrawLine(curMouse.x+ARROW_SIZE,h/2-ARROW_SIZE,
-					     curMouse.x+2*ARROW_SIZE, h/2);
-				dc->DrawLine(curMouse.x+2*ARROW_SIZE, h/2,
-					     curMouse.x+ARROW_SIZE,h/2+ARROW_SIZE);
-				break;
-			default:
-				ASSERT(false);
+			PlotRegion r;
+			thePlot->getRegion(plotId,regionId,r);
+			wxPen *drawPen;
+		
+			//Select pen colour depending upon whether interaction
+			// is allowed
+			if(limitInteract)
+				drawPen= new wxPen(*wxLIGHT_GREY,2,wxSOLID);
+			else
+				drawPen= new wxPen(*wxBLACK,2,wxSOLID);
+			
+			dc->SetPen(*drawPen);
+			//Draw two arrows < > over the centre of the plot
+			//---------
+			//Use inverse drawing function so that we don't get 
+			//black-on-black type drawing.
+			//Other option is to use inverse outlines.
+			dc->SetLogicalFunction(wxINVERT);
 
+			const int ARROW_SIZE=8;
+			
+
+			float pMouseX,pMouseY;
+			//Convert the mouse coordinates to data coordinates.
+			if(!toPlotCoords(curMouse.x,curMouse.y,pMouseX,pMouseY))
+			{
+				delete drawPen;
+				return;
+			}
+
+
+			unsigned int regionMoveType=computeRegionMoveType(pMouseX,pMouseY,r);
+
+			switch(regionMoveType)
+			{
+				//Left hand side of region
+				case REGION_MOVE_EXTEND_XMINUS:
+					dc->DrawLine(curMouse.x-ARROW_SIZE,h/2-ARROW_SIZE,
+						     curMouse.x-2*ARROW_SIZE, h/2);
+					dc->DrawLine(curMouse.x-2*ARROW_SIZE, h/2,
+						     curMouse.x-ARROW_SIZE,h/2+ARROW_SIZE);
+					break;
+				//right hand side of region
+				case REGION_MOVE_EXTEND_XPLUS:
+					dc->DrawLine(curMouse.x+ARROW_SIZE,h/2-ARROW_SIZE,
+						     curMouse.x+2*ARROW_SIZE, h/2);
+					dc->DrawLine(curMouse.x+2*ARROW_SIZE, h/2,
+						     curMouse.x+ARROW_SIZE,h/2+ARROW_SIZE);
+					break;
+
+				//centre of region
+				case REGION_MOVE_TRANSLATE_X:
+					dc->DrawLine(curMouse.x-ARROW_SIZE,h/2-ARROW_SIZE,
+						     curMouse.x-2*ARROW_SIZE, h/2);
+					dc->DrawLine(curMouse.x-2*ARROW_SIZE, h/2,
+						     curMouse.x-ARROW_SIZE,h/2+ARROW_SIZE);
+					dc->DrawLine(curMouse.x+ARROW_SIZE,h/2-ARROW_SIZE,
+						     curMouse.x+2*ARROW_SIZE, h/2);
+					dc->DrawLine(curMouse.x+2*ARROW_SIZE, h/2,
+						     curMouse.x+ARROW_SIZE,h/2+ARROW_SIZE);
+					break;
+				default:
+					ASSERT(false);
+
+			}
+
+			dc->SetLogicalFunction(wxCOPY);
+			delete drawPen;
+			//---------
+
+			//Draw the label for the species being hovered.
+			//---------
+			string labelText;
+			labelText = r.getName();
+			wxSize textSize=dc->GetTextExtent(wxStr(labelText));
+			dc->DrawText(wxStr(labelText),curMouse.x-textSize.GetWidth()/2, 
+					h/2-(textSize.GetHeight() + 1.5*ARROW_SIZE));
+			//---------
+		}	
+	}
+	else
+	{
+		//Draw small helper icons in top right of window
+		// TODO: Multiple images, and image cache
+		vector<unsigned int> textureIDs;
+
+		if(axisMask & AXIS_POSITION_LOW_X && 
+			(axisMask & AXIS_POSITION_LOW_Y))
+			textureIDs.push_back(PLOT_TEXTURE_ZOOM_RESET);
+		else if (axisMask & AXIS_POSITION_LOW_X)
+			textureIDs.push_back((PLOT_TEXTURE_ZOOM_Y));
+		else if (axisMask & AXIS_POSITION_LOW_Y)
+		{
+			textureIDs.push_back(PLOT_TEXTURE_ZOOM_X);
+			textureIDs.push_back(PLOT_TEXTURE_SLIDE_X);
 		}
 
-		dc->SetLogicalFunction(wxCOPY);
-		delete arrowPen;
+		const float THUMB_FRACTION=0.1;
+		unsigned int thumbSize=THUMB_FRACTION*std::min(h,w);
+
+		for(size_t ui=0;ui<textureIDs.size();ui++)
+		{
+			size_t textureID;
+			textureID = textureIDs[ui];
+
+			ASSERT(textureID < PLOT_TEXTURE_ENUM_END);
+			std::string filename;
+			filename=locateDataFile(mglTextureFile[textureID]);
+		
+			//Need to draw a picture
+			wxImage img;
+			if(wxFileExists(wxStr(filename)) && img.LoadFile(wxStr(filename) ))
+			{
+				int position[2];
+				float tmp;
+				
+				img.Rescale(thumbSize,thumbSize,wxIMAGE_QUALITY_HIGH);
+
+				wxBitmap bmp(img);
+				//Draw in upper right, by one fraction
+				tmp= (1.0-1.5*THUMB_FRACTION);
+				position[0] = tmp*w;
+				
+				//Compute the vertical spacing for each icon 
+				position[1] = (1.0-(tmp - 2.0*(float)ui*THUMB_FRACTION))*h;
+
+				dc->DrawBitmap(img,position[0],position[1]);
+			}
+		}
 	}
 
-
 }
+
+
+
+bool MathGLPane::toPlotCoords(int winX, int winY,float &resX, float &resY) const
+{
+	int width, height;
+	GetClientSize(&width,&height);
+	if(winX < 0 || winY<0 || winX > width || winY > height)
+	{
+		WARN(false,"DEBUG ONLY - was outside window coord");
+		return false;
+	}
+		
+	ASSERT(gr);
+	mglPoint pt = gr->CalcXYZ(winX,winY);
+	
+	resX=pt.x;
+	if(plotIsLogarithmic)
+	{
+		float plotMinY,plotMaxY;
+		plotMinY=gr->Self()->Min.y;
+		plotMaxY=gr->Self()->Max.y;
+		
+		float proportion =(pt.y-plotMinY)/(plotMaxY-plotMinY);
+		float tmp = proportion*(log10(plotMaxY)-log10(plotMinY)) + log10(plotMinY); 
+		
+		resY=pow10(tmp);
+	}
+	else
+		resY=pt.y;
+
+	return true;
+}
+bool MathGLPane::toWinCoords(float plotX, float plotY, float &winX, float &winY) const
+{
+#ifdef USE_MGL2
+	mglPoint tmp;
+	tmp=gr->CalcScr(mglPoint(plotX,plotY));
+	winX=tmp.x; winY=tmp.y;
+#else
+
+	gr->CalcScr(mglPoint(plotX,plotY),&winX,&winY);
+#endif
+
+	if(plotIsLogarithmic)
+	{
+		//FIXME: IMPLEMENT ME
+		WARN(false,"NOT IMPLEMENTED FOR LOG MODE");
+		return true;
+	}
+	else
+		return true;
+}
+
+
+
 
 void MathGLPane::drawRegionDraggingOverlay(wxDC *dc) const
 {
@@ -1250,31 +1450,23 @@ void MathGLPane::drawRegionDraggingOverlay(wxDC *dc) const
 	//Well, we are dragging the region out some.
 	//let us draw a line from the original X position to
 	//the current mouse position/nearest region position
-	mglPoint mglCurMouse= gr->CalcXYZ(curMouse.x,curMouse.y);
+
+	float regionLimitX,regionLimitY;
+	if(!toPlotCoords(curMouse.x,curMouse.y,regionLimitX,regionLimitY))
+		return;
+
 
 	ASSERT(thePlot->plotType(startMousePlot) == PLOT_TYPE_ONED);
-	float regionLimitX,regionLimitY;
-	regionLimitX=mglCurMouse.x;
-	regionLimitY=mglCurMouse.y;
 
 	//See where extending the region is allowed up to.
 	thePlot->findRegionLimit(startMousePlot,startMouseRegion,
 					regionMoveType, regionLimitX,regionLimitY);
 	
-	int deltaDrag;
-	mglPoint testPoint;
-	testPoint.x=regionLimitX;
-	testPoint.y=0;
-	int testX,testY;
-#ifdef USE_MGL2
-	mglPoint testOut;
-	testOut=gr->CalcScr(testPoint);
-	testX=testOut.x; testY=testOut.y;
-#else
-
-	gr->CalcScr(testPoint,&testX,&testY);
-#endif
-	deltaDrag = testX-draggingStart.x;
+	
+	float testX,testY;
+	toWinCoords(regionLimitX,regionLimitY,testX,testY);
+	
+	int deltaDrag = testX-draggingStart.x;
 
 	//Draw some text above the cursor to indicate the current position
 	std::string str;
@@ -1284,7 +1476,11 @@ void MathGLPane::drawRegionDraggingOverlay(wxDC *dc) const
 	wxCoord textW,textH;
 	dc->GetTextExtent(wxs,&textW,&textH);
 
-
+	wxFont font;
+	font.SetFamily(wxFONTFAMILY_SWISS);
+	if(font.IsOk())
+		dc->SetFont(font);
+	
 	wxPen *arrowPen;
 	arrowPen=  new wxPen(*wxBLACK,2,wxSOLID);
 
@@ -1317,6 +1513,14 @@ void MathGLPane::drawRegionDraggingOverlay(wxDC *dc) const
 	}
 
 
+	float mglCurMouseX,mglCurMouseY;
+	if(!toPlotCoords(curMouse.x,curMouse.y,mglCurMouseX,mglCurMouseY))
+	{
+		dc->SetLogicalFunction(wxCOPY);
+		delete arrowPen;
+		return;
+	}
+	
 	switch(regionMoveType)
 	{
 		case REGION_MOVE_EXTEND_XMINUS:
@@ -1335,23 +1539,20 @@ void MathGLPane::drawRegionDraggingOverlay(wxDC *dc) const
 			//upper and lower
 			PlotRegion reg;
 			thePlot->getRegion(startMousePlot,startMouseRegion,reg);
-			mglPoint mglDragStart = gr->CalcXYZ(draggingStart.x,draggingStart.y);
+
+			//Convert form window to mathgl coordinates
+			float mglDragStartX,mglDragStartY;
+			if(!toPlotCoords(draggingStart.x,draggingStart.y,
+				mglDragStartX,mglDragStartY))
+				break;
 
 			float newLower,newUpper;
-			newLower = reg.bounds[0].first + (mglCurMouse.x-mglDragStart.x);
-			newUpper = reg.bounds[0].second + (mglCurMouse.x-mglDragStart.x);
+			newLower = reg.bounds[0].first + (mglCurMouseX-mglDragStartX);
+			newUpper = reg.bounds[0].second + (mglCurMouseX-mglDragStartX);
 
-			int newLowerX,newUpperX,dummy;
-#ifdef USE_MGL2
-			mglPoint tmp;
-			tmp=gr->CalcScr(mglPoint(newLower,0.0f));
-			newLowerX=tmp.x;
-			tmp=gr->CalcScr(mglPoint(newUpper,0.0f));
-			newUpperX=tmp.x;
-#else
-			gr->CalcScr(mglPoint(newLower,0.0f),&newLowerX,&dummy);
-			gr->CalcScr(mglPoint(newUpper,0.0f),&newUpperX,&dummy);
-#endif
+			float newLowerX,newUpperX,dummy;
+			toWinCoords(newLower,0.0f,newLowerX,dummy);
+			toWinCoords(newUpper,0.0f,newUpperX,dummy);
 
 			dc->DrawLine(newLowerX,h/2+2*ARROW_SIZE,newLowerX,h/2-2*ARROW_SIZE);
 			dc->DrawLine(newUpperX,h/2+2*ARROW_SIZE,newUpperX,h/2-2*ARROW_SIZE);

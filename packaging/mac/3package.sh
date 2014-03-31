@@ -17,14 +17,15 @@ YEAR=`date | awk '{print $NF}'`
 #===
 INFO_PLIST="./3Depict.app/Contents/Info.plist"
 #Set program version
-sed -i "s/BUNDLE_VERSION/${VERSION}/" ${INFO_PLIST}
+sed "s/BUNDLE_VERSION/${VERSION}/" ${INFO_PLIST} > tmp.txt
 #Set year
-sed -i "s/3Depict Copyright (C) 20[123][0-9]/${DATEYEAR}/" ${INFO_PLIST}
+sed "s/3Depict Copyright (C) 20[123][0-9]/${DATEYEAR}/" tmp.txt > tmp2.txt
 #Set minimum OS numbber
-sed -i "s/MIN_OS_VER/${MAC_OS_VER}/"  ${INFO_PLIST}
+sed "s/MIN_OS_VER/${MAC_OS_VER}/"  tmp2.txt > ${INFO_PLIST}
+rm tmp.txt tmp2.txt
 #===
 
-time ./makeMacOSXApp --update-config=yes --parallel=yes --debug=no > out.txt 2>&1
+time ./makeMacOSXApp --update-config=yes --parallel=no --debug=no > out.txt 2>&1
 if [ x"`tail -1 out.txt`" == x"Done" ] ; then
 	echo "Finished compiling"
 else

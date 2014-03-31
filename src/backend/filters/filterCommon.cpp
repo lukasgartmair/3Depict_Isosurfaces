@@ -31,9 +31,11 @@ using std::vector;
 using std::endl;
 using std::string;
 
+bool qhullInited=false;
+
 //Wrapper for qhull single-pass run
 unsigned int doHull(unsigned int bufferSize, double *buffer, 
-			vector<Point3D> &resHull, Point3D &midPoint);
+			vector<Point3D> &resHull, Point3D &midPoint,bool freeHullOnExit);
 
 void writeVectorsXML(ostream &f,const char *containerName,
 		const vector<Point3D> &vectorParams, unsigned int depth)
@@ -321,7 +323,6 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 	//   work in batches.
 	Point3D midPoint;
 	float maxSqrDist=-1;
-	bool doneHull=false;
 	size_t progressReduce=PROGRESS_REDUCE;
 	size_t n=0;
 	for(size_t ui=0; ui<data.size(); ui++)
@@ -351,8 +352,6 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 					if(!tmp)
 					{
 						free(buffer);
-						if(doneHull)
-							FREE_QHULL();
 
 						return HULL_ERR_NO_MEM;
 					}
@@ -367,14 +366,14 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 					}
 
 					unsigned int errCode=0;
-					if(doneHull)
-						FREE_QHULL();
 					
-					errCode=doHull(bufferOffset,buffer,curHull,midPoint);
+					errCode=doHull(bufferOffset,buffer,curHull,midPoint,freeHull);
 					if(errCode)
+					{
+						free(buffer);
 						return errCode;
+					}
 
-					doneHull=true;
 
 					//Now compute the min sqr distance
 					//to the vertex, so we can fast-reject
@@ -394,8 +393,6 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 				if(!(*callback)(false))
 				{
 					free(buffer);
-					if(doneHull)
-						FREE_QHULL();
 					return HULL_ERR_USER_ABORT;
 				}
 	
@@ -405,11 +402,6 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 			}
 		}
 	}
-
-	//If we have actually done a convex hull in our loop,
-	// we may still have to clear it
-	if(doneHull && freeHull)
-		FREE_QHULL();
 
 	//Need at least 4 objects to construct a sufficiently large buffer
 	if(bufferOffset + curHull.size() > 4)
@@ -432,9 +424,7 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 			buffer[3*(bufferOffset+ui)+2]=curHull[ui][2];
 		}
 
-		unsigned int errCode=doHull(bufferOffset+curHull.size(),buffer,curHull,midPoint);
-		if(freeHull)
-			FREE_QHULL();
+		unsigned int errCode=doHull(bufferOffset+curHull.size(),buffer,curHull,midPoint,freeHull);
 
 		if(errCode)
 		{
@@ -473,7 +463,6 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 	//   work in batches.
 	Point3D midPoint;
 	float maxSqrDist=-1;
-	bool doneHull=false;
 
 
 	size_t progressReduce=PROGRESS_REDUCE;
@@ -500,8 +489,6 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 				if(!tmp)
 				{
 					free(buffer);
-					if(doneHull)
-						FREE_QHULL();
 
 					return HULL_ERR_NO_MEM;
 				}
@@ -516,14 +503,11 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 				}
 
 				unsigned int errCode=0;
-				if(doneHull)
-					FREE_QHULL();
 				
-				errCode=doHull(bufferOffset,buffer,curHull,midPoint);
+				errCode=doHull(bufferOffset,buffer,curHull,midPoint,freeHull);
 				if(errCode)
 					return errCode;
 
-				doneHull=true;
 
 				//Now compute the min sqr distance
 				//to the vertex, so we can fast-reject
@@ -540,8 +524,6 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 			if(!(*callback)(false))
 			{
 				free(buffer);
-				if(doneHull)
-					FREE_QHULL();
 				return HULL_ERR_USER_ABORT;
 			}
 	
@@ -550,11 +532,6 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 			progressReduce=PROGRESS_REDUCE;
 		}
 	}
-
-	//If we have actually done a convex hull in our loop,
-	// we may still have to clear it
-	if(doneHull && freeHull)
-		FREE_QHULL();
 
 
 	//Build the final hull, using the remaining points, and the
@@ -580,9 +557,7 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 			buffer[3*(bufferOffset+ui)+2]=curHull[ui][2];
 		}
 
-		unsigned int errCode=doHull(bufferOffset+curHull.size(),buffer,curHull,midPoint);
-		if(freeHull)
-			FREE_QHULL();
+		unsigned int errCode=doHull(bufferOffset+curHull.size(),buffer,curHull,midPoint,freeHull);
 
 		if(errCode)
 		{
@@ -598,8 +573,14 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 }
 
 unsigned int doHull(unsigned int bufferSize, double *buffer, 
-			vector<Point3D> &resHull, Point3D &midPoint)
+			vector<Point3D> &resHull, Point3D &midPoint, bool freeHullOnExit)
 {
+	if(qhullInited)
+	{
+		qh_freeqhull(true);
+		qhullInited=false;
+	}
+
 	const int dim=3;
 	//Now compute the new hull
 	//Generate the convex hull
@@ -607,13 +588,34 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 	//note that the input is "joggled" to 
 	//ensure simplicial facet generation
 
+	//Qhull >=2012 has a "feature" where it won't accept null arguments for the output
+	// there is no clear way to shut it up.
+	FILE *outSquelch=0;
+#if defined(__linux__) || defined(__APPLE__) || defined(__BSD__)
+	outSquelch=fopen("/dev/null","w");
+#elif defined(__win32__) || defined(__win64__)
+	outSquelch=fopen("NUL","w");
+#endif
+
+	if(!outSquelch)
+	{
+		//Give up, just let qhull output random statistics to stderr
+		outSquelch=stderr;
+	}
+
 	qh_new_qhull(	dim,
 			bufferSize,
 			buffer,
 			false,
 			(char *)"qhull QJ", //Joggle the output, such that only simplical facets are generated
-			NULL,
-			NULL);
+			outSquelch, //QHULL's interface is bizarre, no way to set null pointer in qhull 2012 - result is inf. loop in qhull_fprintf and error reporting func. 
+			outSquelch);
+	qhullInited=true;
+
+	if(outSquelch !=stderr)
+	{
+		fclose(outSquelch);
+	}
 
 	unsigned int numPoints=0;
 	//count points
@@ -621,32 +623,30 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 	//OKay, whilst this may look like invalid syntax,
 	//qh is actually a macro from qhull
 	//that creates qh. or qh-> as needed
-	vertexT *vertex = qh vertex_list;
-	while(vertex != qh vertex_tail)
-	{
-		vertex = vertex->next;
-		numPoints++;
-	}
+	numPoints = qh num_vertices;	
 	//--	
+	midPoint=Point3D(0,0,0);	
+
+	if(!numPoints)
+		return 0;
 
 	//store points in vector
 	//--
-	vertex= qh vertex_list;
 	try
 	{
 		resHull.resize(numPoints);	
 	}
 	catch(std::bad_alloc)
 	{
-		free(buffer);
 		return HULL_ERR_NO_MEM;
 	}
 	//--
 
 	//Compute mean point
 	//--
+	vertexT *vertex;
+	vertex= qh vertex_list;
 	int curPt=0;
-	midPoint=Point3D(0,0,0);	
 	while(vertex != qh vertex_tail)
 	{
 		resHull[curPt]=Point3D(vertex->point[0],
@@ -658,10 +658,22 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 	}
 	midPoint*=1.0f/(float)numPoints;
 	//--
+	if(freeHullOnExit)
+	{
+		qh_freeqhull(true);
+		qhullInited=false;
+	
+	}
 
 	return 0;
 }
 
+
+void freeConvexHull()
+{
+	qh_freeqhull(true);
+	qhullInited=false;
+}
 
 DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_t colourMap, bool reverseMap) 
 {

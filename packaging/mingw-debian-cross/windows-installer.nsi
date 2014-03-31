@@ -9,6 +9,9 @@
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
 
+SetCompressor /FINAL /SOLID lzma
+SetCompressorDictSize 64
+
 ; MUI 1.67 compatible ------
 !include "MUI.nsh"
 
@@ -26,8 +29,8 @@
 ; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
 ; Finish page
-!define MUI_FINISHPAGE_RUN "$INSTDIR\3Depict.exe"
-!insertmacro MUI_PAGE_FINISH
+;!define MUI_FINISHPAGE_RUN "$INSTDIR\3Depict.exe"
+;!insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller pages
 !insertmacro MUI_UNPAGE_INSTFILES
@@ -80,14 +83,10 @@ Section "3Depict program" SEC01
   File "data\textures\Right_clicked_mouse.png"
   File "data\textures\rotateArrow.png"
   File "data\textures\scroll_wheel_mouse.png"
-  File "data/3Depict.xpm"
-  File "data/atomic-mass-table.dtd"
-  File "data/checked_dis.xpm"
-  File "data/checked.xpm"
-  File "data/naturalAbundance.xml"
-  File "data/startup-tips.txt"
-  File "data/unchecked_dis.xpm"
-  File "data/unchecked.xpm"
+  File "data\3Depict.xpm"
+  File "data\atomic-mass-table.dtd"
+  File "data\naturalAbundance.xml"
+  File "data\startup-tips.txt"
 SectionEnd
 
 Section -AdditionalIcons
@@ -139,14 +138,10 @@ Section Uninstall
   Delete "$INSTDIR\textures\keyboard-alt.png"
   Delete "$INSTDIR\textures\enlarge.png"
   
-  Delete "$INSTDIR/3Depict.xpm"
-  Delete "$INSTDIR/atomic-mass-table.dtd"
-  Delete "$INSTDIR/checked_dis.xpm"
-  Delete "$INSTDIR/checked.xpm"
-  Delete "$INSTDIR/naturalAbundance.xml"
-  Delete "$INSTDIR/startup-tips.txt"
-  Delete "$INSTDIR/unchecked_dis.xpm"
-  Delete "$INSTDIR/unchecked.xpm"
+  Delete "$INSTDIR\3Depict.xpm"
+  Delete "$INSTDIR\atomic-mass-table.dtd"
+  Delete "$INSTDIR\naturalAbundance.xml"
+  Delete "$INSTDIR\startup-tips.txt"
  
   Delete "$INSTDIR\3Depict.exe"
 

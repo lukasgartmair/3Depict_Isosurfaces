@@ -18,7 +18,7 @@
 #include "xmlHelper.h"
 
 #include <cstring>
-
+using std::string;
 //Convert a normal string sequence into an XML escaped sequence
 std::string escapeXML(const std::string &input)
 {
@@ -82,6 +82,23 @@ std::string unescapeXML(const std::string &input)
 	return data ;
 }
 
+template<> unsigned int XMLHelpGetProp(std::string  &prop,xmlNodePtr node, string propName)
+{
+	xmlChar *xmlString;
+
+	//grab the xml property
+	xmlString = xmlGetProp(node,(const xmlChar *)propName.c_str());
+
+	//Check string contents	
+	if(!xmlString)
+		return PROP_PARSE_ERR;
+
+	prop=(char *)xmlString;
+			
+	xmlFree(xmlString);
+
+	return 0;
+}
 
 
 unsigned int XMLHelpNextType(xmlNodePtr &node, int nodeType)

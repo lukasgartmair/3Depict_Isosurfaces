@@ -15,12 +15,15 @@ do
 	MSG_FILE=tmp-$MSG_FILE
 done
 	
-#Check build for all 4 combinations of enable/disable parallel and debug checking
+#Check build for combinations of 
+#	- enable/disable parallel 
+#	- debug checking
+#	- C++11
 #-------
-CONF_ARGS=" --enable-openmp-parallel, --disable-debug-checks, --enable-debug-checks, --enable-openmp-parallel --disable-debug-checks"
+CONF_ARGS=" --enable-openmp-parallel | --disable-debug-checks | --enable-debug-checks | --enable-openmp-parallel --disable-debug-checks | --enable-c++11 --enable-openmp-parallel | --enable-c++11 --disable-debug-checks"
 
 OLD_IFS=$IFS
-IFS=","
+IFS="|"
 for i in ${CONF_ARGS[*]}
 do
 	echo "$i"
@@ -29,12 +32,12 @@ do
 
 	./configure
 	if [ $? -ne 0 ] ; then
-		echo "no-debug mode failed to configure"
+		echo "test-configuration failed to configure: arguments are $i"
 	fi
 
 	make -j $NUM_PROCS
 	if [ $? -ne 0 ] ; then
-		echo "no-debug mode failed to build"
+		echo "failed to build: argumens are $i"
 	fi
 
 	#Check for unit test availability, and run them

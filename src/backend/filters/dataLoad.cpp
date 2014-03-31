@@ -41,19 +41,36 @@ enum
 {
 	FILEDATA_TYPE_POS,
 	FILEDATA_TYPE_TEXT,
+	FILEDATA_TYPE_ATO,
 	FILEDATA_TYPE_ENUM_END, // Not a data type, just end of enum
 };
 
+enum
+{
+	ENDIAN_MODE_AUTO,
+	ENDIAN_MODE_LITTLE,
+	ENDIAN_MODE_BIG,
+	ENDIAN_MODE_ENUM_END,
+};
+
+const char *ENDIAN_MODE_STR[] = { NTRANS("Auto"),
+					NTRANS("Little"),
+					NTRANS("Big")
+				};
+
 const char *AVAILABLE_FILEDATA_TYPES[] = { 	NTRANS("POS Data"),
 					NTRANS("Text Data"),
+					NTRANS("ATO Data"),
 					};
 const char *DEFAULT_LABEL="Mass-to-Charge (amu/e)";
+
+
 
 // == Pos load filter ==
 DataLoadFilter::DataLoadFilter() : fileType(FILEDATA_TYPE_POS), doSample(true), maxIons(MAX_IONS_LOAD_DEFAULT),
 	r(1.0f),g(0.0f),b(0.0f),a(1.0f),ionSize(2.0f), numColumns(4), enabled(true),
 	volumeRestrict(false), monitorTimestamp(-1),monitorSize((size_t)-1),wantMonitor(false),
-	valueLabel(TRANS(DEFAULT_LABEL))
+	valueLabel(TRANS(DEFAULT_LABEL)), endianMode(0)
 {
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(AVAILABLE_FILEDATA_TYPES) == FILEDATA_TYPE_ENUM_END);
 	cache=true;
@@ -113,6 +130,9 @@ void DataLoadFilter::setFileMode(unsigned int fileMode)
 			break;
 		case DATALOAD_FLOAT_FILE:
 			fileType=FILEDATA_TYPE_POS;
+			break;
+		case DATALOAD_LAWATAP_ATO_FILE:
+			fileType=FILEDATA_TYPE_ATO;
 			break;
 		default:
 			ASSERT(false);
@@ -304,25 +324,24 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 		case FILEDATA_TYPE_TEXT:
 		{
 
+			vector<vector<float> > outDat;
+			vector<std::string> headerData;
 		
 			if(doSample)
 			{
-				//TODO: Migrate to using a generic text data loading routine
-				//	rather than an IonHit specific one, to avoid need for separate error strings
-				//Load the data from a text file
-				if((uiErr = limitLoadTextFile(INDEX_LENGTH,index,ionData->data, ionFilename.c_str(),TEXT_DELIMINATORS,
-									maxIons,progress.filterProgress,callback,strongRandom)))
+				//Load the output data using a random sampling technique. Load up to 4 data columns
+				if((uiErr=limitLoadTextFile(4,outDat,ionFilename.c_str(),
+						TEXT_DELIMINATORS,maxIons,progress.filterProgress,callback,strongRandom)))
 				{
 					consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
 					delete ionData;
-					errStr=ION_TEXT_ERR_STRINGS[uiErr];
+					errStr=TEXT_LOAD_ERR_STRINGS[uiErr];
 					return uiErr;
 				}
 			}
 			else
 			{
-				vector<vector<float> > outDat;
-				vector<std::string> headerData;
+				//Load the entire text data using 
 				if((uiErr=loadTextData(ionFilename.c_str(),outDat,headerData,TEXT_DELIMINATORS)))
 				{
 					consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
@@ -331,26 +350,31 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 					return uiErr;
 				}
 		
-					
+			}	
 
-				if(outDat.size() !=4)
-				{
-					std::string sizeStr;
-					stream_cast(sizeStr,outDat.size());
+			//Data output must be 3 or 4 entries
+			if(outDat.size() !=4 && outDat.size() != 3)
+			{
+				std::string sizeStr;
+				stream_cast(sizeStr,outDat.size());
 
-					consoleOutput.push_back(
-						string(TRANS("Data file contained incorrect number of columns -- should be 4, was ")) + sizeStr );
+				consoleOutput.push_back(
+					string(TRANS("Data file contained incorrect number of columns -- should be 3 or 4, was ")) + sizeStr );
+				delete ionData;
 
-					errStr=TEXT_LOAD_ERR_STRINGS[ERR_FILE_FORMAT];
-					return ERR_FILE_FORMAT;
-				}
-			
-			
-				ASSERT(outDat[0].size() == outDat[1].size() && 
-					outDat[1].size() == outDat[2].size()
-					&& outDat[2].size() == outDat[3].size());
+				errStr=TEXT_LOAD_ERR_STRINGS[ERR_FILE_FORMAT];
+				return ERR_FILE_FORMAT;
+			}
+		
+	
+			//All columns must have the same number of entries
+			ASSERT(outDat[0].size() == outDat[1].size() && 
+				outDat[1].size() == outDat[2].size());
 
-				ionData->data.resize(outDat[0].size());
+			ionData->data.resize(outDat[0].size());
+			if(outDat.size() == 4)
+			{
+				ASSERT(outDat[2].size() == outDat[3].size());
 				#pragma omp parallel for
 				for(unsigned int ui=0;ui<outDat[0].size(); ui++)
 				{
@@ -358,12 +382,43 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 					ionData->data[ui].setPos(outDat[0][ui],outDat[1][ui],outDat[2][ui]);
 					ionData->data[ui].setMassToCharge(outDat[3][ui]);
 				}
-			}	
+			}
+			else
+			{
+				#pragma omp parallel for
+				for(unsigned int ui=0;ui<outDat[0].size(); ui++)
+				{
+					//Convert vector to ionhits.	
+					ionData->data[ui].setPos(outDat[0][ui],outDat[1][ui],outDat[2][ui]);
+					ionData->data[ui].setMassToCharge(ui);
+				}
+			}
 
 			
 			break;
 		}
+		case FILEDATA_TYPE_ATO:
+		{
+			//TODO: Load Ato file with sampling?
+
+			//Load the pos file, limiting how much you pull from it
+			if((uiErr = LoadATOFile(ionFilename.c_str(), ionData->data,
+						progress.filterProgress,callback)))
+			{
+				consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
+				delete ionData;
+				errStr=TRANS(LAWATAP_ATO_ERR_STRINGS[uiErr]);
+				return uiErr;
+			}
+				
 		
+			std::string tmpSize;
+			stream_cast(tmpSize,ionData->data.size());
+			consoleOutput.push_back(string(TRANS("Loaded dataset, " )) + tmpSize
+								 + string(TRANS(" points.")));
+
+			break;
+		}
 		default:
 			ASSERT(false);
 	}
@@ -463,6 +518,23 @@ void DataLoadFilter::getProperties(FilterPropGroup &propertyList) const
 		{
 			break;
 		}
+		case FILEDATA_TYPE_ATO:
+		{
+			vector<pair<unsigned int,string> > endianChoices;
+			endianChoices.resize(ENDIAN_MODE_ENUM_END);
+
+			for(unsigned int ui=0;ui<ENDIAN_MODE_ENUM_END;ui++)
+				endianChoices[ui]=make_pair(ui,ENDIAN_MODE_STR[ui]);
+
+			p.name=TRANS("File \"Endianness\"");
+			p.helpText=TRANS("On-disk data storage format. If file won\'t load, just try each");
+			p.data=choiceString(endianChoices,endianMode);
+			p.key=DATALOAD_KEY_ENDIANNESS;
+			p.type=PROPERTY_TYPE_CHOICE;
+			propertyList.addProperty(p,curGroup);
+			break;
+
+		}
 		default:
 			ASSERT(false);
 			
@@ -530,26 +602,30 @@ void DataLoadFilter::getProperties(FilterPropGroup &propertyList) const
 	if(enabled)
 	{
 		std::string tmpStr;
-		
-		stream_cast(tmpStr,doSample);
-		p.name=TRANS("Sample data");
-		p.data=tmpStr;
-		p.type=PROPERTY_TYPE_BOOL;
-		p.helpText=TRANS("Perform random selection on file contents, instead of loading entire file");
-		p.key=DATALOAD_KEY_SAMPLE;
-		propertyList.addProperty(p,curGroup);
 
-		if(doSample)
+		//FIXME: ATO Files need an imeplmentation of sampling read
+		if(fileType!=FILEDATA_TYPE_ATO)
 		{
-			stream_cast(tmpStr,maxIons*sizeof(float)*4/(1024*1024));
-			p.name=TRANS("Load Limit (MB)");
+			stream_cast(tmpStr,doSample);
+			p.name=TRANS("Sample data");
 			p.data=tmpStr;
-			p.type=PROPERTY_TYPE_INTEGER;
-			p.helpText=TRANS("Limit for size of data to load");
-			p.key=DATALOAD_KEY_SIZE;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Perform random selection on file contents, instead of loading entire file");
+			p.key=DATALOAD_KEY_SAMPLE;
 			propertyList.addProperty(p,curGroup);
+
+			if(doSample)
+			{
+				stream_cast(tmpStr,maxIons*sizeof(float)*4/(1024*1024));
+				p.name=TRANS("Load Limit (MB)");
+				p.data=tmpStr;
+				p.type=PROPERTY_TYPE_INTEGER;
+				p.helpText=TRANS("Limit for size of data to load");
+				p.key=DATALOAD_KEY_SIZE;
+				propertyList.addProperty(p,curGroup);
+			}
 		}
-	
+
 		stream_cast(tmpStr,wantMonitor);
 		p.name=TRANS("Monitor");
 		p.data=tmpStr;
@@ -878,6 +954,28 @@ bool DataLoadFilter::setProperty(  unsigned int key,
 			needUpdate=true;
 			clearCache();
 			
+			break;
+		}
+		
+		case DATALOAD_KEY_ENDIANNESS:
+		{
+			unsigned int ltmp;
+			ltmp=(unsigned int)-1;
+			
+			for(unsigned int ui=0;ui<ENDIAN_MODE_ENUM_END; ui++)
+			{
+				if(ENDIAN_MODE_STR[ui] == value)
+				{
+					ltmp=ui;
+					break;
+				}
+			}
+			if(ltmp == (unsigned int) -1 || ltmp == endianMode)
+				return false;
+
+			endianMode=ltmp;
+			clearCache();
+			needUpdate=true;
 			break;
 		}
 		default:

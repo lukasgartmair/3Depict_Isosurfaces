@@ -37,20 +37,6 @@
 	#define WARN(f,g) { if(!(f)) { warnProgrammer(__FILE__,__LINE__,g);}}
 	#endif
 	
-	inline void userAskAssert(const char * const filename, const unsigned int lineNumber) 
-	{
-		std::cerr << "ASSERTION ERROR!" << std::endl;
-		std::cerr << "Filename: " << filename << std::endl;
-		std::cerr << "Line number: " << lineNumber << std::endl;
-
-		std::cerr << "Do you wish to continue?(y/n)";
-		char y = 'a';
-		while (y != 'n' && y != 'y')
-			std::cin >> y;
-
-		if (y != 'y')
-			exit(1);
-	}
 
 	inline void warnProgrammer(const char * const filename, const unsigned int lineNumber,const char *message) 
 	{

@@ -1815,8 +1815,6 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			{
 				if(errCode ==1)
 					return INSUFFICIENT_SIZE_ERR;
-				else if(errCode ==2)
-					return ABORT_ERR;
 				else
 				{
 					ASSERT(false);
@@ -2325,6 +2323,8 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 						newD->cached=0;
 					getOut.push_back(newD);
 				}
+				else
+					delete newD;
 			}
 			break;	
 			case STREAM_TYPE_RANGE: 
@@ -2631,6 +2631,8 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 						newD->cached=0;
 					getOut.push_back(newD);
 				}
+				else
+					delete newD;
 			}
 			break;	
 			default:
@@ -2745,6 +2747,9 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 		const vector<const FilterStreamData *>  &dataIn, 
 		vector<const FilterStreamData * > &getOut,const RangeFile *rngF)
 {
+	//Need bins to perform histogram
+	ASSERT(numBins);
+
 	progress.step=1;
 	progress.stepName=TRANS("Extract");
 	progress.filterProgress=0;

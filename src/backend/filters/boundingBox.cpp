@@ -283,34 +283,27 @@ void BoundingBoxFilter::drawDimension(const BoundCube &bTotal, DrawStreamData *d
 	{
 		float len;
 		len=(tickEnd[ui]-tickOrigin[ui])*0.5f;
+	
+		//Draw vector for the axis, and set arrow mode
+		DrawVector *dV;
+		dV= new DrawVector;
+
+		dV->setColour(rLine,gLine,bLine,aLine);	
+		dV->wantsLight=true;
 		
-		for(unsigned int uj=0;uj<2;uj++)
-		{
-			DrawVector *dV;
-		        dV= new DrawVector;
-
-			dV->setColour(rLine,gLine,bLine,aLine);	
-			dV->wantsLight=true;
-			dV->setOrigin(centrePt[ui]);
-			
-			switch(ui)
-			{
-				case 0:
-					dV->setVector(Point3D(2.0*len*(float)(uj-0.5f),0,0));
-					break;
-				case 1:
-					dV->setVector(Point3D(0,2.0*len*(float)(uj-0.5f),0));
-					break;
-				case 2:
-					dV->setVector(Point3D(0,0,2.0*len*(float)(uj-0.5f)));
-					break;
-			}
+		dV->setArrowSize(maxLen*ARROW_SCALE_FACTOR);
+		dV->setDoubleEnded();
+		
+		Point3D p;
+		p.setValue(0,0,0);
+		p.setValue(ui,len);
+		
+		dV->setOrigin(centrePt[ui]-p);
+		dV->setVector(p*2.0f);
 
 
-			dV->setArrowSize(maxLen*ARROW_SCALE_FACTOR);
 
-			d->drawables.push_back(dV);
-		}
+		d->drawables.push_back(dV);
 
 	}
 
@@ -355,7 +348,8 @@ void BoundingBoxFilter::drawDimension(const BoundCube &bTotal, DrawStreamData *d
 
 		d->drawables.push_back(dT);
 	}
-	
+
+	delete[] buffer;
 
 
 }

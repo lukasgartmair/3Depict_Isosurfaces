@@ -333,6 +333,8 @@ class Scene
 
 		//!Clear effects vector
 		void clearEffects();
+
+		static string getGlVersion() { return  string((char *)glGetString(GL_VERSION)); }
 };
 
 #endif

@@ -48,6 +48,7 @@ bool filterIsSampling(const Filter *f)
 				affectsSampling = (props.getPropValue(DATALOAD_KEY_SAMPLE).data!= "0");
 			else
 				affectsSampling=false;
+			break;
 		}
 		case FILTER_TYPE_IONDOWNSAMPLE:
 		{
@@ -345,7 +346,7 @@ void FilterTreeAnalyse::checkRequiredParent(const FilterTree &f)
 
 		//walk back up the tree, to locate the parent (technically ancestor)
 		// we are looking for
-		while(it != treeFilt.begin())
+		while(treeFilt.depth(it))
 		{
 			it= treeFilt.parent(it);
 			if((*it)->getType() == type)

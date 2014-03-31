@@ -307,6 +307,8 @@ unsigned int ConfigFile::read()
 			if(xmlString)
 			{
 				tmpStr=(char*)xmlString;
+				
+				panelMode=CONFIG_PANELMODE_NONE;
 				stream_cast(panelMode,tmpStr);
 			
 				if(panelMode >=CONFIG_PANELMODE_END_ENUM)	

@@ -19,8 +19,11 @@
 #define ANIMATOR_H
 
 #include "filter.h"
+#include "common/xmlHelper.h"
+
 
 #include <set>
+#include <map>
 
 enum
 {
@@ -80,6 +83,9 @@ class FrameProperties
 	
 		//!Add a key frame to the dataset
 		void addKeyFrame(size_t frame, const FilterProperty &p);
+		//!Add a key frame to the dataset
+		void addKeyFrame(size_t frame, const std::string &p);
+
 		
 		//Set the interpolation mode
 		void setInterpMode(size_t mode) ;
@@ -92,7 +98,18 @@ class FrameProperties
 		
 		std::string getInterpolatedData(size_t frame) const 
 			{ return interpData.getInterpolatedData(frameData,frame);}
+	
+		//!Dump state to output stream, using specified format
+		/* Current supported formats are STATE_FORMAT_XML.
+		 * Depth is indentation depth (for pretty-printing) 
+		 */ 
+		bool writeState(std::ostream &f, unsigned int format,
+			       	unsigned int depth=0) const ;
 
+
+		bool loadState(xmlNodePtr &nodePtr ) ;
+
+		void remapId(size_t newId);
 };
 
 //!Animation of filter properties
@@ -104,6 +121,8 @@ class PropertyAnimator
 		vector<FrameProperties> keyFrames;
 	public:
 		PropertyAnimator();
+
+		PropertyAnimator(const PropertyAnimator &p);
 
 		//!Are the properties self-consistent - returns true if OK
 		bool checkSelfConsistent(std::set<size_t> &conflictingFrames) const;
@@ -146,6 +165,22 @@ class PropertyAnimator
 		//Remove the specified key frames. Input vector contents will be sorted.
 		void removeKeyFrames(vector<size_t> &vec);
 
+		//!Dump state to output stream, using specified format
+		/* Current supported formats are STATE_FORMAT_XML.
+		 * Depth is indentation depth (for pretty-printing) 
+		 */ 
+		bool writeState(std::ostream &f, unsigned int format,
+			       	unsigned int depth=0) const;
+
+
+		bool loadState(xmlNodePtr &nodePtr);
+
+
+		//!Obtain the complete listing of IDs used internally
+		void getIdList(vector<unsigned int> &ids) const;
+
+		//!Force the internal IDs for filters to a new value
+		void updateMappings(const std::map<size_t,size_t> &newMap);
 };
 
 

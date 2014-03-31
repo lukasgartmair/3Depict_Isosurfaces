@@ -35,6 +35,8 @@ void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
 		std::map<size_t,Filter *> &filterMap,vector<const Filter *> &persistentFilters,
 		const Filter *visibleFilt)
 {
+	TreePersist tPersist;
+	tPersist.saveTreeExpandState(t);
 	//Remove any filters that don't exist any more
 	for(unsigned int ui=persistentFilters.size();ui--;)
 	{
@@ -121,13 +123,16 @@ void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
 		ASSERT(reverseFilterMap.find(visibleFilt)!=reverseFilterMap.end())
 		t->SelectItem(reverseFilterMap[visibleFilt]);
 	}
+	
 	t->GetParent()->Layout();
+
+	tPersist.restoreTreeExpandState(t);
 
 	t->Thaw();
 }
 
-//Convert my internal choice string format to wx's
-std::string wxChoiceParamString(std::string choiceString)
+//Convert my internal choice string format to comma delimited 
+std::string choiceStringToCommaDelim(std::string choiceString)
 {
 	std::string retStr;
 
@@ -513,7 +518,7 @@ void wxCustomPropGrid::propertyLayout()
 				                   1,wxStr(s));
 
 				//construct a wxStringArray of possible choices.
-				s=wxChoiceParamString(propertyKeys[ui][uj].data);
+				s=choiceStringToCommaDelim(propertyKeys[ui][uj].data);
 				vector<std::string> splitStrs;
 				wxArrayString a;
 				splitStrsRef(s.c_str(),',',splitStrs);
@@ -724,8 +729,6 @@ void CopyGrid::OnKey(wxKeyEvent &event)
 
 void CopyGrid::copyData() 
 {
-        // Number of rows and cols
-        int rows,cols;
        
 	
 	//This is an undocumented class AFAIK. :(
@@ -742,6 +745,8 @@ void CopyGrid::copyData()
 	endline="\n";
 #endif
 
+        // Number of rows and cols
+        int rows,cols;
 	if(arrayTL.Count() && arrayBR.Count())
 	{
 
@@ -880,6 +885,81 @@ void CopyGrid::copyData()
 
 }
 
+
+BEGIN_EVENT_TABLE(TextTreeCtrl, wxTreeCtrl)
+	EVT_PAINT(TextTreeCtrl::OnTreePaint)
+END_EVENT_TABLE()
+
+void TextTreeCtrl::OnTreePaint(wxPaintEvent &event)
+{
+	//Draws a message in the text control, if the
+	// control is otherwise empty
+
+	//Call standard handler on exit
+	event.Skip(true);
+	//If there are items in the control, just abort
+	if(GetCount() || messageStrs.empty())
+		return;
+
+	//scan for the largest string
+	size_t largestTextSize=0,idx=(size_t)-1;
+	for(size_t ui=0;ui<messageStrs.size();ui++)
+	{
+		if(messageStrs[ui].size() > largestTextSize)
+		{
+			largestTextSize=messageStrs[ui].size();
+			idx=ui;
+		}
+	}
+
+	if(idx ==(size_t) -1)
+		return;
+
+	//Check that the string we want fits in the control 
+	int w,h;
+	GetClientSize(&w,&h);
+
+	//Create drawing context
+	wxPaintDC *dc = new wxPaintDC(this);
+	//Set text font
+	wxFont font;
+	font.SetFamily(wxFONTFAMILY_SWISS);
+	
+	if(font.IsOk())
+		dc->SetFont(font);
+	
+	wxSize textSize=dc->GetTextExtent(wxStr(messageStrs[idx]));
+
+	//Don't go ahead with the drawing if the text
+	// won't fit in the control
+	const float HEIGHT_SPACING=1.1;
+	float blockHeight=textSize.GetHeight()*messageStrs.size()*HEIGHT_SPACING;
+
+	if(textSize.GetWidth() >=w || blockHeight> h) 
+	{
+		delete dc;
+		return;
+	}
+
+	//Draw each text in turn, advancing by spacing
+	
+	// start far enough back so that 
+	float startY= 0.5*(h - blockHeight);
+
+	for(size_t ui=0;ui<messageStrs.size();ui++)
+	{
+		textSize=dc->GetTextExtent(wxStr(messageStrs[ui]));
+		int startX;
+		startX=w/2 - textSize.GetWidth()/2; 
+
+		dc->DrawText(wxStr(messageStrs[ui]),
+					startX,startY);	
+		
+		startY+=HEIGHT_SPACING*textSize.GetHeight();
+	}
+
+	delete dc;
+}
 
 std::string TTFFinder::findFont(const char *fontFile)
 {

@@ -45,6 +45,8 @@ typedef int (wxWindow::*UpdateHandler)();
 
 class MathGLPane: public wxPanel {
 private:
+	wxBitmap imageCacheBmp;	
+	
 	
 	vector<pair<wxWindow*,UpdateHandler> > updateHandlers;
 
@@ -84,6 +86,9 @@ private:
 	//!True if regions should update themselves
 	bool regionSelfUpdate;
 
+	//!True if last plot was in log mode. plot pointer (gr) must exist or this is not valid
+	bool  plotIsLogarithmic;
+
 	//!Pointer to the mathgl renderer
 #ifdef USE_MGL2
 	mglGraph *gr;	
@@ -119,6 +124,13 @@ private:
 		bool alternateDown, int dragX,int dragY);
 
 	bool readyForInput() const;
+
+	//Convert window coordinates to plot coordintes.
+	// - must be within window frame
+	// returns false if not able to convert (eg outside window)
+	bool toPlotCoords(int winX, int winY,float &resX, float &resY) const;
+
+	bool toWinCoords(float plotX, float plotY, float &winX, float &winY) const;
 public:
 
 	MathGLPane(wxWindow* parent, int id);

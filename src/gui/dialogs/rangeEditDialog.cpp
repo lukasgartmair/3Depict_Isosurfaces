@@ -210,7 +210,7 @@ RangeEditorDialog::RangeEditorDialog(wxWindow* parent, int id, const wxString& t
     noteLeftOverlay = new wxPanel(notebookLeft, wxID_ANY);
     noteLeftRanges = new wxPanel(notebookLeft, wxID_ANY);
     noteLeftPlots = new wxPanel(notebookLeft, wxID_ANY);
-    listPlots = new wxListBox(noteLeftPlots, ID_LIST_PLOTS, wxDefaultPosition, wxDefaultSize, 0, NULL);
+    listPlots = new wxListBox(noteLeftPlots, ID_LIST_PLOTS, wxDefaultPosition, wxDefaultSize, 0,(const wxString*) NULL);
     gridIons= new wxGrid(noteLeftRanges, ID_GRID_IONS);
     gridRanges = new wxGrid(noteLeftRanges, ID_GRID_RANGES);
     btnRangeIonAdd = new wxButton(noteLeftRanges,wxID_ADD, wxEmptyString);

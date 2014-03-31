@@ -24,6 +24,7 @@
 
 //generate a semi-random string (not strong random), returns true
 // if a file that could be opened was found
+// this is useful for creating temp files
 bool genRandomFilename(std::string &s,bool timerInitRand=true);
 
 //Convert a boolean to "1" or "0"
@@ -53,10 +54,6 @@ std::string digitString(unsigned int thisDigit, unsigned int maxDigit);
 
 //!Returns Choice from string (see choiceString(...) for string format)
 std::string getActiveChoice(const std::string &choiceString);
-
-//!Convert a choiceString() into something that a wxGridCellChoiceEditor will accept
-std::string wxChoiceParamString(std::string choiceString);
-
 
 //Strip given whitespace (\f,\n,\r,\t,\ )from a string
 std::string stripWhite(const std::string &str);

@@ -21,7 +21,7 @@
 
 #ifdef DEBUG
 #include "backend/filtertree.h"
-
+#include "testing/mglTesting.h"
 
 //Run all the built-in unit tests.
 bool runUnitTests();

@@ -355,6 +355,40 @@ std::string ExportAnimationDialog::getFilename(unsigned int frame,
 	return s;
 }
 
+void ExportAnimationDialog::setAnimationState(const PropertyAnimator &prop,
+				    const vector<pair<string,size_t> > &pathMapping)
+{
+	//Copy the animation state
+	propertyAnimator=prop;
+
+	vector<pair<string,size_t> > newMapping;
+
+	//Obtain our updated mapping
+	getPathMapping(newMapping,true);
+
+	map<size_t,size_t> idRemap;
+
+	//TODO: Smarter algorithm (sort & compare heads)
+	//	- also better handling of renaming for nonces.
+	for(size_t ui=0;ui<newMapping.size();ui++)
+	{
+		for(size_t uj=0;uj<pathMapping.size();uj++)
+		{
+			if(newMapping[ui]==pathMapping[uj])
+			{
+				idRemap[pathMapping[ui].second] = newMapping[ui].second;
+			}
+
+		}
+	}
+
+	//Sync this into the dialog 
+	// -> we need to examine the animation state, and only
+	// keeo paths we recognise, rewriting the id values
+	propertyAnimator.updateMappings(idRemap);
+
+}
+
 void ExportAnimationDialog::prepare() 
 {
 	vector<const Filter*> dummyVec;
@@ -1092,6 +1126,50 @@ void ExportAnimationDialog::OnButtonOK(wxCommandEvent &event)
 size_t ExportAnimationDialog::getRangeFormat() const
 {
 	return rangeExportMode;	
+
+}
+
+void ExportAnimationDialog::getAnimationState(PropertyAnimator &prop, 
+				vector<pair<string,size_t> > &mapping) const
+{
+	prop=propertyAnimator;
+	getPathMapping(mapping);
+}
+
+
+void ExportAnimationDialog::getPathMapping(vector<pair<string,size_t> > &mapping,bool allowMissing) const
+{
+	ASSERT(filterTree->size());
+
+	std::map<const Filter *, string> pathMapping;
+	filterTree->serialiseToStringPaths(pathMapping);
+
+	vector<unsigned int> idsInUse;
+	propertyAnimator.getIdList(idsInUse);
+
+	for(size_t ui=0;ui<idsInUse.size();ui++)
+	{
+		//Use the filter map to obtain the full path to the filter
+		std::map<size_t, Filter *>::const_iterator it;
+
+		it=filterMap.find(idsInUse[ui]);
+
+		//if we allow missing elements, then skip processing this ID
+		if(allowMissing && it == filterMap.end())
+			continue;
+
+		ASSERT(it!=filterMap.end());
+
+		const Filter *f;
+		f=it->second;
+
+		//record the string name for the map
+		std::string path;
+		path=(pathMapping[f]);
+
+		mapping.push_back(make_pair(path,idsInUse[ui]));
+
+	}
 
 }
 

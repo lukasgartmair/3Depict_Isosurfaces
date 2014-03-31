@@ -33,6 +33,8 @@ AnalysisState::AnalysisState()
 	useRelativePathsForSave=false;
 	activeCamera=0;
 
+	plotLegendEnable=true;
+
 	rBack=gBack=bBack=0;
 }
 
@@ -53,7 +55,9 @@ void AnalysisState::operator=(const AnalysisState &oth)
 	for(size_t ui=0;ui<savedCameras.size();ui++)
 		savedCameras[ui]= oth.savedCameras[ui]->clone();
 
-
+	enabledStartupPlots=oth.enabledStartupPlots;
+	plotLegendEnable=oth.plotLegendEnable;
+	
 	undoTrees=oth.undoTrees; 
 	redoTrees=oth.redoTrees;
 
@@ -74,6 +78,9 @@ void AnalysisState::operator=(const AnalysisState &oth)
 	redoFilterStack=oth.redoFilterStack;
 	undoFilterStack=oth.undoFilterStack;
 
+	animationState=oth.animationState;
+	animationPaths=oth.animationPaths;
+	
 }
 
 AnalysisState::~AnalysisState()
@@ -95,6 +102,9 @@ void AnalysisState::clear()
 	undoTrees.clear(); 
 	redoTrees.clear();
 
+
+	enabledStartupPlots.clear();
+	
 	fileName.clear();
 	workingDir.clear();
 }
@@ -143,7 +153,16 @@ bool AnalysisState::save(const char *cpFilename, std::map<string,string> &fileMa
 		 gBack  << "\" b=\"" << bBack << "\"/>" <<  endl;
 	
 	f << tabs(1) << "<showaxis value=\"" << worldAxisMode << "\"/>"  << endl;
-
+	
+	//write plot status
+	f << tabs(1) << "<plotstatus legend=\"" << boolStrEnc(plotLegendEnable) << "\">"  << endl;
+	
+	for(size_t ui=0;ui<enabledStartupPlots.size(); ui++)
+	{
+		
+		f<< tabs(2) << "<enableplot filter=\"" << escapeXML(enabledStartupPlots[ui].first) << "\" id=\"" << enabledStartupPlots[ui].second << "\"/>" << endl;
+	}
+	f<<tabs(1) << "</plotstatus>" << endl;
 
 	if(useRelativePathsForSave)
 	{
@@ -221,6 +240,23 @@ bool AnalysisState::save(const char *cpFilename, std::map<string,string> &fileMa
 
 	}
 
+	//Save any animation data
+	if(animationState.getMaxFrame())
+	{
+		//Write the flattened tree - "path" -  data
+		f << tabs(1) << "<animationstate>" << endl;
+		f << tabs(2) << "<animationtree>" << endl;
+		for(unsigned int ui=0;ui<animationPaths.size();ui++)
+		{
+			f << tabs(3) << "<entry key=\"" << animationPaths[ui].second << "\" path=\"" 
+					<< animationPaths[ui].first << "\"/>" << endl;
+		}
+		f << tabs(2) << "</animationtree>" << endl;
+
+		animationState.writeState(f,STATE_FORMAT_XML,2);	
+
+		f << tabs(1) << "</animationstate>" << endl;
+	}
 
 
 	//Close XMl tag.	
@@ -275,6 +311,7 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream, bool m
 	vector<Camera *> newCameraVec;
 	vector<Effect *> newEffectVec;
 	vector<pair<string,FilterTree > > newStashes;
+	
 
 	std::string stateDir=onlyDir(cpFilename);
 	try
@@ -424,6 +461,43 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream, bool m
 			throw 1;
 		}
 
+		//Get plot legend status.
+		// TODO: Deprecate failure check: this is new as of 0.0.16 release (internal ) 
+		{
+		xmlNodePtr tmpStatPtr=nodePtr;
+		//Find list of which plots are enabled
+		if(!XMLHelpFwdToElem(tmpStatPtr,"plotstatus"))
+		{
+
+			//Is the legend enabled?
+			bool enableLegend;
+			if(!XMLHelpGetProp(enableLegend,tmpStatPtr,"legend"))
+				plotLegendEnable=enableLegend;
+
+			//find plot listing
+			xmlNodePtr enablePlotPtr=tmpStatPtr->xmlChildrenNode;
+
+			while(enablePlotPtr)
+			{
+				if(XMLHelpFwdToElem(enablePlotPtr,"enableplot"))
+					break;
+				
+				string filterPath;
+				unsigned int plotID;
+
+				//just abort loading this section if we can't find the filter
+				if(XMLHelpGetProp(plotID,enablePlotPtr,"id"))
+					break;
+			
+				if(XMLHelpGetProp(filterPath,enablePlotPtr,"filter"))
+					break;
+
+				enabledStartupPlots.push_back(make_pair(unescapeXML(filterPath),plotID));
+			}
+
+		}
+		}
+
 		//find filtertree data
 		if(XMLHelpFwdToElem(nodePtr,"filtertree"))
 		{
@@ -565,6 +639,7 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream, bool m
 		{
 			std::string tmpStr;
 			nodePtr=nodePtr->xmlChildrenNode;
+
 			while(!XMLHelpNextType(nodePtr,XML_ELEMENT_NODE))
 			{
 				tmpStr =(const char *)nodePtr->name;
@@ -604,10 +679,68 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream, bool m
 				newEffectVec.push_back(e);				
 			}
 		}
+		nodeStack.pop();
+		nodePtr=nodeStack.top();
+
+
+		if(!XMLHelpFwdToElem(nodePtr,"animationstate"))
+		{
+			nodePtr=nodePtr->xmlChildrenNode;
+			if(!nodePtr)
+				throw 1;
+
+			if(XMLHelpFwdToElem(nodePtr,"animationtree"))
+				throw 1;
+			
+			//Save this location
+			nodeStack.push(nodePtr);
+
+			nodePtr=nodePtr->xmlChildrenNode;
+			if(!nodePtr)
+				throw 1;
+
+			vector<pair<string, size_t> > animationPathTmp;
+			//Read the "flattened animation tree
+			while(!XMLHelpFwdToElem(nodePtr,"entry"))
+			{
+				std::string path; 
+				size_t val;
+				if(XMLHelpGetProp(val,nodePtr,"key"))
+					throw 1;
+		
+				//read the flattened tree "path" data
+				//--
+				xmlChar *xmlString;
+				//grab the xml property
+				xmlString = xmlGetProp(nodePtr,(const xmlChar *)"path");
+				if(!xmlString)
+					throw 1;
+				path=(char *)xmlString;
+				xmlFree(xmlString);
+				//--
+
+
+				animationPathTmp.push_back(make_pair(path,val));
+			}
+
+			nodePtr=nodeStack.top();
+			nodeStack.pop();
+
+			if(XMLHelpFwdToElem(nodePtr,"propertyanimator"))
+				throw 1;
+			
+			nodePtr=nodePtr->xmlChildrenNode;
+			if(!nodePtr)
+				throw 1;
+			
+			//Try to load animation state
+			animationState.loadState(nodePtr);
+			animationPaths.swap(animationPathTmp);
+
+		}
+		
 		nodePtr=nodeStack.top();
 		nodeStack.pop();
-
-
 
 		nodeStack.push(nodePtr);
 	}
@@ -618,6 +751,7 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream, bool m
 		return false;
 	}
 	xmlFreeDoc(doc);	
+
 
 	//Check that stashes are uniquely named
 	// do brute force search, as there are unlikely to be many stashes	
@@ -638,8 +772,6 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream, bool m
 
 	if(!merge)
 	{
-		//Erase any viscontrol data, seeing as we got this far	
-		clear(); 
 		//Now replace it with the new data
 		activeTree.swap(newFilterTree);
 		std::swap(stashedTrees,newStashes);
@@ -842,6 +974,13 @@ void AnalysisState::getBackgroundColour(float &r, float &g, float &b) const
 	b=bBack;
 }
 
+void AnalysisState::getAnimationState( PropertyAnimator &p, vector<pair<string,size_t> > &animPth) const
+{
+	p=animationState;
+	animPth=animationPaths;
+}
+
+
 void AnalysisState::copyEffects(vector<Effect *> &e) const
 {
 	e.clear();
@@ -998,8 +1137,6 @@ void AnalysisState::eraseStash(size_t offset)
 	stashedTrees.erase(stashedTrees.begin() + offset);
 }
 
-
-
 #ifdef DEBUG
 
 #include "./filters/ionDownsample.h"
@@ -1028,12 +1165,15 @@ bool testStateReload()
 	genRandomFilename(saveString);
 
 	map<string,string> dummyMapping;
-	someState.save(saveString.c_str(),dummyMapping,false);
+	if(!someState.save(saveString.c_str(),dummyMapping,false))
+	{
+		WARN(false, "Unable to save file.. write permissions? Skipping test");
+		return true;
+	}
 	someState.clear();
 
 	std::ofstream strm;
-	someState.load(saveString.c_str(),strm,false);
-
+	TEST(someState.load(saveString.c_str(),strm,false),"State load");
 
 	TEST(someState.getStashCount() == 1,"Stash save+load");
 	std::pair<string,FilterTree> stashOut;

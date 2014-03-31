@@ -39,6 +39,7 @@
 
 using std::cerr;
 using std::endl;
+using std::string;
 
 //TODO: FIXME: Orthogonal camera zooming is very slow, compared to 
 // perspective camera dolly. Check equations of motion for equivalence

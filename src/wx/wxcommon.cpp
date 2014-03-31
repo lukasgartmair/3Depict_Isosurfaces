@@ -18,6 +18,8 @@
 #include "wxcommon.h"
 
 #include "common/stringFuncs.h"
+#include "common/constants.h"
+#include <stack>
 
 #include <wx/wx.h>
 #include <wx/xml/xml.h>
@@ -31,6 +33,12 @@
 #include "CoreFoundation/CoreFoundation.h"
 #endif
 
+using std::stack;
+using std::pair;
+using std::map;
+using std::make_pair;
+using std::string;
+
 //Auto update checking RSS URL
 const char *RSS_FEED_LOCATION="http://threedepict.sourceforge.net/rss.xml";
 
@@ -40,6 +48,9 @@ wxEventType RemoteUpdateAvailEvent = wxNewEventType(); // You get to choose the 
 
 //Maximum amount of content in RSS header is 1MB.
 const unsigned int MAX_RSS_CONTENT_SIZE=1024*1024;
+
+//Unlikely text string that can be appended to treepersist 
+const char *PATH_NONCE="%$-";
 
 std::string inputString;
 
@@ -86,15 +97,17 @@ std::string locateDataFile(const char *name)
 
 	//Possible search paths. Must have trailing slash. will
 	//be searched in sequence.
-	const unsigned int NUM_SEARCH_DIRS=5;
+	const unsigned int NUM_SEARCH_DIRS=6;
 	const char *possibleDirs[] = { "./",
 					"/usr/local/share/3Depict/",
 					"/usr/share/3Depict/",
 					"/usr/share/3depict/", //Under debian, we have to use lowercase according to the debian guidelines, so handle this case.
 					"../data/",
-					"",
+					"./data/",
 					};
 
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(possibleDirs) == NUM_SEARCH_DIRS);
+	
 	std::string s;
 	for(unsigned int ui=0; ui<NUM_SEARCH_DIRS; ui++)
 	{
@@ -450,7 +463,134 @@ bool processMatchesName(size_t processID, const std::string &procName)
 		free(pspidBase);
 
 	}
-	
-	
 #endif
+	
+TreePersistNode::TreePersistNode(const wxTreeCtrl *treeCtrl,wxTreeItemId t)
+{
+	ASSERT(t.IsOk());
 
+	expanded = treeCtrl->IsExpanded(t);
+	selected = treeCtrl->IsSelected(t);
+}
+
+TreePersistNode::TreePersistNode()
+{
+}
+
+void TreePersist::saveTreeExpandState(wxTreeCtrl *treeCtrl)
+{
+	treeState.clear();
+	buildPathMapping(treeCtrl, treeState);
+}
+
+//TODO: Limit copy/paste code shared between overloads
+void TreePersist::buildPathMapping(wxTreeCtrl *treeCtrl,std::map<std::string, TreePersistNode> &retMap)
+{
+	//DFS walker stack for wxwidgets' tree item IDs
+	stack<pair<string,wxTreeItemId> > treeIDs;
+		
+	//Start with wx root node
+	treeIDs.push(make_pair("",treeCtrl->GetRootItem()));
+
+	//Build the map<> containing the flattened path in the tree
+	// and 
+	while(!treeIDs.empty())
+	{
+		std::string pathStr;
+		wxTreeItemId curItem;
+		pathStr= treeIDs.top().first;
+		curItem = treeIDs.top().second;
+		treeIDs.pop();
+		if(treeCtrl->ItemHasChildren(curItem))
+		{
+			wxTreeItemId tmp;
+			wxTreeItemIdValue token;
+			std::string baseStr;
+		
+			tmp = treeCtrl->GetFirstChild(curItem,token);
+			baseStr = pathStr;
+
+			//Push all children onto processing stack
+			//similarly, push down the tree<> content
+			while(tmp.IsOk())
+			{
+				pathStr=baseStr+ 
+					string("/") + stlStr(treeCtrl->GetItemText(tmp));
+
+				while(retMap.find(pathStr) != retMap.end())
+					pathStr+=PATH_NONCE;
+				
+				retMap[pathStr]=TreePersistNode(treeCtrl,tmp);
+				treeIDs.push(make_pair(pathStr,tmp));
+				
+				tmp=treeCtrl->GetNextChild(curItem,token);
+			}
+		} 
+	}
+}
+
+void TreePersist::buildPathMapping(wxTreeCtrl *treeCtrl,std::map<std::string, wxTreeItemId> &retMap)
+{
+	//DFS walker stack for wxwidgets' tree item IDs
+	stack<pair<string,wxTreeItemId> > treeIDs;
+		
+	//Start with wx root node
+	treeIDs.push(make_pair("",treeCtrl->GetRootItem()));
+
+	//Build the map<> containing the flattened path in the tree
+	// and 
+	while(!treeIDs.empty())
+	{
+		std::string pathStr;
+		wxTreeItemId curItem;
+		pathStr= treeIDs.top().first;
+		curItem = treeIDs.top().second;
+		treeIDs.pop();
+	
+		if(treeCtrl->ItemHasChildren(curItem))
+		{
+			wxTreeItemId tmp;
+			wxTreeItemIdValue token;
+			std::string baseStr;
+		
+			tmp = treeCtrl->GetFirstChild(curItem,token);
+			baseStr = pathStr;
+
+			//Push all children onto processing stack
+			while(tmp.IsOk())
+			{
+				wxString s;
+				s=treeCtrl->GetItemText(tmp);
+				pathStr=baseStr+ string("/");
+				pathStr+=stlStr(s);
+				while(retMap.find(pathStr) != retMap.end())
+					pathStr+=PATH_NONCE;
+				
+				treeIDs.push(make_pair(pathStr,tmp));
+				retMap[pathStr] = tmp;
+				tmp=treeCtrl->GetNextChild(curItem,token);
+			}
+		}
+	}
+}
+
+
+void TreePersist::restoreTreeExpandState(wxTreeCtrl *treeCtrl) const
+{
+	map<string,wxTreeItemId> treeMap;
+	buildPathMapping(treeCtrl,treeMap);
+
+	for(map<string,wxTreeItemId>::const_iterator it=treeMap.begin(); it!=treeMap.end(); ++it)
+	{
+		map<string,TreePersistNode>::const_iterator stateIt;
+		stateIt= treeState.find(it->first);
+
+		//If the path is found, then restore the item state
+		if(stateIt!=treeState.end())
+		{
+			if(stateIt->second.expanded)
+				treeCtrl->Expand(it->second); 
+		}
+
+	}
+}

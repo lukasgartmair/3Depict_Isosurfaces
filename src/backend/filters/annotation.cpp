@@ -1035,7 +1035,7 @@ bool AnnotateFilter::setProperty(  unsigned int key,
 			if(!newPt.parse(value))
 				return false;
 
-			if(!(acrossVec == newPt))
+			if(!(position == newPt))
 			{
 				position=newPt;
 				needUpdate=true;
@@ -1262,7 +1262,8 @@ bool AnnotateFilter::setProperty(  unsigned int key,
 		case KEY_LINEAR_NUMTICKS:
 		{
 			unsigned int tmp;
-			stream_cast(tmp,value);
+			if(stream_cast(tmp,value))
+				return false;
 
 			if(tmp == linearMeasureTicks)
 				return false;

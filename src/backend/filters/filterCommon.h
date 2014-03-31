@@ -38,8 +38,6 @@ extern "C"
 #ifdef __POWERPC__
 	#pragma pop_macro("__POWERPC__")
 #endif
-#define FREE_QHULL() { qh_freeqhull(!qh_ALL); int curlong, totlong; \
-			qh_memfreeshort(&curlong, &totlong);}
 
 
 enum
@@ -129,6 +127,8 @@ unsigned int computeConvexHull(const std::vector<Point3D> &data,
 			unsigned int *progress, bool (*callback)(bool), 
 			std::vector<Point3D> &hullPts, bool freeHull=true);
 
+//Release the memory held by qhull, and notify the computeConvexHull routines that this has been done
+void freeConvexHull();
 //Draw a colour bar
 DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_t colourMap, bool reverseMap=false) ;
 

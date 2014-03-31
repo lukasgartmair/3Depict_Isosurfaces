@@ -19,8 +19,12 @@
 #define WXCOMMON_H
 #include <wx/wx.h>
 #include <wx/url.h>
+#include <wx/treectrl.h>
+
+#include <map>
 
 #include "common/basics.h"
+#include "backend/tree.hh"
 
 #define wxCStr(a) wxString(a,*wxConvCurrent)
 #define wxStr(a) wxString(a.c_str(),*wxConvCurrent)
@@ -158,4 +162,36 @@ class VersionCheckThread : public wxThread
 		//Return the maximal version string obtained from the remote RSS feed
 		std::string getVerStr() {  return versionStr; }
 };
+
+
+//!storage node of tree persistence 
+// - tree persistence means the state for 
+//   a tree in terms of expanded and not-expanded items
+class TreePersistNode
+{
+	public:
+		bool expanded,selected;
+
+		//Contructor for node persistence
+		TreePersistNode();
+		TreePersistNode(const wxTreeCtrl *ctrl,wxTreeItemId t);
+};
+
+//!storage helper class for tree persistence 
+//   persistence - expanded and not-expanded items
+class TreePersist
+{
+	private:
+		std::map<std::string,TreePersistNode> treeState;
+
+		//Build path mapping for persistance node
+		static void buildPathMapping(wxTreeCtrl *t, std::map<std::string,TreePersistNode>  &retMap);
+		//Build path mapping for wx tree items
+		static void buildPathMapping(wxTreeCtrl *t, std::map<std::string,wxTreeItemId>  &retMap);
+	public:
+		//TODO: Const correctness
+		void saveTreeExpandState(wxTreeCtrl *treeCtrl);
+		void restoreTreeExpandState(wxTreeCtrl *treeCtrl) const;
+};
+
 #endif

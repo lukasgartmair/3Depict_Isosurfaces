@@ -284,7 +284,7 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 		}
 	}
 
-	float computedVol;
+	float computedVol=0;
 	//Compute volume as needed
 	if(wantVolume)
 	{
@@ -613,8 +613,8 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 
 
 	//Free the convex hull mem
-	FREE_QHULL();
-	
+	freeConvexHull();
+
 	return 0;
 }
 

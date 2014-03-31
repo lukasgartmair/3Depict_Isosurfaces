@@ -1,4 +1,4 @@
-#include "mainFrame.h"
+
 
 #ifdef __APPLE__
 //FIXME: workaround for UI layout under apple platform 
@@ -260,7 +260,8 @@ enum
 	FILE_OPEN_TYPE_UNKNOWN=1,
 	FILE_OPEN_TYPE_XML=2,
 	FILE_OPEN_TYPE_POS=4,
-	FILE_OPEN_TYPE_TEXT=8
+	FILE_OPEN_TYPE_TEXT=8,
+	FILE_OPEN_TYPE_LAWATAP_ATO=16,
 };
 
 
@@ -539,7 +540,7 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
 
     comboStash = new wxComboBox(noteData, ID_COMBO_STASH, wxT(""), wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_DROPDOWN|wxTE_PROCESS_ENTER|SAFE_CB_SORT);
     btnStashManage = new wxButton(noteData, ID_BTN_STASH_MANAGE, wxT("..."),wxDefaultPosition,wxSize(28,28));
-    filteringLabel = new wxStaticText(noteData, wxID_ANY, wxTRANS("Data Filtering"));
+    filteringLabel = new wxStaticText(noteData, wxID_ANY, wxTRANS("New Filters"));
 
 
     //Workaround for wx bug http://trac.wxwidgets.org/ticket/4398
@@ -562,7 +563,11 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
     comboFilters = new wxComboBox(filterTreePane, ID_COMBO_FILTER, wxT(""), wxDefaultPosition, wxDefaultSize, filterNames, wxCB_DROPDOWN|wxCB_READONLY|SAFE_CB_SORT);
 
 
-    treeFilters = new wxTreeCtrl(filterTreePane, ID_TREE_FILTERS, wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_HIDE_ROOT|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER|wxTR_EDIT_LABELS);
+    treeFilters = new TextTreeCtrl(filterTreePane, ID_TREE_FILTERS, wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_HIDE_ROOT|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER|wxTR_EDIT_LABELS);
+    vector<string> msgs;
+    msgs.push_back("No data loaded:");
+    msgs.push_back("open file, then add filters");
+    treeFilters->setMessages(msgs); 
     lastRefreshLabel = new wxStaticText(filterTreePane, wxID_ANY, wxTRANS("Last Outputs"));
     listLastRefresh = new wxListCtrl(filterTreePane, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxSUNKEN_BORDER);
     checkAutoUpdate = new wxCheckBox(filterTreePane, ID_CHECK_AUTOUPDATE, wxTRANS("Auto Refresh"));
@@ -690,7 +695,7 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
 
 
     //Manually tuned splitter parameters.
-    filterSplitter->SetMinimumPaneSize(80);
+    filterSplitter->SetMinimumPaneSize(180);
     filterSplitter->SetSashGravity(0.8);
     splitLeftRight->SetSashGravity(0.15);
     splitTopBottom->SetSashGravity(0.85);
@@ -819,6 +824,7 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_SPLITTER_DCLICK(ID_SPLIT_LEFTRIGHT, MainWindowFrame::OnControlUnsplit) 
     EVT_SPLITTER_SASH_POS_CHANGED(ID_SPLIT_LEFTRIGHT, MainWindowFrame::OnControlSplitMove) 
     EVT_SPLITTER_SASH_POS_CHANGED(ID_SPLIT_TOP_BOTTOM, MainWindowFrame::OnTopBottomSplitMove) 
+    EVT_SPLITTER_SASH_POS_CHANGED(ID_SPLIT_FILTERPROP, MainWindowFrame::OnFilterSplitMove) 
     // begin wxGlade: MainWindowFrame::event_table
     EVT_MENU(ID_FILE_OPEN, MainWindowFrame::OnFileOpen)
     EVT_MENU(ID_FILE_MERGE, MainWindowFrame::OnFileMerge)
@@ -936,6 +942,9 @@ unsigned int MainWindowFrame::guessFileType(const std::string &dataFile)
 
 	if( extStr == std::string("pos"))
 		return FILE_OPEN_TYPE_POS;
+	
+	if( extStr == std::string("ato"))
+		return FILE_OPEN_TYPE_LAWATAP_ATO;
 
 	return FILE_OPEN_TYPE_UNKNOWN;
 }
@@ -982,11 +991,28 @@ void MainWindowFrame::OnFileOpen(wxCommandEvent &event)
 		return;
 
 
+	vector<pair<std::string,std::string> > validTypes;
+	validTypes.push_back(	make_pair(TRANS("Readable files (*.xml, *.pos, *.txt,*.csv, *.ato)"),
+					"*.xml;*.pos;*.txt;*.csv;*.ato") );
+	validTypes.push_back( make_pair(TRANS("XML State File (*.xml)"),"*.xml"));
+	validTypes.push_back( make_pair(TRANS("POS File (*.pos)"),"*.pos"));
+	validTypes.push_back( make_pair(TRANS("LAWATAP ATO File (*.ato)"),"*.ato"));
+	validTypes.push_back( make_pair(TRANS("Text File (*.txt, *.csv)"),"*.csv;*.txt"));
+	validTypes.push_back( make_pair(TRANS("All Files (*)"),"*"));
 
+	std::string totalStr;
+	totalStr=validTypes[0].first + std::string("|") + validTypes[0].second;
+	for(unsigned int ui=1;ui<validTypes.size();ui++)
+	{
+		totalStr+="|",
+		totalStr+=validTypes[ui].first ;
+		totalStr+="|",
+		totalStr+=validTypes[ui].second;
+	}
 
 	//Load a file, either a state file, or a new pos file
 	wxFileDialog wxF(this,wxTRANS("Select Data or State File..."), wxT(""),
-		wxT(""),wxTRANS("Readable files (*.xml, *.pos, *.txt,*.csv)|*.xml;*.pos;*.txt;*.csv|POS File (*.pos)|*.pos|XML State File (*.xml)|*.xml|Text Data Files (*.txt/csv)|*.txt;*.csv|All Files (*)|*"),wxFD_OPEN|wxFD_FILE_MUST_EXIST);
+		wxT(""),wxStr(totalStr),wxFD_OPEN|wxFD_FILE_MUST_EXIST);
 
 	//Show the file dialog	
 	if( (wxF.ShowModal() == wxID_CANCEL))
@@ -1298,6 +1324,8 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge,bool noUpdate
 		unsigned int fileMode;
 		if(fileType == FILE_OPEN_TYPE_TEXT)
 			fileMode=DATALOAD_TEXT_FILE;
+		else if(fileType == FILE_OPEN_TYPE_LAWATAP_ATO)
+			fileMode=DATALOAD_LAWATAP_ATO_FILE;
 		else
 			fileMode=DATALOAD_FLOAT_FILE;
 		
@@ -1320,7 +1348,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge,bool noUpdate
 	visControl.updateWxTreeCtrl(treeFilters);
 
 	if(!noUpdate)
-		doSceneUpdate();
+		return doSceneUpdate();
 
 	return true;
 }	
@@ -1451,7 +1479,6 @@ void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
 		EXT_NONE
 	};
 	const char *extensions[] = {"png","svg",""};
-	const char *descriptions[] = {"PNG File", "Scalable Vector Graphic",""};
 
 	size_t extId = EXT_NONE;
 	for(size_t ui=0;ui<EXT_NONE;ui++)
@@ -1468,6 +1495,7 @@ void MainWindowFrame::OnFileExportPlot(wxCommandEvent &event)
 	// give them a multi-choice dialog they can pick from
 	if(extId == EXT_NONE)
 	{
+		const char *descriptions[] = {"PNG File", "Scalable Vector Graphic",""};
 		wxArrayString wxStrs;
 		for(size_t ui=0;ui<EXT_NONE;ui++)
 			wxStrs.Add(wxCStr(descriptions[ui]));
@@ -1768,8 +1796,14 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 	ExportAnimationDialog *exportDialog = 
 		new ExportAnimationDialog(this, wxID_ANY, wxEmptyString);
 
+
 	int w, h;
 	panelTop->GetClientSize(&w,&h);
+
+	//FIXME: Tree ownership is very complex, making code here brittle
+	// - order of operations for initing the export dialog is important
+	// Getting/Setting animation state requires the filtertree to
+	// be under exportDialog's control
 	FilterTree treeWithCache;
 
 	//Steal the filter tree, and give the pointer to the export dialog
@@ -1777,16 +1811,47 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 	visControl.swapFilterTree(treeWithCache);
 
 	exportDialog->setTree(treeWithCache);
+
+	//FIXME: HACK - this needs to be called twice
+	// due to synchronisation problems with 
+	// ExportAnimationDialog::setAnimationState.
 	exportDialog->prepare();
+
+	//Set the saved animation properties, as needed
+	{
+	PropertyAnimator p;
+	vector<pair<string,size_t> > pathMap;
+	visControl.getAnimationState(p,pathMap);
+	if(p.getMaxFrame())
+	{
+		exportDialog->setAnimationState(p,pathMap);
+	}
+	}
+	
+	exportDialog->prepare();
+
+	//Display Animate dialog
+	bool dialogErr;
+	dialogErr=(exportDialog->ShowModal() == wxID_CANCEL);
+
+	//even if user aborts, record the state of the animation
+	{
+	PropertyAnimator propAnim;
+	vector<pair<string,size_t> > pathMap;
+	exportDialog->getAnimationState(propAnim,pathMap);
+	
+	//restore the cache to viscontrol
 	visControl.swapFilterTree(treeWithCache);
 
-	//Animate dialog
-	if( (exportDialog->ShowModal() == wxID_CANCEL))
+	visControl.setAnimationState(propAnim,pathMap);
+	}
+
+	//Stop processing here if user aborted
+	if(dialogErr)
 	{
 		exportDialog->Destroy();
 		return;
 	}
-
 
 	//Stop timer based events, and lock UI
 	//--
@@ -2030,7 +2095,7 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 					}
 				}
 			}
-			catch(std::pair<string,string> errMsg)
+			catch(std::pair<string,string> &errMsg)
 			{
 				errMessage=errMsg.first + "\n" + errMsg.second;
 				//clean up data
@@ -2080,6 +2145,14 @@ void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
 
 	}
 
+	//Determine if we want to export a debug package (hold CTRL+SHIFT during export menu select)
+	bool wantDebugPack;
+	{
+	bool shiftState=wxGetKeyState(WXK_SHIFT);
+	bool ctrlState= wxGetKeyState(WXK_CONTROL);
+	wantDebugPack=(shiftState && ctrlState);
+	}
+		
 	//This could be nicer, or reordered
 	wxTextEntryDialog wxTD(this,wxTRANS("Package name"),
 					wxTRANS("Package directory name"),wxT(""),wxOK|wxCANCEL);
@@ -2103,7 +2176,8 @@ void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
 	while(res != wxID_CANCEL)
 	{
 		//Dir cannot exist yet, as we want to make it.
-		if(wxDirExists(wxD.GetPath() + wxTD.GetValue()))
+		if(wxDirExists(wxD.GetPath() +wxFileName::GetPathSeparator()
+			+ wxTD.GetValue()))
 		{
 			wxMesD.ShowModal();
 			res=wxD.ShowModal();
@@ -2149,7 +2223,58 @@ void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
 		for(map<string,string>::iterator it=fileMapping.begin();
 				it!=fileMapping.end();++it)
 		{
-			if(!wxCopyFile(wxStr(it->second),folder+wxStr(it->first)))
+			//Hack, if we are exporting a debugging package,
+			// pos files should be 
+			// only copied for the first CHUNKSIZE bytes 
+			bool copyError; bool isPosFile;
+			copyError=false;isPosFile=false;
+			
+			string strName=it->first;
+
+			if(strName.size() > 4)
+			{
+				strName=strName.substr(strName.size()-4);
+				if(strName == ".pos")
+					isPosFile=true;	
+			}
+
+			size_t filesize;
+			const size_t CHUNKSIZE=1024*1024*2;
+			filesize=0;
+			if(wantDebugPack && isPosFile)
+				getFilesize(it->second.c_str(),filesize);
+			
+			if(wantDebugPack && isPosFile && filesize > CHUNKSIZE)
+			{
+				ifstream inputF(it->second.c_str(),std::ios::binary);
+				if(!inputF)
+				{
+					copyError=true;
+					break;
+				}
+			
+				//copy one chunk
+				char *c = new char[CHUNKSIZE];
+				std::string outfname;
+				outfname=stlStr(folder) + it->first;
+				ofstream of(outfname.c_str(),std::ios::binary);
+				if(!of)
+				{
+					delete[] c;
+					copyError=true;
+					break;
+				}
+				inputF.read(c,CHUNKSIZE);
+				of.write(c,CHUNKSIZE);
+
+				delete[] c;
+			}
+			else
+			{
+				copyError=!wxCopyFile(wxStr(it->second),folder+wxStr(it->first));
+			}
+
+			if(copyError)
 			{
 				wxErrMsg(this,TRANS("Save error"),TRANS("Error copying file"));
 				return;
@@ -2161,6 +2286,10 @@ void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
 
 		wxString s;
 		s=wxString(wxTRANS("Saved package: ")) + folder;
+		if(wantDebugPack)
+		{
+			s+=wxCStr(" (debug mode)");
+		}
 		statusMessage(stlStr(s).c_str(),MESSAGE_INFO);
 	}
 }
@@ -2469,7 +2598,7 @@ void MainWindowFrame::OnEditRange(wxCommandEvent &event)
 void MainWindowFrame::OnEditPreferences(wxCommandEvent &event)
 {
 	//Create  a new preference dialog
-	PrefDialog *p = new PrefDialog(this);
+	PrefDialog *p = new PrefDialog(this,wxID_ANY,wxT("Preferences"));
 
 	//TODO: Refactor preference dialog to accept a config file object
 
@@ -4119,7 +4248,8 @@ void MainWindowFrame::updateProgressStatus()
 		ProgressData p;
 		p=visControl.getProgress();
 
-		if(p == lastProgressData)
+		if(p == lastProgressData
+			|| !p.maxStep)
 			return;
 		lastProgressData=p;
 
@@ -4525,14 +4655,26 @@ void MainWindowFrame::OnFilterPropDoubleClick(wxSplitterEvent &event)
 
 void MainWindowFrame::OnControlSplitMove(wxSplitterEvent &event)
 {
+	//Set the grid an event so that it can adapt the grid margins to fit
 	wxGridEvent gridEvent(ID_GRID_RAW_DATA,wxEVT_GRID_LABEL_LEFT_DCLICK,NULL);
 	wxPostEvent(gridFilterPropGroup,gridEvent);
+
+	//For some reason, the damage rectangle is not updated
+	// for the tree ctrl
+	treeFilters->Refresh();
 }
 
 void MainWindowFrame::OnTopBottomSplitMove(wxSplitterEvent &event)
 {
 	Refresh();
 	panelTop->forceRedraw();
+}
+
+void MainWindowFrame::OnFilterSplitMove(wxSplitterEvent &event)
+{
+	//For some reason, the damage rectangle is not updated
+	// for the tree ctrl
+	treeFilters->Refresh();
 }
 
 void MainWindowFrame::OnControlUnsplit(wxSplitterEvent &event)
@@ -5321,7 +5463,7 @@ void MainWindowFrame::restoreConfigPanelDefaults()
 	if(configFile.configLoadedOK())
 	{
 		val=configFile.getFilterSashPos();
-		winSize=filterPropertyPane->GetSize();
+		winSize=noteData->GetSize();
 		if(val > std::numeric_limits<float>::epsilon())
 		{
 			oldGravity=filterSplitter->GetSashGravity();
@@ -5759,7 +5901,7 @@ void MainWindowFrame::set_properties()
     comboCamera->Bind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboCameraSetFocus, this);
     comboStash->Bind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboStashSetFocus, this);
     noteDataView->Bind(wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED, &MainWindowFrame::OnNoteDataView, this);
-    treeFilters->Bind(wxEVT_KEY_DOWN,&MainWindowFrame::OnTreeKeyDown, this);
+    treeFilters->Bind(wxEVT_KEY_DOWN,&MainWindowFrame::OnTreeKeyDown, this); //Only required for 2.9
 #else
     comboCamera->Connect(wxID_ANY,
                  wxEVT_SET_FOCUS,
@@ -5769,6 +5911,7 @@ void MainWindowFrame::set_properties()
 		   wxFocusEventHandler(MainWindowFrame::OnComboStashSetFocus), NULL, this);
     noteDataView->Connect(wxID_ANY, wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED,
 		    wxNotebookEventHandler(MainWindowFrame::OnNoteDataView),NULL,this);
+    
 #endif
     gridCameraProperties->clear();
     int widths[] = {-4,-2,-1};

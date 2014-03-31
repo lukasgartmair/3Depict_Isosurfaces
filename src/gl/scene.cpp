@@ -48,6 +48,7 @@ Scene::Scene() : tempCam(0), cameraSet(true), outWinAspect(1.0f)
 	showAxis=true;
 	attemptedLoadProgressAnim=false;
 	showProgressAnimation=false;
+	witholdCamUpdate=false;
 
 	//default to black
 	rBack=gBack=bBack=0.0f;
@@ -68,6 +69,7 @@ Scene::~Scene()
 {
 	clearAll();
 	DrawableObj::clearTexPool();
+	delete activeCam;
 }
 
 unsigned int Scene::initDraw()

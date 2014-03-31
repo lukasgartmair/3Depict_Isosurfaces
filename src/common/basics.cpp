@@ -41,6 +41,9 @@
 #include <sys/stat.h>
 #endif
 
+#include <cstring>
+#include <clocale>
+
 using std::string;
 using std::vector;
 using std::list;
@@ -51,7 +54,7 @@ const char *DTD_NAME="threeDepict-state.dtd";
 //Program name
 const char *PROGRAM_NAME = "3Depict";
 //Program version
-const char *PROGRAM_VERSION = "0.0.15";
+const char *PROGRAM_VERSION = "0.0.16";
 //Path to font for Default FTGL  font
 const char *FONT_FILE= "FreeSans.ttf";
 
@@ -64,6 +67,9 @@ const char *TEXT_LOAD_ERR_STRINGS[] = { "",
 
 //default font to use.
 std::string defaultFontFile;
+
+static char *oldLocaleStatic;
+static int localeStaticType;
 
 unsigned int getBitNum(unsigned int u)
 {
@@ -84,6 +90,45 @@ std::string boolStrEnc(bool b)
 		return "1";
 	else
 		return "0";
+}
+
+void pushLocale(const char *newLocale, int type)
+{
+	ASSERT(!oldLocaleStatic);
+	ASSERT(!localeStaticType);
+
+	ASSERT(type == LC_NUMERIC || type == LC_MONETARY || type == LC_CTYPE 
+		|| type == LC_COLLATE || type == LC_ALL || type == LC_TIME
+		|| type== LC_MESSAGES);
+
+	oldLocaleStatic=setlocale(type,NULL);   
+
+	//setlocale reserves the right to trash the returned pointer      
+	// on subsequent calls (i.e. use the returned pointer for later)
+	// thus we must duplicate the pointer to own it
+	oldLocaleStatic=strdup(oldLocaleStatic);      
+	if(strcmp(oldLocaleStatic,newLocale)) 
+	{
+		setlocale(type,newLocale);        
+		localeStaticType=type;
+	}
+	else
+	{
+		//record that we did not set this
+		localeStaticType=-1;
+	}
+
+}
+
+void popLocale()
+{
+	if(localeStaticType != -1)
+		setlocale(localeStaticType,oldLocaleStatic);
+
+	localeStaticType=0;
+
+	free(oldLocaleStatic);
+	oldLocaleStatic=0;
 }
 
 
@@ -320,6 +365,25 @@ void BoundCube::setBounds(const std::vector<Point3D> &points)
 		ASSERT(containsPt(points[ui]));
 	}
 #endif
+}
+
+void BoundCube::getVertices(std::vector<Point3D> &points, bool centre) const
+{
+	points.resize(8);
+
+	for(size_t ui=0;ui<8;ui++)
+	{
+		points[ui][0]=bounds[0][ ui & 1]; 
+		points[ui][1]=bounds[1][ (ui & 2) >> 1]; 
+		points[ui][2]=bounds[2][ (ui & 4) >> 2]; 
+	}
+
+	if(centre)
+	{
+		Point3D centroid=getCentroid();
+		for(size_t ui=0;ui<8;ui++)
+			points[ui]-=centroid;
+	}
 }
 
 void BoundCube::setInverseLimits(bool setValid)
@@ -1041,9 +1105,13 @@ unsigned int loadTextStringData(const char *cpFilename, vector<vector<string> > 
 		CFile.getline(inBuffer,BUFFER_SIZE);
 		
 		if(!CFile.good() && !CFile.eof())
+		{
+			delete[] inBuffer;
 			return ERR_FILE_FORMAT;
+		}
 	}
 
+	delete[] inBuffer;
 	return 0;
 }
 

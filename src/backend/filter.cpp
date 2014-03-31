@@ -711,6 +711,8 @@ const ProgressData &ProgressData::operator=(const ProgressData &oth)
 	maxStep=oth.maxStep;
 	curFilter=oth.curFilter;
 	stepName=oth.stepName;
+
+	return *this;
 }
 
 #ifdef DEBUG

@@ -16,11 +16,15 @@ if [ $1 = '--update-config=yes' ]; then
 		DISABLE_DEBUG="--disable-debug-checks"
 	fi
 
-	CXX="`wx-config --cxx` " \
+#	CFLAGS="$CFLAGS -std=c++11"
+
+	CXX=g++ #"`wx-config --cxx` " \
 	CFLAGS="$CFLAGS -I/opt/local/include -I/usr/local/include " \
 	CXXFLAGS="$CXXFLAGS -I/opt/local/include -I/usr/local/include " \
 	LDFLAGS="$LDFLAGS -L/opt/local/lib -L/usr/local/lib" \
-	./configure $SHOULD_PARALLEL $DISABLE_DEBUG --enable-mgl2=yes
+	./configure $SHOULD_PARALLEL $DISABLE_DEBUG --enable-mgl2=yes \
+		--with-libpng-flag="-I/opt/local/include/libpng16" \
+		--with-libpng-link="-L/opt/local/lib/ -lpng16"
 
 	if [ $? -ne 0 ]; then
 		echo "Configure unsuccessful - exiting"

@@ -18,7 +18,7 @@
 
 #include "animator.h"
 #include "common/stringFuncs.h"
-
+#include "common/basics.h"
 #include <map>
 
 const char *INTERP_NAME[] ={ "Step",
@@ -31,6 +31,11 @@ const char *INTERP_NAME[] ={ "Step",
 
 PropertyAnimator::PropertyAnimator()
 {
+}
+
+PropertyAnimator::PropertyAnimator(const PropertyAnimator &p)
+{
+	keyFrames=p.keyFrames;
 }
 
 void PropertyAnimator::getNthKeyFrame(size_t frameNum,FrameProperties &f) const 
@@ -253,6 +258,146 @@ std::string PropertyAnimator::getInterpolatedFilterData(size_t filterId,
 
 }
 
+bool PropertyAnimator::writeState(std::ostream &f, unsigned int format, unsigned int depth) const
+{
+	
+	f << tabs(depth) << "<propertyanimator>" << endl;
+	
+	for(size_t ui=0;ui<keyFrames.size();ui++)
+	{
+		keyFrames[ui].writeState(f,format,depth+1);
+	}
+
+	f << tabs(depth) << "</propertyanimator>" << endl;
+
+	return true;
+}
+
+
+//Should be pointing to a propertyanimator node
+bool PropertyAnimator::loadState(xmlNodePtr &nodePtr)
+{
+	keyFrames.clear();	
+	
+	
+	while(!XMLHelpFwdToElem(nodePtr, "frame"))
+	{
+
+		xmlNodePtr childPtr;
+		size_t filterId, propKey;
+	
+		//obtain the frame content XML pointer
+		childPtr=nodePtr->xmlChildrenNode;
+		if(!childPtr)
+			return false;
+
+		//Read the contents of this frame
+		if(XMLHelpFwdToElem(childPtr,"filterid"))
+			return false;
+	
+		if(XMLHelpGetProp(filterId,childPtr,"val"))
+			return false;
+
+
+		if(XMLHelpFwdToElem(childPtr,"propertykey"))
+			return false;
+	
+		if(XMLHelpGetProp(propKey,childPtr,"val"))
+			return false;
+
+		//Read the <framedata> tag and its children
+		{
+		FrameProperties fp(filterId,propKey);
+		
+		if(XMLHelpFwdToElem(childPtr,"framedata"))
+			return false;
+
+
+		xmlNodePtr framePtr;
+		framePtr=childPtr->xmlChildrenNode;
+		
+		if(!framePtr)
+			return false;
+
+		do
+		{
+			size_t offsetVal;
+			string data;
+
+			if(XMLHelpFwdToElem(framePtr,"frame"))
+				return false;
+
+			if(XMLHelpGetProp(offsetVal,framePtr,"offset"))
+				return false;
+			
+			if(XMLHelpGetProp(data,framePtr,"data"))
+				return false;
+			
+			fp.addKeyFrame(offsetVal,data);
+
+		} while(!XMLHelpFwdToElem(childPtr, "frame")) ;
+
+
+		if(XMLHelpFwdToElem(framePtr,"interpdata"))
+			return false;
+
+		size_t mode;
+		if(XMLHelpGetProp(mode,framePtr,"mode"))
+			return false;
+		
+		fp.setInterpMode(mode);
+
+
+		//save the keyframe
+		keyFrames.push_back(fp);
+		}
+
+
+		
+	} 
+
+	return true;
+}
+
+void PropertyAnimator::getIdList(vector<unsigned int> &ids) const
+{
+	set<unsigned int> s;
+	for(size_t ui=0;ui<keyFrames.size();ui++)
+		s.insert(keyFrames[ui].getFilterId());
+
+	ids.resize(s.size());
+	std::copy(s.begin(),s.end(),ids.begin());
+}
+
+void PropertyAnimator::updateMappings(const map<size_t,size_t> &newIdMap)
+{
+	vector<bool> killItems;
+	killItems.resize(keyFrames.size(),false);
+
+	//Remap the keyframes that we can map
+	for(size_t ui=0;ui<keyFrames.size();ui++)
+	{
+		size_t oldId;
+		oldId=keyFrames[ui].getFilterId();
+
+		map<size_t,size_t>::const_iterator it;
+		it=newIdMap.find(oldId);
+
+		//Update the mappings we can,
+		// Delete keyFrames we cannot remap
+		if(it == newIdMap.end()) 
+			killItems[ui]=true;
+		else
+			keyFrames[ui].remapId(it->second);
+
+	}
+
+	//Perform erase
+	vectorMultiErase(keyFrames,killItems);
+}
+
+
+
 FrameProperties::FrameProperties(size_t idFilt,size_t idKey)
 {
 	filterId=idFilt;
@@ -269,6 +414,10 @@ void FrameProperties::setInterpMode(size_t mode)
 	interpData.interpMode=mode;
 }
 
+void FrameProperties::remapId(size_t newId)
+{
+	filterId=newId;
+}
 
 size_t FrameProperties::getMinFrame() const
 {
@@ -293,6 +442,36 @@ void FrameProperties::addKeyFrame(size_t frame,
 {
 	frameData.push_back(make_pair(frame,p.data));	
 }
+
+void FrameProperties::addKeyFrame(size_t frame, 
+		const std::string &s)
+{
+	frameData.push_back(make_pair(frame,s));	
+}
+
+bool FrameProperties::writeState(std::ostream &f, unsigned int format, unsigned int depth) const
+{
+	f << tabs(depth) << "<frame>" << endl;
+	
+	f <<tabs(depth+1) << "<filterid val=\"" << filterId << "\"/>" << endl; 
+	f <<tabs(depth+1) << "<propertykey val=\"" << propertyKey<< "\"/>" << endl; 
+
+	//Dump the frame data vector
+	f << tabs(depth+1) << "<framedata>" << endl;
+	for(unsigned int ui=0;ui<frameData.size();ui++)
+	{
+		f << tabs(depth+2) << "<frame offset=\"" << 
+			frameData[ui].first << "\" data=\"" <<
+				frameData[ui].second << "\"/>" << endl;
+	}
+	f << tabs(depth+2) << "<interpdata mode=\"" << getInterpMode() <<  "\"/>" << endl; 
+	f << tabs(depth+1) << "</framedata>" << endl;
+
+
+	f << tabs(depth) << "</frame>" << endl;
+	return true;
+}
+
 
 std::string InterpData::getInterpolatedData(const vector<pair<size_t,
  					std::string>  > &keyData,size_t frame) const
@@ -478,3 +657,4 @@ float InterpData::interpLinearRamp(size_t startFrame, size_t endFrame, size_t cu
 
 	return frac*(b-a) + a;
 }
+

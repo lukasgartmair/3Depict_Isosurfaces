@@ -43,18 +43,6 @@ using std::string;
 using std::pair;
 using std::vector;
 
-float makePositiveLog(float v)
-
-{
-	if(v <=1.0f)
-		v=0.0f;
-	else
-		v=log10(v);
-
-	return v;
-}
-
-
 //Axis min/max bounding box is disallowed to be exactly zero on any given axis
 // perform a little "push off" by this fudge factor
 const float AXIS_MIN_TOLERANCE=10*sqrtf(std::numeric_limits<float>::epsilon());
@@ -332,6 +320,7 @@ const PlotRegion &PlotRegion::operator=(const PlotRegion &oth)
 	accessMode=oth.accessMode;
 	parentObject=oth.parentObject;
 	id=oth.id;
+	label=oth.label;
 
 	r=oth.r; g=oth.g; b=oth.b;
 	bounds=oth.bounds;
@@ -443,6 +432,11 @@ void PlotRegion::updateParent(size_t regionChangeType,
 		}
 
 	}
+}
+
+std::string PlotRegion::getName() const
+{
+	return label; 
 }
 
 PlotWrapper::PlotWrapper()
@@ -777,6 +771,19 @@ unsigned int PlotWrapper::getVisibleType() const
 	return visibleType;
 }
 
+void PlotWrapper::getVisibleIDs(vector<unsigned int> &visiblePlotIDs ) const
+{
+
+	for(size_t ui=0;ui<plottingData.size() ; ui++)
+	{
+		if(isPlotVisible(ui))
+			visiblePlotIDs.push_back(ui);
+	}
+
+}
+
+
+
 void PlotWrapper::findRegionLimit(unsigned int plotId, unsigned int regionId,
 				unsigned int movementType, float &maxX, float &maxY) const
 {
@@ -785,7 +792,7 @@ void PlotWrapper::findRegionLimit(unsigned int plotId, unsigned int regionId,
 
 }
 
-void PlotWrapper::drawPlot(mglGraph *gr) const
+void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 {
 	unsigned int visType = getVisibleType();
 	if(visType == PLOT_TYPE_ENUM_END || 
@@ -868,7 +875,7 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 	gr->Title(sT.c_str());
 	
 
-	bool haveUsedLog=false;
+	haveUsedLog=false;
 	mglPoint min,max;
 	switch(visType)
 	{
@@ -923,6 +930,14 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 				axisCross.y=min.y;
 			}
 			
+			//Allow logarithmic mode, as needed.
+			// mathgl does not like a zero coordinate for plotting
+			if(min.y == 0 && useLogPlot)
+			{
+				min.y=0.1;
+				if(axisCross.y < min.y)
+					axisCross.y=min.y;
+			}
 			//"Push" bounds around to prevent min == max
 			// This is a hack to prevent mathgl from inf. looping
 			//---
@@ -935,13 +950,13 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 			if(mglFloatTooClose(min.y , max.y))
 				max.y+=1;
 			//------
+			
 
 			//tell mathgl about the bounding box	
 #ifdef USE_MGL2
 			gr->SetRanges(min,max);
+			
 			gr->SetOrigin(axisCross);
-#else
-			gr->Axis(min,max,axisCross);
 #endif
 
 			WARN((fabs(min.x-max.x) > sqrt(std::numeric_limits<float>::epsilon())), 
@@ -949,12 +964,19 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 			WARN((fabs(min.y-max.y) > sqrt(std::numeric_limits<float>::epsilon())), 
 					"WARNING: Mgl limits (Y) too Close! Due to limitiations in MGL, This may inf. loop!");
 
+			if(useLogPlot)
+				gr->SetFunc("","lg(y)");
+			else
+				gr->SetFunc("","");
 #ifdef USE_MGL2
+			gr->Axis();
+
 			mglCanvas *canvas = dynamic_cast<mglCanvas *>(gr->Self());
 			canvas->AdjustTicks("x");
 			canvas->SetTickTempl('x',"%g"); //Set the tick type
 			canvas->Axis("xy"); //Build an X-Y crossing axis
 #else
+			gr->Axis(min,max,axisCross);
 			gr->AdjustTicks("x");
 			gr->SetXTT("%g"); //Set the tick type
 			gr->Axis("xy"); //Build an X-Y crossing axis
@@ -989,13 +1011,6 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 			//Prevent mathgl from dropping lines that straddle the plot bound.
 			gr->SetCut(false);
 			
-			if(useLogPlot && !notLog)
-				sY = string("\\log_{10}(") + sY + ")";
-			else if (useLogPlot && notLog)
-			{
-				sY = string(TRANS("Mixed log/non-log:")) + sY ;
-			}
-
 			//if we have to draw overlapping regions, do so
 			if(highlightRegionOverlaps)
 			{
@@ -1048,16 +1063,12 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 
 	gr->Label('x',sX.c_str());
 	gr->Label('y',sY.c_str(),0);
-	
+
 	if(haveMultiTitles)
 	{
 #ifdef USE_MGL2
-		const float LEGEND_SIZE=5.0f;
-		mreal oldFontSize=gr->Self()->GetFontSize();
-		gr->SetFontSize(LEGEND_SIZE);
 		if(drawLegend)
 			gr->Legend();
-		gr->SetFontSize(oldFontSize);
 #else
 		gr->SetLegendBox(false);
 		//I have NO idea what this size value is about,
@@ -1070,7 +1081,7 @@ void PlotWrapper::drawPlot(mglGraph *gr) const
 			gr->Legend(0x3,"rL",LEGEND_SIZE);
 #endif
 	}
-
+	
 	overlays.draw(gr,colourFixer,min,max,haveUsedLog);
 }
 
@@ -1204,6 +1215,12 @@ void PlotWrapper::switchOutRegionParent(std::map<const RangeFileFilter *, RangeF
 	}
 }
 
+void PlotWrapper::overrideLastVisible(vector< pair<const void *,unsigned int>  > &overridden)
+{
+
+	lastVisiblePlots=overridden;	
+
+}
 
 //-----------
 
@@ -1380,14 +1397,6 @@ void Plot1D::getBounds(float &xMin,float &xMax,float &yMin,float &yMax) const
 	yMax=maxY;
 
 	ASSERT(yMin <=yMax);
-	//If we are in log mode, then we need to set the
-	//log of that bound before emitting it.
-	if(logarithmic)
-	{
-		//Disallow negative logarithmic bounds
-		yMax=makePositiveLog(yMax);
-	}
-	ASSERT(yMin <=yMax);
 }
 
 bool Plot1D::empty() const
@@ -1416,28 +1425,16 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 
 	//Pre-process the data, before handing to mathgl
 	//--
-	if(logarithmic)
+	for(unsigned int uj=0;uj<xValues.size(); uj++)
 	{
-		for(unsigned int uj=0;uj<xValues.size(); uj++)
-		{
-			bufferX[uj] = xValues[uj];
-			bufferY[uj] = makePositiveLog(yValues[uj]);
+		bufferX[uj] = xValues[uj];
+		bufferY[uj] = yValues[uj];
 
-		}
 	}
-	else
+	if(showErrs)
 	{
-		for(unsigned int uj=0;uj<xValues.size(); uj++)
-		{
-			bufferX[uj] = xValues[uj];
-			bufferY[uj] = yValues[uj];
-
-		}
-		if(showErrs)
-		{
-			for(unsigned int uj=0;uj<errBars.size(); uj++)
-				bufferErr[uj] = errBars[uj];
-		}
+		for(unsigned int uj=0;uj<errBars.size(); uj++)
+			bufferErr[uj] = errBars[uj];
 	}
 	//--
 	
@@ -1460,6 +1457,7 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 	colourCode[0]=fixer.getNextBestColour(r,g,b);
 	colourCode[1]='\0';
 	//---
+
 
 	//Plot the appropriate form	
 	switch(traceType)
@@ -1619,7 +1617,7 @@ void RegionGroup::getRegion(unsigned int offset, PlotRegion &r) const
 }
 
 
-void RegionGroup::addRegion(unsigned int regionID,float start, float end, 
+void RegionGroup::addRegion(unsigned int regionID,const std::string &name, float start, float end, 
 			float rNew, float gNew, float bNew, Filter *parentFilter)
 {
 	ASSERT(start <end);
@@ -1632,6 +1630,7 @@ void RegionGroup::addRegion(unsigned int regionID,float start, float end,
 	region.bounds.push_back(std::make_pair(start,end));
 	//Set the ID for the  region
 	region.id = regionID;
+	region.label=name;
 #ifdef DEBUG
 	//Ensure ID value is unique per parent
 	for(size_t ui=0;ui<regions.size();ui++)
@@ -1855,7 +1854,7 @@ void PlotOverlays::draw(mglGraph *gr,MGLColourFixer &fixer,
 				//Print labels near to the text
 				const float STANDOFF_FACTOR=1.05;
 #ifdef USE_MGL2
-				gr->Text(mglData(bufX[uj]),mglData(bufY[uj]*STANDOFF_FACTOR),
+				gr->Puts(mglPoint(bufX[uj],bufY[uj]*STANDOFF_FACTOR),
 					overlayData[ui].title.c_str());
 #else
 				//Font size in mathgl uses negative values to set a relative font size

@@ -27,6 +27,8 @@
 #include "tree.hh"
 #include "filtertree.h"
 
+#include "animator.h"
+
 //Unit tests
 #ifdef DEBUG
 bool runStateTests();
@@ -84,8 +86,13 @@ class AnalysisState
 		//Camera user has currently activated
 		size_t activeCamera;
 
+		//Should the plot legend be enabled
+		bool plotLegendEnable;
 
-		//true if systme should be using relative paths when
+		//Filter path and ID of plots that need to be enabled at startup 
+		vector<pair<string,unsigned int> > enabledStartupPlots;
+
+		//true if system should be using relative paths when
 		// saving state
 		bool useRelativePathsForSave;
 		
@@ -102,7 +109,14 @@ class AnalysisState
 		//!Undo filter tree stack 
 		std::deque<FilterTree> undoFilterStack,redoFilterStack;
 		
-		
+	
+		//!User-set animation properties
+		PropertyAnimator animationState;
+
+		//TODO: Migrte into some state wrapper class with animationState
+		//Additional state information for animation
+		vector<pair<string,size_t>  > animationPaths;
+
 		bool camNameExists(const std::string &s)  const ;
 
 		//Clear the effect vector
@@ -204,6 +218,14 @@ class AnalysisState
 		//Set the effect vector
 		void setEffectsByCopy(const vector<const Effect *> &e);
 
+		//Plotting functions
+		//=======
+
+		void setPlotLegend(bool enabled) {plotLegendEnable=enabled;}
+		void setEnabledPlots(const vector<pair<string,unsigned int> > &enabledPlots) {enabledStartupPlots = enabledPlots;}
+
+		void getEnabledPlots(vector<pair<string,unsigned int> > &enabledPlots) const { enabledPlots=enabledStartupPlots;}
+
 		//Set whether to use relative paths in saved file
 		void setUseRelPaths(bool useRel);
 		//get whether to use relative paths in saved file
@@ -219,6 +241,7 @@ class AnalysisState
 		void setFilterTreeByClone(const FilterTree &f);
 		
 		//Obtain a copy of the internal filter tree
+		// - underlying pointers will be different!
 		void copyFilterTree(FilterTree &f) const;
 
 		///Set the stashed filters to use internally
@@ -264,6 +287,11 @@ class AnalysisState
 
 		//Returns true if there is any data in the stash or the active tree
 		bool hasStateData() const { return (stashedTrees.size() || activeTree.size());}
+
+
+		void setAnimationState(const PropertyAnimator &p,const vector<pair<string,size_t> > &animPth) {animationState=p;animationPaths=animPth;}
+		
+		void getAnimationState( PropertyAnimator &p, vector<pair<string,size_t> > &animPth) const; 
 
 		//TODO: REMOVE ME - needed for viscontrol linkage
 		void setStateModified(int state) const { modifyLevel=state;}

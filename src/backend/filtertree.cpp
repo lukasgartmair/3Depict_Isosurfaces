@@ -888,6 +888,77 @@ bool FilterTree::setFilterProperty(Filter *targetFilter, unsigned int key,
 
 }
 
+void FilterTree::serialiseToStringPaths(std::map<const Filter *, string > &serialisedPaths) const
+{
+
+	stack<string> pathStack;
+	pathStack.push("");
+
+	set<string> enumeratedPaths;
+
+	//Unlikely text string that can be appended to tree path
+	const char *PATH_NONCE="$>";
+
+	unsigned int lastDepth=0;
+	for(tree<Filter *>::iterator filterIt=filters.begin();
+			filterIt!=filters.end();++filterIt)
+	{
+		//if this is a new depth, pop the stack until
+		// we hit the correct level
+		unsigned int curDepth;
+		curDepth=depth(filterIt);
+		//Add one for base element
+		while(pathStack.size() > curDepth +1)
+		{
+			pathStack.pop();
+			lastDepth--;
+		}
+
+		std::string testPath;
+		testPath = pathStack.top() + string("/")  + (*filterIt)->typeString();
+
+		unsigned int nonceIncrement;
+		nonceIncrement=0;
+		while(enumeratedPaths.find(testPath) != enumeratedPaths.end())
+		{
+			std::string tailStr;
+			nonceIncrement++;
+			stream_cast(tailStr,nonceIncrement);
+
+			//Keep trying new path with nonce
+			testPath=pathStack.top()+(*filterIt)->typeString() + string(PATH_NONCE) + tailStr;
+		}
+
+		enumeratedPaths.insert(testPath);
+		const Filter *f;
+		f=(const Filter*)(*filterIt);
+		serialisedPaths.insert(make_pair(f,testPath));
+
+		pathStack.push(testPath);
+
+	}
+
+	ASSERT(serialisedPaths.size() == filters.size());
+}
+
+
+void FilterTree::serialiseToStringPaths(map<string, const Filter * > &serialisedPaths) const
+{
+	//Build one-way mapping
+	map<const Filter *, string> singleMap;
+	serialiseToStringPaths(singleMap);
+
+
+	serialisedPaths.clear();
+	for(map<const Filter*,string>::iterator it=singleMap.begin();
+		it!=singleMap.end();++it)
+	{
+		ASSERT(serialisedPaths.find(it->second) == serialisedPaths.end());
+		serialisedPaths[it->second]=it->first;	
+	}
+
+}
+
 unsigned int FilterTree::loadXML(const xmlNodePtr &treeParent, std::ostream &errStream,const std::string &stateFileDir)
 
 {
@@ -1107,7 +1178,8 @@ bool FilterTree::saveXML(std::ofstream &f,std::map<string,string> &fileMapping,
 
 	return true;
 }
-		
+	
+
 
 bool FilterTree::hasHazardousContents() const
 {

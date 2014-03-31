@@ -5,15 +5,15 @@ TODO List - worlds simplest bugtracking system
 --Main app--
 	To Implement:
 		== Next version ==
-
+		* Camera animation for export doens't work with tiling
+			- Can have tiling with no animation, or animation with no tiling, but not both 
+	
 		== Eventually == 
-		* Improved filter tree visibility behaviour 
 		* Support for XY scatter plots
 		* Status bar message queue
 		* Voxel export dialog 
 		* VTK voxel data export
 		* OPS and other 3DAP formats reader?
-		* Stream information filter (Easy fix, but needs time/thought)
 		* Polynomial error estimator in graph
 		* Shear-warp volume render mode for voxels
 			- This can be broken into two useful stages
@@ -24,51 +24,29 @@ TODO List - worlds simplest bugtracking system
 		  specify a consistent statefile structure
 			- How to ensure version compatibility in future
 			state files?
-		* VTK/xyzm output
-		* BB cache for ion data?
-		* Option to warn on file overwrite with save after merge (default off)
-		* Theora video?
-		* Multiple selection in filter tree for many to one stash/unstash operations
-		* We are using too many timers. There are limits to max. timers (win32?).
-		* Front-to back alpha blending ordering support for
-		 scene drawing of non-pointcloud objects
 		* Voxelisation filter needs progress
 		* Better progress during cluster ranging
 		* Billboard text
 		* Camera animation control (slerp?)
-		* Undo by timestream
-		* MD5sums could be used on filter input to determine cache-refreshingness! (clever!)
-		* Per ion type ion display sizes?
 		* CSR fit to NN Hist in spatial analysis 
-		* NN "shift" algorithm (delta sqrmag -> value)
 		* Bounding box tick values could be improved - scientific
 		  notation, better font size control, absol. coords, etc
 		* Voxelisation filter should not show ions disabled in upstream range
 		* Range file drag/drop ignores drop coordinates; this could be useful
 		  in trying to interpret where the user wants to drop the object
-		* Should allow loading of just XYZ files, but create dummy mass & warn
 		* Plots cannot currently be updated on name change. Need to add "needUpdate" to setUserString
 
 	Outstanding bugs:
 		== Next release==
+		* Colour bar drawing broken when tiling an output image
+		* Fix voxelisation "filter" option 
+			
+		== Eventually==
 		* Cluster filter wont save state correctly if parent
 		  rangefile has disabled ions. It will output incorrect
 		  number of enabled ions, and get wiped during next ::initFilter
-			
-		== Eventually==
 		* Lighting calculations on isosurfaces can be problematic. See example package
-		* Voxelisation "filter" option appears to be reducing voxel intensity
 		* Loading a full pos file directly onto the video card cannot be aborted.
-		* Scroll wheel on text area for camera drop down does
-		  not scroll cameras; only on button (wxGTK only??)
-		* Switching between fixed width and num bins in voxel
-		  repeatedly causes "drift" of values -- aliasing errors?
-		* Colour bar drawing broken when tiling an output image
-		* Error bar masking for graph (mathgl draws error bars outside plot boundary)
-		* Pos load add could always add to bottom of filter list,
-		 rather than default value
-		* Under mac osx, changing languages does not cause stock
-		  wx translation strings to change, even after app restart.
 		* Select an X-Y crop, camera coords, on a dataset,
 		  then view   target  (-9.14237,-0.995174,83.2904) origin
 		  (188.23,-0.995174,83.2904). Now press ctrl+space. Note
@@ -81,8 +59,6 @@ TODO List - worlds simplest bugtracking system
 			* icon on dock bounces very fast during some refreshes
 
 		== Needs reproducing ==
-		* External program loading from XML doesn't seem to
-		  restore command?
 
 	Auditing:
 		== Next release ==
@@ -94,6 +70,7 @@ TODO List - worlds simplest bugtracking system
 		* Pos limit loader could alter its behaviour when
 		 sampling rates some percentage to be determined (load
 		 file, skip buffer).
+		* KD tree could implement proper range queries, eg bounds overlaps box
 		* Clustering could be paralellised, but is complex. Split & weld along KD tree lines using 
 		  cluster BB interactions.
 		* Examine performance characteristics of HULL_GRAB in ioninfo

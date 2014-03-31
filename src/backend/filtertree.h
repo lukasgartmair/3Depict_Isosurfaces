@@ -21,6 +21,7 @@
 
 #include "tree.hh"
 #include "filter.h"
+#include "common/bimap.h"
 
 #include <map>
 #include <utility>
@@ -61,8 +62,6 @@ class FilterTree
 		void getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propStarts) const;
 		
 			
-		//Retrieve the filter's pointer from its ID value	
-		Filter* getFilterByIdNonConst(unsigned long long filterId) const;
 		
 #ifdef DEBUG
 		//!Check that the output of filter refresh functions
@@ -152,6 +151,12 @@ class FilterTree
 		//Write out the filters into their XML representation
 		bool saveXML(std::ofstream &f, std::map<string,string> &fileMapping,
 					bool writePackage, bool useRelativePaths, unsigned int minTabDepth=0) const;
+
+
+		//!Convert tree to a series of flat strings representing the topology
+		//TODO: COnvert to bimap
+		void serialiseToStringPaths(std::map<const Filter *,string > &serialisedPaths) const;
+		void serialiseToStringPaths(std::map<string,const Filter *> &serialisedPaths) const;
 
 
 		//Topological alteration  & examination functions

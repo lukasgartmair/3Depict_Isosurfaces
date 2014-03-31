@@ -20,7 +20,7 @@ MSYS_PATH=/c/msys/1.0/local/include/
 bin_PROGRAMS= 3Depict
 
 #------- Common header files for all sub-modules
-COMMON_SOURCE_FILES = common/pngread.c common/stringFuncs.cpp common/xmlHelper.cpp common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp
+COMMON_SOURCE_FILES = common/pngread.c common/stringFuncs.cpp common/xmlHelper.cpp common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp common/assertion.cpp
 COMMON_HEADER_FILES = common/pngread.h common/stringFuncs.h  common/constants.h  common/xmlHelper.h common/colourmap.h \
 		      	common/mathfuncs.h common/basics.h common/translation.h common/endianTest.h common/assertion.h common/voxels.h
 
@@ -94,8 +94,11 @@ DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/
 GUI_SOURCE_FILES=gui/mainFrame.cpp gui/mathglPane.cpp gui/cropPanel.cpp gui/glPane.cpp  $(DIALOG_SOURCE_FILES)
 GUI_HEADER_FILES=gui/mainFrame.h gui/mathglPane.h gui/cropPanel.h gui/art.h gui/glPane.h $(DIALOG_HEADER_FILES)
 
-BASE_SOURCE_FILES=   3Depict.cpp testing/testing.cpp  wx/wxcomponents.cpp wx/wxcommon.cpp winconsole.cpp 
-BASE_HEADER_FILES=   testing/testing.h winconsole.h   wx/wxcomponents.h  wx/wxcommon.h 
+BASE_SOURCE_FILES=   3Depict.cpp testing/testing.cpp wx/wxcommon.cpp  wx/wxcomponents.cpp winconsole.cpp 
+BASE_HEADER_FILES=   testing/testing.h  wx/wxcommon.h  wx/wxcomponents.h   winconsole.h
+
+TEST_SOURCE_FILES = testing/mglTesting.cpp
+TEST_HEADER_FILES = testing/mglTesting.h
 #-----------
 
 
@@ -103,7 +106,7 @@ BASE_HEADER_FILES=   testing/testing.h winconsole.h   wx/wxcomponents.h  wx/wxco
 SOURCE_FILES=  $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(GUI_SOURCE_FILES) $(GUI_HEADER_FILES) \
 	       $(FILTER_FILES) $(FILTER_HEADER_FILES) \
 	       ${BACKEND_SOURCE_FILES} ${BACKEND_HEADER_FILES} $(OPENGL_SOURCE_FILES) $(OPENGL_HEADER_FILES) \
-	       $(COMMON_SOURCE_FILES) $(COMMON_HEADER_FILES)
+	       $(COMMON_SOURCE_FILES) $(COMMON_HEADER_FILES) $(TEST_SOURCE_FILES) $(TEST_HEADER_FILES)
 
 3Depict_SOURCES=$(SOURCE_FILES)
 
@@ -114,6 +117,6 @@ if HAVE_WINDRES
 endif
 
 #Tarball options
-EXTRA_DIST = gui/glade-skeleton myAppIcon.ico testing/filtertesting.cpp
+EXTRA_DIST = gui/glade-skeleton myAppIcon.ico testing/filtertesting.cpp 
  
 

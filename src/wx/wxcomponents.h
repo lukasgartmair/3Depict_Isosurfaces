@@ -89,6 +89,23 @@ void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
 		std::map<size_t,Filter *> &filterMap,vector<const Filter *> &persistentFilters,
 		const Filter *visibleFilt);
 
+//Subclassed wx tree ctrl to draw text in tree when empty
+class TextTreeCtrl : public wxTreeCtrl
+{
+	private:
+		std::vector<std::string> messageStrs;
+	public:
+		 TextTreeCtrl(wxWindow* parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxDefaultSize, long style = wxTR_HAS_BUTTONS, const wxValidator& validator = wxDefaultValidator, const wxString& name = _("treeCtrl")) : wxTreeCtrl(parent,id,pos,size,style,validator,name) {};
+
+
+		virtual void OnTreePaint(wxPaintEvent &evt);
+
+		void setMessages(const std::vector<std::string> &msgs) { messageStrs=msgs;}
+
+		DECLARE_EVENT_TABLE()
+};
+
+
 //!Data container for tree object data
 class wxTreeUint : public wxTreeItemData
 {

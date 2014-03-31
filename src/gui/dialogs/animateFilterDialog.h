@@ -98,6 +98,17 @@ public:
 
     //!Obtain the format the user wants to save ranges in
     size_t getRangeFormat()  const;
+
+    //! Obtain the current state from the animation (keyframes)
+    // the second element provides the mappings for the property animator to 
+    // filter tree path locations
+    void getAnimationState(PropertyAnimator &prop,  vector<pair<string,size_t> > &pathMapping) const ;
+    //!Obtain the current state from the animation
+    void setAnimationState(const PropertyAnimator &prop,
+		    const vector<pair<string,size_t> > &pathMapping);
+
+    //!Obtain the filter tree path string->animation ID mapping
+    void getPathMapping(vector<pair<string,size_t> > &mapping, bool allowMissing=false) const;
 private:
     //!Tree of filters that can be manipulated
     const FilterTree *filterTree;

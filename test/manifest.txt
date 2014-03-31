@@ -1,0 +1,31 @@
+#"Manifest" file. Contains the list of files that should be find-able with 
+# 3depict. Used in unit tests.
+#Syntax is 
+# [all|lin|win|mac] <path-to-file>
+# path-to-file should be such that locateDataFile(...) [src/wx/wxcommon.cpp] can find it
+
+#Textures
+all 3Depict.xpm
+all atomic-mass-table.dtd
+all textures/animProgress0.png
+all textures/animProgress1.png
+all textures/animProgress2.png
+all textures/enlarge.png
+all textures/keyboard-alt.png
+all textures/keyboard-command.png
+all textures/keyboard-ctrl.png
+all textures/keyboard-shift.png
+all textures/keyboard-tab.png
+all textures/Left_clicked_mouse.png
+all textures/Left-Right-arrow.png
+all textures/middle_clicked_mouse.png
+all textures/plot_zoom_reset.png
+all textures/plot_zoom_x.png
+all textures/plot_zoom_y.png
+all textures/Right-arrow.png
+all textures/Right_clicked_mouse.png
+all textures/rotateArrow.png
+all textures/scroll_wheel_mouse.png
+#Startup tips
+all naturalAbundance.xml
+all startup-tips.txt

@@ -37,6 +37,8 @@ extern const char *POS_ERR_STRINGS[];
 
 extern const char *ION_TEXT_ERR_STRINGS[];
 
+extern const char *LAWATAP_ATO_ERR_STRINGS[];
+
 //!Errors that can be encountered when openning pos files
 enum posErrors
 {
@@ -70,9 +72,20 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 
 
 
-unsigned int limitLoadTextFile(unsigned int numColsTotal, unsigned int selectedCols[], 
-			vector<IonHit> &posIons,const char *posFile, const char *deliminator, const size_t limitCount,
+unsigned int limitLoadTextFile(unsigned int numColsTotal, 
+			vector<vector<float> > &data,const char *posFile, const char *deliminator, const size_t limitCount,
 					       	unsigned int &progress, bool (*callback)(bool),bool strongRandom);
 
+
+//Load a CAMECA LAWATAP "ATO" formatted file.
+//	- This is a totally different format to the "FlexTAP" ato format
+//Supported versions are "version 3"
+//	Force endian : 0 - do not force, autodetect, 1 - force little, 2- force big
+unsigned int LoadATOFile(const char *fileName, vector<IonHit> &ions, unsigned int &progressm, bool (*callback)(bool), unsigned int forceEndian=0);
+
+
+#ifdef DEBUG
+bool testFileIO();
+#endif
 
 #endif

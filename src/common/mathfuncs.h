@@ -77,6 +77,9 @@ class Point3D
                 const Point3D &operator=(const Point3D &pt);
 		//!+= operator
                 const Point3D &operator+=(const Point3D &pt);
+		
+		//!+= operator
+                const Point3D &operator-=(const Point3D &pt);
 
 		const Point3D operator+(float f) const;
 		//!multiplication operator
@@ -211,7 +214,16 @@ typedef struct
 //failure to do so will have weird results
 //Note result is stored in  point passed as argument
 //angle is in radians.
+
+//Inefficient Point3D version
+void quat_rot(Point3D &p, const Point3D &r, float angle);
+
 void quat_rot(Point3f *point, const Point3f *rotVec, float angle);
+
+void quat_rot_array(Point3f *point, unsigned int n, const Point3f *rotVec, float angle);
+
+void quat_rot_array(Point3D *point, unsigned int n, const Point3f *rotVec, float angle);
+
 
 //Retrieve the quaternion for repeated rotations. Pass to the quat_rot_apply_quats.
 //angle is in radians

@@ -25,7 +25,8 @@
 enum
 {
 	DATALOAD_FLOAT_FILE,
-	DATALOAD_TEXT_FILE
+	DATALOAD_TEXT_FILE,
+	DATALOAD_LAWATAP_ATO_FILE
 };
 
 enum
@@ -43,6 +44,7 @@ enum
 	DATALOAD_KEY_SELECTED_COLUMN2,
 	DATALOAD_KEY_SELECTED_COLUMN3,
 	DATALOAD_KEY_NUMBER_OF_COLUMNS,
+	DATALOAD_KEY_ENDIANNESS,
 	DATALOAD_KEY_MONITOR
 };
 
@@ -102,6 +104,9 @@ class DataLoadFilter:public Filter
 
 		//!String to use to set the value type
 		std::string valueLabel;
+
+		//!Endian read mode
+		unsigned int endianMode;
 	public:
 		DataLoadFilter();
 		//!Duplicate filter contents, excluding cache.

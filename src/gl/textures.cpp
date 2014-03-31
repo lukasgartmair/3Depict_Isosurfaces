@@ -88,6 +88,7 @@ bool TexturePool::openTexture(const char *texName, unsigned int &texID)
 
 bool TexturePool::openTexture3D(const std::vector<std::string> &fileNames, unsigned int &texId) 
 {
+	ASSERT(fileNames.size());
 
 	vector<string> fullNames;
 	fullNames.resize(fileNames.size());
@@ -237,6 +238,9 @@ int pngTexture(texture* dest, const char* filename, GLenum type)
 
 int pngTexture3D(texture *dest, const vector<string> &fileNames)
 {
+	if(fileNames.empty())
+		return 0;
+
 	dest->depth=fileNames.size();
 
 	//Copy data from disk into temporary storage

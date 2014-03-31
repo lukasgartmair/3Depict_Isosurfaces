@@ -31,6 +31,7 @@ class Scene;
 
 #include "filtertreeAnalyse.h"
 #include "backend/plot.h"
+#include "backend/animator.h"
 #include "state.h"
 
 #include "backend/APT/APTFileIO.h"
@@ -73,6 +74,7 @@ class VisController
 	
 		//!Analysis results for last filter tree refresh
 		FilterTreeAnalyse fta;
+
 		//--------------------
 
 		
@@ -90,6 +92,12 @@ class VisController
 
 		//!Maximum number of ions to pass to scene
 		size_t limitIonOutput;
+
+		//TODO: Move plot visbility data into state file, 
+		// thus obviating the need to do this
+		//!Should we defer altering plot visibility during refresh
+		// this is used when loading a state file to prevent from bringing older selection state into current plots
+		bool deferClearPlotVisibility;
 
 		void clear();
 	
@@ -438,6 +446,16 @@ class VisController
 		string getFilename() const { return currentState.getFilename(); }
 		//Return the current state's filename
 		void setFilename(std::string &s) {currentState.setFilename(s); }
+
+		//!Set the animation state, by copy, overwriting the current one
+		// pathmapping provides an animation ID <-> serialised filter path mapping
+		void setAnimationState(const PropertyAnimator &pA, 
+				const std::vector<pair<string,size_t> > &pathMapping) ;
+		
+		//!Retrieve the animation state, by copy, overwriting the current one
+		void getAnimationState(PropertyAnimator &pA, 
+				std::vector<pair<string,size_t> > &pathMapping) const;
+
 #ifdef DEBUG
 		//Check that the tree conrol is synced up to the filter map correctly
 		void checkTree(wxTreeCtrl *t);

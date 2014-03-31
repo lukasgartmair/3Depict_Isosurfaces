@@ -2,7 +2,7 @@
 cp makeMacOSXApp ../..
 cp -R 3Depict.app ../..
 cd ../..
-time ./makeMacOSXApp --update-config=yes --parallel=yes --debug=yes > out.txt 2>&1
+time ./makeMacOSXApp --update-config=yes --parallel=no --debug=yes > out.txt 2>&1
 
 #check compile OK
 if [ $? -eq 0 ] ; then

@@ -419,7 +419,10 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 
 					//Filter input data to output data.
 					if(cropper.runFilter(((const IonStreamData *)dataIn[ui])->data,d->data))
+					{
+						delete d;
 						return CALLBACK_FAIL; 
+					}
 
 					if(d->data.size())
 					{

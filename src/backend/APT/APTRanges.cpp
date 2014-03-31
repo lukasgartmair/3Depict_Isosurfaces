@@ -24,9 +24,9 @@
 #include "../../common/stringFuncs.h"
 #include "../../common/translation.h"
 
+#include <set>
 #include <map>
 #include <fstream>
-#include <clocale>
 #include <numeric>
 #include <cstring>
 
@@ -35,6 +35,7 @@ using std::vector;
 using std::pair;
 using std::make_pair;
 using std::map;
+using std::set;
 using std::accumulate;
 
 //Arbitrary maximum range file line size
@@ -68,6 +69,30 @@ const char *RANGE_EXTS[] = { "rng",
 			  "rng",
 			  "rrng",
 				""};
+
+//List of symbols in the periodic table
+const char *elementList[] = { 
+"H", "He", "Li", "Be",  "B", "C", "N",  "O",  "F", "Ne",
+
+"Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", 
+
+"K", "Ca", "Sc","Ti",  "V", "Cr",  "Mn", "Fe",  "Co", "Ni",  
+   "Cu",  "Zn", "Ga", "Ge", "As", "Se",  "Br", "Kr",
+
+"Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd",
+   "Ag",  "Cd", "In", "Sn", "Sb", "Te",  "I", "Xe",
+
+"Cs",  "Ba", "La",  "Ce", "Pr",  "Nd", "Pm", "Sm",  "Eu", "Gd",
+    "Tb",  "Dy",  "Ho", "Er",  "Tm", "Yb", "Lu",  "Hf", "Ta",
+    "W",  "Re", "Os",  "Ir", "Pt", "Au", "Hg",  "Tl", "Pb",
+     "Bi",  "Po", "At", "Rn",
+
+"Fr", "Ra",  "Ac", "Th",  "Pa", "U",  "Np", "Pu",  "Am", "Cm",
+    "Bk", "Cf",  "Es", "Fm",  "Md",  "No",  "Lr",  "Rf",  "Db",
+    "Sg",  "Bh",  "Hs",  "Mt",  "Ds",  "Rg",  "Cn",  "Uut",  "Fl",
+     "Uup",  "Lv",  "Uus", "Uuo", ""
+};	
+
 
 bool RangeFile::decomposeIonNames(const std::string &name,
 		std::vector<pair<string,size_t> > &fragments)
@@ -417,6 +442,19 @@ unsigned int RangeFile::write(std::ostream &f, size_t format) const
 		}
 		case RANGE_FORMAT_RRNG:
 		{
+	
+			set<string> elementSet;
+
+			{
+			size_t offset=0;
+			while(strlen(elementList[offset]))
+			{
+				elementSet.insert(elementList[offset]);
+				offset++;
+			}
+
+			}
+
 			f << "[Ions]" << endl;
 			f << "Number=" << ionNames.size() << endl;
 			
@@ -427,6 +465,9 @@ unsigned int RangeFile::write(std::ostream &f, size_t format) const
 		
 			f << "[Ranges] " << endl;
 			f << "Number=" << ranges.size() << endl;
+
+
+
 			for(size_t ui=0;ui<ranges.size();ui++)
 			{
 				std::string colString;
@@ -438,10 +479,25 @@ unsigned int RangeFile::write(std::ostream &f, size_t format) const
 				colString=colString.substr(1);
 				ASSERT(colString.size() == 6);
 
-				f << "Range" << ui+1 <<"=" 
-				<< ranges[ui].first << " " << ranges[ui].second <<
-				" " << ionNames[ionIDs[ui]].first<< ":1" << 
-				" Color:" << colString << endl;
+				//FIXME: This is incomplete. we need to break the species apart into its 
+				// compponents, then decide to use the Element:count notation, or the Name:species notation
+				string strName;
+				strName=ionNames[ionIDs[ui]].first;
+				if(elementSet.find(strName) != elementSet.end())
+				{
+					f << "Range" << ui+1 <<"=" 
+					<< ranges[ui].first << " " << ranges[ui].second <<
+					" " << strName << ":1" << 
+					" Color:" << colString << endl;
+				}
+				else
+				{
+					f << "Range" << ui+1 <<"=" 
+					<< ranges[ui].first << " " << ranges[ui].second <<
+					" " << "Name:" << strName << ":1" << 
+					" Color:" << colString << endl;
+
+				}
 			}
 
 			break;
@@ -484,15 +540,7 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 	}
 
 
-	//switch to "C" style decimal notation (English),
-	//as needed
-	char *oldLocale=setlocale(LC_NUMERIC,NULL);
-
-	//setlocale reserves the right to trash the returned pointer
-	//on subsequent calls (it totally makes sense, or something..).
-	oldLocale=strdup(oldLocale);
-	if(strcmp(oldLocale,"C"))
-		setlocale(LC_NUMERIC,"C");	
+	pushLocale("C",LC_NUMERIC);
 		
 	size_t errCode;
 	switch(fileFormat)
@@ -521,31 +569,19 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 		default:
 			ASSERT(false);
 			fclose(fpRange);
-			if(strcmp(oldLocale,"C"))
-				setlocale(LC_NUMERIC,oldLocale);
-			free(oldLocale);
+			popLocale();
 			return RANGE_ERR_FORMAT;
 	}
 
+	popLocale();
 	fclose(fpRange);
 	if(errCode)
 	{
 		errState=errCode;
-		
-		if(strcmp(oldLocale,"C"))
-			setlocale(LC_NUMERIC,oldLocale);
-		free(oldLocale);
 
 		return errState;
 	}
 
-	//revert back to user's locale, as needed
-	if(strcmp(oldLocale,"C"))
-		setlocale(LC_NUMERIC,oldLocale);
-
-	free(oldLocale);
-	
-	
 	//Run self consistency check on freshly loaded data
 	if(!isSelfConsistent())
 	{
@@ -1259,7 +1295,13 @@ unsigned int RangeFile::readRNGHeader(FILE *fpRange, vector<pair<string,string> 
 			//eat another char if we are using 
 			//windows newlines
 			if(peekVal== '\r')
-				fgetc(fpRange);
+			{
+				if(fgetc(fpRange) == EOF)
+				{
+					delete[] inBuffer;
+					return RANGE_ERR_FORMAT_COLOUR;
+				}
+			}
 		}
 		//Read the input for long name (max 255 chars)
 		if(!fscanf(fpRange, " %255s", inBuffer))
@@ -1358,8 +1400,9 @@ unsigned int RangeFile::readRNGFreqTable(FILE *fpRange, char *inBuffer,const uns
 	{
 
 		//grab the line
-		fgets(inBuffer,MAX_LINE_SIZE,fpRange);
-
+		if(fgets(inBuffer,MAX_LINE_SIZE,fpRange) == NULL)
+			return RANGE_ERR_FORMAT_RANGETABLE;
+		
 	
 		vector<string> entries;
 		std::string tmpStr;
@@ -1658,9 +1701,15 @@ unsigned int RangeFile::openENV(FILE *fpRange)
 	}	
 
 	delete[] inBuffer;
-	//Note that the in-file reported number of ions might actually be too bug
+
+	//Must have encountered a name and range sections,
+	// with at least one range
+	if(!haveNumRanges || ! haveNameBlock)
+		return RANGE_ERR_FORMAT;
+
+	//Note that the in-file reported number of ions might actually be too big
 	//as we "fold" some ions together (eg Si_+ and Si_2+ for us are both considered Si)
-	if(ionNames.size() > numIons || ranges.size() > numRanges)
+	if(ionNames.empty() || ionNames.size() > numIons || ranges.size() > numRanges)
 		return RANGE_ERR_FORMAT;
 
 	//There should be more data following the range information.

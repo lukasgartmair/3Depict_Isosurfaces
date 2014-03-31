@@ -42,9 +42,9 @@ private:
 	MainWindowFrame* MainFrame ;
 	wxArrayString commandLineFiles;
 	wxLocale* usrLocale;
-	long language;
+	//long language;
 
-	void initLanguageSupport();
+	//void initLanguageSupport();
 
 
 public:
@@ -108,7 +108,7 @@ winconsole winC;
 #ifdef __linux__
 #include <fenv.h>
 void trapfpe () {
-  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
+//  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
 }
 #endif
 #endif
@@ -128,12 +128,12 @@ threeDepictApp::threeDepictApp()
 }
 
 
-void threeDepictApp::initLanguageSupport()
+/*void threeDepictApp::initLanguageSupport()
 {
 	language =  wxLANGUAGE_DEFAULT;
 
 	// load language if possible, fall back to English otherwise
-	if(wxLocale::IsAvailable(language))
+	if(false)// (wxLocale::IsAvailable(language))
 	{
 		//Wx 2.9 and above are now unicode, so locale encoding
 		//conversion is deprecated.
@@ -210,7 +210,7 @@ void threeDepictApp::initLanguageSupport()
 		language = wxLANGUAGE_ENGLISH;
 	}
 }
-
+*/
 //Catching key events globally.
 int threeDepictApp::FilterEvent(wxEvent& event)
 {
@@ -411,7 +411,7 @@ void threeDepictApp::MacReopenFile(const wxString &filename)
 bool threeDepictApp::OnInit()
 {
 
-    initLanguageSupport();
+    //initLanguageSupport();
 	
 
     //Set the gettext language

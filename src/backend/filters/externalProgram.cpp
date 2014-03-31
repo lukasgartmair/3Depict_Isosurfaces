@@ -398,7 +398,11 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 					0, 1, 2, 3
 					};
 			if(GenericLoadFloatFile(4, 4, index2, d->data,sTmp.c_str(),dummy,dummyCallback))
+			{
+				delete d;
+				delete dir;
 				return READPOS_FAIL;
+			}
 
 
 			if(alwaysCache)
@@ -440,14 +444,20 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			//try each in turn
 			const char *delimString ="\t, ";
 			if(loadTextData(sTmp.c_str(),dataVec,header,delimString))
+			{
+				delete dir;
 				return READPLOT_FAIL;
+			}
 
 			//Check that the input has the correct size
 			for(unsigned int uj=0;uj<dataVec.size()-1;uj+=2)
 			{
 				//well the columns don't match
 				if(dataVec[uj].size() != dataVec[uj+1].size())
+				{
+					delete dir;
 					return PLOTCOLUMNS_FAIL;
+				}
 			}
 
 			//Check to see if the header might be able
@@ -782,9 +792,6 @@ unsigned int ExternalProgramFilter::getRefreshUseMask() const
 
 bool echoTest()
 {
-	ExternalProgramFilter* f = new ExternalProgramFilter;
-	f->setCaching(false);
-
 	int errCode;
 #if !defined(__WIN32__) && !defined(__WIN64__)
 	errCode=system("echo testing... > /dev/null");
@@ -797,6 +804,9 @@ bool echoTest()
 		return true;
 	}
 	
+	ExternalProgramFilter* f = new ExternalProgramFilter;
+	f->setCaching(false);
+
 	bool needUp;
 	string s;
 				

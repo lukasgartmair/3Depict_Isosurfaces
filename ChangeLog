@@ -1,4 +1,40 @@
-* 30 Oct 2013 : 0.0.15
+* 01 Mar 2014 : 0.0.16
+	Features:
+	- Added experimental LAWATAP (ATO) file support
+		- Please send sample files!
+
+	User Visible Changes:
+	- Animation state now saved/restored	
+	- Plot interaction should be much faster
+	- Minor UI improvements
+		- Filter tree now persistent when interacting, where possible
+		- Mouse hover shows name on plot regions (ranges)
+		- Show user prompt when no filters present
+		- Nicer text fonts
+		- Clustering filter properties simplified
+		- Nicer looking logarithmic plots
+		- Left plot panel now remembers size correctly
+	- Minor 3D drawing fixes
+		- Fixed inside-out cones on bounding box Z-axis
+		- Fixed line-overlap-arrow with large annotation arrow linewidths
+	- Allow loading text files with 3  columns
+	- Fixed random_shuffle not being seeded in transform relabel
+	- Composition profiles now have "min count" mode
+	
+	Techical bugfixes/changes:
+	- Linux automated UI checking, based on dogtail
+	- Bugfix for caching errors in 0.0.15 tarball (already fixed in binary releases)
+		- many filters would incorrectly emit input data after caching
+	- Many minor memory leaks and bugs fixed, due to Coverity scan
+	- No longer launch 3Depict from windows installer
+		- Windows UAC bug : no API for launching unprivileged processes from privileged ones
+	- Fix crash with some tree configurations
+	- Unit tests now check for installed files presence
+	- Fix crash when linked against some mathgl-2 versions
+	- Fixed SVG saving under non-english locales
+	- Add support for qhull2012
+
+* 01 Dec 2013 : 0.0.15
 	Features
 	- Range editing dialog : Rangefiles can be modified via a dialog available from the "edit" menu
 		- A Range filter and a spectra filter must be present first
@@ -177,7 +213,7 @@
 	  callback re-entrancy, which caused some crashes.
 	- Fixed several small memory leaks
 	- More unit testing, and fix some non-working unit tests,
-	  eg transform shuffle, which wansn't checking shuffled state
+	  eg transform shuffle, which wasn't checking shuffled state
 	  correctly, and hence did very little
 	- Minor openMP fixes
 	- Many cppcheck fixes - mostly stylistic, or minor performance improvements

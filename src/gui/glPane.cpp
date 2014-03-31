@@ -702,6 +702,7 @@ void BasicGLPane::keyReleased(wxKeyEvent& event)
 	switch(event.GetKeyCode())
 	{
 		case '-':
+		case '_':
 		case WXK_NUMPAD_SUBTRACT:
 		case WXK_SUBTRACT:
 		{
@@ -715,6 +716,7 @@ void BasicGLPane::keyReleased(wxKeyEvent& event)
 		case '=':
 		case WXK_NUMPAD_ADD:
 		case WXK_ADD:
+		case WXK_NUMPAD_EQUAL:
 		{
 			//Reverse direction of motion
 			cameraMoveRate= -cameraMoveRate;

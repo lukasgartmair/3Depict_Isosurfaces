@@ -43,8 +43,8 @@
 #ifndef THREEDEPICT_H 
 #define THREEDEPICT_H
 
-//Workaround for keypress not detected under MSW wx3.0
-#if wxCHECK_VERSION(2,9,0) && ( defined(__WIN32) || defined(__WIN64))
+//Workaround for keypress not detected under MSW wx3.0 and apple
+#if wxCHECK_VERSION(2,9,0) && ( defined(__WIN32) || defined(__WIN64) || defined(__APPLE__))
 #define WX_TREE_WORKAROUND
 #endif
 
@@ -181,7 +181,7 @@ protected:
     wxStaticLine* stashFilterStaticSep;
     wxStaticText* filteringLabel;
     wxComboBox* comboFilters;
-    wxTreeCtrl* treeFilters;
+    TextTreeCtrl* treeFilters;
     wxStaticText* lastRefreshLabel;
     wxListCtrl* listLastRefresh;
     wxCheckBox* checkAutoUpdate;
@@ -347,6 +347,7 @@ public:
     virtual void OnFilterPropDoubleClick(wxSplitterEvent &event);
     virtual void OnControlUnsplit(wxSplitterEvent &event);
     virtual void OnControlSplitMove(wxSplitterEvent &event);
+    virtual void OnFilterSplitMove(wxSplitterEvent &event);
     virtual void OnTopBottomSplitMove(wxSplitterEvent &event);
     virtual void OnSpectraUnsplit(wxSplitterEvent &event);
     virtual void OnViewSpectraList(wxCommandEvent &event); 
@@ -366,6 +367,7 @@ public:
 
     virtual void OnTreeBeginLabelEdit(wxTreeEvent &evt);
     virtual void OnTreeEndLabelEdit(wxTreeEvent &evt);
+    
     virtual void OnUpdateTimer(wxTimerEvent &evt);
     virtual void OnAutosaveTimer(wxTimerEvent &evt);
 

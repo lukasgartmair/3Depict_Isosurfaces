@@ -22,6 +22,8 @@
 #include <wx/filename.h>
 #include <wx/dir.h>
 
+#include <fstream>
+
 #include "wx/wxcommon.h"
 
 
@@ -30,6 +32,7 @@
 #include "backend/configFile.h"
 #include "backend/filters/algorithms/binomial.h"
 #include "backend/APT/ionhit.h"
+#include "backend/APT/APTFileIO.h"
 
 #include "common/stringFuncs.h"
 #include "common/xmlHelper.h"
@@ -52,6 +55,8 @@ bool basicFunctionTests() ;
 //!Run a few checks on our XML helper functions
 bool XMLTests();
 
+//!Check to see if manifest contents can be found
+bool locateDataTests();
 
 bool basicFunctionTests()
 {
@@ -135,6 +140,15 @@ bool runUnitTests()
 		return false;
 
 	if(!runStateTests())
+		return false;
+
+	if(!locateDataTests())
+		return false;
+
+	if(!testFileIO())
+		return false;
+
+	if(!mglTest())
 		return false;
 
 	cerr << " OK" << endl << endl;
@@ -353,6 +367,133 @@ bool XMLTests()
 	return true;
 }
 
+bool locateDataTests()
+{
+	ifstream manifest;
 
+	vector<string> paths;
+	paths.push_back("./test/manifest.txt");
+	paths.push_back("../test/manifest.txt");
+	paths.push_back("manifest.txt");
+
+	//Try some standard paths
+	bool manifestOK=false;
+	for(unsigned int ui=0;ui<paths.size();ui++)
+	{
+		manifest.open(paths[ui].c_str());
+		if(manifest)
+		{
+			manifestOK=true;
+			break;
+		}
+	}
+
+	//Fall-back to using locate function
+	if(!manifestOK)
+	{
+		std::string str;
+		str=locateDataFile("manifest.txt");
+
+		if(str.size())
+		{
+			manifest.open(str.c_str());
+			manifestOK=manifest;
+		}
+	}
+
+	//Check for manifest existance
+	TEST(manifestOK,"manifest.txt not found. Unable to check package contents.");
+
+
+	//Process manifest
+	//Should look like:
+	//--
+	// [win|mac|lin|all] /path/to/file
+
+	vector<string> failures;
+
+	unsigned int lineNum=0;
+	unsigned int checkedCount=0;
+	while(manifest)
+	{
+		lineNum++;
+		std::string line;
+		getline(manifest,line);
+		line=stripWhite(line);
+
+		if(line.empty() || line[0] == '#')
+			continue;
+
+		std::string arch,path;
+		arch=line.substr(0,3);
+		path=stripWhite(line.substr(4));
+
+		//Find out if we need to check this path
+		// under our current arch
+		bool check;
+		check=false;
+		if(arch == "all")
+			check=true;
+		else
+		{
+			//Check only if compiled for thiarch arch
+			if(arch == "win")
+			{
+#if defined(__WIN32__) || defined(__WIN64)
+				check=true;
+#endif
+			}
+			else if(arch == "lin")
+			{
+#ifdef __linux__
+				check=true;
+#endif
+			}
+			else if(arch == "mac")
+			{
+#ifdef __APPLE__
+				check=true;
+#endif
+			}
+			else
+			{
+				std::string errStr,tmp;
+				errStr="Syntax error in manifest, line " ;
+				stream_cast(tmp,lineNum);
+				errStr+=lineNum;
+				errStr+=". Should start with win/lin/mac/all";
+				TEST(false,errStr);
+			}
+		}
+
+
+		if(check)
+		{
+			std::string newPath;
+			newPath=locateDataFile(path.c_str());
+			ifstream f(newPath.c_str());
+			if(!f)
+			{
+				std::string errStr;
+				errStr="Unable to locate: ";
+				errStr+=path;
+				failures.push_back(errStr);
+			}
+			else
+				checkedCount++;
+		}
+	}
+
+	if(failures.size())
+	{
+		WARN(false,"Failed to locate files in manifest.");
+		for(size_t ui=0;ui<failures.size();ui++)
+		{
+			cerr << failures[ui].c_str() << endl;;
+		}
+	}
+
+	return true;
+}
 
 #endif

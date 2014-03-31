@@ -288,6 +288,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 					{
 						//save the range as a "region"
 						d->regions.push_back(rangeD->rangeFile->getRange(uj));
+						d->regionTitle.push_back(rangeD->rangeFile->getName(ionId));
 						d->regionID.push_back(uj);
 						d->parent=this;
 						//FIXME: Const correctness

@@ -354,7 +354,7 @@ class DrawVector: public DrawableObj
 		void setEnds(const Point3D &start, const Point3D &end);
 
 		//Set to draw both ends
-		void setDoubleEnded(bool wantDoubleEnd=true);
+		void setDoubleEnded(bool wantDoubleEnd=true){doubleEnded=wantDoubleEnd;};
 
 		//!Gets the arrow axis direction
 		Point3D getVector() const { return vector;};
@@ -557,7 +557,7 @@ class DrawAnimatedOverlay : public DrawQuad
 
 		void getBoundingBox(BoundCube &b) const ;
 
-		bool isOK() const { return textureId != (unsigned int)-1; }
+		bool isOK() const { return textureOK; }
 };
 
 //!A sphere drawing 

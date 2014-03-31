@@ -334,6 +334,7 @@ class PlotStreamData : public FilterStreamData
 		std::vector<std::pair<float,float> > xyData;
 		//!Rectangular marked regions
 		vector<std::pair<float,float> > regions;
+		vector<string> regionTitle;
 		//!Region colours
 		vector<float> regionR,regionB,regionG;
 
@@ -631,7 +632,7 @@ class ProgressData
 		bool operator==(const ProgressData &o) const;
 		const ProgressData &operator=(const ProgressData &o);
 
-		void reset() { filterProgress=totalProgress=step=maxStep=0;curFilter=0; stepName.clear();};
+		void reset() { filterProgress=totalProgress=step=maxStep=0;curFilter=0; totalNumFilters=1; stepName.clear();};
 		void clock() { filterProgress=step=maxStep=0;curFilter=0;totalProgress++; stepName.clear();};
 };
 

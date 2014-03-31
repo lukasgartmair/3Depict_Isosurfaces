@@ -17,7 +17,7 @@ MakeIndex=
 QuickBuild=
 
 [document-settings,item:manual.tex]
-Bookmarks=1020,423
+Bookmarks=988,423
 Encoding=UTF-8
 FoldedColumns=
 FoldedLines=
@@ -68,16 +68,16 @@ order=-1
 
 [item:manual.tex]
 archive=true
-column=270
+column=172
 encoding=UTF-8
 highlight=LaTeX
-line=1891
+line=664
 mode=LaTeX
-open=true
+open=false
 order=0
 
 [view-settings,view=0,item:manual.tex]
-CursorColumn=270
-CursorLine=1891
+CursorColumn=172
+CursorLine=664
 JumpList=
-ViMarks=a,423,0,b,1020,0
+ViMarks=a,423,0,b,988,0

@@ -432,9 +432,9 @@ bool filterTreeTests()
 		}
 		catch(bool)
 		{
-			WARN(false,"Couldn't run XML reparse of output file");
+			WARN(false,"Couldn't run XML reparse of output file - write permission?" );
 			wxRemoveFile(wxStr(tmpName));
-			return false;
+			return true;
 		}
 		wxRemoveFile(wxStr(tmpName));
 	}

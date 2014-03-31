@@ -31,14 +31,23 @@ class ClusterAnalysisFilter : public Filter
 	
 		//Algorithm parameters
 		//---	
+
+		//Do we want to enable the core-classification pre-step
+		bool enableCoreClassify;
 		//Core-linkage "core" classification distance
 		float coreDist;
 		//Coring kNN maximum
 		unsigned int coreKNN;
 		//Link distance for core
 		float linkDist;
+		
+		//Enable bulk linking step
+		bool enableBulkLink;
 		//Link distance for bulk
 		float bulkLink;
+
+		//Enable erosion step
+		bool enableErosion;
 		//Erosion distance for bulk from nonclustered bulk
 		float dErosion;
 		//---	
@@ -48,7 +57,6 @@ class ClusterAnalysisFilter : public Filter
 		//well, a meaningful cluster
 		bool wantCropSize;
 		size_t nMin,nMax;
-		bool sizeCountBulk;
 		
 		bool wantClusterSizeDist,logClusterSize;
 

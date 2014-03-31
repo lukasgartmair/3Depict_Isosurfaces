@@ -75,11 +75,14 @@ VisController::VisController()
 
 	limitIonOutput=DEFAULT_POINT_OUTPUT_LIMIT;
 
+
 	amRefreshing=false;
 	pendingUpdates=false;
+	deferClearPlotVisibility=false;
+	
 	curProg.reset();
 	//Assign global variable its init value
-	ASSERT(!delayTime); //Should not have been united yet.
+	ASSERT(!delayTime); //Should not have been inited yet.
 
 	delayTime = new wxStopWatch();
 
@@ -101,6 +104,7 @@ void VisController::abort()
 					
 void VisController::addFilter(Filter *f, bool isBase,size_t parentId)
 { 
+	pushUndoStack();
 	if(!isBase)
 		filterTree.addFilter(f,filterMap[parentId]);
 	else
@@ -542,7 +546,10 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 	vector<DrawableObj *> sceneDrawables;
 	
 	//erase the contents of each plot 
-	targetPlots->clear(true); //Clear, but preserve selection information.
+	if(deferClearPlotVisibility)
+		deferClearPlotVisibility=false;
+	else
+		targetPlots->clear(true); //Clear, but preserve selection information.
 
 
 	//Names for plots
@@ -640,6 +647,7 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 								//using the region data stored
 								//in the plot stream
 								plotNew->regionGroup.addRegion(plotData->regionID[ui],
+									plotData->regionTitle[ui],	
 									plotData->regions[ui].first,
 									plotData->regions[ui].second,
 									plotData->regionR[ui],
@@ -764,6 +772,7 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 						}
 						default:
 							ASSERT(false);
+							delete v;
 							;
 					}
 
@@ -898,6 +907,8 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 			displayList->endList();
 			targetScene->addDrawable(displayList);
 		}
+
+		delete displayList;
 	}
 	else
 	{
@@ -1062,6 +1073,7 @@ bool VisController::saveState(const char *cpFilename, std::map<string,string> &f
 	//Make a copy of the state, as some variables are still stored in viscontrol's scope
 	state=currentState; 
 	
+	
 	//-- scene variables --
 	float rBack,gBack,bBack;
 	targetScene->getBackgroundColour(rBack,gBack,bBack);
@@ -1075,12 +1087,48 @@ bool VisController::saveState(const char *cpFilename, std::map<string,string> &f
 	state.setEffectsByCopy(effectVec);
 	//------
 
+	//Plotting variables
+	//------------------
+	//TODO: Migrate plot status out of viscontrol
+	// and into state
+	state.setPlotLegend(targetPlots->getLegendVisible());
+
+	{
+	vector<unsigned int> visiblePlotIDs;
+	targetPlots->getVisibleIDs(visiblePlotIDs);
+	
+	//Obtain filter pointer -> serialised name data
+	map<const Filter *,string> serialisedFilterNames;
+	filterTree.serialiseToStringPaths(serialisedFilterNames);
+
+	vector<pair<string, unsigned int> > visiblePlotNames;
+	visiblePlotNames.resize(visiblePlotIDs.size());
+
+	for(size_t ui=0;ui<visiblePlotIDs.size (); ui++)
+	{
+		unsigned int thisID;
+		thisID= visiblePlotIDs[ui];
+
+		const Filter *f;
+		f=(const Filter *)targetPlots->getParent(thisID);
+	
+		ASSERT(serialisedFilterNames.find(f) != serialisedFilterNames.end());
+		visiblePlotNames[ui] = make_pair(
+			serialisedFilterNames[f], targetPlots->getParentIndex(thisID));
+	}
+
+	state.setEnabledPlots(visiblePlotNames);
+	}
+	//------------------
+
 	//-- viscontrol variables
 	state.setFilterTreeByClone(filterTree);
 	//--
 
 	if(resetModifyLevel)
 		currentState.setStateModified(false);
+
+
 	return state.save(cpFilename,fileMapping,writePackage);
 }
 
@@ -1125,6 +1173,37 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 		currentState.copyEffects(e);
 		targetScene->setEffectVec(e);
 		//----
+
+		//Conver the enabled plots to underlying
+		// pointer representation, then pass to 
+		// plot functions, so it can enable plots
+		// after refresh
+		vector<pair<string, unsigned int> > enabledPlotsPath;
+		currentState.getEnabledPlots(enabledPlotsPath);
+
+		map<string,const Filter *> pathMap;
+		filterTree.serialiseToStringPaths(pathMap);	
+		
+		vector<pair<const void *, unsigned int> > enabledPlotsPtr;
+		for(unsigned int ui=0;ui<enabledPlotsPath.size();ui++)
+		{
+			std::string curPath;
+			curPath=enabledPlotsPath[ui].first;
+			//Check to see if the filter tree we loaded
+			// has the same info as the selected item
+			if(pathMap.find(curPath)!=pathMap.end())
+			{
+		
+				enabledPlotsPtr.push_back(
+					make_pair((void *)pathMap[curPath],enabledPlotsPath[ui].second));
+			}
+		}
+
+		//override the target plots internal rep. of what is visible,
+		// so that at next refresh it will pick this up and auto-select the plots,
+		// if it caun
+		targetPlots->overrideLastVisible(enabledPlotsPtr); 
+		deferClearPlotVisibility=true;
 	}
 
 
@@ -1381,6 +1460,17 @@ void VisController::setEffects(bool enable)
 	targetScene->setEffects(enable);
 }
 
+void VisController::setAnimationState(const PropertyAnimator &p,
+		const std::vector<pair<string,size_t> > &pathMapping) 
+{
+	//Add animation state saving
+	currentState.setAnimationState(p,pathMapping);
+}
+
+void VisController::getAnimationState(PropertyAnimator &p, std::vector<pair<string,size_t> > &pathMapping) const
+{
+	currentState.getAnimationState(p,pathMapping);
+}
 
 bool VisController::hasHazardousContents() const
 {
