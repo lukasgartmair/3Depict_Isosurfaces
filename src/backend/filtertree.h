@@ -21,7 +21,6 @@
 
 #include "tree.hh"
 #include "filter.h"
-#include "common/bimap.h"
 
 #include <map>
 #include <utility>
