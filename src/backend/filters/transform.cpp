@@ -1111,7 +1111,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		}
 		//Shuffle the value data.TODO: callback functor	
 
-#ifndef HAVE_CPP1X 
+#ifndef HAVE_CPP1X
 		std::srand(time(0));
 		std::random_shuffle(massData.begin(),massData.end());
 #else
