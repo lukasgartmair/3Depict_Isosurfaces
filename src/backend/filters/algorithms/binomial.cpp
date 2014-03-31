@@ -61,7 +61,6 @@ int countBinnedIons(const std::vector<IonHit> &ions, const RangeFile *rng,
 			const std::vector<size_t> &selectedIons, const SEGMENT_OPTION &segmentOptions,
 			vector<GRID_ENTRY> &completedGridEntries)
 {
-	ASSERT(rng);
 
 	//Step 1 - filter the ions to only the ranges we want to examine
 	std::vector<IonHit> filteredIons;
@@ -164,16 +163,12 @@ int countBinnedIons(const std::vector<IonHit> &ions, const RangeFile *rng,
 #pragma omp parallel for 
 	for(size_t ui=0;ui<nGrids;ui++)
 	{
-		//Set the end 
+		//Set the start and end 
 		gridEntries[ui].nIons.resize(selectedIons.size(),0);
 		gridEntries[ui].totalIons=0;
 		gridEntries[ui].startPt[extrusionAxis]=gridEntries[ui].endPt[extrusionAxis]=zStart;
 
 		setGridABCoords(ui,direction,nBins,binLen,totalBound,gridEntries[ui]);
-	
-		//Set the start, but not the end - as we do that when we have
-		// finished extruding
-		gridEntries[ui].startPt[extrusionAxis]=gridEntries[ui].startPt[extrusionAxis];
 	}
 	//--
 
