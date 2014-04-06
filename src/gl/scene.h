@@ -201,7 +201,10 @@ class Scene
 		//!remove a drawable object
 		void removeDrawable(unsigned int);
 
-		void setActiveCam();
+		//!Set the active camera directly
+		// note that the pointer becomes "owned" by the scene.
+		// any previous active camera will be deleted
+		void setActiveCam(Camera *c);
 		//! set the active camera
 		void setActiveCamByClone(const Camera *c);
 

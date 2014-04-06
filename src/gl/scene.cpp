@@ -643,12 +643,26 @@ void Scene::setAspect(float newAspect)
 {
 	outWinAspect=newAspect;
 }
+void Scene::setActiveCam(Camera *c)
+{
+	if(tempCam)
+		discardTempCam();
+
+	if(activeCam)
+		delete activeCam;
+
+	activeCam = c;
+	cameraSet=true;
+}
 
 void Scene::setActiveCamByClone(const Camera *c)
 {
 	if(tempCam)
 		discardTempCam();
 
+	if(activeCam)
+		delete activeCam;
+	
 	activeCam = c->clone();
 	cameraSet=true;
 }

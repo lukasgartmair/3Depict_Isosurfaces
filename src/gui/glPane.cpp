@@ -924,7 +924,7 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	wxProgressDialog *wxD=0;	
 
 
-	//Only show progress for mutliple tiles
+	//Only show progress for multiple tiles
 	std::string tmpStr,tmpStrTwo;
 	stream_cast(tmpStrTwo,nRow*nCol);
 	
@@ -1044,10 +1044,12 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 	wxD->Show();
 	std::string tmpStr,tmpStrTwo;
 	stream_cast(tmpStrTwo,nFrames);
+
+	Camera *origCam=currentScene.getActiveCam()->clone();
+	
+	
 	for(unsigned int ui=0;ui<nFrames;ui++)
 	{
-		Camera *c;
-		float angle;
 		std::string digitStr;
 
 		//Create a string like 00001, such that there are always leading zeros
@@ -1055,19 +1057,22 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 
 		//Manipulate the camera such that it orbits around its current axis
 		//FIXME: Why is this M_PI, not 2*M_PI???
+		float angle;
 		angle= (float)ui/(float)nFrames*M_PI;
 
-		//create a new temp camera
-		currentScene.setTempCam();
-		c=currentScene.getTempCam();
-		//Rotate the temporary camera
-		c->move(angle,0);
+		Camera *modifiedCam;
+		modifiedCam=origCam->clone();
+		modifiedCam->move(angle,0);
+		currentScene.setActiveCam(modifiedCam);
 
 		//Save the result
 		outFile = string(stlStr(path))+ string("/") + 
 				string(stlStr(prefix))+digitStr+ string(".") + string(stlStr(ext));
 		if(!saveImage(resX,resY,outFile.c_str(),false, false))
+		{
+			currentScene.setActiveCam(origCam);
 			return false;
+		}
 
 		//Update the progress bar
 		stream_cast(tmpStr,ui+1);
@@ -1078,6 +1083,8 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 
 		Refresh();
 	}
+
+	currentScene.setActiveCam(origCam);
 
 	//Discard the current temp. cam to return the scene back to normal
 	currentScene.discardTempCam();
