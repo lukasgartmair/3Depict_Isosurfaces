@@ -1,6 +1,6 @@
 Name:		3Depict
-Version:	0.0.15
-Release:	4%{?dist}
+Version:	0.0.16
+Release:	1%{?dist}
 Summary:	Valued 3D point cloud visualization and analysis
 Group:		Applications/Engineering
 
@@ -112,6 +112,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Sun Apr 06 2014 D Haley <mycae(a!t)gmx.com> - 0.0.16-1
+- Update to 0.0.16
+
 * Wed Feb 12 2014 D Haley <mycae(a!t)gmx.com> - 0.0.15-4
 - Rebuild for mgl
 
