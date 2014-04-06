@@ -1,11 +1,9 @@
 Description: Debian uses different text domain for the lang files
 Forwarded: not-needed
 Author: D Haley <mycae - gmx - com>
-Index: 3depict-0.0.14/src/3Depict.cpp
-===================================================================
---- 3depict-0.0.14.orig/src/3Depict.cpp	2013-07-20 14:41:45.000000000 +0200
-+++ 3depict-0.0.14/src/3Depict.cpp	2013-07-20 18:36:33.000000000 +0200
-@@ -165,7 +165,7 @@
+--- 3depict-0.0.16.orig/src/3Depict.cpp
++++ 3depict-0.0.16/src/3Depict.cpp
+@@ -166,7 +166,7 @@
  		else
  		{
  			//Set the gettext language
@@ -14,7 +12,7 @@ Index: 3depict-0.0.14/src/3Depict.cpp
  			setlocale (LC_ALL, "");
  #ifdef __WXMAC__
  			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
-@@ -197,8 +197,8 @@
+@@ -198,8 +198,8 @@
  					break;
  			}			
  #else

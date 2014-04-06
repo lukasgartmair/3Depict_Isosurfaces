@@ -2,10 +2,8 @@ Description: Debian packages are lowercase, but upstream uses uppercase
  "D"
 Forwarded: not-needed
 Author: D Haley <mycae - gmx - com>
-Index: 3depict-0.0.14/packaging/3Depict.desktop
-===================================================================
---- 3depict-0.0.14.orig/packaging/3Depict.desktop	2013-03-22 19:31:39.000000000 +0100
-+++ 3depict-0.0.14/packaging/3Depict.desktop	2013-07-20 18:36:33.000000000 +0200
+--- 3depict-0.0.16.orig/packaging/3Depict.desktop
++++ 3depict-0.0.16/packaging/3Depict.desktop
 @@ -2,8 +2,8 @@
  Version=1.0
  Type=Application

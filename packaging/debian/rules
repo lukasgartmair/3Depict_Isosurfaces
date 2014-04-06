@@ -20,7 +20,6 @@ override_dh_clean:
 
 	dh_clean 
 
-
 override_dh_auto_install: 
 	dh_auto_install
 	
@@ -28,7 +27,7 @@ override_dh_auto_install:
 	mv $(CURDIR)/debian/3depict/usr/bin/3Depict $(CURDIR)/debian/3depict/usr/bin/3depict
 
 	mkdir -p $(CURDIR)/debian/3depict/usr/share/doc/3depict/
-	echo "Copyright 2013 D Haley <mycae@yahoo.com>" > $(CURDIR)/debian/3depict/usr/share/doc/3depict/copyright
+	echo "Copyright" `date +%Y`" D Haley <mycae@yahoo.com>" > $(CURDIR)/debian/3depict/usr/share/doc/3depict/copyright
 	echo "See /usr/share/common-licenses/GPL-1 for copyright info" >> $(CURDIR)/debian/3depict/usr/share/doc/3depict/copyright
 
 	#Install files that cannot be handled by .install due to rename
@@ -38,7 +37,7 @@ override_dh_auto_install:
 	#install icon (both SVG and XPM) into pixmaps
 	install -Dp -m 644 $(CURDIR)/data/3Depict.xpm $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.xpm
 	install -Dp -m 644 $(CURDIR)/data/textures/tex-source/3Depict-icon.svg $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.svg
-	install -Dp -m 644 $(CURDIR)/data/manual.pdf $(CURDIR)/debian/3depict/usr/share/3depict/3depict-manual.pdf
+	install -Dp -m 644 $(CURDIR)/docs/manual-latex/manual.pdf $(CURDIR)/debian/3depict/usr/share/3depict/3depict-manual.pdf
 	#---
 	
 	#Install the pre-built locale files that are shipped with the tarball.

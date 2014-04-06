@@ -1,21 +1,39 @@
+3depict (0.0.16-1) UNRELEASED; urgency=medium
+
+  * Update to upstream 0.0.16
+
+ -- D Haley <mycae@gmx.com>  Sun, 06 Apr 2014 23:11:51 +0100
+
+3depict (0.0.15-3) unstable; urgency=medium
+
+  * Adjust dependencies to force mgl>=2 (Closes: #737284)
+
+ -- D Haley <mycae@gmx.com>  Wed, 12 Feb 2014 22:14:51 +0100
+
+3depict (0.0.15-2) unstable; urgency=medium
+
+  * Really remove unit tests (Closes: #730100)
+  * Adjust ac_header for mgl detection
+  * Apply upstream patch for cache bug
+  * Add missing files to debian/copyright
+
+ -- D Haley <mycae@gmx.com>  Mon, 20 Jan 2014 06:25:38 +0100
+
 3depict (0.0.15-1) unstable; urgency=low
 
-  * Update to 0.0.15
+  * update to upstream
+  * Remove unit tests (Closes: #730100)
+  * Upstream has updated autotools (Closes: #727842)
 
- -- D Haley <mycae@gmx.com>  Fri, 15 Nov 2013 20:42:37 +0100
+ -- D Haley <mycae@gmx.com>  Sun, 01 Dec 2013 18:25:12 +0100
 
 3depict (0.0.14-1) unstable; urgency=low
 
-  * Update to upstream
-
- -- D Haley <mycae@gmx.com>  Sat, 20 Jul 2013 18:31:32 +0200
-
-3depict (0.0.13-2) unstable; urgency=low
-
+  * Update to upstream, 0.0.14
   * Enable mathgl2.x configure option
   * Modify build-depends, libmgl-dev >= 2.1.32
 
- -- D Haley <mycae@gmx.com>  Sat, 15 Jun 2013 20:44:01 +0200
+ -- D Haley <mycae@gmx.com>  Sat, 20 Jul 2013 18:31:32 +0200
 
 3depict (0.0.13-1) unstable; urgency=low
 
