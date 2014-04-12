@@ -28,6 +28,9 @@
 #include <wx/dnd.h>
 #include <wx/grid.h>
 #include <wx/treectrl.h>
+#if wxCHECK_VERSION(2,9,0)
+#include <wx/filehistory.h>
+#endif
 // end wxGlade
 
 //Local stuff
