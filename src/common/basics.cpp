@@ -1146,23 +1146,37 @@ bool isValidXML(const char *filename)
 	WARN(!result,"xmllint not installed in system PATH, cannot perform debug check")
 	return true;
 }
-#endif
 
-#if !defined(__WIN32__) && !defined(__WIN64)
 	
+//FIXME: Why negative?
 bool isNotDirectory(const char *filename)
 {
+#if !defined(__WIN32__) && !defined(__WIN64__)
 	struct stat statbuf;
 
 	if(stat(filename,&statbuf) == -1)
 		return false;
 
 	return (statbuf.st_mode !=S_IFDIR);
+#else
+
+	WARN(false, "Untested function. calling win api");
+	DWORD fileAttribs;
+	fileAttribs=GetFileAttributes((LPCWSTR)filename);
+	if(fileAttribs == INVALID_FILE_ATTRIBUTES)
+		return false;
+
+	return !(fileAttribs & FILE_ATTRIBUTE_DIRECTORY);
+#endif
 }
 
 bool rmFile(const std::string &filename)
 {
+#if !defined(__WIN32__) && !defined(__WIN64__)
 	return remove(filename.c_str()) == 0;
+#else
+	WARN(false, "Untested function. calling win api");
+	return DeleteFile((LPCWSTR)filename.c_str());
+#endif
 }
-
 #endif

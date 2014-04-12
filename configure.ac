@@ -327,12 +327,10 @@ else
 		#check our set HAVE_MGL_H for *any* mglh
 		AS_IF([ test $HAVE_MGL_H -ne 1 ] , [ AC_MSG_ERROR(["MGL headers not found, looking for any of $MGL_TEST_HEADERS"])]) 
 
-		
-
 		#Check MGL 2:
-		AS_IF([ test x"$ac_cv_header_mgl2_mgl_cf_h" != x"" ], [ USE_MGL2=1; ], [ USE_MGL2=0])
+		AS_IF([ test x"$ac_cv_header_mgl2_mgl_cf_h" == x"yes" ], [ AC_DEFINE(USE_MGL2,1)  ], [ USE_MGL2=0 ])
 
-		AC_DEFINE(USE_MGL2,$USE_MGL2)
+		
 		
 		AC_CHECK_LIB(mgl, mgl_set_def_param, [AC_DEFINE(HAVE_MGL,[],[MathGL compilation OK])] , 
 				AC_MSG_ERROR([Required MathGL libraries not found]), -lmgl)

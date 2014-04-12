@@ -304,7 +304,11 @@ void MathGLPane::render(wxPaintEvent &event)
 		imageCacheBmp=wxImage(w,h,(unsigned char*)rgbdata,true);
 		free(rgbdata);
 	#else
-		imageCacheBmp=wxImage(w,h,const_cast<unsigned char*>(gr->GetBits()),true);
+		unsigned char *tmp;
+		tmp=const_cast<unsigned char*>(gr->GetBits());
+		wxImage imTmp;
+		imTmp=wxImage(w,h,tmp,true);
+		imageCacheBmp=wxBitmap(imTmp);
 	#endif
 	}
 
@@ -1404,9 +1408,13 @@ bool MathGLPane::toPlotCoords(int winX, int winY,float &resX, float &resY) const
 	if(plotIsLogarithmic)
 	{
 		float plotMinY,plotMaxY;
+#if USE_MGL2
 		plotMinY=gr->Self()->Min.y;
 		plotMaxY=gr->Self()->Max.y;
-		
+#else
+		plotMinY=gr->Min.y;
+		plotMaxY=gr->Max.y;
+#endif
 		float proportion =(pt.y-plotMinY)/(plotMaxY-plotMinY);
 		float tmp = proportion*(log10(plotMaxY)-log10(plotMinY)) + log10(plotMinY); 
 		
@@ -1424,8 +1432,11 @@ bool MathGLPane::toWinCoords(float plotX, float plotY, float &winX, float &winY)
 	tmp=gr->CalcScr(mglPoint(plotX,plotY));
 	winX=tmp.x; winY=tmp.y;
 #else
-
-	gr->CalcScr(mglPoint(plotX,plotY),&winX,&winY);
+	
+	int iWinX,iWinY;
+	iWinX=winX;
+	iWinY=winY;
+	gr->CalcScr(mglPoint(plotX,plotY),&iWinX,&iWinY);
 #endif
 
 	if(plotIsLogarithmic)

@@ -4,7 +4,11 @@
 #include <fstream>
 #include <limits>
 
+#include "config.h"
 
+#include "common/assertion.h"
+
+#ifdef USE_MGL2
 #include <mgl2/canvas_wnd.h>
 
 #include "common/basics.h"
@@ -145,4 +149,11 @@ bool mglTest()
 	return true;
 }
 
+#else
+bool mglTest()
+{
+	WARN(false,"MGL tests not implemented for mgl 1.x");
+	return true;
+}
+#endif
 #endif

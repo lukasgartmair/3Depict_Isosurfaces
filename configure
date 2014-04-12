@@ -3319,7 +3319,6 @@ END
     as_fn_error $? "Your 'rm' program is bad, sorry." "$LINENO" 5
   fi
 fi
-
 ac_ext=cpp
 ac_cpp='$CXXCPP $CPPFLAGS'
 ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -6900,16 +6899,14 @@ done
    as_fn_error $? "\"MGL headers not found, looking for any of $MGL_TEST_HEADERS\"" "$LINENO" 5
 fi
 
-
-
 		#Check MGL 2:
-		if  test x"$ac_cv_header_mgl2_mgl_cf_h" != x"" ; then :
-   USE_MGL2=1;
+		if  test x"$ac_cv_header_mgl2_mgl_cf_h" == x"yes" ; then :
+   $as_echo "#define USE_MGL2 1" >>confdefs.h
+
 else
    USE_MGL2=0
 fi
 
-		$as_echo "#define USE_MGL2 \$USE_MGL2" >>confdefs.h
 
 
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mgl_set_def_param in -lmgl" >&5
