@@ -1351,16 +1351,6 @@ void DrawGLText::draw() const
 	
 	glPopMatrix();
 
-/*	//DEBUG ONLY
-	//--
-	//Draw the b-box
-	DrawRectPrism d;
-	BoundCube b;
-	getBoundingBox(b);
-	d.setAxisAligned(b);
-	d.draw();
-	//--
-*/
 }
 
 DrawGLText::~DrawGLText()
@@ -1390,10 +1380,7 @@ void DrawGLText::getBoundingBox(BoundCube &b) const
 		float maxX,maxY,maxZ;
 		font->BBox(strText.c_str(),minX,minY,minZ,maxX,maxY,maxZ);
 
-		//cerr << "Dx :" << maxX-minX << endl;
 		float dy=maxY-minY;
-		//cerr << "Dy :" << maxY-minY << endl;
-		//cerr << "Dz :" << maxZ-minZ << endl;
 
 
 		b.setBounds(minX,minY,minZ,
@@ -1425,8 +1412,6 @@ void DrawGLText::getBoundingBox(BoundCube &b) const
 
 		}
 		//--
-		DrawManyPoints manyP;
-		manyP.setSize(6.0f);
 
 		//Compute R2 axis
 		//--
@@ -1444,7 +1429,6 @@ void DrawGLText::getBoundingBox(BoundCube &b) const
 		else
 			r2Axis=up;
 
-		//cerr <<  "r2 Axis :" << r2Axis <<  " :" << angle << endl;
 		//--
 
 		//Compute R2'(P)
@@ -1468,19 +1452,9 @@ void DrawGLText::getBoundingBox(BoundCube &b) const
 
 		}
 
-
-		manyP.clear(); manyP.addPoints(p); manyP.draw();
-		
 		for(size_t ui=0;ui<p.size();ui++)
-		{
 			p[ui]+=origin ; 
-		}
 
-		manyP.clear();
-		manyP.addPoints(p);
-		manyP.setColour(0,1,0,1);
-		manyP.draw();
-	
 		b.setBounds(p);
 	}
 	else
