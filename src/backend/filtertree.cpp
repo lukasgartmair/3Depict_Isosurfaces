@@ -668,9 +668,16 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 						currentFilter->setCaching(false);
 						break;
 					case CACHE_DEPTH_FIRST:
-						currentFilter->setCaching(cacheBytes/(1024*1024) < maxCachePercent*getAvailRAM());
-						break;
+					{
+						float ramFreeForUse;
+						ramFreeForUse= maxCachePercent/(float)100.0f*getAvailRAM();
 
+						bool cache;
+						cache=(cacheBytes/(1024*1024) ) < ramFreeForUse;
+
+						currentFilter->setCaching( cache);
+						break;
+					}
 				}
 			}
 			else
