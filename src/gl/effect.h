@@ -74,6 +74,7 @@ class Effect
 		virtual bool writeState(std::ofstream &f, 
 				unsigned int format, unsigned int depth) const=0;
 		//read the effects state information from an XML file
+		// Should be pointing to the top-level of effect element (eg <anaglyph>)
 		virtual bool readState(xmlNodePtr n)=0;
 
 		virtual bool needCamUpdate() const { return false;}

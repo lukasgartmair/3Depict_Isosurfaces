@@ -465,6 +465,9 @@ bool BoxCropEffect::readState(xmlNodePtr nodePtr)
 {
 	using std::string;
 
+	if(!nodePtr->xmlChildrenNode)
+		return false;
+
 	nodePtr=nodePtr->xmlChildrenNode;
 	xmlNodePtr scalars;
 	if(XMLHelpFwdToElem(nodePtr,"cropvalues"))
@@ -615,6 +618,10 @@ bool AnaglyphEffect::readState(xmlNodePtr nodePtr)
 {
 	using std::string;
 
+	if(!nodePtr->xmlChildrenNode)
+		return false;
+	nodePtr=nodePtr->xmlChildrenNode;
+	
 	if(!XMLGetNextElemAttrib(nodePtr,colourMode,"colourmode","value"))
 		return false;
 	if(colourMode >= ANAGLYPH_HALF_COLOUR)
