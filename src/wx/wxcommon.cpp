@@ -91,8 +91,10 @@ std::string locateDataFile(const char *name)
 				return s;
 		}
 	}
-
-	return std::string("");
+	else if(wxFileExists(wxStr(s)))
+		return s;
+	else
+		return std::string("");
 #elif defined( __linux__)
 
 	//Possible search paths. Must have trailing slash. will
@@ -134,7 +136,6 @@ std::string locateDataFile(const char *name)
 			return s;
 #else
 
-	//E.g. Mac
 	//	- Look in cwd
 	if(wxFileExists(wxCStr(name)))
 		return  std::string(name);
