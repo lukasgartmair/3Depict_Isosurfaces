@@ -40,17 +40,17 @@ enum
 	KEY_SPECTRUM_COLOUR
 };
 
-//Limit user to one :million: bins
-const unsigned int SPECTRUM_MAX_BINS=1000000;
+//Limit user to two :million: bins
+const unsigned int SPECTRUM_MAX_BINS=2000000;
 
-const unsigned int SPECTRUM_AUTO_MAX_BINS=25000;
+const unsigned int SPECTRUM_AUTO_MAX_BINS=45000;
 
 SpectrumPlotFilter::SpectrumPlotFilter()
 {
 	minPlot=0;
 	maxPlot=150;
 	autoExtrema=true;	
-	binWidth=0.5;
+	binWidth=0.05;
 	plotStyle=0;
 	logarithmic=1;
 
