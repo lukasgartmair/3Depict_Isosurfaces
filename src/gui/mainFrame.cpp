@@ -5378,13 +5378,18 @@ void MainWindowFrame::restoreConfigDefaults()
 		{
 			const unsigned int ROUGH_NUMBER_TIPS=22;
 			bool wantTipsAgain;
-			wxTipProvider *tipProvider = wxCreateFileTipProvider(wxStr(tipFile), (float)rand()/(float)RAND_MAX*(float)ROUGH_NUMBER_TIPS);
-			wantTipsAgain=wxShowTip(this, tipProvider);
+			wxTipProvider *tipProvider = wxCreateFileTipProvider(wxStr(tipFile), 
+					(size_t) ((float)rand()/(float)RAND_MAX*(float)ROUGH_NUMBER_TIPS));
+
+			if(tipProvider)
+			{
+				wantTipsAgain=wxShowTip(this, tipProvider);
+				delete tipProvider;
+			}
 
 			if(!wantTipsAgain)
 				configFile.setWantStartupTips(false);
 
-			delete tipProvider;
 		}
 		else
 		{

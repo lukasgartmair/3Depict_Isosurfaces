@@ -5,8 +5,6 @@ TODO List - worlds simplest bugtracking system
 --Main app--
 	To Implement:
 		== Next version ==
-		* Camera animation for export doens't work with tiling
-			- Can have tiling with no animation, or animation with no tiling, but not both 
 	
 		== Eventually == 
 		* Support for XY scatter plots
