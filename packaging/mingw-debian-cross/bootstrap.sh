@@ -1190,6 +1190,22 @@ function make_package()
 		exit 1
 	fi
 
+	
+	#Check that each file in the data/textures/ dir is listed in the NSI file
+	FILE_MISSED=0
+	for i in  data/textures/*png
+	do
+		FILE_GREP=`grep "data\\textures\\$i" windows-installer.nsi`
+		if [ x${FILE_GREP} == x"" ] ; then
+			echo "MISSING FILE: " $i
+			FILE_MISSED=1
+		fi
+	done
+
+	if [ $FILE_MISSED -ne 0 ] ; then
+		exit 1
+	fi
+
 	#Insert DLL names automatically
 	cp windows-installer.nsi tmp.nsi
 	echo $FOUND_DLLS | sed 's/ /\n/g' |  sed 's@^@  File \"src\\@' | sed 's/$/\"/' > tmp-insert
