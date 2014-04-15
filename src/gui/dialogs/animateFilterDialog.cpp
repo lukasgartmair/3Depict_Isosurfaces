@@ -166,7 +166,7 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
     lblImageName = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("File Suffix: "));
     textImageName = new wxTextCtrl(frameViewPane, ID_TEXTBOX_IMAGEPREFIX, wxEmptyString);
     labelImageSize = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("Size : "));
-    textImageSize = new wxTextCtrl(frameViewPane, ID_TEXTBOX_IMAGESIZE, wxEmptyString);
+    textImageSize = new wxTextCtrl(frameViewPane, ID_TEXTBOX_IMAGESIZE, wxEmptyString, wxDefaultPosition,wxDefaultSize, wxTE_READONLY );
     buttonImageSize = new wxButton(frameViewPane, ID_BUTTON_IMAGE_RES, wxTRANS("..."));
     checkPoints = new wxCheckBox(frameViewPane, ID_CHECK_POINT_OUT, wxTRANS("Point data"));
     checkPlotData = new wxCheckBox(frameViewPane, ID_CHECK_PLOT_OUT, wxTRANS("Plots"));
@@ -215,9 +215,6 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
     programmaticEvent=true;
 
     //-- set up the default properties for dialog back-end data
-    imageWidth=640;
-    imageHeight=480;
-    imageSizeOK=true;
 
     //Plot check status
     wantPlotOutput=checkPlotData->IsChecked();
@@ -228,11 +225,6 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
     wantRangeOutput=checkRangeData->IsChecked();
     wantOnlyChanges=checkOutOnlyChanged->IsChecked();
 
-    string sFirst,sSecond;
-    stream_cast(sFirst,imageWidth);
-    stream_cast(sSecond,imageHeight);
-    textImageSize->SetValue(wxStr(string(sFirst+string("x")+sSecond)));
-    textImageSize->SetBackgroundColour(wxNullColour);
 
     comboRangeFormat->Enable(checkRangeData->IsChecked());
 
@@ -261,7 +253,6 @@ BEGIN_EVENT_TABLE(ExportAnimationDialog, wxDialog)
     EVT_CHECKBOX(ID_CHECK_ONLYDATACHANGE, ExportAnimationDialog::OnCheckOutDataChange)
     EVT_CHECKBOX(ID_CHECK_IMAGE_OUT, ExportAnimationDialog::OnCheckImageOutput)
     EVT_TEXT(ID_TEXTBOX_IMAGEPREFIX, ExportAnimationDialog::OnImageFilePrefix)
-    EVT_TEXT(ID_TEXTBOX_IMAGESIZE, ExportAnimationDialog::OnTextImageSize)
     EVT_BUTTON(ID_BUTTON_IMAGE_RES, ExportAnimationDialog::OnBtnResolution)
     EVT_CHECKBOX(ID_CHECK_POINT_OUT, ExportAnimationDialog::OnCheckPointOutput)
     EVT_CHECKBOX(ID_CHECK_PLOT_OUT, ExportAnimationDialog::OnCheckPlotOutput)
@@ -275,6 +266,17 @@ BEGIN_EVENT_TABLE(ExportAnimationDialog, wxDialog)
     // end wxGlade
 END_EVENT_TABLE();
 
+void ExportAnimationDialog::setDefImSize(unsigned int w, unsigned int h)
+{
+    imageWidth=w; imageHeight=h;
+    
+    string sFirst,sSecond;
+    stream_cast(sFirst,imageWidth);
+    stream_cast(sSecond,imageHeight);
+    textImageSize->SetValue(wxStr(string(sFirst+string("x")+sSecond)));
+    
+    imageSizeOK=true;
+}
     
 bool ExportAnimationDialog::getModifiedTree(size_t frame, FilterTree &t,bool &needsUp) const
 {
@@ -1019,46 +1021,6 @@ void ExportAnimationDialog::OnImageFilePrefix(wxCommandEvent &event)
 	update();
 }
 
-
-void ExportAnimationDialog::OnTextImageSize(wxCommandEvent &event)
-{
-
-	if(programmaticEvent)
-		return;
-
-	string s;
-	s=stlStr(textImageSize->GetValue());
-	
-	bool parseOK=true;
-	size_t pos;
-	pos = s.find('x'); 
-	if(pos==string::npos)
-		parseOK=false;
-	else
-	{
-		string first,last;
-		first = s.substr(0,pos);
-		last=s.substr(pos+1);
-
-
-		size_t w,h;
-		if(stream_cast(w,first))
-			parseOK&=false;
-
-		
-		if(stream_cast(h,last))
-			parseOK&=false;
-	}
-
-	if(!parseOK)
-		textImageSize->SetBackgroundColour(*wxCYAN);
-	else
-		textImageSize->SetBackgroundColour(wxNullColour);
-	
-	//update UI (eg OK button)
-	update();
-
-}
 
 void ExportAnimationDialog::OnBtnResolution(wxCommandEvent &event)
 {

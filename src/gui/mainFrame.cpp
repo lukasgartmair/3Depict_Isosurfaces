@@ -1793,12 +1793,14 @@ void MainWindowFrame::OnFileExportFilterVideo(wxCommandEvent &event)
 	}
 
 
-	ExportAnimationDialog *exportDialog = 
-		new ExportAnimationDialog(this, wxID_ANY, wxEmptyString);
-
 
 	int w, h;
 	panelTop->GetClientSize(&w,&h);
+	
+	ExportAnimationDialog *exportDialog = 
+		new ExportAnimationDialog(this, wxID_ANY, wxEmptyString);
+	exportDialog->setDefImSize(w,h);
+
 
 	//FIXME: Tree ownership is very complex, making code here brittle
 	// - order of operations for initing the export dialog is important

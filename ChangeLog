@@ -17,13 +17,15 @@
 	- Minor 3D drawing fixes
 		- Fixed inside-out cones on bounding box Z-axis
 		- Fixed line-overlap-arrow with large annotation arrow linewidths
-	- Allow loading text files with 3  columns
+	- Allow loading text files with 3 columns
 	- Fixed random_shuffle not being seeded in transform relabel
 	- Composition profiles now have "min count" mode
+	- Rotating camera image output was broken in version 0.0.15 - fixed
+	- Prevent creation of "stretched" image output
 	
-	Techical bugfixes/changes:
+	Technical bugfixes/changes:
 	- Linux automated UI checking, based on dogtail
-	- Bugfix for caching errors in 0.0.15 tarball (already fixed in binary releases)
+	- Bugfix for caching errors in 0.0.15 tarball (already fixed in binary releases, and in repo)
 		- many filters would incorrectly emit input data after caching
 	- Many minor memory leaks and bugs fixed, due to Coverity scan
 	- No longer launch 3Depict from windows installer
@@ -33,6 +35,8 @@
 	- Fix crash when linked against some mathgl-2 versions
 	- Fixed SVG saving under non-english locales
 	- Add support for qhull2012
+	- Fixed caching parameter ineffective, due to fraction->percent bug 
+	- Fixed packages with anaglyph effect not loading
 
 * 01 Dec 2013 : 0.0.15
 	Features
