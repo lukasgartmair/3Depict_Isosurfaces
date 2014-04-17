@@ -5385,10 +5385,9 @@ void MainWindowFrame::restoreConfigDefaults()
 			{
 				wantTipsAgain=wxShowTip(this, tipProvider);
 				delete tipProvider;
+				configFile.setWantStartupTips(wantTipsAgain);
 			}
 
-			if(!wantTipsAgain)
-				configFile.setWantStartupTips(false);
 
 		}
 		else

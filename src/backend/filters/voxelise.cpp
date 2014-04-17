@@ -1460,10 +1460,14 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 		}
 		case KEY_FILTER_MODE:
 		{
+			//Locate the current string
 			unsigned int i;
-			for (i = 0; i < VOXEL_REPRESENT_END; i++)
-				if (value == getFilterTypeString(i)) break;
-			if (i == VOXEL_REPRESENT_END)
+			for (i = 0; i < VOXELISE_FILTERTYPE_MAX; i++)
+			{
+				if (value == getFilterTypeString(i)) 
+					break;
+			}
+			if (i == VOXELISE_FILTERTYPE_MAX)
 				return false;
 			if(i!=filterMode)
 			{
