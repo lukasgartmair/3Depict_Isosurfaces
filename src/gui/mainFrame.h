@@ -47,7 +47,7 @@
 #define THREEDEPICT_H
 
 //Workaround for keypress not detected under MSW wx3.0 and apple
-#if wxCHECK_VERSION(2,9,0) && ( defined(__WIN32) || defined(__WIN64) || defined(__APPLE__))
+#if wxCHECK_VERSION(2,9,0) && ( defined(__WIN32) || defined(__WIN64) || defined(__APPLE__)) || wxCHECK_VERSION(3,0,0)
 #define WX_TREE_WORKAROUND
 #endif
 
