@@ -1859,7 +1859,18 @@ void FilterTree::clearCacheByType(unsigned int type)
 
 }
 
+size_t FilterTree::cacheCount(unsigned int typeMask) const
+{
+	size_t count=0;
+	for(tree<Filter * >::iterator it=filters.begin(); 
+					it!=filters.end(); ++it)
+	{
+		if(((*it)->getType() & typeMask) && (*it)->haveCache())
+			count++;
+	}
 
+	return count;
+}
 		
 void FilterTree::modifyRangeFiles(const map<const RangeFile *, const RangeFile *> &toModify)
 {

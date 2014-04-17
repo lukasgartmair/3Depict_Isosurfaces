@@ -226,6 +226,9 @@ class FilterTree
 		//Overwrite the contents of the pointed-to range files with
 		// the map contents
 		void modifyRangeFiles(const map<const RangeFile *, const RangeFile *> &toModify);
+
+
+		size_t cacheCount(unsigned int typeMask = STREAMTYPE_MASK_ALL) const;
 };
 
 #endif

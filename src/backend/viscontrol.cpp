@@ -146,6 +146,7 @@ void VisController::switchoutFilterTree(FilterTree &f)
 	std::map<Filter*,Filter*> filterRemap;
 	for(tree<Filter*>::pre_order_iterator itA=f.depthBegin(); itA!=f.depthEnd(); ++itA)
 	{
+		ASSERT(itB != filterTree.depthEnd());
 		filterRemap[*itA]=*itB;	
 		++itB;
 	}
