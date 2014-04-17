@@ -214,7 +214,13 @@ void wxCustomPropGrid::OnLabelDClick(wxGridEvent &event)
 void wxCustomPropGrid::fitCols(wxSize &size)
 {
 	int wc = size.GetWidth()-this->GetScrollThumb(wxVERTICAL)-15;
-	this->SetColSize(1, wc-this->GetColSize(0)); 
+	int colSize = this->GetColSize(0) ;
+
+	//SetColSize complains with negative argument
+	if(wc - colSize < 0)
+		return;
+
+	this->SetColSize(1, wc-colSize);
 
 	Refresh();
 }

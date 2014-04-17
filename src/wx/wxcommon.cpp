@@ -489,9 +489,17 @@ void TreePersist::buildPathMapping(wxTreeCtrl *treeCtrl,std::map<std::string, Tr
 {
 	//DFS walker stack for wxwidgets' tree item IDs
 	stack<pair<string,wxTreeItemId> > treeIDs;
-		
+	
+	{
+	wxTreeItemId baseItem;
+	baseItem=treeCtrl->GetRootItem();
+
+	//If tree is empty, then baseItem may not be OK	
+	if(!baseItem.IsOk())
+		return;
 	//Start with wx root node
-	treeIDs.push(make_pair("",treeCtrl->GetRootItem()));
+	treeIDs.push(make_pair("",baseItem));
+	}
 
 	//Build the map<> containing the flattened path in the tree
 	// and 
@@ -501,6 +509,7 @@ void TreePersist::buildPathMapping(wxTreeCtrl *treeCtrl,std::map<std::string, Tr
 		wxTreeItemId curItem;
 		pathStr= treeIDs.top().first;
 		curItem = treeIDs.top().second;
+		ASSERT(curItem.IsOk());
 		treeIDs.pop();
 		if(treeCtrl->ItemHasChildren(curItem))
 		{
