@@ -1426,6 +1426,8 @@ void FilterTree::safeDeleteFilterList( std::list<FILTER_OUTPUT_DATA> &outData,
 	for(list<FILTER_OUTPUT_DATA> ::iterator it=outData.begin(); 
 							it!=outData.end(); ) 
 	{
+		vector<bool> killV;
+		killV.resize(it->second.size(),false);
 		//Note the No-op at the loop iterator. this is needed so we can safely .erase()
 		for(size_t ui=0;ui<it->second.size();ui++)
 		{
@@ -1442,9 +1444,11 @@ void FilterTree::safeDeleteFilterList( std::list<FILTER_OUTPUT_DATA> &outData,
 			if(!f->cached)
 				delete f;
 	
-			std::swap(f,it->second.back());
-			it->second.pop_back();
+			killV[ui]=true;
 		}
+
+
+		vectorMultiErase(it->second,killV);
 
 		//Check to see if this element still has any items in its vector. if not,
 		//then discard the element

@@ -414,6 +414,9 @@ void ExportPosDialog::getExportVec(std::vector<const FilterStreamData * > &v) co
 {
 	typedef std::pair<Filter *,vector<const FilterStreamData * > > filterOutputData;
 
+	//Incoming vector should be empty
+	ASSERT(v.empty());
+
 	//If the user has selected "visible", then all outputs are to be exported
 	if(exportVisible)
 	{
@@ -423,7 +426,11 @@ void ExportPosDialog::getExportVec(std::vector<const FilterStreamData * > &v) co
 							it!=outputData.end();++it)
 		{
 			for(unsigned int ui=0;ui<it->second.size();ui++)
+			{
 				v.push_back(it->second[ui]);
+				//Ensure pointer is valid by forcing a dereference
+				ASSERT(v.back()->getStreamType() == STREAM_TYPE_IONS);
+			}
 
 		}
 	}
