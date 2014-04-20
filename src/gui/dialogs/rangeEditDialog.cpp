@@ -288,7 +288,7 @@ BEGIN_EVENT_TABLE(RangeEditorDialog, wxDialog)
     EVT_CHECKLISTBOX(ID_LIST_OVERLAY, RangeEditorDialog::OnListOverlayCheck)
     EVT_BUTTON(wxID_OK, RangeEditorDialog::OnBtnOK)
     EVT_BUTTON(wxID_CANCEL, RangeEditorDialog::OnBtnCancel)
-    EVT_SPLITTER_UNSPLIT(ID_SPLIT_LEFTRIGHT, RangeEditorDialog::OnSashVerticalUnsplit)
+    EVT_SPLITTER_DCLICK(ID_SPLIT_LEFTRIGHT, RangeEditorDialog::OnSashVerticalDClick)
     // end wxGlade
 END_EVENT_TABLE();
 
@@ -1438,7 +1438,7 @@ void RangeEditorDialog::OnListOverlayKeyDown(wxListEvent &event)
 	plotPanel->Refresh();
 }
 
-void RangeEditorDialog::OnSashVerticalUnsplit(wxSplitterEvent &event)
+void RangeEditorDialog::OnSashVerticalDClick(wxSplitterEvent &event)
 {
 	event.Veto();
 }

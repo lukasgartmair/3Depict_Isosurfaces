@@ -210,7 +210,7 @@ public:
     virtual void OnCheckShowOverlay(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnBtnOK(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnBtnCancel(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnSashVerticalUnsplit(wxSplitterEvent &event); // wxGlade: <event_handler>
+    virtual void OnSashVerticalDClick(wxSplitterEvent &event); // wxGlade: <event_handler>
     virtual void OnListOverlayCheck(wxCommandEvent &event);
     virtual void OnListOverlayKeyDown(wxListEvent &event);
     virtual void OnTextOverlay(wxCommandEvent &event);
