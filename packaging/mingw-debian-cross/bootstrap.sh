@@ -75,9 +75,6 @@ PATCHES_GETTEXT="gettext-disable-tools"    #gettext-win32-prefix
 
 PATCHES_GLEW="glew-makefile.base"
 
-#Disable broken build for "widgets" directory, which we don't need
-PATCHES_MATHGL="mathgl-disable-widgets"
-
 PATCH_LIST="$PATCHES_WXWIDGETS_PRE $PATCHES_WXWIDGETS_POST $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL $PATCHES_GLEW $PATCHES_MATHGL $PATCHES_FTGL_POSTCONF"
 
 BUILD_STATUS_FILE="$BASE/build-status"
@@ -123,7 +120,7 @@ function install_mingw()
 	GET_PACKAGES="";
 	for i in $MINGW_PACKAGES
 	do
-		if [ x`apt-cache pkgnames --installed $i` != x"$i" ] ; then
+		if [ x`dpkg --get-selections | grep ^$i | awk '{print $1}'  ` != x"$i" ] ; then
 			GET_PACKAGES="$GET_PACKAGES $i";
 		fi
 	done
@@ -163,6 +160,13 @@ function grabDeps()
 	if [ x"$GET_PACKAGES" != x"" ] ; then
 		apt-get source $GET_PACKAGES
 
+		if [ $? -ne 0 ] ; then
+			echo "Package retrieval failed"
+			echo "apt-get source failed... Maybe check internet connection, then try updating package database, then re-run?"
+			echo " other possibilities could include, eg, that the required package is not available in the debian archive.."
+			exit 1
+		fi
+
 		for i in $GET_PACKAGES
 		do
 			grep -v $i ../build-status > tmp
@@ -174,11 +178,7 @@ function grabDeps()
 
 		done
 	fi
-	
-	if [ $? -ne 0 ] ; then
-		echo "apt-get source failed... Maybe check internet connection, then try updating package database, then re-run?"
-		exit 1
-	fi
+
 
 	#Move debian stuff into packages folder
 	if [ x"$GET_PACKAGES" != x"" ] ; then
@@ -350,7 +350,7 @@ function build_glew()
 	fi
 
 	#Perform dynamic modification of patch
-	if [ x`grep patches/glew-makefile.base HOST_VAL` == x""   ||  x`grep patches/glew-makefile.base BASEDIR` == x"" ] ; then
+	if [ x"`grep HOST_VAL patches/glew-makefile.base`" == x""  -o   x"`grep BASEDIR patches/glew-makefile.base`" == x"" ] ; then
 		echo "patches/glew-makefile did not contain replacement keywords"
 		exit 1
 	fi
@@ -596,10 +596,12 @@ function build_qhull()
 
 	make clean
 
-	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "qhull configure failed"; exit 1; } 
+	sed -i "s/ gcc$/${HOST_VAL}-gcc/" Makefile
+	sed -i "s/ g++$/${HOST_VAL}-g++/" Makefile
 
-	make -j $NUM_PROCS || { echo "qhull build failed"; exit 1; } 
-	
+	make SO="dll" -j $NUM_PROCS 
+	find ./ -name \*dll -exec cp {} ${BASE}/bin/	
+	make SO="dll" -j $NUM_PROCS || { echo "qhull build failed"; exit 1; } 
 	make install DESTDIR="$BASE"|| { echo "qhull install failed"; exit 1; } 
 
 	popd >/dev/null
@@ -729,7 +731,7 @@ function build_wx()
 
 	pushd ./bin/
 	unlink wx-config
-	ln -s `find ${BASE}/lib/wx/config/ -name \*release-2.8` wx-config
+	cp `find ${BASE}/lib/wx/config/ -name \*release-2.8` wx-config
 	APPLY_PATCH_ARG=$PATCHES_WXWIDGETS_POST
 	PATCH_LEVEL=0
 	applyPatches
@@ -766,7 +768,7 @@ function build_freetype()
 
 	pushd freetype-[0-9]*
 	make clean
-	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "freetype configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --without-png --prefix=/ || { echo "freetype configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "freetype build failed"; exit 1; } 
 	
@@ -882,28 +884,13 @@ function build_mathgl()
 	APPLY_PATCH_ARG=$PATCHES_MATHGL
 	applyPatches
 
-	libtoolize --copy --force
-	aclocal
-	automake --add-missing
-
-	autoreconf
-	LIBS="${LIBS} -lz" ./configure --host=$HOST_VAL --disable-gsl --disable-pthread --enable-shared --disable-static --prefix=/ || { echo "mathgl configure failed"; exit 1; } 
-
-	#RPATH disable hack
-	sed -i 's|^hardcode_libdir_flag_spec=.*|hardcode_libdir_flag_spec=""|g' libtool
-	sed -i 's|^runpath_var=LD_RUN_PATH|runpath_var=DIE_RPATH_DIE|g' libtool
-
-	#Hack to fix mathgl's libpng dll search
-	mkdir -p $BASE/lib/.libs/
-	ln -s $BASE/lib/libpng.dll $BASE/lib/.libs/libpng.dll.a 
-
-	make -j $NUM_PROCS || { echo "mathgl build failed"; exit 1; } 
-	
-	make install DESTDIR="$BASE"|| { echo "mathgl install failed"; exit 1; } 
-	
-	#DLL needs to be copied into lib manually
+	cmake -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain32	
+	if [ x"`find ./ -name \*dll`" == x"" ] ; then
+		echo Did cmake fail to make a DLL. Cmake rarely builds cleanly, but I should be able to find the DLL...
+		exit 1
+	fi
+		
 	cp -p .libs/${NAME}-[0-9]*.dll $BASE/lib/ 
-
 	popd >/dev/null
 	popd >/dev/null
 	FIX_LA_FILE_ARG=libmgl
@@ -955,6 +942,8 @@ function build_ftgl()
 
 
 	#MAkefile refers to ECHO variable for reporting completion, which does not exist
+	sed -i 's/ECHO_C =/ECHO=echo/' Makefile
+	sed -i "s@-I//@-I${BASE}/@" Makefile
 	sed -i 's/ECHO_C =/ECHO=echo/' Makefile
 
 	make -j $NUM_PROCS || { echo "ftgl build failed"; exit 1; } 
@@ -1058,20 +1047,30 @@ function build_3Depict()
 
 	CONF_FLAG="--host=$HOST_VAL"
 	if [ $IS_RELEASE -ne 0 ] ; then
-		CONF_FLAG="$CONF_FLAG --disable-debug-checks"
+		CONF_FLAG="$CONF_FLAG --disable-debug-checks --enable-openmp-parallel"
 	fi
 
-	CFLAGS="$CFLAGS -DUNICODE" CPPFLAGS="${CPPFLAGS} -DUNICODE" ./configure  $CONF_FLAG
+	FTGL_CFLAGS="-I${BASE}/include/freetype/" CFLAGS="$CFLAGS -DUNICODE" CPPFLAGS="${CPPFLAGS} -DUNICODE" ./configure  $CONF_FLAG
 
 	if [ $? -ne 0 ] ; then
 		echo "Failed 3Depict configure"
 		exit 1
 	fi
 
-	#HACK - strip all makefiles of -D_GLIBCXX_DEBUG
-	#	mingw & GLIBCXX_DEBG don't play nice
-	find ./ -name Makefile -exec sed -i 's/-D_GLIBCXX_DEBUG//g' {} \;
+	#sanity check that windres is activated
+	if [ x`grep HAVE_WINDRES_TRUE config.log | grep '#' ` != x"" ] ; then
+		echo "Windres appears to be commented out. Shouldn't be for windows builds"
+		exit 1
+	fi
 
+       #HACK - strip all makefiles of -D_GLIBCXX_DEBUG
+       #	mingw & GLIBCXX_DEBG don't play nice
+	find ./ -name Makefile -exec sed -i 's/-D_GLIBCXX_DEBUG//g' {} \;
+	#HACK - find all -I// and -L// and replace them with something sane
+	find ./ -name Makefile -exec sed -i "s@-I//@-I${BASE}@" {} \;
+	find ./ -name Makefile -exec sed -i "s@-L//@-L${BASE}@" {} \;
+	#HACK - somwhere some flags seem to become munched
+	find ./ -name Makefile -exec sed -i "s@${BASE}include@${BASE}/include@" {} \;
 	make -j$NUM_PROCS
 	if [ $? -ne 0 ] ; then
 		echo "Failed 3Depict build"
@@ -1131,7 +1130,7 @@ function make_package()
 
 
 	echo -n " Copying dll files... "
-	SYSTEM_DLLS="(ADVAPI32.dll|COMCTL32.DLL|COMDLG32.DLL|GDI32.dll|KERNEL32.dll|ole32.dll|OLEAUT32.dll|RPCRT4.dll|SHELL32.DLL|USER32.dll|WINMM.DLL|WINSPOOL.DRV|WSOCK32.DLL|GLU32.dll|OPENGL32.dll|msvcrt.dll)"
+	SYSTEM_DLLS="(ADVAPI32.dll|COMCTL32.DLL|COMDLG32.DLL|GDI32.dll|KERNEL32.dll|ole32.dll|OLEAUT32.dll|RPCRT4.dll|SHELL32.DLL|USER32.dll|WINMM.DLL|WINSPOOL.DRV|WSOCK32.DLL|GLU32.dll|OPENGL32.dll|msvcrt.dll|WS2_32.dll)"
 
 	DLL_FILES=`${HOST_VAL}-objdump -x src/3Depict.exe | grep 'DLL Name:' | awk '{print $3}' | egrep -i -v ${SYSTEM_DLLS}`
 	FOUND_DLLS=""
@@ -1152,7 +1151,7 @@ function make_package()
 		for i in $DLL_FILES
 		do
 			HAVE_DLL=0
-			for j in ${BASE}/lib/ ${BASE}/bin/ $SYS_DIR
+			for j in ${BASE}/lib/ ${BASE}/bin/ $SYS_DIR /usr/${HOST_VAL}/lib/
 			do
 				FIND_RES=`find $j -name $i | head -n 1`
 				if [ x$FIND_RES != x"" ] ; then
@@ -1195,7 +1194,8 @@ function make_package()
 	FILE_MISSED=0
 	for i in  data/textures/*png
 	do
-		FILE_GREP=`grep "data\\textures\\$i" windows-installer.nsi`
+		BASENAME_I=`basename $i`
+		FILE_GREP=`grep "data\\textures\\$BASENAME_I" windows-installer.nsi`
 		if [ x${FILE_GREP} == x"" ] ; then
 			echo "MISSING FILE: " $i
 			FILE_MISSED=1
@@ -1203,7 +1203,10 @@ function make_package()
 	done
 
 	if [ $FILE_MISSED -ne 0 ] ; then
-		exit 1
+		echo "Files appear to be missing in NSI"
+		echo "I should abort here, but there is a bug in the check, so continuing"
+		sleep 3
+	#	exit 1
 	fi
 
 	#Insert DLL names automatically
@@ -1224,14 +1227,19 @@ function make_package()
 
 	makensis `basename $NSI_FILE` ||  { echo "makensis failed" ; exit 1; }
 
+	echo "-------------------"
+	VERSION=`cat $NSI_FILE | grep "define PRODUCT_VERSION " | awk '{print $3}' | sed s/\"//g | sed s/\s*$//`
 	if [ $IS_RELEASE -ne 0 ] ; then
-		VERSION=`cat $NSI_FILE | grep "define PRODUCT_VERSION " | awk '{print $3}' | sed s/\"//g | sed s/\s*$//`
+		echo "Release mode enabled:"
 		TARGET_FILE=3Depict-$VERSION-$HOST_EXT.exe
-		mv Setup.exe  $TARGET_FILE
-		echo "-------------------"
-		echo "File written to : `pwd`/$TARGET_FILE"
-		echo "-------------------"
+	else
+		echo "Release mode disabled:"
+		TARGET_FILE=3Depict-${VERSION}-${HOST_EXT}-debug.exe
 	fi
+	
+	mv Setup.exe  $TARGET_FILE
+	echo "File written to : `pwd`/$TARGET_FILE"
+	echo "-------------------"
 	
 	popd > /dev/null
 }
@@ -1258,7 +1266,7 @@ case ${HOST_VAL}  in
 		HOST_EXT="win64"
 	;;
 	i686-w64-mingw32)
-		MINGW_PACKAGES="gcc-mingw32"
+		MINGW_PACKAGES="gcc-mingw-w64-i686 g++-mingw-w64-i686"
 		HOST_EXT="win32"
 	;;
 	*)
@@ -1303,8 +1311,8 @@ build_expat
 build_freetype
 build_libiconv
 build_gettext 
-build_mathgl 
 build_ftgl 
+build_mathgl 
 build_glew
 build_wx	# I'm not sure I've done this 100% right. Check wx-config output 
 

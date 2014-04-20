@@ -124,43 +124,29 @@ FunctionEnd
 
 Section Uninstall
   Delete "$INSTDIR\${PRODUCT_NAME}.url"
-  Delete "$INSTDIR\textures\uninst.exe"
+  Delete "$INSTDIR\uninst.exe"  
   
-  Delete "$INSTDIR\textures\animProgress0.png"
-  Delete "$INSTDIR\textures\animProgress1.png"
-  Delete "$INSTDIR\textures\animProgress2.png"
-  Delete "$INSTDIR\textures\scroll_wheel_mouse.png"
-  Delete "$INSTDIR\textures\rotateArrow.png"
-  Delete "$INSTDIR\textures\Right_clicked_mouse.png"
-  Delete "$INSTDIR\textures\Right-arrow.png"
-  Delete "$INSTDIR\textures\middle_clicked_mouse.png"
-  Delete "$INSTDIR\textures\Left_clicked_mouse.png"
-  Delete "$INSTDIR\textures\Left-Right-arrow.png"
-  Delete "$INSTDIR\textures\keyboard-tab.png"
-  Delete "$INSTDIR\textures\keyboard-shift.png"
-  Delete "$INSTDIR\textures\keyboard-ctrl.png"
-  Delete "$INSTDIR\textures\keyboard-command.png"
-  Delete "$INSTDIR\textures\keyboard-alt.png"
-  Delete "$INSTDIR\textures\enlarge.png"
+  RMDir /r "$INSTDIR\textures"
+  RMDir "$INSTDIR\textures"
+  RMDir /r "$INSTDIR\locales"
+  RMDir "$INSTDIR\locales"
   
-  Delete "3Depict.xpm"
-  Delete "atomic-mass-table.dtd"
-  Delete "naturalAbundance.xml"
-  Delete "startup-tips.txt"
+  Delete "$INSTDIR\3Depict.xpm"
+  Delete "$INSTDIR\atomic-mass-table.dtd"
+  Delete "$INSTDIR\naturalAbundance.xml"
+  Delete "$INSTDIR\startup-tips.txt"
  
   Delete "$INSTDIR\3Depict.exe"
 
   Delete "$INSTDIR\manual.pdf"
-  RMDir /r "$INSTDIR\locales\*.*"
-  RMDir "$INSTDIR\locales"
 
   ;This is a token that should be replaced with the DLLS to uninstall
   ;INSERT_UNINST_DLLS_HERE
 
-  Delete "$INSTDIR\uninst.exe"  
  
   Delete "$SMPROGRAMS\3Depict\Uninstall.lnk"
   Delete "$SMPROGRAMS\3Depict\Website.lnk"
+  Delete "$SMPROGRAMS\3Depict\manual.pdf"
   Delete "$DESKTOP\3Depict.lnk"
   Delete "$SMPROGRAMS\3Depict\3Depict.lnk"
   RMDir "$SMPROGRAMS\3Depict"
