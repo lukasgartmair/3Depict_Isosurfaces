@@ -2812,6 +2812,9 @@ void MainWindowFrame::OnHelpHelp(wxCommandEvent &event)
 	if(!s.size())
 		s=locateDataFile("3depict-manual.pdf");
 
+	//FIXME: under windows, currently we use "manual.pdf"
+	if(!s.size())
+		s=locateDataFile("manual.pdf");
 
 	//If we found it, use the default program associated with that data file
 	bool launchedOK=false;
@@ -2858,9 +2861,12 @@ void MainWindowFrame::OnHelpHelp(wxCommandEvent &event)
 			wxFileType *t;
 				
 			t=m.GetFileTypeFromExtension(wxT("pdf"));
-			command=t->GetOpenCommand(wxStr(s));
-			appPID=wxExecute(command,wxEXEC_ASYNC);
-			launchedOK=(appPID!=0);
+			if(t)
+			{
+				command=t->GetOpenCommand(wxStr(s));
+				appPID=wxExecute(command,wxEXEC_ASYNC);
+				launchedOK=(appPID!=0);
+			}
 		}
 #endif
 	}

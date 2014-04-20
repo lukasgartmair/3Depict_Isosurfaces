@@ -91,8 +91,14 @@ std::string locateDataFile(const char *name)
 				return s;
 		}
 	}
-	else if(wxFileExists(wxStr(s)))
-		return s;
+	
+	std::string s;
+	s =name; 
+	
+	if(s.size() && wxFileExists(wxStr(s)))
+	{
+		return string(name);
+	}
 	else
 		return std::string("");
 #elif defined( __linux__)
