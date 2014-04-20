@@ -61,6 +61,8 @@ std::string stripWhite(const std::string &str);
 std::string stripChars(const std::string &Str, const char *chars);
 //!Return a lowercase version for a given string
 std::string lowercase(std::string s);
+//!Return a uppercase version for a given string
+std::string uppercase(std::string s);
 
 //Drop empty entries from a string of vector
 void stripZeroEntries(std::vector<std::string> &s);
@@ -71,9 +73,11 @@ bool parseColString(const std::string &str,
 	unsigned char &r, unsigned char &g, unsigned char &b, unsigned char &a);
 
 //Convert an RGBA 8-bit/channel quadruplet into its hexadecimal colour string
+// format is "#rrggbbaa" such as "#11ee00aa"
 void genColString(unsigned char r, unsigned char g, 
 			unsigned char b, unsigned char a, std::string &s);
 //Convert an RGB 8-bit/channel quadruplet into its hexadecimal colour string
+// format is "#rrggbb" such as "#11ee00"
 void genColString(unsigned char r, unsigned char g, 
 			unsigned char b, std::string &s);
 

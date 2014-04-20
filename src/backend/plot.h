@@ -64,26 +64,6 @@ unsigned int plotID(const std::string &plotString);
 //!Return the error mode type, given the human readable string
 unsigned int plotErrmodeID(const std::string &s);
 		
-//!Nasty hack class to change mathgl API from named char palette to rgb specification
-class MGLColourFixer
-{
-	private:
-		vector<float> rs,gs,bs;
-		static int maxCols;
-	public:
-		//Restore the MGL colour strings
-		void reset();
-		//Return the exact colour, if there is one
-		char haveExactColour(float r, float g, float b) const;
-		//Get the best colour that is available
-		// returns the char to give to mathgl; may be exact,
-		// maybe nearest match, depending upon number of colours used
-		// and mgl palette size
-		char getNextBestColour(float r, float g, float b);
-
-		static unsigned int getMaxColours();
-};
-
 
 //!Data class  for holding info about non-overlapping 
 // interactive rectilinear "zones" overlaid on plots 
@@ -199,7 +179,7 @@ class PlotOverlays
 		//Add a new overlay to the plot
 		void add(const OVERLAY_DATA &overlay) {overlayData.push_back(overlay);}
 		//Draw the overlay on the current plot
-		void draw(mglGraph *g,MGLColourFixer &fixer, 
+		void draw(mglGraph *g,
 			const mglPoint &boundMin, const mglPoint &boundMax,bool logMode) const;
 		//Enable the specified overlay
 		void setEnabled(size_t offset,bool isEnabled) 
@@ -262,7 +242,7 @@ class PlotBase
 		virtual bool empty() const=0;
 
 		//Draw the plot onto a given MGL graph
-		virtual void drawPlot(mglGraph *graph, MGLColourFixer &fixer) const=0;
+		virtual void drawPlot(mglGraph *graph) const=0;
 
 		//!Scan for the data bounds.
 		virtual void getBounds(float &xMin,float &xMax,
@@ -309,11 +289,10 @@ class Plot1D : public PlotBase
 		
 		
 		//Draw the plot onto a given MGL graph
-		virtual void drawPlot(mglGraph *graph,MGLColourFixer &fixer) const;
+		virtual void drawPlot(mglGraph *graph) const;
 
 		//Draw the associated regions		
-		void drawRegions(mglGraph *graph, MGLColourFixer &fixer,
-				const mglPoint &min, const mglPoint &max) const;
+		void drawRegions(mglGraph *graph,const mglPoint &min, const mglPoint &max) const;
 
 
 		//!Retrieve the raw data associated with the currently visible plots. 

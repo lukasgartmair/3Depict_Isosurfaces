@@ -457,6 +457,16 @@ std::string lowercase(std::string s)
 	return s;
 }
 
+std::string uppercase(std::string s)
+{
+	for(unsigned int ui=0;ui<s.size();ui++)
+	{
+		if(isascii(s[ui]) && islower(s[ui]))
+			s[ui] = toupper(s[ui]);
+	}
+	return s;
+}
+
 //Split strings around a delimiter
 void splitStrsRef(const char *cpStr, const char delim,std::vector<string> &v )
 {

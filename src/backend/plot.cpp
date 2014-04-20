@@ -47,118 +47,8 @@ using std::vector;
 // perform a little "push off" by this fudge factor
 const float AXIS_MIN_TOLERANCE=10*sqrtf(std::numeric_limits<float>::epsilon());
 
-int MGLColourFixer::maxCols=-1;
+const unsigned int MGL_RESERVED_COLOURS=2;
 
-void MGLColourFixer::reset()
-{
-	rs.clear();
-	gs.clear();
-	bs.clear();
-}
-
-char MGLColourFixer::haveExactColour(float r, float g, float b) const
-{
-	ASSERT(rs.size() == gs.size())
-	ASSERT(gs.size() == bs.size())
-
-	ASSERT(rs.size() <=getMaxColours());
-
-	for(unsigned int ui=0; ui<rs.size(); ui++)
-	{
-		if( fabs(r-rs[ui]) <std::numeric_limits<float>::epsilon()
-			&& fabs(g-gs[ui]) <std::numeric_limits<float>::epsilon()
-			&& fabs(b-bs[ui]) <std::numeric_limits<float>::epsilon())
-			return mglColorIds[ui+1].id; //Add one to offset to avoid the reserved "k" 
-	}
-
-	return 0;
-}
-
-unsigned int MGLColourFixer::getMaxColours() 
-{
-	//Used cached value if available
-	if(maxCols!=-1)
-		return maxCols;
-
-	//The array is statically defined in
-	//mgl/mgl_main.cpp, and must end with an id of zero.
-	//
-	//this is not documented at all.
-	maxCols=0;
-	while(mglColorIds[maxCols].id)
-		maxCols++;
-
-	return maxCols;
-}
-
-char MGLColourFixer::getNextBestColour(float r, float g, float b) 
-{
-	ASSERT(rs.size() == gs.size());
-	ASSERT(gs.size() == bs.size());
-	
-
-	//As a special case, mgl has its own black
-	if(r == 0.0f && g == 0.0f && b == 0.0f)
-		return mglColorIds[0].id;
-
-
-	unsigned int best=0;
-	if(rs.size() == getMaxColours())
-	{
-		ASSERT(getMaxColours());
-		//Looks like we ran out of palette colours.
-		//lets just give up and try to match this against our existing colours
-
-		//TODO: let this modify the existing palette
-		// to find a better match.
-		float distanceSqr=std::numeric_limits<float>::max();
-		for(unsigned int ui=0; ui<rs.size(); ui++)
-		{
-			float distanceTmp;
-			if(r <= 0.5)
-			{
-				//3,4,2 weighted euclidean distance. Weights allow for closer human perception
-				distanceTmp= 3.0*(rs[ui] - r )*(rs[ui] - r ) +4.0*(gs[ui] - g )*(gs[ui] - g )
-					     + 2.0*(bs[ui] - b )*(bs[ui] - b );
-			}
-			else
-			{
-				//use alternate weighting for closer colour perception in "non-red" half of colour cube
-				distanceTmp= 2.0*(rs[ui] - r )*(rs[ui] - r ) +4.0*(gs[ui] - g )*(gs[ui] - g )
-					     + 3.0*(bs[ui] - b )*(bs[ui] - b );
-			}
-
-			if(distanceTmp < distanceSqr)
-			{
-				distanceSqr = (distanceTmp);
-				best=ui+1; //offset by 1 because mathgl colour 0 is special
-			}
-
-		}
-	}
-	else
-	{
-		char exactMatch;
-		//Check to see if we don't already have this
-		// no use wasting palette positions on existing
-		// colours
-		exactMatch=haveExactColour(r,g,b);
-
-		if(exactMatch)
-			return exactMatch;
-
-		//Offset zero is special, for black things, like axes
-		best=rs.size()+1;
-		mglColorIds[best].col = mglColor(r,g,b);
-		
-		rs.push_back(r);
-		gs.push_back(g);
-		bs.push_back(b);
-	}
-
-	ASSERT(mglColorIds[best].id != 'k');
-	return mglColorIds[best].id;
-}
 
 //Mathgl uses some internal for(float=...) constructions, 
 // which are just generally a bad idea, as they often won't terminate
@@ -208,6 +98,18 @@ std::string wstrToStr(const std::wstring& s)
 	return temp;
 }
 
+
+std::string mglColourCode(float r, float g, float b)
+{
+	ASSERT(r >=0.0f && g >=0.0f && b >=0.0f)
+	ASSERT(r <=255.0f && g <=255.0f && b <=255.0f)
+	std::string s;
+	genColString((unsigned char)(r*255),
+		(unsigned char)(g*255),(unsigned char)(b*255),s);
+	s=s.substr(1);
+
+	return string("{x") + uppercase(s) + string("}");
+}
 
 //TODO: Refactor these functions to use a common string map
 //-----------
@@ -806,7 +708,6 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 	}
 
 	//Un-fudger for mathgl plots
-	MGLColourFixer colourFixer;
 
 	bool haveMultiTitles=false;
 	float minX,maxX,minY,maxY;
@@ -994,17 +895,15 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 				if(!curPlot->visible)
 					continue;
 
-				curPlot->drawRegions(gr,colourFixer,min,max);
-				curPlot->drawPlot(gr,colourFixer);
+				curPlot->drawRegions(gr,min,max);
+				curPlot->drawPlot(gr);
 				
 				if(drawLegend)
 				{
 					//Fake an mgl colour code
-					char colourCode[2];
-					colourCode[0]=colourFixer.getNextBestColour(
-							curPlot->r,curPlot->g,curPlot->b);
-					colourCode[1]='\0';
-					gr->AddLegend(curPlot->title.c_str(),colourCode);
+					std::string mglColStr;
+					mglColStr= mglColourCode(curPlot->r,curPlot->g,curPlot->b);
+					gr->AddLegend(curPlot->title.c_str(),mglColStr.c_str());
 				}
 			}
 
@@ -1017,7 +916,7 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 				vector<pair<size_t,size_t> > overlapId;
 				vector<pair<float,float> > overlapXCoords;
 
-				char colourCode=colourFixer.getNextBestColour(1.0f,0.0f,0.0f);
+				string colourCode=mglColourCode(1.0f,0.0f,0.0f);
 				getRegionOverlaps(overlapId,overlapXCoords);
 
 				float rMinY,rMaxY;
@@ -1045,10 +944,10 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 
 #ifdef USE_MGL2
 					gr->FaceZ(mglPoint(rMinX,rMinY,-1),rMaxX-rMinX,rMaxY-rMinY,
-							&colourCode);
+							colourCode.c_str());
 #else
 					gr->FaceZ(rMinX,rMinY,-1,rMaxX-rMinX,rMaxY-rMinY,
-							&colourCode);
+							colourCode.c_str());
 #endif
 				}
 
@@ -1082,7 +981,7 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 #endif
 	}
 	
-	overlays.draw(gr,colourFixer,min,max,haveUsedLog);
+	overlays.draw(gr,min,max,haveUsedLog);
 }
 
 void PlotWrapper::hideAll()
@@ -1405,7 +1304,7 @@ bool Plot1D::empty() const
 	return xValues.empty();
 }
 
-void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
+void Plot1D::drawPlot(mglGraph *gr) const
 {
 	bool showErrs;
 
@@ -1453,9 +1352,8 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 	
 	//Obtain a colour code to use for the plot, based upon
 	// the actual colour we wish to use
-	char colourCode[2];
-	colourCode[0]=fixer.getNextBestColour(r,g,b);
-	colourCode[1]='\0';
+	string colourCode;
+	colourCode=mglColourCode(r,g,b);
 	//---
 
 
@@ -1467,23 +1365,23 @@ void Plot1D::drawPlot(mglGraph *gr,MGLColourFixer &fixer) const
 			//rather than linear interpolating them back along their paths. I have emailed the author.
 			//for now, we shall have to put up with missing lines :( Absolute worst case, I may have to draw them myself.
 			gr->SetCut(true);
-			
-			gr->Plot(xDat,yDat,colourCode);
+		
+			gr->Plot(xDat,yDat,colourCode.c_str());
 			if(showErrs)
-				gr->Error(xDat,yDat,eDat,colourCode);
+				gr->Error(xDat,yDat,eDat,colourCode.c_str());
 			gr->SetCut(false);
 			break;
 		case PLOT_TRACE_BARS:
-			gr->Bars(xDat,yDat,colourCode);
+			gr->Bars(xDat,yDat,colourCode.c_str());
 			break;
 		case PLOT_TRACE_STEPS:
 			//Same problem as for line plot. 
 			gr->SetCut(true);
-			gr->Step(xDat,yDat,colourCode);
+			gr->Step(xDat,yDat,colourCode.c_str());
 			gr->SetCut(false);
 			break;
 		case PLOT_TRACE_STEM:
-			gr->Stem(xDat,yDat,colourCode);
+			gr->Stem(xDat,yDat,colourCode.c_str());
 			break;
 
 		case PLOT_TRACE_POINTS:
@@ -1557,13 +1455,11 @@ void Plot1D::clear( bool preserveVisiblity)
 	regionGroup.clear();
 }
 
-void Plot1D::drawRegions(mglGraph *gr,MGLColourFixer &fixer,
+void Plot1D::drawRegions(mglGraph *gr,
 		const mglPoint &min,const mglPoint &max) const
 {
 	//Mathgl palette colour name
-	char colourCode[2];
-	colourCode[1]='\0';
-
+	string colourCode;
 
 	for(unsigned int uj=0;uj<regionGroup.regions.size();uj++)
 	{
@@ -1577,16 +1473,15 @@ void Plot1D::drawRegions(mglGraph *gr,MGLColourFixer &fixer,
 		//Prevent drawing inverted regionGroup.regions
 		if(rMaxX > rMinX && rMaxY > rMinY)
 		{
-			colourCode[0] = fixer.getNextBestColour(regionGroup.regions[uj].r,
+			colourCode = mglColourCode(regionGroup.regions[uj].r,
 						regionGroup.regions[uj].g,
 						regionGroup.regions[uj].b);
-			colourCode[1] = '\0';
 #ifdef USE_MGL2
 			gr->FaceZ(mglPoint(rMinX,rMinY,-1),rMaxX-rMinX,rMaxY-rMinY,
-					colourCode);
+					colourCode.c_str());
 #else
 			gr->FaceZ(rMinX,rMinY,-1,rMaxX-rMinX,rMaxY-rMinY,
-					colourCode);
+					colourCode.c_str());
 #endif
 					
 		}
@@ -1791,18 +1686,17 @@ void PlotWrapper::setRegionGroup(size_t plotId,RegionGroup &r)
 }
 
 
-void PlotOverlays::draw(mglGraph *gr,MGLColourFixer &fixer, 
+void PlotOverlays::draw(mglGraph *gr,
 		const mglPoint &boundMin, const mglPoint &boundMax,bool logMode ) const
 {
 
 	if(!isEnabled)
 		return;
 
-	char colourCode[2];
+	string colourCode;
 
 	//Draw the overlays in black
-	colourCode[0] = fixer.getNextBestColour(0.0,0.0,0.0);
-	colourCode[1]='\0';
+	colourCode = mglColourCode(0.0,0.0,0.0);
 	
 	for(size_t ui=0;ui<overlayData.size();ui++)
 	{
@@ -1841,6 +1735,7 @@ void PlotOverlays::draw(mglGraph *gr,MGLColourFixer &fixer,
 			}
 		}
 
+		//TODO: Deprecate me. Upstream now allows single stems
 		//Draw stems. can't use stem plot due to mathgl bug whereby single stems
 		// will not be drawn
 		for(size_t uj=0;uj<overlayData[ui].coordData.size();uj++)
@@ -1849,7 +1744,7 @@ void PlotOverlays::draw(mglGraph *gr,MGLColourFixer &fixer,
 					boundMin.y < bufY[uj])
 			{
 				gr->Line (mglPoint(bufX[uj],std::max(0.0f,(float)boundMin.y)),
-					mglPoint(bufX[uj],bufY[uj]),colourCode,100);
+					mglPoint(bufX[uj],bufY[uj]),colourCode.c_str(),100);
 
 				//Print labels near to the text
 				const float STANDOFF_FACTOR=1.05;
