@@ -301,7 +301,7 @@ void MathGLPane::render(wxPaintEvent &event)
 		char *rgbdata = (char*)malloc(w*h*3);
 		gr->GetRGB((char*)rgbdata,w*h*3);
 		
-		imageCacheBmp=wxImage(w,h,(unsigned char*)rgbdata,true);
+		imageCacheBmp=wxBitmap(wxImage(w,h,(unsigned char*)rgbdata,true));
 		free(rgbdata);
 	#else
 		unsigned char *tmp;
