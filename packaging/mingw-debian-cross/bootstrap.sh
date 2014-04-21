@@ -36,6 +36,19 @@ fi
 if [ $HOST_VAL != "x86_64-w64-mingw32" ] && [ $HOST_VAL != i686-w64-mingw32 ] ; then
 	echo "Unknown HOST_VAL"
 	exit 1
+else 
+	case $HOST_VAL in
+		x86_64-w64-mingw32)
+			BITS_VAL=64
+			;;
+		i686-w64-mingw32)
+			BITS_VAL=32
+			;;
+		*)
+			echo "Should not have got here - bug!"
+			exit 1
+			;;
+	esac
 fi
 
 #----
@@ -74,6 +87,8 @@ PATCHES_FTGL_POSTCONF="ftgl-override-configure-2"
 PATCHES_GETTEXT="gettext-disable-tools"    #gettext-win32-prefix
 
 PATCHES_GLEW="glew-makefile.base"
+
+PATCHES_MATHGL="mathgl-cmake"
 
 PATCH_LIST="$PATCHES_WXWIDGETS_PRE $PATCHES_WXWIDGETS_POST $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL $PATCHES_GLEW $PATCHES_MATHGL $PATCHES_FTGL_POSTCONF"
 
@@ -606,6 +621,8 @@ function build_qhull()
 
 	popd >/dev/null
 	popd >/dev/null
+
+	ln -s ${BASE}/include/libqhull ${BASE}/include/qhull
 	
 	FIX_LA_FILE_ARG=libqhull
 	fix_la_file
@@ -884,13 +901,22 @@ function build_mathgl()
 	APPLY_PATCH_ARG=$PATCHES_MATHGL
 	applyPatches
 
-	cmake -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain32	
+	rm CMakeCache.txt
+	cmake -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain$BITS_VAL
+	cmake -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain$BITS_VAL
+
+	make -j $NUM_PROCS
+
 	if [ x"`find ./ -name \*dll`" == x"" ] ; then
 		echo Did cmake fail to make a DLL. Cmake rarely builds cleanly, but I should be able to find the DLL...
 		exit 1
 	fi
 		
 	cp -p .libs/${NAME}-[0-9]*.dll $BASE/lib/ 
+	
+	cp -R include/mgl2 ${BASE}/include
+	ln -s ${BASE}/include/mgl2 ${BASE}/include/mgl
+
 	popd >/dev/null
 	popd >/dev/null
 	FIX_LA_FILE_ARG=libmgl
@@ -945,6 +971,10 @@ function build_ftgl()
 	sed -i 's/ECHO_C =/ECHO=echo/' Makefile
 	sed -i "s@-I//@-I${BASE}/@" Makefile
 	sed -i 's/ECHO_C =/ECHO=echo/' Makefile
+	
+	#HACK - find all -I// and -L// and replace them with something sane
+	find ./ -name Makefile -exec sed -i "s@-I//@-I${BASE}/@" {} \;
+	find ./ -name Makefile -exec sed -i "s@-L//@-L${BASE}/@" {} \;
 
 	make -j $NUM_PROCS || { echo "ftgl build failed"; exit 1; } 
 	
@@ -1063,14 +1093,42 @@ function build_3Depict()
 		exit 1
 	fi
 
+	#Check that wx's manifest matches our arch
+	MANIFEST=`find ../../include/ -name wx.manifest`
+	if [ x"$MANIFEST" == x"" ] ; then
+		echo "Didnt' find manifest!"
+		exit 1
+	fi
+	case $BITS_VAL in
+		32)
+			MANIFEST_TARG=x86
+			MANIFEST_NOT=amd64
+			;;
+		64)
+			MANIFEST_TARG=amd64
+			MANIFEST_NOT=x86
+			;;
+	esac
+
+	if [  x"`grep -i $MANIFEST_TARG $MANIFEST`" == x"" ] ; then
+		echo "Manifest arch does not match!"	
+		echo " file examined: $MANIFEST"
+		exit 1
+	fi
+
+	if [  x"`grep -i $MANIFEST_NOT $MANIFEST`" != x"" ] ; then
+		echo "Manifest arch does not match!"	
+		echo " file examined: $MANIFEST"
+		exit 1
+	fi
+
        #HACK - strip all makefiles of -D_GLIBCXX_DEBUG
        #	mingw & GLIBCXX_DEBG don't play nice
 	find ./ -name Makefile -exec sed -i 's/-D_GLIBCXX_DEBUG//g' {} \;
 	#HACK - find all -I// and -L// and replace them with something sane
-	find ./ -name Makefile -exec sed -i "s@-I//@-I${BASE}@" {} \;
-	find ./ -name Makefile -exec sed -i "s@-L//@-L${BASE}@" {} \;
-	#HACK - somwhere some flags seem to become munched
-	find ./ -name Makefile -exec sed -i "s@${BASE}include@${BASE}/include@" {} \;
+	find ./ -name Makefile -exec sed -i "s@-I//@-I${BASE}/@" {} \;
+	find ./ -name Makefile -exec sed -i "s@-L//@-L${BASE}/@" {} \;
+	
 	make -j$NUM_PROCS
 	if [ $? -ne 0 ] ; then
 		echo "Failed 3Depict build"
@@ -1116,10 +1174,6 @@ function make_package()
 	pushd ./code/3Depict 2> /dev/null
 
 	NSI_FILE=./windows-installer.nsi
-	if [ ! -f $NSI_FILE ] ; then
-		echo "NSI file missing whilst trying to build package"
-		exit 1;
-	fi
 
 	#copy as needed
 	# Due to debian bug : #704828, makensis cannot correctly handle symlinks,
@@ -1128,6 +1182,25 @@ function make_package()
 		cp ./packaging/mingw-debian-cross/windows-installer.nsi .
 	fi
 
+	
+	if [ ! -f $NSI_FILE ] ; then
+		echo "NSI file missing whilst trying to build package"
+		exit 1;
+	fi
+
+	#Check NSI file has PROGRAMFILES / PROGRAMFILES64 set
+	if [ x"`grep PROGRAMFILES64 $NSI_FILE`" == x"" -a $BITS_VAL == 64 ] ; then
+		echo "NSI file should contain PROGRAMFILES64 output path."
+		exit 1;
+	else
+		if [ x"`grep PROGRAMFILES64 $NSI_FILE`" != x"" -a $BITS_VAL == 32 ] ; then
+			echo "NSI file contained 64 bit install dir, but this is 32"
+			exit 1;
+		fi
+	fi
+	
+	
+	 
 
 	echo -n " Copying dll files... "
 	SYSTEM_DLLS="(ADVAPI32.dll|COMCTL32.DLL|COMDLG32.DLL|GDI32.dll|KERNEL32.dll|ole32.dll|OLEAUT32.dll|RPCRT4.dll|SHELL32.DLL|USER32.dll|WINMM.DLL|WINSPOOL.DRV|WSOCK32.DLL|GLU32.dll|OPENGL32.dll|msvcrt.dll|WS2_32.dll)"
@@ -1187,26 +1260,6 @@ function make_package()
 	if [ x"`cat windows-installer.nsi | grep INSERT_DLLS_HERE`" == x"" ]  ||  [ x"`cat windows-installer.nsi | grep INSERT_UNINST_DLLS_HERE`" == x"" ] ; then
 		echo "DLL insertion/removal tokens not found. Was looking for INSERT_DLLS_HERE and INSERT_UNINST_DLLS_HERE"
 		exit 1
-	fi
-
-	
-	#Check that each file in the data/textures/ dir is listed in the NSI file
-	FILE_MISSED=0
-	for i in  data/textures/*png
-	do
-		BASENAME_I=`basename $i`
-		FILE_GREP=`grep "data\\textures\\$BASENAME_I" windows-installer.nsi`
-		if [ x${FILE_GREP} == x"" ] ; then
-			echo "MISSING FILE: " $i
-			FILE_MISSED=1
-		fi
-	done
-
-	if [ $FILE_MISSED -ne 0 ] ; then
-		echo "Files appear to be missing in NSI"
-		echo "I should abort here, but there is a bug in the check, so continuing"
-		sleep 3
-	#	exit 1
 	fi
 
 	#Insert DLL names automatically
@@ -1312,8 +1365,9 @@ build_freetype
 build_libiconv
 build_gettext 
 build_ftgl 
-build_mathgl 
 build_glew
+
+build_mathgl 
 build_wx	# I'm not sure I've done this 100% right. Check wx-config output 
 
 build_3Depict
