@@ -1401,6 +1401,10 @@ void MainWindowFrame::OnRecentFile(wxCommandEvent &event)
 		}
 		
 		setSaveStatus();
+
+		//make sure camera is properly centred
+		if(visControl.numCams() == 1)
+			visControl.ensureSceneVisible(3);
 	}
 
 }
