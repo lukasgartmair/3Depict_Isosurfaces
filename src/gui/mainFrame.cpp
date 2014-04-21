@@ -1143,9 +1143,12 @@ void MainWindowFrame::OnDropFiles(const wxArrayString &files, int x, int y)
 					f->setRangeData(rng);
 					f->setRangeFilename(s.c_str());
 
-					//Get the parent filter pointer	
+					//Add the filter, using the seelcted
+					// item as the parent
 					visControl.addFilter(f,false,filterId);
 
+					//update the tree control
+					visControl.updateWxTreeCtrl(treeFilters);
 				}
 				else
 				{
