@@ -5547,16 +5547,22 @@ WX_LIBS="$WX_LIBS `$WX_CONFIG_PATH --gl-libs`"
 
 WANT_WINDRES="no"
 case "${host_os}" in
-	*w64_mingw*)
+	*mingw*)
 		#wx-config is a little unreliable in cross-compile mode
 		# Manually append -DUNICODE to cppflags/cxxflags
 		WX_CXXFLAGS="$WX_CXXFLAGS -DUNICODE"
 		WX_CPPFLAGS="$WX_CPPFLAGS -DUNICODE"
-		WANT_WINDRES="true"
+		WANT_WINDRES="yes"
+		;;
+	*)
+		as_fn_error $? " Windres check is screwed" "$LINENO" 5
 		;;
 esac
 
- if  test x$WANT_WINDRES= xtrue  ; then
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $WANT_WINDRES" >&5
+$as_echo "$WANT_WINDRES" >&6; }
+
+ if  test x$WANT_WINDRES==xyes ; then
   HAVE_WINDRES_TRUE=
   HAVE_WINDRES_FALSE='#'
 else
