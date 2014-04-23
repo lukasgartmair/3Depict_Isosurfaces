@@ -45,9 +45,6 @@ case "${host_os}" in
 		WX_CPPFLAGS="$WX_CPPFLAGS -DUNICODE"
 		WANT_WINDRES="yes"
 		;;
-	*)
-		AC_MSG_ERROR([ Windres check is screwed])
-		;;
 esac
 
 AC_MSG_RESULT([$WANT_WINDRES])
