@@ -1,0 +1,56 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+
+<meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"/>
+<link rel="stylesheet" href="style.css" type="text/css"/>
+<link rel="icon" type="image/png" href="favicon.png"/>
+
+<title>compiling.html</title></head><body>
+<div id="header">
+<h1>3Depict - Valued point cloud visualisation and analysis</h1>
+<ul id="nav">
+	<li><a href="index.html">Home</a></li>
+	<li><a href="download.html">Download</a></li>
+	<li><a href="questions.html">Questions</a></li>
+	<li><a href="documentation.html">Documentation</a></li>
+	<li><a href="contact.html">Contact</a></li>
+	<li><a href="about.html">About</a></li>
+</ul>
+</div>
+
+<div id="left">
+<div class="box">
+<h2>Get the code</h2>
+<p> <a href="https://sourceforge.net/projects/threedepict/files/">Download</a> the source code for the latest version of 3Depict for your platform.</p> Alternately, download the latest <a href="http://sourceforge.net/p/threedepict/code/ci/default/tree/">development version</a>.
+</div>
+<div class="box">
+<h3>Stuck on how to compile?</h3>
+Try asking for help on the <a href="https://sourceforge.net/apps/phpbb/threedepict/">forums</a>
+<p></p>
+</div>
+<center>
+<a href="http://sourceforge.net"><img src="http://sflogo.sourceforge.net/sflogo.php?group_id=341003&amp;type=2" alt="SourceForge.net Logo" border="0" height="37"/></a>
+</center>
+</div>
+<div id="content">
+<div id="right">
+
+<h1>Cross Compilation</h1>
+
+<p>Compiling under windows is quite tricky.  Compiling for windows under a Linux environment is significantly easier. Easier still, we have automated the procedure to build windows executables via a technique known as <a href="https://en.wikipedia.org/wiki/Cross_compiler">Cross compiling</a>. This technique is used for the official 3Depict builds.</p>
+
+<p>To run the cross compilation script, you must first have an installed Debian-like Linux system. We recommend "Debian", however you can probably use Linux Mint or Ubuntu. We have not tried these. </p>
+
+<p>For windows users, you can install a <a href="http://www.brianlinkletter.com/installing-debian-linux-in-a-virtualbox-virtual-machine/">virtual machine</a> to do the trick, then start the build. Make sure you allocate lots of RAM and disk space (>8GB ram or swap needed, >10GB disk space recommended), to ensure the build works. On older machines, you may need to <a href="http://www.sysprobs.com/disable-enable-virtualization-technology-bios">enable</a> virtual machine access in the <a href="https://en.wikipedia.org/wiki/BIOS">system BIOS</a>.</p>
+
+
+<h1> Procedure</h1>
+<p>Having downloaded the source code, copy the <span style="font-family: monospace;">./packaging/mingw-debian-cross/</span> folder to your home directory, eg <span style="font-family: monospace;">/home/user/mingw-debian-cross/</span>. Once done, create a folder called <span style="font-family: monospace;">code</span> inside <span style="font-family: monospace;">mingw-debian-cross/</span>. This is case sensitive. Copy the <span style="font-family: monospace;">3Depict</span> folder into this <span style="font-family: monospace;">mingw-debian-cross/code/</span> folder.</p>
+
+<p>Now run the  <span style="font-family: monospace;">bootstrap.sh</span> script to execute the cross-compilation - the process can take several hours on a standard system to execute a full build. On the first run you will be asked whether you wish to compile for 32 or 64 bit windows. Once complete, you will be given a 3Depict-VERSION-BIT.exe file that you can use under windows. </p>
+
+To get the file out of your virtual machine, we recommend using a USB key. Plug the USB key in, then select it in your virtual machine, and copy the file over. It is possible to also do this by drag and drop onto your desktop, but you need to enable the virtual machine's <a href="http://www.virtualbox.org/manual/ch04.html">guest additions</a>. This can be a tricky process in itself, so it is not recommended. Many other methods of copying the file are possible, but not discussed here.</p>
+</div></div>
+
+</body></html>
