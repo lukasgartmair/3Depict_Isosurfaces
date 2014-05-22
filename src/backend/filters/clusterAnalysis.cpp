@@ -44,6 +44,7 @@ enum
 	KEY_WANT_LOGSIZEDIST,
 	KEY_WANT_COMPOSITIONDIST,
 	KEY_WANT_CLUSTERMORPHOLOGY,
+	KEY_WANT_CLUSTERID,
 	KEY_NORMALISE_COMPOSITION,
 	KEY_CROP_SIZE,
 	KEY_SIZE_COUNT_BULK,
@@ -263,7 +264,7 @@ void ClusterAnalysisFilter::buildRangeEnabledMap(const RangeStreamData *r,
 ClusterAnalysisFilter::ClusterAnalysisFilter() : algorithm(CLUSTER_LINK_ERODE),
 	enableCoreClassify(false), coreDist(0.0f), coreKNN(1), linkDist(0.5f), 
 	enableBulkLink(false), bulkLink(1), enableErosion(false), dErosion(0.25),
-	wantCropSize(false), nMin(0),nMax(std::numeric_limits<size_t>::max()),
+	wantClusterID(false), wantCropSize(false), nMin(0),nMax(std::numeric_limits<size_t>::max()),
 	wantClusterSizeDist(false),logClusterSize(false),
 	wantClusterComposition(true),normaliseComposition(true),
 	wantClusterMorphology(false), haveRangeParent(false)
@@ -301,6 +302,7 @@ Filter *ClusterAnalysisFilter::cloneUncached() const
 	
 	p->wantClusterComposition=wantClusterComposition;
 	p->normaliseComposition = normaliseComposition;
+	p->wantClusterMorphology= wantClusterMorphology;
 
 	p->haveRangeParent=false; //lets assume not, and this will be reset at ::initFilter time
 
@@ -441,6 +443,9 @@ void ClusterAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
+	// - cluster ID alters the mass, so we can't use this analysis
+	// at the same time
+	ASSERT(!(wantClusterID && wantClusterComposition));
 	//By default, copy inputs to output, unless it is an ion or range stream type.
 	for(unsigned int ui=0;ui<dataIn.size();ui++)
 	{
@@ -793,6 +798,26 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 		totalSize+=clusteredCore[ui].size();
 	i->data.resize(totalSize);
 	
+	if(wantClusterID)
+	{
+
+		#pragma omp parallel
+		{
+		#pragma omp for
+		for(size_t ui=0;ui<clusteredCore.size();ui++)
+		{
+			for(size_t uj=0;uj<clusteredCore[ui].size();uj++)
+				clusteredCore[ui][uj].setMassToCharge(ui);
+		}
+	
+		#pragma omp for
+		for(size_t ui=0;ui<clusteredBulk.size();ui++)
+		{
+			for(size_t uj=0;uj<clusteredBulk[ui].size();uj++)
+				clusteredBulk[ui][uj].setMassToCharge(ui);
+		}
+		}
+	}
 
 	//copy across the core and bulk ions
 	//into the output
@@ -836,6 +861,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	getOut.push_back(i);
 
 
+	//Run cluster composition if it is wanted.
 	if(wantClusterComposition)
 	{
 		ASSERT(r);
@@ -1041,25 +1067,37 @@ void ClusterAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	p.key=KEY_WANT_CLUSTERMORPHOLOGY;
 	propertyList.addProperty(p,curGroup);
 	*/
-	tmpStr=boolStrEnc(wantClusterComposition);
-	p.name=TRANS("Chemistry Dist.");
+
+
+	tmpStr=boolStrEnc(wantClusterID);
+	p.name=TRANS("Cluster Id");
 	p.data=tmpStr;
 	p.type=PROPERTY_TYPE_BOOL;
-	p.helpText=TRANS("Create a plot showing chemistry for each cluster size");
-	p.key=KEY_WANT_COMPOSITIONDIST;
+	p.helpText=TRANS("Assign cluster output a unique per-cluster value (id).");
+	p.key=KEY_WANT_CLUSTERID;
 	propertyList.addProperty(p,curGroup);
-	
-	if(wantClusterComposition)
-	{	
-		tmpStr=boolStrEnc(normaliseComposition);
-		p.name=TRANS("Normalise");
+
+	if(!wantClusterID)
+	{
+		tmpStr=boolStrEnc(wantClusterComposition);
+		p.name=TRANS("Chemistry Dist.");
 		p.data=tmpStr;
 		p.type=PROPERTY_TYPE_BOOL;
-		p.helpText=TRANS("Convert cluster counts to composition");
-		p.key=KEY_NORMALISE_COMPOSITION;
+		p.helpText=TRANS("Create a plot showing chemistry for each cluster size");
+		p.key=KEY_WANT_COMPOSITIONDIST;
 		propertyList.addProperty(p,curGroup);
+		
+		if(wantClusterComposition)
+		{	
+			tmpStr=boolStrEnc(normaliseComposition);
+			p.name=TRANS("Normalise");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Convert cluster counts to composition");
+			p.key=KEY_NORMALISE_COMPOSITION;
+			propertyList.addProperty(p,curGroup);
+		}
 	}
-
 
 	propertyList.setGroupTitle(curGroup,TRANS("Postprocess"));
 	
@@ -1418,6 +1456,10 @@ bool ClusterAnalysisFilter::setProperty(unsigned int key,
 				needUpdate=true;
 				clearCache();
 			}
+
+			//composition analysis is mutually
+			// exclsive with ID
+			wantClusterID=false;
 			
 			break;
 		}
@@ -1491,6 +1533,25 @@ bool ClusterAnalysisFilter::setProperty(unsigned int key,
 				needUpdate=true;
 				clearCache();
 			}
+			
+			break;
+		}
+		case KEY_WANT_CLUSTERID:
+		{
+			bool lastVal=wantClusterID;
+			if(!boolStrDec(value,wantClusterID))
+				return false;
+
+			//if the result is different, the
+			//cache should be invalidated
+			if(lastVal!=wantClusterID)
+			{
+				needUpdate=true;
+				clearCache();
+			}
+
+			//composition & id are mutually exclusive
+			wantClusterComposition=false;
 			
 			break;
 		}
@@ -1575,17 +1636,18 @@ bool ClusterAnalysisFilter::writeState(std::ostream &f,unsigned int format,
 			f << tabs(depth+1) << "<derosion value=\""<<dErosion<< "\" enabled=\"" << boolStrEnc(enableErosion) << "\"/>"  << endl;
 			
 			//Cropping control
-			f << tabs(depth+1) << "<wantcropsize value=\""<<wantCropSize<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<wantcropsize value=\""<<boolStrEnc(wantCropSize)<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<nmin value=\""<<nMin<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<nmax value=\""<<nMax<< "\"/>"  << endl;
 			
 			//Postprocessing
-			f << tabs(depth+1) << "<wantclustersizedist value=\""<<wantClusterSizeDist<< "\" logarithmic=\"" << 
+			f << tabs(depth+1) << "<wantclustersizedist value=\""<<boolStrEnc(wantClusterSizeDist)<< "\" logarithmic=\"" << 
 					logClusterSize << "\"/>"  << endl;
-			f << tabs(depth+1) << "<wantclustercomposition value=\"" <<wantClusterComposition<< "\" normalise=\"" << 
+			f << tabs(depth+1) << "<wantclustercomposition value=\"" <<boolStrEnc(wantClusterComposition)<< "\" normalise=\"" << 
 					normaliseComposition<< "\"/>"  << endl;
 			
-			f << tabs(depth+1) << "<wantclustermorphology value=\"" <<wantClusterMorphology	<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<wantclustermorphology value=\"" <<boolStrEnc(wantClusterMorphology)	<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<wantclusterid value=\"" <<boolStrEnc(wantClusterID)<< "\"/>"  << endl;
 
 
 			f << tabs(depth+1) << "<enabledions>"  << endl;
@@ -1721,6 +1783,17 @@ bool ClusterAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &pa
 	nodePtr=tmpPtr;
 	if(!XMLGetNextElemAttrib(nodePtr,wantClusterMorphology,"wantclustermorphology","value"))
 		return false;
+	
+	nodePtr=tmpPtr;
+	if(!XMLGetNextElemAttrib(nodePtr,wantClusterID,"wantclustermorphology","value"))
+	{
+		//COMPAT_BREAK: compat fix, 0.0.16.
+		wantClusterID=false;
+	}
+	else
+	{
+		wantClusterComposition=false;
+	}
 	//===
 
 

@@ -47,9 +47,9 @@ case "${host_os}" in
 		;;
 esac
 
-AC_MSG_RESULT([$WANT_WINDRES])
+AC_MSG_RESULT([Want windres... $WANT_WINDRES])
 
-AM_CONDITIONAL([HAVE_WINDRES], [ test x$WANT_WINDRES==xyes] )
+AM_CONDITIONAL([HAVE_WINDRES], [ test x"$WANT_WINDRES" == "xyes"] )
 
 
 AC_SUBST(WX_LIBS)
