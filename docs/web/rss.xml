@@ -6,12 +6,48 @@
 	<title>3Depict releases</title>
 	<description>3Depict release data</description>
 	<link>http://threedepict.sourceforge.net/</link>
-	<lastBuildDate>Sat, 24 Nov 2012 00:00:00 +0000 </lastBuildDate>
-	<pubDate>Fri, 12 Apr 2013 00:00:00 +0000 </pubDate>
+	<lastBuildDate>Sun, 01 Dec 2013 00:00:00 +0000 </lastBuildDate>
+	<pubDate>Sun, 01 Dec 2013 00:00:00 +0000 </pubDate>
+
+
+	<item>
+		<title>0.0.16</title>
+		<description>source,win32,win64</description>
+		
+		
+		<link>http://threedepict.sourceforge.net/changelog.txt</link>
+		<guid>http://sourceforge.net/projects/threedepict/files/0.0.16/3Depict-0.0.16.tar.gz/download</guid>
+		
+		<pubDate>Sun, 17 Apr 2014 00:00:00 +0000 </pubDate>
+	</item>
+
+
+	<item>
+		<title>0.0.15</title>
+		<description>source,win32,win64,macosx10.7</description>
+		
+		
+		<link>http://threedepict.sourceforge.net/changelog.txt</link>
+		<guid>http://sourceforge.net/projects/threedepict/files/0.0.15/3Depict-0.0.15.tar.gz/download</guid>
+		
+		<pubDate>Sun, 01 Dec 2013 00:00:00 +0000 </pubDate>
+	</item>
+
+	<item>
+		<title>0.0.14</title>
+		<description>win32,win64,source</description>
+		
+		
+		<link>http://threedepict.sourceforge.net/changelog.txt</link>
+		<guid>http://sourceforge.net/projects/threedepict/files/0.0.14/3Depict-0.0.14.tar.gz/download</guid>
+		
+		<pubDate>Sun, 21 Jul 2013 00:00:00 +0000 </pubDate>
+	</item>
+
 
 	<item>
 		<title>0.0.13</title>
-		<description>macosx10.7,source</description>
+		<description>win32,win64,macosx10.7,source</description>
 		
 		
 		<link>http://threedepict.sourceforge.net/changelog.txt</link>

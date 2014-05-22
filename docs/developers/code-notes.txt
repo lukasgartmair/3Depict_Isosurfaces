@@ -1,5 +1,0 @@
-String comments that can be searched for in the code:
-	COMPAT_BREAK : items that need to be changed at some point, but require a compatability break with earlier versions
-	TODO : Deferred/nice-to-have/not-sure-about-fix items
-	FIXME : Not nicely written bits of code, or known minor problems/failure edge cases.
-

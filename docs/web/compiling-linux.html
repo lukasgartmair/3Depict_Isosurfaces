@@ -1,0 +1,153 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+
+<meta content="text/html; charset=ISO-8859-1" http-equiv="content-type"/>
+<link rel="stylesheet" href="style.css" type="text/css"/>
+<link rel="icon" type="image/png" href="favicon.png"/>
+
+<title>compiling.html</title></head><body>
+<div id="header">
+<h1>3Depict - Valued point cloud visualisation and analysis</h1>
+<ul id="nav">
+	<li><a href="index.html">Home</a></li>
+	<li><a href="download.html">Download</a></li>
+	<li><a href="questions.html">Questions</a></li>
+	<li><a href="documentation.html">Documentation</a></li>
+	<li><a href="contact.html">Contact</a></li>
+	<li><a href="about.html">About</a></li>
+</ul>
+</div>
+
+<div id="left">
+<div class="box">
+<h2>Get the code</h2>
+<p> <a href="https://sourceforge.net/projects/threedepict/files/">Download</a> the source code for the latest version of 3Depict for your platform.</p> Alternately, download the latest <a href="http://sourceforge.net/p/threedepict/code/ci/default/tree/">development version</a>.
+</div>
+<div class="box">
+<h3>Stuck on how to compile?</h3>
+Try asking for help on the <a href="https://sourceforge.net/apps/phpbb/threedepict/">forums</a>
+<p></p>
+</div>
+<center>
+<a href="http://sourceforge.net"><img src="http://sflogo.sourceforge.net/sflogo.php?group_id=341003&amp;type=2" alt="SourceForge.net Logo" border="0" height="37"/></a>
+</center>
+</div>
+<div id="content">
+<div id="right">
+
+<h1>Compiling for Linux</h1>
+
+
+<p>
+
+
+In the following instructions, <span style="text-decoration: underline; font-family: monospace;">$</span> and <span style="text-decoration: underline; font-family: monospace;">#</span> indicate to enter command at a command prompt, as either a normal user or as an <a href="https://secure.wikimedia.org/wikipedia/en/wiki/Root_user">administrator</a>. Do not type the <span style="font-family: monospace;">$</span> or <span style="font-family: monospace;">#</span> when entering the commands. Commands to enter into the command line, or code snippets, are listed in a <span style="font-family: monospace;">fixed width font</span><br/>
+</p>
+<p>
+If there are any problems or flaws with the instructions, please <a href="contact.html">contact the author</a>.
+</p>
+
+<h2> Installing dependencies</h2>
+<h3>Automatic dependancy retrieval</h3>
+<p>
+An experimental script "getDeps" is supplied in the <i>packaging/deps/</i> folder. Run this script to automatically detect your platform and download and install the required dependencies.</p>
+
+<p>
+Alternately, use the following instructions:</p>
+
+
+<h3>Debian and derivatives</h3>
+Debian Linux and its derivatives (Linux Mint, Ubuntu, etc), can use the following procedure.
+To build 3Depict, you need to install the following packages:
+<ul>
+<li>build-essential</li>
+<li>libwxgtk2.8-dev</li>
+<li>libmgl-dev</li>
+<li>libxml2-dev</li>
+<li>libftgl-dev</li>
+<li>libqhull-dev</li>
+</ul>
+
+
+This can be done through the command line (below), or using the gui (synaptic package manager)<br/>
+
+<br/>
+
+<span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> sudo apt-get build-dep 3depict </span><br/>
+
+
+
+<h3>Fedora/RedHat:</h3>
+
+<ul>
+<li>"Development Tools"&nbsp; group package</li>
+<li>mathgl-devel</li>
+<li>libxml2-devel</li>
+<li>ftgl-devel</li>
+<li>wxgtk-devel</li>
+<li>qhull-devel</li>
+
+</ul>
+
+
+This can be done through either the command line, or through the GUI <br/>
+
+<br/>
+
+
+<span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> yum groupinstall "Development Tools"</span><br/>
+
+<span style="text-decoration: underline; font-family: monospace;">$</span><span style="font-family: monospace;"> yum install mathgl-devel libxml2-devel ftgl-devel wxgtk-devel qhull-devel</span><br/>
+<br/>
+
+<h3>OpenSuse:</h3>
+<i>These instructions may be slightly out of date</i>
+<ul>
+<li>wxGTK-devel</li>
+<li>libxml2-devel</li>
+<li>ftgl-devel</li>
+<li>qhull-devel</li>
+</ul>
+
+
+This can be done either through the graphical interface (YaST) or at the command line.<br/>
+
+<br/>
+
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; $ zypper install -t devel_C_C++</span><br/>
+
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; $ zypper install wxGTK-devel libxml2-devel ftgl-devel qhull-devel</span><br/>
+
+&nbsp;&nbsp;&nbsp; <br/>
+
+Unfortunately, mathgl is not available as a pre-built package for Suse.
+You must therefore download and install it manually from the mathgl
+website:<br/>
+
+<ul>
+<li><a href="http://mathgl.sourceforge.net/">http://mathgl.sourceforge.net/</a></li>
+</ul>
+
+</ul>
+
+
+<h2> Compiling</h2>
+<p>
+To compile 3Depict, ensure you have installed all the required dependencies (above), then use the following commands in the 3Depict/ directory:</p>
+
+<p>
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; $ ./configure</span> <br/><br/> Optionally, you may use <span style="font-family: monospace;">--enable-openmp-parallel</span> or <span style="font-family: monospace;">--disable-debug-checks</span> to enable parallelism or disable debug checks respectively. <br/>
+<span style="font-family: monospace;">&nbsp;&nbsp;&nbsp; $ make</span><br/>to build 3depict.<br/><br/>
+
+Once built, you can install the program with:
+<span style="font-family: monospace;">make install</span></p>
+
+
+<h2> Compiling under eclipse</h2>
+Although not officially supported, some users report being able to compile 3Depict under the eclipse IDE. You can read more about the method on the <a href="http://sourceforge.net/apps/phpbb/threedepict/viewtopic.php?f=1&t=26">forums</a>.
+
+
+</div></div>
+</body></html>

@@ -5554,9 +5554,6 @@ case "${host_os}" in
 		WX_CPPFLAGS="$WX_CPPFLAGS -DUNICODE"
 		WANT_WINDRES="yes"
 		;;
-	*)
-		as_fn_error $? " Windres check is screwed" "$LINENO" 5
-		;;
 esac
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $WANT_WINDRES" >&5

@@ -8,6 +8,7 @@
 	<title>3Depict Frequent Questions</title> 
 
 	<link rel="stylesheet" href="style.css" type="text/css"/>
+	<link rel="icon" type="image/png" href="favicon.png"/>
 
 </head>
 
@@ -43,7 +44,7 @@ You can help, even without programming; Alternately, if you know how to program 
   <li>Are there any instruction manuals?</li>
   <ul>
     <li>Yes, you can download one from the <a href="documentation.html">documentation
-page.</a>
+page.</a> If you are new to 3Depict, but not atom probe, you might want to read the "quick start" section in the manual.
       </li>
   </ul>
 </ul>
@@ -60,17 +61,16 @@ page.</a>
 	</ul>
   </ul>
 </ul>
+
 <ul>
-  <li>I'm running Debian/Mint/Ubuntu, and getting a crash on startup: "Floating point exception"</li>
+  <li>How do I cite this program?</li>
   <ul>
-    <li>We left some strict debugging in for some of the deb packages, which converts a minor problem into a major one, but only on some machines (we are not sure why). To solve this, you need to update to 0.0.8 or later. We have <a href="https://launchpad.net/~tehuser/+archive/ppa">set up a PPA</a> for Ubuntu users.</li>
-  </ul>
-</ul>
-<ul>
-  <li>I'm running Mac OSX, and when trying to update to the new version, I get the error "A newer version of this software already exists on this disk"</li>
-  <ul>
-    <li>This was due to us not specifying a version number in some early releases. Go to spotlight, then type "terminal", and open Terminal.app. Now cut and paste the following command into the terminal to remove the old version data. <p><span style="font-family: monospace;">sudo rm /private/var/db/receipts/net.sourceforge.threedepict.3Depict.pkg.plist /private/var/db/receipts/net.sourceforge.3Depict.pkg.plist
-</span></p> don't forget to press enter. You will be prompted for your password for this action.</li>
+    <li>We get this one more than we thought too. Just make sure the URL and the version number of the program you were using is included. Here is a bibtex entry you can modify : <br/><code> @Misc{,<br/>
+  Title                    = {3Depict - Valued point cloud visualisation and analysis},<br/>
+  Note                     = {[Online; Accessed : D-Month-YEAR ]},<br/>
+  Comment                  = {Please use \usepackageurl with latex, to display URL in citation},<br/>
+  Url                      = {http://threedepict.sourceforge.net}<br/>
+} </code> </li>
   </ul>
 </ul>
 
@@ -99,7 +99,7 @@ too.</li>
 
     </ul>
     <ul>
-      <li><a href="http://imagepaste.nullnetwork.net/">Upload a nice screenshot online</a>, then send us a link.&nbsp;</li>
+      <li>Upload a nice screenshot online, then send us a link.&nbsp;</li>
       <li>Report bugs, or </li>
     </ul>
     <ul>
@@ -151,6 +151,7 @@ computational skill and more importantly, familiarity with the code.</li>
   <ul>
 	<li>Firstly, make sure you are familiar with C++ and compiling projects with multiple source files. Then, the best thing to do is to <a href="compiling.html">compile</a> the latest source code (.tar.gz file). This is by far the easiest under Linux, then Mac, and most difficult under windows, due to dependencies. If needed, you can run a <a href="http://www.virtualbox.org">virtual machine</a>. Now, once done, you can make your changes as you like - there is a section in the manual describing some of this process. Also, you can check out the generated <a href="doxygen/main.html">code documentation</a>, which has some nice graphical representations of the program structure. Also, feel free to drop a line in the forums, or via a contact form, so we can give you a help.</li>
   </ul>
+
 </ul>
 
 <ul>
@@ -164,7 +165,7 @@ computational skill and more importantly, familiarity with the code.</li>
   <ul>
     <li>Well,
 try to <a href="contact.html">contact the authors</a>. These questions were written in a
-speculative fashion, and are not technically "frequently asked".</li>
+speculative fashion, and are not technically "frequently asked". There are some older questions written up <a href="questions/oldquestions.html">here</a>, for which the answers are now a bit obsolete.</li>
   </ul>
 </ul>
 </div>
