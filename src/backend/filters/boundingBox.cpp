@@ -540,11 +540,12 @@ void BoundingBoxFilter::getProperties(FilterPropGroup &propertyList) const
 		p.helpText=TRANS("Box display mode");
 		p.key=KEY_STYLE;
 		propertyList.addProperty(p,curGroup);
+		propertyList.setGroupTitle(curGroup,TRANS("Display mode"));
+		curGroup++;
 
 		
 		if(boundStyle == BOUND_STYLE_TICKS)
 		{
-			curGroup++;
 
 			//Properties are X Y and Z counts on ticks
 			stream_cast(tmpStr,fixedNumTicks);
@@ -612,8 +613,6 @@ void BoundingBoxFilter::getProperties(FilterPropGroup &propertyList) const
 
 		}
 
-		//Box Line properties 
-		curGroup++;
 
 		//Colour
 		genColString((unsigned char)(rLine*255.0),(unsigned char)(gLine*255.0),
@@ -658,18 +657,8 @@ bool BoundingBoxFilter::setProperty(  unsigned int key,
 	{
 		case KEY_VISIBLE:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(isVisible,value,needUpdate))
 				return false;
-
-			bool lastVal=isVisible;
-			isVisible=(stripped == "1");
-			
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=isVisible)
-				needUpdate=true;
 			break;
 		}	
 		case KEY_STYLE:
@@ -700,18 +689,8 @@ bool BoundingBoxFilter::setProperty(  unsigned int key,
 		}	
 		case KEY_FIXEDOUT:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(fixedNumTicks,value,needUpdate))
 				return false;
-
-			bool lastVal=fixedNumTicks;
-			fixedNumTicks=(stripped=="1");
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=fixedNumTicks)
-				needUpdate=true;
 			break;
 		}	
 		case KEY_COUNT_X:
@@ -779,12 +758,8 @@ bool BoundingBoxFilter::setProperty(  unsigned int key,
 		}
 		case KEY_FONTSIZE:
 		{
-			unsigned int newCount;
-			if(stream_cast(newCount,value))
+			if(!applyPropertyNow(fontSize,value,needUpdate))
 				return false;
-
-			fontSize=newCount;
-			needUpdate=true;
 			break;
 		}
 		default:
@@ -862,11 +837,7 @@ bool BoundingBoxFilter::readState(xmlNodePtr &nodePtr, const std::string &stateF
 		return false;
 	tmpStr=(char *)xmlString;
 
-	if(tmpStr == "0")
-		isVisible=false;
-	else if(tmpStr == "1")
-		isVisible=true;
-	else
+	if(!boolStrDec(tmpStr,isVisible))
 		return false;
 
 	xmlFree(xmlString);
@@ -899,11 +870,7 @@ bool BoundingBoxFilter::readState(xmlNodePtr &nodePtr, const std::string &stateF
 		return false;
 	tmpStr=(char *)xmlString;
 
-	if(tmpStr == "0")
-		fixedNumTicks=false;
-	else if(tmpStr == "1")
-		fixedNumTicks=true;
-	else
+	if(!boolStrDec(tmpStr,fixedNumTicks))
 		return false;
 
 	xmlFree(xmlString);

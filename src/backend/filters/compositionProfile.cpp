@@ -35,7 +35,8 @@ enum
 {
 	ERR_NUMBINS=1,
 	ERR_MEMALLOC,
-	ERR_ABORT
+	ERR_ABORT,
+	ERR_COMP_ENUM_END
 };
 
 const char *PRIMITIVE_NAME[]={
@@ -78,7 +79,12 @@ void CompositionProfileFilter::binIon(unsigned int targetBin, const RangeStreamD
 		//that makes the target bin equate to the table size. 
 		//disallow this.
 		if(targetBin < frequencyTable[0].size())
-			frequencyTable[0][targetBin]++;
+		{
+			vector<size_t>::iterator it;
+			it=frequencyTable[0].begin()+targetBin;
+			#pragma omp critical
+			(*it)++;
+		}
 		return;
 	}
 
@@ -92,7 +98,10 @@ void CompositionProfileFilter::binIon(unsigned int targetBin, const RangeStreamD
 		unsigned int ionID=rng->rangeFile->getIonID(rangeID); 
 		unsigned int pos;
 		pos = ionIDMapping.find(ionID)->second;
-		frequencyTable[pos][targetBin]++;
+		vector<size_t>::iterator it;
+		it=frequencyTable[pos].begin()+targetBin;
+		#pragma omp critical
+		(*it)++;
 	}
 }
 
@@ -406,12 +415,22 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		{
 			case STREAM_TYPE_IONS:
 			{
+				const IonStreamData *dIon = (const IonStreamData*)dataIn[ui];
+#ifdef _OPENMP
+				bool spin=false;
+#endif
 				//Process ion streams
-				for(vector<IonHit>::const_iterator it=((const IonStreamData *)dataIn[ui])->data.begin();
-					       it!=((const IonStreamData *)dataIn[ui])->data.end(); ++it)
+			
+				size_t nIons=dIon->data.size();	
+				#pragma omp parallel for
+				for(size_t uj=0;uj<nIons;uj++)
 				{
+#ifdef _OPENMP
+					//if parallelised, abort computaiton
+					if(spin) continue;
+#endif
 					unsigned int targetBin;
-					targetBin=dataMapping.mapIon1D(*it);
+					targetBin=dataMapping.mapIon1D(dIon->data[uj]);
 
 					//Keep ion if inside cylinder 
 					if(targetBin!=(unsigned int)-1)
@@ -419,9 +438,13 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 						//Push data into the correct bin.
 						// based upon eg ranging information and target 1D bin
 						binIon(targetBin,rngData,ionIDMapping,ionFrequencies,
-								it->getMassToCharge());
+								dIon->data[uj].getMassToCharge());
 					}
 
+#ifdef _OPENMP
+					if(omp_get_thread_num() == 0)	
+					{
+#endif
 					//update progress every CALLBACK ions
 					if(!curProg--)
 					{
@@ -429,9 +452,23 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 						progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 						curProg=NUM_CALLBACK;
 						if(!(*callback)(false))
+						{
+							#ifdef _OPENMP
+								spin=true;
+							#else
 							return ERR_ABORT;
+							#endif 
+						}
 					}
+#ifdef _OPENMP
+					}
+#endif
 				}
+
+#ifdef _OPENMP
+				if(spin)
+					return ERR_ABORT;
+#endif
 					
 				break;
 			}
@@ -457,7 +494,6 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 	normalisationFactor.resize(ionFrequencies[0].size());
 	normalisationCount.resize(ionFrequencies[0].size());
 	bool needNormalise=false;
-	bool needNormaliseCount=false;
 
 	//Perform the appropriate normalisation
 	if(!rngData && normalise)
@@ -503,7 +539,6 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		// the loops' nesting is reversed as we need to sum over distinct plots
 		//Density profiles (non-ranged plots) have a fixed normalisation factor
 		needNormalise=true;
-		needNormaliseCount = true; // we also need to have at least one count to normalise
 
 		for(unsigned int uj=0;uj<ionFrequencies[0].size(); uj++)
 		{
@@ -585,6 +620,10 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		{
 			float xPos;
 			xPos = (((float)uj+0.5f)/(float)ionFrequencies[ui].size())*length;
+
+			if(ionFrequencies[ui][uj] < minEvents)
+				continue;
+
 			//Recompute normalisation value for this bin, if needed
 			if(needNormalise)
 			{
@@ -592,12 +631,9 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 
 				//keep the data if we are not using minimum threshold for normalisation, or we met the 
 				// threhsold
-				if(!needNormaliseCount || normalisationCount[uj] > minEvents)
-				{
-					plotData[ui]->xyData.push_back(
-						std::make_pair(xPos,
-						normFactor*(float)ionFrequencies[ui][uj]));
-				}
+				plotData[ui]->xyData.push_back(
+					std::make_pair(xPos,
+					normFactor*(float)ionFrequencies[ui][uj]));
 			}
 			else
 			{	
@@ -608,13 +644,6 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 
 
 
-		if(cache)
-		{
-			plotData[ui]->cached=1;
-			filterOutputs.push_back(plotData[ui]);	
-		}
-		else
-			plotData[ui]->cached=0;
 
 		plotData[ui]->plotStyle = plotStyle;
 		plotData[ui]->plotMode=PLOT_MODE_1D;
@@ -623,11 +652,14 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		// otherwise, trash the plot info
 		if(plotData[ui]->xyData.size())
 		{
-			cacheOK=cache;
+			cacheAsNeeded(plotData[ui]);
 			getOut.push_back(plotData[ui]);
 		}
 		else
+		{
+			consoleOutput.push_back(TRANS("No data remained in profile - cannot display result"));
 			delete plotData[ui];
+		}
 	}
 
 	return 0;
@@ -635,16 +667,15 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 
 std::string  CompositionProfileFilter::getErrString(unsigned int code) const
 {
-	switch(code)
-	{
-		case ERR_NUMBINS:
-			return std::string(TRANS("Too many bins in comp. profile."));
-		case ERR_MEMALLOC:
-			return std::string(TRANS("Not enough memory for comp. profile."));
-		case ERR_ABORT:
-			return std::string(TRANS("Aborted composition prof."));
-	}
-	return std::string("BUG: (CompositionProfileFilter::getErrString) Shouldn't see this!");
+	const char *errCodes[] =   { "",
+		"Too many bins in comp. profile.",
+		"Not enough memory for comp. profile.",
+		"Aborted composition prof." }; 
+
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errCodes) == ERR_COMP_ENUM_END);
+	ASSERT(code < ERR_COMP_ENUM_END);
+
+	return errCodes[code];
 }
 
 bool CompositionProfileFilter::setProperty( unsigned int key, 
@@ -670,24 +701,8 @@ bool CompositionProfileFilter::setProperty( unsigned int key,
 		}
 		case COMPOSITION_KEY_FIXEDBINS:
 		{
-			unsigned int valueInt;
-			if(stream_cast(valueInt,value))
+			if(!applyPropertyNow(fixedBins,value,needUpdate))
 				return false;
-
-			if(valueInt ==0 || valueInt == 1)
-			{
-				if(fixedBins!= (bool)valueInt)
-				{
-					needUpdate=true;
-					fixedBins=valueInt;
-				}
-				else
-					needUpdate=false;
-			}
-			else
-				return false;
-			clearCache();
-			needUpdate=true;	
 			break;	
 		}
 		case COMPOSITION_KEY_NORMAL:
@@ -718,24 +733,10 @@ bool CompositionProfileFilter::setProperty( unsigned int key,
 		}
 		case COMPOSITION_KEY_MINEVENTS:
 		{
-			unsigned int valueInt;
-			if(stream_cast(valueInt,value))
+			if(!applyPropertyNow(minEvents,value,needUpdate))
 				return false;
-
-			if(minEvents!= valueInt)
-			{
-				needUpdate=true;
-				minEvents=valueInt;
-			}
-			else
-				needUpdate=false;
-
-			clearCache();
-			needUpdate=true;	
 			break;	
 		}
-	
-		
 		case COMPOSITION_KEY_NUMBINS:
 		{
 			unsigned int newNumBins;
@@ -754,17 +755,8 @@ bool CompositionProfileFilter::setProperty( unsigned int key,
 		}
 		case COMPOSITION_KEY_ORIGIN:
 		{
-			Point3D newPt;
-			if(!newPt.parse(value))
+			if(!applyPropertyNow(vectorParams[0],value,needUpdate))
 				return false;
-
-			if(!(vectorParams[0] == newPt ))
-			{
-				vectorParams[0] = newPt;
-				needUpdate=true;
-				clearCache();
-			}
-
 			return true;
 		}
 		case COMPOSITION_KEY_PRIMITIVETYPE:
@@ -854,67 +846,29 @@ bool CompositionProfileFilter::setProperty( unsigned int key,
 		}
 		case COMPOSITION_KEY_SHOWPRIMITIVE:
 		{
-			unsigned int valueInt;
-			if(stream_cast(valueInt,value))
+			if(!applyPropertyNow(showPrimitive,value,needUpdate))
 				return false;
-
-			if(valueInt ==0 || valueInt == 1)
-			{
-				if(showPrimitive!= (bool)valueInt)
-				{
-					needUpdate=true;
-					showPrimitive=valueInt;
-				}
-				else
-					needUpdate=false;
-			}
-			else
-				return false;		
 			break;	
 		}
-
 		case COMPOSITION_KEY_NORMALISE:
 		{
-			unsigned int valueInt;
-			if(stream_cast(valueInt,value))
+			if(!applyPropertyNow(normalise,value,needUpdate))
 				return false;
-
-			if(!(valueInt ==0 || valueInt == 1))
-				return false;
-			
-			if(normalise!= (bool)valueInt)
-			{
-				needUpdate=true;
-				normalise=valueInt;
-			}
-			else
-				needUpdate=false;
-		
-			clearCache();
-			needUpdate=true;	
 			break;	
 		}
 		case COMPOSITION_KEY_LOCKAXISMAG:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(lockAxisMag,value,needUpdate))
 				return false;
-
-			lockAxisMag=(stripped=="1");
-
-			needUpdate=true;
-
 			break;
 		}
-
 		case COMPOSITION_KEY_PLOTTYPE:
 		{
 			unsigned int tmpPlotType;
 
 			tmpPlotType=plotID(value);
 
-			if(tmpPlotType >= PLOT_TRACE_ENDOFENUM)
+			if(tmpPlotType >= PLOT_LINE_NONE)
 				return false;
 
 			plotStyle = tmpPlotType;
@@ -992,6 +946,7 @@ void CompositionProfileFilter::getProperties(FilterPropGroup &propertyList) cons
 		p.type=PROPERTY_TYPE_CHOICE;
 		p.helpText=TRANS("Basic shape to use for profile");
 		propertyList.addProperty(p,curGroup);
+		propertyList.setGroupTitle(curGroup,TRANS("Primitive"));	
 		curGroup++;
 	}
 
@@ -1026,10 +981,7 @@ void CompositionProfileFilter::getProperties(FilterPropGroup &propertyList) cons
 			p.helpText=TRANS("Vector between ends of cylinder");
 			propertyList.addProperty(p,curGroup);
 
-			if(lockAxisMag)
-				str="1";
-			else
-				str="0";
+			str=boolStrEnc(lockAxisMag);
 			p.key=COMPOSITION_KEY_LOCKAXISMAG;
 			p.name=TRANS("Lock Axis Mag.");
 			p.data= str;
@@ -1119,6 +1071,7 @@ void CompositionProfileFilter::getProperties(FilterPropGroup &propertyList) cons
 	p.helpText=TRANS("Drop data that does not have this many events");
 	propertyList.addProperty(p,curGroup);
 
+	propertyList.setGroupTitle(curGroup,TRANS("Settings"));	
 
 
 
@@ -1130,14 +1083,14 @@ void CompositionProfileFilter::getProperties(FilterPropGroup &propertyList) cons
 	vector<pair<unsigned int,string> > choices;
 
 
-	tmpStr=plotString(PLOT_TRACE_LINES);
-	choices.push_back(make_pair((unsigned int) PLOT_TRACE_LINES,tmpStr));
-	tmpStr=plotString(PLOT_TRACE_BARS);
-	choices.push_back(make_pair((unsigned int)PLOT_TRACE_BARS,tmpStr));
-	tmpStr=plotString(PLOT_TRACE_STEPS);
-	choices.push_back(make_pair((unsigned int)PLOT_TRACE_STEPS,tmpStr));
-	tmpStr=plotString(PLOT_TRACE_STEM);
-	choices.push_back(make_pair((unsigned int)PLOT_TRACE_STEM,tmpStr));
+	tmpStr=plotString(PLOT_LINE_LINES);
+	choices.push_back(make_pair((unsigned int) PLOT_LINE_LINES,tmpStr));
+	tmpStr=plotString(PLOT_LINE_BARS);
+	choices.push_back(make_pair((unsigned int)PLOT_LINE_BARS,tmpStr));
+	tmpStr=plotString(PLOT_LINE_STEPS);
+	choices.push_back(make_pair((unsigned int)PLOT_LINE_STEPS,tmpStr));
+	tmpStr=plotString(PLOT_LINE_STEM);
+	choices.push_back(make_pair((unsigned int)PLOT_LINE_STEM,tmpStr));
 
 	tmpStr= choiceString(choices,plotStyle);
 	p.name=TRANS("Plot Type");
@@ -1350,11 +1303,7 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 		return false;
 	tmpStr=(char *)xmlString;
 
-	if(tmpStr == "0")
-		showPrimitive=false;
-	else if(tmpStr == "1")
-		showPrimitive=true;
-	else
+	if(!boolStrDec(tmpStr,showPrimitive))
 		return false;
 
 	xmlFree(xmlString);
@@ -1370,11 +1319,7 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 		return false;
 	tmpStr=(char *)xmlString;
 
-	if(tmpStr == "0")
-		lockAxisMag=false;
-	else if(tmpStr == "1")
-		lockAxisMag=true;
-	else
+	if(!boolStrDec(tmpStr,lockAxisMag))
 		return false;
 
 	xmlFree(xmlString);
@@ -1485,11 +1430,8 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 		return false;
 	tmpStr=(char *)xmlString;
 
-	if(tmpStr == "0")
-		normalise=false;
-	else if(tmpStr == "1")
-		normalise=true;
-	else
+
+	if(!boolStrDec(tmpStr,normalise))
 		return false;
 
 	xmlFree(xmlString);
@@ -1505,11 +1447,7 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 		return false;
 	tmpStr=(char *)xmlString;
 
-	if(tmpStr == "0")
-		fixedBins=false;
-	else if(tmpStr == "1")
-		fixedBins=true;
-	else
+	if(!boolStrDec(tmpStr,fixedBins))
 		return false;
 
 
@@ -1571,7 +1509,7 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	if(stream_cast(plotStyle,tmpStr))
 		return false;
 
-	if(plotStyle >= PLOT_TRACE_ENDOFENUM)
+	if(plotStyle >= PLOT_LINE_NONE)
 	       return false;	
 	xmlFree(xmlString);
 	//====
@@ -1710,6 +1648,7 @@ bool testCompositionCylinder()
 	bool needUp; std::string s;
 	stream_cast(s,Point3D((startPt+endPt)*0.5f));
 	TEST(f->setProperty(COMPOSITION_KEY_ORIGIN,s,needUp),"set origin");
+	TEST(f->setProperty(COMPOSITION_KEY_MINEVENTS,"0",needUp),"set origin");
 	
 	stream_cast(s,Point3D((endPt-startPt)*0.5f));
 	TEST(f->setProperty(COMPOSITION_KEY_NORMAL,s,needUp),"set direction");

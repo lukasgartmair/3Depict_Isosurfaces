@@ -28,9 +28,8 @@
 #include <wx/dnd.h>
 #include <wx/grid.h>
 #include <wx/treectrl.h>
-#if wxCHECK_VERSION(2,9,0)
+#include <wx/propgrid/propgrid.h>
 #include <wx/filehistory.h>
-#endif
 // end wxGlade
 
 //Local stuff
@@ -46,10 +45,6 @@
 #ifndef THREEDEPICT_H 
 #define THREEDEPICT_H
 
-//Workaround for keypress not detected under MSW wx3.0 and apple
-#if wxCHECK_VERSION(2,9,0) && ( defined(__WIN32) || defined(__WIN64) || defined(__APPLE__)) || wxCHECK_VERSION(3,0,0)
-#define WX_TREE_WORKAROUND
-#endif
 
 class FileDropTarget;
 
@@ -57,9 +52,8 @@ enum
 {
 	MESSAGE_ERROR=1,
 	MESSAGE_INFO,
-	MESSAGE_HINT,
-	MESSAGE_NONE_BUT_HINT,
-	MESSAGE_NONE
+	MESSAGE_HINT, //lowest priority message in the queue. Only one HINT can be in queue at a time
+	MESSAGE_NONE // pseudo-message to wipe all messages
 };
 
 class MainWindowFrame: public wxFrame {
@@ -88,8 +82,15 @@ private:
     void set_properties();
     void do_layout();
     // end wxGlade
+    //Force a re-layout of the filter property grid
+    void do_filtergrid_prop_layout();
+    //Force a re-layout of the camera property grid
+    void do_cameragrid_prop_layout();
    
-   	//!Give a message in the satus bar
+   	//!Queue up a status message for display
+    	void showStatusMessage(const char *message, unsigned int messageType=MESSAGE_ERROR); 
+   	
+	//!Queue up a status message for display
     	void statusMessage(const char *message, unsigned int messageType=MESSAGE_ERROR); 
 
 	//!Update the progress information in the status bar
@@ -141,9 +142,6 @@ private:
 	//!Did the main frame's constructor complete OK?
 	bool initedOK;
 
-	//The type of status message last sent to user
-	unsigned int lastMessageType;
-
 	//Pointer to version check thread, occasionally initialised at startup to
 	// check online for new program updates
 	VersionCheckThread *verCheckThread;
@@ -154,6 +152,10 @@ private:
 	//TODO: Refactor -  remove me.
 	// True if there are pending updates for the mahthgl window
 	bool plotUpdates;
+
+	//List of pending messages to show in status bar
+	// first int is priority (eg MESSAGE_ERROR), string is message
+	list<pair<unsigned int, std::string > > statusQueue;
 protected:
     wxTimer *statusTimer;
     wxTimer *progressTimer;
@@ -194,7 +196,8 @@ protected:
     wxBitmapButton* btnFilterTreeErrs;
     wxPanel* filterTreePane;
     wxStaticText* propGridLabel;
-    wxCustomPropGrid* gridFilterPropGroup;
+    wxPropertyGrid* gridFilterPropGroup;
+    wxPropertyGrid *backFilterPropGrid;
     wxPanel* filterPropertyPane;
     wxSplitterWindow* filterSplitter;
     wxPanel* noteData;
@@ -202,7 +205,8 @@ protected:
     wxComboBox* comboCamera;
     wxButton* buttonRemoveCam;
     wxStaticLine* cameraNamePropertySepStaticLine;
-    wxCustomPropGrid* gridCameraProperties;
+    wxPropertyGrid* gridCameraProperties;
+    wxPropertyGrid* backCameraPropGrid;
     wxScrolledWindow* noteCamera;
     wxCheckBox* checkPostProcessing;
     wxCheckBox* checkFxCrop;
@@ -287,11 +291,7 @@ public:
     virtual void OnComboStashEnter(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnComboStash(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeEndDrag(wxTreeEvent &event); // wxGlade: <event_handler>
-#if defined(WX_TREE_WORKAROUND)
     virtual void OnTreeKeyDown(wxKeyEvent &event); // wxGlade: <event_handler>
-#else
-     virtual void OnTreeKeyDown(wxTreeEvent &event); // wxGlade: <event_handler>
-#endif
     virtual void OnTreeSelectionPreChange(wxTreeEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeSelectionChange(wxTreeEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeDeleteItem(wxTreeEvent &event); // wxGlade: <event_handler>
@@ -301,7 +301,8 @@ public:
     virtual void OnBtnFilterTreeErrs(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnComboCameraText(wxCommandEvent &event); // wxGlade: <event_handler>
 
-    virtual void OnGridFilterPropertyChange(wxGridEvent &event); // wxGlade: <event_handler>
+    virtual void OnGridFilterPropertyChange(wxPropertyGridEvent &event); // wxGlade: <event_handler>
+    virtual void OnGridFilterDClick(wxPropertyGridEvent &event); // wxGlade: <event_handler>
     virtual void OnComboCameraEnter(wxCommandEvent &event); // wxGlade: <event_handler>
     virtual void OnComboCamera(wxCommandEvent &event); // wxGlade: <event_handler>
     
@@ -336,10 +337,6 @@ public:
     virtual void OnComboFilter(wxCommandEvent &event); // 
     
     virtual void OnStatusBarTimer(wxTimerEvent &event); // 
-    virtual void OnFilterGridCellEditorShow(wxGridEvent &event); // 
-    virtual void OnFilterGridCellEditorHide(wxGridEvent &event); // 
-    virtual void OnCameraGridCellEditorShow(wxGridEvent &event); // 
-    virtual void OnCameraGridCellEditorHide(wxGridEvent &event); // 
     virtual void OnProgressTimer(wxTimerEvent &event);
     virtual void OnProgressAbort(wxCommandEvent &event);
     virtual void OnViewFullscreen(wxCommandEvent &event);
@@ -361,7 +358,7 @@ public:
     virtual void OnComboCameraSetFocus(wxFocusEvent &evt);
     virtual void OnComboStashSetFocus(wxFocusEvent &evt);
     virtual void OnNoteDataView(wxNotebookEvent &evt);
-    virtual void OnGridCameraPropertyChange(wxGridEvent &event); // wxGlade: <event_handler>
+    virtual void OnGridCameraPropertyChange(wxPropertyGridEvent &event); // wxGlade: <event_handler>
 
     virtual void OnFileExportVideo(wxCommandEvent &event);
     virtual void OnFileExportFilterVideo(wxCommandEvent &event);
@@ -375,12 +372,17 @@ public:
     virtual void OnAutosaveTimer(wxTimerEvent &evt);
 
     virtual void OnCheckUpdatesThread(wxCommandEvent &evt);
+    virtual void OnIdle(wxIdleEvent &evt);
 
     virtual void SetCommandLineFiles(wxArrayString &files);
     virtual void updateLastRefreshBox();
 
     //return type of file, based upon heuristic check
     static unsigned int guessFileType(const std::string &file);
+
+
+    //Check to see if the user wants a tip file
+    void checkShowTips();
 
     //See if the user wants to save the current state
     void checkAskSaveState();
@@ -397,6 +399,8 @@ public:
     void onPanelSpectraUpdate() {plotUpdates=true;} ;
 
     bool initOK() const {return initedOK;}
+    
+    void finaliseStartup();
 
     //This is isolated from the layout code, due to "bug" 4815 in wx. The splitter window
     //does not know how to choose a good size until the window is shown

@@ -54,16 +54,10 @@ const char *DTD_NAME="threeDepict-state.dtd";
 //Program name
 const char *PROGRAM_NAME = "3Depict";
 //Program version
-const char *PROGRAM_VERSION = "0.0.16";
+const char *PROGRAM_VERSION = "0.0.17";
 //Path to font for Default FTGL  font
 const char *FONT_FILE= "FreeSans.ttf";
 
-const char *TEXT_LOAD_ERR_STRINGS[] = { "",
-       					NTRANS("Error opening file"),
-       					NTRANS("Error whilst reading file contents"),
-					NTRANS("Error interpreting field in file"),
-					NTRANS("Inconsistent number of columns found")
-					};
 
 //default font to use.
 std::string defaultFontFile;
@@ -367,6 +361,17 @@ void BoundCube::setBounds(const std::vector<Point3D> &points)
 #endif
 }
 
+void BoundCube::setBounds(const Point3D &p, float r)
+{
+	for(unsigned int dim=0;dim<3;dim++)
+	{
+		bounds[dim][0] = p[dim] - r;
+		bounds[dim][1] = p[dim] + r;
+		valid[dim][0]=true;
+		valid[dim][1]=true;
+	}
+}
+
 void BoundCube::getVertices(std::vector<Point3D> &points, bool centre) const
 {
 	points.resize(8);
@@ -609,6 +614,38 @@ bool BoundCube::intersects(const Point3D &pt, float sqrRad)
 	//Note that the touching case is considered to be an intersection
 	return (nearPt.sqrDist(pt) <=sqrRad);
 }
+
+BoundCube BoundCube::makeUnion(const BoundCube &bC) const
+{
+	BoundCube res;
+	for(unsigned int dim=0;dim<3;dim++)
+	{
+		float a,b;
+		a=bounds[dim][0]; b=bC.bounds[dim][0];
+		res.setBound(dim,0,std::max(a,b));
+		a=bounds[dim][1]; b=bC.bounds[dim][1];
+		res.setBound(dim,1,std::min(a,b));
+	}
+
+	return res;
+}
+
+unsigned int BoundCube::segmentTriple(unsigned int dim, float slice) const
+{
+	ASSERT(dim < 3);
+
+	//check lower
+	if( slice < bounds[dim][0])
+		return 0;
+	
+	//check upper
+	if( slice >=bounds[dim][1])
+		return 2;
+
+	return 1;
+
+}
+
 
 Point3D BoundCube::getCentroid() const
 {
@@ -1146,37 +1183,23 @@ bool isValidXML(const char *filename)
 	WARN(!result,"xmllint not installed in system PATH, cannot perform debug check")
 	return true;
 }
+#endif
 
+#if !defined(__WIN32__) && !defined(__WIN64)
 	
-//FIXME: Why negative?
 bool isNotDirectory(const char *filename)
 {
-#if !defined(__WIN32__) && !defined(__WIN64__)
 	struct stat statbuf;
 
 	if(stat(filename,&statbuf) == -1)
 		return false;
 
 	return (statbuf.st_mode !=S_IFDIR);
-#else
-
-	WARN(false, "Untested function. calling win api");
-	DWORD fileAttribs;
-	fileAttribs=GetFileAttributes((LPCWSTR)filename);
-	if(fileAttribs == INVALID_FILE_ATTRIBUTES)
-		return false;
-
-	return !(fileAttribs & FILE_ATTRIBUTE_DIRECTORY);
-#endif
 }
 
 bool rmFile(const std::string &filename)
 {
-#if !defined(__WIN32__) && !defined(__WIN64__)
 	return remove(filename.c_str()) == 0;
-#else
-	WARN(false, "Untested function. calling win api");
-	return DeleteFile((LPCWSTR)filename.c_str());
-#endif
 }
+
 #endif

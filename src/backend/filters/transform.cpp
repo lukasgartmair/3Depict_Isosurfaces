@@ -71,7 +71,8 @@ enum
 enum
 {
 	ERR_CALLBACK_FAIL=1,
-	ERR_NOMEM
+	ERR_NOMEM,
+	TRANSFORM_ERR_ENUM_END
 };
 
 const char *TRANSFORM_MODE_STRING[] = { NTRANS("Translate"),
@@ -417,14 +418,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 #endif
 							ASSERT(d->data.size() == src->data.size());
 
-							if(cache)
-							{
-								d->cached=1;
-								filterOutputs.push_back(d);
-								cacheOK=true;
-							}
-							else
-								d->cached=0;
+							cacheAsNeeded(d);
 
 							getOut.push_back(d);
 							break;
@@ -538,14 +532,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 #endif
 							ASSERT(d->data.size() == src->data.size());
 
-							if(cache)
-							{
-								d->cached=1;
-								filterOutputs.push_back(d);
-								cacheOK=true;
-							}
-							else
-								d->cached=0;
+							cacheAsNeeded(d);
 
 							getOut.push_back(d);
 							break;
@@ -659,14 +646,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							ASSERT(pos == d->data.size());
 #endif
 							ASSERT(d->data.size() == src->data.size());
-							if(cache)
-							{
-								d->cached=1;
-								filterOutputs.push_back(d);
-								cacheOK=true;
-							}
-							else
-								d->cached=0;
+
+							cacheAsNeeded(d);
 							
 							getOut.push_back(d);
 							break;
@@ -776,14 +757,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							ASSERT(pos == d->data.size());
 #endif
 							ASSERT(d->data.size() == src->data.size());
-							if(cache)
-							{
-								d->cached=1;
-								filterOutputs.push_back(d);
-								cacheOK=true;
-							}
-							else
-								d->cached=0;
+
+							cacheAsNeeded(d);
 							
 							getOut.push_back(d);
 							break;
@@ -876,14 +851,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							}
 
 							ASSERT(d->data.size() == src->data.size());
-							if(cache)
-							{
-								d->cached=1;
-								filterOutputs.push_back(d);
-								cacheOK=true;
-							}
-							else
-								d->cached=0;
+
+							cacheAsNeeded(d);
 							
 							getOut.push_back(d);
 							break;
@@ -1005,14 +974,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							}
 							
 							ASSERT(d->data.size() == src->data.size());
-							if(cache)
-							{
-								d->cached=1;
-								filterOutputs.push_back(d);
-								cacheOK=true;
-							}
-							else
-								d->cached=0;
+
+							cacheAsNeeded(d);
 							
 							getOut.push_back(d);
 							break;
@@ -1150,15 +1113,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 
 		massData.clear();
 
-		if(cache)
-		{
-			d->cached=1;
-			filterOutputs.push_back(d);
-			cacheOK=true;
-		}
-		else
-			d->cached=0;
-
+		cacheAsNeeded(d);
+		
 		getOut.push_back(d);
 		
 	}
@@ -1186,6 +1142,7 @@ void TransformFilter::getProperties(FilterPropGroup &propertyList) const
 	p.key=KEY_MODE;
 	propertyList.addProperty(p,curGroup);
 	
+	propertyList.setGroupTitle(curGroup,TRANS("Algorithm"));
 	curGroup++;	
 	
 	//non-translation transforms require a user to select an origin	
@@ -1451,48 +1408,20 @@ bool TransformFilter::setProperty(  unsigned int key,
 		case KEY_NOISELEVEL:
 		case KEY_ORIGIN_VALUE:
 		{
-			ASSERT(scalarParams.size());
-
-			float newScale;
-			if(stream_cast(newScale,value))
+			if(!applyPropertyNow(scalarParams[0],value,needUpdate))
 				return false;
-
-			if(scalarParams[0] != newScale )
-			{
-				scalarParams[0] = newScale;
-				needUpdate=true;
-				clearCache();
-			}
 			return true;
 		}
 		case KEY_SCALEFACTOR_ANISOTROPIC:
 		{
-			Point3D newPt;
-			if(!newPt.parse(value))
+			if(!applyPropertyNow(vectorParams[1],value,needUpdate))
 				return false;
-
-			if(!(vectorParams[1] == newPt ))
-			{
-				vectorParams[1] = newPt;
-				needUpdate=true;
-				clearCache();
-			}
-
 			return true;
 		}
 		case KEY_ORIGIN:
 		{
-			Point3D newPt;
-			if(!newPt.parse(value))
+			if(!applyPropertyNow(vectorParams[0],value,needUpdate))
 				return false;
-
-			if(!(vectorParams[0] == newPt ))
-			{
-				vectorParams[0] = newPt;
-				needUpdate=true;
-				clearCache();
-			}
-
 			return true;
 		}
 		case KEY_ROTATE_AXIS:
@@ -1534,15 +1463,8 @@ bool TransformFilter::setProperty(  unsigned int key,
 		}
 		case KEY_TRANSFORM_SHOWORIGIN:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(showOrigin,value,needUpdate))
 				return false;
-
-			showOrigin=(stripped=="1");
-
-			needUpdate=true;
-
 			break;
 		}
 		case KEY_NOISETYPE:
@@ -1571,17 +1493,14 @@ bool TransformFilter::setProperty(  unsigned int key,
 
 std::string  TransformFilter::getErrString(unsigned int code) const
 {
+	const char *errStrs[] = { "",
+		"Aborted",//User aborted in a callback
+		"Unable to allocate memory"//Caught a memory issue,
+	};
 
-	switch(code)
-	{
-		//User aborted in a callback
-		case ERR_CALLBACK_FAIL:
-			return std::string(TRANS("Aborted"));
-		//Caught a memory issue
-		case ERR_NOMEM:
-			return std::string(TRANS("Unable to allocate memory"));
-	}
-	ASSERT(false);
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errStrs) == TRANSFORM_ERR_ENUM_END);
+	ASSERT(code < TRANSFORM_ERR_ENUM_END);
+	return errStrs[code]; 
 }
 
 bool TransformFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const

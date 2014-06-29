@@ -123,8 +123,6 @@ class Scene
 		///!Draw the hover overlays
 		void drawHoverOverlay();
 
-		//!Draw the normal overlays
-		void drawOverlays() const;
 
 		void drawProgressAnim() const;
 
@@ -153,6 +151,8 @@ class Scene
 		//!Draw the objects in the active window. May adjust cameras and compute bounding as needed.
 		void draw(bool noUpdateCam=false);
 
+		//!Draw the normal overlays
+		void drawOverlays(bool noCamUpdate=false) const;
 	
 		//!clear rendering vectors
 		void clearAll();
@@ -162,7 +162,9 @@ class Scene
 		void clearRefObjs();
 		//!Clear object bindings vector
 		void clearBindings();
-	
+
+		//!Do we have overlay items?
+		bool hasOverlays() const;	
 
 		//!Obtain the scene's light coordinates in camera relative space
 		// requires an array os size 4  (xyzw)

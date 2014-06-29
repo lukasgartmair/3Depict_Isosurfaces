@@ -1,14 +1,15 @@
 TODO List - worlds simplest bugtracking system 
 
 --Packaging--
+	* Update manual with
+		- cluster ID 
+		- Set operations
 
 --Main app--
 	To Implement:
 		== Next version ==
 	
 		== Eventually == 
-		* Support for XY scatter plots
-		* Status bar message queue
 		* Voxel export dialog 
 		* VTK voxel data export
 		* OPS and other 3DAP formats reader?
@@ -36,7 +37,6 @@ TODO List - worlds simplest bugtracking system
 
 	Outstanding bugs:
 		== Next release==
-		* Colour bar drawing broken when tiling an output image
 		* Fix voxelisation "filter" option 
 			
 		== Eventually==
@@ -68,7 +68,6 @@ TODO List - worlds simplest bugtracking system
 		* Pos limit loader could alter its behaviour when
 		 sampling rates some percentage to be determined (load
 		 file, skip buffer).
-		* KD tree could implement proper range queries, eg bounds overlaps box
 		* Clustering could be paralellised, but is complex. Split & weld along KD tree lines using 
 		  cluster BB interactions.
 		* Examine performance characteristics of HULL_GRAB in ioninfo
@@ -80,9 +79,6 @@ TODO List - worlds simplest bugtracking system
 
 
 -- Refactor/cleanup --
-	* updateFilterPropertyGrid is in a bad location, need new
-	  file that knows about filters and wx at the same time,
-	  but is not viscontrol ;)
 	* Plotting code is a nightmare. Data model for plot.h is not
 	   very well thought out, leading to large duplication, and elaborate special-case-ing
 		- Plots need log/non-log axes

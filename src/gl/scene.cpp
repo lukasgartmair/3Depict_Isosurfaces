@@ -177,6 +177,23 @@ unsigned int Scene::initDraw()
 	return passes;
 }
 
+bool Scene::hasOverlays() const
+{
+	for(unsigned int ui=0;ui<objects.size();ui++)
+	{
+		if(objects[ui]->isOverlay())
+			return true;
+	}
+	
+	for(unsigned int ui=0;ui<refObjects.size();ui++)
+	{
+		if(refObjects[ui]->isOverlay())
+			return true;
+	}
+
+	return false;
+}
+
 void Scene::updateCam(const Camera *camToUse, bool useIdent=true) const
 {
 	Point3D lightNormal;
@@ -294,15 +311,20 @@ void Scene::draw(bool noUpdateCam)
 
 
 	glPopMatrix();
-		
-	//Now draw 2D overlays
-	if(!lockInteract&& lastHovered != (unsigned int)(-1) )
-		drawHoverOverlay();
-	drawOverlays();
+	
+	//Only draw 2D components if we
+	// are using normal camera	
+	if(!noUpdateCam)
+	{
+		//Now draw 2D overlays
+		if(!lockInteract&& lastHovered != (unsigned int)(-1) )
+			drawHoverOverlay();
 
-	//Draw progress, if needed
-	drawProgressAnim();
+		drawOverlays(noUpdateCam);
 
+		//Draw progress, if needed
+		drawProgressAnim();
+	}
 }
 
 void Scene::drawObjectVector(const vector<const DrawableObj*> &drawObjs, bool &lightsOn, bool drawOpaques) const
@@ -355,46 +377,59 @@ void Scene::drawObjectVector(const vector<const DrawableObj*> &drawObjs, bool &l
 	}
 }
 
-void Scene::drawOverlays() const
+void Scene::drawOverlays(bool noUpdateCam) const
 {
 
 	//Custom projection matrix
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadIdentity();
-
 	glDisable(GL_LIGHTING);
-	//Set the opengl camera state back into modelview mode
-	gluOrtho2D(0, outWinAspect, 1.0, 0);
-
-
-
-	glMatrixMode(GL_MODELVIEW);
-	glPushMatrix();
-	glLoadIdentity();
-
 	glDisable(GL_DEPTH_TEST);
+	//Set the opengl camera state back into modelview mode
+	if(!noUpdateCam)
+	{
+		//clear projection and o modle matricies
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadIdentity();
+		gluOrtho2D(0, outWinAspect, 1.0, 0);
+
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glLoadIdentity();
+	}
+
 
 
 	for(unsigned int ui=0;ui<refObjects.size();ui++)
 	{
 		if(refObjects[ui]->isOverlay())
+		{
 			refObjects[ui]->draw();
+		}
 	}
 	
 	for(unsigned int ui=0;ui<objects.size();ui++)
 	{
 		if(objects[ui]->isOverlay())
+		{
 			objects[ui]->draw();
+		}
 	}
 	
 
-	glEnable(GL_DEPTH_TEST);
-	glPopMatrix();
-	glMatrixMode(GL_PROJECTION);
-	glPopMatrix();
+	if(!noUpdateCam)
+	{
+		//op our modelview matrix
+		glPopMatrix();
+		
+		//ppop projection atrix
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+		//return to modelview mode
+		glMatrixMode(GL_MODELVIEW);
+	}
 
-	glMatrixMode(GL_MODELVIEW);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_LIGHTING);
 }
 
 void Scene::drawHoverOverlay()

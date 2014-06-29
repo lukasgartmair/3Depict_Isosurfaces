@@ -50,6 +50,9 @@ class ClusterAnalysisFilter : public Filter
 		bool enableErosion;
 		//Erosion distance for bulk from nonclustered bulk
 		float dErosion;
+
+		//convert clusters mass to an ID #?
+		bool wantClusterID;
 		//---	
 
 		//post processing options

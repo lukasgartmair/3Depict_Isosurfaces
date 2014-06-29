@@ -88,10 +88,11 @@ enum
 //--
 enum
 {
-	VOXELISE_ABORT_ERR,
+	VOXELISE_ABORT_ERR=1,
 	VOXELISE_MEMORY_ERR,
 	VOXELISE_CONVOLVE_ERR,
-	VOXELISE_BOUNDS_INVALID_ERR
+	VOXELISE_BOUNDS_INVALID_ERR,
+	VOXELISE_ERR_ENUM_END
 };
 //--
 
@@ -814,6 +815,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 
 	//Let the user know what the valid values for voxel value types are
 	vector<pair<unsigned int,string> > choices;
+	unsigned int defaultChoice=normaliseType;
 	tmpStr=getNormaliseTypeString(VOXELISE_NORMALISETYPE_NONE);
 	choices.push_back(make_pair((unsigned int)VOXELISE_NORMALISETYPE_NONE,tmpStr));
 	tmpStr=getNormaliseTypeString(VOXELISE_NORMALISETYPE_VOLUME);
@@ -827,8 +829,16 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 		tmpStr=getNormaliseTypeString(VOXELISE_NORMALISETYPE_COUNT2INVOXEL);
 		choices.push_back(make_pair((unsigned int)VOXELISE_NORMALISETYPE_COUNT2INVOXEL,tmpStr));
 	}
+	else
+	{
+		//prevent the case where we usd to have an incoing range stream, but now we dont.
+		// selected item within choice string must still be valid
+		if(normaliseType > VOXELISE_NORMALISETYPE_VOLUME)
+			defaultChoice= VOXELISE_NORMALISETYPE_NONE;
+		
+	}
 
-	tmpStr= choiceString(choices,normaliseType);
+	tmpStr= choiceString(choices,defaultChoice);
 	p.name=TRANS("Normalise by");
 	p.data=tmpStr;
 	p.type=PROPERTY_TYPE_CHOICE;
@@ -843,7 +853,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 	if (rsdIncoming) 
 	{
 		p.name=TRANS("Numerator");
-		p.data=numeratorAll ? "1" : "0";
+		p.data=boolStrEnc(numeratorAll);
 		p.type=PROPERTY_TYPE_BOOL;
 		p.helpText=TRANS("Parmeter \"a\" used in fraction (a/b) to get voxel value");
 		p.key=KEY_ENABLE_NUMERATOR;
@@ -856,10 +866,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
 		{
 			string str;
-			if(enabledIons[0][ui])
-				str="1";
-			else
-				str="0";
+			str=boolStrEnc(enabledIons[0][ui]);
 
 			//Append the ion name with a checkbox
 			p.name=rsdIncoming->rangeFile->getName(ui);
@@ -870,6 +877,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			propertyList.addProperty(p,curGroup);
 		}
 	
+		propertyList.setGroupTitle(curGroup,TRANS("Ranges"));
 		curGroup++;
 	}
 	
@@ -877,7 +885,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 	if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL && rsdIncoming) 
 	{
 		p.name=TRANS("Denominator");
-		p.data=denominatorAll ? "1" : "0";
+		p.data=boolStrEnc(denominatorAll );
 		p.type=PROPERTY_TYPE_BOOL;
 		p.helpText=TRANS("Parameter \"b\" used in fraction (a/b) to get voxel value");
 		p.key=KEY_ENABLE_DENOMINATOR;
@@ -885,10 +893,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
 		{			
 			string str;
-			if(enabledIons[1][ui])
-				str="1";
-			else
-				str="0";
+			str=boolStrEnc(enabledIons[1][ui]);
 
 			//Append the ion name with a checkbox
 			p.key=KEY_ENABLE_DENOMINATOR*1000 + ui;
@@ -899,6 +904,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 
 			propertyList.addProperty(p,curGroup);
 		}
+		propertyList.setGroupTitle(curGroup,TRANS("Mode"));
 		curGroup++;
 	}
 
@@ -906,7 +912,6 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 	//----
 	//TODO: Other filtering? threshold/median? laplacian? etc
 	
-/*
 	choices.clear();
 	//Post-filtering method
 	for(unsigned int ui=0;ui<VOXELISE_FILTERTYPE_MAX; ui++)
@@ -954,7 +959,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.setGroupTitle(curGroup,TRANS("Filtering"));
 	curGroup++;
 	//----
-*/
+
 	//start a new group for the visual representation
 	//----------------------------
 	choices.clear();
@@ -1012,7 +1017,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			propertyList.addProperty(p,curGroup);
 		
 			//-- 
-				
+			propertyList.setGroupTitle(curGroup,TRANS("Surface"));	
 			curGroup++;
 
 			//-- Isosurface appearance --
@@ -1034,7 +1039,6 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			p.key=KEY_TRANSPARENCY;
 			propertyList.addProperty(p,curGroup);
 			
-			propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
 			//----
 			
 			break;
@@ -1081,6 +1085,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			propertyList.addProperty(p,curGroup);
 			choices.clear();
 			// ---	
+			propertyList.setGroupTitle(curGroup,TRANS("Surface"));	
 			curGroup++;
 
 			
@@ -1098,21 +1103,14 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			p.key=KEY_VOXEL_COLOURMODE;
 			propertyList.addProperty(p,curGroup);
 
-			if(showColourBar)
-				tmpStr="1";
-			else
-				tmpStr="0";
-			
+			tmpStr=boolStrEnc(showColourBar);
 			p.name=TRANS("Show Bar");
 			p.key=KEY_SHOW_COLOURBAR;
 			p.data=tmpStr;
 			p.type=PROPERTY_TYPE_BOOL;
 			propertyList.addProperty(p,curGroup);
 
-			if(autoColourMap)
-				tmpStr="1";
-			else
-				tmpStr="0";	
+			tmpStr=boolStrEnc(autoColourMap);
 			p.name=TRANS("Auto Bounds");
 			p.helpText=TRANS("Auto-compute min/max values in map"); 
 			p.data= tmpStr;
@@ -1147,6 +1145,8 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			ASSERT(false);
 			;
 	}
+	
+	propertyList.setGroupTitle(curGroup,TRANS("Appearance"));	
 	curGroup++;
 
 	//----------------------------
@@ -1161,125 +1161,26 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 	{
 		case KEY_FIXEDWIDTH: 
 		{
-			bool b;
-			if(stream_cast(b,value))
+			if(!applyPropertyNow(fixedWidth,value,needUpdate))
 				return false;
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(b!=fixedWidth)
-			{
-				needUpdate=true;
-				fixedWidth=b;
-				clearCache();
-			}
 			break;
 		}	
 		case KEY_NBINSX:
-		{
-			 unsigned int i;
-			if(stream_cast(i,value))
-				return false;
-			if(!i)
-				return false;
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(i!=nBins[0])
-			{
-				needUpdate=true;
-				nBins[0]=i;
-				calculateWidthsFromNumBins(binWidth, nBins);
-				clearCache();
-			}
-			break;
-		}
 		case KEY_NBINSY:
-		{
-			 unsigned int i;
-			if(stream_cast(i,value))
-				return false;
-			if(!i)
-				return false;
-			needUpdate=true;
-			//if the result is different, the
-			//cache should be invalidated
-			if(i!=nBins[1])
-			{
-				needUpdate=true;
-				nBins[1]=i;
-				calculateWidthsFromNumBins(binWidth, nBins);
-				clearCache();
-			}
-			break;
-		}
 		case KEY_NBINSZ:
 		{
-			 unsigned int i;
-			if(stream_cast(i,value))
+			if(!applyPropertyNow(nBins[key-KEY_NBINSX],value,needUpdate))
 				return false;
-			if(!i)
-				return false;
-			
-			//if the result is different, the
-			//cache should be invalidated
-			if(i!=nBins[2])
-			{
-				needUpdate=true;
-				nBins[2]=i;
-				calculateWidthsFromNumBins(binWidth, nBins);
-				clearCache();
-			}
+			calculateWidthsFromNumBins(binWidth, nBins);
 			break;
 		}
 		case KEY_WIDTHBINSX:
-		{
-			float f;
-			if(stream_cast(f,value))
-				return false;
-			if(f <= 0.0f)
-				return false;
-		
-			if(f!=binWidth[0])
-			{
-				needUpdate=true;
-				binWidth[0]=f;
-				calculateNumBinsFromWidths(binWidth, nBins);
-				clearCache();
-			}
-			break;
-		}
 		case KEY_WIDTHBINSY:
-		{
-			float f;
-			if(stream_cast(f,value))
-				return false;
-			if(f <= 0.0f)
-				return false;
-			
-			if(f!=binWidth[1])
-			{
-				needUpdate=true;
-				binWidth[1]=f;
-				calculateNumBinsFromWidths(binWidth, nBins);
-				clearCache();
-			}
-			break;
-		}
 		case KEY_WIDTHBINSZ:
 		{
-			float f;
-			if(stream_cast(f,value))
+			if(!applyPropertyNow(binWidth[key-KEY_WIDTHBINSX],value,needUpdate))
 				return false;
-			if(f <= 0.0f)
-				return false;
-			if(f!=binWidth[2])
-			{
-				needUpdate=true;
-				binWidth[2]=f;
-				calculateNumBinsFromWidths(binWidth, nBins);
-				clearCache();
-			}
+			calculateNumBinsFromWidths(binWidth, nBins);
 			break;
 		}
 		case KEY_NORMALISE_TYPE:
@@ -1513,7 +1414,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 		case KEY_VOXEL_SLICE_COLOURAUTO:
 		{
 			bool b;
-			if(stream_cast(b,value))
+			if(!boolStrDec(value,b))
 				return false;
 
 			//if the result is different, the
@@ -1615,7 +1516,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 		case KEY_SHOW_COLOURBAR:
 		{
 			bool b;
-			if(stream_cast(b,value))
+			if(!boolStrDec(value,b))
 				return false;
 
 			//if the result is different, the
@@ -1672,7 +1573,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 			// TODO: This is a bit of a hack.
 			if (key >= KEY_ENABLE_DENOMINATOR*1000) {
 				bool b;
-				if(stream_cast(b,value))
+				if(!boolStrDec(value,b))
 					return false;
 
 				enabledIons[1][key - KEY_ENABLE_DENOMINATOR*1000]=b;
@@ -1683,7 +1584,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 				clearCache();
 			} else if (key >= KEY_ENABLE_NUMERATOR*1000) {
 				bool b;
-				if(stream_cast(b,value))
+				if(!boolStrDec(value,b))
 					return false;
 				
 				enabledIons[0][key - KEY_ENABLE_NUMERATOR*1000]=b;
@@ -1705,19 +1606,17 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 
 std::string  VoxeliseFilter::getErrString(unsigned int code) const
 {
-	switch(code)
-	{
-		case VOXELISE_ABORT_ERR:
-			return std::string(TRANS("Voxelisation aborted"));
-		case VOXELISE_MEMORY_ERR:
-			return std::string(TRANS("Out of memory"));
-		case VOXELISE_CONVOLVE_ERR:
-			return std::string(TRANS("Unable to perform filter convolution"));
-		case VOXELISE_BOUNDS_INVALID_ERR:
-			return std::string(TRANS("Voxelisation bounds are invalid"));
-	}	
+	const char *errStrs[]={
+	 	"",
+		"Voxelisation aborted",
+		"Out of memory",
+		"Unable to perform filter convolution",
+		"Voxelisation bounds are invalid",
+	};
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errStrs) == VOXELISE_ERR_ENUM_END);	
 	
-	return std::string("BUG! Should not see this (VoxeliseFilter)");
+	ASSERT(code < VOXELISE_ERR_ENUM_END);
+	return errStrs[code];
 }
 
 bool VoxeliseFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
@@ -1737,12 +1636,12 @@ bool VoxeliseFilter::writeState(std::ostream &f,unsigned int format, unsigned in
 
 			f << tabs(depth+2) << "<numerator>" << endl;
 			for(unsigned int ui=0;ui<enabledIons[0].size(); ui++)
-				f << tabs(depth+3) << "<enabled value=\"" << (enabledIons[0][ui]?1:0) << "\"/>" << endl;
+				f << tabs(depth+3) << "<enabled value=\"" << boolStrEnc(enabledIons[0][ui]) << "\"/>" << endl;
 			f << tabs(depth+2) << "</numerator>" << endl;
 
 			f << tabs(depth+2) << "<denominator>" << endl;
 			for(unsigned int ui=0;ui<enabledIons[1].size(); ui++)
-				f << tabs(depth+3) << "<enabled value=\"" << (enabledIons[1][ui]?1:0) << "\"/>" << endl;
+				f << tabs(depth+3) << "<enabled value=\"" << boolStrEnc(enabledIons[1][ui]) << "\"/>" << endl;
 			f << tabs(depth+2) << "</denominator>" << endl;
 
 			f << tabs(depth+1) << "</enabledions>" << endl;
@@ -1756,10 +1655,9 @@ bool VoxeliseFilter::writeState(std::ostream &f,unsigned int format, unsigned in
 			f << tabs(depth+2) << "<offset value=\""<<sliceOffset<< "\"/>" << endl;
 			f << tabs(depth+2) << "<interpolate value=\""<<sliceInterpolate<< "\"/>" << endl;
 			f << tabs(depth+2) << "<axis value=\""<<sliceAxis<< "\"/>" << endl;
-			f << tabs(depth+2) << "<colourbar show=\""<<(showColourBar?1:0)<< 
-					"\" auto=\"" << (autoColourMap?1:0)<< "\" min=\"" <<
-					colourMapBounds[0] << "\" max=\"" << 
-					colourMapBounds[1] << "\"/>" << endl;
+			f << tabs(depth+2) << "<colourbar show=\""<<boolStrEnc(showColourBar)<< 
+						"\" auto=\"" << boolStrEnc(autoColourMap)<< "\" min=\"" <<
+					colourMapBounds[0] << "\" max=\"" <<  colourMapBounds[1] << "\"/>" << endl;
 			f << tabs(depth+1) << "</axialslice>" << endl;
 
 
@@ -1797,11 +1695,7 @@ bool VoxeliseFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	//Retrieve fixedWidth mode
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"fixedwidth","value"))
 		return false;
-	if(tmpStr == "1") 
-		fixedWidth=true;
-	else if(tmpStr== "0")
-		fixedWidth=false;
-	else
+	if(!boolStrDec(tmpStr,fixedWidth))
 		return false;
 	
 	//Retrieve nBins	

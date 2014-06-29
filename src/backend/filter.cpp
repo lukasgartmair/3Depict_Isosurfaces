@@ -17,6 +17,7 @@
 */
 
 #include "filter.h"
+#include "plot.h"
 
 #include "common/stringFuncs.h"
 #include "common/translation.h"
@@ -64,48 +65,6 @@ const char *FILTER_NAMES[] = { "posload",
 				"annotation"
 				};
 
-void updateFilterPropertyGrid(wxCustomPropGrid *g, const Filter *f)
-{
-
-	ASSERT(f);
-	ASSERT(g);
-	
-	FilterPropGroup p;
-	f->getProperties(p);
-#ifdef DEBUG
-	//If debugging, test self consistency
-	p.checkConsistent();
-#endif	
-	g->clearKeys();
-	g->setNumGroups(p.numGroups());
-
-	
-	//Create the keys to add to the grid
-	for(size_t ui=0;ui<p.numGroups();ui++)
-	{
-		vector<FilterProperty> propGrouping;
-		p.getGroup(ui,propGrouping);
-
-		for(size_t uj=0;uj<propGrouping.size();uj++)
-		{
-			g->addKey(propGrouping[uj].name,ui,
-				propGrouping[uj].key,
-				propGrouping[uj].type,
-				propGrouping[uj].data,
-				propGrouping[uj].helpText);
-		}
-
-		//Set the name that is to be displayed for this grouping
-		// of properties
-		std::string title;
-		p.getGroupTitle(ui,title);
-		g->setGroupName(ui,title);
-	}
-	
-	//Let the property grid layout what it needs to
-	g->propertyLayout();
-}
-
 size_t numElements(const vector<const FilterStreamData *> &v, unsigned int mask)
 {
 	size_t nE=0;
@@ -117,6 +76,77 @@ size_t numElements(const vector<const FilterStreamData *> &v, unsigned int mask)
 
 	return nE;
 }
+
+
+template<>
+bool Filter::applyPropertyNow(bool &prop, const std::string &val, bool &needUp)
+{
+	needUp=false;
+	bool tmp;
+	if(!boolStrDec(val,tmp))
+		return false;
+	
+	//return true, as technically, we did something OK
+	// but erasing the cache, and re-setting the value is pointless
+	if(tmp == prop)
+		return true;
+	
+	prop=tmp;
+	clearCache();
+
+	needUp=true;
+	return true;	
+}
+
+template<>
+bool Filter::applyPropertyNow(Point3D &prop, const std::string &val, bool &needUp)
+{
+	needUp=false;
+
+	Point3D newPt;	
+	if(!newPt.parse(val))
+		return false;
+	
+	//return true, as technically, we did something OK
+	// but erasing the cache, and re-setting the value is pointless
+	if(newPt== prop)
+		return true;
+	
+	prop=newPt;
+	clearCache();
+	needUp=true;
+	return true;	
+}
+
+template<>
+bool Filter::applyPropertyNow(std::string &prop, const std::string &val, bool &needUp)
+{
+	needUp=false;
+
+	//return true, as it is technically ok that we did this
+	if(val == prop)
+		return true;
+	
+	prop=val;
+	clearCache();
+	needUp=true;
+	return true;	
+}
+
+void Filter::cacheAsNeeded(FilterStreamData *stream)
+{
+	if(cache)
+	{
+		stream->cached=1;
+		filterOutputs.push_back(stream);
+		cacheOK=true;
+	}	
+	else
+	{
+		stream->cached=0;
+	}
+}
+
 
 #ifdef DEBUG
 bool FilterProperty::checkSelfConsistent() const
@@ -282,6 +312,12 @@ void FilterPropGroup::checkConsistent() const
 	//Check that the group names are the same as the number of groups
 	ASSERT(groupNames.size() ==groupCount);
 
+
+	//check that each group ahas a name
+	for(size_t ui=0;ui<groupNames.size(); ui++)
+	{
+		ASSERT(!groupNames[ui].empty())
+	}
 }
 #endif
 
@@ -320,7 +356,7 @@ void DrawStreamData::checkSelfConsistent() const
 #endif
 
 PlotStreamData::PlotStreamData() :  r(1.0f),g(0.0f),b(0.0f),a(1.0f),
-	plotStyle(PLOT_TRACE_LINES), logarithmic(false) , useDataLabelAsYDescriptor(true), 
+	plotStyle(PLOT_LINE_LINES), logarithmic(false) , useDataLabelAsYDescriptor(true), 
 	index((unsigned int)-1)
 {
 	streamType=STREAM_TYPE_PLOT;
@@ -422,7 +458,7 @@ void PlotStreamData::checkSelfConsistent() const
 	ASSERT(!(regionID.size() && !regionParent));
 
 	//Must have valid trace style
-	ASSERT(plotStyle<PLOT_TRACE_ENDOFENUM);
+	ASSERT(plotStyle<PLOT_TYPE_ENUM_END);
 	//Must have valid error bar style
 	ASSERT(errDat.mode<PLOT_ERROR_ENDOFENUM);
 
@@ -433,7 +469,36 @@ void PlotStreamData::checkSelfConsistent() const
 }
 #endif
 
+Plot2DStreamData::Plot2DStreamData()
+{
+	streamType=STREAM_TYPE_PLOT2D;
+}
+
+size_t Plot2DStreamData::getNumBasicObjects() const
+{
+	if(xyData.size())
+		return xyData.size();
+	else if (scatterData.size())
+		return scatterData.size();
+	else
+		ASSERT(false);
+
+	return 0;
+}
+
 #ifdef DEBUG
+
+void Plot2DStreamData::checkSelfConsistent() const
+{
+	//only using scatter or xy, not both
+	ASSERT(!(xyData.empty() && scatterData.empty()));
+
+	//no intensity without data
+	if(scatterData.empty())
+		ASSERT(scatterIntensity.empty());
+
+	ASSERT(plotType < PLOT_TYPE_ENUM_END);
+}
 void RangeStreamData::checkSelfConsistent() const
 {
 	if(!rangeFile)
@@ -450,12 +515,24 @@ FilterStreamData::FilterStreamData() : parent(0),cached((unsigned int)-1)
 {
 }
 
+FilterStreamData::FilterStreamData(const Filter  *theParent) : parent(theParent),cached((unsigned int)-1)
+{
+}
+
 IonStreamData::IonStreamData() : representationType(ION_REPRESENT_POINTS), 
 	r(1.0f), g(0.0f), b(0.0f), a(1.0f), 
 	ionSize(2.0f), valueType("Mass-to-Charge (amu/e)")
 {
 	streamType=STREAM_TYPE_IONS;
 }
+
+IonStreamData::IonStreamData(const Filter *f) : FilterStreamData(f), representationType(ION_REPRESENT_POINTS), 
+	r(1.0f), g(0.0f), b(0.0f), a(1.0f), 
+	ionSize(2.0f), valueType("Mass-to-Charge (amu/e)")
+{
+	streamType=STREAM_TYPE_IONS;
+}
+
 
 void IonStreamData::clear()
 {
@@ -505,7 +582,18 @@ VoxelStreamData::VoxelStreamData() : representationType(VOXEL_REPRESENT_POINTCLO
 	streamType=STREAM_TYPE_VOXEL;
 }
 
+VoxelStreamData::VoxelStreamData(const Filter *f) : FilterStreamData(f), representationType(VOXEL_REPRESENT_POINTCLOUD),
+	r(1.0f),g(0.0f),b(0.0f),a(0.3f), splatSize(2.0f),isoLevel(0.5f)
+{
+	streamType=STREAM_TYPE_VOXEL;
+}
+
 RangeStreamData::RangeStreamData() : rangeFile(0)
+{
+	streamType = STREAM_TYPE_RANGE;
+}
+
+RangeStreamData::RangeStreamData(const Filter *f) : FilterStreamData(f), rangeFile(0)
 {
 	streamType = STREAM_TYPE_RANGE;
 }
@@ -597,7 +685,7 @@ void Filter::propagateCache(vector<const FilterStreamData *> &getOut) const
 }
 
 void Filter::propagateStreams(const vector<const FilterStreamData *> &dataIn,
-		vector<const FilterStreamData *> &dataOut,size_t mask,bool invertMask) const
+		vector<const FilterStreamData *> &dataOut,size_t mask,bool invertMask)
 {
 	//Propagate any inputs that we don't normally block
 	if(invertMask)

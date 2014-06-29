@@ -30,25 +30,6 @@
 const unsigned int OPENMP_MIN_DATASIZE=1000;
 
 
-enum
-{
-  PLOT_TRACE_LINES=0,
-  PLOT_TRACE_BARS,
-  PLOT_TRACE_STEPS,
-  PLOT_TRACE_STEM,
-  PLOT_TRACE_POINTS,
-  PLOT_TRACE_ENDOFENUM
-};
-
-//Plot types
-enum
-{
-	PLOT_MODE_1D,
-	PLOT_MODE_2D,
-	PLOT_MODE_ENUM_END
-};
-
-
 //Plot error types
 enum
 {
@@ -73,6 +54,7 @@ enum
 	PROPERTY_TYPE_STRING,
 	PROPERTY_TYPE_POINT3D,
 	PROPERTY_TYPE_CHOICE,
+	PROPERTY_TYPE_FILE,
 	PROPERTY_TYPE_ENUM_END //Not a prop, just end of enum
 };
 

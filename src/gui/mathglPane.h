@@ -22,11 +22,6 @@
 
 #include "backend/plot.h"
 
-#ifndef USE_MGL2
-	#include <mgl/mgl_zb.h>
-	#undef is_nan
-#endif
-
 // begin wxGlade: ::extracode
 // end wxGlade
 
@@ -68,6 +63,7 @@ private:
 	wxPoint draggingStart,draggingCurrent;
 	//!Original bounds during panning operations.
 	float origPanMinX, origPanMaxX; //1D and 2D actions
+	float origPanMinY, origPanMaxY; //2D actions
 
 	//!region used at mouse down
 	unsigned int startMouseRegion,startMousePlot,regionMoveType;
@@ -90,11 +86,8 @@ private:
 	bool  plotIsLogarithmic;
 
 	//!Pointer to the mathgl renderer
-#ifdef USE_MGL2
 	mglGraph *gr;	
-#else
-	mglGraphZB *gr;	
-#endif
+	
 	//!Caching check vector for plot visibility
 	std::vector<unsigned int> lastVisible;
 
@@ -122,6 +115,13 @@ private:
 	//Action to perform when showing 1D plots and mouse down event occurs
 	void oneDMouseDownAction(bool leftDown,bool middleMouseDown,
 		bool alternateDown, int dragX,int dragY);
+	
+	//Action to perform when showing 2D plots and mouse down event occurs
+	void twoDMouseDownAction(bool leftDown,bool middleMouseDown,
+		bool alternateDown, int dragX,int dragY);
+
+	//Update plot bounds with any user panning action
+	void setPanCoords() const;
 
 	bool readyForInput() const;
 

@@ -300,6 +300,7 @@ void IonColourFilter::getProperties(FilterPropGroup &propertyList) const
 	p.key=KEY_IONCOLOURFILTER_MAPEND;
 	p.type=PROPERTY_TYPE_REAL;
 	propertyList.addProperty(p,curGroup);
+	propertyList.setGroupTitle(curGroup,TRANS("Data"));
 	
 
 }
@@ -334,18 +335,8 @@ bool IonColourFilter::setProperty(  unsigned int key,
 		}
 		case KEY_IONCOLOURFILTER_REVERSE:
 		{
-			bool newVal;
-			if(!boolStrDec(value,newVal))
+			if(!applyPropertyNow(reverseMap,value,needUpdate))
 				return false;
-
-			//Only need update if changed
-			if(newVal!=reverseMap)
-			{
-				clearCache();
-				needUpdate=true;
-			}
-
-			reverseMap=newVal;
 			break;
 		}	
 		case KEY_IONCOLOURFILTER_MAPSTART:
@@ -390,16 +381,8 @@ bool IonColourFilter::setProperty(  unsigned int key,
 		}
 		case KEY_IONCOLOURFILTER_SHOWBAR:
 		{
-			bool newVal;
-			if(!boolStrDec(value,newVal))
+			if(!applyPropertyNow(showColourBar,value,needUpdate))
 				return false;
-			//Only need update if changed
-			if(newVal!=showColourBar)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-			showColourBar=newVal;
 			break;
 		}	
 

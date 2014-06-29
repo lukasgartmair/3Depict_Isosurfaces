@@ -24,16 +24,13 @@
 
 #include "wx/wxcommon.h"
 #include "common/translation.h"
+#include "backend/plot.h"
 
 #ifndef pow10
 #define pow10(x) pow(10,x)
 #endif
 
-#ifdef USE_MGL2
-	#include <mgl2/canvas_wnd.h>
-#else
-	#include <mgl/mgl_eps.h>
-#endif
+#include <mgl2/canvas_wnd.h>
 
 //Panning speed modifier
 const float MGL_PAN_SPEED=2.0f;
@@ -127,6 +124,28 @@ MathGLPane::~MathGLPane()
 }
 
 
+void MathGLPane::setPanCoords() const
+{
+	float xMin,xMax,yMin,yMax;
+	thePlot->getBounds(xMin,xMax,yMin,yMax);
+
+	float pEndX, pStartX,dummy;
+	toPlotCoords(draggingCurrent.x,draggingCurrent.y,pEndX,dummy);
+	toPlotCoords(draggingStart.x,draggingStart.y,pStartX,dummy);
+	
+	float offX = pEndX-pStartX;
+
+	//This is not needed if re-using mgl object!
+	// - not sure why!
+	//offX*=xMax-xMin;
+
+	//Modify for speed
+	offX*=MGL_PAN_SPEED;
+
+	thePlot->setBounds(origPanMinX+offX/2,+origPanMaxX + offX/2.0,
+				yMin,yMax);
+}
+
 bool MathGLPane::readyForInput() const
 {
 	return (thePlot && gr && 
@@ -144,19 +163,11 @@ unsigned int MathGLPane::getAxisMask(int x, int y) const
 
 	unsigned int retVal=0;
 
-#ifdef USE_MGL2
 	if(mglCurX < gr->Self()->GetOrgX('x'))
 		retVal |=AXIS_POSITION_LOW_X;
 
 	if(mglCurY < gr->Self()->GetOrgY('y'))
 		retVal |=AXIS_POSITION_LOW_Y;
-#else
-	if(mglCurX < gr->Org.x)
-		retVal |=AXIS_POSITION_LOW_X;
-
-	if(mglCurY < gr->Org.y)
-		retVal |=AXIS_POSITION_LOW_Y;
-#endif
 
 	if(!retVal)
 		retVal=AXIS_POSITION_INTERIOR;
@@ -246,23 +257,17 @@ void MathGLPane::render(wxPaintEvent &event)
 	if(!gr || hasChanged || hasResized || 
 		MOUSE_ACTION_NEEDS_REDRAW[mouseDragMode])
 	{
-		//TODO: There appears to be a bug in mathgl
-		// where attempting to clear the plot with ->SetSize()
-		// causes objects to become zero sized (eg ticks).
-		// using a brand "new" plot entity bypasses this
-		// at some computational cost.
-		// Need to make a minimal example.
-	
 		//clear the plot drawing entity
 		if(!gr)
 		{
-#ifdef USE_MGL2
-		gr = new mglGraph(0,w,h);
-#else
-		gr = new mglGraphZB(w,h);
+			gr = new mglGraph(0,w,h);
+#ifdef __APPLE__
+			//apparenty bug in mgl under osx - font wont load,
+			// use random string to force fallback
+			gr->LoadFont("asdfrandom");
 #endif
 		}
-		else 
+		else
 		{
 			gr->SetSize(w,h);
 		}
@@ -270,46 +275,25 @@ void MathGLPane::render(wxPaintEvent &event)
 		//change the plot by panningOneD it before we draw.
 		//if we need to 
 		if(mouseDragMode==MOUSE_MODE_DRAG_PAN)
-		{
-			float xMin,xMax,yMin,yMax;
-			thePlot->getBounds(xMin,xMax,yMin,yMax);
-		
-			float pEndX, pStartX,dummy;
-			toPlotCoords(draggingCurrent.x,draggingCurrent.y,pEndX,dummy);
-			toPlotCoords(draggingStart.x,draggingStart.y,pStartX,dummy);
-			
-			float offX = pEndX-pStartX;
-
-			//This is not needed if re-using mgl object!
-			// - not sure why!
-			//offX*=xMax-xMin;
-
-			//Modify for speed
-			offX*=MGL_PAN_SPEED;
-
-			thePlot->setBounds(origPanMinX+offX/2,+origPanMaxX + offX/2.0,
-						yMin,yMax);
-		}
+			setPanCoords();
 
 		//Draw the plot
-		thePlot->drawPlot(gr,plotIsLogarithmic);	
+		thePlot->drawPlot(gr,plotIsLogarithmic);
+#ifdef DEBUG
+		if(strlen(gr->Message()))
+		{
+			cerr << "Mathgl reports error:" << gr->Message() << endl;
+		}
+#endif
 		thePlot->resetChange();
 		hasResized=false;
 
 		//Copy the plot's memory buffer into a wxImage object, then draw it	
-	#ifdef USE_MGL2
 		char *rgbdata = (char*)malloc(w*h*3);
 		gr->GetRGB((char*)rgbdata,w*h*3);
 		
 		imageCacheBmp=wxImage(w,h,(unsigned char*)rgbdata,true);
 		free(rgbdata);
-	#else
-		unsigned char *tmp;
-		tmp=const_cast<unsigned char*>(gr->GetBits());
-		wxImage imTmp;
-		imTmp=wxImage(w,h,tmp,true);
-		imageCacheBmp=wxBitmap(imTmp);
-	#endif
 	}
 
 	dc->DrawBitmap(wxBitmap(imageCacheBmp),0,0);
@@ -485,13 +469,9 @@ bool MathGLPane::getRegionUnderCursor(const wxPoint  &mousePos, unsigned int &pl
 		return false;
 
 	//Only allow  range interaction within the plot bb
-#ifdef USE_MGL2
 	if(pMouse.x > gr->Self()->Max.x || pMouse.x < gr->Self()->Min.x)
 		return false;
-#else
-	if(pMouse.x > gr->Max.x || pMouse.x < gr->Min.x)
-		return false;
-#endif
+	
 	//check if we actually have a region
 	if(!thePlot->getRegionIdAtPosition(pMouse.x,pMouse.y,plotId,regionId))
 		return false;
@@ -613,7 +593,7 @@ void MathGLPane::oneDMouseDownAction(bool leftDown,bool middleDown,
 			thePlot->getRegion(plotId,regionId,r);
 
 			//TODO: Implement a more generic region handler?
-			ASSERT(thePlot->plotType(plotId) == PLOT_TYPE_ONED);
+			ASSERT(thePlot->plotType(plotId) == PLOT_MODE_1D);
 
 			float mglStartX,mglStartY;
 			toPlotCoords(draggingStart.x, draggingStart.y,mglStartX,mglStartY);
@@ -643,6 +623,35 @@ void MathGLPane::oneDMouseDownAction(bool leftDown,bool middleDown,
 
 }
 
+void MathGLPane::twoDMouseDownAction(bool leftDown,bool middleDown,
+		 bool alternateDown, int dragX,int dragY)
+{
+	ASSERT(thePlot->getNumVisible());
+	
+	float xMin,xMax,yMin,yMax;
+	thePlot->getBounds(xMin,xMax,yMin,yMax);
+
+	//Set the interaction mode
+	if(leftDown && !alternateDown )
+	{
+		draggingStart = wxPoint(dragX,dragY);
+		mouseDragMode=MOUSE_MODE_DRAG;
+	}
+	
+	
+	if( (leftDown && alternateDown) || middleDown)
+	{
+		mouseDragMode=MOUSE_MODE_DRAG_PAN;
+		draggingStart = wxPoint(dragX,dragY);
+		
+		origPanMinX=xMin;
+		origPanMaxX=xMax;
+		origPanMinY=yMin;
+		origPanMaxY=yMax;
+	}
+
+}
+
 void MathGLPane::leftMouseDown(wxMouseEvent& event)
 {
 	if(!readyForInput())
@@ -659,16 +668,21 @@ void MathGLPane::leftMouseDown(wxMouseEvent& event)
 		event.GetPosition().x < 0 || event.GetPosition().y < 0)
 		return;
 
-	switch(thePlot->getVisibleType())
+	switch(thePlot->getVisibleMode())
 	{
-		case PLOT_TYPE_ONED:
+		case PLOT_MODE_1D:
 			oneDMouseDownAction(event.LeftDown(),false,
 						event.ShiftDown(),
 						event.GetPosition().x,
 						event.GetPosition().y);
 			break;
-		case PLOT_TYPE_ENUM_END:
+		case PLOT_MODE_2D:
+		case PLOT_MODE_ENUM_END:
 			//Do nothing
+			twoDMouseDownAction(event.LeftDown(),false,
+						event.ShiftDown(),
+						event.GetPosition().x,
+						event.GetPosition().y);
 			break;
 		default:
 			ASSERT(false);
@@ -689,15 +703,15 @@ void MathGLPane::middleMouseDown(wxMouseEvent &event)
 	if(!w || !h)
 		return;
 	
-	switch(thePlot->getVisibleType())
+	switch(thePlot->getVisibleMode())
 	{
-		case PLOT_TYPE_ONED:
+		case PLOT_MODE_1D:
 			oneDMouseDownAction(false,event.MiddleDown(),
 						event.ShiftDown(),
 						event.GetPosition().x,
 						event.GetPosition().y);
 			break;
-		case PLOT_TYPE_ENUM_END:
+		case PLOT_MODE_ENUM_END:
 			//Do nothing
 			break;
 		default:
@@ -942,12 +956,9 @@ void MathGLPane::updateDragPos(const wxPoint &draggingEnd) const
 
 
 	mglPoint cA;
-#ifdef USE_MGL2
 	cA.x=gr->Self()->GetOrgX('x');
 	cA.y=gr->Self()->GetOrgY('y');
-#else
-	cA=gr->Org;
-#endif
+	
 	float currentAxisX,currentAxisY;
 	currentAxisX=cA.x;
 	currentAxisY=cA.y;
@@ -968,13 +979,8 @@ void MathGLPane::updateDragPos(const wxPoint &draggingEnd) const
 			//left of X-Axis event
 			//Reset the axes such that the
 			//zoom is only along one dimension (y)
-#ifdef USE_MGL2
 			pStart.x = gr->Self()->Min.x;
 			pEnd.x = gr->Self()->Max.x;
-#else
-			pStart.x = gr->Min.x;
-			pEnd.x = gr->Max.x;
-#endif
 		}
 	}
 	else if(pStart.y < currentAxisY  && pEnd.y < currentAxisY )
@@ -985,13 +991,8 @@ void MathGLPane::updateDragPos(const wxPoint &draggingEnd) const
 		//below Y axis event
 		//Reset the axes such that the
 		//zoom is only along one dimension (x)
-#ifdef USE_MGL2
 		pStart.y = gr->Self()->Min.y;
 		pEnd.y = gr->Self()->Max.y;
-#else				
-		pStart.y = gr->Min.y;
-		pEnd.y = gr->Max.y;
-#endif
 	}
 
 
@@ -1053,11 +1054,7 @@ unsigned int MathGLPane::savePNG(const std::string &filename,
 	ASSERT(filename.size());
 	try
 	{
-#ifdef USE_MGL2
 		gr = new mglGraph(0, width,height);
-#else
-		gr = new mglGraphZB(width,height);
-#endif
 	}
 	catch(std::bad_alloc)
 	{
@@ -1065,41 +1062,25 @@ unsigned int MathGLPane::savePNG(const std::string &filename,
 		return MGLPANE_ERR_BADALLOC;
 	}
 
-#ifdef USE_MGL2
 	gr->SetWarn(0,"");
-#else
-	char *mglWarnMsgBuf=new char[1024];
-	*mglWarnMsgBuf=0;
-	gr->SetWarn(0);
-	gr->Message=mglWarnMsgBuf;
-#endif
+	
 	bool dummy;
 	thePlot->drawPlot(gr,dummy);	
 
 	gr->WritePNG(filename.c_str());
 
 	bool doWarn;
-#ifdef USE_MGL2
 	doWarn=gr->GetWarn();
-#else
-	doWarn=gr->WarnCode;
-#endif
+	
 	if(doWarn)
 	{
-#ifdef USE_MGL2
 		lastMglErr= gr->Self()->Mess;
-#else
-		lastMglErr=mglWarnMsgBuf;
-		delete[] mglWarnMsgBuf;
-#endif
+		
 		delete gr;
 		gr=0;
 		return MGLPANE_ERR_MGLWARN;
 	}
 
-#ifndef USE_MGL2
-	delete[] mglWarnMsgBuf;
-#endif
 	delete gr;
 	gr=0;
 	//Hack. mathgl does not return an error value from its writer
@@ -1124,28 +1105,13 @@ unsigned int MathGLPane::saveSVG(const std::string &filename)
 	ASSERT(filename.size());
 
 
-#ifdef USE_MGL2
 	mglGraph *grS;
 	grS = new mglGraph();
-#else
-	mglGraphPS *grS;
-
-	//Width and height are not *really* important per se, 
-	//since this is scale-less data.
-	grS = new mglGraphPS(1024,768);
-#endif
 
 	bool dummy;
 	thePlot->drawPlot(grS,dummy);
 
-#ifdef USE_MGL2
 	grS->SetWarn(0,"");
-#else
-	char *mglWarnMsgBuf=new char[1024];
-	*mglWarnMsgBuf=0;
-	grS->SetWarn(0);
-	grS->Message=mglWarnMsgBuf;
-#endif	
 
 	//Mathgl does not set locale prior to writing SVG
 	// do this by hand
@@ -1155,20 +1121,11 @@ unsigned int MathGLPane::saveSVG(const std::string &filename)
 
 
 	bool doWarn;
-#ifdef USE_MGL2
 	doWarn=grS->GetWarn();
-#else
-	doWarn=grS->WarnCode;
-#endif
 
 	if(doWarn)
 	{
-#ifdef USE_MGL2
 		lastMglErr=grS->Self()->Mess;
-#else
-		lastMglErr=mglWarnMsgBuf;
-		delete[] mglWarnMsgBuf;
-#endif
 		delete grS;
 		grS=0;
 		return MGLPANE_ERR_MGLWARN;
@@ -1408,13 +1365,8 @@ bool MathGLPane::toPlotCoords(int winX, int winY,float &resX, float &resY) const
 	if(plotIsLogarithmic)
 	{
 		float plotMinY,plotMaxY;
-#if USE_MGL2
 		plotMinY=gr->Self()->Min.y;
 		plotMaxY=gr->Self()->Max.y;
-#else
-		plotMinY=gr->Min.y;
-		plotMaxY=gr->Max.y;
-#endif
 		float proportion =(pt.y-plotMinY)/(plotMaxY-plotMinY);
 		float tmp = proportion*(log10(plotMaxY)-log10(plotMinY)) + log10(plotMinY); 
 		
@@ -1427,17 +1379,9 @@ bool MathGLPane::toPlotCoords(int winX, int winY,float &resX, float &resY) const
 }
 bool MathGLPane::toWinCoords(float plotX, float plotY, float &winX, float &winY) const
 {
-#ifdef USE_MGL2
 	mglPoint tmp;
 	tmp=gr->CalcScr(mglPoint(plotX,plotY));
 	winX=tmp.x; winY=tmp.y;
-#else
-	
-	int iWinX,iWinY;
-	iWinX=winX;
-	iWinY=winY;
-	gr->CalcScr(mglPoint(plotX,plotY),&iWinX,&iWinY);
-#endif
 
 	if(plotIsLogarithmic)
 	{
@@ -1467,7 +1411,7 @@ void MathGLPane::drawRegionDraggingOverlay(wxDC *dc) const
 		return;
 
 
-	ASSERT(thePlot->plotType(startMousePlot) == PLOT_TYPE_ONED);
+	ASSERT(thePlot->plotType(startMousePlot) == PLOT_MODE_1D);
 
 	//See where extending the region is allowed up to.
 	thePlot->findRegionLimit(startMousePlot,startMouseRegion,
@@ -1542,7 +1486,7 @@ void MathGLPane::drawRegionDraggingOverlay(wxDC *dc) const
 		{
 			//This needs to be extended to support more
 			//plot types.
-			ASSERT(thePlot->plotType(startMousePlot) == PLOT_TYPE_ONED);
+			ASSERT(thePlot->plotType(startMousePlot) == PLOT_MODE_1D);
 			
 			//Draw "ghost" limits markers for move,
 			//these appear as moving vertical bars to outline

@@ -132,4 +132,9 @@ void freeConvexHull();
 //Draw a colour bar
 DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_t colourMap, bool reverseMap=false) ;
 
+
+//Create a temporary filename, optionally providing an extension to use/
+// - note that any subdirs will be automatically created if needed.
+std::string createTmpFilename(const char *dir=NULL,const char *extension=NULL);
+
 #endif

@@ -21,9 +21,7 @@
 
 #include "common/translation.h"
 
-#ifdef USE_MGL2
-	#include <mgl2/canvas_wnd.h>
-#endif
+#include <mgl2/canvas_wnd.h>
 
 //!Plot error bar estimation strings
 const char *errModeStrings[] = { 
@@ -31,12 +29,15 @@ const char *errModeStrings[] = {
 				NTRANS("Moving avg.")
 				};
 
-const char *plotModeStrings[]= {
+const char *plotTypeStrings[]= {
 	NTRANS("Lines"),
 	NTRANS("Bars"),
 	NTRANS("Steps"),
 	NTRANS("Stem"),
-	NTRANS("Points")
+	NTRANS("Points"),
+	(""),
+	NTRANS("Density"),
+	NTRANS("Scatter"),
 				};
 
 using std::string;
@@ -46,8 +47,6 @@ using std::vector;
 //Axis min/max bounding box is disallowed to be exactly zero on any given axis
 // perform a little "push off" by this fudge factor
 const float AXIS_MIN_TOLERANCE=10*sqrtf(std::numeric_limits<float>::epsilon());
-
-const unsigned int MGL_RESERVED_COLOURS=2;
 
 
 //Mathgl uses some internal for(float=...) constructions, 
@@ -113,17 +112,18 @@ std::string mglColourCode(float r, float g, float b)
 
 //TODO: Refactor these functions to use a common string map
 //-----------
-string plotString(unsigned int traceType)
+string plotString(unsigned int plotMode)
 {
-	ASSERT(traceType< PLOT_TRACE_ENDOFENUM);
-	return TRANS(plotModeStrings[traceType]); 
+	ASSERT(plotMode< PLOT_TYPE_ENUM_END);
+	return TRANS(plotTypeStrings[plotMode]); 
 }
 
 unsigned int plotID(const std::string &plotString)
 {
-	for(unsigned int ui=0;ui<PLOT_TRACE_ENDOFENUM; ui++)
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(plotTypeStrings) == PLOT_TYPE_ENUM_END);
+	for(unsigned int ui=0;ui<PLOT_TYPE_ENUM_END; ui++)
 	{
-		if(plotString==TRANS(plotModeStrings[ui]))
+		if(plotString==TRANS(plotTypeStrings[ui]))
 			return ui;
 	}
 
@@ -343,7 +343,7 @@ std::string PlotRegion::getName() const
 
 PlotWrapper::PlotWrapper()
 {
-	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(plotModeStrings) == PLOT_TRACE_ENDOFENUM);
+	//COMPILE_ASSERT(THREEDEP_ARRAYSIZE(plotTypeStrings) == PLOT_TYPE_ENUM_END);
 
 	applyUserBounds=false;
 	plotChanged=true;
@@ -391,11 +391,12 @@ const PlotWrapper &PlotWrapper::operator=(const PlotWrapper &p)
 	return *this;
 }
 
-std::wstring PlotWrapper::getTitle(size_t plotId) const
+std::string PlotWrapper::getTitle(size_t plotId) const
 {
 	unsigned int plotPos=plotIDHandler.getPos(plotId);
-	return plottingData[plotPos]->title;
+	return plottingData[plotPos]->getTitle();
 }
+
 
 void PlotWrapper::getPlotIDs(vector<unsigned int> &ids) const
 {
@@ -413,6 +414,10 @@ size_t PlotWrapper::getParentType(size_t plotId) const
 
 unsigned int PlotWrapper::addPlot(PlotBase *p)
 {
+#ifdef DEBUG
+	p->checkConsistent();
+#endif
+
 	plottingData.push_back(p);
 
 	//assign a unique identifier to this plot, by which it can be referenced
@@ -456,36 +461,23 @@ void PlotWrapper::setStrings(unsigned int plotID, const std::string &x,
 				const std::string &y, const std::string &t)
 {
 	unsigned int plotPos=plotIDHandler.getPos(plotID);
-	plottingData[plotPos]->xLabel = strToWStr(x);
-	plottingData[plotPos]->yLabel = strToWStr(y);
-	
-	plottingData[plotPos]->title = strToWStr(t);
-	plotChanged=true;
-}
 
-void PlotWrapper::setParentData(unsigned int plotID, const void *parentObj, unsigned int idx)
-{
-	unsigned int plotPos=plotIDHandler.getPos(plotID);
-	plottingData[plotPos]->parentObject= parentObj;
-	plottingData[plotPos]->parentPlotIndex=idx;
-	
+	plottingData[plotPos]->setStrings(x,y,t);
 	plotChanged=true;
 }
 
 void PlotWrapper::setTraceStyle(unsigned int plotUniqueID,unsigned int mode)
 {
 
-	ASSERT(mode<PLOT_TRACE_ENDOFENUM);
-	plottingData[plotIDHandler.getPos(plotUniqueID)]->traceType=mode;
+	ASSERT(mode<PLOT_TYPE_ENUM_END);
+	plottingData[plotIDHandler.getPos(plotUniqueID)]->setPlotMode(mode);
 	plotChanged=true;
 }
 
-void PlotWrapper::setColours(unsigned int plotUniqueID, float rN,float gN,float bN) 
+void PlotWrapper::setColours(unsigned int plotUniqueID, float r,float g,float b) 
 {
 	unsigned int plotPos=plotIDHandler.getPos(plotUniqueID);
-	plottingData[plotPos]->r=rN;
-	plottingData[plotPos]->g=gN;
-	plottingData[plotPos]->b=bN;
+	plottingData[plotPos]->setColour(r,g,b);
 	plotChanged=true;
 }
 
@@ -605,8 +597,70 @@ void PlotWrapper::bestEffortRestoreVisibility()
 	plotChanged=true;
 }
 
+
+void PlotWrapper::getAppliedBounds(mglPoint &min, mglPoint &max) const
+{
+	
+	if(applyUserBounds)
+	{
+		ASSERT(yUserMax >=yUserMin);
+		ASSERT(xUserMax >=xUserMin);
+
+		max.x =xUserMax;
+		max.y=yUserMax;
+		
+		min.x =xUserMin;
+		min.y =yUserMin;
+
+	}
+	else
+	{
+		//Retrieve the bounds of the data that is in the plot
+		float minX,maxX,minY,maxY;
+		minX=std::numeric_limits<float>::max();
+		maxX=-std::numeric_limits<float>::max();
+		minY=std::numeric_limits<float>::max();
+		maxY=-std::numeric_limits<float>::max();
+		
+		for(unsigned int ui=0;ui<plottingData.size(); ui++)
+		{
+			if(plottingData[ui]->visible)
+			{
+				float tmpMinX,tmpMinY,tmpMaxX,tmpMaxY;
+				plottingData[ui]->getBounds(
+					tmpMinX,tmpMaxX,tmpMinY,tmpMaxY);
+
+				minX=std::min(minX,tmpMinX);
+				maxX=std::max(maxX,tmpMaxX);
+				minY=std::min(minY,tmpMinY);
+				maxY=std::max(maxY,tmpMaxY);
+			}
+		}
+
+		min.x=minX;
+		min.y=minY;
+		max.x=maxX;
+		max.y=maxY;
+
+	}
+
+
+	//"Push" bounds around to prevent min == max
+	// This is a hack to prevent mathgl from inf. looping
+	//---
+	if(mglFloatTooClose(min.x , max.x))
+	{
+		min.x-=0.05;
+		max.x+=0.05;
+	}
+
+	if(mglFloatTooClose(min.y , max.y))
+		max.y+=0.01;
+	//------
+}
+
 void PlotWrapper::getRawData(vector<vector<vector<float> > > &data,
-				std::vector<std::vector<std::wstring> > &labels) const
+				std::vector<std::vector<std::string> > &labels) const
 {
 	if(plottingData.empty())
 		return;
@@ -614,9 +668,10 @@ void PlotWrapper::getRawData(vector<vector<vector<float> > > &data,
 	//Determine if we have multiple types of plot.
 	//if so, we cannot really return the raw data for this
 	//in a meaningful fashion
-	switch(getVisibleType())
+	switch(getVisibleMode())
 	{
-		case PLOT_TYPE_ONED:
+		case PLOT_MODE_1D:
+		case PLOT_MODE_2D:
 		{
 			//Try to retrieve the raw data from the visible plots
 			for(unsigned int ui=0;ui<plottingData.size();ui++)
@@ -624,7 +679,7 @@ void PlotWrapper::getRawData(vector<vector<vector<float> > > &data,
 				if(plottingData[ui]->visible)
 				{
 					vector<vector<float> > thisDat,dummy;
-					vector<std::wstring> thisLabel;
+					vector<std::string> thisLabel;
 					plottingData[ui]->getRawData(thisDat,thisLabel);
 					
 					//Data title size should hopefully be the same
@@ -642,35 +697,36 @@ void PlotWrapper::getRawData(vector<vector<vector<float> > > &data,
 			}
 			break;
 		}
-		case PLOT_TYPE_ENUM_END:
+		case PLOT_MODE_ENUM_END:
+		case PLOT_MODE_MIXED:
 			return;
 		default:
 			ASSERT(false);
 	}
 }
 
-unsigned int PlotWrapper::getVisibleType() const
+unsigned int PlotWrapper::getVisibleMode() const
 {
-	unsigned int visibleType=PLOT_TYPE_ENUM_END;
+	unsigned int visibleMode=PLOT_MODE_ENUM_END;
 	for(unsigned int ui=0;ui<plottingData.size() ; ui++)
 	{
 		if(plottingData[ui]->visible &&
-			plottingData[ui]->plotType!= visibleType)
+			plottingData[ui]->getPlotMode()!= visibleMode)
 		{
-			if(visibleType == PLOT_TYPE_ENUM_END)
+			if(visibleMode == PLOT_MODE_ENUM_END)
 			{
-				visibleType=plottingData[ui]->plotType;
+				visibleMode=plottingData[ui]->getMode();
 				continue;
 			}
 			else
 			{
-				visibleType=PLOT_TYPE_MIXED;
+				visibleMode=PLOT_MODE_MIXED;
 				break;
 			}
 		}
 	}
 
-	return visibleType;
+	return visibleMode;
 }
 
 void PlotWrapper::getVisibleIDs(vector<unsigned int> &visiblePlotIDs ) const
@@ -696,67 +752,53 @@ void PlotWrapper::findRegionLimit(unsigned int plotId, unsigned int regionId,
 
 void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 {
-	unsigned int visType = getVisibleType();
-	if(visType == PLOT_TYPE_ENUM_END || 
-		visType == PLOT_TYPE_MIXED)
+	unsigned int visMode = getVisibleMode();
+	if(visMode == PLOT_MODE_ENUM_END || 
+		visMode == PLOT_MODE_MIXED)
 	{
 		//We don't handle the drawing case well here, so assert this.
 		// calling code should check this case and ensure that it draws something
 		// meaningful
-		ASSERT(false);
+		WARN(false,"Mixed calling code");
 		return;
 	}
 
 	//Un-fudger for mathgl plots
 
 	bool haveMultiTitles=false;
-	float minX,maxX,minY,maxY;
-	minX=std::numeric_limits<float>::max();
-	maxX=-std::numeric_limits<float>::max();
-	minY=std::numeric_limits<float>::max();
-	maxY=-std::numeric_limits<float>::max();
 
 	//Compute the bounding box in data coordinates	
-	std::wstring xLabel,yLabel,plotTitle;
+	std::string xLabel,yLabel,plotTitle;
 
 	for(unsigned int ui=0;ui<plottingData.size(); ui++)
 	{
 		if(plottingData[ui]->visible)
 		{
-			float tmpMinX,tmpMinY,tmpMaxX,tmpMaxY;
-			plottingData[ui]->getBounds(
-				tmpMinX,tmpMaxX,tmpMinY,tmpMaxY);
-
-			minX=std::min(minX,tmpMinX);
-			maxX=std::max(maxX,tmpMaxX);
-			minY=std::min(minY,tmpMinY);
-			maxY=std::max(maxY,tmpMaxY);
-
 
 			if(!xLabel.size())
-				xLabel=plottingData[ui]->xLabel;
+				xLabel=plottingData[ui]->getXLabel();
 			else
 			{
 
-				if(xLabel!=plottingData[ui]->xLabel)
-					xLabel=stlStrToStlWStr(TRANS("Multiple data types"));
+				if(xLabel!=plottingData[ui]->getXLabel())
+					xLabel=string(TRANS("Multiple data types"));
 			}
 			if(!yLabel.size())
-				yLabel=plottingData[ui]->yLabel;
+				yLabel=plottingData[ui]->getYLabel();
 			else
 			{
 
-				if(yLabel!=plottingData[ui]->yLabel)
-					yLabel=stlStrToStlWStr(TRANS("Multiple data types"));
+				if(yLabel!=plottingData[ui]->getYLabel())
+					yLabel=string(TRANS("Multiple data types"));
 			}
 			if(!haveMultiTitles && !plotTitle.size())
-				plotTitle=plottingData[ui]->title;
+				plotTitle=plottingData[ui]->getTitle();
 			else
 			{
 
-				if(plotTitle!=plottingData[ui]->title)
+				if(plotTitle!=plottingData[ui]->getTitle())
 				{
-					plotTitle=L"";//L prefix means wide char
+					plotTitle="";
 					haveMultiTitles=true;
 				}
 			}
@@ -764,8 +806,6 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 
 		}
 	}
-
-
 
 	string sX,sY;
 	sX.assign(xLabel.begin(),xLabel.end()); //unicode conversion
@@ -778,87 +818,46 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 
 	haveUsedLog=false;
 	mglPoint min,max;
-	switch(visType)
+	//work out the bounding box for the plot,
+	//and where the axis should cross
+	getAppliedBounds(min,max);
+	
+	//set up the graph axes as needed
+	switch(visMode)
 	{
-		case PLOT_TYPE_ONED:
+		case PLOT_MODE_1D:
 		{
 			//OneD connected value line plot f(x)
 			bool useLogPlot=false;
-			bool notLog=false;
 
 		
 			for(unsigned int ui=0;ui<plottingData.size(); ui++)
 			{
-				if(plottingData[ui]->visible)
-				{
-					if(((Plot1D*)plottingData[ui])->wantLogPlot()) 
-						useLogPlot=true;
-					else
-						notLog=true;
-				}
+				if(!plottingData[ui]->visible)
+					continue;
+
+				if(plottingData[ui]->getType()!= PLOT_MODE_1D)
+					continue;
+			
+				if(((Plot1D*)plottingData[ui])->wantLogPlot()) 
+					useLogPlot=true;
 			}
 
 			haveUsedLog|=useLogPlot;
 		
-			//work out the bounding box for the plot,
-			//and where the axis should cross
-			mglPoint axisCross;
-			if(applyUserBounds)
-			{
-				ASSERT(yUserMax >=yUserMin);
-				ASSERT(xUserMax >=xUserMin);
 
-				max.x =xUserMax;
-				max.y=yUserMax;
-				
-				min.x =xUserMin;
-				min.y =yUserMin;
-
-				axisCross.x=min.x;
-				axisCross.y=min.y;
-				
-			}
-			else
-			{
-				//Retrieve the bounds of the data that is in the plot
-
-				min.x=minX;
-				min.y=minY;
-				max.x=maxX;
-				max.y=maxY;
-
-				axisCross.x = minX;
-				axisCross.y=min.y;
-			}
 			
-			//Allow logarithmic mode, as needed.
+			//Allow for logarithmic mode, as needed.
 			// mathgl does not like a zero coordinate for plotting
 			if(min.y == 0 && useLogPlot)
 			{
 				min.y=0.1;
-				if(axisCross.y < min.y)
-					axisCross.y=min.y;
 			}
-			//"Push" bounds around to prevent min == max
-			// This is a hack to prevent mathgl from inf. looping
-			//---
-			if(mglFloatTooClose(min.x , max.x))
-			{
-				min.x-=5;
-				max.x+=5;
-			}
-
-			if(mglFloatTooClose(min.y , max.y))
-				max.y+=1;
-			//------
 			
 
 			//tell mathgl about the bounding box	
-#ifdef USE_MGL2
 			gr->SetRanges(min,max);
-			
-			gr->SetOrigin(axisCross);
-#endif
+			gr->SetOrigin(min);
 
 			WARN((fabs(min.x-max.x) > sqrt(std::numeric_limits<float>::epsilon())), 
 					"WARNING: Mgl limits (X) too Close! Due to limitiations in MGL, This may inf. loop!");
@@ -869,24 +868,19 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 				gr->SetFunc("","lg(y)");
 			else
 				gr->SetFunc("","");
-#ifdef USE_MGL2
-			gr->Axis();
 
 			mglCanvas *canvas = dynamic_cast<mglCanvas *>(gr->Self());
 			canvas->AdjustTicks("x");
 			canvas->SetTickTempl('x',"%g"); //Set the tick type
 			canvas->Axis("xy"); //Build an X-Y crossing axis
-#else
-			gr->Axis(min,max,axisCross);
-			gr->AdjustTicks("x");
-			gr->SetXTT("%g"); //Set the tick type
-			gr->Axis("xy"); //Build an X-Y crossing axis
-#endif
 			//---
 
 			//Loop through the plots, drawing them as needed
 			for(unsigned int ui=0;ui<plottingData.size();ui++)
 			{
+				if(plottingData[ui]->getPlotMode() != PLOT_MODE_1D)
+					continue;
+
 				Plot1D *curPlot;
 				curPlot=(Plot1D*)plottingData[ui];
 
@@ -900,10 +894,10 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 				
 				if(drawLegend)
 				{
-					//Fake an mgl colour code
-					std::string mglColStr;
-					mglColStr= mglColourCode(curPlot->r,curPlot->g,curPlot->b);
-					gr->AddLegend(curPlot->title.c_str(),mglColStr.c_str());
+					float r,g,b;
+					curPlot->getColour(r,g,b);
+					std::string mglColStr= mglColourCode(r,g,b);
+					gr->AddLegend(curPlot->getTitle().c_str(),mglColStr.c_str());
 				}
 			}
 
@@ -942,17 +936,45 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 						continue;
 
 
-#ifdef USE_MGL2
 					gr->FaceZ(mglPoint(rMinX,rMinY,-1),rMaxX-rMinX,rMaxY-rMinY,
 							colourCode.c_str());
-#else
-					gr->FaceZ(rMinX,rMinY,-1,rMaxX-rMinX,rMaxY-rMinY,
-							colourCode.c_str());
-#endif
 				}
 
 			}
 
+			break;
+		}
+		case PLOT_MODE_2D:
+		{
+
+			gr->SetFunc("","");
+			gr->SetRanges(min,max);
+			gr->SetOrigin(min);
+			
+			gr->Axis();
+			bool wantColourbar=false;
+			for(unsigned int ui=0;ui<plottingData.size();ui++)
+			{
+				if(!plottingData[ui]->visible)
+					continue;
+				Plot2DFunc *curPlot;
+				curPlot=(Plot2DFunc*)plottingData[ui];
+
+				if(curPlot->getType() == PLOT_2D_DENS)
+				{
+					wantColourbar=true;
+				}
+
+				//If a plot is not visible, it cannot own a region
+				//nor have a legend in this run.
+				if(!curPlot->visible)
+					continue;
+				
+				curPlot->drawPlot(gr);
+				
+			}
+			if(wantColourbar)
+					gr->Colorbar();
 			break;
 		}
 		default:
@@ -963,23 +985,8 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 	gr->Label('x',sX.c_str());
 	gr->Label('y',sY.c_str(),0);
 
-	if(haveMultiTitles)
-	{
-#ifdef USE_MGL2
-		if(drawLegend)
-			gr->Legend();
-#else
-		gr->SetLegendBox(false);
-		//I have NO idea what this size value is about,
-		//I just kept changing the number until it looked nice.
-		//the library default is -0.85 (why negative??)
-		const float LEGEND_SIZE=-1.1f;
-
-		//Legend at top right (0x3), in default font "rL" at specified size
-		if(drawLegend)
-			gr->Legend(0x3,"rL",LEGEND_SIZE);
-#endif
-	}
+	if(haveMultiTitles && drawLegend)
+		gr->Legend();
 	
 	overlays.draw(gr,min,max,haveUsedLog);
 }
@@ -1073,7 +1080,7 @@ void PlotWrapper::getRegion(unsigned int plotId, unsigned int regionId, PlotRegi
 
 unsigned int PlotWrapper::plotType(unsigned int plotId) const
 {
-	return plottingData[plotIDHandler.getPos(plotId)]->plotType;
+	return plottingData[plotIDHandler.getPos(plotId)]->getPlotMode();
 }
 
 
@@ -1123,16 +1130,98 @@ void PlotWrapper::overrideLastVisible(vector< pair<const void *,unsigned int>  >
 
 //-----------
 
+PlotBase::PlotBase()
+{
+	parentObject=0;
+	parentPlotIndex=(unsigned int)-1;
+	visible=true;
+}
+
+void PlotBase::checkConsistent() const
+{
+	ASSERT(parentObject);
+	ASSERT(parentPlotIndex != (unsigned int)-1);
+}
+
+void PlotBase::getColour(float &rN, float &gN, float &bN) const
+{
+	rN=r;
+	gN=g;
+	bN=b;
+}
+
+void PlotBase::getBounds(float &xMin,float &xMax,float &yMin,float &yMax) const
+{
+	xMin=minX;
+	xMax=maxX;
+	yMin=minY;
+	yMax=maxY;
+
+	ASSERT(yMin <=yMax);
+}
+
+void PlotBase::setStrings(const std::string &x, const std::string &y, const std::string &t)
+{
+
+	xLabel = x;
+	yLabel = y;
+	title = t;
+	
+}
+
+void PlotBase::copyBase(PlotBase *target) const
+{
+	target->plotType=plotType;
+	target->minX=minX;
+	target->maxX=maxX;
+	target->minY=minY;
+	target->maxY=maxY;
+	target->r=r;
+	target->g=g;
+	target->b=b;
+	target->visible=visible;
+	target->plotMode=plotMode;
+	target->xLabel=xLabel;
+	target->yLabel=yLabel;
+	target->title=title;
+	target->titleAsRawDataLabel=titleAsRawDataLabel;
+	target->parentObject=parentObject;
+	target->regionGroup=regionGroup;
+	target->parentPlotIndex=parentPlotIndex;
+
+}
+
+unsigned int PlotBase::getType() const
+{
+	return plotType;
+}
+
+unsigned int PlotBase::getMode() const
+{
+	switch(plotType)
+	{
+		case PLOT_LINE_LINES:
+		case PLOT_LINE_BARS:
+		case PLOT_LINE_STEPS:
+		case PLOT_LINE_STEM:
+		case PLOT_LINE_POINTS:
+			return PLOT_MODE_1D;
+
+		case PLOT_2D_DENS:
+		case PLOT_2D_SCATTER:
+			return PLOT_MODE_2D;	
+	}
+	ASSERT(false);
+}
 
 Plot1D::Plot1D()
 {
 	//Set the default plot properties
-	visible=(true);
-	traceType=PLOT_TRACE_LINES;
-	plotType=PLOT_TYPE_ONED;
-	xLabel=(strToWStr(""));
-	yLabel=(strToWStr(""));
-	title=(strToWStr(""));
+	plotType=PLOT_LINE_LINES;
+	plotMode=PLOT_MODE_1D;
+	xLabel="";
+	yLabel="";
+	title="";
 	r=(0);g=(0);b=(1);
 }
 
@@ -1146,27 +1235,11 @@ PlotBase *Plot1D::clone() const
 	p->yValues=yValues;
 	p->errBars=errBars;
 
-	//TODO Move to base
-	p->plotType=plotType;
-	p->minX=minX;
-	p->maxX=maxX;
-	p->minY=minY;
-	p->maxY=maxY;
-	p->r=r;
-	p->g=g;
-	p->b=b;
-	p->visible=visible;
-	p->traceType=traceType;
-	p->xLabel=xLabel;
-	p->yLabel=yLabel;
-	p->title=title;
-	p->titleAsRawDataLabel=titleAsRawDataLabel;
-	p->parentObject=parentObject;
-	p->regionGroup=regionGroup;
-	p->parentPlotIndex=parentPlotIndex;
+	copyBase(p);
 
 	return p;
 }
+
 
 void Plot1D::setData(const vector<float> &vX, const vector<float> &vY, 
 		const vector<float> &vErr)
@@ -1241,64 +1314,99 @@ void Plot1D::setData(const vector<std::pair<float,float> > &v,const vector<float
 		yValues[ui]=v[ui].second;
 	}
 
-	errBars.resize(vErr.size());
-	std::copy(vErr.begin(),vErr.end(),errBars.begin());
 
+	computeDataBounds(xValues,minX,maxX);
+	if(vErr.empty())
+	{
+		computeDataBounds(yValues,minY,maxY);
+	}
+	else
+	{
+		errBars.resize(vErr.size());
+		std::copy(vErr.begin(),vErr.end(),errBars.begin());
+		computeDataBounds(yValues,vErr,minX,maxX);
+	}
+}
+void PlotBase::computeDataBounds(const vector<float> &d, const vector<float> &vErr,
+						float &minV,float &maxV) 
+{
+	//Compute minima and maxima of plot data, and keep a copy of it
+	float maxThis=-std::numeric_limits<float>::max();
+	float minThis=std::numeric_limits<float>::max();
 	
+	for(unsigned int ui=0;ui<d.size();ui++)
+	{
+		minThis=std::min(minThis,d[ui]-vErr[ui]);
+		maxThis=std::max(maxThis,d[ui]+vErr[ui]);
+	}
 
+	minV=minThis;
+	maxV=maxThis;
+}
+	
+void PlotBase::computeDataBounds(const vector<float> &d, float &minV,float &maxV) 
+{
 	//Compute minima and maxima of plot data, and keep a copy of it
 	float maxThis=-std::numeric_limits<float>::max();
 	float minThis=std::numeric_limits<float>::max();
 
-	// --------- X Values ---
-	for(unsigned int ui=0;ui<v.size();ui++)
+	// ---------  Values ---
+	for(unsigned int ui=0;ui<d.size();ui++)
 	{
-		minThis=std::min(minThis,v[ui].first);
-		maxThis=std::max(maxThis,v[ui].first);
+		minThis=std::min(minThis,d[ui]);
+		maxThis=std::max(maxThis,d[ui]);
 	}
-	minX=minThis;
-	maxX=maxThis;
+	minV=minThis;
+	maxV=maxThis;
 	//------------
 
-
-	// Y values, taking into account any error bars
-	//------------------
-	minThis=std::numeric_limits<float>::max();
-	maxThis=-std::numeric_limits<float>::max();
-	if(vErr.size())
-	{
-		ASSERT(vErr.size() == v.size());
-		for(unsigned int ui=0;ui<v.size();ui++)
-		{
-			minThis=std::min(minThis,v[ui].second-vErr[ui]);
-			maxThis=std::max(maxThis,v[ui].second+vErr[ui]);
-		}
-	}
-	else
-	{
-		for(unsigned int ui=0;ui<v.size();ui++)
-		{
-			minThis=std::min(minThis,v[ui].second);
-			maxThis=std::max(maxThis,v[ui].second);
-		}
-
-	}
-	minY=minThis;
-	maxY=maxThis; 
-	//------------------
 }
 
-void Plot1D::getBounds(float &xMin,float &xMax,float &yMin,float &yMax) const
+void PlotBase::computeDataBounds(const vector<pair<float,float> > &d, 
+				float &minX,float &maxX, float &minY, float &maxY)
 {
-	xMin=minX;
-	xMax=maxX;
-	yMin=minY;
-	yMax=maxY;
+	//Compute minima and maxima of plot data, and keep a copy of it
+	float maxThisX=-std::numeric_limits<float>::max();
+	float minThisX=std::numeric_limits<float>::max();
 
-	ASSERT(yMin <=yMax);
+	// ---------  Values ---
+	for(unsigned int ui=0;ui<d.size();ui++)
+	{
+		minThisX=std::min(minThisX,d[ui].first);
+		maxThisX=std::max(maxThisX,d[ui].first);
+	}
+	minX=minThisX;
+	maxX=maxThisX;
+	//------------
+	
+	//Compute minima and maxima of plot data, and keep a copy of it
+	float maxThisY=-std::numeric_limits<float>::max();
+	float minThisY=std::numeric_limits<float>::max();
+
+	// ---------  Values ---
+	for(unsigned int ui=0;ui<d.size();ui++)
+	{
+		minThisY=std::min(minThisY,d[ui].second);
+		maxThisY=std::max(maxThisY,d[ui].second);
+	}
+	minY=minThisY;
+	maxY=maxThisY;
+	//------------
+
 }
 
-bool Plot1D::empty() const
+void PlotBase::setColour(float rN, float gN, float bN)
+{
+	ASSERT( rN <=1.0f&& rN >=0.0f);
+	ASSERT( gN <=1.0f&& gN >=0.0f);
+	ASSERT( bN <=1.0f&& bN >=0.0f);
+	
+	r=rN;
+	g=gN;
+	b=bN;
+}
+
+bool Plot1D::isEmpty() const
 {
 	ASSERT(xValues.size() == yValues.size());
 	return xValues.empty();
@@ -1306,6 +1414,9 @@ bool Plot1D::empty() const
 
 void Plot1D::drawPlot(mglGraph *gr) const
 {
+#ifdef DEBUG
+	checkConsistent();
+#endif
 	bool showErrs;
 
 	mglData xDat,yDat,eDat;
@@ -1358,9 +1469,9 @@ void Plot1D::drawPlot(mglGraph *gr) const
 
 
 	//Plot the appropriate form	
-	switch(traceType)
+	switch(plotMode)
 	{
-		case PLOT_TRACE_LINES:
+		case PLOT_LINE_LINES:
 			//Unfortunately, when using line plots, mathgl moves the data points to the plot boundary,
 			//rather than linear interpolating them back along their paths. I have emailed the author.
 			//for now, we shall have to put up with missing lines :( Absolute worst case, I may have to draw them myself.
@@ -1371,20 +1482,22 @@ void Plot1D::drawPlot(mglGraph *gr) const
 				gr->Error(xDat,yDat,eDat,colourCode.c_str());
 			gr->SetCut(false);
 			break;
-		case PLOT_TRACE_BARS:
+		case PLOT_LINE_BARS:
 			gr->Bars(xDat,yDat,colourCode.c_str());
 			break;
-		case PLOT_TRACE_STEPS:
+		case PLOT_LINE_STEPS:
 			//Same problem as for line plot. 
 			gr->SetCut(true);
 			gr->Step(xDat,yDat,colourCode.c_str());
 			gr->SetCut(false);
 			break;
-		case PLOT_TRACE_STEM:
+		case PLOT_LINE_STEM:
+			gr->SetCut(true);
 			gr->Stem(xDat,yDat,colourCode.c_str());
+			gr->SetCut(false);
 			break;
 
-		case PLOT_TRACE_POINTS:
+		case PLOT_LINE_POINTS:
 		{
 			std::string s;
 			s = colourCode;
@@ -1416,7 +1529,7 @@ void Plot1D::drawPlot(mglGraph *gr) const
 }
 
 void Plot1D::getRawData(std::vector<std::vector< float> > &rawData,
-				std::vector<std::wstring> &labels) const
+				std::vector<std::string> &labels) const
 {
 
 	vector<float> tmp,dummy;
@@ -1445,15 +1558,10 @@ void Plot1D::getRawData(std::vector<std::vector< float> > &rawData,
 		
 		rawData.push_back(dummy);
 		rawData.back().swap(tmp);
-		labels.push_back(stlStrToStlWStr(TRANS("error")));
+		labels.push_back(string(TRANS("error")));
 	}
 }
 
-
-void Plot1D::clear( bool preserveVisiblity)
-{
-	regionGroup.clear();
-}
 
 void Plot1D::drawRegions(mglGraph *gr,
 		const mglPoint &min,const mglPoint &max) const
@@ -1476,13 +1584,8 @@ void Plot1D::drawRegions(mglGraph *gr,
 			colourCode = mglColourCode(regionGroup.regions[uj].r,
 						regionGroup.regions[uj].g,
 						regionGroup.regions[uj].b);
-#ifdef USE_MGL2
 			gr->FaceZ(mglPoint(rMinX,rMinY,-1),rMaxX-rMinX,rMaxY-rMinY,
 					colourCode.c_str());
-#else
-			gr->FaceZ(rMinX,rMinY,-1,rMaxX-rMinX,rMaxY-rMinY,
-					colourCode.c_str());
-#endif
 					
 		}
 	}
@@ -1490,6 +1593,206 @@ void Plot1D::drawRegions(mglGraph *gr,
 
 //--
 
+//2D plotting code
+Plot2DFunc::Plot2DFunc()
+{
+	plotMode = PLOT_MODE_2D;
+	plotType=PLOT_2D_DENS;
+}
+
+void Plot2DFunc::setData(const Array2D<float> &a,
+		float xLow,float xHigh, float yLow, float yHigh) 
+{
+	xyValues=a;
+	minX=xLow;
+	maxX=xHigh;
+	minY=yLow;
+	maxY=yHigh;
+}
+
+
+bool Plot2DFunc::isEmpty() const
+{
+	return xyValues.empty();
+}
+
+PlotBase * Plot2DFunc::clone() const
+{
+	Plot2DFunc *pb = new Plot2DFunc;
+
+	pb->xyValues=xyValues;
+
+	copyBase(pb);
+
+	return pb;
+}
+
+void Plot2DFunc::drawPlot(mglGraph *graph) const
+{
+#ifdef DEBUG
+	checkConsistent();
+#endif
+	size_t w,h;
+	w=xyValues.width();
+	h=xyValues.height();
+	
+	mglData xyData(w,h);
+
+	#pragma omp parallel for
+	for(size_t ui=0;ui<w;ui++)
+	{
+		for(size_t uj=0;uj<h;uj++)
+		{
+			xyData[uj*w+ui]=xyValues[ui][uj];
+		}
+	}
+
+	mglData xAxis(w),yAxis(h);
+	xAxis.Fill(minX,maxX);
+	yAxis.Fill(minY,maxY);
+
+	graph->Axis("xy");
+	graph->SetCut(false);
+	graph->Dens(xAxis,yAxis,xyData);
+	graph->SetCut(true);
+}
+
+void Plot2DFunc::getRawData(std::vector<std::vector<float> >  &rawData,
+			std::vector<std::string> &labels) const
+{
+
+	xyValues.unpack(rawData);
+	labels.resize(rawData.size(),title);
+
+}
+
+//--
+
+Plot2DScatter::Plot2DScatter()
+{
+	plotType=PLOT_2D_SCATTER;
+}
+
+void Plot2DScatter::setData(const vector<pair<float,float> > &f) 
+{
+	 points	=f;
+	computeDataBounds(f,minX,maxX,minY,maxY);
+}
+
+void Plot2DScatter::setData(const vector<pair<float,float> > &f, const vector<float> &inten) 
+{
+	points	=f;
+	intensity=inten;
+	computeDataBounds(f,minX,maxX,minY,maxY);
+}
+
+bool Plot2DScatter::isEmpty() const
+{
+	return points.empty();
+}
+
+PlotBase *Plot2DScatter::clone() const
+{
+	Plot2DScatter *pb = new Plot2DScatter;
+
+	pb->points=points;
+
+	copyBase(pb);
+
+	return pb;
+}
+
+void Plot2DScatter::drawPlot(mglGraph *graph) const
+{
+	
+	mglData xDat, yDat,sizeDat;
+
+	float *bufX,*bufY;
+	bufX = new float[points.size()];
+	if(!bufX) 
+		return;
+	bufY = new float[points.size()];
+	if(!bufY)
+	{
+		delete[] bufX;
+		return;
+	}
+
+	for(unsigned int ui=0;ui<points.size();ui++)
+	{
+		bufX[ui]=points[ui].first;
+		bufY[ui] = points[ui].second;
+	}
+
+	//TODO: Implement scatter intesity	
+	xDat.Set(bufX,points.size());
+	yDat.Set(bufY,points.size());
+	
+	delete[] bufX;
+	delete[] bufY;
+
+	if(intensity.empty())
+	{
+		float *bufSize = new float[points.size()];
+		for(unsigned int ui=0;ui<points.size();ui++)
+			bufSize[ui]=1;
+		sizeDat.Set(bufSize,points.size());
+		delete[] bufSize;
+	}
+	else
+	{
+		sizeDat.Set(intensity);
+	}
+	
+	string colourCode;
+	colourCode=mglColourCode(r,g,b);
+	
+	graph->SetCut(false);
+	graph->Mark(xDat,yDat,sizeDat,"+",colourCode.c_str());
+	graph->SetCut(true);
+
+	
+}
+void Plot2DScatter::getRawData(std::vector<std::vector<float> >  &rawData,
+			std::vector<std::string> &labels) const
+{
+
+	if(intensity.size())
+	{
+		rawData.resize(3);
+		for(unsigned int ui=0;ui<3;ui++)
+			rawData[ui].resize(points.size());
+
+		for(unsigned int ui=0;ui<points.size();ui++)
+		{
+			rawData[0][ui] = points[ui].first;
+			rawData[1][ui] = points[ui].second;
+			rawData[2][ui] = intensity[ui];
+		}
+		
+		labels.resize(3);
+		labels[2]=TRANS("Amplitude");
+	}
+	else
+	{
+		rawData.resize(2);
+		for(unsigned int ui=0;ui<2;ui++)
+			rawData[ui].resize(points.size());
+
+		for(unsigned int ui=0;ui<points.size();ui++)
+		{
+			rawData[0][ui] = points[ui].first;
+			rawData[1][ui] = points[ui].second;
+		}
+
+		labels.resize(2);
+	}
+
+	labels[0] = xLabel;
+	labels[1] = yLabel;
+}
+
+//--
 bool RegionGroup::getRegionIdAtPosition(float x, float y, unsigned int &id) const
 {
 	for(unsigned int ui=0;ui<regions.size();ui++)
@@ -1748,15 +2051,8 @@ void PlotOverlays::draw(mglGraph *gr,
 
 				//Print labels near to the text
 				const float STANDOFF_FACTOR=1.05;
-#ifdef USE_MGL2
 				gr->Puts(mglPoint(bufX[uj],bufY[uj]*STANDOFF_FACTOR),
 					overlayData[ui].title.c_str());
-#else
-				//Font size in mathgl uses negative values to set a relative font size
-				gr->Text(mglPoint(bufX[uj],bufY[uj]*STANDOFF_FACTOR),
-					overlayData[ui].title.c_str(),"",-0.6);
-
-#endif
 			}
 		}
 	}

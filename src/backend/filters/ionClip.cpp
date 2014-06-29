@@ -29,6 +29,7 @@ enum
 {
 	CALLBACK_FAIL=1,
 	BAD_ALLOC,
+	IONCLIP_ERR_ENUM_END
 };
 
 //!Possible primitive types for ion clipping
@@ -435,15 +436,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 						d->representationType=((IonStreamData *)dataIn[ui])->representationType;
 
 						//getOut is const, so shouldn't be modified
-						if(cache)
-						{
-							d->cached=1;
-							filterOutputs.push_back(d);
-							cacheOK=true;
-						}
-						else
-							d->cached=0;
-						
+						cacheAsNeeded(d);
 
 						getOut.push_back(d);
 						d=0;
@@ -581,10 +574,7 @@ void IonClipFilter::getProperties(FilterPropGroup &propertyList) const
 			p.helpText=TRANS("Positive vector for cylinder");
 			propertyList.addProperty(p,curGroup);
 			
-			if(lockAxisMag)
-				tmpStr="1";
-			else
-				tmpStr="0";
+			tmpStr=boolStrEnc(lockAxisMag);
 			p.key=KEY_AXIS_LOCKMAG;
 			p.name=TRANS("Lock Axis Mag.");
 			p.data=tmpStr;
@@ -625,7 +615,8 @@ void IonClipFilter::getProperties(FilterPropGroup &propertyList) const
 		default:
 			ASSERT(false);
 	}
-	
+
+	propertyList.setGroupTitle(curGroup,TRANS("Clipping"));
 }
 
 //!Set the properties for the nth filter. Returns true if prop set OK
@@ -737,50 +728,21 @@ bool IonClipFilter::setProperty(unsigned int key,
 		}
 		case KEY_ORIGIN:
 		{
-			ASSERT(vectorParams.size() >= 1);
-			Point3D newPt;
-			if(!newPt.parse(value))
+			if(!applyPropertyNow(vectorParams[0],value,needUpdate))
 				return false;
-
-			if(!(vectorParams[0] == newPt ))
-			{
-				vectorParams[0] = newPt;
-				needUpdate=true;
-				clearCache();
-			}
-
-			return true;
+			break;
 		}
 		case KEY_CORNER:
 		{
-			ASSERT(vectorParams.size() >= 2);
-			Point3D newPt;
-			if(!newPt.parse(value))
+			if(!applyPropertyNow(vectorParams[1],value,needUpdate))
 				return false;
-
-			if(!(vectorParams[1] == newPt ))
-			{
-				vectorParams[1] = newPt;
-				needUpdate=true;
-				clearCache();
-			}
-
-			return true;
+			break;
 		}
 		case KEY_RADIUS:
 		{
-			ASSERT(scalarParams.size() >=1);
-			float newRad;
-			if(stream_cast(newRad,value))
+			if(!applyPropertyNow(scalarParams[0],value,needUpdate))
 				return false;
-
-			if(scalarParams[0] != newRad )
-			{
-				scalarParams[0] = newRad;
-				needUpdate=true;
-				clearCache();
-			}
-			return true;
+			break;
 		}
 		case KEY_NORMAL:
 		{
@@ -808,58 +770,20 @@ bool IonClipFilter::setProperty(unsigned int key,
 		}
 		case KEY_PRIMITIVE_SHOW:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(showPrimitive,value,needUpdate))
 				return false;
-
-			if(stripped=="1")
-				showPrimitive=true;
-			else
-				showPrimitive=false;
-
-			needUpdate=true;
-
 			break;
 		}
 		case KEY_PRIMITIVE_INVERTCLIP:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(invertedClip,value,needUpdate))
 				return false;
-
-			bool lastVal=invertedClip;
-			if(stripped=="1")
-				invertedClip=true;
-			else
-				invertedClip=false;
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=invertedClip)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-
 			break;
 		}
-
 		case KEY_AXIS_LOCKMAG:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(lockAxisMag,value,needUpdate))
 				return false;
-
-			if(stripped=="1")
-				lockAxisMag=true;
-			else
-				lockAxisMag=false;
-
-			needUpdate=true;
-
 			break;
 		}
 		default:
@@ -875,14 +799,13 @@ bool IonClipFilter::setProperty(unsigned int key,
 //!Get the human readable error string associated with a particular error code during refresh(...)
 std::string IonClipFilter::getErrString(unsigned int code) const
 {
-	switch(code)
-	{
-		case BAD_ALLOC:
-			return std::string("Insufficient mem. for Ionclip");
-		case CALLBACK_FAIL:
-			return std::string("Ionclip Aborted");
-	}
-	ASSERT(false);
+	const char *errCode[] = { "",
+				"Insufficient mem. for Ionclip",
+				"Ionclip Aborted"
+	};
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errCode) == IONCLIP_ERR_ENUM_END);
+	ASSERT(code < IONCLIP_ERR_ENUM_END);
+	return errCode[code];
 }
 
 bool IonClipFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
@@ -942,11 +865,8 @@ bool IonClipFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 	//
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"invertedclip","value"))
 		return false;
-	if(tmpStr == "0")
-		invertedClip=false;
-	else if(tmpStr == "1")
-		invertedClip=true;
-	else
+
+	if(!boolStrDec(tmpStr,invertedClip))
 		return false;
 	//====
 	
@@ -954,11 +874,7 @@ bool IonClipFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 	//====
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"showprimitive","value"))
 		return false;
-	if(tmpStr == "0")
-		showPrimitive=false;
-	else if(tmpStr == "1")
-		showPrimitive=true;
-	else
+	if(!boolStrDec(tmpStr,showPrimitive))
 		return false;
 	//====
 	
@@ -966,11 +882,8 @@ bool IonClipFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 	//====
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"lockaxismag","value"))
 		return false;
-	if(tmpStr == "0")
-		lockAxisMag=false;
-	else if(tmpStr == "1")
-		lockAxisMag=true;
-	else
+
+	if(!boolStrDec(tmpStr,lockAxisMag))
 		return false;
 	//====
 	

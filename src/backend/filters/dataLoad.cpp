@@ -451,15 +451,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 			       "(magnitude too large). Consider rescaling data before loading"));
 	}
 
-	if(cache)
-	{
-		ionData->cached=1;
-		filterOutputs.push_back(ionData);
-		cacheOK=true;
-	}
-	else
-		ionData->cached=0;
-
+	cacheAsNeeded(ionData);
 
 	//Append the ion data 
 	getOut.push_back(ionData);
@@ -476,11 +468,13 @@ void DataLoadFilter::getProperties(FilterPropGroup &propertyList) const
 
 	size_t curGroup=0;
 
-	p.type=PROPERTY_TYPE_STRING;
+	p.type=PROPERTY_TYPE_FILE;
 	p.key=DATALOAD_KEY_FILE;
 	p.name=TRANS("File");
 	p.helpText=TRANS("File from which to load data");
 	p.data=ionFilename;
+	//Wx- acceptable string format
+	p.dataSecondary = TRANS("Readable files (*.xml, *.pos, *.txt,*.csv, *.ato)|*.xml;*.pos;*.txt;*.csv;*.ato|All Files|*") ;
 
 	propertyList.addProperty(p,curGroup);
 
@@ -497,6 +491,7 @@ void DataLoadFilter::getProperties(FilterPropGroup &propertyList) const
 	
 	propertyList.addProperty(p,curGroup);
 
+	propertyList.setGroupTitle(curGroup,TRANS("File"));
 	//---------
 	curGroup++;	
 	
@@ -715,57 +710,21 @@ bool DataLoadFilter::setProperty(  unsigned int key,
 		}
 		case DATALOAD_KEY_ENABLED:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(enabled,value,needUpdate))
 				return false;
-
-			bool lastVal=enabled;
-			enabled=(stripped == "1");
-			
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=enabled)
-				needUpdate=true;
-			
-			clearCache();
 			break;
 		}
 		case DATALOAD_KEY_MONITOR:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(wantMonitor,value,needUpdate))
 				return false;
-
-			bool lastVal=wantMonitor;
-			wantMonitor=(stripped=="1");
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=wantMonitor)
-				needUpdate=true;
-			
-			clearCache();
 			break;
 		}
 		
 		case DATALOAD_KEY_SAMPLE:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(doSample,value,needUpdate))
 				return false;
-
-			bool lastVal=doSample;
-			doSample=(stripped == "1");
-			
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=doSample)
-				needUpdate=true;
-			
-			clearCache();
 			break;
 		}
 		case DATALOAD_KEY_SIZE:

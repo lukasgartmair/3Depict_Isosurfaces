@@ -24,7 +24,6 @@
 
 class VisController;
 class wxGrid;
-class wxCustomPropGrid;
 class wxTreeCtrl;
 
 class Scene;
@@ -33,6 +32,7 @@ class Scene;
 #include "backend/plot.h"
 #include "backend/animator.h"
 #include "state.h"
+#include "filter.h"
 
 #include "backend/APT/APTFileIO.h"
 
@@ -135,6 +135,9 @@ class VisController
 		// the wxTree control
 		std::vector<const Filter *> persistentFilters;
 
+		//Map plot position to ID
+		std::map<size_t, size_t> plotMap;
+
 
 	public:
 		VisController();
@@ -228,7 +231,7 @@ class VisController
 		//Move a filter from one part of the tree to another
 		bool reparentFilter(size_t filterID, size_t newParentID);
 
-		//!Set the properties using a key-value result (as obtained from updatewxCustomPropGrid)
+		//!Set the properties using a key-value result 
 		/*
 		 * The return code tells whether to reject or accept the change. 
 		 * need update tells us if the change to the filter resulted in a change to the scene
@@ -264,7 +267,7 @@ class VisController
 		void setScene(Scene *theScene);
 		//!Set the backend plot
 		void setPlotWrapper(PlotWrapper *thePlots){targetPlots=thePlots;};
-		
+			
 		PlotWrapper *getPlotWrapper(){return targetPlots;};
 		//!Set the listbox for plot selection
 		void setPlotList(wxListBox *box){plotSelList=box;};
@@ -272,17 +275,18 @@ class VisController
 		
 		//!Set the backend grid control for raw data
 		void setRawGrid(wxGrid *theRawGrid){targetRawGrid=theRawGrid;};
-	
+
+		//Get a plot ID from the listbox position
+		size_t getPlotID(size_t position) const ;
 	
 		//!Write out the filters into a wxtreecontrol.
 		// optional argument is the fitler to keep visible in the control
 		void updateWxTreeCtrl(wxTreeCtrl *t,const Filter *f=0);
-		//!Update a wxCustomPropGrid with the properties for a given filter
-		void updateFilterPropGrid(wxCustomPropGrid *g,size_t filterId) const;
-			
-
-
-
+		//!Update a wxPropertyGrid with the properties for a given filter
+		void updateFilterPropGrid(wxPropertyGrid *g,size_t filterId, const std::string &stateString="") const; 
+		//!Update a wxPropertyGrid with the properties for a given filter
+		void updateCameraPropGrid(wxPropertyGrid *g,size_t cameraId) const; 
+		
 		//!Set the camera to use in the scene
 		bool setCam(unsigned int uniqueID) ;
 
@@ -292,13 +296,10 @@ class VisController
 		//!Add a new camera to the scene
 		unsigned int addCam(const std::string &camName);
 
-		//!Update a wxtGrid with the properties for a given filter
-		void updateCamPropertyGrid(wxCustomPropGrid *g,unsigned int camId) const;
-		
 		//!Return the number of cameras
 		unsigned int numCams() const ;
 
-		//!Set the properties using a key-value result (as obtaed from updatewxCustomPropGrid)
+		//!Set the properties using a key-value result 
 		/*! The return code tells whether to reject or accept the change. 
 		 */
 		bool setCamProperties(size_t camId, 

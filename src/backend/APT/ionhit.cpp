@@ -176,6 +176,12 @@ bool IonHit::hasNaN()
 				std::isnan(pos[1]) || std::isnan(pos[2]));
 }
 
+bool IonHit::hasInf()
+{
+	return (std::isinf(massToCharge) || std::isinf(pos[0]) || 
+				std::isinf(pos[1]) || std::isinf(pos[2]));
+}
+
 void IonHit::getCentroid(const std::vector<IonHit> &points,Point3D &centroid)
 {
 	centroid=Point3D(0,0,0);

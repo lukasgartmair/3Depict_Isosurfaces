@@ -23,7 +23,6 @@
 
 #include "common/stringFuncs.h"
 #include "gl/select.h"
-#include "gl/tr.h"
 #include "glPane.h"
 
 
@@ -67,7 +66,6 @@ EVT_RIGHT_DOWN(BasicGLPane::mouseDown)
 EVT_LEAVE_WINDOW(BasicGLPane::mouseLeftWindow)
 EVT_SIZE(BasicGLPane::resized)
 EVT_KEY_DOWN(BasicGLPane::keyPressed)
-EVT_CHAR(BasicGLPane::charEvent) 
 EVT_KEY_UP(BasicGLPane::keyReleased)
 EVT_MOUSEWHEEL(BasicGLPane::mouseWheelMoved)
 EVT_PAINT(BasicGLPane::render)
@@ -89,12 +87,7 @@ int attribList[] = {WX_GL_RGBA,
 			1,
 			0,0};
 
-BasicGLPane::BasicGLPane(wxWindow* parent) :
-#if wxCHECK_VERSION(2,9,0)
-wxGLCanvas(parent, wxID_ANY,  attribList)
-#else
-wxGLCanvas(parent, wxID_ANY,  wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas"),attribList)
-#endif
+BasicGLPane::BasicGLPane(wxWindow* parent) : wxGLCanvas(parent, wxID_ANY,  attribList)
 {
 	haveCameraUpdates=false;
 	applyingDevice=false;
@@ -102,9 +95,7 @@ wxGLCanvas(parent, wxID_ANY,  wxDefaultPosition, wxDefaultSize, 0, wxT("GLCanvas
 
 	keyDoubleTapTimer=new wxTimer(this,ID_KEYPRESS_TIMER);
 	lastKeyDoubleTap=(unsigned int)-1;
-#if wxCHECK_VERSION(2,9,0)
 	context=0;
-#endif
 
 	mouseMoveFactor=mouseZoomFactor=1.0f;	
 	dragging=false;
@@ -121,15 +112,7 @@ BasicGLPane::~BasicGLPane()
 
 bool BasicGLPane::displaySupported() const
 {
-#if wxCHECK_VERSION(2,9,0)
 	return IsDisplaySupported(attribList);
-#else
-	ASSERT(false);
-	//Lets hope so. If its not, then its just going to fail anyway. 
-	//If it is, then returning false would simply create a roadblock.
-	//Either way, you shouldn't get here.
-	return true; 
-#endif
 }
 
 void BasicGLPane::setSceneInteractionAllowed(bool enabled)
@@ -271,21 +254,13 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 		if(wxm.ShiftDown())
 			keyFlags|=FLAG_SHIFT;
 
-#if wxCHECK_VERSION(2,9,0)
 		if(wxm.LeftIsDown())
 		       	mouseFlags|= SELECT_BUTTON_LEFT;
 		if(wxm.RightIsDown())
 		       	mouseFlags|= SELECT_BUTTON_RIGHT;
 		if(wxm.MiddleIsDown())
 		       	mouseFlags|= SELECT_BUTTON_MIDDLE;
-#else
-		if(wxm.LeftDown())
-		       	mouseFlags|= SELECT_BUTTON_LEFT;
-		if(wxm.RightDown())
-		       	mouseFlags|= SELECT_BUTTON_RIGHT;
-		if(wxm.MiddleDown())
-		       	mouseFlags|= SELECT_BUTTON_MIDDLE;
-#endif
+		
 		//We can get  a mouse move event which reports no buttons before a mouse-up event,
 		//this occurs frequently under windows, but sometimes under GTK
 		if(!mouseFlags)
@@ -465,7 +440,6 @@ void BasicGLPane::mouseDown(wxMouseEvent& event)
 			Refresh();
 	}
 
-	event.Skip();
 }
 
 void BasicGLPane::mouseWheelMoved(wxMouseEvent& event) 
@@ -489,7 +463,6 @@ void BasicGLPane::mouseWheelMoved(wxMouseEvent& event)
 
 	haveCameraUpdates=true;
 	Refresh();
-	event.Skip();
 }
 
 void BasicGLPane::mouseReleased(wxMouseEvent& event) 
@@ -540,7 +513,6 @@ void BasicGLPane::mouseReleased(wxMouseEvent& event)
 	dragging=false;
 
 	Refresh();
-	event.Skip();
 	
 }
 
@@ -582,7 +554,6 @@ void BasicGLPane::mouseLeftWindow(wxMouseEvent& event)
 			dragging=false;
 		}
 	}
-	event.Skip();
 }
 
 void BasicGLPane::keyPressed(wxKeyEvent& event) 
@@ -600,11 +571,7 @@ void BasicGLPane::keyPressed(wxKeyEvent& event)
             // needs to be control in apple as cmd-space open spotlight
 			unsigned int keyMask;
 #ifdef __APPLE__
-    #if wxCHECK_VERSION(2,9,0)
 			keyMask = (event.RawControlDown() ? 1 : 0);
-    #else
-			keyMask = (event.ControlDown() ? 1 : 0);
-    #endif
 #else
 			keyMask = (event.CmdDown() ? 1 : 0);
 #endif
@@ -676,8 +643,9 @@ void BasicGLPane::keyPressed(wxKeyEvent& event)
 			}
 		}
 		break;
+		default:
+			event.Skip();
 	}
-	event.Skip();
 }
 
 void BasicGLPane::setGlClearColour(float r, float g, float b)
@@ -728,24 +696,15 @@ void BasicGLPane::keyReleased(wxKeyEvent& event)
 			break;
 		}
 		default:
-		;
+			event.Skip();
 	}
 
 	Refresh();
-	event.Skip();
 }
 
-void BasicGLPane::charEvent(wxKeyEvent& event) 
-{
-
-}
- 
  
 void BasicGLPane::resized(wxSizeEvent& evt)
 {
-#if !wxCHECK_VERSION(2,9,0)
-	wxGLCanvas::OnSize(evt);
-#endif
 	prepare3DViewport(0,0,getWidth(),getHeight()); 
 	wxClientDC *dc=new wxClientDC(this);
 	Refresh();
@@ -810,15 +769,12 @@ void BasicGLPane::render( wxPaintEvent& evt )
 	if (!IsShown()) 
 		return;
 	
-#if wxCHECK_VERSION(2,9,0)
 	if(!context)
 	{
 		context = new wxGLContext(this);
 		SetCurrent(*context);
 	}
-#else
-	wxGLCanvas::SetCurrent();
-#endif
+
 	if(!paneInitialised)
 	{
 		paneInitialised=true;
@@ -848,6 +804,28 @@ void BasicGLPane::updateClearColour()
 				bClear,1.0f);
 }
 
+TRcontext *BasicGLPane::generateTileContext(unsigned int width, unsigned int height, unsigned char *imageBuffer, bool alpha) const
+{
+	int panelWidth,panelHeight;
+	GetClientSize(&panelWidth,&panelHeight);
+	
+	//Create TR library tile context
+	TRcontext *tr = trNew();
+	//Tile size
+	trTileSize(tr,panelWidth,panelHeight,0);
+	//Set overall image size
+	trImageSize(tr, width, height);
+	//Set buffer for overall image
+	if(alpha)
+		trImageBuffer(tr, GL_RGBA, GL_UNSIGNED_BYTE, imageBuffer);
+	else
+		trImageBuffer(tr, GL_RGB, GL_UNSIGNED_BYTE, imageBuffer);
+	//Set the row order for the image
+	trRowOrder(tr, TR_BOTTOM_TO_TOP);
+
+	return tr;
+}
+
 bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 		const char *filename, bool showProgress, bool needPostPaint)
 {
@@ -863,33 +841,29 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	//create new image
 	wxImage *image = new wxImage(width,height);
 
+
+	unsigned char *imageBuffer= (unsigned char*) malloc(3*(width)*height);
+	if(!imageBuffer)
+		return false;
+
+
+	glLoadIdentity();
+	const Camera *cm = currentScene.getActiveCam();
+
 	//We cannot seem to draw outside the current viewport.
 	//in a cross platform manner.
 	//fall back to stitching the image together by hand
-	int panelWidth,panelHeight;
-	GetClientSize(&panelWidth,&panelHeight);
-
-	unsigned char *imageBuffer= (unsigned char*) malloc(3*(width)*height);
-
-	glLoadIdentity();
-	//Create TR library tile context
-	TRcontext *tr = trNew();
-	const Camera *cm = currentScene.getActiveCam();
 
 	//Initialise tile data
-	{
-	//Tile size
-	trTileSize(tr,panelWidth,panelHeight,0);
-	//Set overall image size
-	trImageSize(tr, width, height);
-	//Set buffer for overall image
-	trImageBuffer(tr, GL_RGB, GL_UNSIGNED_BYTE, imageBuffer);
-	//Set the row order for the image
-	trRowOrder(tr, TR_BOTTOM_TO_TOP);
-
+	TRcontext *tr; 
 	//Inform the tiling system about our camera config
+	float farPlane; 
+	float aspect=currentScene.getAspect();
+	
+	{
+	tr=generateTileContext(width,height, imageBuffer);
 	BoundCube bc = currentScene.getBound();
-	float farPlane = 1.5*bc.getMaxDistanceToBox(cm->getOrigin());
+	farPlane = 1.5*bc.getMaxDistanceToBox(cm->getOrigin());
 	
 	if(cm->getProjectionMode() == PROJECTION_MODE_PERSPECTIVE)
 	{
@@ -907,35 +881,49 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	}
 	else
 	{
-		float aspect=currentScene.getAspect();
-		float orthoScale=cm->getOrthoScale();
+		float orthoScale = cm->getOrthoScale();
 		trOrtho(tr,-orthoScale*aspect,orthoScale*aspect,
 				-orthoScale,orthoScale,0.0f,farPlane);
 
 	}
 	}
 
-
-	//Obtain tile count
-	unsigned int nRow,nCol;
+	//Obtain tile count from the renderer & init progress
+	//--
+	unsigned int totalTiles;
+	{
+	unsigned int nRow,nCol,nPass;
 	nRow=trGet(tr,TR_ROWS);
 	nCol=trGet(tr,TR_COLUMNS);
+	if(currentScene.hasOverlays())
+		nPass = 2;
+	else
+		nPass=1;
+
+	totalTiles=nRow*nCol*nPass;
+	}
 
 	wxProgressDialog *wxD=0;	
-
-
-	//Only show progress for multiple tiles
-	std::string tmpStr,tmpStrTwo;
-	stream_cast(tmpStrTwo,nRow*nCol);
-	
-	showProgress=showProgress && ( nRow*nCol > 1);
+	showProgress=showProgress && ( totalTiles > 1);
 	if(showProgress)
 	{
 		wxD = new wxProgressDialog(wxTRANS("Image progress"), 
-					wxTRANS("Rendering tiles..."), nRow*nCol);
+					wxTRANS("Rendering tiles..."), totalTiles);
 
-		wxD->Show();
 	}
+	//--
+
+
+	//We have to do two passes. First we have to
+	// do a 3D pass, then we have to separately
+	// draw the overlays.
+
+	// As we have 2 cameras, one for the normal scene
+	// and one for the overlay, we build the images,
+	// then merge the images, rather than trying to composite the entire scene in situ.
+
+	//PASS 1:
+	//--------------	
 
 	//HACK: Flip the all but scene's light z coordinate
 	// for some reason, the frustrum has an inversion
@@ -955,21 +943,16 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	}
 	currentScene.setLightPos(oldLightPos);
 	
+	if(showProgress)
+		wxD->Show();
 
-	//Loop through the tiles
+	//Loop through the tiles/ 
+	// note that 2D overlays will not be drawn in this pass
 	unsigned int thisTileNum=0;
 	int haveMoreTiles=1;
 	while(haveMoreTiles)
 	{
-		
-		
 		thisTileNum++;
-		//tell user which image tile we are making from the total image
-		stream_cast(tmpStr,thisTileNum);
-		tmpStr = std::string(TRANS("Tile ")) + tmpStr + std::string(TRANS(" of ")) + tmpStrTwo + "...";
-		//Update progress bar, if required
-		if(showProgress)
-			wxD->Update(thisTileNum,wxStr(tmpStr));
 
 		//Manually set the camera
 		//--
@@ -987,10 +970,15 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 
 		glPopMatrix();
 
+		//ending the tile copies
+		// data 
 		haveMoreTiles=trEndTile(tr);
+	
+		if(showProgress)	
+			wxD->Update(thisTileNum);
 
 	}
-
+	
 	//re-set light coordinates
 	for(size_t ui=0;ui<3;ui++)
 	{
@@ -1000,19 +988,81 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	}
 	currentScene.setLightPos(oldLightPos);
 
-	if(showProgress)
-		wxD->Destroy();
 	trDelete(tr);
 
 	//Transfer pointer to image, which will perform free-ing of the buffer
 	image->SetData(imageBuffer);
-	
 	//HACK : Tiling function returns upside-down image. Fix in post-process
 	// argument is to set mirror axis such that x axis is unchanged
 	*image=image->Mirror(false);
-	
-	bool isOK=image->SaveFile(wxCStr(filename),wxBITMAP_TYPE_PNG);
+	//--------------	
 
+	//PASS 2
+	//--------------	
+
+	if(currentScene.hasOverlays())
+	{
+		//alllocate RGBA (4-channel) image
+		imageBuffer= (unsigned char*) malloc(4*(width)*height);
+		if(!imageBuffer)
+			return false;
+
+
+		tr=generateTileContext(width,height,imageBuffer,true);
+		trOrtho(tr,0.0f,aspect,
+				0.0f,1.0f,-1.0f,1.0f);
+		
+
+		haveMoreTiles=1;
+
+	
+		float rClear,gClear,bClear;
+		currentScene.getBackgroundColour(rClear,gClear,bClear);
+		glClearColor( rClear, gClear, 
+					bClear,0.0f);
+
+		//I am unclear why, but the faces are reversed
+		glDisable(GL_CULL_FACE);
+		while(haveMoreTiles)
+		{
+			thisTileNum++;
+			//Start the tile
+			trBeginTile(tr);
+			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+			currentScene.drawOverlays(true);
+			//ending the tile copies
+			// data 
+			haveMoreTiles=trEndTile(tr);
+		
+			if(showProgress)	
+				wxD->Update(thisTileNum);
+		}	
+		glEnable(GL_CULL_FACE);
+		//restore the GL clear colour
+		updateClearColour();
+
+		///unpack the tile buffer into a wx image
+		wxImage imageOverlay(width,height);
+		imageOverlay.InitAlpha();
+
+		//FIXME: HACK - using "blue screen" effect
+		//don't use background as mask colour.
+		// use depth buffer or gl alpha
+		unsigned char mask[3] = {rClear,gClear,bClear};
+		copyRGBAtoWXImage(width,height,imageBuffer,imageOverlay,mask);
+
+		free(imageBuffer);
+
+		combineWxImage(*image,imageOverlay);
+	}
+	
+	//--------------	
+	bool isOK=image->SaveFile(wxCStr(filename),wxBITMAP_TYPE_PNG);
+	
+
+	if(showProgress)
+		wxD->Destroy();
+	
 	delete image;
 
 	if (needPostPaint) {

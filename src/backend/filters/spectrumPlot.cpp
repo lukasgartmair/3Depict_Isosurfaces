@@ -27,6 +27,7 @@ enum
 	SPECTRUM_BAD_ALLOC=1,
 	SPECTRUM_BAD_BINCOUNT,
 	SPECTRUM_ABORT_FAIL,
+	SPECTRUM_ERR_ENUM_END,
 };
 
 enum
@@ -185,7 +186,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 			fabs(delta) >  std::numeric_limits<float>::max() || // Check for out-of-range
 			 binWidth < sqrt(std::numeric_limits<float>::epsilon())	)
 		{
-			//If not, then simply set it to "1".
+			//If not, then simply set it to some defaults.
 			minPlot=0; maxPlot=1.0; binWidth=0.1;
 		}
 
@@ -371,15 +372,8 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 
 	}
 
-	if(cache)
-	{
-		d->cached=1; //IMPORTANT: cached must be set PRIOR to push back
-		filterOutputs.push_back(d);
-		cacheOK=true;
-	}
-	else
-		d->cached=0;
-
+	cacheAsNeeded(d);
+	
 	getOut.push_back(d);
 
 	return 0;
@@ -400,11 +394,7 @@ void SpectrumPlotFilter::getProperties(FilterPropGroup &propertyList) const
 	p.helpText=TRANS("Step size for spectrum");
 	propertyList.addProperty(p,curGroup);
 
-	if(autoExtrema)
-		str = "1";
-	else
-		str = "0";
-
+	str=boolStrEnc(autoExtrema);
 
 	p.name=TRANS("Auto Min/max");
 	p.data=str;
@@ -428,11 +418,11 @@ void SpectrumPlotFilter::getProperties(FilterPropGroup &propertyList) const
 	p.type=PROPERTY_TYPE_REAL;
 	p.helpText=TRANS("Ending position for spectrum");
 	propertyList.addProperty(p,curGroup);
-	
-	if(logarithmic)
-		str = "1";
-	else
-		str = "0";
+
+	propertyList.setGroupTitle(curGroup,TRANS("Data"));
+	curGroup++;
+
+	str=boolStrEnc(logarithmic);
 	p.key=KEY_SPECTRUM_LOGARITHMIC;
 	p.name=TRANS("Logarithmic");
 	p.data=str;
@@ -445,14 +435,14 @@ void SpectrumPlotFilter::getProperties(FilterPropGroup &propertyList) const
 
 
 	string tmpStr;
-	tmpStr=plotString(PLOT_TRACE_LINES);
-	choices.push_back(make_pair((unsigned int) PLOT_TRACE_LINES,tmpStr));
-	tmpStr=plotString(PLOT_TRACE_BARS);
-	choices.push_back(make_pair((unsigned int)PLOT_TRACE_BARS,tmpStr));
-	tmpStr=plotString(PLOT_TRACE_STEPS);
-	choices.push_back(make_pair((unsigned int)PLOT_TRACE_STEPS,tmpStr));
-	tmpStr=plotString(PLOT_TRACE_STEM);
-	choices.push_back(make_pair((unsigned int)PLOT_TRACE_STEM,tmpStr));
+	tmpStr=plotString(PLOT_LINE_LINES);
+	choices.push_back(make_pair((unsigned int) PLOT_LINE_LINES,tmpStr));
+	tmpStr=plotString(PLOT_LINE_BARS);
+	choices.push_back(make_pair((unsigned int)PLOT_LINE_BARS,tmpStr));
+	tmpStr=plotString(PLOT_LINE_STEPS);
+	choices.push_back(make_pair((unsigned int)PLOT_LINE_STEPS,tmpStr));
+	tmpStr=plotString(PLOT_LINE_STEM);
+	choices.push_back(make_pair((unsigned int)PLOT_LINE_STEM,tmpStr));
 
 
 	tmpStr= choiceString(choices,plotStyle);
@@ -475,6 +465,8 @@ void SpectrumPlotFilter::getProperties(FilterPropGroup &propertyList) const
 	p.helpText=TRANS("Colour of plotted spectrum");
 	p.key=KEY_SPECTRUM_COLOUR;
 	propertyList.addProperty(p,curGroup);
+
+	propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
 }
 
 bool SpectrumPlotFilter::setProperty( unsigned int key, 
@@ -512,28 +504,8 @@ bool SpectrumPlotFilter::setProperty( unsigned int key,
 		//Auto min/max
 		case KEY_SPECTRUM_AUTOEXTREMA:
 		{
-			//Only allow valid values
-			unsigned int valueInt;
-			if(stream_cast(valueInt,value))
+			if(!applyPropertyNow(autoExtrema,value,needUpdate))
 				return false;
-
-			//Only update as needed
-			if(valueInt ==0 || valueInt == 1)
-			{
-				if(autoExtrema != (bool)valueInt)
-				{
-					needUpdate=true;
-					autoExtrema=valueInt;
-				}
-				else
-					needUpdate=false;
-
-			}
-			else
-				return false;		
-	
-			clearCache();
-	
 			break;
 
 		}
@@ -623,7 +595,7 @@ bool SpectrumPlotFilter::setProperty( unsigned int key,
 
 			tmpPlotType=plotID(value);
 
-			if(tmpPlotType >= PLOT_TRACE_ENDOFENUM)
+			if(tmpPlotType >= PLOT_LINE_NONE)
 				return false;
 
 			plotStyle = tmpPlotType;
@@ -703,14 +675,15 @@ void SpectrumPlotFilter::setUserString(const std::string &s)
 
 std::string  SpectrumPlotFilter::getErrString(unsigned int code) const
 {
-	switch(code)
-	{
-		case SPECTRUM_BAD_ALLOC:
-			return string(TRANS("Insufficient memory for spectrum filter."));
-		case SPECTRUM_BAD_BINCOUNT:
-			return string(TRANS("Bad bincount value in spectrum filter."));
-	}
-	return std::string("BUG: (SpectrumPlotFilter::getErrString) Shouldn't see this!");
+	const char *errStrs[] = {
+		"",
+		"Insufficient memory for spectrum filter.",
+		"Bad bincount value in spectrum filter.",
+		"Aborted."
+	};
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errStrs) == SPECTRUM_ERR_ENUM_END);
+	ASSERT(code < SPECTRUM_ERR_ENUM_END);
+	return errStrs[code];
 }
 
 void SpectrumPlotFilter::setPropFromBinding(const SelectionBinding &b)
@@ -805,11 +778,7 @@ bool SpectrumPlotFilter::readState(xmlNodePtr &nodePtr, const std::string &state
 		return false;
 	
 	tmpStr=(char *)xmlString;
-	if(tmpStr == "1") 
-		autoExtrema=true;
-	else if(tmpStr== "0")
-		autoExtrema=false;
-	else
+	if(!boolStrDec(tmpStr,autoExtrema))
 	{
 		xmlFree(xmlString);
 		return false;
@@ -841,11 +810,7 @@ bool SpectrumPlotFilter::readState(xmlNodePtr &nodePtr, const std::string &state
 	//====
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"logarithmic","value"))
 		return false;
-	if(tmpStr == "0")
-		logarithmic=false;
-	else if(tmpStr == "1")
-		logarithmic=true;
-	else
+	if(!boolStrDec(tmpStr,logarithmic))
 		return false;
 	//====
 
@@ -853,7 +818,7 @@ bool SpectrumPlotFilter::readState(xmlNodePtr &nodePtr, const std::string &state
 	//====
 	if(!XMLGetNextElemAttrib(nodePtr,plotStyle,"plottype","value"))
 		return false;
-	if(plotStyle >= PLOT_TRACE_ENDOFENUM)
+	if(plotStyle >= PLOT_LINE_NONE)
 	       return false;	
 	//====
 

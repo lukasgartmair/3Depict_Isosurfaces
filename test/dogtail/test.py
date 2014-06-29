@@ -293,7 +293,7 @@ def prefTests(app3depict):
 	prefDialog=app3depict.findChild(element("Preferences","frame"));
 
 	#Get defaults tab
-	tabFilterDefaults=prefDialog.findChild(element("Pref","page tab",));
+	tabFilterDefaults=prefDialog.findChild(element("Filt. Default","page tab",));
 	#Walk through all the filter entries in the list, clicking each one
 	listFilters=tabFilterDefaults.findChild(element("","table"))
 	listFilterEntries=tabFilterDefaults.findChildren(element("","table cell"))	

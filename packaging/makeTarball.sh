@@ -75,6 +75,9 @@ fi
 
 #Various release-time checks
 #----
+
+echo "--------- RUNNING SANITY CHECKS -------"
+
 #Check version
 VER=`ls 3depict-*gz | sed 's/^3depict-\([0-9\.]*\).tar.gz$/\1/' `
 echo "Version is apparently :" $VER
@@ -170,9 +173,9 @@ fi
 
 #Run licensecheck over files, if available
 if [ x`which licensecheck` != x"" ] ; then
-	LIC_CHECK_OUT=`licensecheck -r  --ignore ".*\.(sh|sci|py|tex)$" | grep -v "GPL (v3 or later)" | grep -v "GENERATED FILE" `
+	LIC_CHECK_OUT=`licensecheck -r  --ignore=".*\.(sh|sci|py|tex)$" . | grep -v "GPL (v3 or later)" | grep -v "GENERATED FILE" | grep -v "MPL"  | grep -v "tarball/"`
 
-	if [ x$LIC_CHECK_OUT != x"" ] ; then
+	if [ x"$LIC_CHECK_OUT" != x"" ] ; then
 		echo "WARNING:" $LIC_CHECK_OUT >> $MSG_FILE
 	fi
 fi

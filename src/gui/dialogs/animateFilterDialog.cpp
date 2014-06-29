@@ -19,6 +19,7 @@
 
 #include "animateFilterDialog.h"
 #include "resolutionDialog.h"
+#include "wx/propertyGridUpdater.h"
 
 
 #include "./animateSubDialogs/realKeyFrameDialog.h"
@@ -153,7 +154,7 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
     filterPropertySizer_staticbox = new wxStaticBox(filterLeftPane, -1, wxTRANS("Filters and properties"));
     filterTreeCtrl =new wxTreeCtrl(filterLeftPane,ID_FILTER_TREE_CTRL , wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_HIDE_ROOT|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER|wxTR_EDIT_LABELS);
 
-    propertyGrid = new wxCustomPropGrid(filterLeftPane, ID_PROPERTY_GRID);
+    propertyGrid = new wxPropertyGrid(filterLeftPane, ID_PROPERTY_GRID);
     animationGrid = new wxGrid(filterRightPane, ID_ANIMATION_GRID_CTRL);
     keyFrameRemoveButton = new wxButton(filterRightPane, wxID_REMOVE, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
     labelWorkDir = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("Dir : "));
@@ -201,16 +202,13 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
     // end wxGlade
  
 
-#if wxCHECK_VERSION(2,9,0)
     //Manually tuned splitter parameters
     splitPaneFilter->SetMinimumPaneSize(220);
     int w, h;
     GetClientSize(&w,&h);
 
     float sashFrac=0.4;
-
     splitPaneFilter->SetSashPosition((int)(sashFrac*w));
-#endif
 
     programmaticEvent=true;
 
@@ -243,8 +241,9 @@ ExportAnimationDialog::~ExportAnimationDialog()
 BEGIN_EVENT_TABLE(ExportAnimationDialog, wxDialog)
     // begin wxGlade: ExportAnimationDialog::event_table
     EVT_TREE_SEL_CHANGED(ID_FILTER_TREE_CTRL, ExportAnimationDialog::OnFilterTreeCtrlSelChanged)
-    EVT_GRID_CMD_EDITOR_SHOWN(ID_PROPERTY_GRID, ExportAnimationDialog::OnFilterGridCellEditorShow)
-    EVT_GRID_CMD_EDITOR_SHOWN(ID_ANIMATION_GRID_CTRL, ExportAnimationDialog::OnFrameGridCellEditorShow)
+    EVT_PG_SELECTED(ID_PROPERTY_GRID, ExportAnimationDialog::OnFilterGridCellSelected)
+    EVT_PG_CHANGING(ID_PROPERTY_GRID, ExportAnimationDialog::OnFilterGridCellChanging)
+    EVT_TREE_SEL_CHANGED(ID_FILTER_TREE_CTRL, ExportAnimationDialog::OnFilterTreeCtrlSelChanged)
     EVT_GRID_CMD_EDITOR_SHOWN(ID_FILTER_TREE_CTRL, ExportAnimationDialog::OnAnimateGridCellEditorShow)
     EVT_SPLITTER_UNSPLIT(ID_SPLIT_FILTERVIEW, ExportAnimationDialog::OnFilterViewUnsplit) 
     EVT_BUTTON(wxID_REMOVE, ExportAnimationDialog::OnButtonKeyFrameRemove)
@@ -397,7 +396,6 @@ void ExportAnimationDialog::prepare()
 	upWxTreeCtrl(*filterTree,filterTreeCtrl,filterMap,
 			dummyVec,NULL);
 
-	update();
 }
 
 void ExportAnimationDialog::updateFilterViewGrid()
@@ -625,33 +623,38 @@ void ExportAnimationDialog::OnFilterTreeCtrlSelChanged(wxTreeEvent &event)
 	{
 		wxTreeItemData *parentData=filterTreeCtrl->GetItemData(id);
 		updateFilterPropertyGrid(propertyGrid, 
-				filterMap[((wxTreeUint *)parentData)->value]);
+				filterMap[((wxTreeUint *)parentData)->value],"");
 	}
 
 	event.Skip();
 }
 
+void ExportAnimationDialog::OnFilterGridCellChanging(wxPropertyGridEvent &event)
+{
+	event.SetValidationFailureBehavior(0);
+	event.Veto();
+}
 
-void ExportAnimationDialog::OnFilterGridCellEditorShow(wxGridEvent &event)
+void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 {
 	event.Veto();
-	wxTreeItemId id=filterTreeCtrl->GetSelection();;
 
-	if(id ==filterTreeCtrl->GetRootItem() || !id.IsOk())
+	wxTreeItemId tId=filterTreeCtrl->GetSelection();;
+
+	if(tId ==filterTreeCtrl->GetRootItem() || !tId.IsOk())
 		return;
-
-
-	unsigned int key;
-	key=propertyGrid->getKeyFromRow(event.GetRow());
 
 	//Get the filter ID value 
 	size_t filterId;
-	wxTreeItemId tId = filterTreeCtrl->GetSelection();
-	if(!tId.IsOk())
-		return;
-
 	wxTreeItemData *tData=filterTreeCtrl->GetItemData(tId);
 	filterId = ((wxTreeUint *)tData)->value;
+
+	//grab tyhe key from the property grid
+	size_t key;
+	std::string keyStr;
+	keyStr=event.GetProperty()->GetName();
+	stream_cast(key,keyStr);
+
 
 	const Filter *f;
 	f=filterMap.at(filterId);
@@ -1143,9 +1146,6 @@ void ExportAnimationDialog::set_properties()
     // begin wxGlade: ExportAnimationDialog::set_properties
     SetTitle(wxTRANS("Export Animation"));
     filterTreeCtrl->SetToolTip(wxTRANS("Select filter"));
-    propertyGrid->CreateGrid(0, 2);
-    propertyGrid->SetColLabelValue(0, wxTRANS("Property"));
-    propertyGrid->SetColLabelValue(1, wxTRANS("Value"));
     propertyGrid->SetToolTip(wxTRANS("Select property"));
     animationGrid->CreateGrid(0, 5);
     animationGrid->SetColLabelValue(0, wxTRANS("Filter"));

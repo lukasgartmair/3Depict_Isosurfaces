@@ -23,6 +23,7 @@
 #include <wx/wx.h>
 #include <wx/treectrl.h>
 #include <wx/grid.h>
+#include <wx/propgrid/propgrid.h>
 
 // end wxGlade
 
@@ -67,7 +68,7 @@ protected:
     wxStaticText* label_6;
     wxTreeCtrl* treeFilters;
     wxStaticText* label_7;
-    wxCustomPropGrid* gridProperties;
+    wxPropertyGrid* gridProperties;
     wxButton* btnOK;
     // end wxGlade
 
@@ -77,7 +78,7 @@ public:
     virtual void OnListKeyDown(wxListEvent &event); // wxGlade: <event_handler>
     virtual void OnListSelected(wxListEvent &event); // wxGlade: <event_handler>
     virtual void OnTreeSelChange(wxTreeEvent &event); // wxGlade: <event_handler>
-    virtual void OnGridEditor(wxGridEvent &event);
+    virtual void OnGridEditor(wxPropertyGridEvent &event);
 
     virtual void OnBtnRemove(wxCommandEvent &event);
     void ready();

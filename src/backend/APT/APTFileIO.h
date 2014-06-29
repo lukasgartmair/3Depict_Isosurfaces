@@ -39,6 +39,8 @@ extern const char *ION_TEXT_ERR_STRINGS[];
 
 extern const char *LAWATAP_ATO_ERR_STRINGS[];
 
+extern const char *TEXT_LOAD_ERR_STRINGS[];
+
 //!Errors that can be encountered when openning pos files
 enum posErrors
 {
@@ -48,6 +50,7 @@ enum posErrors
 	POS_SIZE_MODULUS_ERR,	
 	POS_READ_FAIL,
 	POS_NAN_LOAD_ERROR,
+	POS_INF_LOAD_ERROR,
 	POS_ABORT_FAIL,
 	POS_ERR_FINAL // Not actually an error, but tells us where the end of the num is.
 };
@@ -62,11 +65,11 @@ enum posErrors
  * */
 //!Load a pos file into a T of IonHits
 unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int outputnumcols, 
-		unsigned int index[], vector<IonHit> &posIons,const char *posFile, 
+		const unsigned int index[], vector<IonHit> &posIons,const char *posFile, 
 				unsigned int &progress, bool (*callback)(bool));
 
 
-unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumcols, unsigned int index[], 
+unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumcols, const unsigned int index[], 
 			vector<IonHit> &posIons,const char *posFile, size_t limitCount,
 					       	unsigned int &progress, bool (*callback)(bool),bool strongRandom);
 

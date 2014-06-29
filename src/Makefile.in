@@ -100,7 +100,8 @@ am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__3Depict_SOURCES_DIST = 3Depict.cpp testing/testing.cpp \
 	wx/wxcommon.cpp wx/wxcomponents.cpp winconsole.cpp \
-	testing/testing.h wx/wxcommon.h wx/wxcomponents.h winconsole.h \
+	wx/propertyGridUpdater.cpp testing/testing.h wx/wxcommon.h \
+	wx/wxcomponents.h winconsole.h wx/propertyGridUpdater.h \
 	gui/mainFrame.cpp gui/mathglPane.cpp gui/cropPanel.cpp \
 	gui/glPane.cpp gui/dialogs/ExportPos.cpp \
 	gui/dialogs/ExportRngDialog.cpp gui/dialogs/prefDialog.cpp \
@@ -172,13 +173,14 @@ am__3Depict_SOURCES_DIST = 3Depict.cpp testing/testing.cpp \
 	common/stringFuncs.h common/constants.h common/xmlHelper.h \
 	common/colourmap.h common/mathfuncs.h common/basics.h \
 	common/translation.h common/endianTest.h common/assertion.h \
-	common/voxels.h testing/mglTesting.cpp testing/mglTesting.h \
-	3Depict.rc
+	common/voxels.h common/array2D.h testing/mglTesting.cpp \
+	testing/mglTesting.h 3Depict.rc
 am__dirstamp = $(am__leading_dot)dirstamp
 am__objects_1 = 3Depict-3Depict.$(OBJEXT) \
 	testing/3Depict-testing.$(OBJEXT) \
 	wx/3Depict-wxcommon.$(OBJEXT) \
-	wx/3Depict-wxcomponents.$(OBJEXT) 3Depict-winconsole.$(OBJEXT)
+	wx/3Depict-wxcomponents.$(OBJEXT) 3Depict-winconsole.$(OBJEXT) \
+	wx/3Depict-propertyGridUpdater.$(OBJEXT)
 am__objects_2 =
 am__objects_3 = gui/dialogs/3Depict-ExportPos.$(OBJEXT) \
 	gui/dialogs/3Depict-ExportRngDialog.$(OBJEXT) \
@@ -483,7 +485,8 @@ MSYS_PATH = /c/msys/1.0/local/include/
 #------- Common header files for all sub-modules
 COMMON_SOURCE_FILES = common/pngread.c common/stringFuncs.cpp common/xmlHelper.cpp common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp common/assertion.cpp
 COMMON_HEADER_FILES = common/pngread.h common/stringFuncs.h  common/constants.h  common/xmlHelper.h common/colourmap.h \
-		      	common/mathfuncs.h common/basics.h common/translation.h common/endianTest.h common/assertion.h common/voxels.h
+		      	common/mathfuncs.h common/basics.h common/translation.h common/endianTest.h common/assertion.h common/voxels.h \
+			common/array2D.h
 
 
 #-----------
@@ -498,7 +501,7 @@ FILTER_FILES = backend/filters/allFilter.cpp backend/filters/filterCommon.cpp \
 		backend/filters/compositionProfile.cpp backend/filters/spatialAnalysis.cpp \
 		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
 		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp \
-		backend/filters/algorithms/binomial.cpp 
+		backend/filters/algorithms/binomial.cpp  
 
 FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h \
 		backend/filters/dataLoad.h backend/filters/ionDownsample.h \
@@ -508,7 +511,7 @@ FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h
 		backend/filters/compositionProfile.h backend/filters/spatialAnalysis.h \
 		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
 		backend/filters/annotation.h backend/filters/geometryHelpers.h \
-		backend/filters/algorithms/binomial.h
+		backend/filters/algorithms/binomial.h 
 
 BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backend/filtertree.cpp \
 		     	backend/APT/ionhit.cpp backend/APT/APTFileIO.cpp backend/APT/APTRanges.cpp backend/APT/abundanceParser.cpp \
@@ -553,8 +556,8 @@ DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/
 
 GUI_SOURCE_FILES = gui/mainFrame.cpp gui/mathglPane.cpp gui/cropPanel.cpp gui/glPane.cpp  $(DIALOG_SOURCE_FILES)
 GUI_HEADER_FILES = gui/mainFrame.h gui/mathglPane.h gui/cropPanel.h gui/art.h gui/glPane.h $(DIALOG_HEADER_FILES)
-BASE_SOURCE_FILES = 3Depict.cpp testing/testing.cpp wx/wxcommon.cpp  wx/wxcomponents.cpp winconsole.cpp 
-BASE_HEADER_FILES = testing/testing.h  wx/wxcommon.h  wx/wxcomponents.h   winconsole.h
+BASE_SOURCE_FILES = 3Depict.cpp testing/testing.cpp wx/wxcommon.cpp  wx/wxcomponents.cpp winconsole.cpp  wx/propertyGridUpdater.cpp
+BASE_HEADER_FILES = testing/testing.h  wx/wxcommon.h  wx/wxcomponents.h   winconsole.h wx/propertyGridUpdater.h
 TEST_SOURCE_FILES = testing/mglTesting.cpp
 TEST_HEADER_FILES = testing/mglTesting.h
 #-----------
@@ -660,6 +663,8 @@ wx/$(DEPDIR)/$(am__dirstamp):
 wx/3Depict-wxcommon.$(OBJEXT): wx/$(am__dirstamp) \
 	wx/$(DEPDIR)/$(am__dirstamp)
 wx/3Depict-wxcomponents.$(OBJEXT): wx/$(am__dirstamp) \
+	wx/$(DEPDIR)/$(am__dirstamp)
+wx/3Depict-propertyGridUpdater.$(OBJEXT): wx/$(am__dirstamp) \
 	wx/$(DEPDIR)/$(am__dirstamp)
 gui/$(am__dirstamp):
 	@$(MKDIR_P) gui
@@ -974,6 +979,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@gui/dialogs/animateSubDialogs/$(DEPDIR)/3Depict-stringKeyFrameDialog.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@testing/$(DEPDIR)/3Depict-mglTesting.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@testing/$(DEPDIR)/3Depict-testing.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@wx/$(DEPDIR)/3Depict-propertyGridUpdater.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@wx/$(DEPDIR)/3Depict-wxcommon.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@wx/$(DEPDIR)/3Depict-wxcomponents.Po@am__quote@
 
@@ -1092,6 +1098,20 @@ wx/3Depict-wxcomponents.obj: wx/wxcomponents.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='winconsole.cpp' object='3Depict-winconsole.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o 3Depict-winconsole.obj `if test -f 'winconsole.cpp'; then $(CYGPATH_W) 'winconsole.cpp'; else $(CYGPATH_W) '$(srcdir)/winconsole.cpp'; fi`
+
+wx/3Depict-propertyGridUpdater.o: wx/propertyGridUpdater.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT wx/3Depict-propertyGridUpdater.o -MD -MP -MF wx/$(DEPDIR)/3Depict-propertyGridUpdater.Tpo -c -o wx/3Depict-propertyGridUpdater.o `test -f 'wx/propertyGridUpdater.cpp' || echo '$(srcdir)/'`wx/propertyGridUpdater.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) wx/$(DEPDIR)/3Depict-propertyGridUpdater.Tpo wx/$(DEPDIR)/3Depict-propertyGridUpdater.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='wx/propertyGridUpdater.cpp' object='wx/3Depict-propertyGridUpdater.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o wx/3Depict-propertyGridUpdater.o `test -f 'wx/propertyGridUpdater.cpp' || echo '$(srcdir)/'`wx/propertyGridUpdater.cpp
+
+wx/3Depict-propertyGridUpdater.obj: wx/propertyGridUpdater.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT wx/3Depict-propertyGridUpdater.obj -MD -MP -MF wx/$(DEPDIR)/3Depict-propertyGridUpdater.Tpo -c -o wx/3Depict-propertyGridUpdater.obj `if test -f 'wx/propertyGridUpdater.cpp'; then $(CYGPATH_W) 'wx/propertyGridUpdater.cpp'; else $(CYGPATH_W) '$(srcdir)/wx/propertyGridUpdater.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) wx/$(DEPDIR)/3Depict-propertyGridUpdater.Tpo wx/$(DEPDIR)/3Depict-propertyGridUpdater.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='wx/propertyGridUpdater.cpp' object='wx/3Depict-propertyGridUpdater.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o wx/3Depict-propertyGridUpdater.obj `if test -f 'wx/propertyGridUpdater.cpp'; then $(CYGPATH_W) 'wx/propertyGridUpdater.cpp'; else $(CYGPATH_W) '$(srcdir)/wx/propertyGridUpdater.cpp'; fi`
 
 gui/3Depict-mainFrame.o: gui/mainFrame.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT gui/3Depict-mainFrame.o -MD -MP -MF gui/$(DEPDIR)/3Depict-mainFrame.Tpo -c -o gui/3Depict-mainFrame.o `test -f 'gui/mainFrame.cpp' || echo '$(srcdir)/'`gui/mainFrame.cpp

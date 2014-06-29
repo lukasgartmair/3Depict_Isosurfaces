@@ -19,7 +19,7 @@
 #include "filterCommon.h"
 
 #include "common/colourmap.h"
-
+#include "wx/wxcommon.h"
 
 
 //TODO: Work out where the payoff for this is
@@ -705,4 +705,46 @@ DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_
 
 
 	return dc;
+}
+
+//creates a temporary filename for use
+std::string createTmpFilename(const char *dir,const char *extension)
+{
+	wxString tmpFilename,tmpDir;
+	
+	if(!dir)
+	{
+		tmpDir=wxFileName::GetTempDir();
+
+
+	#if defined(__WIN32__) || defined(__WIN64__)
+		tmpDir=tmpDir + wxT("\\3Depict\\");
+
+	#else
+		tmpDir=tmpDir + wxT("/3Depict/");
+	#endif
+
+	}
+	else
+		tmpDir=dir;
+	
+	if(!wxDirExists(tmpDir))
+		wxMkdir(tmpDir);
+	tmpFilename=wxFileName::CreateTempFileName(tmpDir+ wxT("unittest-"));
+	wxRemoveFile(tmpFilename);
+	if(extension)
+		tmpFilename+=wxT(".pos");
+
+	return stlStr(tmpFilename);
+}
+
+//creates a temporary filename for use
+std::string removeFile(const char *tmpFilename)
+{
+	wxRemoveFile(wxCStr(tmpFilename));
+}
+
+std::string removeDir(const char *dir)
+{
+	wxRmdir(wxCStr(dir));
 }

@@ -140,6 +140,8 @@ std::string locateDataFile(const char *name)
 	std::string s=std::string(path) + "/" + name;
 		if(wxFileExists(wxStr(s)))
 			return s;
+		else
+			return std::string("");
 #else
 
 	//	- Look in cwd
@@ -311,11 +313,7 @@ bool processMatchesName(size_t processID, const std::string &procName)
 	
 	wxArrayString stdOut;
 	long res;
-#if wxCHECK_VERSION(2,9,0)
 	res=wxExecute(wxT("ps ax"),stdOut, wxEXEC_BLOCK);
-#else
-	res=wxExecute(wxT("ps ax"),stdOut);
-#endif
 
 	if(res !=0 )
 		return false;
@@ -471,6 +469,88 @@ bool processMatchesName(size_t processID, const std::string &procName)
 
 	}
 #endif
+
+
+
+void copyRGBAtoWXImage(unsigned int width, unsigned int height,
+		const unsigned char *rgbaBuf, wxImage &image, 
+		const unsigned char *mask)
+
+{
+	//wx image must have an alpha channel
+	ASSERT(image.HasAlpha());
+	ASSERT(image.GetWidth() == width && 
+		image.GetHeight() == height);
+
+	//FIXME: This will likely be very slow
+	const unsigned char *p=rgbaBuf;
+	for(unsigned int uj=0;uj<height;uj++)
+	{
+		for(unsigned int ui=0;ui<width;ui++)
+		{	
+			image.SetRGB(ui,uj,*p, *(p+1), *(p+2)); 
+
+			if( (*p == *mask) && 
+			    ( *(mask+1) == *(p+1)) &&
+			    ( *(mask+2) == *(p+2)) )
+				image.SetAlpha(ui,uj,0);
+			else
+				image.SetAlpha(ui,uj,255);
+			p+=4;
+		}
+	}
+
+}
+
+void combineWxImage(wxImage &base, const wxImage &overlay)
+{
+	ASSERT(base.GetWidth() == overlay.GetWidth());
+	ASSERT(base.GetHeight() == overlay.GetHeight());
+	ASSERT(overlay.HasAlpha());
+	ASSERT(base.IsOk() && overlay.IsOk());
+
+
+	unsigned int width=base.GetWidth();
+	unsigned int height=base.GetHeight();
+
+
+	wxImage debugIm(width,height);
+	//Now loop through each pixel and perform
+	// combine operation
+	#pragma omp parallel for
+	for(unsigned int uj=0;uj<height;uj++)
+	{
+		unsigned char rgbIm[3],rgbaOv[4];
+		for(unsigned int ui=0;ui<width;ui++)
+		{
+			rgbaOv[3] = overlay.GetAlpha(ui,uj);
+
+			debugIm.SetRGB(ui,uj,rgbaOv[3], rgbaOv[3],rgbaOv[3]);
+			if(rgbaOv[3])
+			{
+				//obtain src rgb
+				rgbIm[0]=base.GetRed(ui,uj);
+				rgbIm[1]=base.GetGreen(ui,uj);
+				rgbIm[2]=base.GetBlue(ui,uj);
+				//obtain overlay rgb	
+				rgbaOv[0]=overlay.GetRed(ui,uj);
+				rgbaOv[1]=overlay.GetGreen(ui,uj);
+				rgbaOv[2]=overlay.GetBlue(ui,uj);
+		
+		
+				for(unsigned int chan=0;chan<3;chan++)
+				{
+					rgbIm[chan] = (unsigned char) (float(255-rgbaOv[3])/255.0f*rgbIm[chan] + float(rgbaOv[3]/255.0f)*rgbaOv[chan]);
+				}
+				
+				base.SetRGB(ui,uj,rgbIm[0],rgbIm[1],rgbIm[2]);	
+			}
+		}
+	}	
+
+	debugIm.SaveFile("debug.png",wxBITMAP_TYPE_PNG);
+}
+
 	
 TreePersistNode::TreePersistNode(const wxTreeCtrl *treeCtrl,wxTreeItemId t)
 {

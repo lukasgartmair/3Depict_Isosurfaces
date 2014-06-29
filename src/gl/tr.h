@@ -1,6 +1,25 @@
 /* $Id: tr.h,v 1.5 1997/07/21 17:34:07 brianp Exp $ */
 
 /*
+	TR Tile rendering library
+	Copyright (C) 1997 Brian Paul
+
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License along
+	with this program; if not, write to the Free Software Foundation, Inc.,
+	51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
+
+/*
  * $Log: tr.h,v $
  * Revision 1.5  1997/07/21  17:34:07  brianp
  * added tile borders, incremented version to 1.1
@@ -18,6 +37,8 @@
  * Initial revision
  *
  */
+
+
 
 
 /*

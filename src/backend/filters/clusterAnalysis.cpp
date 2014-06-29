@@ -27,6 +27,7 @@
 #include <gsl/gsl_linalg.h>
 
 #include "algorithms/K3DTree-mk2.h"
+#include "backend/plot.h"
 
 
 enum
@@ -44,6 +45,7 @@ enum
 	KEY_WANT_LOGSIZEDIST,
 	KEY_WANT_COMPOSITIONDIST,
 	KEY_WANT_CLUSTERMORPHOLOGY,
+	KEY_WANT_CLUSTERID,
 	KEY_NORMALISE_COMPOSITION,
 	KEY_CROP_SIZE,
 	KEY_SIZE_COUNT_BULK,
@@ -57,7 +59,8 @@ enum
 {
 	ABORT_ERR=1,
 	NOCORE_ERR,
-	NOBULK_ERR
+	NOBULK_ERR,
+	CLUSTER_ERR_ENUM_END
 };
 
 enum 
@@ -263,7 +266,7 @@ void ClusterAnalysisFilter::buildRangeEnabledMap(const RangeStreamData *r,
 ClusterAnalysisFilter::ClusterAnalysisFilter() : algorithm(CLUSTER_LINK_ERODE),
 	enableCoreClassify(false), coreDist(0.0f), coreKNN(1), linkDist(0.5f), 
 	enableBulkLink(false), bulkLink(1), enableErosion(false), dErosion(0.25),
-	wantCropSize(false), nMin(0),nMax(std::numeric_limits<size_t>::max()),
+	wantClusterID(false), wantCropSize(false), nMin(0),nMax(std::numeric_limits<size_t>::max()),
 	wantClusterSizeDist(false),logClusterSize(false),
 	wantClusterComposition(true),normaliseComposition(true),
 	wantClusterMorphology(false), haveRangeParent(false)
@@ -301,6 +304,7 @@ Filter *ClusterAnalysisFilter::cloneUncached() const
 	
 	p->wantClusterComposition=wantClusterComposition;
 	p->normaliseComposition = normaliseComposition;
+	p->wantClusterMorphology= wantClusterMorphology;
 
 	p->haveRangeParent=false; //lets assume not, and this will be reset at ::initFilter time
 
@@ -441,6 +445,9 @@ void ClusterAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
 {
+	// - cluster ID alters the mass, so we can't use this analysis
+	// at the same time
+	ASSERT(!(wantClusterID && wantClusterComposition));
 	//By default, copy inputs to output, unless it is an ion or range stream type.
 	for(unsigned int ui=0;ui<dataIn.size();ui++)
 	{
@@ -566,7 +573,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 		return 0;
 
 	//we can't have bulk, but no core...
-	ASSERT(!(haveBulk && !haveCore));
+ASSERT(!(haveBulk && !haveCore));
 
 	//-------------
 
@@ -680,7 +687,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 		p->parent=this;
 
 		p->plotMode=PLOT_MODE_1D;
-		p->plotStyle=PLOT_TRACE_POINTS;
+		p->plotStyle=PLOT_LINE_POINTS;
 		p->dataLabel=TRANS("Morphology Plot");
 		p->xLabel=TRANS("\\lambda_1:\\lambda_2 ratio");
 		p->yLabel=TRANS("\\lambda_2:\\lambda_3 ratio");
@@ -793,6 +800,26 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 		totalSize+=clusteredCore[ui].size();
 	i->data.resize(totalSize);
 	
+	if(wantClusterID)
+	{
+
+		#pragma omp parallel
+		{
+		#pragma omp for
+		for(size_t ui=0;ui<clusteredCore.size();ui++)
+		{
+			for(size_t uj=0;uj<clusteredCore[ui].size();uj++)
+				clusteredCore[ui][uj].setMassToCharge(ui);
+		}
+	
+		#pragma omp for
+		for(size_t ui=0;ui<clusteredBulk.size();ui++)
+		{
+			for(size_t uj=0;uj<clusteredBulk[ui].size();uj++)
+				clusteredBulk[ui][uj].setMassToCharge(ui);
+		}
+		}
+	}
 
 	//copy across the core and bulk ions
 	//into the output
@@ -805,6 +832,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 			copyPos++;
 		}
 	}
+
 	clusteredCore.clear();
 
 	for(size_t ui=0;ui<clusteredBulk.size();ui++)
@@ -823,19 +851,12 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 	i->b=0.5f;	
 	i->a=1.0f;	
 
-	//Save the ion stream data.
-	if(cache)
-	{
-		i->cached=1;
-		filterOutputs.push_back(i);
-		cacheOK=true;
-	}
-	else
-		i->cached=0;
+	cacheAsNeeded(i);
 
 	getOut.push_back(i);
 
 
+	//Run cluster composition if it is wanted.
 	if(wantClusterComposition)
 	{
 		ASSERT(r);
@@ -892,23 +913,28 @@ void ClusterAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 {
 	FilterProperty p;
 	size_t curGroup=0;
-
 	string tmpStr;
-	vector<pair<unsigned int,string> > choices;
-	tmpStr=TRANS("Core Link + Erode");
-	choices.push_back(make_pair((unsigned int)CLUSTER_LINK_ERODE,tmpStr));
-	
-	tmpStr= choiceString(choices,algorithm);
-	p.name=TRANS("Algorithm");
-	p.data=tmpStr;
-	choices.clear();
-	p.type=PROPERTY_TYPE_CHOICE;
-	p.helpText=TRANS("Cluster algorithm mode");
-	p.key=KEY_CLUSTERANALYSIS_ALGORITHM;
-	propertyList.addProperty(p,curGroup);
-	
-	curGroup++;
-	
+
+	//Don't show options if there is only one algorithm
+	if(CLUSTER_ALGORITHM_ENUM_END > 1)
+	{
+		vector<pair<unsigned int,string> > choices;
+		tmpStr=TRANS("Core Link + Erode");
+		choices.push_back(make_pair((unsigned int)CLUSTER_LINK_ERODE,tmpStr));
+		
+		tmpStr= choiceString(choices,algorithm);
+		p.name=TRANS("Algorithm");
+		p.data=tmpStr;
+		choices.clear();
+		p.type=PROPERTY_TYPE_CHOICE;
+		p.helpText=TRANS("Cluster algorithm mode");
+		p.key=KEY_CLUSTERANALYSIS_ALGORITHM;
+		propertyList.addProperty(p,curGroup);
+		
+		propertyList.setGroupTitle(curGroup,TRANS("Algorithm"));
+		curGroup++;
+	}
+
 	if(algorithm == CLUSTER_LINK_ERODE)
 	
 	{
@@ -1041,25 +1067,37 @@ void ClusterAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	p.key=KEY_WANT_CLUSTERMORPHOLOGY;
 	propertyList.addProperty(p,curGroup);
 	*/
-	tmpStr=boolStrEnc(wantClusterComposition);
-	p.name=TRANS("Chemistry Dist.");
+
+
+	tmpStr=boolStrEnc(wantClusterID);
+	p.name=TRANS("Cluster Id");
 	p.data=tmpStr;
 	p.type=PROPERTY_TYPE_BOOL;
-	p.helpText=TRANS("Create a plot showing chemistry for each cluster size");
-	p.key=KEY_WANT_COMPOSITIONDIST;
+	p.helpText=TRANS("Assign cluster output a unique per-cluster value (id).");
+	p.key=KEY_WANT_CLUSTERID;
 	propertyList.addProperty(p,curGroup);
-	
-	if(wantClusterComposition)
-	{	
-		tmpStr=boolStrEnc(normaliseComposition);
-		p.name=TRANS("Normalise");
+
+	if(!wantClusterID)
+	{
+		tmpStr=boolStrEnc(wantClusterComposition);
+		p.name=TRANS("Chemistry Dist.");
 		p.data=tmpStr;
 		p.type=PROPERTY_TYPE_BOOL;
-		p.helpText=TRANS("Convert cluster counts to composition");
-		p.key=KEY_NORMALISE_COMPOSITION;
+		p.helpText=TRANS("Create a plot showing chemistry for each cluster size");
+		p.key=KEY_WANT_COMPOSITIONDIST;
 		propertyList.addProperty(p,curGroup);
+		
+		if(wantClusterComposition)
+		{	
+			tmpStr=boolStrEnc(normaliseComposition);
+			p.name=TRANS("Normalise");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Convert cluster counts to composition");
+			p.key=KEY_NORMALISE_COMPOSITION;
+			propertyList.addProperty(p,curGroup);
+		}
 	}
-
 
 	propertyList.setGroupTitle(curGroup,TRANS("Postprocess"));
 	
@@ -1133,18 +1171,8 @@ bool ClusterAnalysisFilter::setProperty(unsigned int key,
 		}
 		case KEY_CORECLASSIFY_ENABLE:
 		{
-			string stripped=stripWhite(value);
-		
-			bool newVal;
-			if(!boolStrDec(stripped,newVal))
+			if(!applyPropertyNow(enableCoreClassify,value,needUpdate))
 				return false;
-
-			if(newVal!=enableCoreClassify)
-			{
-				enableCoreClassify=newVal;
-				clearCache(); 
-				needUpdate=true;
-			}
 			break;
 		}
 		case KEY_CORECLASSIFYDIST:
@@ -1194,18 +1222,8 @@ bool ClusterAnalysisFilter::setProperty(unsigned int key,
 		}	
 		case KEY_BULKLINK_ENABLE:
 		{
-			string stripped=stripWhite(value);
-		
-			bool newVal;
-			if(!boolStrDec(stripped,newVal))
+			if(!applyPropertyNow(enableBulkLink,value,needUpdate))
 				return false;
-
-			if(newVal!=enableBulkLink)
-			{
-				enableBulkLink=newVal;
-				clearCache(); 
-				needUpdate=true;
-			}
 			break;
 		}
 		case KEY_BULKLINK:
@@ -1225,18 +1243,8 @@ bool ClusterAnalysisFilter::setProperty(unsigned int key,
 		}	
 		case KEY_ERODE_ENABLE:
 		{
-			string stripped=stripWhite(value);
-		
-			bool newVal;
-			if(!boolStrDec(stripped,newVal))
+			if(!applyPropertyNow(enableErosion,value,needUpdate))
 				return false;
-
-			if(newVal!=enableErosion)
-			{
-				enableErosion=newVal;
-				clearCache(); 
-				needUpdate=true;
-			}
 			break;
 		}
 		case KEY_ERODEDIST:
@@ -1418,27 +1426,17 @@ bool ClusterAnalysisFilter::setProperty(unsigned int key,
 				needUpdate=true;
 				clearCache();
 			}
+
+			//composition analysis is mutually
+			// exclsive with ID
+			wantClusterID=false;
 			
 			break;
 		}
 		case KEY_CROP_SIZE:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(wantCropSize,value,needUpdate))
 				return false;
-
-			bool lastVal=wantCropSize;
-			wantCropSize=(stripped == "1");
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=wantCropSize)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-			
 			break;
 		}
 		case KEY_CROP_NMIN:
@@ -1476,21 +1474,17 @@ bool ClusterAnalysisFilter::setProperty(unsigned int key,
 		}	
 		case KEY_WANT_CLUSTERMORPHOLOGY:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(wantClusterMorphology,value,needUpdate))
+				return false;
+			break;
+		}
+		case KEY_WANT_CLUSTERID:
+		{
+			if(!applyPropertyNow(wantClusterID,value,needUpdate))
 				return false;
 
-			bool lastVal=wantClusterMorphology;
-			wantClusterMorphology=(stripped=="1");
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=wantClusterMorphology)
-			{
-				needUpdate=true;
-				clearCache();
-			}
+			//composition & id are mutually exclusive
+			wantClusterComposition=false;
 			
 			break;
 		}
@@ -1575,17 +1569,18 @@ bool ClusterAnalysisFilter::writeState(std::ostream &f,unsigned int format,
 			f << tabs(depth+1) << "<derosion value=\""<<dErosion<< "\" enabled=\"" << boolStrEnc(enableErosion) << "\"/>"  << endl;
 			
 			//Cropping control
-			f << tabs(depth+1) << "<wantcropsize value=\""<<wantCropSize<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<wantcropsize value=\""<<boolStrEnc(wantCropSize)<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<nmin value=\""<<nMin<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<nmax value=\""<<nMax<< "\"/>"  << endl;
 			
 			//Postprocessing
-			f << tabs(depth+1) << "<wantclustersizedist value=\""<<wantClusterSizeDist<< "\" logarithmic=\"" << 
+			f << tabs(depth+1) << "<wantclustersizedist value=\""<<boolStrEnc(wantClusterSizeDist)<< "\" logarithmic=\"" << 
 					logClusterSize << "\"/>"  << endl;
-			f << tabs(depth+1) << "<wantclustercomposition value=\"" <<wantClusterComposition<< "\" normalise=\"" << 
+			f << tabs(depth+1) << "<wantclustercomposition value=\"" <<boolStrEnc(wantClusterComposition)<< "\" normalise=\"" << 
 					normaliseComposition<< "\"/>"  << endl;
 			
-			f << tabs(depth+1) << "<wantclustermorphology value=\"" <<wantClusterMorphology	<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<wantclustermorphology value=\"" <<boolStrEnc(wantClusterMorphology)	<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<wantclusterid value=\"" <<boolStrEnc(wantClusterID)<< "\"/>"  << endl;
 
 
 			f << tabs(depth+1) << "<enabledions>"  << endl;
@@ -1721,6 +1716,17 @@ bool ClusterAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &pa
 	nodePtr=tmpPtr;
 	if(!XMLGetNextElemAttrib(nodePtr,wantClusterMorphology,"wantclustermorphology","value"))
 		return false;
+	
+	nodePtr=tmpPtr;
+	if(!XMLGetNextElemAttrib(nodePtr,wantClusterID,"wantclustermorphology","value"))
+	{
+		//COMPAT_BREAK: compat fix, 0.0.16.
+		wantClusterID=false;
+	}
+	else
+	{
+		wantClusterComposition=false;
+	}
 	//===
 
 
@@ -1797,17 +1803,15 @@ unsigned int ClusterAnalysisFilter::getRefreshUseMask() const
 
 std::string ClusterAnalysisFilter::getErrString(unsigned int i) const
 {
-	switch(i)
-	{
-		case ABORT_ERR:
-			return std::string(TRANS("Clustering aborted"));
-		case NOCORE_ERR:
-			return std::string(TRANS("No core ions for cluster"));
-		case NOBULK_ERR:
-			return std::string(TRANS("No bulk ions for cluster"));
-		default:
-			ASSERT(false);
-	}
+	const char *errStrs[] = {"",
+		"Clustering aborted",
+		"No core ions for cluster",
+		"No bulk ions for cluster" };
+
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errStrs) == CLUSTER_ERR_ENUM_END );
+	ASSERT(i < CLUSTER_ERR_ENUM_END);
+
+	return errStrs[i];
 }
 
 void ClusterAnalysisFilter::setPropFromBinding(const SelectionBinding &b)
@@ -2672,7 +2676,7 @@ PlotStreamData* ClusterAnalysisFilter::clusterSizeDistribution(const vector<vect
 	dist->dataLabel=SIZE_DIST_DATALABEL;
 	dist->logarithmic=logClusterSize;
 
-	dist->plotStyle=PLOT_TRACE_STEM;
+	dist->plotStyle=PLOT_LINE_STEM;
 	dist->plotMode=PLOT_MODE_1D;
 	dist->xyData.resize(countMap.size());
 	std::copy(countMap.begin(),countMap.end(),dist->xyData.begin());
@@ -2879,7 +2883,7 @@ void ClusterAnalysisFilter::genCompositionVersusSize(const vector<vector<IonHit>
 		p->dataLabel=string(CHEM_DIST_DATALABEL) + string(":") + rng->getName(ui);
 		p->logarithmic=logClusterSize && !normaliseComposition;
 
-		p->plotStyle=PLOT_TRACE_STEM;
+		p->plotStyle=PLOT_LINE_STEM;
 
 		p->xyData.resize(countMap.size());
 

@@ -353,3 +353,54 @@ void AbundanceData::getSymbolIndices(const vector<string> &symbols,vector<size_t
 		indices[ui]=symbolIndex(symbols[ui].c_str());
 }
 
+
+#ifdef DEBUG
+void AbundanceData::checkErrors() const
+{
+	//Ensure all isotopes sum to 1-ish
+	// Rounding errors limit our correctness here.
+	for(size_t ui=0;ui<isotopeData.size();ui++)
+	{
+		if(!isotopeData[ui].size())
+			continue;
+
+		float sum;
+		sum=0.0f;
+		for(size_t uj=0; uj<isotopeData[ui].size();uj++)
+		{
+			sum+=isotopeData[ui][uj].abundance;
+		}
+
+		ASSERT(fabs(sum -1.0f) < 0.000001);
+
+	}
+
+
+	//Ensure Ti has 5 isotopes (original data file was missing)
+	ASSERT(isotopeData[symbolIndex("Ti")].size() == 5);
+}
+
+bool AbundanceData::runUnitTests(const char *tableFile)
+{
+	AbundanceData massTable;
+	TEST(massTable.open(tableFile) == 0,"load table");
+	//FIXME: Getting the isotope dis
+
+	size_t ironIndex=massTable.symbolIndex("Fe");
+	TEST(ironIndex != (size_t)-1,"symbol lookup");
+
+	//Generate the mass peak dist for iron
+	vector<size_t> elements;
+	vector<size_t> concentrations;
+	elements.push_back(ironIndex);
+	concentrations.push_back(1);
+
+	std::vector<std::pair<float,float> > massDist;
+	massTable.generateIsotopeDist(elements,concentrations,massDist);
+
+	TEST(massDist.size() == 4, "Iron has 4 isotopes");
+
+	return true;	
+
+}
+#endif

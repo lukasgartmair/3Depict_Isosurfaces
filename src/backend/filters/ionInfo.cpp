@@ -33,9 +33,9 @@ const char *volumeModeString[] = {
 				
 enum
 {
-	ERR_NO_MEM,
-	ERR_USER_ABORT,
-	ERR_BAD_QHULL
+	ERR_USER_ABORT=1,
+	ERR_BAD_QHULL,
+	IONINFO_ERR_ENUM_END
 };
 
 
@@ -418,6 +418,7 @@ void IonInfoFilter::getProperties(FilterPropGroup &propertyList) const
 		propertyList.addProperty(p,curGroup);
 	}
 
+	propertyList.setGroupTitle(curGroup,TRANS("Ion data"));
 	curGroup++;
 
 	stream_cast(str,wantVolume);
@@ -453,55 +454,31 @@ void IonInfoFilter::getProperties(FilterPropGroup &propertyList) const
 		}
 	
 	}
+	propertyList.setGroupTitle(curGroup,TRANS("Volume data"));
 }
 
 
 bool IonInfoFilter::setProperty(  unsigned int key,
 					const std::string &value, bool &needUpdate)
 {
-	string stripped=stripWhite(value);
 	switch(key)
 	{
 		case IONINFO_KEY_TOTALS:
 		{
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(wantIonCounts,value,needUpdate))
 				return false;
-	
-			bool newVal;
-			newVal= (value == "1");	
-
-			if(newVal == wantIonCounts)
-				return false;
-			wantIonCounts=newVal;	
-			needUpdate=true;
 			break;
 		}
 		case IONINFO_KEY_NORMALISE:
 		{
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(wantNormalise,value,needUpdate))
 				return false;
-	
-			bool newVal;
-			newVal= (value == "1");	
-
-			if(newVal == wantNormalise)
-				return false;
-			wantNormalise=newVal;	
-			needUpdate=true;
 			break;
 		}
 		case IONINFO_KEY_VOLUME:
 		{
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(wantVolume,value,needUpdate))
 				return false;
-	
-			bool newVal;
-			newVal= (value == "1");	
-
-			if(newVal == wantVolume)
-				return false;
-			wantVolume=newVal;	
-			needUpdate=true;
 			break;
 		}
 		case IONINFO_KEY_VOLUME_ALGORITHM:
@@ -533,16 +510,15 @@ bool IonInfoFilter::setProperty(  unsigned int key,
 
 std::string  IonInfoFilter::getErrString(unsigned int code) const
 {
-	switch(code)
-	{
-		case ERR_NO_MEM:
-			return string(TRANS("Insufficient memory for operation"));
-		case ERR_USER_ABORT:
-			return string(TRANS("Aborted"));
-		case ERR_BAD_QHULL:
-			return string(TRANS("Bug? Problem with qhull library, cannot run convex hull."));
-	}
-	ASSERT(false);
+	const char *errStrs[] = { "",
+		"Aborted",
+		"Bug? Problem with qhull library, cannot run convex hull.",
+	};
+	
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errStrs) == IONINFO_ERR_ENUM_END);
+	ASSERT(code < IONINFO_ERR_ENUM_END);
+
+	return errStrs[code];
 }
 
 void IonInfoFilter::setPropFromBinding(const SelectionBinding &b)
@@ -664,22 +640,14 @@ bool IonInfoFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 	//--
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"wantioncounts","value"))
 		return false;
-	if(tmpStr == "1")
-		wantIonCounts=true;
-	else if(tmpStr == "0")
-		wantIonCounts=false;
-	else
+	if(!boolStrDec(tmpStr,wantIonCounts))
 		return false;
 	//--=
 	
 	//--
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"wantnormalise","value"))
 		return false;
-	if(tmpStr == "1")
-		wantNormalise=true;
-	else if(tmpStr == "0")
-		wantNormalise=false;
-	else
+	if(!boolStrDec(tmpStr,wantNormalise))
 		return false;
 	//--=
 
@@ -687,11 +655,7 @@ bool IonInfoFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 	//--
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"wantvolume","value"))
 		return false;
-	if(tmpStr == "1")
-		wantVolume=true;
-	else if(tmpStr == "0")
-		wantVolume=false;
-	else
+	if(!boolStrDec(tmpStr,wantVolume))
 		return false;
 	//--=
 

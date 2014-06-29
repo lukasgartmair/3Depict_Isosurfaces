@@ -50,7 +50,7 @@ class AbundanceData
 {
 	enum
 	{
-		ABUNDANCE_ERR_BAD_DOC,
+		ABUNDANCE_ERR_BAD_DOC=1,
 		ABUNDANCE_ERR_NO_CONTEXT,
 		ABUNDANCE_ERROR_BAD_VALUE,
 		ABUNDANCE_ERROR_FAILED_VALIDATION,
@@ -67,6 +67,9 @@ class AbundanceData
 	//atomic numbers for each atom's isotope entry	
 	// this is esentially a lookup (isotope # -> atom #)
 	std::vector<size_t> atomicNumber;
+
+	//Check the abundance table for inconsistenceis
+	void checkErrors() const; 
 
 	public:
 		//!Attempt to open the abundance data file, return 0 on success
@@ -94,6 +97,11 @@ class AbundanceData
 		void generateSingleAtomDist(size_t atomIdx, unsigned int repeatCount, std::vector<std::pair<float,float> > &massDist,size_t solutionCharge=1) const;
 
 		const ISOTOPE_DATA &isotope(size_t elementIdx, size_t isotopeIdx) const;
+
+#ifdef DEBUG
+		//Run the unit esting code
+		static bool runUnitTests(const char *tableFile);
+#endif
 };
 
 #endif

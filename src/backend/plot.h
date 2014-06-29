@@ -21,7 +21,7 @@
 
 
 #include "backend/filter.h"
-
+#include "common/array2D.h"
 #include <map>
 
 
@@ -32,28 +32,39 @@
 
 //Use config header to determine if we need to enable mgl2 support
 #include "../config.h"
-#ifdef USE_MGL2
 #include <mgl2/mgl.h>
-#else
-#include <mgl/mgl.h>
-#endif
 
 //mathgl shadows std::isnan
 #undef isnan
 
 
-enum
+//Plot style/mode enum
+enum 
 {
-	PLOT_TYPE_ONED,
-	PLOT_TYPE_MIXED,
-	PLOT_TYPE_ENUM_END //not a plot, just end of enum
+	PLOT_LINE_LINES=0,
+	PLOT_LINE_BARS,
+	PLOT_LINE_STEPS,
+	PLOT_LINE_STEM,
+	PLOT_LINE_POINTS,
+	PLOT_LINE_NONE, // not a plot, just marker for enum break
+	PLOT_2D_DENS,
+	PLOT_2D_SCATTER,
+	PLOT_TYPE_ENUM_END
 };
 
-
-
+//This is the plot mode,
+// it can be determined as a function of the
+// plot-style/mode enum
+enum
+{
+	PLOT_MODE_1D,
+	PLOT_MODE_2D,
+	PLOT_MODE_MIXED, //special marker - different types of plots, when looking at multiple plots
+	PLOT_MODE_ENUM_END //not a plot, just end of enum
+};
 
 //!Return a human readable string for a given plot type
-std::string plotString(unsigned int traceType);
+std::string plotString(unsigned int plotMode);
 
 //!Return a human readable string for the plot error mode
 std::string plotErrmodeString(unsigned int errMode);
@@ -117,7 +128,6 @@ class PlotRegion
 };
 
 //Handles an array of regions, for drawing and editing of the array
-
 class RegionGroup
 {
 	private:
@@ -168,6 +178,8 @@ struct  OVERLAY_DATA
 	bool enabled;
 };
 
+//!Thse are 1D-stem style overlays that can be used
+// to draw onto the plot
 class PlotOverlays
 {
 	private:
@@ -198,31 +210,53 @@ class PlotOverlays
 //!Base class for data plotting
 class PlotBase
 {
+	protected:
+		//!Sub type of plot (eg lines, bars for 1D)
+		unsigned int plotMode;
+		//!xaxis label
+		std::string xLabel;
+		//!y axis label
+		std::string yLabel;
+		//!Plot title
+		std::string title;
+		
+		//plot colour (for single coloured plots)
+		float r,g,b;
+		
+		//The type of plot (ie what class is it?)	
+		unsigned int plotType;
+		
+		void copyBase(PlotBase *target) const;
+
+		//Find the upper and lower limit of a given dataset
+		static void computeDataBounds(const vector<float> &d, float &minV,float &maxV) ;
+		
+		//Find the upper and lower limit of a given dataset
+		static void computeDataBounds(const vector<float> &d, const vector<float> &errorBar,
+								float &minV,float &maxV);
+
+		//Find the upper and lower limit of a given dataset
+		static void computeDataBounds(const vector<pair<float,float> > &d, 
+					float &minVx,float &maxVx,float &minVy, float &maxVy);
 	public:
-		PlotBase(){};
+		PlotBase();
 		virtual ~PlotBase(){};
 
 		virtual PlotBase *clone() const = 0;
 
-		//The type of plot (ie what class is it?)	
-		unsigned int plotType;
-		
-		//!Bounding box for plot -  may exceed plot data area
+	
+		//return the plot type
+		unsigned int getType() const;
+
+		//return the plot mode, which is derived
+		// uniquely from the plot type
+		unsigned int getMode() const;
+
+		//!Bounding box for plot 
 		float minX,maxX,minY,maxY;
 
-		//!Colour of trace
-		float r,g,b;
 		//!Is trace visible?
 		bool visible;
-		//!Type of plot (lines, bars, sticks, etc)
-		unsigned int traceType;
-		//!xaxis label
-		std::wstring xLabel;
-		//!y axis label
-		std::wstring yLabel;
-		//!Plot title
-		std::wstring title;
-
 		//!Use the plot title for Y data label when exporting raw data
 		// (true), or use the yLabel
 		bool titleAsRawDataLabel;
@@ -238,25 +272,45 @@ class PlotBase
 		RegionGroup regionGroup;
 
 	
-		//True if the plot has data
-		virtual bool empty() const=0;
+		//True if the plot has no data
+		virtual bool isEmpty() const=0;
 
 		//Draw the plot onto a given MGL graph
 		virtual void drawPlot(mglGraph *graph) const=0;
 
-		//!Scan for the data bounds.
+		//!Return the true data bounds for this plot
 		virtual void getBounds(float &xMin,float &xMax,
-					float &yMin,float &yMax) const = 0;
+					float &yMin,float &yMax) const;
+		
 
 		//Retrieve the raw data associated with this plot.
 		virtual void getRawData(vector<vector<float> > &f,
-				std::vector<std::wstring> &labels) const=0;
+				std::vector<std::string> &labels) const=0;
+
+		//set the plot axis strings (x,y and title)
+		void setStrings(const std::string &x, 
+			const std::string &y,const std::string &t);
+
+		void setColour(float rNew, float gNew, float bNew);
+
+		std::string getXLabel() const { return xLabel;}
+		std::string getTitle() const { return title;}
+		std::string getYLabel() const { return yLabel;}
+
+		//Plot mode is, eg 2D or 1D plot
+		unsigned int getPlotMode() const { return plotMode;}
+		//FIXME: Deprecate me. Plot mode should be intrinsic
+		void setPlotMode(unsigned int newMode) { plotMode= newMode;}
 
 
+		void getColour(float &r, float &g, float &b) const ;
+
+#ifdef DEBUG
+		void checkConsistent() const;
+#endif
 };
 
-//!1D Function f(x) Plot with ranges
-// data must be a pure Function.
+//!1D Function f(x) 
 class Plot1D : public PlotBase
 {
 	private: 	
@@ -268,11 +322,9 @@ class Plot1D : public PlotBase
 		
 	public:
 		Plot1D();
-		virtual bool empty() const;
+		virtual bool isEmpty() const;
 		virtual PlotBase *clone() const;
 			
-		void getBounds(float &xMin,float &xMax,float &yMin,float &yMax) const;
-
 		//!Set the plot data from a pair and symmetric Y error
 		void setData(const vector<std::pair<float,float> > &v);
 		void setData(const vector<std::pair<float,float> > &v,const vector<float> &symYErr);
@@ -285,20 +337,19 @@ class Plot1D : public PlotBase
 		//!Move a region to a new location. 
 		void moveRegion(unsigned int region, unsigned int method, float newPos);
 
-		void clear(bool preserveVisibility);
-		
 		
 		//Draw the plot onto a given MGL graph
 		virtual void drawPlot(mglGraph *graph) const;
 
 		//Draw the associated regions		
-		void drawRegions(mglGraph *graph,const mglPoint &min, const mglPoint &max) const;
+		void drawRegions(mglGraph *graph,
+			const mglPoint &min, const mglPoint &max) const;
 
 
 		//!Retrieve the raw data associated with the currently visible plots. 
 		//note that this is the FULL data not the zoomed data for the current user bounds
 		void getRawData(std::vector<std::vector<float> >  &rawData,
-				std::vector<std::wstring> &labels) const;
+				std::vector<std::string> &labels) const;
 		
 		//!Retrieve the ID of the non-overlapping region in X-Y space
 		bool getRegionIdAtPosition(float x, float y, unsigned int &id) const;
@@ -318,6 +369,54 @@ class Plot1D : public PlotBase
 
 		bool wantLogPlot() const { return logarithmic;};
 		void setLogarithmic(bool p){logarithmic=p;};
+
+};
+
+//!2D function, f(x,y). 
+class Plot2DFunc : public PlotBase
+{
+	private: 	
+		//2D array, for f(x,y) plots 
+		Array2D<float> xyValues;
+	public:
+		Plot2DFunc();
+		virtual bool isEmpty() const;
+		virtual PlotBase *clone() const;
+			
+		//Draw the plot onto a given MGL graph
+		virtual void drawPlot(mglGraph *graph) const;
+
+		//!Retrieve the raw data associated with the currently visible plots. 
+		//note that this is the FULL data not the zoomed data for the current user bounds
+		void getRawData(std::vector<std::vector<float> >  &rawData,
+				std::vector<std::string> &labels) const;
+	
+		void setData(const Array2D<float> &a, float xLow, float xHigh, float yLow, float yHigh) ;
+
+};
+
+//!2D scatter plot, {x,y}_i
+class Plot2DScatter : public PlotBase
+{
+	private:
+		vector<pair<float,float> > points;
+		vector<float > intensity;
+	public:
+		Plot2DScatter();
+		virtual bool isEmpty() const;
+		virtual PlotBase *clone() const;
+			
+		//Draw the plot onto a given MGL graph
+		virtual void drawPlot(mglGraph *graph) const;
+
+		//!Retrieve the raw data associated with the currently visible plots. 
+		//note that this is the FULL data not the zoomed data for the current user bounds
+		void getRawData(std::vector<std::vector<float> >  &rawData,
+				std::vector<std::string> &labels) const;
+
+		//reset the data stored in the plot
+		void setData(const vector<pair<float,float> > &pts);
+		void setData(const vector<pair<float,float> > &pts ,const vector<float> &intens);
 };
 
 //Wrapper class for containing multiple plots 
@@ -357,6 +456,8 @@ class PlotWrapper
 		//!Do we want to highlight positions where regions overlap?
 		bool highlightRegionOverlaps;
 
+
+		void getAppliedBounds(mglPoint &min,mglPoint &max) const;
 	public:
 		//"stick" type overlays for marking amplitudes on top of the plot
 		PlotOverlays overlays;
@@ -376,7 +477,7 @@ class PlotWrapper
 		void getPlotIDs(vector<unsigned int> &ids) const ;
 
 		//Retrieve the title of the plot
-		std::wstring getTitle(size_t plotId) const;
+		std::string getTitle(size_t plotId) const;
 
 
 		void setEnableHighlightOverlap(bool enable=true) { highlightRegionOverlaps=enable;}
@@ -414,9 +515,6 @@ class PlotWrapper
 				const char *x, const char *y, const char *t);
 		void setStrings(unsigned int plotID,const std::string &x, 
 				const std::string &y,const std::string &t);
-		//!Set the parent information for a given plot
-		void setParentData(unsigned int plotID,
-				const void *parentObj, unsigned int plotIndex);
 
 		//TODO: Type hack - should return const Filter *
 		//!Get the parent object fo rthis plot
@@ -490,14 +588,14 @@ class PlotWrapper
 							std::vector< pair<float,float> > &coords) const;
 
 		//!Retrieve the raw data associated with the selected plots.
-		void getRawData(vector<vector<vector<float> > >  &data, std::vector<std::vector<std::wstring> >  &labels) const;
+		void getRawData(vector<vector<vector<float> > >  &data, std::vector<std::vector<std::string> >  &labels) const;
 	
 
 		//!obtain the type of a plot, given the plot's uniqueID
 		unsigned int plotType(unsigned int plotId) const;
 
 		//Retrieve the types of visible plots
-		unsigned int getVisibleType() const;
+		unsigned int getVisibleMode() const;
 
 		//!Obtain limit of motion for a given region movement type
 		void findRegionLimit(unsigned int plotId, unsigned int regionId,

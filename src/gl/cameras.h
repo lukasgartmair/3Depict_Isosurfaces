@@ -56,18 +56,26 @@ enum
 	CAMERA_KEY_LOOKAT_ORTHOSCALE
 };
 
+class CameraProperty
+{
+	public:
+		unsigned int type;
+		unsigned int key;
+		std::string data;
+		std::string name;
+};
+
 class CameraProperties 
 {
 	public:
-		//Filter property data, one per output, each is value then name
-		std::vector<std::vector<std::pair< std::string, std::string > > > data;
-		//Data types for each single element
-		std::vector<std::vector<unsigned int>  > types;
-		
-		//!Key numbers for filter. Must be unique per set
-		std::vector<std::vector<unsigned int> > keys;
-	
+		std::vector<std::vector<CameraProperty>  > props;
+		void clear() { props.clear();};	
+		void addGroup() {props.resize(props.size()+1);}
+		void addEntry(CameraProperty &p) { ASSERT(props.size()); props.back().push_back(p);}
 };
+
+
+
 
 //!An abstract base class for a camera
 class Camera

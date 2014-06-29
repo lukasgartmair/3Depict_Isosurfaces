@@ -201,11 +201,7 @@ bool filterCloneTests()
 
 		wxArrayString stdOut;
 		long res;
-#if wxCHECK_VERSION(2,9,0)
 		res=wxExecute(wxStr(command),stdOut, wxEXEC_BLOCK);
-#else
-		res=wxExecute(wxStr(command),stdOut);
-#endif
 
 
 		string comment = f->getUserString() + string(" Orig: ")+ sOrig + string (" Clone:") +sClone+
@@ -247,11 +243,8 @@ bool filterCloneTests()
 			g->writeState(fileOut,STATE_FORMAT_XML);
 
 			//Re-run diff
-#if wxCHECK_VERSION(2,9,0)
 			res=wxExecute(wxStr(command),stdOut, wxEXEC_BLOCK);
-#else
-			res=wxExecute(wxStr(command),stdOut);
-#endif
+			
 			comment = f->getUserString() + string("Orig: ")+ sOrig + string (" Clone:") +sClone+
 				string("Read-back filter output was different... (or diff not around?)");
 			TEST(res==0,comment.c_str());

@@ -42,9 +42,9 @@ private:
 	MainWindowFrame* MainFrame ;
 	wxArrayString commandLineFiles;
 	wxLocale* usrLocale;
-	//long language;
+	long language;
 
-	//void initLanguageSupport();
+	void initLanguageSupport();
 
 
 public:
@@ -70,27 +70,14 @@ public:
 //Command line parameter table
 static const wxCmdLineEntryDesc g_cmdLineDesc [] =
 {
-#if wxCHECK_VERSION(2,9,0) 
 	{ wxCMD_LINE_SWITCH, ("h"), ("help"), ("displays this message"),
 		wxCMD_LINE_VAL_NONE, wxCMD_LINE_OPTION_HELP },
 	{ wxCMD_LINE_PARAM,  NULL, NULL, ("inputfile"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL | wxCMD_LINE_PARAM_MULTIPLE},
-#else
-	{ wxCMD_LINE_SWITCH, wxT("h"), wxT("help"), wxNTRANS("displays this message"),
-		wxCMD_LINE_VAL_NONE, wxCMD_LINE_OPTION_HELP },
-	{ wxCMD_LINE_PARAM,  NULL, NULL, wxNTRANS("inputfile"), wxCMD_LINE_VAL_STRING, wxCMD_LINE_PARAM_OPTIONAL | wxCMD_LINE_PARAM_MULTIPLE},
-#endif
 	//Unit testing system
 #ifdef DEBUG
-#if wxCHECK_VERSION(2,9,0) 
 	{ wxCMD_LINE_SWITCH, ("t"), ("test"), ("Run debug unit tests, returns nonzero on test failure, zero on success.\n\t\t"
 		       "XML files may be passed to run , instead of default tests"), wxCMD_LINE_VAL_NONE, wxCMD_LINE_SWITCH},
-#else
-	{ wxCMD_LINE_SWITCH, wxT("t"), wxT("test"), 
-	wxNTRANS("Run debug unit tests, returns nonzero on test failure, zero on success.\n\t\t" 
-			"XML files may be passed to run, instead of default tests"), wxCMD_LINE_VAL_NONE, wxCMD_LINE_SWITCH},
 #endif
-#endif
-
   { wxCMD_LINE_NONE,NULL,NULL,NULL,wxCMD_LINE_VAL_NONE,0 }
 
 };
@@ -119,21 +106,19 @@ threeDepictApp::threeDepictApp()
 {
        	MainFrame=0;usrLocale=0;
 #ifndef DEBUG
-#if wxCHECK_VERSION(2,9,0)
 	//Wx 2.9 and up now has assertions auto-enabled. 
 	//Disable for release builds
 	wxSetAssertHandler(NULL);
 #endif
-#endif
 }
 
 
-/*void threeDepictApp::initLanguageSupport()
+void threeDepictApp::initLanguageSupport()
 {
 	language =  wxLANGUAGE_DEFAULT;
 
 	// load language if possible, fall back to English otherwise
-	if(false)// (wxLocale::IsAvailable(language))
+	if(wxLocale::IsAvailable(language))
 	{
 		//Wx 2.9 and above are now unicode, so locale encoding
 		//conversion is deprecated.
@@ -210,7 +195,7 @@ threeDepictApp::threeDepictApp()
 		language = wxLANGUAGE_ENGLISH;
 	}
 }
-*/
+
 //Catching key events globally.
 int threeDepictApp::FilterEvent(wxEvent& event)
 {
@@ -411,7 +396,7 @@ void threeDepictApp::MacReopenFile(const wxString &filename)
 bool threeDepictApp::OnInit()
 {
 
-    //initLanguageSupport();
+    initLanguageSupport();
 	
 
     //Set the gettext language
@@ -429,10 +414,6 @@ bool threeDepictApp::OnInit()
     wxInitAllImageHandlers();
     MainFrame = new MainWindowFrame(NULL, ID_MAIN_WINDOW, wxEmptyString,wxDefaultPosition,wxDefaultSize);
 
-    if(!MainFrame->initOK())
-	    return false;
-  
- 
     SetTopWindow(MainFrame);
 
 #if defined(DEBUG) && defined(__linux__)
@@ -457,11 +438,17 @@ bool threeDepictApp::OnInit()
 
 
     MainFrame->Show();
-    
+   
+    MainFrame->checkShowTips();
+    MainFrame->checkReloadAutosave();
+
+
     if(commandLineFiles.GetCount())
     	MainFrame->SetCommandLineFiles(commandLineFiles);
 
     MainFrame->fixSplitterWindow();
+
+    MainFrame->finaliseStartup();
     return true;
 }
 

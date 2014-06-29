@@ -30,22 +30,6 @@
 
 #include "backend/filtertree.h"
 
-//Shut wxwidgets assertion errors up by defining a "safe" cb_sort wrapper macro
-#if defined(__WXMAC__) || defined(__WXGTK20__)
-	       
-    #include <wx/version.h>
-    #if wxCHECK_VERSION(2,9,0)
-    //Sorted combos not supported under gtk in 2.8 series 
-    // http://trac.wxwidgets.org/ticket/4398
-    //and not supported in mac.
-    // http://trac.wxwidgets.org/ticket/12419
-        #define SAFE_CB_SORT 0 
-    #else
-        #define SAFE_CB_SORT wxCB_SORT
-	#endif
-#else
-	#define SAFE_CB_SORT wxCB_SORT
-#endif
 
 
 //!3D combo grid renderer, from
@@ -122,88 +106,7 @@ class wxListUint : public wxClientData
 		unsigned int value;
 };
 
-struct GRID_PROPERTY
-{
-	unsigned int key;
-	unsigned int type;
-	int renderPosition;
-	std::string name;
-	std::string data; //String version of data stored
-	std::string helpText; //Hover tool-tip help text
-};
 
-class wxCustomPropGrid;
-
-//!WxGrid derived class to hold and display property data
-//So it turns out that someone has MADE a property grid.
-//http://wxpropgrid.sourceforge.ne
-//This code is not from there. Maybe I should 
-//use their code instead, its bound to be better. 
-//Also, this appears up in the wxwidgets SVN, 
-//so maybe there will be a name clash in future
-class wxCustomPropGrid : public wxGrid
-{
-	protected:
-		//First element is key number. Second element is key type
-		std::vector<std::vector<GRID_PROPERTY> > propertyKeys;
-		//Names of each of the grouped keys in propertyKeys
-		std::vector<std::string> sectionNames;
-
-		//Fit the columns to the specified size
-		void fitCols(wxSize &size);
-
-		//Rows used for separators
-		std::vector<int> sepRows;
-		//The last coordinates of mouse hovering 
-		size_t lastGridHoverCol,lastGridHoverRow;
-
-		//Is the nth row a separator row?
-		bool isSeparatorRow(int row) const;
-	public:
-		wxCustomPropGrid(wxWindow* parent, wxWindowID id, const wxPoint& pos = wxDefaultPosition, 
-					const wxSize& size = wxDefaultSize, long style = wxWANTS_CHARS);
-		~wxCustomPropGrid();
-		
-		void OnSize(wxSizeEvent &size);
-		void OnLabelDClick(wxGridEvent &size);
-		void OnMouseMove(wxMouseEvent &mouse);
-		void clearKeys();
-
-		//!Set the number of separator groups to use 
-		void setNumGroups(unsigned int newGroupCount){propertyKeys.resize(newGroupCount); sectionNames.resize(newGroupCount);};
-
-		//Set the names for each group. This will appear as a small text in the blank rows
-		void setGroupName(unsigned int set, const std::string &name); 
-
-		//!This adds the item to the property key vector of a specified group 
-		//!	key must be unique 
-		void addKey(const std::string &name, unsigned int group,
-				unsigned int newKey, unsigned int type, 
-				const std::string &data,const std::string &helpText);
-		
-		//!Click event
-		virtual void OnCellLeftClick(wxGridEvent &e);
-
-		//!Cause grid to layout its elements
-		void propertyLayout();
-
-		//!Get the key from the row
-		unsigned int getKeyFromRow(int row) const;
-
-		//!Get the type from the row
-		unsigned int getTypeFromRow(int row) const;
-
-		//!Get the property from key and set 
-		const GRID_PROPERTY* getProperty(unsigned int key) const;
-
-		//!Clear the grid
-		void clear();
-
-		//!Are we editing a combo box? 
-		bool isComboEditing() ;
-
-		DECLARE_EVENT_TABLE()
-};
 
 //A wx Grid with copy & paste support
 class CopyGrid : public wxGrid

@@ -20,6 +20,7 @@
  
 
 #include "gl/scene.h"
+#include "gl/tr.h"
 
 #include <wx/glcanvas.h>
 #include <wx/timer.h>
@@ -29,9 +30,7 @@ class BasicGLPane : public wxGLCanvas
 {
 private:
 
-#if wxCHECK_VERSION(2,9,0)
 	wxGLContext *context;
-#endif
 
 	wxStatusBar *parentStatusBar;
 	wxTimer *parentStatusTimer;
@@ -76,6 +75,12 @@ private:
 	unsigned int lastKeyDoubleTap;
 
 	wxTimer *keyDoubleTapTimer;
+
+	//build a TR tile context to allow drawing the image in chunks.
+	// width and height are the output image size. 
+	// wantAlpha is used if we want to retrieve the alpha (transpar.) channel
+	TRcontext *generateTileContext(unsigned int width, unsigned int height, 
+			unsigned char *buffer, bool wantAlpha=false) const;
 public:
 	bool displaySupported() const;
 

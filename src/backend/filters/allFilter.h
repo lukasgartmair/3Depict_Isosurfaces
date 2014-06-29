@@ -33,7 +33,6 @@
 #include "ionInfo.h"
 #include "annotation.h"
 
-
 //!Returns true if the string is a valid filter name
 bool isValidFilterName(const std::string &s);
 

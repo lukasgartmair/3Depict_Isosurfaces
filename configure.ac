@@ -1,4 +1,4 @@
-AC_INIT([3Depict], [0.0.16]) 
+AC_INIT([3Depict], [0.0.17]) 
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 AC_PROG_CXX
 AC_PROG_CC
@@ -18,7 +18,7 @@ dnl Test for wx-widgets
 dnl ----------
 AM_OPTIONS_WXCONFIG
 
-AM_PATH_WXCONFIG(2.6.0, wxWin=1)
+AM_PATH_WXCONFIG(2.9.0, wxWin=1)
 
 if test "$wxWin" != 1; then
 AC_MSG_ERROR([
@@ -34,7 +34,7 @@ fi
 
 
 #Append the --gl-libs flag
-WX_LIBS="$WX_LIBS `$WX_CONFIG_PATH --gl-libs`"
+WX_LIBS="$WX_LIBS `$WX_CONFIG_PATH --libs gl,propgrid`"
 
 WANT_WINDRES="no"
 case "${host_os}" in 
@@ -47,9 +47,9 @@ case "${host_os}" in
 		;;
 esac
 
-AC_MSG_RESULT([$WANT_WINDRES])
+AC_MSG_RESULT([Want windres... $WANT_WINDRES])
 
-AM_CONDITIONAL([HAVE_WINDRES], [ test x$WANT_WINDRES==xyes] )
+AM_CONDITIONAL([HAVE_WINDRES], [ test x"$WANT_WINDRES" == "xyes"] )
 
 
 AC_SUBST(WX_LIBS)
@@ -282,14 +282,6 @@ dnl ----------
 CFLAGS_ORIG="$CFLAGS"
 LDFLAGS_ORIG="$LDFLAGS"
 
-AC_ARG_ENABLE(mgl2,
-  [  --enable-mgl2 Enable mathgl 2.x support])
-AC_ARG_ENABLE(mgl1,
-  [  --enable-mgl1 Enable mathgl 1.x support])
-
-if test x"${enable_mgl2}" == x"yes"  && test x"${enable_mgl1}" == x"yes"; then 
-	AC_MSG_ERROR(["Can specify mgl1, or mgl2 - not both"])
-fi
 
 AC_ARG_WITH(mgl-flags,
   [  --with-mgl-flags=PATH : specify compiler flags for mathgl])
@@ -309,36 +301,10 @@ fi
 AC_SUBST(MGL_LIBS)
 LDFLAGS="$LDFLAGS $MGL_LIBS"
 
-#Note:
-#  mathgl1.x uses mgl_c.h as c functions. 
 #  mathgl2.x uses mgl_cf.h for c functions.
 AC_LANG_PUSH([C++])
-if test x"${enable_mgl2}" == x"yes" ; then 
-	AC_DEFINE(USE_MGL2, 1 , ["Enable mgl2 support"])
-	AC_CHECK_HEADER("mgl2/mgl_cf.h",[],[AC_MSG_ERROR(["mgl2 specified, but header mgl2/mgl_cf.h not found"])],[])
-else 
-	if test x"${enable_mgl1}" == x"yes" ; then
-		AC_DEFINE(USE_MGL1, 0 , ["Enable mgl1 support"])
-		AC_CHECK_HEADER("mgl/mgl_c.h",[],[AC_MSG_ERROR(["mgl specified, but header mgl/mgl_c.h not found"])],[])
-	else
-		#mgl2 is installed into different path (at least under debian)
-		#  /usr/include/mgl2/
-		MGL_TEST_HEADERS="mgl2/mgl_cf.h mgl/mgl_c.h"
-		AC_CHECK_HEADERS($MGL_TEST_HEADERS,[HAVE_MGL_H=1; break;], [])
-
-		#check our set HAVE_MGL_H for *any* mglh
-		AS_IF([ test $HAVE_MGL_H -ne 1 ] , [ AC_MSG_ERROR(["MGL headers not found, looking for any of $MGL_TEST_HEADERS"])]) 
-
-		#Check MGL 2:
-		AS_IF([ test x"$ac_cv_header_mgl2_mgl_cf_h" == x"yes" ], [ AC_DEFINE(USE_MGL2,1)  ], [ USE_MGL2=0 ])
-
-		
-		
-		AC_CHECK_LIB(mgl, mgl_set_def_param, [AC_DEFINE(HAVE_MGL,[],[MathGL compilation OK])] , 
-				AC_MSG_ERROR([Required MathGL libraries not found]), -lmgl)
-
-	fi
-fi
+AC_DEFINE(USE_MGL2, 1 , ["Enable mgl2 support"])
+AC_CHECK_HEADER("mgl2/mgl_cf.h",[],[AC_MSG_ERROR(["mgl2 specified, but header mgl2/mgl_cf.h not found"])],[])
 AC_LANG_POP([C++])
 
 
@@ -447,6 +413,12 @@ else
 	then
 		AC_MSG_ERROR(["Well something isnt right, debug checks should be enabled or disabled (yes/no"])
 	fi
+fi
+
+if test x"$CXX" = xdistcc ; then
+	AC_MSG_RESULT(["Adding distcc link flags"]);
+	#Add -lstdc++ to libs for distcc
+	LIBS="$LIBS -lstdc++"
 fi
 
 # Checks for typedefs, structures, and compiler characteristics.

@@ -587,71 +587,70 @@ void CameraLookAt::move(float moveLRAngle, float moveUDAngle)
 
 void CameraLookAt::getProperties(CameraProperties &p) const
 {
-	p.data.clear();
-	p.types.clear();
-	p.keys.clear();
+	p.clear();
 
-	std::vector<std::pair<string,string> > s;
-	std::vector<unsigned int> type,keys;
+	CameraProperty cp;
 
-	if(lock)
-		s.push_back(std::make_pair(TRANS("Lock"),"1"));
-	else
-		s.push_back(std::make_pair(TRANS("Lock"),"0"));
+	p.addGroup();
 
-	type.push_back(PROPERTY_TYPE_BOOL);
-	keys.push_back(CAMERA_KEY_LOOKAT_LOCK);
+	cp.name=TRANS("Lock");
+	cp.data=boolStrEnc(lock);
+	cp.type=PROPERTY_TYPE_BOOL;
+	cp.key=CAMERA_KEY_LOOKAT_LOCK;
+	p.addEntry(cp);
 
-	string ptStr;
-	stream_cast(ptStr,origin);
-	s.push_back(std::make_pair(TRANS("Origin"), ptStr));
-	type.push_back(PROPERTY_TYPE_POINT3D);
-	keys.push_back(CAMERA_KEY_LOOKAT_ORIGIN);
-	
-	stream_cast(ptStr,target);
-	s.push_back(std::make_pair(TRANS("Target"), ptStr));
-	type.push_back(PROPERTY_TYPE_POINT3D);
-	keys.push_back(CAMERA_KEY_LOOKAT_TARGET);
-	
-	stream_cast(ptStr,upDirection);
-	s.push_back(std::make_pair(TRANS("Up Dir."), ptStr));
-	type.push_back(PROPERTY_TYPE_POINT3D);
-	keys.push_back(CAMERA_KEY_LOOKAT_UPDIRECTION);
+	//Add origin
+	cp.name=TRANS("Origin"); 
+	stream_cast(cp.data,origin);
+	cp.type=PROPERTY_TYPE_POINT3D;
+	cp.key=CAMERA_KEY_LOOKAT_ORIGIN;
+	p.addEntry(cp);
 
+	//Add camea target pt
+	stream_cast(cp.data,target);
+	cp.name=TRANS("Target");
+	cp.type=PROPERTY_TYPE_POINT3D;
+	cp.key=CAMERA_KEY_LOOKAT_TARGET;
+	p.addEntry(cp);
+
+	stream_cast(cp.data,upDirection);
+	cp.name=TRANS("Up Dir.");
+	cp.type=PROPERTY_TYPE_POINT3D;
+	cp.key=CAMERA_KEY_LOOKAT_UPDIRECTION;
+	p.addEntry(cp);
+
+	//add camera projection options
 	std::vector<std::pair<unsigned int,string> > choices;
 	string tmp;
-	
-
 	tmp=TRANS("Perspective");
 	choices.push_back(make_pair((unsigned int)PROJECTION_MODE_PERSPECTIVE,tmp));
 	tmp=TRANS("Orthogonal");
 	choices.push_back(make_pair((unsigned int)PROJECTION_MODE_ORTHOGONAL,tmp));
-	tmp= choiceString(choices,projectionMode);
 	
-	s.push_back(std::make_pair(TRANS("Projection"), tmp));
-	type.push_back(PROPERTY_TYPE_CHOICE);
-	keys.push_back(CAMERA_KEY_LOOKAT_PROJECTIONMODE);
+	cp.data=choiceString(choices,projectionMode);
+	cp.name=TRANS("Projection");
+	cp.type=PROPERTY_TYPE_CHOICE;
+	cp.key=CAMERA_KEY_LOOKAT_PROJECTIONMODE;
+	p.addEntry(cp);
 
 	switch(projectionMode)
 	{
 		case PROJECTION_MODE_PERSPECTIVE:
-			stream_cast(tmp,fovAngle);
-			s.push_back(std::make_pair(TRANS("Field of View (deg)"), tmp));
-			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(CAMERA_KEY_LOOKAT_FOV);
+			stream_cast(cp.data,fovAngle);
+			cp.name=TRANS("Field of View (deg)");
+			cp.type=PROPERTY_TYPE_REAL;
+			cp.key=CAMERA_KEY_LOOKAT_FOV;
 			break;
 		case PROJECTION_MODE_ORTHOGONAL:
-			stream_cast(tmp,orthoScale);
-			s.push_back(std::make_pair(TRANS("View size"), tmp));
-			type.push_back(PROPERTY_TYPE_REAL);
-			keys.push_back(CAMERA_KEY_LOOKAT_ORTHOSCALE);
+			stream_cast(cp.data,orthoScale);
+			cp.name=TRANS("View size");
+			cp.type=PROPERTY_TYPE_REAL;
+			cp.key=CAMERA_KEY_LOOKAT_ORTHOSCALE;
 			break;
-
+		default:
+			ASSERT(false);
 	}
-
-	p.data.push_back(s);
-	p.keys.push_back(keys);
-	p.types.push_back(type);
+	p.addEntry(cp);
 }
 
 bool CameraLookAt::setProperty(unsigned int key, const string &value)

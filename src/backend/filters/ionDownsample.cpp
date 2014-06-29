@@ -28,6 +28,7 @@ enum
 {
 	IONDOWNSAMPLE_ABORT_ERR=1,
 	IONDOWNSAMPLE_BAD_ALLOC,
+	IONDOWNSAMPLE_ERR_ENUM_END
 };
 
 
@@ -268,15 +269,7 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 					d->valueType=((IonStreamData *)dataIn[ui])->valueType;
 
 					//getOut is const, so shouldn't be modified
-					if(cache)
-					{
-						d->cached=1;
-						filterOutputs.push_back(d);
-						cacheOK=true;
-					}
-					else
-						d->cached=0;
-			
+					cacheAsNeeded(d);
 
 					getOut.push_back(d);
 					break;
@@ -414,15 +407,7 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 
 
 						//getOut is const, so shouldn't be modified
-						if(cache)
-						{
-							d->cached=1;
-							filterOutputs.push_back(d);
-							cacheOK=true;
-						}
-						else
-							d->cached=0;
-			
+						cacheAsNeeded(d);
 
 						getOut.push_back(d);
 					}
@@ -475,7 +460,7 @@ void IonDownsampleFilter::getProperties(FilterPropGroup &propertyList) const
 	}	
 
 
-	propertyList.setGroupTitle(curGroup,TRANS("Sampling rates"));
+	propertyList.setGroupTitle(curGroup,TRANS("Mode"));
 	curGroup++;
 	if(rsdIncoming && perSpecies)
 	{
@@ -526,6 +511,7 @@ void IonDownsampleFilter::getProperties(FilterPropGroup &propertyList) const
 
 		}
 		propertyList.addProperty(p,curGroup);
+		propertyList.setGroupTitle(curGroup,TRANS("Sampling rates"));
 	}
 }
 
@@ -537,21 +523,8 @@ bool IonDownsampleFilter::setProperty(  unsigned int key,
 	{
 		case KEY_IONDOWNSAMPLE_FIXEDOUT: 
 		{
-			string stripped=stripWhite(value);
-
-			bool lastVal=fixedNumOut;
-
-			if(!boolStrDec(stripped,fixedNumOut))
+			if(!applyPropertyNow(fixedNumOut,value,needUpdate))
 				return false;
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=fixedNumOut)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-
 			break;
 		}	
 		case KEY_IONDOWNSAMPLE_FRACTION:
@@ -578,38 +551,14 @@ bool IonDownsampleFilter::setProperty(  unsigned int key,
 		}
 		case KEY_IONDOWNSAMPLE_COUNT:
 		{
-			size_t count;
-
-			if(stream_cast(count,value))
+			if(!applyPropertyNow(maxAfterFilter,value,needUpdate))
 				return false;
-
-			maxAfterFilter=count;
-			//In the case of fixed number output, 
-			//our cache is invalidated
-			if(fixedNumOut)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-			
 			break;
 		}	
 		case KEY_IONDOWNSAMPLE_PERSPECIES: 
 		{
-			string stripped=stripWhite(value);
-
-			bool lastVal=perSpecies;
-			if(!boolStrDec(stripped,perSpecies))
+			if(!applyPropertyNow(perSpecies,value,needUpdate))
 				return false;
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=perSpecies)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-
 			break;
 		}	
 		default:
@@ -663,15 +612,13 @@ bool IonDownsampleFilter::setProperty(  unsigned int key,
 
 std::string  IonDownsampleFilter::getErrString(unsigned int code) const
 {
-	switch(code)
-	{
-		case IONDOWNSAMPLE_ABORT_ERR:
-			return std::string(TRANS("Downsample Aborted"));
-		case IONDOWNSAMPLE_BAD_ALLOC:
-			return std::string(TRANS("Insuffient memory for downsample"));
-	}	
-
-	return std::string("BUG! Should not see this (IonDownsample)");
+	const char *errStrs[] = { "",	
+		"Downsample Aborted",
+		"Insuffient memory for downsample",
+	};	
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errStrs) == IONDOWNSAMPLE_ERR_ENUM_END);
+	ASSERT(code < IONDOWNSAMPLE_ERR_ENUM_END);
+	return errStrs[code];
 }
 
 void IonDownsampleFilter::setPropFromBinding(const SelectionBinding &b)

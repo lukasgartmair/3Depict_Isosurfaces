@@ -20,6 +20,7 @@
 
 #include "wx/wxcommon.h"
 #include "wx/wxcomponents.h"
+#include "wx/propertyGridUpdater.h"
 #include "common/translation.h"
 
 #include "./backend/viscontrol.h"
@@ -48,13 +49,17 @@ StashDialog::StashDialog(wxWindow* parent, int id, const wxString& title, const 
     label_6 = new wxStaticText(this, wxID_ANY, wxTRANS("Stashed Tree"));
     treeFilters = new wxTreeCtrl(this, ID_TREE_FILTERS, wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER|wxTR_HIDE_ROOT);
     label_7 = new wxStaticText(this, wxID_ANY, wxTRANS("Properties"));
-    gridProperties = new wxCustomPropGrid(this, ID_GRID_FILTER);
+    gridProperties = new wxPropertyGrid(this, ID_GRID_FILTER);
     btnOK = new wxButton(this, wxID_OK, wxEmptyString);
+    
+    //Due to a bug in wx, empty reports throw an assertion
+    // 'unknown list item format", when there are no columns
+    listStashes->InsertColumn(0,wxTRANS("Stash Name"));
+    listStashes->InsertColumn(1,wxTRANS("Filter Count"));
 
     set_properties();
     do_layout();
     // end wxGlade
-    gridProperties->CreateGrid(0, 2);
 
 }
 
@@ -71,7 +76,7 @@ BEGIN_EVENT_TABLE(StashDialog, wxDialog)
     EVT_BUTTON(wxID_REMOVE, StashDialog::OnBtnRemove)
     EVT_LIST_ITEM_SELECTED(ID_LIST_STASH, StashDialog::OnListSelected)
     EVT_TREE_SEL_CHANGED(ID_TREE_FILTERS, StashDialog::OnTreeSelChange)
-    EVT_GRID_CMD_EDITOR_SHOWN(ID_GRID_FILTER,StashDialog::OnGridEditor)
+    EVT_PG_CHANGING(ID_GRID_FILTER,StashDialog::OnGridEditor)
     // end wxGlade
 END_EVENT_TABLE();
 
@@ -93,8 +98,11 @@ void StashDialog::set_properties()
     // end wxGlade
 }
 
-void StashDialog::OnGridEditor(wxGridEvent &evt)
+void StashDialog::OnGridEditor(wxPropertyGridEvent &evt)
 {
+	//Silence error mesages
+	evt.SetValidationFailureBehavior(0);
+	
 	evt.Veto();
 }
 
@@ -146,12 +154,11 @@ void StashDialog::updateList()
 	visControl->getStashes(stashes);
 
 	//Clear the existing list
-	listStashes->ClearAll();
+	listStashes->Freeze();
+	listStashes->DeleteAllItems();
 	
 	//Fill it with "stash" entries
 	//Add columns to report listviews
-	listStashes->InsertColumn(0,wxTRANS("Stash Name"),3);
-	listStashes->InsertColumn(1,wxTRANS("Filter Count"),1);
 	for (unsigned int ui=0; ui<stashes.size(); ui++)
 	{
 		string strTmp;
@@ -165,18 +172,18 @@ void StashDialog::updateList()
 		
 		visControl->getStashTree(stashes[ui].second,t);
 		stream_cast(strTmp,t.size());
-		listStashes->SetItem(ui,1,wxStr(strTmp));
+		listStashes->SetItem(itemIdx,1,wxStr(strTmp));
 
 		//Set the stash ID as the list data item
 		//this is the key to the stash val
 		listStashes->SetItemData(itemIdx,stashes[ui].second);	
 	}
-
+	listStashes->Thaw();
 }
 
 void StashDialog::updateGrid()
 {
-	gridProperties->clear();
+	gridProperties->Clear();
 	if(!treeFilters->GetCount())
 		return;
 	//Get the selection from the current tree
@@ -214,31 +221,9 @@ void StashDialog::updateGrid()
 	}
 	
 	ASSERT(targetFilter);	
-	
-	FilterPropGroup p;
-	targetFilter->getProperties(p);
 
-	gridProperties->clearKeys();
-	gridProperties->setNumGroups(p.numGroups());
-	//Create the keys for the property grid to do its thing
-	for(unsigned int ui=0;ui<p.numGroups();ui++)
-	{
-		vector<FilterProperty> propGrouping;
-		p.getGroup(ui,propGrouping);
+	updateFilterPropertyGrid(gridProperties,targetFilter,"");	
 
-		for(size_t uj=0;uj<propGrouping.size();uj++)
-		{
-			gridProperties->addKey(propGrouping[uj].name,ui,
-				propGrouping[uj].key,
-				propGrouping[uj].type,
-				propGrouping[uj].data,
-				propGrouping[uj].helpText);
-		}
-	}
-
-	//Let the property grid layout what it needs to
-	gridProperties->propertyLayout();
-	
 }
 
 bool StashDialog::getStashIdFromList(unsigned int &stashId)

@@ -31,8 +31,10 @@
 #include "backend/state.h"
 #include "backend/configFile.h"
 #include "backend/filters/algorithms/binomial.h"
+#include "backend/filters/algorithms/K3DTree-mk2.h"
 #include "backend/APT/ionhit.h"
 #include "backend/APT/APTFileIO.h"
+#include "backend/APT/abundanceParser.h"
 
 #include "common/stringFuncs.h"
 #include "common/xmlHelper.h"
@@ -57,6 +59,8 @@ bool XMLTests();
 
 //!Check to see if manifest contents can be found
 bool locateDataTests();
+
+bool abundanceTests();
 
 bool basicFunctionTests()
 {
@@ -110,6 +114,9 @@ bool runUnitTests()
 
 	cerr << "Running unit tests..." ;
 
+	if(!K3DMk2Tests())
+		return false;
+
 
 	if(!testIonHit())
 		return false;
@@ -149,6 +156,9 @@ bool runUnitTests()
 		return false;
 
 	if(!mglTest())
+		return false;
+
+	if(!abundanceTests())
 		return false;
 
 	cerr << " OK" << endl << endl;
@@ -493,6 +503,29 @@ bool locateDataTests()
 		}
 	}
 
+
+
+	return true;
+}
+
+bool abundanceTests()
+{
+	const char *ABUNDANCE_FILE="../data/naturalAbundance.xml";
+	ifstream f(ABUNDANCE_FILE);
+
+	//Check that abundance file exists
+	if(f)
+	{
+		f.close();
+		//run abundance tests
+		if(!AbundanceData::runUnitTests(ABUNDANCE_FILE))
+			return false;
+	}
+	else
+	{
+		WARN(false,"Unable to locate natural abundance file, skipping");
+	}
+	
 	return true;
 }
 

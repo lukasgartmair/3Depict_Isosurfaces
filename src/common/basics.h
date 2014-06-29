@@ -95,7 +95,6 @@ enum
 	ERR_FILE_ENUM_END // not an error, just end of enum
 };
 
-extern const char *TEXT_LOAD_ERR_STRINGS[];
 
 //Perform a a<-b<-c<-a rotation of data
 template<class T>
@@ -359,8 +358,16 @@ public:
     void setBounds( const Point3D &p, const Point3D &q);
     //!Obtain bounds from an array of Point3Ds
     void setBounds(const std::vector<Point3D> &ptArray);
+
+    //!Set bounds via cube that contains given sphere
+    void setBounds(const Point3D &p, float radius);
+
+    //Set & set-like operations
     //!Checks if a point intersects a sphere of centre Pt, radius^2 sqrRad
     bool intersects(const Point3D &pt, float sqrRad);
+   
+    //Create a union of two bounding cubes, which is itself a cube 
+    BoundCube makeUnion(const BoundCube &b) const;
     //Check to see if the point is contained in, or part of the walls
     //of the cube
     bool containsPt(const Point3D &pt) const;
@@ -370,6 +377,8 @@ public:
     //!Is this bounding cube completely contained within a sphere centred on pt of sqr size sqrRad?
     bool containedInSphere(const Point3D &pt, float sqrRad) const;
 
+
+    unsigned int segmentTriple(unsigned int dim, float slice) const;
     //!Returns maximum distnace to box corners (which is an upper bound on max box distance). 
     //Bounding box must be valid.
     float getMaxDistanceToBox(const Point3D &pt) const;

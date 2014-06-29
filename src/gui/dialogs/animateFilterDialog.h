@@ -181,7 +181,7 @@ protected:
     wxStaticBox* keyFramesSizer_staticbox;
     wxStaticBox* filterPropertySizer_staticbox;
     wxTreeCtrl* filterTreeCtrl;
-    wxCustomPropGrid* propertyGrid;
+    wxPropertyGrid* propertyGrid;
     wxPanel* filterLeftPane;
     wxGrid* animationGrid;
     wxButton* keyFrameRemoveButton;
@@ -221,7 +221,8 @@ protected:
 
 public:
     virtual void OnFilterTreeCtrlSelChanged(wxTreeEvent &event); // wxGlade: <event_handler>
-    virtual void OnFilterGridCellEditorShow(wxGridEvent &event); // wxGlade: <event_handler>
+    virtual void OnFilterGridCellChanging(wxPropertyGridEvent &event); // wxGlade: <event_handler>
+    virtual void OnFilterGridCellSelected(wxPropertyGridEvent &event); // wxGlade: <event_handler>
     virtual void OnAnimateGridCellEditorShow(wxGridEvent &event); // wxGlade: <event_handler>
     virtual void OnFrameGridCellEditorShow(wxGridEvent &event); // wxGlade: <event_handler>
     virtual void OnButtonKeyFrameRemove(wxCommandEvent &event); // wxGlade: <event_handler>

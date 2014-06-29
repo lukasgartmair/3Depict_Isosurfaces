@@ -550,6 +550,7 @@ void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 	p.helpText=TRANS("Type or style of annotation");
 	p.type=PROPERTY_TYPE_CHOICE;
 	propertyList.addProperty(p,curGroup);
+	propertyList.setGroupTitle(curGroup,TRANS("Mode"));
 	curGroup++;
 
 	switch(annotationMode)
@@ -617,6 +618,8 @@ void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 			p.key=KEY_TARGET;
 			p.helpText=TRANS("3D Position to which arrow points");
 			propertyList.addProperty(p,curGroup);
+			
+			propertyList.setGroupTitle(curGroup,TRANS("Positioning"));
 
 			curGroup++;
 
@@ -667,6 +670,7 @@ void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 			p.helpText=TRANS("Text of annotation");
 			propertyList.addProperty(p,curGroup);
 			
+			propertyList.setGroupTitle(curGroup,TRANS("Options"));
 			curGroup++;
 
 			stream_cast(tmpStr,textSize);
@@ -725,6 +729,7 @@ void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 			p.helpText=TRANS("Location of second non-central vertex");
 			propertyList.addProperty(p,curGroup);
 			
+			propertyList.setGroupTitle(curGroup,TRANS("Positioning"));
 			curGroup++;
 			
 			stream_cast(tmpStr,acrossVec);
@@ -746,7 +751,7 @@ void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 
 			p.key=KEY_REFLEXIVE;
 			p.name=TRANS("Reflexive");
-			p.data=reflexAngle? "1":"0";
+			p.data=boolStrEnc(reflexAngle);
 			p.type=PROPERTY_TYPE_BOOL;
 			p.helpText=TRANS("Measure interor (enabled) or exterior angle (disabled)");
 			propertyList.addProperty(p,curGroup);
@@ -754,7 +759,7 @@ void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 			
 
 			p.name=TRANS("Show Angle");
-			p.data=showAngleText? "1":"0";
+			p.data=boolStrEnc(showAngleText);
 			p.type=PROPERTY_TYPE_BOOL;
 			p.key=KEY_ANGLE_TEXT_VISIBLE;
 			p.helpText=TRANS("Display angle text (when enabled)");
@@ -848,11 +853,8 @@ void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 			p.helpText=TRANS("Relative size of annotation text");
 			propertyList.addProperty(p,curGroup);
 			
-			
-			if(linearFixedTicks)
-				tmpStr="1";
-			else
-				tmpStr="0";
+		
+			tmpStr=boolStrEnc(linearFixedTicks);
 			p.key=KEY_LINEAR_FIXED_TICKS;
 			p.name=TRANS("Fixed ticks");
 			p.data=tmpStr;
@@ -905,7 +907,7 @@ void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 	p.type=PROPERTY_TYPE_COLOUR;
 	p.helpText=TRANS("Colour for ruler and ticks");
 	propertyList.addProperty(p,curGroup);
-
+	propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
 }
 
 bool AnnotateFilter::setProperty(  unsigned int key,
@@ -916,23 +918,8 @@ bool AnnotateFilter::setProperty(  unsigned int key,
 	{
 		case KEY_ENABLE:
 		{
-			bool tmpV;
-			
-			if( value == "1")
-				tmpV=true;
-			else if(value == "0")
-				tmpV=false;
-			else
-			{
-				ASSERT(false);
+			if(!applyPropertyNow(active,value,needUpdate))
 				return false;
-			}
-
-			if(tmpV!=active)
-			{
-				active=tmpV;
-				needUpdate=true;
-			}
 			break;
 		}
 		case KEY_MODE:
@@ -1031,93 +1018,44 @@ bool AnnotateFilter::setProperty(  unsigned int key,
 		}
 		case KEY_POSITION:
 		{
-			Point3D newPt;
-			if(!newPt.parse(value))
+			if(!applyPropertyNow(position,value,needUpdate))
 				return false;
-
-			if(!(position == newPt))
-			{
-				position=newPt;
-				needUpdate=true;
-			}
-
 			break;	
 		}
 		case KEY_TARGET:
 		{
-			Point3D newPt;
-			if(!newPt.parse(value))
+			if(!applyPropertyNow(target,value,needUpdate))
 				return false;
-
-			if(!(target== newPt))
-			{
-				target=newPt;
-				needUpdate=true;
-			}
-
 			break;	
 		}
 		case KEY_ANGLE_POS_ZERO:
 		{
-			Point3D newPt;
-			if(!newPt.parse(value))
+			if(!applyPropertyNow(anglePos[0],value,needUpdate))
 				return false;
-
-			if(!(anglePos[0]== newPt))
-			{
-				anglePos[0]=newPt;
-				needUpdate=true;
-			}
 			break;
 		}
 		case KEY_ANGLE_POS_ONE:
 		{
-			Point3D newPt;
-			if(!newPt.parse(value))
+			if(!applyPropertyNow(anglePos[1],value,needUpdate))
 				return false;
-
-			if(!(anglePos[1]== newPt))
-			{
-				anglePos[1]=newPt;
-				needUpdate=true;
-			}
 			break;
 		}
 		case KEY_ANGLE_POS_TWO:
 		{
-			Point3D newPt;
-			if(!newPt.parse(value))
+			if(!applyPropertyNow(anglePos[2],value,needUpdate))
 				return false;
-
-			if(!(anglePos[2]== newPt))
-			{
-				anglePos[2]=newPt;
-				needUpdate=true;
-			}
 			break;
 		}
 		case KEY_ARROW_SIZE:
 		{
-			float tmp;
-			if(stream_cast(tmp,value))
+			if(!applyPropertyNow(annotateSize,value,needUpdate))
 				return false;
-
-			if(tmp!=annotateSize)
-			{
-				annotateSize=tmp;
-				needUpdate=true;
-			}
-		
 			break;	
 		}
 		case KEY_ANNOTATE_TEXT:
 		{
-			if(value!=annotateText)
-			{
-				needUpdate=true;
-				annotateText=value;
-			}
-
+			if(!applyPropertyNow(annotateText,value,needUpdate))
+				return false;
 			break;
 		}
 		case KEY_COLOUR:
@@ -1155,41 +1093,20 @@ bool AnnotateFilter::setProperty(  unsigned int key,
 		}
 		case KEY_REFLEXIVE:
 		{
-			bool tmp;
-			tmp=(value=="1");
-
-			if(tmp==reflexAngle)
+			if(!applyPropertyNow(reflexAngle,value,needUpdate))
 				return false;
-			
-			reflexAngle=tmp;
-
-			needUpdate=true;
 			break;
 		}
 		case KEY_SPHERE_ANGLE_SIZE:
 		{
-			float tmp;
-			stream_cast(tmp,value);
-
-			if(tmp == sphereMarkerSize)
+			if(!applyPropertyNow(sphereMarkerSize,value,needUpdate))
 				return false;
-
-			sphereMarkerSize=tmp;
-			needUpdate=true;
-
 			break;
 		}
 		case KEY_ANGLE_TEXT_VISIBLE:
 		{
-			bool tmp;
-			tmp=(value=="1");
-			
-			if(tmp == showAngleText)
+			if(!applyPropertyNow(showAngleText,value,needUpdate))
 				return false;
-
-			showAngleText=tmp;
-			needUpdate=true;
-
 			break;
 		}
 
@@ -1230,60 +1147,25 @@ bool AnnotateFilter::setProperty(  unsigned int key,
 
 		case KEY_LINEAR_FONTSIZE:
 		{
-			unsigned int tmp;
-			stream_cast(tmp,value);
-
-			if(tmp == fontSizeLinearMeasure)
+			if(!applyPropertyNow(fontSizeLinearMeasure,value,needUpdate))
 				return false;
-
-			fontSizeLinearMeasure=tmp;
-			needUpdate=true;
 			break;
 		}
 		case KEY_LINEAR_FIXED_TICKS:
 		{
-			bool tmpTicks;
-
-			if(value == "0")
-				tmpTicks=false;
-			else if(value =="1")
-				tmpTicks=true;
-			else
+			if(!applyPropertyNow(linearFixedTicks,value,needUpdate))
 				return false;
-
-			if(tmpTicks == linearFixedTicks)
-				return false;
-
-			needUpdate=true;
-			linearFixedTicks=tmpTicks;
 			break;
-
 		}
 		case KEY_LINEAR_NUMTICKS:
 		{
-			unsigned int tmp;
-			if(stream_cast(tmp,value))
+			if(!applyPropertyNow(linearMeasureTicks,value,needUpdate))
 				return false;
-
-			if(tmp == linearMeasureTicks)
-				return false;
-
-			linearMeasureTicks=tmp;
-			needUpdate=true;
-
-			break;
 		}
 		case KEY_LINEAR_TICKSPACING:
 		{
-			float tmp;
-			stream_cast(tmp,value);
-
-			if(tmp == linearMeasureSpacing)
+			if(!applyPropertyNow(linearMeasureSpacing,value,needUpdate))
 				return false;
-
-			linearMeasureSpacing=tmp;
-			needUpdate=true;
-
 			break;
 		}
 		case KEY_LINESIZE:
@@ -1477,26 +1359,21 @@ bool AnnotateFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"active","value"))
 		return false;
 
-	if(!(tmpStr=="0" || tmpStr=="1"))
+	if(!boolStrDec(tmpStr,active))
 		return false;
-
-	active = (tmpStr=="1");
 
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"showangletext","value"))
 		return false;
 
-	if(!(tmpStr=="0" || tmpStr=="1"))
+	if(!boolStrDec(tmpStr,showAngleText))
 		return false;
-
-	showAngleText = (tmpStr=="1");
 
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"reflexangle","value"))
 		return false;
 
-	if(!(tmpStr=="0" || tmpStr=="1"))
+	if(!boolStrDec(tmpStr,reflexAngle))
 		return false;
 
-	reflexAngle = (tmpStr=="1");
 
 	if(!XMLGetNextElemAttrib(nodePtr,angleFormatPreDecimal,"angleformat","predecimal"))
 		return false;

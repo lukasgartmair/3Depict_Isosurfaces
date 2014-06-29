@@ -50,6 +50,8 @@ class IonHit
 		inline const Point3D &getPosRef() const {return pos;};
 		//returns true if any of the 4 data pts are NaN
 		bool hasNaN();
+		//returns true if any of the 4 data pts are +-inf
+		bool hasInf();
 
 #ifdef __LITTLE_ENDIAN__		
 		void switchEndian();

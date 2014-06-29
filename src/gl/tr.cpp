@@ -1,7 +1,24 @@
 //Tile Rendering Library, 
 // http://www.mesa3d.org/brianp/TR.html
-// GNU GPL 2+
 
+/*
+	TR Tile rendering library
+	Copyright (C) 1997 Brian Paul
+
+	This program is free software; you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation; either version 2 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License along
+	with this program; if not, write to the Free Software Foundation, Inc.,
+	51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ */
 
 /* $Id: tr.c,v 1.9 1998/01/29 16:56:54 brianp Exp $ */
 
@@ -43,11 +60,11 @@
  * Copyright (C) Brian Paul
  */
 
+#include "common/assertion.h"
 
-#include <assert.h>
 #include <math.h>
-#include <stdlib.h>
-#include <stdio.h>
+
+
 #ifdef WIN32
 #include <windows.h>
 #endif
@@ -112,8 +129,8 @@ static void Setup(TRcontext *tr)
    tr->Rows = (tr->ImageHeight + tr->TileHeightNB - 1) / tr->TileHeightNB;
    tr->CurrentTile = 0;
 
-   assert(tr->Columns >= 0);
-   assert(tr->Rows >= 0);
+   ASSERT(tr->Columns >= 0);
+   ASSERT(tr->Rows >= 0);
 }
 
 
@@ -145,11 +162,11 @@ void trTileSize(TRcontext *tr, GLint width, GLint height, GLint border)
    if (!tr)
       return;
 
-   assert(border >= 0);
-   assert(width >= 1);
-   assert(height >= 1);
-   assert(width >= 2*border);
-   assert(height >= 2*border);
+   ASSERT(border >= 0);
+   ASSERT(width >= 1);
+   ASSERT(height >= 1);
+   ASSERT(width >= 2*border);
+   ASSERT(height >= 2*border);
 
    tr->TileBorder = border;
    tr->TileWidth = width;
@@ -324,8 +341,8 @@ void trBeginTile(TRcontext *tr)
       /* This should never happen */
       abort();
    }
-   assert(tr->CurrentRow < tr->Rows);
-   assert(tr->CurrentColumn < tr->Columns);
+   ASSERT(tr->CurrentRow < tr->Rows);
+   ASSERT(tr->CurrentColumn < tr->Columns);
 
    border = tr->TileBorder;
 
@@ -377,7 +394,7 @@ int trEndTile(TRcontext *tr)
    if (!tr)
       return 0;
 
-   assert(tr->CurrentTile>=0);
+   ASSERT(tr->CurrentTile>=0);
 
    /* be sure OpenGL rendering is finished */
    glFlush();
@@ -484,10 +501,6 @@ void trRasterPos3f(TRcontext *tr, GLfloat x, GLfloat y, GLfloat z)
          glMatrixMode(GL_MODELVIEW);
          glPopMatrix();
       }
-#ifdef DEBUG
-      if (glGetError())
-         printf("GL error!\n");
-#endif
    }
 }
 

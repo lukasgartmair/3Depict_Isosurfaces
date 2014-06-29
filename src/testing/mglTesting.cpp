@@ -1,3 +1,21 @@
+/*
+ *	mglTesting.cpp - unit testing implementation for mgl code
+ *	Copyright (C) 2014, D Haley 
+
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU General Public License for more details.
+
+ *	You should have received a copy of the GNU General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifdef DEBUG
 #include <iostream>
 #include <cstdlib>
@@ -8,7 +26,6 @@
 
 #include "common/assertion.h"
 
-#ifdef USE_MGL2
 #include <mgl2/canvas_wnd.h>
 
 #include "common/basics.h"
@@ -19,6 +36,10 @@
 // a reference image (if possible)
 bool mglTest()
 {
+	WARN(false,"Disabled until upstream fix propagates");
+	return true;
+	
+		
 	unsigned int w=1024,h=768;
 	mglGraph *grS;
 	grS = new mglGraph(0,w,h);
@@ -149,11 +170,4 @@ bool mglTest()
 	return true;
 }
 
-#else
-bool mglTest()
-{
-	WARN(false,"MGL tests not implemented for mgl 1.x");
-	return true;
-}
-#endif
 #endif

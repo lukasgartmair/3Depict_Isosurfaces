@@ -21,6 +21,7 @@
 
 #include "../../wx/wxcommon.h"
 #include "backend/APT/APTFileIO.h"
+#include "backend/plot.h"
 
 #include <wx/filename.h>
 #include <wx/dir.h>
@@ -39,6 +40,7 @@ enum
 	READPOS_FAIL,
 	SUBSTITUTE_FAIL,
 	COMMAND_FAIL, 
+	EXT_PROG_ERR_ENUM_END, 
 };
 
 //=== External program filter === 
@@ -478,7 +480,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 				d->a=1.0;
 				d->index=uj;
 				d->plotMode=PLOT_MODE_1D;
-				d->plotStyle=PLOT_TRACE_LINES;
+				d->plotStyle=PLOT_LINE_LINES;
 
 
 				//set the title to the filename (trim the .xy extension
@@ -554,12 +556,9 @@ void ExternalProgramFilter::getProperties(FilterPropGroup &propertyList) const
 	p.key=EXTERNALPROGRAM_KEY_WORKDIR;		
 	propertyList.addProperty(p,curGroup);
 	
-
-	if(cleanInput)
-		tmpStr="1";
-	else
-		tmpStr="0";
-
+	propertyList.setGroupTitle(curGroup,TRANS("Command"));
+	curGroup++;
+	tmpStr=boolStrEnc(cleanInput);
 	p.name=TRANS("Cleanup input");
 	p.data=tmpStr;
 	p.type=PROPERTY_TYPE_BOOL;
@@ -567,11 +566,7 @@ void ExternalProgramFilter::getProperties(FilterPropGroup &propertyList) const
 	p.key=EXTERNALPROGRAM_KEY_CLEANUPINPUT;		
 	propertyList.addProperty(p,curGroup);
 	
-	if(alwaysCache)
-		tmpStr="1";
-	else
-		tmpStr="0";
-	
+	tmpStr=boolStrEnc(alwaysCache);
 	p.name=TRANS("Cache");
 	p.data=tmpStr;
 	p.type=PROPERTY_TYPE_BOOL;
@@ -579,6 +574,7 @@ void ExternalProgramFilter::getProperties(FilterPropGroup &propertyList) const
 	p.key=EXTERNALPROGRAM_KEY_ALWAYSCACHE;		
 	propertyList.addProperty(p,curGroup);
 
+	propertyList.setGroupTitle(curGroup,TRANS("Data"));
 }
 
 bool ExternalProgramFilter::setProperty(  unsigned int key,
@@ -589,12 +585,8 @@ bool ExternalProgramFilter::setProperty(  unsigned int key,
 	{
 		case EXTERNALPROGRAM_KEY_COMMAND:
 		{
-			if(commandLine!=value)
-			{
-				commandLine=value;
-				needUpdate=true;
-				clearCache();
-			}
+			if(!applyPropertyNow(commandLine,value,needUpdate))
+				return false;
 			break;
 		}
 		case EXTERNALPROGRAM_KEY_WORKDIR:
@@ -613,33 +605,14 @@ bool ExternalProgramFilter::setProperty(  unsigned int key,
 		}
 		case EXTERNALPROGRAM_KEY_ALWAYSCACHE:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(alwaysCache,value,needUpdate))
 				return false;
-
-			if(stripped=="1")
-				alwaysCache=true;
-			else
-			{
-				alwaysCache=false;
-
-				//If we need to generate a cache, do so
-				//otherwise, trash it
-				clearCache();
-			}
-
-			needUpdate=true;
 			break;
 		}
 		case EXTERNALPROGRAM_KEY_CLEANUPINPUT:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(cleanInput,value,needUpdate))
 				return false;
-			cleanInput=(stripped=="1");
-			needUpdate=true;
 			break;
 		}
 		default:
@@ -653,33 +626,21 @@ bool ExternalProgramFilter::setProperty(  unsigned int key,
 
 std::string  ExternalProgramFilter::getErrString(unsigned int code) const
 {
-
-	switch(code)
-	{
-		case COMMANDLINE_FAIL:
-			return std::string(TRANS("Error processing command line"));
-		case SETWORKDIR_FAIL:
-			return std::string(TRANS("Unable to set working directory"));
-		case WRITEPOS_FAIL:
-			return std::string(TRANS("Error saving posfile result for external program"));
-		case WRITEPLOT_FAIL:
-			return std::string(TRANS("Error saving plot result for externalprogram"));
-		case MAKEDIR_FAIL:
-			return std::string(TRANS("Error creating temporary directory"));
-		case PLOTCOLUMNS_FAIL:
-			return std::string(TRANS("Detected unusable number of columns in plot"));
-		case READPLOT_FAIL:
-			return std::string(TRANS("Unable to parse plot result from external program"));
-		case READPOS_FAIL:
-			return std::string(TRANS("Unable to load ions from external program")); 
-		case SUBSTITUTE_FAIL:
-			return std::string(TRANS("Unable to perform commandline substitution"));
-		case COMMAND_FAIL: 
-			return std::string(TRANS("Error executing external program"));
-		default:
-			//Currently the only error is aborting
-			return std::string("Bug: write me (externalProgramfilter).");
-	}
+	const char *errStrs[] = 	{ "",
+			"Error processing command line",
+			"Unable to set working directory",
+			"Error saving posfile result for external program",
+			"Error saving plot result for externalprogram",
+			"Error creating temporary directory",
+			"Detected unusable number of columns in plot",
+			"Unable to parse plot result from external program",
+			"Unable to load ions from external program", 
+			"Unable to perform commandline substitution",
+			"Error executing external program" };
+	
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errStrs) == EXT_PROG_ERR_ENUM_END);
+	ASSERT(code < EXT_PROG_ERR_ENUM_END);
+	return errStrs[code];
 }
 
 void ExternalProgramFilter::setPropFromBinding(const SelectionBinding &b)
@@ -749,22 +710,14 @@ bool ExternalProgramFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"alwayscache","value"))
 		return false;
 
-	if(tmpStr == "1") 
-		alwaysCache=true;
-	else if(tmpStr== "0")
-		alwaysCache=false;
-	else
+	if(!boolStrDec(tmpStr,alwaysCache))
 		return false;
 
 	//check readable 
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"cleaninput","value"))
 		return false;
 
-	if(tmpStr == "1") 
-		cleanInput=true;
-	else if(tmpStr== "0")
-		cleanInput=false;
-	else
+	if(!boolStrDec(tmpStr,cleanInput))
 		return false;
 
 	return true;
@@ -870,12 +823,18 @@ bool posTest()
 #else
 	tmpDir=tmpDir + wxT("/3Depict/");
 #endif
+	if(wxDirExists(tmpDir))
+	{
+		wxFileName dirFile(tmpDir);
+		dirFile.Rmdir( wxPATH_RMDIR_RECURSIVE);
+	}
+
+		
 	wxMkdir(tmpDir);
 
 	tmpFilename=wxFileName::CreateTempFileName(tmpDir+ wxT("unittest-"));
-	wxRemoveFile(tmpFilename);
 	tmpFilename+=wxT(".pos");
-	s ="mv \%i " + stlStr(tmpFilename);
+	s ="mv -f \%i " + stlStr(tmpFilename);
 
 	ASSERT(tmpFilename.size());
 	
@@ -943,13 +902,14 @@ bool ExternalProgramFilter::runUnitTests()
 {
 	if(!echoTest())
 		return false;
-	
+
+#ifndef __APPLE__
 	if(!posTest())
 		return false;
 
 	if(!substituteTest())
 		return false;
-
+#endif
 	return true;
 }
 

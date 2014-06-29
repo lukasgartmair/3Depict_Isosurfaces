@@ -78,11 +78,7 @@ BEGIN_EVENT_TABLE(StringKeyFrameDialog, wxDialog)
 	EVT_TEXT(ID_TEXT_FROM_FILE, StringKeyFrameDialog::OnTextFilename)
 	EVT_BUTTON(wxID_OPEN, StringKeyFrameDialog::OnBtnChooseFile)
 	EVT_RADIOBUTTON(ID_RADIO_FROM_TABLE, StringKeyFrameDialog::OnTableRadio)
-#if wxCHECK_VERSION(2,9,0)
 	EVT_GRID_CMD_CELL_CHANGED(ID_GRID_STRINGS, StringKeyFrameDialog::OnGridCellChange)
-#else
-	EVT_GRID_CMD_CELL_CHANGE(ID_GRID_STRINGS, StringKeyFrameDialog::OnGridCellChange)
-#endif
 	EVT_GRID_CMD_EDITOR_SHOWN(ID_GRID_STRINGS, StringKeyFrameDialog::OnGridEditorShown)
 	EVT_BUTTON(wxID_ADD, StringKeyFrameDialog::OnBtnAdd)
 	EVT_BUTTON(wxID_REMOVE, StringKeyFrameDialog::OnBtnRemove)

@@ -105,7 +105,20 @@ class SpatialAnalysisFilter : public Filter
 
 		//--------
 
+		//Replace specific code
+		//---------
+		//file to use as other data source
+		string replaceFile;
 
+		//replacement operator mode
+		unsigned int replaceMode;
+
+		//distance up to which to allow replacement
+		float replaceTolerance;
+		
+		//should we replace the current mass by the other file's ?
+		bool replaceMass;
+		//---------
 	
 		//Radial distribution function - creates a 1D histogram of spherical atom counts, centered around each atom
 		size_t algorithmRDF(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
@@ -131,6 +144,10 @@ class SpatialAnalysisFilter : public Filter
 		size_t algorithmBinomial(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
 			const vector<const FilterStreamData *>  &dataIn, 
 			vector<const FilterStreamData * > &getOut,const RangeFile *rngF);
+
+		size_t algorithmReplace(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
+			const vector<const FilterStreamData *>  &dataIn, 
+			vector<const FilterStreamData * > &getOut);
 
 		//Create a 3D manipulable cylinder as an output drawable
 		// using the parameters stored inside the vector/scalar params

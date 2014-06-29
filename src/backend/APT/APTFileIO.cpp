@@ -22,6 +22,8 @@
 #include "../../common/stringFuncs.h"
 #include "../../common/translation.h"
 
+
+
 #include <cstring>
 #include <new>
 
@@ -35,7 +37,18 @@ using std::make_pair;
 
 const size_t PROGRESS_REDUCE=5000;
 
+
 //---------
+const char *TEXT_LOAD_ERR_STRINGS[] = { "",
+					NTRANS("Error opening file"),
+					NTRANS("Only found header, no data"),
+					NTRANS("Unable to reopen file after first scan"),
+					NTRANS("Error whilst reading file contents"),
+					NTRANS("Unexpected file format"),
+					NTRANS("Unexpected file format"),
+					NTRANS("Insufficient memory to continue"),
+					};
+
 const char *POS_ERR_STRINGS[] = { "",
        				NTRANS("Memory allocation failure on POS load"),
 				NTRANS("Error opening pos file"),
@@ -43,6 +56,7 @@ const char *POS_ERR_STRINGS[] = { "",
 				NTRANS("Pos file size appears to have non-integer number of entries"),
 				NTRANS("Error reading from pos file (after open)"),
 				NTRANS("Error - Found NaN in pos file"),
+				NTRANS("Error - Found Inf in pos file"),
 				NTRANS("Pos load aborted by interrupt.")
 };
 //---------
@@ -56,7 +70,6 @@ enum
 	TEXT_ERR_REOPEN,
 	TEXT_ERR_READ_CONTENTS,
 	TEXT_ERR_FORMAT,
-	TEXT_ERR_NUM_FIELDS,
 	TEXT_ERR_ALLOC_FAIL,
 	TEXT_ERR_ENUM_END //not an error, just end of enum
 };
@@ -95,9 +108,10 @@ const char *LAWATAP_ATO_ERR_STRINGS[] = { "",
 				};
 //---------
 
-unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumcols, unsigned int index[], vector<IonHit> &posIons,const char *posFile, size_t limitCount,
+unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumcols, const unsigned int index[], vector<IonHit> &posIons,const char *posFile, size_t limitCount,
 	       	unsigned int &progress, bool (*callback)(bool),bool strongSampling)
 {
+
 
 	//Function is only defined for 4 columns here.
 	ASSERT(outputnumcols == 4);
@@ -228,7 +242,14 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 			delete[] buffer2;
 			return POS_NAN_LOAD_ERROR;	
 		}
-			
+	
+		if(posIons[ui].hasInf())
+		{
+			delete[] buffer;
+			delete[] buffer2;
+			return POS_INF_LOAD_ERROR;	
+		}
+		
 		pointCount++;
 		if(!curProg--)
 		{
@@ -253,7 +274,7 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 }
 
 unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int outputnumcols, 
-		unsigned int index[], vector<IonHit> &posIons,const char *posFile, 
+		const unsigned int index[], vector<IonHit> &posIons,const char *posFile, 
 			unsigned int &progress, bool (*callback)(bool))
 {
 	ASSERT(outputnumcols==4); //Due to ionHit.setHit
@@ -369,6 +390,14 @@ unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int output
 					delete[] buffer2;
 					return POS_NAN_LOAD_ERROR;	
 				}
+
+				if(hit.hasInf())
+				{
+					delete[] buffer;
+					delete[] buffer2;
+					return POS_INF_LOAD_ERROR;	
+				}
+
 				posIons[ionP] = hit;
 				ionP++;
 				
@@ -408,7 +437,6 @@ unsigned int limitLoadTextFile(unsigned int maxCols,
 			vector<vector<float> > &data,const char *textFile, const char *delim, const size_t limitCount,
 				unsigned int &progress, bool (*callback)(bool),bool strongRandom)
 {
-
 	ASSERT(maxCols);
 	ASSERT(textFile);
 

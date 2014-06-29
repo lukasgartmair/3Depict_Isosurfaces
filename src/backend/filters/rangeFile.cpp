@@ -30,7 +30,8 @@ const unsigned int NUM_ROWS_RANGE=4;
 enum
 {
 	RANGEFILE_ABORT_FAIL=1,
-	RANGEFILE_BAD_ALLOC
+	RANGEFILE_BAD_ALLOC,
+	RANGEFILE_ERR_ENUM_END
 };
 //== Range File Filter == 
 
@@ -569,15 +570,13 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 	prop.helpText=TRANS("File to use for range data");
 	prop.key=RANGE_KEY_RANGE_FILENAME;
 	prop.data=rngName;
+	prop.dataSecondary=TRANS("Range Files (*rng; *env; *rrng)|*rng;*env;*rrng|RNG File (*.rng)|*.rng|Environment File (*.env)|*.env|RRNG Files (*.rrng)|*.rrng|All Files (*)|*");
+
 
 	p.addProperty(prop,curGroup);	
 
 	std::string tmpStr;
-	if(dropUnranged)
-		tmpStr="1";
-	else
-		tmpStr="0";
-
+	tmpStr=boolStrEnc(dropUnranged);
 	prop.name=TRANS("Drop unranged");
 	prop.type=PROPERTY_TYPE_BOOL;
 	prop.helpText=TRANS("Remove unranged points when generating output");
@@ -585,6 +584,7 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 	prop.data=tmpStr;
 
 	p.addProperty(prop,curGroup);
+	p.setGroupTitle(curGroup,TRANS("File"));
 
 	curGroup++;
 	//---
@@ -624,11 +624,8 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 
 			p.addProperty(prop,curGroup);
 
-			string str;	
-			if(enabledIons[ui])
-				str="1";
-			else
-				str="0";
+			string str;
+			str=boolStrEnc(enabledIons[ui]);
 			
 			prop.name=TRANS("Active Ion ") + suffix;
 			prop.type=PROPERTY_TYPE_BOOL;
@@ -659,6 +656,7 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 	//----
 
 
+	p.setGroupTitle(curGroup,TRANS("Ions"));
 	curGroup++;
 
 	//----
@@ -686,11 +684,8 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 			std::string suffix;
 			stream_cast(suffix,ui);
 
-			string str;	
-			if(enabledRanges[ui])
-				str="1";
-			else
-				str="0";
+			string str;
+			str=boolStrEnc(enabledRanges[ui]);
 
 			prop.name=TRANS("Active Rng ")+suffix;
 			prop.data=str;
@@ -729,6 +724,7 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 		p.setGroupTitle(curGroup,TRANS("Ranges"));
 	}
 	//----
+	p.setGroupTitle(curGroup,TRANS("Ranges"));
 	
 }
 
@@ -773,37 +769,15 @@ bool RangeFileFilter::setProperty(unsigned int key,
 		}
 		case RANGE_KEY_DROP_UNRANGED: //Enable/disable unranged dropping
 		{
-			unsigned int valueInt;
-			if(stream_cast(valueInt,value))
+			if(!applyPropertyNow(dropUnranged,value,needUpdate))
 				return false;
-
-			if(valueInt ==0 || valueInt == 1)
-			{
-				if(dropUnranged!= (bool)valueInt)
-				{
-					needUpdate=true;
-					dropUnranged=valueInt;
-				}
-				else
-					needUpdate=false;
-			}
-			else
-				return false;		
-			
-			if(needUpdate)
-				clearCache();
-
 			break;
 		}	
 		case RANGE_KEY_ENABLE_ALL_RANGES:
 		{
 
 			bool allEnable;
-			if(value == "1")
-				allEnable=true;
-			else if ( value == "0")
-				allEnable=false;
-			else
+			if(!boolStrDec(value,allEnable))
 				return false;
 
 			//set them to the opposite of whatever we have now
@@ -826,11 +800,7 @@ bool RangeFileFilter::setProperty(unsigned int key,
 		{
 
 			bool allEnable;
-			if(value == "1")
-				allEnable=true;
-			else if ( value == "0")
-				allEnable=false;
-			else
+			if(!boolStrDec(value,allEnable))
 				return false;
 
 			//set them to the opposite of whatever we have now
@@ -1023,15 +993,15 @@ bool RangeFileFilter::setProperty(unsigned int key,
 
 std::string  RangeFileFilter::getErrString(unsigned int code) const
 {
-	switch(code)
-	{
-		case RANGEFILE_ABORT_FAIL:
-			return std::string(TRANS("Ranging aborted by user"));
-		case RANGEFILE_BAD_ALLOC:
-			return std::string(TRANS("Insufficient memory for range"));
-	}
+	const char *errStrs[] ={ "",
+		"Ranging aborted by user",
+		"Insufficient memory for range",
+	};
 
-	return std::string("BUG(range file filter): Shouldn't see this!");
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errStrs) == RANGEFILE_ERR_ENUM_END);
+	ASSERT(code < RANGEFILE_ERR_ENUM_END);
+
+	return errStrs[code];
 }
 
 void RangeFileFilter::setPropFromBinding(const SelectionBinding &b)
@@ -1138,12 +1108,8 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	//==
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"dropunranged","value"))
 		return false;
-	
-	if(tmpStr=="1")
-		dropUnranged=true;
-	else if(tmpStr=="0")
-		dropUnranged=false;
-	else
+
+	if(!boolStrDec(tmpStr,dropUnranged))
 		return false;
 
 	//==
@@ -1161,7 +1127,7 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	bool enabled;
 	//By default, turn ions off, but use state file to turn them on
 	map<unsigned int ,char> tmpEnabledIons;
-	map<unsigned int, RGBf> tmpCol;
+	map<unsigned int ,RGBf> tmpCol;
 	while(!XMLHelpFwdToElem(nodePtr,"ion"))
 	{
 		//Get ID value
@@ -1183,13 +1149,8 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 			return false;
 		tmpStr=(char *)xmlString;
 
-		if(tmpStr == "0")
-			enabled=false;
-		else if(tmpStr == "1")
-			enabled=true;
-		else
+		if(!boolStrDec(tmpStr,enabled))
 			return false;
-
 		tmpEnabledIons[ionID]=enabled;
 		xmlFree(xmlString);
 		
@@ -1250,11 +1211,7 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 			return false;
 		tmpStr=(char *)xmlString;
 
-		if(tmpStr == "0")
-			enabled=false;
-		else if(tmpStr == "1")
-			enabled=true;
-		else
+		if(!boolStrDec(tmpStr,enabled))
 			return false;
 
 		xmlFree(xmlString);
@@ -1271,7 +1228,11 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	if(tmpEnabledIons.size() == rng.getNumIons())
 	{
 		for(size_t ui=0;ui<tmpEnabledIons.size(); ui++)
+		{
 			enabledIons[ui] = tmpEnabledIons[ui];
+			rng.setColour(ui,tmpCol[ui]);
+			
+		}
 		
 		for(size_t ui=0;ui<tmpEnabledRanges.size(); ui++)
 			enabledRanges[ui] = tmpEnabledRanges[ui];

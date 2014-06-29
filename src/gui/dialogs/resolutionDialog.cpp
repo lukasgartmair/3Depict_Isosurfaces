@@ -51,17 +51,8 @@ ResolutionDialog::ResolutionDialog(wxWindow* parent, int id, const wxString& tit
     btnOK = new wxButton(this, wxID_OK, wxEmptyString);
     button_2 = new wxButton(this, wxID_CANCEL, wxEmptyString);
 
-#if wxCHECK_VERSION(2, 9, 0)
     textWidth->Bind(wxEVT_MOUSEWHEEL, &ResolutionDialog::OnMouseWheelWidth, this);
     textHeight->Bind(wxEVT_MOUSEWHEEL, &ResolutionDialog::OnMouseWheelHeight, this);
-#else
-    textWidth->Connect(wxID_ANY, wxEVT_MOUSEWHEEL,
-		    wxMouseEventHandler(ResolutionDialog::OnMouseWheelWidth),NULL,this);
-    textHeight->Connect(wxID_ANY, wxEVT_MOUSEWHEEL,
-		    wxMouseEventHandler(ResolutionDialog::OnMouseWheelHeight),NULL,this);
-#endif
-
-
 
     set_properties();
     do_layout();
@@ -334,13 +325,8 @@ void ResolutionDialog::finishDialog()
 	//programmatic event counter should be decremented to zero
 	ASSERT(!programmaticEvent);
 
-#if wxCHECK_VERSION(2, 9, 0)
-    textWidth->Unbind(wxEVT_MOUSEWHEEL, &ResolutionDialog::OnMouseWheelWidth, this);
-    textHeight->Unbind(wxEVT_MOUSEWHEEL, &ResolutionDialog::OnMouseWheelHeight, this);
-#else
-	textWidth->Disconnect();
-	textHeight->Disconnect();
-#endif
+	textWidth->Unbind(wxEVT_MOUSEWHEEL, &ResolutionDialog::OnMouseWheelWidth, this);
+	textHeight->Unbind(wxEVT_MOUSEWHEEL, &ResolutionDialog::OnMouseWheelHeight, this);
 	EndModal(wxID_OK);
 }
 

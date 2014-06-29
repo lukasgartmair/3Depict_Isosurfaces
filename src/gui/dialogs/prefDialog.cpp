@@ -26,6 +26,7 @@
 
 #include "wx/wxcommon.h"
 #include "wx/wxcomponents.h"
+#include "wx/propertyGridUpdater.h"
 
 #include <wx/colordlg.h>
 
@@ -75,10 +76,11 @@ PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wx
 #endif
     	sizer_7_staticbox = new wxStaticBox(notePrefPanels_pane_3, wxID_ANY, wxTRANS("Startup"));
     	sizerCamSpeed_staticbox = new wxStaticBox(notePrefPanels_pane_3, -1, wxTRANS("Camera Speed"));
-	filterPropSizer_staticbox = new wxStaticBox(panelFilters, -1, wxTRANS("Filter Defaults"));
 	lblFilters = new wxStaticText(panelFilters, wxID_ANY, wxTRANS("Available Filters"));
 	listFilters = new wxListBox(panelFilters, ID_LIST_FILTERS, wxDefaultPosition, wxDefaultSize, 0, NULL, wxLB_SINGLE|wxLB_SORT);
-	filterGridProperties = new wxCustomPropGrid(panelFilters, ID_GRID_PROPERTIES);
+	filterGridProperties =new wxPropertyGrid(panelFilters, ID_GRID_PROPERTIES,
+						wxDefaultPosition,wxDefaultSize,PROPERTY_GRID_STYLE);
+	filterGridProperties->SetExtraStyle(PROPERTY_GRID_EXTRA_STYLE);
 	filterBtnResetAllFilters = new wxButton(panelFilters, ID_BTN_RESET_FILTER_ALL, wxTRANS("Reset All"));
 	filterResetDefaultFilter = new wxButton(panelFilters, ID_BTN_RESET_FILTER, wxTRANS("Reset"));
 	const wxString comboPanelStartMode_choices[] = {
@@ -105,11 +107,6 @@ PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wx
 	btnOK = new wxButton(this, wxID_OK, wxEmptyString);
 	btnCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
 
-	filterGridProperties->CreateGrid(0, 2);
-	filterGridProperties->EnableDragRowSize(false);
-	filterGridProperties->SetColLabelValue(0, wxTRANS("Param"));
-	filterGridProperties->SetColLabelValue(1, wxTRANS("Value"));
-
 	bool enable=(comboPanelStartMode->GetSelection()  == STARTUP_COMBO_SELECT_SPECIFY);
 
 	chkRawData->Enable(enable);
@@ -119,6 +116,8 @@ PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wx
 	comboPanelStartMode->SetSelection(0);
 	programmaticEvent=false;
 	curFilter=0;
+
+	backFilterPropGrid=0;
 
 	set_properties();
 	do_layout();
@@ -133,18 +132,14 @@ PrefDialog::~PrefDialog()
 BEGIN_EVENT_TABLE(PrefDialog, wxDialog)
     // begin wxGlade: PrefDialog::event_table
     EVT_LISTBOX(ID_LIST_FILTERS, PrefDialog::OnFilterListClick)
-#if wxCHECK_VERSION(2,9,0)
-    EVT_GRID_CMD_CELL_CHANGED(ID_GRID_PROPERTIES, PrefDialog::OnFilterCellChange)
-#else
-    EVT_GRID_CMD_CELL_CHANGE(ID_GRID_PROPERTIES, PrefDialog::OnFilterCellChange)
-#endif
-    EVT_GRID_CMD_EDITOR_SHOWN(ID_GRID_PROPERTIES,PrefDialog::OnFilterGridCellEditorShow)
+    EVT_PG_CHANGING(ID_GRID_PROPERTIES, PrefDialog::OnFilterCellChange)
     EVT_BUTTON(ID_BTN_RESET_FILTER,PrefDialog::OnResetFilterButton)
     EVT_BUTTON(ID_BTN_RESET_FILTER_ALL,PrefDialog::OnResetFilterAllButton)
     EVT_COMBOBOX(ID_START_COMBO_PANEL, PrefDialog::OnStartupPanelCombo)
     EVT_CHECKBOX(ID_CHECK_PREFER_ORTHO, PrefDialog::OnCheckPreferOrtho)
     EVT_COMMAND_SCROLL(ID_MOUSE_ZOOM_SLIDER, PrefDialog::OnMouseZoomSlider)
     EVT_COMMAND_SCROLL(ID_MOUSE_MOVE_SLIDER, PrefDialog::OnMouseMoveSlider)
+    EVT_IDLE(PrefDialog::OnIdle)
     // end wxGlade
 END_EVENT_TABLE();
 
@@ -224,6 +219,19 @@ void PrefDialog::setFilterDefaults(const vector<Filter *> &defs)
 		filterDefaults[ui]=defs[ui]->cloneUncached();
 }
 
+
+void PrefDialog::OnIdle(wxIdleEvent &evt)
+{
+	//This is required due to a bug in wx's propertygrid
+	// see wx bug #16222
+	if(backFilterPropGrid)
+	{
+		delete backFilterPropGrid;
+		backFilterPropGrid=0;
+	
+	}
+}
+
 void PrefDialog::OnFilterListClick(wxCommandEvent &event)
 {
 
@@ -259,8 +267,9 @@ void PrefDialog::OnFilterListClick(wxCommandEvent &event)
 }
 
 
-void PrefDialog::OnFilterCellChange(wxGridEvent &event)
+void PrefDialog::OnFilterCellChange(wxPropertyGridEvent &event)
 {
+	event.SetValidationFailureBehavior(0);
 	//Disallow programmatic event from causing filter update (stack loop->overflow)
 	if(programmaticEvent)
 	{
@@ -269,102 +278,33 @@ void PrefDialog::OnFilterCellChange(wxGridEvent &event)
 	}
 
 	//Grab the changed value	
-	std::string value; 
-	int row=event.GetRow();
-	value = stlStr(filterGridProperties->GetCellValue(
-					row,1));
-	programmaticEvent=true;
-
-	bool needUpdate;
-	curFilter->setProperty(filterGridProperties->getKeyFromRow(row),
-							value,needUpdate);
-
-	if(find(filterDefaults.begin(),filterDefaults.end(),
-				curFilter) == filterDefaults.end())
-		filterDefaults.push_back(curFilter);
+	std::string value,keyStr; 
+	value = getPropValueFromEvent(event);
 	
-	updateFilterProp(curFilter);
-	programmaticEvent=false;
-}
-
-
-
-//This function modifies the properties before showing the cell content editor.T
-//This is needed only for certain data types (colours, bools) other data types are edited
-//using the default editor and modified using ::OnGridFilterPropertyChange
-void PrefDialog::OnFilterGridCellEditorShow(wxGridEvent &event)
-{
-	//Find where the event occurred (cell & property)
-	const GRID_PROPERTY *item=0;
-
-	unsigned int key;
-	key=filterGridProperties->getKeyFromRow(event.GetRow());
-
-	item=filterGridProperties->getProperty(key);
+	size_t key;
+	keyStr=event.GetProperty()->GetName();
+	stream_cast(key,keyStr);
 
 	bool needUpdate;
-	switch(item->type)
-	{
-		case PROPERTY_TYPE_BOOL:
-		{
-			std::string s;
-			//Toggle the property in the grid
-			if(item->data == "0")
-				s= "1";
-			else
-				s="0";
-			curFilter->setProperty(key,s,needUpdate);
+	curFilter->setProperty(key,value,needUpdate);
 
-			event.Veto();
-
-			updateFilterProp(curFilter);
-			break;
-		}
-		case PROPERTY_TYPE_COLOUR:
-		{
-			//Show a wxColour choose dialog. 
-			wxColourData d;
-
-			unsigned char r,g,b,a;
-			parseColString(item->data,r,g,b,a);
-
-			d.SetColour(wxColour(r,g,b,a));
-			wxColourDialog *colDg=new wxColourDialog(this->GetParent(),&d);
-						
-
-			if( colDg->ShowModal() == wxID_OK)
-			{
-				wxColour c;
-				//Change the colour
-				c=colDg->GetColourData().GetColour();
-				
-				std::string s;
-				genColString(c.Red(),c.Green(),c.Blue(),s);
-			
-				//Pass the new colour to the viscontrol system, which updates
-				//the filters	
-				curFilter->setProperty(key,s,needUpdate);
-			}
-
-			//Set the filter property
-			//Disallow direct editing of the grid cell
-			event.Veto();
-
-
-			updateFilterProp(curFilter);
-			break;
-		}	
-		case PROPERTY_TYPE_CHOICE:
-			break;
-		default:
-		//we will handle this after the user has edited the cell contents
-			break;
-	}
-
-	//Add to the modified filter defaults as needed
 	if(find(filterDefaults.begin(),filterDefaults.end(),
 				curFilter) == filterDefaults.end())
 		filterDefaults.push_back(curFilter);
+
+	//Build the new property grid in an aside,
+	// due to wx bug, 
+	backFilterPropGrid= new wxPropertyGrid(panelFilters,ID_GRID_PROPERTIES,
+					wxDefaultPosition,wxDefaultSize,PROPERTY_GRID_STYLE);
+	filterGridProperties->SetExtraStyle(PROPERTY_GRID_EXTRA_STYLE);
+	
+	std::swap(backFilterPropGrid,filterGridProperties);
+	updateFilterProp(curFilter);
+
+	do_filtergrid_prop_layout();
+	
+	//reforce layout code
+	programmaticEvent=false;
 }
 
 void PrefDialog::OnResetFilterButton(wxCommandEvent &evt)
@@ -431,39 +371,19 @@ void PrefDialog::updateFilterProp(const Filter *f)
 	if(!(f->canBeHazardous()))
 	{
 		filterGridProperties->Enable(true);
-		updateFilterPropertyGrid(filterGridProperties,f);
+		updateFilterPropertyGrid(filterGridProperties,f,"");
 	}
 	else
 	{
 		//If the filter is potentially hazardous,
 		//then we will disallow editing of the properties.
 		//and give a notice to that effect	
-		filterGridProperties->BeginBatch();
+		filterGridProperties->Freeze();
 		filterGridProperties->Enable(false);
-		wxGridCellAttr *readOnlyColAttr=new wxGridCellAttr;
+		filterGridProperties->Clear();
+		filterGridProperties->Append(new wxPropertyCategory(string("Not Editable for security reasons")));
+		filterGridProperties->Thaw();
 
-		//Empty the grid
-		//then fill it up with a note.
-		if(filterGridProperties->GetNumberCols())
-			filterGridProperties->DeleteCols(0,filterGridProperties->GetNumberCols());
-		if(filterGridProperties->GetNumberRows())
-			filterGridProperties->DeleteRows(0,filterGridProperties->GetNumberRows());
-		
-		filterGridProperties->AppendRows(1);
-		filterGridProperties->AppendCols(1);
-		filterGridProperties->AutoSizeColumn(0,true);
-		filterGridProperties->SetColAttr(0,readOnlyColAttr);
-		filterGridProperties->SetColLabelValue(0,wxTRANS("Notice"));
-
-		filterGridProperties->SetCellValue(0,0,
-			wxTRANS("For security reasons, defaults are not modifiable for this filter"));
-
-		filterGridProperties->EndBatch();
-
-		//Set the column size so you can see the message		
-		filterGridProperties->SetColSize(0, filterGridProperties->GetSize().GetWidth()
-					- filterGridProperties->GetScrollThumb(wxVERTICAL) - 15);
-		
 	}
 }
 
@@ -589,22 +509,8 @@ void PrefDialog::do_layout()
 	wxStaticBoxSizer* sizer_2 = new wxStaticBoxSizer(sizer_2_staticbox, wxVERTICAL);
 	wxBoxSizer* sizer_3 = new wxBoxSizer(wxHORIZONTAL);
 	wxBoxSizer* sizer_4 = new wxBoxSizer(wxVERTICAL);
-    filterPropSizer_staticbox->Lower();
-	wxStaticBoxSizer* filterPropSizer = new wxStaticBoxSizer(filterPropSizer_staticbox, wxHORIZONTAL);
-	wxBoxSizer* filterRightSideSizer = new wxBoxSizer(wxVERTICAL);
-	wxBoxSizer* resetButtonSizer = new wxBoxSizer(wxHORIZONTAL);
-	wxBoxSizer* filterLeftSizer = new wxBoxSizer(wxVERTICAL);
-	filterLeftSizer->Add(lblFilters, 0, 0, 0);
-	filterLeftSizer->Add(listFilters, 1, wxEXPAND, 0);
-	filterPropSizer->Add(filterLeftSizer, 1, wxEXPAND, 0);
-	filterPropSizer->Add(20, 20, 0, 0, 0);
-	filterRightSideSizer->Add(filterGridProperties, 1, wxEXPAND, 0);
-	resetButtonSizer->Add(filterBtnResetAllFilters, 0, 0, 0);
-	resetButtonSizer->Add(filterResetDefaultFilter, 0, 0, 0);
-	resetButtonSizer->Add(20, 20, 1, 0, 0);
-	filterRightSideSizer->Add(resetButtonSizer, 0, wxEXPAND, 0);
-	filterPropSizer->Add(filterRightSideSizer, 2, wxEXPAND, 0);
-	panelFilters->SetSizer(filterPropSizer);
+	do_filtergrid_prop_layout();
+//	filterPropSizer_staticbox->Lower();
 #if defined(__WIN32) || defined(__WIN64)
 	sizer_2->Add(comboPanelStartMode, 0, wxBOTTOM|wxFIXED_MINSIZE, 4);
 #else
@@ -650,7 +556,7 @@ void PrefDialog::do_layout()
 	sizerCamSpeed->AddStretchSpacer();
     sizer_5->Add(sizerCamSpeed, 1, wxEXPAND, 0);
     notePrefPanels_pane_3->SetSizer(sizer_5);
-	notePrefPanels->AddPage(panelFilters, wxTRANS("Pref"));
+	notePrefPanels->AddPage(panelFilters, wxTRANS("Filt. Default"));
 	notePrefPanels->AddPage(panelStartup, wxTRANS("Startup"));
 	notePrefPanels->AddPage(notePrefPanels_pane_3, wxTRANS("Camera"));
 	panelSizer->Add(notePrefPanels, 2, wxEXPAND, 0);
@@ -662,5 +568,29 @@ void PrefDialog::do_layout()
 	SetSizer(panelSizer);
 	Layout();
 	// end wxGlade
+}
+
+void PrefDialog::do_filtergrid_prop_layout()
+{
+	panelFilters->SetSizer(NULL);
+	wxBoxSizer* filterPropSizer = new wxBoxSizer(wxHORIZONTAL);
+	wxBoxSizer* filterRightSideSizer = new wxBoxSizer(wxVERTICAL);
+	wxBoxSizer* resetButtonSizer = new wxBoxSizer(wxHORIZONTAL);
+	wxBoxSizer* filterLeftSizer = new wxBoxSizer(wxVERTICAL);
+	
+	filterLeftSizer->Add(lblFilters, 0, 0, 0);
+	filterLeftSizer->Add(listFilters, 1, wxEXPAND, 0);
+	filterPropSizer->Add(filterLeftSizer, 1, wxEXPAND, 0);
+	filterPropSizer->Add(20, 20, 0, 0, 0);
+	filterRightSideSizer->Add(filterGridProperties, 1, wxEXPAND, 0);
+	resetButtonSizer->Add(filterBtnResetAllFilters, 0, 0, 0);
+	resetButtonSizer->Add(filterResetDefaultFilter, 0, 0, 0);
+	resetButtonSizer->Add(20, 20, 1, 0, 0);
+	filterRightSideSizer->Add(resetButtonSizer, 0, wxEXPAND, 0);
+	filterPropSizer->Add(filterRightSideSizer, 2, wxEXPAND, 0);
+	panelFilters->SetSizer(filterPropSizer);
+
+	panelFilters->Fit();
+	panelFilters->Layout();
 }
 

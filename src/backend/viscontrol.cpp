@@ -20,6 +20,7 @@
 
 #include "wx/wxcommon.h"
 #include "wx/wxcomponents.h"
+#include "wx/propertyGridUpdater.h"
 #include "gl/scene.h"
 
 
@@ -194,6 +195,13 @@ const Filter* VisController::getFilterById(size_t filterId) const
 	//Check that the mapping exists
 	ASSERT(filterMap.find(filterId)!=filterMap.end());
 	return filterMap.at(filterId);
+}
+
+size_t VisController::getPlotID(size_t position) const
+{ 
+	ASSERT(plotMap.size());
+	ASSERT(plotMap.find(position)!=plotMap.end());
+	return plotMap.find(position)->second;
 }
 
 size_t VisController::getIdByFilter(const Filter *f) const 
@@ -371,8 +379,9 @@ void VisController::updateWxTreeCtrl(wxTreeCtrl *t, const Filter *visibleFilt)
 	upWxTreeCtrl(filterTree,t,filterMap,persistentFilters,visibleFilt);
 }
 
-void VisController::updateFilterPropGrid(wxCustomPropGrid *g,size_t filterId) const	
+void VisController::updateFilterPropGrid(wxPropertyGrid *g,size_t filterId, const std::string &stateStr) const
 {
+
 	//The filterID can never be set to zero,
 	//except for the root item, as set by
 	//upWxTreeCtrl
@@ -384,9 +393,18 @@ void VisController::updateFilterPropGrid(wxCustomPropGrid *g,size_t filterId) co
 
 	ASSERT(targetFilter);
 	
-	updateFilterPropertyGrid(g,targetFilter);
+	updateFilterPropertyGrid(g,targetFilter,stateStr);
 }
 
+void VisController::updateCameraPropGrid(wxPropertyGrid *g, size_t camId) const
+{
+	ASSERT(g);
+
+	const Camera *c;
+	c= currentState.getCam(camId);
+
+	updateCameraPropertyGrid(g,c);
+}
 
 bool VisController::setCamProperties(size_t camID,unsigned int key, const std::string &value)
 {
@@ -559,7 +577,6 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 	//rate-limit the number of drawables to show in the scene
 	throttleSceneInput(sceneData);
 
-
 	//-- Build buffer of new objects to send to scene
 	for(list<vector<const FilterStreamData *> > ::iterator it=sceneData.begin(); 
 							it!=sceneData.end(); ++it)
@@ -622,74 +639,112 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 					
 					//The plot should have some data in it.
 					ASSERT(plotData->getNumBasicObjects());
-					//The plot should have a parent filter
-					ASSERT(plotData->parent);
 					//The plot should have an index, so we can keep
 					//filter choices between refreshes (where possible)
 					ASSERT(plotData->index !=(unsigned int)-1);
 					//Construct a new plot
 					unsigned int plotID;
 
-					switch(plotData->plotMode)
+					
+					//No other plot mode is currently implemented.
+					ASSERT(plotData->plotMode == PLOT_MODE_1D);
+					
+					//Create a 1D plot
+					Plot1D *plotNew= new Plot1D;
+
+					plotNew->setData(plotData->xyData);
+					plotNew->setLogarithmic(plotData->logarithmic);
+					plotNew->titleAsRawDataLabel=plotData->useDataLabelAsYDescriptor;
+					
+					//Construct any regions that the plot may have
+					for(unsigned int ui=0;ui<plotData->regions.size();ui++)
 					{
-						case PLOT_MODE_1D:
+						//add a region to the plot,
+						//using the region data stored
+						//in the plot stream
+						plotNew->regionGroup.addRegion(plotData->regionID[ui],
+							plotData->regionTitle[ui],	
+							plotData->regions[ui].first,
+							plotData->regions[ui].second,
+							plotData->regionR[ui],
+							plotData->regionG[ui],
+							plotData->regionB[ui],plotData->regionParent);
+					}
+
+					//transfer the axis labels
+					plotNew->setStrings(plotData->xLabel,
+						plotData->yLabel,plotData->dataLabel);
+					
+					//set the appearance of the plot
+					//plotNew->setTraceStyle(plotStyle);
+					plotNew->setColour(plotData->r,plotData->g,plotData->b);
+					
+					
+					plotNew->parentObject=plotData->parent;
+					plotNew->parentPlotIndex=plotData->index;
+					
+					plotID=targetPlots->addPlot(plotNew);
+
+					plotLabels.push_back(make_pair(plotID,plotData->dataLabel));
+					
+					break;
+				}
+				//TODO: Merge back into STREAM_TYPE_PLOT
+				case STREAM_TYPE_PLOT2D:
+				{
+					const Plot2DStreamData *plotData;
+					plotData=((Plot2DStreamData *)((*it)[ui]));
+					//The plot should have some data in it.
+					ASSERT(plotData->getNumBasicObjects());
+					//The plot should have an index, so we can keep
+					//filter choices between refreshes (where possible)
+					ASSERT(plotData->index !=(unsigned int)-1);
+					unsigned int plotID;
+		
+					PlotBase *plotNew;
+					switch(plotData->plotType) 
+					{
+						case PLOT_2D_DENS:
 						{
-							//Create a 1D plot
-							Plot1D *plotNew= new Plot1D;
+							//Create a 2D plot
+							plotNew= new Plot2DFunc;
 
-							plotNew->setData(plotData->xyData);
-							plotNew->setLogarithmic(plotData->logarithmic);
-							plotNew->titleAsRawDataLabel=plotData->useDataLabelAsYDescriptor;
-							
-							//Construct any regions that the plot may have
-							for(unsigned int ui=0;ui<plotData->regions.size();ui++)
-							{
-								//add a region to the plot,
-								//using the region data stored
-								//in the plot stream
-								plotNew->regionGroup.addRegion(plotData->regionID[ui],
-									plotData->regionTitle[ui],	
-									plotData->regions[ui].first,
-									plotData->regions[ui].second,
-									plotData->regionR[ui],
-									plotData->regionG[ui],
-									plotData->regionB[ui],plotData->regionParent);
-							}
+							//set the plot info
+							((Plot2DFunc*)plotNew)->setData(plotData->xyData,
+										plotData->xMin, plotData->xMax, 
+										plotData->yMin,plotData->yMax);
+						
+							break;
+						}
+						case PLOT_2D_SCATTER:
+						{
+							//Create a 2D plot
+							plotNew= new Plot2DScatter;
 
-							plotID=targetPlots->addPlot(plotNew);
+							//set the plot info
+							if(plotData->scatterIntensity.size())
+								((Plot2DScatter*)plotNew)->setData(plotData->scatterData,plotData->scatterIntensity);
+							else
+								((Plot2DScatter*)plotNew)->setData(plotData->scatterData);
+							//FIXME: scatter intesity data??
 							break;
 						}
 						default:
 							ASSERT(false);
 					}
-
-				
-					//set the appearance of the plot
+					//transfer the axis labels
+					plotNew->setStrings(plotData->xLabel,
+						plotData->yLabel,plotData->dataLabel);
+					
+					//transfer the parent info
+					plotNew->parentObject=plotData->parent;
+					plotNew->parentPlotIndex=plotData->index;
+					
+					plotID=targetPlots->addPlot(plotNew);
+					
 					// -----
-					targetPlots->setTraceStyle(plotID,plotData->plotStyle);
-					targetPlots->setColours(plotID,plotData->r,
-								plotData->g,plotData->b);
-
-					std::wstring xL,yL,titleW;
-					std::string x,y,t;
-
-					xL=stlStrToStlWStr(plotData->xLabel);
-					yL=stlStrToStlWStr(plotData->yLabel);
-					titleW=stlStrToStlWStr(plotData->dataLabel);
-
-					x=stlWStrToStlStr(xL);
-					y=stlWStrToStlStr(yL);
-					t=stlWStrToStlStr(titleW);
-
-					targetPlots->setStrings(plotID,x,y,t);
-					// -----
-				
-					//set the data origin
-					targetPlots->setParentData(plotID,plotData->parent,
-								plotData->index);
 
 					plotLabels.push_back(make_pair(plotID,plotData->dataLabel));
-					
 					break;
 				}
 				case STREAM_TYPE_DRAW:
@@ -813,14 +868,13 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 	//Update the plotting UI contols
 	//-----------
 	plotSelList->Clear(); // erase wx list
-
+	plotMap.clear();
 	for(size_t ui=0;ui<plotLabels.size();ui++)
 	{
 		//Append the plot to the list in the user interface
-		wxListUint *l = new wxListUint(plotLabels[ui].first);
-		plotSelList->Append(wxStr(plotLabels[ui].second),l);
+		plotSelList->Append(wxStr(plotLabels[ui].second));
+		plotMap[ui] = plotLabels[ui].first;
 	}
-	plotLabels.clear();
 
 	//If there is only one spectrum, select it
 	if(plotSelList->GetCount() == 1 )
@@ -831,6 +885,10 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 		//to set the selection
 		targetPlots->bestEffortRestoreVisibility();
 
+	}
+
+	for(unsigned int ui=0; ui<plotSelList->GetCount();ui++)
+	{
 #if defined(__WIN32__) || defined(__WIN64__)
 		//Bug under windows. SetSelection(wxNOT_FOUND) does not work for multi-selection list boxes
 		plotSelList->SetSelection(-1, false);
@@ -839,12 +897,9 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 #endif
 		for(unsigned int ui=0; ui<plotSelList->GetCount();ui++)
 		{
-			wxListUint *l;
-			unsigned int plotID;
-
 			//Retrieve the uniqueID
-			l=(wxListUint*)plotSelList->GetClientObject(ui);
-			plotID = l->value;
+			unsigned int plotID;
+			plotID=plotMap[ui];
 			if(targetPlots->isPlotVisible(plotID))
 				plotSelList->SetSelection(ui);
 		}
@@ -908,18 +963,19 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 			displayList->endList();
 			targetScene->addDrawable(displayList);
 		}
-
-		delete displayList;
+		else
+			delete displayList;
 	}
 	else
 	{
 		for(unsigned int ui=0;ui<drawIons.size(); ui++)
 			targetScene->addDrawable(drawIons[ui]);
 	}
-	
+
+	//add all drawable objects (not ions)	
 	for(size_t ui=0;ui<sceneDrawables.size();ui++)
 		targetScene->addDrawable(sceneDrawables[ui]);
-
+	
 	sceneDrawables.clear();
 	targetScene->computeSceneLimits();
 	targetScene->addSelectionDevices(devices);
@@ -977,37 +1033,6 @@ bool VisController::setCam(unsigned int offset)
 	targetScene->setActiveCamByClone(currentState.getCam(offset));
 	
 	return true;
-}
-
-void VisController::updateCamPropertyGrid(wxCustomPropGrid *g,unsigned int offset) const
-{
-
-	//Erase the grid
-	g->clearKeys();
-
-	//Abort if there are no cameras
-	if(!currentState.getNumCams())
-		return;
-
-	//Obtain the properties of the currently active camera
-	CameraProperties p;
-	currentState.getCam(offset)->getProperties(p);
-
-	//Set the property grid
-	g->setNumGroups(p.data.size());
-	//Create the keys for the property grid to do its thing
-	for(unsigned int ui=0;ui<p.data.size();ui++)
-	{
-		for(unsigned int uj=0;uj<p.data[ui].size();uj++)
-		{
-			//TODO: ADD TOOLTIP
-			g->addKey(p.data[ui][uj].first, ui,p.keys[ui][uj],
-				p.types[ui][uj],p.data[ui][uj].second,string(""));
-		}
-	}
-
-	//Let the property grid layout what it needs to
-	g->propertyLayout();
 }
 
 bool VisController::reparentFilter(size_t filter, size_t newParent)
@@ -1349,7 +1374,7 @@ void VisController::getStashes(std::vector<std::pair<std::string,unsigned int > 
 void VisController::updateRawGrid() const
 {
 	vector<vector<vector<float> > > plotData;
-	vector<std::vector<std::wstring> > labels;
+	vector<std::vector<std::string> > labels;
 	//grab the data for the currently visible plots
 	targetPlots->getRawData(plotData,labels);
 
@@ -1373,7 +1398,7 @@ void VisController::updateRawGrid() const
 		for(unsigned int uj=0;uj<labels[ui].size();uj++)
 		{
 			std::string s;
-			s=stlWStrToStlStr(labels[ui][uj]);
+			s=(labels[ui][uj]);
 			targetRawGrid->SetColLabelValue(curCol,wxStr(s));
 			curCol++;
 		}

@@ -33,6 +33,8 @@ class RangeFileFilter;
 #include "gl/drawables.h"
 
 #include "common/voxels.h"
+#include "common/stringFuncs.h"
+#include "common/array2D.h"
 
 //ifdef inclusion as there is some kind of symbol clash...
 #ifdef ATTRIBUTE_PRINTF
@@ -45,6 +47,7 @@ class RangeFileFilter;
 #endif
 
 
+#include <wx/propgrid/propgrid.h>
 
 const unsigned int NUM_CALLBACK=50000;
 
@@ -79,15 +82,16 @@ extern const char *FILTER_NAMES[];
 //the number of stream types that we can have.
 //Current bitmask using functions are
 //	VisController::safeDeleteFilterList
-const unsigned int NUM_STREAM_TYPES=5;
+const unsigned int NUM_STREAM_TYPES=6;
 const unsigned int STREAMTYPE_MASK_ALL= ((1<<(NUM_STREAM_TYPES)) -1 ) & 0x000000FF;
 enum
 {
 	STREAM_TYPE_IONS=1,
 	STREAM_TYPE_PLOT=2,
-	STREAM_TYPE_DRAW=4,
-	STREAM_TYPE_RANGE=8,
-	STREAM_TYPE_VOXEL=16
+	STREAM_TYPE_PLOT2D=4,
+	STREAM_TYPE_DRAW=8,
+	STREAM_TYPE_RANGE=16,
+	STREAM_TYPE_VOXEL=32
 };
 
 
@@ -147,14 +151,10 @@ enum
 //---
 //
 
-//Forward dec.
-class wxCustomPropGrid;
-
 //!Return the number of elements in a vector of filter data - i.e. the sum of the number of objects within each stream. Only masked streams (STREAM_TYPE_*) will be counted
 size_t numElements(const vector<const FilterStreamData *> &vm, unsigned int mask=STREAMTYPE_MASK_ALL);
 
 
-void updateFilterPropertyGrid(wxCustomPropGrid *g, const Filter *f);
 
 //!Abstract base class for data types that can propagate through filter system
 class FilterStreamData
@@ -171,6 +171,7 @@ class FilterStreamData
 		unsigned int cached;
 
 		FilterStreamData();
+		FilterStreamData(const Filter *);
 		virtual ~FilterStreamData() {}; 
 		virtual size_t getNumBasicObjects() const =0;
 		//!Returns an integer unique to the class to identify type (yes rttid...)
@@ -197,6 +198,9 @@ class FilterProperty
 	size_t key;
 	//!Property data
 	std::string data;
+	//!Secondary property data
+	//	- eg for file, contains wildcard mask for filename
+	std::string dataSecondary;
 	//!name of property
 	std::string name;
 
@@ -257,6 +261,7 @@ class IonStreamData : public FilterStreamData
 {
 public:
 	IonStreamData();
+	IonStreamData(const Filter *f);
 	void clear();
 
 	//Sample the data vector to the specified fraction
@@ -285,6 +290,7 @@ class VoxelStreamData : public FilterStreamData
 {
 public:
 	VoxelStreamData();
+	VoxelStreamData( const Filter *f);
 	size_t getNumBasicObjects() const { return data.getSize();};
 	void clear();
 	
@@ -302,6 +308,7 @@ class PlotStreamData : public FilterStreamData
 {
 	public:
 		PlotStreamData();
+		PlotStreamData(const Filter *f);
 
 		bool save(const char *filename) const; 
 
@@ -360,6 +367,43 @@ class PlotStreamData : public FilterStreamData
 
 };
 
+//!2D Plotting data
+class Plot2DStreamData : public FilterStreamData
+{
+	public:
+		Plot2DStreamData();
+		Plot2DStreamData(const Filter *f);
+
+		//erase plot contents	
+		void clear() {xyData.clear();};
+			
+		size_t getNumBasicObjects() const; 
+		//title for data
+		std::string dataLabel;
+		//Label for X, Y axes
+		std::string xLabel,yLabel;
+
+		unsigned int plotType;
+
+		//!Structured XY data pairs for plotting curve
+		Array2D<float> xyData;
+		//Only rqeuired for xy plots
+		float xMin,xMax,yMin,yMax;
+		
+		//!Unstructured XY points
+		vector<pair<float,float> > scatterData;
+		//optional intensity data for scatter plots
+		vector<float> scatterIntensity;
+	
+
+		//!Parent filter index
+		unsigned int index;
+
+#ifdef DEBUG
+		void checkSelfConsistent() const;
+#endif
+};
+
 //!Drawable objects, for 3D decoration. 
 class DrawStreamData: public FilterStreamData
 {
@@ -368,6 +412,7 @@ class DrawStreamData: public FilterStreamData
 		vector<DrawableObj *> drawables;
 		//!constructor
 		DrawStreamData(){ streamType=STREAM_TYPE_DRAW;};
+		DrawStreamData(const Filter *f){ streamType=STREAM_TYPE_DRAW;};
 		//!Destructor
 		~DrawStreamData();
 		//!Returns 0, as this does not store basic object types -- i.e. is not for data storage per se.
@@ -397,6 +442,7 @@ class RangeStreamData :  public FilterStreamData
 		
 		//!constructor
 		RangeStreamData();
+		RangeStreamData(const Filter *f);
 		//!Destructor
 		~RangeStreamData() {};
 		//!save the range data to a file
@@ -443,12 +489,22 @@ class Filter
 				bool (*callback)(bool),size_t totalDataSize=(size_t)-1);
 
 		//!Propagate the given input data to an output vector
-		void propagateStreams(const vector<const FilterStreamData *> &dataIn,
-				vector<const FilterStreamData *> &dataOut,size_t mask=STREAMTYPE_MASK_ALL,bool invertMask=false) const;
+		static void propagateStreams(const vector<const FilterStreamData *> &dataIn,
+				vector<const FilterStreamData *> &dataOut,size_t mask=STREAMTYPE_MASK_ALL,bool invertMask=false) ;
 
 		//!Propagate the cache into output
 		void propagateCache(vector<const FilterStreamData *> &dataOut) const;
 
+		//Set a property, without any checking of the new value 
+		// -clears cache on change
+		// - and skipping if no actual change between old and new prop
+		// returns true if change applied OK.
+		template<class T>	
+		bool applyPropertyNow(T &oldProp,const std::string &newVal, bool &needUp);
+	
+
+		//place a stream object into the filter cache, if required
+		void cacheAsNeeded(FilterStreamData *s); 
 	public:	
 		Filter() ;
 		virtual ~Filter();
@@ -605,6 +661,41 @@ class Filter
 
 };
 
+//Template specialisations & def for  applyPropertyNow
+//--
+template<>
+bool Filter::applyPropertyNow(Point3D &prop, const std::string &val, bool &needUp);
+
+template<>
+bool Filter::applyPropertyNow(bool &prop, const std::string &val, bool &needUp);
+
+template<>
+bool Filter::applyPropertyNow(std::string &prop, const std::string &val, bool &needUp);
+
+template<class T>
+bool Filter::applyPropertyNow(T &prop, const std::string &val, bool &needUp)
+{
+	// no update initially needed
+	needUp=false;
+
+	//convert to type T
+	std::string s;
+	s=stripWhite(val);
+	T tmp;
+	if(stream_cast(tmp,s))
+		return false;
+	
+	//return true, as it is technically ok that we assign to self.
+	// needUp however stays false, as the property is the same.
+	if(tmp == prop)
+		return true;
+	
+	prop=tmp;
+	clearCache();
+	needUp=true;
+	return true;	
+}
+//--
 
 //!Class that tracks the progress of scene updates
 class ProgressData

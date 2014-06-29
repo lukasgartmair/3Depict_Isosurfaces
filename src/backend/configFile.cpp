@@ -540,14 +540,8 @@ bool ConfigFile::createConfigDir()
 
 std::string ConfigFile::getConfigDir() 
 {
-#if wxCHECK_VERSION(2,9,0)
  	wxStandardPaths &paths = wxStandardPaths::Get();
 	wxString filePath = paths.GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);
-#else
-	wxStandardPaths *paths = new wxStandardPaths;
-	wxString filePath = paths->GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);
-	delete paths;
-#endif
 	return stlStr(filePath);
 }
 

@@ -23,7 +23,9 @@
 #include "geometryHelpers.h"
 #include "filterCommon.h"
 #include "algorithms/binomial.h"
-
+#include "algorithms/K3DTree-mk2.h"
+#include "backend/plot.h"
+#include "../APT/APTFileIO.h"
 
 enum
 {
@@ -49,6 +51,10 @@ enum
 	KEY_SHOW_BINOM_3D_GRID,
 	KEY_BINOMIAL_MAX_ASPECT,
 	KEY_BINOMIAL_EXTRUDE_DIR,
+	KEY_REPLACE_FILE,
+	KEY_REPLACE_TOLERANCE,
+	KEY_REPLACE_ALGORITHM,
+	KEY_REPLACE_VALUE,
 };
 
 enum {
@@ -57,6 +63,7 @@ enum {
 	ALGORITHM_RDF, //Radial Distribution Function
 	ALGORITHM_AXIAL_DF, //Axial Distribution Function (aka atomvicinity, sdm, 1D rdf)
 	ALGORITHM_BINOMIAL, //Binomial block method for statistical randomness testing
+	ALGORITHM_REPLACE, //Remove, set or modify points using an external file
 	ALGORITHM_ENUM_END,
 };
 
@@ -66,14 +73,23 @@ enum{
 	STOP_MODE_ENUM_END
 };
 
+enum
+{
+	REPLACE_MODE_SUBTRACT,
+	REPLACE_MODE_INTERSECT,
+	REPLACE_MODE_UNION,
+	REPLACE_MODE_ENUM_END
+};
+
 //!Error codes
 enum
 {
-	ABORT_ERR=1,
+	ERR_ABORT_FAIL,
 	ERR_BINOMIAL_NO_MEM,
 	ERR_BINOMIAL_NO_RANGE,
 	ERR_BINOMIAL_BIN_FAIL,
 	INSUFFICIENT_SIZE_ERR,
+	ERR_FILE_READ_FAIL,
 	SPAT_ERR_END_OF_ENUM,
 };
 // == NN analysis filter ==
@@ -85,7 +101,8 @@ const char *SPATIAL_ALGORITHMS[] = {
 	NTRANS("Density Filtering"),
 	NTRANS("Radial Distribution"),
 	NTRANS("Axial Distribution"),
-	NTRANS("Binomial Distribution")
+	NTRANS("Binomial Distribution"),
+	NTRANS("Point Em/Replacement")
 	};
 
 const char *STOP_MODES[] = {
@@ -93,12 +110,20 @@ const char *STOP_MODES[] = {
 	NTRANS("Radius")
 };
 
+//User viisble names for the replace sub-algorithms
+const char *REPLACE_ALGORITHMS[] = { "Subtract",
+					"Intersect",
+					"Union",
+					};
+					
+
 //Switch to determine if algorithms need range propagation or not
 const bool WANT_RANGE_PROPAGATION[] = { false, 
 					true,
 					false,
 					false,
-					false
+					false,
+					true,
 					};
 
 
@@ -118,6 +143,9 @@ SpatialAnalysisFilter::SpatialAnalysisFilter()
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(STOP_MODES) == STOP_MODE_ENUM_END);
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(SPATIAL_ALGORITHMS) == ALGORITHM_ENUM_END);
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(WANT_RANGE_PROPAGATION) == ALGORITHM_ENUM_END);
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(REPLACE_ALGORITHMS) == REPLACE_MODE_ENUM_END);
+	
+	
 	algorithm=ALGORITHM_DENSITY;
 	nnMax=1;
 	distMax=1;
@@ -148,6 +176,10 @@ SpatialAnalysisFilter::SpatialAnalysisFilter()
 	showGridOverlay=true;
 	//--
 
+	//replace tolerance
+	replaceTolerance=sqrt(std::numeric_limits<float>::epsilon());
+	replaceMode=REPLACE_MODE_SUBTRACT;
+	replaceMass=true;
 	reductionDistance=distMax;
 
 	cacheOK=false;
@@ -184,6 +216,11 @@ Filter *SpatialAnalysisFilter::cloneUncached() const
 	p->showNormalisedBinomialFrequencies=showNormalisedBinomialFrequencies;
 	p->showTheoreticFrequencies=showTheoreticFrequencies;
 	p->showGridOverlay=showGridOverlay;
+
+	p->replaceFile=replaceFile;
+	p->replaceMode=replaceMode;
+	p->replaceTolerance=replaceTolerance;
+	p->replaceMass=replaceMass;
 
 	//We are copying whether to cache or not,
 	//not the cache itself
@@ -280,7 +317,7 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 	if(cacheOK)
 	{
 		size_t mask=STREAM_TYPE_IONS;
-		if(WANT_RANGE_PROPAGATION[algorithm])
+		if(!WANT_RANGE_PROPAGATION[algorithm])
 			mask|=STREAM_TYPE_RANGE;
 
 		//Propagate input streams as desired 
@@ -348,11 +385,145 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 						dataIn,getOut,rngF);
 			break;
 		}
+		case ALGORITHM_REPLACE:
+			result=algorithmReplace(progress,callback,totalDataSize,
+						dataIn,getOut);
+			break;
 		default:
 			ASSERT(false);
 	}
 	
 	return result;
+}
+
+size_t SpatialAnalysisFilter::algorithmReplace(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
+			const vector<const FilterStreamData *>  &dataIn, 
+			vector<const FilterStreamData * > &getOut)
+{
+	//Merge the ions form the incoming streams
+	vector<IonHit> inIons;
+	Filter::collateIons(dataIn,inIons,progress,callback,totalDataSize);
+	
+	vector<IonHit> fileIons;
+	const unsigned int loadPositions[] = {
+						0,1,2,3};
+	unsigned int errCode=GenericLoadFloatFile(4,4,loadPositions,
+			fileIons,replaceFile.c_str(),progress.filterProgress,callback);
+
+	if(errCode)
+		return ERR_FILE_READ_FAIL;
+
+
+	K3DTreeMk2 tree;
+	tree.setProgressPointer(&progress.filterProgress);
+	tree.setCallback(callback);
+	tree.resetPts(fileIons,false);
+	tree.build();
+	BoundCube b;
+	tree.getBoundCube(b);
+
+	//map the offset of the nearest to
+	//the tree ID 
+	vector<size_t > nearestVec;
+	nearestVec.resize(inIons.size());
+
+	//TODO: pair vector might be faster
+	// as we can use it in sequence, and can use openmp
+	map<size_t,size_t> matchedMap;
+
+	#pragma omp parallel
+	{
+	//Find the nearest point for all points in the dataset
+
+	#pragma omp for 
+	for(size_t ui=0;ui<inIons.size();ui++)
+	{
+		nearestVec[ui]=tree.findNearestUntagged(inIons[ui].getPos(),b,false);
+	}
+
+	//Filter this to only points that had an NN within range
+	for(size_t ui=0;ui<inIons.size();ui++)
+	{
+		if(nearestVec[ui]!=(size_t)-1 && inIons[ui].getPos().sqrDist(*tree.getPt(nearestVec[ui])) <=replaceTolerance)
+		{
+			#pragma omp critical
+			matchedMap[ui]=nearestVec[ui];
+		}
+	}
+	}
+
+	nearestVec.clear();
+
+	if(matchedMap.empty())
+		return 1;
+
+	vector<IonHit> outIons;
+	switch(replaceMode)
+	{
+		case REPLACE_MODE_SUBTRACT:
+		{
+			//In subtraction mode, we should have
+			// at least this many ions
+			if(inIons.size() > matchedMap.size())
+				outIons.reserve(inIons.size()-matchedMap.size());
+			
+			//
+			#pragma omp parallel for
+			for(unsigned int ui=0;ui<inIons.size();ui++)
+			{
+				map<size_t,size_t>::iterator it;
+				it=matchedMap.find(ui);
+				if(it != matchedMap.end())
+					continue;
+
+				#pragma omp critical
+				outIons.push_back(inIons[ui]);
+			}
+			break;
+		}
+		case REPLACE_MODE_INTERSECT:
+		{
+			outIons.reserve(matchedMap.size());
+
+			if(replaceMass)
+			{
+				for(map<size_t,size_t>::const_iterator it=matchedMap.begin();it!=matchedMap.end();++it)
+				{
+					outIons.push_back(fileIons[it->second]);
+				}
+			}
+			else
+			{
+				for(map<size_t,size_t>::const_iterator it=matchedMap.begin();it!=matchedMap.end();++it)
+				{
+					outIons.push_back(inIons[it->first]);
+				}
+			}
+			break;
+		}
+		case REPLACE_MODE_UNION:
+		{
+			ASSERT(false);
+			break;
+		}
+		default:
+			ASSERT(false);
+	}
+
+	//Only output ions if any were found
+	if(outIons.size())
+	{
+		IonStreamData *outData = new IonStreamData(this);
+
+		outData->g = outData->b = outData->r = 0.5;
+		outData->data.swap(outIons);
+		cacheAsNeeded(outData);
+
+
+		getOut.push_back(outData);
+	}
+
+	return 0;
 }
 
 void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
@@ -378,6 +549,7 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.addProperty(p,curGroup);
 	choices.clear();
 
+	propertyList.setGroupTitle(curGroup,TRANS("Algorithm"));
 	curGroup++;
 	
 	//Get the options for the current algorithm
@@ -470,6 +642,7 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			p.key=KEY_COLOUR;
 			propertyList.addProperty(p,curGroup);
 
+			propertyList.setGroupTitle(curGroup,TRANS("Alg. Params."));
 			if(haveRangeParent)
 			{
 				ASSERT(ionSourceEnabled.size() == ionNames.size());
@@ -506,6 +679,8 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 					p.key=KEY_ENABLE_SOURCE*1000+ui;
 					propertyList.addProperty(p,curGroup);
 				}
+				
+				propertyList.setGroupTitle(curGroup,TRANS("Source Ion"));
 
 				curGroup++;
 				
@@ -535,10 +710,10 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 					p.key=KEY_ENABLE_TARGET*1000+ui;
 					propertyList.addProperty(p,curGroup);
 				}
+				propertyList.setGroupTitle(curGroup,TRANS("Target Ion"));
 
 			}
 	
-			propertyList.setGroupTitle(curGroup,TRANS("Alg. Params."));
 			break;
 		}	
 		case ALGORITHM_DENSITY_FILTER:
@@ -700,6 +875,54 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			propertyList.setGroupTitle(curGroup,TRANS("View Options"));
 			break;	
 		}
+		case ALGORITHM_REPLACE:
+		{
+			tmpStr = replaceFile;
+			p.name=TRANS("Data File");
+			p.data=tmpStr;
+			p.dataSecondary="Pos File (*.pos)|*.pos|All Files|*";
+			p.type=PROPERTY_TYPE_FILE;
+			p.helpText=TRANS("Pos file of points to subtract/replace/etc");
+			p.key=KEY_REPLACE_FILE;
+			propertyList.addProperty(p,curGroup);
+		
+			stream_cast(tmpStr,replaceTolerance);
+			p.name=TRANS("Match Tol.");
+			p.data=tmpStr;
+			p.type=PROPERTY_TYPE_REAL;
+			p.helpText=TRANS("Tolerance to allow for matching");
+			p.key=KEY_REPLACE_TOLERANCE;
+			propertyList.addProperty(p,curGroup);
+		
+	
+			vector<pair<unsigned int,string> > choices;
+
+			for(unsigned int ui=0;ui<REPLACE_MODE_ENUM_END;ui++)
+			{
+				tmpStr=TRANS(REPLACE_ALGORITHMS[ui]);
+				choices.push_back(make_pair(ui,tmpStr));
+			}	
+		
+			p.name=TRANS("Mode");
+			p.data= choiceString(choices,replaceMode);
+			p.type=PROPERTY_TYPE_CHOICE;
+			p.helpText=TRANS("Replacment condition");
+			p.key=KEY_REPLACE_ALGORITHM;
+			propertyList.addProperty(p,curGroup);
+
+			if(replaceMode != REPLACE_MODE_SUBTRACT)
+			{
+				p.name=TRANS("Replace value");
+				p.data=boolStrEnc(replaceMass);
+				p.type=PROPERTY_TYPE_BOOL;
+				p.helpText=TRANS("Use value data from file when replacing ions");
+				p.key=KEY_REPLACE_VALUE;
+				propertyList.addProperty(p,curGroup);
+			}
+
+			propertyList.setGroupTitle(curGroup,TRANS("Replacement"));
+			break;
+		}
 		default:
 			ASSERT(false);
 	}
@@ -775,82 +998,32 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 		}	
 		case KEY_DISTMAX:
 		{
-			float ltmp;
-			if(stream_cast(ltmp,value))
+			if(!applyPropertyNow(distMax,value,needUpdate))
 				return false;
-			
-			if(ltmp<= 0.0)
-				return false;
-			
-			distMax=ltmp;
-			needUpdate=true;
-			clearCache();
-
 			break;
 		}	
 		case KEY_NNMAX:
 		{
-			unsigned int ltmp;
-			if(stream_cast(ltmp,value))
+			if(!applyPropertyNow(nnMax,value,needUpdate))
 				return false;
-			
-			if(ltmp==0)
-				return false;
-			
-			nnMax=ltmp;
-			needUpdate=true;
-			clearCache();
-
 			break;
 		}	
 		case KEY_NUMBINS:
 		{
-			unsigned int ltmp;
-			if(stream_cast(ltmp,value))
+			if(!applyPropertyNow(numBins,value,needUpdate))
 				return false;
-			
-			if(ltmp==0)
-				return false;
-			
-			numBins=ltmp;
-			needUpdate=true;
-			clearCache();
-
 			break;
 		}
 		case KEY_REDUCTIONDIST:
 		{
-			float ltmp;
-			if(stream_cast(ltmp,value))
+			if(!applyPropertyNow(reductionDistance,value,needUpdate))
 				return false;
-			
-			if(ltmp<= 0.0)
-				return false;
-			
-			reductionDistance=ltmp;
-			needUpdate=true;
-			clearCache();
-
 			break;
 		}	
 		case KEY_REMOVAL:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(excludeSurface,value,needUpdate))
 				return false;
-
-			bool lastVal=excludeSurface;
-			excludeSurface=(stripped=="1");
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=excludeSurface)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-			
 			break;
 		}
 		case KEY_COLOUR:
@@ -957,22 +1130,8 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 		}
 		case KEY_RETAIN_UPPER:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(keepDensityUpper,value,needUpdate))
 				return false;
-
-			bool lastVal=keepDensityUpper;
-			keepDensityUpper=(stripped=="1");
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=keepDensityUpper)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-			
 			break;
 		}
 		case KEY_RADIUS:
@@ -1011,17 +1170,8 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 		}
 		case KEY_ORIGIN:
 		{
-			Point3D newPt;
-			if(!newPt.parse(value))
+			if(!applyPropertyNow(vectorParams[0],value,needUpdate))
 				return false;
-
-			if(!(vectorParams[0] == newPt ))
-			{
-				vectorParams[0] = newPt;
-				needUpdate=true;
-				clearCache();
-			}
-
 			return true;
 		}
 		case KEY_NUMIONS:
@@ -1041,59 +1191,20 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 		}
 		case KEY_SHOW_BINOM_FREQ:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(showBinomialFrequencies,value,needUpdate))
 				return false;
-
-			bool lastVal=showBinomialFrequencies;
-			showBinomialFrequencies=(stripped=="1");
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=showBinomialFrequencies)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-			
 			break;
 		}
 		case KEY_SHOW_BINOM_NORM_FREQ:
 		{
-			string stripped=stripWhite(value);
-
-			if(!(stripped == "1"|| stripped == "0"))
+			if(!applyPropertyNow(showNormalisedBinomialFrequencies,value,needUpdate))
 				return false;
-
-			bool lastVal=showNormalisedBinomialFrequencies;
-			showNormalisedBinomialFrequencies=(stripped=="1");
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=showNormalisedBinomialFrequencies)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-			
 			break;
 		}
 		case KEY_SHOW_BINOM_THEOR_FREQ:
 		{
-			bool lastVal=showTheoreticFrequencies;
-			
-			if(!boolStrDec(value,showTheoreticFrequencies))
+			if(!applyPropertyNow(showTheoreticFrequencies,value,needUpdate))
 				return false;
-
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=showTheoreticFrequencies)
-			{
-				needUpdate=true;
-				clearCache();
-			}
-			
 			break;
 		}
 		case KEY_BINOMIAL_MAX_ASPECT:
@@ -1131,19 +1242,51 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 		}
 		case KEY_SHOW_BINOM_3D_GRID:
 		{
-			bool lastVal=showGridOverlay;
-			if(!boolStrDec(value,showGridOverlay))
+			if(!applyPropertyNow(showGridOverlay,value,needUpdate))
 				return false;
 
-			//if the result is different, the
-			//cache should be invalidated
-			if(lastVal!=showGridOverlay)
+			break;
+		}
+		case KEY_REPLACE_FILE:
+		{
+			if(!applyPropertyNow(replaceFile,value,needUpdate))
+				return false;
+			break;
+		}
+		case KEY_REPLACE_TOLERANCE:
+		{
+			if(!applyPropertyNow(replaceTolerance,value,needUpdate))
+				return false;
+			break;
+		}
+		case KEY_REPLACE_ALGORITHM:
+		{
+			size_t newVal=REPLACE_MODE_ENUM_END;
+			for(size_t ui=0;ui<REPLACE_MODE_ENUM_END; ui++)
+			{
+				if( value == TRANS(REPLACE_ALGORITHMS[ui]))
+				{
+					newVal=ui;
+					break;
+				}
+			}
+			if(newVal==REPLACE_MODE_ENUM_END)
+				return false;
+
+			if(replaceMode != newVal)
 			{
 				needUpdate=true;
 				clearCache();
+				replaceMode=newVal;
 			}
-			
 			break;
+		}
+		case KEY_REPLACE_VALUE:
+		{
+			if(!applyPropertyNow(replaceMass,value,needUpdate))
+				return false;
+			break;
+			
 		}
 		default:
 		{
@@ -1218,33 +1361,25 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 
 std::string  SpatialAnalysisFilter::getErrString(unsigned int code) const
 {
-	//Currently the only error is aborting
+	const char *errStrings[] = {"Spatial analysis aborted by user",
+				"Insufficient memory to complete analysis",
+				"Insufficient bins in histogram for analysis",
+				"Insufficient memory for binomial. Reduce input size?",
+				"Binomial requires a parent range file",
+				"File read failed",
+				};
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errStrings) == SPAT_ERR_END_OF_ENUM);
+	
+	
+	ASSERT(code < SPAT_ERR_END_OF_ENUM);
 
-
-	switch(code)
-	{
-		case ABORT_ERR:
-			return std::string(TRANS("Spatial analysis aborted by user"));
-		case INSUFFICIENT_SIZE_ERR:
-			return std::string(TRANS("Insufficient data to complete analysis."));
-		case ERR_BINOMIAL_BIN_FAIL:
-			return std::string(TRANS("Insufficient bins in histogram for analysis."));
-		case ERR_BINOMIAL_NO_MEM:
-			return std::string(TRANS("Insufficient memory for binomial. Reduce input size?"));
-		case ERR_BINOMIAL_NO_RANGE:
-			return std::string(TRANS("Binomial requires a parent range file"));
-		default:
-			ASSERT(false);
-
-	}
-
-	return std::string("Bug! (Spatial analysis filter) Shouldn't see this");
+	return std::string(errStrings[code]);
 }
 
 void SpatialAnalysisFilter::setUserString(const std::string &str)
 {
 	//Which algorithms have plot outputs?
-	const bool ALGORITHM_HAS_PLOTS[] = { false,false,true,true,true};
+	const bool ALGORITHM_HAS_PLOTS[] = { false,false,true,true,true,false};
 
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(ALGORITHM_HAS_PLOTS) == ALGORITHM_ENUM_END);
 
@@ -1305,8 +1440,12 @@ bool SpatialAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsi
 			f << tabs(depth+1) << "<reductiondistance value=\""<<reductionDistance<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
 				<< "\" a=\"" << a << "\"/>" <<endl;
+			
 			f << tabs(depth+1) << "<densitycutoff value=\""<<densityCutoff<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<keepdensityupper value=\""<<(int)keepDensityUpper<< "\"/>"  << endl;
+			
+			f << tabs(depth+1) << "<replace file=\""<<replaceFile << "\" mode=\"" << replaceMode 
+				<< "\" tolerance=\"" << replaceTolerance <<  "\" replacemass=\"" << boolStrEnc(replaceMass) << "\" />"  << endl;
 
 
 			//-- Binomial paramters ---
@@ -1322,11 +1461,11 @@ bool SpatialAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsi
 			//--------------------------
 
 			
-			writeVectorsXML(f,"vectorparams",vectorParams,depth);
-			writeScalarsXML(f,"scalarparams",scalarParams,depth);
+			writeVectorsXML(f,"vectorparams",vectorParams,depth+1);
+			writeScalarsXML(f,"scalarparams",scalarParams,depth+1);
 			
-			writeIonsEnabledXML(f,"source",ionSourceEnabled,ionNames,depth);
-			writeIonsEnabledXML(f,"target",ionTargetEnabled,ionNames,depth);
+			writeIonsEnabledXML(f,"source",ionSourceEnabled,ionNames,depth+1);
+			writeIonsEnabledXML(f,"target",ionTargetEnabled,ionNames,depth+1);
 
 			f << tabs(depth) << "</" << trueName() << ">" << endl;
 			break;
@@ -1436,9 +1575,30 @@ bool SpatialAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 		return false;
 
 
+	//FIXME:COMPAT_BREAK : 3Depict <= 2025:fb7d66397b7b does not contain
+	xmlNodePtr tmpNode;
+	tmpNode=nodePtr;
+	if(!XMLHelpFwdToElem(nodePtr,"replace"))
+	{
+		if(XMLHelpGetProp(replaceFile,nodePtr,"file"))
+			return false;
+	
+		if(XMLHelpGetProp(replaceMode,nodePtr,"mode"))
+			return false;
+		
+		if(replaceMode>REPLACE_MODE_ENUM_END)
+			return false;
+		
+		if(XMLHelpGetProp(replaceTolerance,nodePtr,"tolerance"))
+			return false;
+		if(replaceTolerance < 0)
+			return false;
+	}
+	else
+		nodePtr=tmpNode;
+
 	//FIXME:COMPAT_BREAK : 3Depict <= 1796:5639f6d50732 does not contain
 	// this section
-	xmlNodePtr tmpNode;
 
 	tmpNode=nodePtr;
 	if(!XMLHelpFwdToElem(nodePtr,"binomial"))
@@ -1650,7 +1810,7 @@ size_t SpatialAnalysisFilter::buildSplitPoints(const vector<const FilterStreamDa
 				{
 					if(extendPointVector(pSource,d->data,callback,
 					                     progress.filterProgress,curPos[0]))
-						return ABORT_ERR;
+						return ERR_ABORT_FAIL;
 
 					curPos[0]+=d->data.size();
 				}
@@ -1659,7 +1819,7 @@ size_t SpatialAnalysisFilter::buildSplitPoints(const vector<const FilterStreamDa
 				{
 					if(extendPointVector(pTarget,d->data,callback,
 					                     progress.filterProgress,curPos[1]))
-						return ABORT_ERR;
+						return ERR_ABORT_FAIL;
 
 					curPos[1]+=d->data.size();
 				}
@@ -1721,7 +1881,7 @@ size_t buildMonolithicPoints(const vector<const FilterStreamData *> &dataIn,
 
 	progress.filterProgress=0;
 	if(!(*callback)(true))
-		return ABORT_ERR;
+		return ERR_ABORT_FAIL;
 
 	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
 	{
@@ -1735,7 +1895,7 @@ size_t buildMonolithicPoints(const vector<const FilterStreamData *> &dataIn,
 				if(extendPointVector(p,d->data,
 						callback,progress.filterProgress,
 						dataSize))
-					return ABORT_ERR;
+					return ERR_ABORT_FAIL;
 
 				dataSize+=d->data.size();
 			}
@@ -1762,7 +1922,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 		progress.maxStep=3;
 	
 	if(!(*callback)(true))
-		return ABORT_ERR;
+		return ERR_ABORT_FAIL;
 
 	K3DTree kdTree;
 	kdTree.setCallbackMethod(callback);
@@ -1803,7 +1963,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			progress.stepName=TRANS("Surface");
 
 			if(!(*callback)(true))
-				return ABORT_ERR;
+				return ERR_ABORT_FAIL;
 
 
 			//Take the input points, then use them
@@ -1818,12 +1978,12 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 				else
 				{
 					ASSERT(false);
-					return ABORT_ERR;
+					return ERR_ABORT_FAIL;
 				}
 			}
 			
 			if(!(*callback)(true))
-				return ABORT_ERR;
+				return ERR_ABORT_FAIL;
 
 			pts[0].clear();
 			//Forget the original points, and use the new ones
@@ -1855,7 +2015,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			progress.stepName=TRANS("Surface");
 		
 			if(!(*callback)(true))
-				return ABORT_ERR;
+				return ERR_ABORT_FAIL;
 
 
 			//Take the input points, then use them
@@ -1870,11 +2030,11 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 				if(errCode ==1)
 					return INSUFFICIENT_SIZE_ERR;
 				else if(errCode ==2)
-					return ABORT_ERR;
+					return ERR_ABORT_FAIL;
 				else
 				{
 					ASSERT(false);
-					return ABORT_ERR;
+					return ERR_ABORT_FAIL;
 				}
 			}
 
@@ -1884,7 +2044,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			p.swap(returnPoints);
 			
 			if(!(*callback)(true))
-				return ABORT_ERR;
+				return ERR_ABORT_FAIL;
 
 		}
 		
@@ -1933,7 +2093,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 				case RDF_ABORT_FAIL:
 				{
 					delete[] binWidth;
-					return ABORT_ERR;
+					return ERR_ABORT_FAIL;
 				}
 				default:
 					ASSERT(false);
@@ -1970,16 +2130,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 							histogram[ui][uj]);
 				}
 
-				if(cache)
-				{
-					plotData[ui]->cached=1;
-					filterOutputs.push_back(plotData[ui]);
-					cacheOK=true;
-				}	
-				else
-				{
-					plotData[ui]->cached=0;
-				}
+				cacheAsNeeded(plotData[ui]);
 				
 				getOut.push_back(plotData[ui]);
 			}
@@ -2002,7 +2153,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 					warnBiasCount,&(progress.filterProgress),callback);
 
 			if(errcode)
-				return ABORT_ERR;
+				return ERR_ABORT_FAIL;
 
 			if(warnBiasCount)
 			{
@@ -2036,15 +2187,8 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			}
 
 			delete[] histogram;
-
-			if(cache)
-			{
-				plotData->cached=1;
-				filterOutputs.push_back(plotData);
-				cacheOK=true;
-			}
-			else
-				plotData->cached=0;	
+			
+			cacheAsNeeded(plotData);
 			
 			getOut.push_back(plotData);
 
@@ -2090,7 +2234,7 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 	progress.stepName=TRANS("Build");
 	progress.filterProgress=0;
 	if(!(*callback)(true))
-		return ABORT_ERR;
+		return ERR_ABORT_FAIL;
 
 	BoundCube treeDomain;
 	treeDomain.setBounds(p);
@@ -2106,7 +2250,7 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 
 	//Update progress & User interface by calling callback
 	if(!(*callback)(false))
-		return ABORT_ERR;
+		return ERR_ABORT_FAIL;
 
 
 	//Its algorithm time!
@@ -2117,7 +2261,7 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 	progress.stepName=TRANS("Analyse");
 	progress.filterProgress=0;
 	if(!(*callback)(true))
-		return ABORT_ERR;
+		return ERR_ABORT_FAIL;
 
 	//List of points for which there was a failure
 	//first entry is the point Id, second is the 
@@ -2190,7 +2334,7 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 					if(spin)
 					{
 						delete newD;
-						return ABORT_ERR;
+						return ERR_ABORT_FAIL;
 					}
 
 
@@ -2247,7 +2391,7 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 									spin=true;
 #else
 									delete newD;
-									return ABORT_ERR;
+									return ERR_ABORT_FAIL;
 #endif
 								}
 								}
@@ -2271,7 +2415,7 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 					if(spin)
 					{
 						delete newD;
-						return ABORT_ERR;
+						return ERR_ABORT_FAIL;
 					}
 #endif
 				}
@@ -2312,15 +2456,8 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 					newD->representationType=d->representationType;
 					newD->valueType=TRANS("Number Density (\\#/Vol^3)");
 
-					//Cache result as needed
-					if(cache)
-					{
-						newD->cached=1;
-						filterOutputs.push_back(newD);
-						cacheOK=true;
-					}
-					else
-						newD->cached=0;
+					//Cache result as neede
+					cacheAsNeeded(newD);
 					getOut.push_back(newD);
 				}
 				else
@@ -2388,7 +2525,7 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 	progress.stepName=TRANS("Build");
 	progress.filterProgress=0;
 	if(!(*callback)(true))
-		return ABORT_ERR;
+		return ERR_ABORT_FAIL;
 
 	BoundCube treeDomain;
 	treeDomain.setBounds(p);
@@ -2403,7 +2540,7 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 
 	//Update progress & User interface by calling callback
 	if(!(*callback)(false))
-		return ABORT_ERR;
+		return ERR_ABORT_FAIL;
 	p.clear(); //We don't need pts any more, as tree *is* a copy.
 
 
@@ -2415,7 +2552,7 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 	progress.stepName=TRANS("Analyse");
 	progress.filterProgress=0;
 	if(!(*callback)(true))
-		return ABORT_ERR;
+		return ERR_ABORT_FAIL;
 
 	//List of points for which there was a failure
 	//first entry is the point Id, second is the 
@@ -2494,7 +2631,7 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 					if(spin)
 					{
 						delete newD;
-						return ABORT_ERR;
+						return ERR_ABORT_FAIL;
 					}
 
 
@@ -2551,7 +2688,7 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 									spin=true;
 #else
 									delete newD;
-									return ABORT_ERR;
+									return ERR_ABORT_FAIL;
 #endif
 								}
 								}
@@ -2579,7 +2716,7 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 					if(spin)
 					{
 						delete newD;
-						return ABORT_ERR;
+						return ERR_ABORT_FAIL;
 					}
 #endif
 				}
@@ -2621,14 +2758,7 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 					newD->valueType=TRANS("Number Density (\\#/Vol^3)");
 
 					//Cache result as needed
-					if(cache)
-					{
-						newD->cached=1;
-						filterOutputs.push_back(newD);
-						cacheOK=true;
-					}
-					else
-						newD->cached=0;
+					cacheAsNeeded(newD);
 					getOut.push_back(newD);
 				}
 				else
@@ -2798,7 +2928,7 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 	}
 
 	if(wantAbort)
-		return ABORT_ERR;
+		return ERR_ABORT_FAIL;
 
 	//Now, the ions outside the targeting volume may be reduced 
 	vector<IonHit> ionsOutside;
@@ -2862,10 +2992,10 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 				case ERR_CROP_INSUFFICIENT_MEM:
 					return INSUFFICIENT_SIZE_ERR;
 				case ERR_CROP_CALLBACK_FAIL:
-					return ABORT_ERR;
+					return ERR_ABORT_FAIL;
 				default: 
 					ASSERT(false);
-					return ABORT_ERR;
+					return ERR_ABORT_FAIL;
 
 			}
 			tmp.swap(ionsOutside);
@@ -2955,19 +3085,6 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 			errCode=generate1DAxialNNHist(src,tree,axisNormal, histogram,
 					binWidth,nnMax,numBins,&progress.filterProgress,callback);
 
-			//Remap the underlying function code ot that for this function
-			switch(errCode)
-			{
-				case 0:
-					histOK=true;
-					break;
-				case RDF_ERR_INSUFFICIENT_INPUT_POINTS:
-					consoleOutput.push_back(TRANS("Insufficient points to complete analysis"));
-					errCode=0;
-					break;
-				default:
-					ASSERT(false);
-			}
 			break;
 		}
 		case STOP_MODE_RADIUS:
@@ -2978,9 +3095,26 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 			errCode=generate1DAxialDistHist(src,tree,axisNormal, histogram,
 					distMax,numBins,&progress.filterProgress,callback);
 
-			histOK = (errCode !=0);
+			histOK = (errCode ==0);
 			break;
 		}
+		default:
+			ASSERT(false);
+	}
+	
+	//Remap the underlying function code to that for this function
+	switch(errCode)
+	{
+		case 0:
+			histOK=true;
+			break;
+		case RDF_ERR_INSUFFICIENT_INPUT_POINTS:
+			consoleOutput.push_back(TRANS("Insufficient points to complete analysis"));
+			errCode=0;
+			break;
+		case RDF_ABORT_FAIL:
+			errCode=ERR_ABORT_FAIL;
+			break;
 		default:
 			ASSERT(false);
 	}
@@ -3025,14 +3159,7 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 					histogram[uj]);
 		}
 
-		if(cache)
-		{
-			plotData->cached=1;
-			filterOutputs.push_back(plotData);
-			cacheOK=true;
-		}
-		else
-			plotData->cached=0;	
+		cacheAsNeeded(plotData);
 		getOut.push_back(plotData);
 	}
 
@@ -3213,7 +3340,7 @@ size_t SpatialAnalysisFilter::algorithmBinomial(ProgressData &progress,
 		plt->index=ui;
 		plt->parent=this;
 		plt->plotMode=PLOT_MODE_1D;
-		plt->plotStyle=PLOT_TRACE_STEM;
+		plt->plotStyle=PLOT_LINE_STEM;
 		plt->xLabel=TRANS("Block size");
 		if(showNormalisedBinomialFrequencies)
 			plt->yLabel=TRANS("Rel. Frequency");
@@ -3254,17 +3381,7 @@ size_t SpatialAnalysisFilter::algorithmBinomial(ProgressData &progress,
 			}
 		}
 
-		if(cache)
-		{
-			plt->cached=1;
-			filterOutputs.push_back(plt);
-			cacheOK=true;
-		}	
-		else
-		{
-			plt->cached=0;
-		}
-
+		cacheAsNeeded(plt);
 		getOut.push_back(plt);
 
 	}
@@ -3282,7 +3399,7 @@ size_t SpatialAnalysisFilter::algorithmBinomial(ProgressData &progress,
 		plt->index=ui + binHist.mapIonFrequencies.size();
 		plt->parent=this;
 		plt->plotMode=PLOT_MODE_1D;
-		plt->plotStyle=PLOT_TRACE_STEM;
+		plt->plotStyle=PLOT_LINE_STEM;
 		plt->xLabel=TRANS("Block size");
 		if(showNormalisedBinomialFrequencies)
 			plt->yLabel=TRANS("Rel. Frequency");
@@ -3323,16 +3440,7 @@ size_t SpatialAnalysisFilter::algorithmBinomial(ProgressData &progress,
 			}
 		}
 
-		if(cache)
-		{
-			plt->cached=1;
-			filterOutputs.push_back(plt);
-			cacheOK=true;
-		}	
-		else
-		{
-			plt->cached=0;
-		}
+		cacheAsNeeded(plt);
 
 		getOut.push_back(plt);
 
@@ -3347,6 +3455,7 @@ bool densityPairTest();
 bool nnHistogramTest();
 bool rdfPlotTest();
 bool axialDistTest();
+bool replaceTest();
 
 bool SpatialAnalysisFilter::runUnitTests()
 {
@@ -3361,7 +3470,8 @@ bool SpatialAnalysisFilter::runUnitTests()
 
 	if(!axialDistTest())
 		return false;
-	
+	if(!replaceTest())
+		return false;
 	return true;
 }
 
@@ -3624,6 +3734,65 @@ bool axialDistTest()
 
 	TEST(streamMask == ( STREAM_TYPE_DRAW | STREAM_TYPE_PLOT) , "Stream type checking");
 
+	return true;
+}
+
+bool replaceTest()
+{
+	std::string ionFile=createTmpFilename(NULL,".pos");
+		
+	vector<IonHit> ions;
+	const unsigned int NIONS=10;
+	for(unsigned int ui=0;ui<NIONS;ui++)
+		ions.push_back(IonHit(Point3D(ui,ui,ui),1));
+
+	IonHit::makePos(ions,ionFile.c_str());
+	
+	for(unsigned int ui=0;ui<NIONS;ui++)
+		ions[ui].setMassToCharge(2);
+
+	IonStreamData *d = new IonStreamData;
+	d->data.swap(ions);
+
+	//Create a spatial analysis filter
+	SpatialAnalysisFilter *f=new SpatialAnalysisFilter;
+	f->setCaching(false);	
+	
+	//Set it to do a union calculation 
+	bool needUp;
+	string s;
+	s=TRANS(SPATIAL_ALGORITHMS[ALGORITHM_REPLACE]);
+	TEST(f->setProperty(KEY_ALGORITHM,s,needUp),"Set prop");
+	TEST(f->setProperty(KEY_REPLACE_FILE,ionFile,needUp),"Set prop");
+	s=TRANS(REPLACE_ALGORITHMS[REPLACE_MODE_INTERSECT]);
+	TEST(f->setProperty(KEY_REPLACE_ALGORITHM,s,needUp),"Set prop");
+	
+	s="1";
+	TEST(f->setProperty(KEY_REPLACE_VALUE,s,needUp),"Set prop");
+
+
+	//Do the refresh
+	ProgressData p;
+	vector<const FilterStreamData*> streamIn,streamOut;
+	streamIn.push_back(d);
+	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh OK");
+	delete f;
+	delete d;
+	streamIn.clear();
+
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+	TEST(streamOut[0]->getNumBasicObjects() == NIONS,"Number objects");
+
+	//we should have taken the mass-to-charge from the file
+	const IonStreamData *outIons = (const IonStreamData*)streamOut[0];
+	for(unsigned int ui=0;ui<NIONS; ui++)
+	{
+		ASSERT(outIons->data[ui].getMassToCharge() == 1); 
+	}
+
+	wxRemoveFile(ionFile);
+	
 	return true;
 }
 

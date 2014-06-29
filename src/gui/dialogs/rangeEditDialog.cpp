@@ -242,24 +242,14 @@ RangeEditorDialog::RangeEditorDialog(wxWindow* parent, int id, const wxString& t
     haveSetTextFocus=false;
     textOverlayCmpnt->SetValue(wxTRANS("e.g. H2O"));
 
-#if wxCHECK_VERSION(2, 9, 0)
     textOverlayCmpnt->Bind(wxEVT_SET_FOCUS, &RangeEditorDialog::OnTextOverlaySetFocus, this);
-#else
-    textOverlayCmpnt->Connect(wxID_ANY,
-                 wxEVT_SET_FOCUS,
-		   wxFocusEventHandler(RangeEditorDialog::OnTextOverlaySetFocus), NULL, this);
-#endif
 }
 
 
 
 RangeEditorDialog::~RangeEditorDialog()
 {
-#if wxCHECK_VERSION(2, 9, 0)
     textOverlayCmpnt->Unbind(wxEVT_SET_FOCUS, &RangeEditorDialog::OnTextOverlaySetFocus, this);
-#else
-    textOverlayCmpnt->Disconnect();
-#endif
 }
 
 
@@ -272,13 +262,8 @@ BEGIN_EVENT_TABLE(RangeEditorDialog, wxDialog)
     EVT_TEXT(ID_TEXT_FILTER_CMPNT,RangeEditorDialog::OnTextOverlay)
     EVT_TEXT_ENTER(ID_TEXT_FILTER_CMPNT,RangeEditorDialog::OnTextOverlayEnter)
     EVT_CHECKBOX(ID_CHECK_SHOW_OVERLAY, RangeEditorDialog::OnCheckShowOverlay)
-#if wxCHECK_VERSION(2,9,0)
     EVT_GRID_CMD_CELL_CHANGED(ID_GRID_RANGES, RangeEditorDialog::OnGridRangesCellChange)
     EVT_GRID_CMD_CELL_CHANGED(ID_GRID_IONS, RangeEditorDialog::OnGridIonsCellChange)
-#else
-    EVT_GRID_CMD_CELL_CHANGE(ID_GRID_RANGES, RangeEditorDialog::OnGridRangesCellChange)
-    EVT_GRID_CMD_CELL_CHANGE(ID_GRID_IONS, RangeEditorDialog::OnGridIonsCellChange)
-#endif
     EVT_GRID_CMD_CELL_LEFT_CLICK(ID_GRID_RANGES,RangeEditorDialog::OnGridRangeClick) 
     EVT_GRID_CMD_CELL_LEFT_CLICK(ID_GRID_IONS,RangeEditorDialog::OnGridIonClick) 
     EVT_GRID_CMD_EDITOR_SHOWN(ID_GRID_RANGES,RangeEditorDialog::OnGridRangesEditorShown)
@@ -518,7 +503,7 @@ void RangeEditorDialog::generateListEntries()
 		unsigned int plotID;
 		plotID = plotIDs[ui];
 
-		std::wstring title;
+		std::string title;
 		title=plotWrap.getTitle(plotID);
 
 		//Only use plots from spectra
@@ -594,7 +579,7 @@ void RangeEditorDialog::generateIonEntries(size_t rowVisibleHint)
 	}
 	
 	
-	std::wstring title;
+	std::string title;
 	title=plotWrap.getTitle(curPlot);
 
 	//Colour to  use for incomplete ions/ranges
@@ -730,7 +715,7 @@ void RangeEditorDialog::generateRangeEntries(size_t rowVisibleHint)
 	wxColour incomplColour;
 	//A light blue colour
 	incomplColour.Set(162,162,255);
-	std::wstring title;
+	std::string title;
 	title=plotWrap.getTitle(curPlot);
 	
 	//Fill in the range grid
@@ -1271,13 +1256,8 @@ void RangeEditorDialog::OnBtnRangeIonAdd(wxCommandEvent &event)
 		wxStrs.Add(wxCStr("Ion"));
 		wxStrs.Add(wxCStr("Range"));
 
-#if wxCHECK_VERSION(2, 9, 0)
 		wxSingleChoiceDialog *wxD = new wxSingleChoiceDialog(this, wxTRANS("Range or ion?"),
 				wxTRANS("Select type to add"),wxStrs,(void **)NULL,wxDEFAULT_DIALOG_STYLE|wxOK|wxCENTRE);
-#else
-		wxSingleChoiceDialog *wxD = new wxSingleChoiceDialog(this, wxTRANS("Range or ion?"),
-				wxTRANS("Select type to add"),wxStrs,NULL,wxDEFAULT_DIALOG_STYLE|wxOK|wxCENTRE);
-#endif
 
 		wxD->ShowModal();
 

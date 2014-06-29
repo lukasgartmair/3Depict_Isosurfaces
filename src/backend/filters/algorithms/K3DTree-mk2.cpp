@@ -106,7 +106,7 @@ size_t K3DTreeMk2::size() const
 	return indexedPoints.size();
 }
 
-bool K3DTreeMk2::build()
+bool K3DTreeMk2::build(bool wantCallback)
 {
 
 	const size_t PROGRESS_REDUCE=5000;
@@ -263,7 +263,7 @@ bool K3DTreeMk2::build()
 			}
 		}	
 
-		if(!(numSeen%PROGRESS_REDUCE) && progress)
+		if(wantCallback && !(numSeen%PROGRESS_REDUCE) && progress)
 		{
 			*progress= (unsigned int)((float)numSeen/(float)nodes.size()*100.0f);
 
@@ -377,8 +377,10 @@ void K3DTreeMk2::dump(std::ostream &strm,  size_t depth, size_t offset) const
 }
 
 size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
-				const BoundCube &domainCube, bool shouldTag)
+				const BoundCube &domainCube, bool shouldTag, size_t pseudoRoot)
 {
+	//Tree must be built!
+	ASSERT(treeRoot < nodes.size() && maxDepth <=nodes.size())
 	enum { NODE_FIRST_VISIT, //First visit is when you descend the tree
 		NODE_SECOND_VISIT, //Second visit is when you come back from ->Left()
 		NODE_THIRD_VISIT // Third visit is when you come back from ->Right()
@@ -410,10 +412,16 @@ size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
 	stackTop=0;
 
 	//Start at median of array, which is top of tree,
-	//by definition
-	curNode=treeRoot;
+	//by definition, unless an alternative entry point is given
+	size_t startNode;
+	if(pseudoRoot==(size_t) -1)
+		startNode=treeRoot;
+	else
+		startNode=pseudoRoot;
 
-	//check root node	
+	curNode=startNode;
+
+	//check start node	
 	if(!nodes[curNode].tagged)
 	{
 		float tmpDistSqr;
@@ -611,7 +619,7 @@ size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
 		
 
 	//Keep going until we meet the root nde for the third time (one left, one right, one finish)	
-	}while(!(curNode== treeRoot &&  visit== NODE_THIRD_VISIT));
+	}while(!(curNode== startNode &&  visit== NODE_THIRD_VISIT));
 
 	if(bestPoint != (size_t) -1)
 		nodes[bestPoint].tagged|=shouldTag;
@@ -621,19 +629,20 @@ size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
 
 
 void K3DTreeMk2::getTreesInSphere(const Point3D &pt, float sqrDist, const BoundCube &domainCube,
-					vector<pair<size_t,size_t> > &contigousBlocks ) const
+					vector<pair<size_t,size_t> > &contiguousBlocks ) const
 {
 	using std::queue;
 	using std::pair;
 	using std::make_pair;
 
+	if(treeRoot == (size_t) -1)
+		return;
+	
 	queue<int> nodeQueue;
 	queue<int> axisQueue;
 	queue<BoundCube> boundQueue;
 
 	queue<pair<int,int> > limitQueue;
-	if(treeRoot == (size_t) -1)
-		return;
 
 
 	nodeQueue.push(treeRoot);
@@ -662,7 +671,7 @@ void K3DTreeMk2::getTreesInSphere(const Point3D &pt, float sqrDist, const BoundC
 		{
 			//We are? Interesting. We must be a contiguous block from our lower
 			//to upper limits
-			contigousBlocks.push_back(limitQueue.front());
+			contiguousBlocks.push_back(limitQueue.front());
 		}
 		else if(tmpCube.intersects(pt,sqrDist))
 		{
@@ -716,6 +725,64 @@ void K3DTreeMk2::getTreesInSphere(const Point3D &pt, float sqrDist, const BoundC
 
 }
 
+size_t K3DTreeMk2::getBoxInTree(const BoundCube &box) const
+{
+	ASSERT(treeRoot !=(size_t)-1);
+
+	BoundCube curB;
+	curB=treeBounds;
+	int curNode=treeRoot;
+	int curAxis=0;	
+
+	//user-supplied box can overlap tree area (and thus not contain the box, by loop test)
+	// intersect the box with the tree bounds, such that it fits
+	BoundCube subBox;
+	subBox = curB.makeUnion(box);
+
+	//If our box-to-find fits inside the current bounds,
+	// keep refining our search area
+	while(curB.contains(subBox))
+	{
+		//Check for the tree's split axis
+		float axisPosition;
+		axisPosition=  indexedPoints[curNode].first[curAxis];
+		switch(box.segmentTriple(curAxis,axisPosition))
+		{
+			//query axis is below box - move lower bound up, by searching right child
+			case 0:
+			{
+				curB.setBound(curAxis, 0,axisPosition);
+				if(nodes[curNode].childRight == (size_t) -1)
+					return curNode;
+				curNode=nodes[curNode].childRight;
+				break;
+			}
+			//intersects
+			case 1:
+				//Nothing we can do any more - return current node as new pseudo-root
+				return curNode; 
+			//query axis is above target box - move upper bound down, and refine along left child
+			case 2:
+			{
+				curB.setBound(curAxis,1,axisPosition);
+				if(nodes[curNode].childLeft == (size_t) -1)
+					return curNode;
+				curNode=nodes[curNode].childLeft;
+				break;
+			}
+			default:
+				ASSERT(false);
+				
+		}
+	
+		curAxis++;
+		curAxis%=3;
+	}
+
+	
+	return curNode;
+}
+
 size_t K3DTreeMk2::tagCount() const
 {
 	size_t count=0;
@@ -742,3 +809,57 @@ void K3DTreeMk2::clearAllTags()
 	for(size_t ui=0;ui<nodes.size();ui++)
 		nodes[ui].tagged=false;
 }
+
+
+#ifdef DEBUG
+
+
+
+bool K3DMk2Tests()
+{
+	vector<Point3D> pts;
+
+	K3DTreeMk2 tree;
+	
+	//First test with single point
+	//--
+	pts.push_back(Point3D(0,0,0));
+	tree.resetPts(pts,false);
+
+	//build, but do not give progress
+	tree.build(false);
+	
+	Point3D searchPt=Point3D(1,0,0);
+	BoundCube dummyCube;
+	tree.getBoundCube(dummyCube);
+
+	size_t resultIdx;
+	
+	resultIdx=tree.findNearestUntagged(searchPt,dummyCube,false);
+	//Only one point to find - should find it
+	TEST(resultIdx == 0,"K3D Mk2, single point test");
+
+	//Get the contiguous nodes
+	BoundCube testBox;
+	testBox.setBounds(Point3D(-2,-2,-2),Point3D(2,2,2));
+
+	TEST(tree.getBoxInTree(testBox) == 0,"subtree test");
+	//---
+
+	//Now, try adding more points
+	//---
+	pts.push_back(Point3D(1,1,1));
+	pts.push_back(Point3D(1.1,0.9,0.95));
+	
+	tree.resetPts(pts,false);
+	tree.build(false);
+	
+	testBox.setBounds(Point3D(1.05,0.5,0.5),Point3D(1.5,1.5,1.5));
+	TEST(tree.getBoxInTree(testBox)==2,"subtree test pt2");
+	//---
+
+	return true;
+
+}
+
+#endif

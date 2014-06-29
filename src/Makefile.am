@@ -22,7 +22,8 @@ bin_PROGRAMS= 3Depict
 #------- Common header files for all sub-modules
 COMMON_SOURCE_FILES = common/pngread.c common/stringFuncs.cpp common/xmlHelper.cpp common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp common/assertion.cpp
 COMMON_HEADER_FILES = common/pngread.h common/stringFuncs.h  common/constants.h  common/xmlHelper.h common/colourmap.h \
-		      	common/mathfuncs.h common/basics.h common/translation.h common/endianTest.h common/assertion.h common/voxels.h
+		      	common/mathfuncs.h common/basics.h common/translation.h common/endianTest.h common/assertion.h common/voxels.h \
+			common/array2D.h
 
 #-----------
 
@@ -36,7 +37,7 @@ FILTER_FILES = backend/filters/allFilter.cpp backend/filters/filterCommon.cpp \
 		backend/filters/compositionProfile.cpp backend/filters/spatialAnalysis.cpp \
 		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
 		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp \
-		backend/filters/algorithms/binomial.cpp 
+		backend/filters/algorithms/binomial.cpp  
 
 FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h \
 		backend/filters/dataLoad.h backend/filters/ionDownsample.h \
@@ -46,7 +47,7 @@ FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h
 		backend/filters/compositionProfile.h backend/filters/spatialAnalysis.h \
 		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
 		backend/filters/annotation.h backend/filters/geometryHelpers.h \
-		backend/filters/algorithms/binomial.h
+		backend/filters/algorithms/binomial.h 
 
 BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backend/filtertree.cpp \
 		     	backend/APT/ionhit.cpp backend/APT/APTFileIO.cpp backend/APT/APTRanges.cpp backend/APT/abundanceParser.cpp \
@@ -94,8 +95,8 @@ DIALOG_HEADER_FILES = gui/dialogs/ExportPos.h gui/dialogs/ExportRngDialog.h gui/
 GUI_SOURCE_FILES=gui/mainFrame.cpp gui/mathglPane.cpp gui/cropPanel.cpp gui/glPane.cpp  $(DIALOG_SOURCE_FILES)
 GUI_HEADER_FILES=gui/mainFrame.h gui/mathglPane.h gui/cropPanel.h gui/art.h gui/glPane.h $(DIALOG_HEADER_FILES)
 
-BASE_SOURCE_FILES=   3Depict.cpp testing/testing.cpp wx/wxcommon.cpp  wx/wxcomponents.cpp winconsole.cpp 
-BASE_HEADER_FILES=   testing/testing.h  wx/wxcommon.h  wx/wxcomponents.h   winconsole.h
+BASE_SOURCE_FILES=   3Depict.cpp testing/testing.cpp wx/wxcommon.cpp  wx/wxcomponents.cpp winconsole.cpp  wx/propertyGridUpdater.cpp
+BASE_HEADER_FILES=   testing/testing.h  wx/wxcommon.h  wx/wxcomponents.h   winconsole.h wx/propertyGridUpdater.h
 
 TEST_SOURCE_FILES = testing/mglTesting.cpp
 TEST_HEADER_FILES = testing/mglTesting.h

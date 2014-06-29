@@ -103,7 +103,7 @@ class K3DTreeMk2
 		 *  previously set by "resetPts". returns false if callback returns
 		 *  false;
 		 */	
-		bool build();
+		bool build(bool wantCallback=true);
 
 		void getBoundCube(BoundCube &b);
 
@@ -114,9 +114,11 @@ class K3DTreeMk2
 
 
 		//Find the nearest "untagged" point's internal index.
-		//Mark the found point as "tagged" in the tree. Returns -1 on failure (no untagged points) 
+		//Mark the found point as "tagged" in the tree. Returns -1 on failure (no untagged points)
+		// optionaly, a sub-root branch of the tree can be specified, eg based upon range query,
+		// in order to speed up search
 		size_t findNearestUntagged(const Point3D &queryPt,
-						const BoundCube &b, bool tag=true);
+						const BoundCube &b, bool tag=true,size_t pseudoRoot=(size_t)-1);
 
 	
 		//!Get the contigous node IDs for a subset of points in the tree that are contained
@@ -127,6 +129,11 @@ class K3DTreeMk2
 		// 	- It does not check tags.	
 		void getTreesInSphere(const Point3D &pt, float sqrDist, const BoundCube &domainCube,
 					std::vector<std::pair<size_t,size_t> > &contigousBlocks ) const;
+
+		//!Get the smallest contigous bounds that will contain a box.
+		// - new sub-tree root is returned. 
+		// function may only be called if tree is initalised
+		size_t getBoxInTree(const BoundCube &box) const;
 
 		//Obtain a point from its internal index
 		const Point3D *getPt(size_t index) const ;
@@ -157,4 +164,10 @@ class K3DTreeMk2
 		void clearAllTags();
 };
 
+
+#ifdef DEBUG
+//KD tree internal unit tests
+// - return true on OK, false on fail
+bool K3DMk2Tests();
+#endif
 #endif

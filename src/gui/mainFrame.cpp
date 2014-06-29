@@ -1,4 +1,20 @@
+/*
+ *	mainFrame.cpp - Main 3Depict window
+ *	Copyright (C) 2014, D Haley 
 
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU General Public License for more details.
+
+ *	You should have received a copy of the GNU General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #ifdef __APPLE__
 //FIXME: workaround for UI layout under apple platform 
@@ -32,11 +48,7 @@ enum
 #include <wx/stdpaths.h>
 #include <wx/tipdlg.h>
 
-#if wxCHECK_VERSION(2, 9, 0)
-	#include <wx/utils.h>  // Needed for wxLaunchDefaultApplication
-#else
-	#include <wx/mimetype.h> //Needed for GetOpenCommand
-#endif
+#include <wx/utils.h>  // Needed for wxLaunchDefaultApplication
 
 //Custom program dialog windows
 #include "gui/dialogs/StashDialog.h" //Stash editor
@@ -58,6 +70,8 @@ enum
 #include "backend/filters/rangeFile.h"
 #include "backend/filters/dataLoad.h"
 
+
+#include "wx/propertyGridUpdater.h"
 
 using std::pair;
 using std::max;
@@ -118,7 +132,7 @@ const char * comboFilters_choices[FILTER_DROP_COUNT] =
 	NTRANS("Spectrum"),
 	NTRANS("Range File"),
 	NTRANS("Spat. Analysis"),
-	NTRANS("Voxelisation")
+	NTRANS("Voxelisation"),
 };
 
 //Mapping between filter ID and combo position
@@ -136,9 +150,10 @@ const unsigned int comboFiltersTypeMapping[FILTER_DROP_COUNT] = {
 	FILTER_TYPE_SPECTRUMPLOT,
 	FILTER_TYPE_RANGEFILE,
 	FILTER_TYPE_SPATIAL_ANALYSIS,
-	FILTER_TYPE_VOXELS
+	FILTER_TYPE_VOXELS,
  };
 //----
+
 
 //Constant identifiers for binding events in wxwidgets "event table"
 enum {
@@ -346,12 +361,13 @@ void clearWxTreeImages(wxTreeCtrl *t)
 MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title, const wxPoint& pos, const wxSize& size, long style):
     wxFrame(parent, id, title, pos, size, style)
 {
+	COMPILE_ASSERT( (THREEDEP_ARRAYSIZE(comboFilters_choices) + 1 ) == FILTER_TYPE_ENUM_END);
+
 	initedOK=false;
 	plotUpdates=false;
 	programmaticEvent=false;
 	fullscreenState=0;
 	verCheckThread=0;
-	lastMessageType=MESSAGE_NONE;
 	lastProgressData.reset();
 
 	//Set up the program icon handler
@@ -400,21 +416,7 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
     panelTop = new BasicGLPane(splitTopBottom);
 
 
-#if wxCHECK_VERSION(2,9,0)
 	glPanelOK = panelTop->displaySupported();
-#else
-	#if defined(__WXGTK20__) 
-		//I had to work this out by studying the construtor, and then testing simultaneously
-		//on a broken and working Gl install. booyah.
-		glPanelOK=panelTop->m_glWidget;
-	#elif defined(__WIN32) || defined(__WIN64) || defined(__APPLE__)
-		//I hope this works. I'm not 100% sure -- I can't seem to reliably break my GL under windows.
-		glPanelOK=panelTop->GetContext();
-	#else
-		//lets just hope it worked.
-		glPanelOK=true;
-	#endif
-#endif
 
 	if(!glPanelOK)
 	{
@@ -538,7 +540,7 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
     lblSettings = new wxStaticText(noteData, wxID_ANY, wxTRANS("Stashed Filters"));
 
 
-    comboStash = new wxComboBox(noteData, ID_COMBO_STASH, wxT(""), wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_DROPDOWN|wxTE_PROCESS_ENTER|SAFE_CB_SORT);
+    comboStash = new wxComboBox(noteData, ID_COMBO_STASH, wxT(""), wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_DROPDOWN|wxTE_PROCESS_ENTER|wxCB_SORT);
     btnStashManage = new wxButton(noteData, ID_BTN_STASH_MANAGE, wxT("..."),wxDefaultPosition,wxSize(28,28));
     filteringLabel = new wxStaticText(noteData, wxID_ANY, wxTRANS("New Filters"));
 
@@ -560,7 +562,7 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
 
 
 
-    comboFilters = new wxComboBox(filterTreePane, ID_COMBO_FILTER, wxT(""), wxDefaultPosition, wxDefaultSize, filterNames, wxCB_DROPDOWN|wxCB_READONLY|SAFE_CB_SORT);
+    comboFilters = new wxComboBox(filterTreePane, ID_COMBO_FILTER, wxT(""), wxDefaultPosition, wxDefaultSize, filterNames, wxCB_DROPDOWN|wxCB_READONLY|wxCB_SORT);
 
 
     treeFilters = new TextTreeCtrl(filterTreePane, ID_TREE_FILTERS, wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_HIDE_ROOT|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER|wxTR_EDIT_LABELS);
@@ -577,12 +579,14 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
     btnFilterTreeErrs = new wxBitmapButton(filterTreePane,ID_BTN_FILTERTREE_ERRS,wxArtProvider::GetBitmap(wxART_INFORMATION),wxDefaultPosition,wxSize(40,40));
 
     propGridLabel = new wxStaticText(filterPropertyPane, wxID_ANY, wxTRANS("Filter settings"));
-    gridFilterPropGroup = new wxCustomPropGrid(filterPropertyPane, ID_GRID_FILTER_PROPERTY);
+    gridFilterPropGroup = new wxPropertyGrid(filterPropertyPane, ID_GRID_FILTER_PROPERTY,wxDefaultPosition,wxDefaultSize,PROPERTY_GRID_STYLE);
+    gridFilterPropGroup->SetExtraStyle(PROPERTY_GRID_EXTRA_STYLE);
     labelCameraName = new wxStaticText(noteCamera, wxID_ANY, wxTRANS("Camera Name"));
     comboCamera = new wxComboBox(noteCamera, ID_COMBO_CAMERA, wxT(""), wxDefaultPosition, wxDefaultSize, 0, NULL, wxCB_DROPDOWN|wxTE_PROCESS_ENTER );
     buttonRemoveCam = new wxButton(noteCamera, wxID_REMOVE, wxEmptyString);
     cameraNamePropertySepStaticLine = new wxStaticLine(noteCamera, wxID_ANY);
-    gridCameraProperties = new wxCustomPropGrid(noteCamera, ID_GRID_CAMERA_PROPERTY);
+    gridCameraProperties = new wxPropertyGrid(noteCamera,ID_GRID_CAMERA_PROPERTY,
+					wxDefaultPosition,wxDefaultSize,PROPERTY_GRID_STYLE);
 #ifndef APPLE_EFFECTS_WORKAROUND
     checkPostProcessing = new wxCheckBox(notePost, ID_EFFECT_ENABLE, wxTRANS("3D Post-processing"));
 #endif
@@ -662,6 +666,8 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
     set_properties();
     do_layout();
 
+    backCameraPropGrid=0;
+    backFilterPropGrid=0;
     //Disable post-processing
 #ifndef APPLE_EFFECTS_WORKAROUND
     checkPostProcessing->SetValue(false); 
@@ -727,23 +733,14 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
 	    restoreConfigDefaults();
 	
 	
-	
-	//Attempt to load the auto-save file, if it exists
-	//-----------------
-	checkReloadAutosave();
-	//-----------------
-
 	//Try to set the window size to a nice size
 	SetSize(getNiceWindowSize());
-
 	initedOK=true;   
 
 
 
 
 
-	updateTimer->Start(UPDATE_TIMER_DELAY,wxTIMER_CONTINUOUS);
-	autoSaveTimer->Start(AUTOSAVE_DELAY*1000,wxTIMER_CONTINUOUS);
 
 #ifndef DISABLE_ONLINE_UPDATE
         wxDateTime datetime = wxDateTime::Today();	
@@ -795,28 +792,26 @@ MainWindowFrame::~MainWindowFrame()
 
 	//wxwidgets can crash if objects are ->Connect-ed  in 
 	// wxWindowBase::DestroyChildren(), so Disconnect before destructing
-#if wxCHECK_VERSION(2, 9, 0)
     comboCamera->Unbind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboCameraSetFocus, this);
     comboStash->Unbind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboStashSetFocus, this);
     noteDataView->Unbind(wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED, &MainWindowFrame::OnNoteDataView, this);
     treeFilters->Unbind(wxEVT_KEY_DOWN,&MainWindowFrame::OnTreeKeyDown,this);
-#else
-	noteDataView->Disconnect();
-	comboStash->Disconnect();
-	comboCamera->Disconnect();
-#endif
 }
 
 
+void MainWindowFrame::finaliseStartup()
+{
+	updateTimer->Start(UPDATE_TIMER_DELAY,wxTIMER_CONTINUOUS);
+	autoSaveTimer->Start(AUTOSAVE_DELAY*1000,wxTIMER_CONTINUOUS);
+}
+
 BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
-    EVT_GRID_CMD_EDITOR_SHOWN(ID_GRID_FILTER_PROPERTY,MainWindowFrame::OnFilterGridCellEditorShow)
-    EVT_GRID_CMD_EDITOR_HIDDEN(ID_GRID_FILTER_PROPERTY,MainWindowFrame::OnFilterGridCellEditorHide)
-    EVT_GRID_CMD_EDITOR_SHOWN(ID_GRID_CAMERA_PROPERTY,MainWindowFrame::OnCameraGridCellEditorShow)
-    EVT_GRID_CMD_EDITOR_HIDDEN(ID_GRID_CAMERA_PROPERTY,MainWindowFrame::OnCameraGridCellEditorHide)
     EVT_TIMER(ID_STATUS_TIMER,MainWindowFrame::OnStatusBarTimer)
     EVT_TIMER(ID_PROGRESS_TIMER,MainWindowFrame::OnProgressTimer)
     EVT_TIMER(ID_UPDATE_TIMER,MainWindowFrame::OnUpdateTimer)
     EVT_TIMER(ID_AUTOSAVE_TIMER,MainWindowFrame::OnAutosaveTimer)
+    EVT_IDLE(MainWindowFrame::OnIdle)
+   
     EVT_SPLITTER_UNSPLIT(ID_SPLIT_TOP_BOTTOM, MainWindowFrame::OnRawDataUnsplit) 
     EVT_SPLITTER_UNSPLIT(ID_SPLIT_LEFTRIGHT, MainWindowFrame::OnControlUnsplit) 
     EVT_SPLITTER_UNSPLIT(ID_SPLIT_SPECTRA, MainWindowFrame::OnSpectraUnsplit) 
@@ -864,9 +859,6 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_TEXT_ENTER(ID_COMBO_STASH, MainWindowFrame::OnComboStashEnter)
     EVT_COMBOBOX(ID_COMBO_STASH, MainWindowFrame::OnComboStash)
     EVT_TREE_END_DRAG(ID_TREE_FILTERS, MainWindowFrame::OnTreeEndDrag)
-#if !defined(WX_TREE_WORKAROUND)
-    EVT_TREE_KEY_DOWN(ID_TREE_FILTERS, MainWindowFrame::OnTreeKeyDown)
-#endif
     EVT_TREE_SEL_CHANGING(ID_TREE_FILTERS, MainWindowFrame::OnTreeSelectionPreChange)
     EVT_TREE_SEL_CHANGED(ID_TREE_FILTERS, MainWindowFrame::OnTreeSelectionChange)
     EVT_TREE_DELETE_ITEM(ID_TREE_FILTERS, MainWindowFrame::OnTreeDeleteItem)
@@ -874,13 +866,9 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_BUTTON(ID_BTN_EXPAND, MainWindowFrame::OnBtnExpandTree)
     EVT_BUTTON(ID_BTN_COLLAPSE, MainWindowFrame::OnBtnCollapseTree)
     EVT_BUTTON(ID_BTN_FILTERTREE_ERRS, MainWindowFrame::OnBtnFilterTreeErrs)
-#if wxCHECK_VERSION(2,9,0)
-    EVT_GRID_CMD_CELL_CHANGED(ID_GRID_FILTER_PROPERTY, MainWindowFrame::OnGridFilterPropertyChange)
-    EVT_GRID_CMD_CELL_CHANGED(ID_GRID_CAMERA_PROPERTY, MainWindowFrame::OnGridCameraPropertyChange)
-#else
-    EVT_GRID_CMD_CELL_CHANGE(ID_GRID_FILTER_PROPERTY, MainWindowFrame::OnGridFilterPropertyChange)
-    EVT_GRID_CMD_CELL_CHANGE(ID_GRID_CAMERA_PROPERTY, MainWindowFrame::OnGridCameraPropertyChange)
-#endif
+    EVT_PG_CHANGING(ID_GRID_FILTER_PROPERTY, MainWindowFrame::OnGridFilterPropertyChange)
+    EVT_PG_CHANGING(ID_GRID_CAMERA_PROPERTY, MainWindowFrame::OnGridCameraPropertyChange)
+    EVT_PG_DOUBLE_CLICK(ID_GRID_FILTER_PROPERTY, MainWindowFrame::OnGridFilterDClick)
     EVT_TEXT(ID_COMBO_CAMERA, MainWindowFrame::OnComboCameraText)
     EVT_TEXT_ENTER(ID_COMBO_CAMERA, MainWindowFrame::OnComboCameraEnter)
     EVT_CHECKBOX(ID_CHECK_ALPHA, MainWindowFrame::OnCheckAlpha)
@@ -917,6 +905,21 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     // end wxGlade
 END_EVENT_TABLE();
 
+
+void MainWindowFrame::OnIdle(wxIdleEvent &evt)
+{
+	if(backFilterPropGrid)
+	{
+		delete backFilterPropGrid;
+		backFilterPropGrid=0;
+	}
+
+	if(backCameraPropGrid)
+	{
+		delete backCameraPropGrid;
+		backCameraPropGrid=0;
+	}
+}
 
 unsigned int MainWindowFrame::guessFileType(const std::string &dataFile)
 {
@@ -1268,13 +1271,13 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge,bool noUpdate
 		if(camNames.size() > 1)
 		{
 			//Use the remembered ID to update the grid.
-			visControl.updateCamPropertyGrid(gridCameraProperties,
+			visControl.updateCameraPropGrid(gridCameraProperties,
 						visControl.getActiveCamId());
 		}
 		else
 		{
 			//Reset the camera property fields & combo box
-			gridCameraProperties->clear();
+			gridCameraProperties->Clear();
 			comboCamera->SetValue(wxCStr(TRANS(cameraIntroString)));
 		}
 		}
@@ -1311,7 +1314,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge,bool noUpdate
 			ASSERT(comboStash->GetClientObject(comboStash->GetCount()-1));
 		}
 
-		gridFilterPropGroup->clear();
+		gridFilterPropGroup->Clear();
 
 	}
 	else 
@@ -1383,11 +1386,11 @@ void MainWindowFrame::OnRecentFile(wxCommandEvent &event)
 			//See if the user wants to save the current state
 			if(guessFileType(stlStr(f)) == FILE_TYPE_XML)
 				checkAskSaveState();
-		
-			if(loadFile(f))
+	
+			loadOK=loadFile(f);	
+			if(loadOK)
 			{
-				if(loadOK)
-					statusMessage(TRANS("Loaded file."),MESSAGE_INFO);
+				statusMessage(TRANS("Loaded file."),MESSAGE_INFO);
 				panelTop->forceRedraw();
 			}
 		}
@@ -1565,11 +1568,25 @@ void MainWindowFrame::OnFileExportImage(wxCommandEvent &event)
 {
 	wxFileDialog wxF(this,wxTRANS("Save Image..."), wxT(""),
 		wxT(""),wxTRANS("PNG File (*.png)|*.png|All Files (*)|*"),wxFD_SAVE);
+	std::string dataFile; 
+	do
+	{
 
-	if( (wxF.ShowModal() == wxID_CANCEL))
-		return;
+		if( (wxF.ShowModal() == wxID_CANCEL))
+			return;
 
-	std::string dataFile = stlStr(wxF.GetPath());
+		dataFile=stlStr(wxF.GetPath());
+
+		//ask user for confirm if file exists
+		if(!wxFileExists(wxF.GetPath()))
+			break;
+
+		wxMessageDialog wxMd(this,wxTRANS("File already exists. Overwrite?"),
+					wxTRANS("Overwrite?"),wxYES_NO|wxICON_WARNING);
+		
+		if( wxMd.ShowModal() == wxID_YES)
+			break;
+	} while(true); 
 	
 	//Show a resolution chooser dialog
 	ResolutionDialog d(this,wxID_ANY,wxTRANS("Choose resolution"));
@@ -2543,7 +2560,7 @@ void MainWindowFrame::OnEditUndo(wxCommandEvent &event)
 	}
 	else
 	{
-		gridFilterPropGroup->clear();
+		gridFilterPropGroup->Clear();
 		updateLastRefreshBox();
 	}
 
@@ -2571,7 +2588,7 @@ void MainWindowFrame::OnEditRedo(wxCommandEvent &event)
 	}
 	else
 	{
-		gridFilterPropGroup->clear();
+		gridFilterPropGroup->Clear();
 		updateLastRefreshBox();
 	}
 
@@ -2828,54 +2845,7 @@ void MainWindowFrame::OnHelpHelp(wxCommandEvent &event)
 	if( wxFileExists(wxStr(s))  && s.size())
 	{
 		//we found the manual. Launch the default handler.
-#if wxCHECK_VERSION(2, 9, 0)
 		launchedOK=wxLaunchDefaultApplication(wxStr(s));
-#else
-		//its a bit more convoluted for earlier versions of wx.
-		//we have to try xdg-open or open for Linux and mac respectively
-		//for windows, we need to use the wxWidgets GetOpenCommand
-	
-		long appPID;
-
-	#if defined(__linux__)
-		//Try xdg-open first
-		wxString str;
-		str= wxT("xdg-open ");
-		str+=wxStr(s);
-		appPID=wxExecute(str,wxEXEC_ASYNC);
-		launchedOK=(appPID!=0);
-	#elif defined(__APPLE__)
-		//Try open first
-		wxString str;
-		str= wxT("open ");
-		str+=wxStr(s);
-		appPID=wxExecute(str,wxEXEC_ASYNC);
-		launchedOK=(appPID!=0);
-	#endif
-
-		//No luck still? Try wx's quirky GetOpenCommand		
-		if(!launchedOK)
-		{
-			wxString command;
-			//Sigh. In version < 2.9; wx uses the mime-type
-			//manager to wrap up the construction
-			//of wxFileType object (private constructor).
-			//so we can't just *make* a wxFileType
-			//we have to derive one from a "mime-type manager".
-			//the only way to do this is from the file extension
-			//or by passing the mime-string.
-			wxMimeTypesManager m;
-			wxFileType *t;
-				
-			t=m.GetFileTypeFromExtension(wxT("pdf"));
-			if(t)
-			{
-				command=t->GetOpenCommand(wxStr(s));
-				appPID=wxExecute(command,wxEXEC_ASYNC);
-				launchedOK=(appPID!=0);
-			}
-		}
-#endif
 	}
 
 	//Still no go? Give up and launch a browser.
@@ -3174,7 +3144,7 @@ void MainWindowFrame::OnTreeSelectionChange(wxTreeEvent &event)
 	size_t filterId;
 	if(!getTreeFilterId(treeFilters->GetSelection(),filterId))
 	{
-		gridFilterPropGroup->clear();
+		gridFilterPropGroup->Clear();
 		return;
 	}
 
@@ -3182,10 +3152,6 @@ void MainWindowFrame::OnTreeSelectionChange(wxTreeEvent &event)
 
 	updateLastRefreshBox();
 	
-
-#if !wxCHECK_VERSION(2,9,0)
-	treeFilters->Fit();	
-#endif
 	panelTop->forceRedraw();
 
 }
@@ -3384,10 +3350,6 @@ void MainWindowFrame::OnBtnFilterTreeErrs(wxCommandEvent &event)
 
 }
 
-//There appears to be a bug in MSW wx 3.0. Key down events don't work
-// in MSW (including in the wx official samples). To work around, use generic
-// KEY_DOWN event
-#if defined(WX_TREE_WORKAROUND)
 void MainWindowFrame::OnTreeKeyDown(wxKeyEvent &event)
 {
  	if(currentlyUpdatingScene)
@@ -3430,7 +3392,7 @@ void MainWindowFrame::OnTreeKeyDown(wxKeyEvent &event)
 			//Remove the item from the Tree 
 			visControl.removeFilterSubtree(((wxTreeUint *)tData)->value);
 			//Clear property grid
-			gridFilterPropGroup->clear();
+			gridFilterPropGroup->Clear();
 			if(parent !=treeFilters->GetRootItem())
 			{
 				ASSERT(parent.IsOk()); // should be - base node should always exist.
@@ -3468,93 +3430,14 @@ void MainWindowFrame::OnTreeKeyDown(wxKeyEvent &event)
 	}
 }
 
-#else
 
-void MainWindowFrame::OnTreeKeyDown(wxTreeEvent &event)
+void MainWindowFrame::OnGridFilterPropertyChange(wxPropertyGridEvent &event)
 {
-	if(currentlyUpdatingScene)
-	{
-		event.Veto();
-		return;
-	}
-	const wxKeyEvent k = event.GetKeyEvent();
-	switch(k.GetKeyCode())
-	{
-		case WXK_BACK:
-		case WXK_DELETE:
-		{
-			wxTreeItemId id;
 
-			if(!treeFilters->GetCount())
-				return;
-
-			id=treeFilters->GetSelection();
-
-			if(!id.IsOk() || id == treeFilters->GetRootItem())
-				return;
-
-
-			//TODO: Refactor out wxTreeItem... code, into separate routine
-			// that only spits out viscontrol Ids
-			//Rebuild the tree control, ensuring that the parent is visible,
-			//if it has a parent (recall root node  of wx control is hidden)
-			
-			//Get the parent & its data
-			wxTreeItemId parent = treeFilters->GetItemParent(id);
-			wxTreeItemData *parentData=treeFilters->GetItemData(parent);
-
-			//Ask viscontrol to ensure that the parent stays persistently
-			// visible when next rebuilding the tree control
-			visControl.setWxTreeFilterViewPersistence(
-					((wxTreeUint*)parentData)->value);	
-
-			//Tree data contains unique identifier for vis control to do matching
-			wxTreeItemData *tData=treeFilters->GetItemData(id);
-			//Remove the item from the Tree 
-			visControl.removeFilterSubtree(((wxTreeUint *)tData)->value);
-			//Clear property grid
-			gridFilterPropGroup->clear();
-			if(parent !=treeFilters->GetRootItem())
-			{
-				ASSERT(parent.IsOk()); // should be - base node should always exist.
-
-				//Ensure that the parent stays visible 
-				visControl.setWxTreeFilterViewPersistence(
-						((wxTreeUint*)parentData)->value);
-				visControl.updateWxTreeCtrl(treeFilters);
-
-				
-				//OK, so those old Id s are no longer valid,
-				//as we just rebuilt the tree. We need new ones
-				//Parent is now selected
-				parent=treeFilters->GetSelection();
-				parentData=treeFilters->GetItemData(parent);
-
-
-				//Update the filter property grid with the parent's data
-				visControl.updateFilterPropGrid(gridFilterPropGroup,
-							((wxTreeUint *)parentData)->value);
-			}
-			else
-			{
-				if(parent.IsOk())
-					visControl.updateWxTreeCtrl(treeFilters);
-			}
+	//Silence error mesages
+	// we will handle validation in the backend
+	event.SetValidationFailureBehavior(0);
 	
-			//Force a scene update, independent of if autoUpdate is enabled. 
-			doSceneUpdate();	
-		
-			break;
-		}
-		default:
-			event.Skip();
-	}
-}
-#endif
-
-void MainWindowFrame::OnGridFilterPropertyChange(wxGridEvent &event)
-{
-
 	if(programmaticEvent || currentlyUpdatingScene || visControl.isRefreshing())
 	{
 		event.Veto();
@@ -3563,12 +3446,7 @@ void MainWindowFrame::OnGridFilterPropertyChange(wxGridEvent &event)
 
 	programmaticEvent=true;
 	//Should only be in the second col
-	ASSERT(event.GetCol()==1);
-
-	std::string value; 
-	value = stlStr(gridFilterPropGroup->GetCellValue(
-					event.GetRow(),1));
-
+	
 	size_t filterId;
 	if(!getTreeFilterId(treeFilters->GetSelection(),filterId))
 	{
@@ -3577,10 +3455,19 @@ void MainWindowFrame::OnGridFilterPropertyChange(wxGridEvent &event)
 	}
 
 
+
+	//Obtain the key/value pairing that we are about to set
+	std::string newValue,keyStr;
+	newValue=getPropValueFromEvent(event);
+	
+	size_t key;
+	keyStr=event.GetProperty()->GetName();
+	stream_cast(key,keyStr);
+
+	//Try to apply the new value
 	bool needUpdate;
-	int row=event.GetRow();
 	if(!visControl.setFilterProperty(filterId,
-		gridFilterPropGroup->getKeyFromRow(row),value,needUpdate))
+				key,newValue,needUpdate))
 	{
 		event.Veto();
 		programmaticEvent=false;
@@ -3593,13 +3480,30 @@ void MainWindowFrame::OnGridFilterPropertyChange(wxGridEvent &event)
 	else 
 		clearWxTreeImages(treeFilters);
 
-	visControl.updateFilterPropGrid(gridFilterPropGroup,filterId);
+	//See wx bug #16222 - cannot modify a property grid's contents
+	// from a change event. Must work in a side-objectm then swap
+	//--
+	backFilterPropGrid= new wxPropertyGrid(filterPropertyPane,ID_GRID_FILTER_PROPERTY,
+					wxDefaultPosition,wxDefaultSize,PROPERTY_GRID_STYLE);
+	backFilterPropGrid->SetExtraStyle(PROPERTY_GRID_EXTRA_STYLE);
 
-	Layout();
+	
+	visControl.updateFilterPropGrid(backFilterPropGrid,filterId,
+			stlStr(gridFilterPropGroup->SaveEditableState()));
+
+	std::swap(backFilterPropGrid,gridFilterPropGroup);
+	do_filtergrid_prop_layout();
+	//--
+
 	programmaticEvent=false;
 }
 
-void MainWindowFrame::OnGridCameraPropertyChange(wxGridEvent &event)
+void MainWindowFrame::OnGridFilterDClick(wxPropertyGridEvent &event)
+{
+	Refresh();
+}
+
+void MainWindowFrame::OnGridCameraPropertyChange(wxPropertyGridEvent &event)
 {
 
 	if(programmaticEvent)
@@ -3609,14 +3513,48 @@ void MainWindowFrame::OnGridCameraPropertyChange(wxGridEvent &event)
 	}
 
 	programmaticEvent=true;
-	//Should only be in the second col
-	ASSERT(event.GetCol()==1);
+	
+	std::string eventType,newValue;
+	eventType=event.GetValue().GetType();
+	if(eventType == "long")
+	{
+		//Either integer property or enum
+		//integer property
+		wxLongLong ll;
+		ll=event.GetValue().GetLong();
+		
+		const wxPGChoices &choices = event.GetProperty()->GetChoices();
+		if(!choices.IsOk())
+		{
+			stream_cast(newValue,ll);
+		}
+		else
+		{
+			//So wx makes life har dhere. We need to do a dance to get the selection
+			// as a string
+			unsigned int ul;
+			ul=ll.ToLong();
 
-	std::string value; 
-	value = stlStr(gridCameraProperties->GetCellValue(
-					event.GetRow(),1));
+			wxArrayString arrStr;
+			arrStr=choices.GetLabels();
+			newValue=arrStr[ul];
+		}
+	}
+	else
+	{
+		//We don't need colour props in camera
+		// not implemented
+		ASSERT(eventType != "wxColour");
+		newValue =  event.GetValue().GetString();
+	}
 
-	//Get the camera ID value (long song and dance that it is)
+
+	std::string keyStr;
+	size_t key;
+	keyStr=event.GetProperty()->GetName();
+	stream_cast(key,keyStr);
+
+	//Get the camera ID value 
 	wxListUint *l;
 	int n = comboCamera->FindString(comboCamera->GetValue());
 	if(n == wxNOT_FOUND)
@@ -3631,23 +3569,27 @@ void MainWindowFrame::OnGridCameraPropertyChange(wxGridEvent &event)
 	size_t cameraId;
 	cameraId = l->value;
 
-	int row=event.GetRow();
-	if(visControl.setCamProperties(cameraId,gridCameraProperties->getKeyFromRow(row),value))
-		visControl.updateCamPropertyGrid(gridCameraProperties,cameraId);
-	else
-		event.Veto();
+	//Set property
+	visControl.setCamProperties(cameraId,key,newValue);
 
+	//FIXME :Need to send the ne grid, not the old, due to wx bug
+	//See wx bug #16222 - cannot modify a property grid's contents
+	// from a change event. Must work in a side-objectm then swap
+	//--
+	backCameraPropGrid= new wxPropertyGrid(noteCamera,ID_GRID_CAMERA_PROPERTY,
+					wxDefaultPosition,wxDefaultSize,PROPERTY_GRID_STYLE);
+	backCameraPropGrid->SetExtraStyle(PROPERTY_GRID_EXTRA_STYLE);
+	
+	visControl.updateCameraPropGrid(backCameraPropGrid,cameraId);
+	
+	std::swap(backCameraPropGrid,gridCameraProperties);
+	do_cameragrid_prop_layout();
+
+	//Ensure that the GL panel shows latest cam orientation 
 	panelTop->forceRedraw();
 	programmaticEvent=false;
-
-
 }
 
-void MainWindowFrame::OnCameraGridCellEditorHide(wxGridEvent &e)
-{
-	//Unlock the camera combo, now that we have finished editing
-	comboCamera->Enable(true);
-}
 
 void MainWindowFrame::OnComboCameraText(wxCommandEvent &event)
 {
@@ -3691,7 +3633,7 @@ void MainWindowFrame::OnComboCameraEnter(wxCommandEvent &event)
 		statusMessage(s.c_str(),MESSAGE_INFO);
 		
 		//refresh the camera property grid
-		visControl.updateCamPropertyGrid(gridCameraProperties ,l->value);
+		visControl.updateCameraPropGrid(gridCameraProperties ,l->value);
 
 		setSaveStatus();
 
@@ -3710,7 +3652,7 @@ void MainWindowFrame::OnComboCameraEnter(wxCommandEvent &event)
 	statusMessage(s.c_str(),MESSAGE_INFO);
 
 	visControl.setCam(u);
-	visControl.updateCamPropertyGrid(gridCameraProperties,u);
+	visControl.updateCameraPropGrid(gridCameraProperties,u);
 	panelTop->forceRedraw();
 
 	setSaveStatus();
@@ -3725,7 +3667,7 @@ void MainWindowFrame::OnComboCamera(wxCommandEvent &event)
 
 
 
-	visControl.updateCamPropertyGrid(gridCameraProperties,l->value);
+	visControl.updateCameraPropGrid(gridCameraProperties,l->value);
 
 	std::string s = std::string(TRANS("Restored camera: ") ) +stlStr(comboCamera->GetValue());	
 	statusMessage(s.c_str(),MESSAGE_INFO);
@@ -3905,6 +3847,7 @@ bool MainWindowFrame::doSceneUpdate()
 	//Set focus on the main frame itself, so that we can catch escape key presses
 	SetFocus();
 
+	wxBusyCursor busyCursor;
 	unsigned int errCode=visControl.refreshFilterTree();
 
 	progressTimer->Stop();
@@ -4037,25 +3980,36 @@ void MainWindowFrame::setFilterTreeAnalysisImages()
 	//apply the filter->icon mapping
 	setWxTreeImages(treeFilters,iconSettings);
 	
-#if defined(__WIN32) || defined(__WIN64)
-	//HACK: Under MSW, force button to correct positioning, by forcing a relayout
-#if !wxCHECK_VERSION(2,9,0)
-	treeFilters->GetParent()->Layout();
-#endif
-#endif
 }
 
 void MainWindowFrame::OnStatusBarTimer(wxTimerEvent &event)
 {
-	for(unsigned int ui=0; ui<3; ui++)
+	if(statusQueue.empty())
 	{
+		//clear the status bar colour, then wipe the status text from each field
 		MainFrame_statusbar->SetBackgroundColour(wxNullColour);
-		MainFrame_statusbar->SetStatusText(wxT(""),ui);
-	}
-	
-	
-	//Stop the status timer, just in case
-	statusTimer->Stop();
+		for(unsigned int ui=0; ui<3; ui++)
+			MainFrame_statusbar->SetStatusText(wxT(""),ui);
+		
+		//Stop the status timer, as we are done 
+		statusTimer->Stop();
+	}	
+	else
+	{
+		//update the status bar with the next
+		// message
+		std::string msg,tmpStr;
+		if(statusQueue.size() > 1)
+		{
+			stream_cast(tmpStr,statusQueue.size());
+			msg = tmpStr + string(" ") + TRANS("msgs");
+			msg+=" : ";
+		}
+		msg+= statusQueue.front().second,
+		showStatusMessage(msg.c_str(),
+				statusQueue.front().first);
+		statusQueue.pop_front();
+	}	
 }
 
 void MainWindowFrame::OnProgressTimer(wxTimerEvent &event)
@@ -4168,7 +4122,7 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 			wxListUint *l;
 			l =(wxListUint*)  comboCamera->GetClientObject(n);
 
-			visControl.updateCamPropertyGrid(gridCameraProperties,l->value);
+			visControl.updateCameraPropGrid(gridCameraProperties,l->value);
 		}
 
 		panelTop->clearCameraUpdates();
@@ -4198,50 +4152,79 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 
 void MainWindowFrame::statusMessage(const char *message, unsigned int type)
 {
-	bool sendMessage=true;
+
+	if(type == MESSAGE_NONE)
+	{
+		statusTimer->Stop();
+		statusQueue.clear();
+		
+		//clear the status bar colour, then wipe the status text from each field
+		MainFrame_statusbar->SetBackgroundColour(wxNullColour);
+		for(unsigned int ui=0; ui<3; ui++)
+			MainFrame_statusbar->SetStatusText(wxT(""),ui);
+		
+	}
+	else
+	{
+		if(statusTimer->IsRunning())
+		{
+			//go through and strip
+			// other hints
+			for(list<pair<unsigned int,string> >::iterator it=statusQueue.begin();
+				it!=statusQueue.end(); )
+			{
+				if(it->first != MESSAGE_HINT)
+				{
+					++it;	
+					continue;
+				}
+				
+				it=statusQueue.erase(it);
+			}
+				
+			//Emplace our message
+			statusQueue.push_back(make_pair(type,message));	
+
+			//keep only unique messages 
+			list<pair<unsigned int,string> >::iterator tmpIt;
+			tmpIt= std::unique(statusQueue.begin(),statusQueue.end());
+			statusQueue.erase(tmpIt,statusQueue.end());	
+			
+			if(!statusQueue.empty())
+			showStatusMessage(statusQueue.begin()->second.c_str(),statusQueue.begin()->first);	
+
+			
+		}
+		else
+		{
+			showStatusMessage(message,type);	
+			statusTimer->Start(STATUS_TIMER_DELAY);
+		}
+	}
+}
+
+void MainWindowFrame::showStatusMessage(const char *message, unsigned int type)
+{
+	//Wx does not support statusbar colouring under MSW
+	// using this can result in visual oddness
+	#if !(defined(__WIN32) || defined(__WIN64))
 	switch(type)
 	{
 		case MESSAGE_ERROR:
-		//Wx does not support statusbar colouring under MSW
-		// using this can result in visual oddness
-		#if !(defined(__WIN32) || defined(__WIN64))
 			MainFrame_statusbar->SetBackgroundColour(*wxGREEN);
-		#endif
 			break;
 		case MESSAGE_INFO:
-		//Wx does not support statusbar colouring under MSW, and using this can result in visual oddness
-		#if !(defined(__WIN32) || defined(__WIN64))
 			MainFrame_statusbar->SetBackgroundColour(*wxCYAN);
-		#endif
 			break;
 		case MESSAGE_HINT:
-			break;
-		//Pseudo-messages
-		case MESSAGE_NONE:
-			// No actions needed, just supply the message
-			ASSERT( string(message)== string(""));
 			MainFrame_statusbar->SetBackgroundColour(wxNullColour);
-			break;
-		case MESSAGE_NONE_BUT_HINT:
-			ASSERT( string(message)== string(""));
-			//we need to clear any messages other than "hintMessage"
-			sendMessage=(lastMessageType==MESSAGE_HINT);
 			break;
 		default:
 			ASSERT(false);
 	}
-
-	lastMessageType=type;
+	#endif
 	
-	if(sendMessage)
-	{
-		MainFrame_statusbar->SetStatusText(wxCStr(message),0);
-		for(size_t ui=1;ui<3; ui++)
-		{
-			MainFrame_statusbar->SetStatusText(wxT(""),ui);
-		}
-	}
-	statusTimer->Start(STATUS_TIMER_DELAY,wxTIMER_ONE_SHOT);
+	MainFrame_statusbar->SetStatusText(wxCStr(message),0);
 }
 
 void MainWindowFrame::updateProgressStatus()
@@ -4637,6 +4620,10 @@ void MainWindowFrame::OnViewFullscreen(wxCommandEvent &event)
 
 void MainWindowFrame::OnButtonRefresh(wxCommandEvent &event)
 {
+	//TODO: Remove this line when wx bug 16222 is fixed
+	if(!gridCameraProperties || !gridFilterPropGroup)
+		return;
+
 	if(currentlyUpdatingScene || visControl.isRefreshing())
 		return;
 
@@ -4645,7 +4632,6 @@ void MainWindowFrame::OnButtonRefresh(wxCommandEvent &event)
 	if(wxm.ShiftDown())
 	{
 		visControl.purgeFilterCache();
-		statusMessage("",MESSAGE_NONE);
 	}
 	else
 	{
@@ -4670,10 +4656,6 @@ void MainWindowFrame::OnFilterPropDoubleClick(wxSplitterEvent &event)
 
 void MainWindowFrame::OnControlSplitMove(wxSplitterEvent &event)
 {
-	//Set the grid an event so that it can adapt the grid margins to fit
-	wxGridEvent gridEvent(ID_GRID_RAW_DATA,wxEVT_GRID_LABEL_LEFT_DCLICK,NULL);
-	wxPostEvent(gridFilterPropGroup,gridEvent);
-
 	//For some reason, the damage rectangle is not updated
 	// for the tree ctrl
 	treeFilters->Refresh();
@@ -4707,207 +4689,6 @@ void MainWindowFrame::OnSpectraUnsplit(wxSplitterEvent &event)
 	configFile.setPanelEnabled(CONFIG_STARTUPPANEL_PLOTLIST,false);
 }
 
-//This function modifies the properties before showing the cell content editor.
-//This is needed only for certain data types (colours, bools) other data types are edited
-//using the default editor and modified using ::OnGridFilterPropertyChange
-void MainWindowFrame::OnFilterGridCellEditorShow(wxGridEvent &event)
-{
-
-	if(programmaticEvent )
-	{
-		event.Skip();
-		return;
-	}
-
-
-	//Find where the event occurred (cell & property)
-	const GRID_PROPERTY *item;
-
-	unsigned int key;
-	key=gridFilterPropGroup->getKeyFromRow(event.GetRow());
-
-	item=gridFilterPropGroup->getProperty(key);
-
-	//Remove any icons that show filter errors or warning state
-	clearWxTreeImages(treeFilters);
-
-	bool needUpdate=false;
-
-	//If this occurs at run-time, then just abort, otherwise throw error
-	ASSERT(treeFilters->GetSelection() != treeFilters->GetRootItem());
-	if(treeFilters->GetSelection() == treeFilters->GetRootItem())
-		return;
-
-	//Get the filter ID value 
-	size_t filterId;
-	if(!getTreeFilterId(treeFilters->GetSelection(),filterId))
-		return;
-
-	switch(item->type)
-	{
-		case PROPERTY_TYPE_BOOL:
-		{
-			std::string s;
-			//Toggle the property in the grid
-			if(item->data == "0")
-				s= "1";
-			else
-				s="0";
-			visControl.setFilterProperty(filterId,key,s,needUpdate);
-
-			event.Veto();
-			break;
-		}
-		case PROPERTY_TYPE_COLOUR:
-		{
-			//Show a wxColour choose dialog. 
-			wxColourData d;
-
-			unsigned char r,g,b,a;
-			parseColString(item->data,r,g,b,a);
-
-			d.SetColour(wxColour(r,g,b,a));
-			wxColourDialog *colDg=new wxColourDialog(this->GetParent(),&d);
-						
-
-			if( colDg->ShowModal() == wxID_OK)
-			{
-				wxColour c;
-				//Change the colour
-				c=colDg->GetColourData().GetColour();
-				
-				std::string s;
-				genColString(c.Red(),c.Green(),c.Blue(),s);
-			
-				//Pass the new colour to the viscontrol system, which updates
-				//the filters	
-				visControl.setFilterProperty(filterId,key,s,needUpdate);
-			}
-
-			//Set the filter property
-			//Disallow direct editing of the grid cell
-			event.Veto();
-
-			break;
-		}	
-		default:
-		{
-			//we will handle this after the user has edited the cell contents
-			//but we must lock controls that can alter the active filter, and thereby changing the 
-			// filter grid in the meantime
-			setLockUI(true,WINDOW_LOCK_PROPEDIT);
-			break;
-		}
-	}
-
-	if(needUpdate)
-	{
-		visControl.updateFilterPropGrid(gridFilterPropGroup,filterId);
-
-		if(checkAutoUpdate->GetValue())
-			doSceneUpdate();
-		else
-			clearWxTreeImages(treeFilters);
-	}
-
-	setSaveStatus();
-}
-
-void MainWindowFrame::OnFilterGridCellEditorHide(wxGridEvent &event)
-{
-	//re-enable the controls that were locked during OnFilterGridCellEditorShow
-	setLockUI(false,WINDOW_LOCK_PROPEDIT);
-}
-
-void MainWindowFrame::OnCameraGridCellEditorShow(wxGridEvent &event)
-{
-	if(programmaticEvent)
-	{
-		event.Skip();
-		return;
-	}
-	//Find where the event occurred (cell & property)
-	const GRID_PROPERTY *item;
-
-	unsigned int key;
-	key=gridCameraProperties->getKeyFromRow(event.GetRow());
-
-	item=gridCameraProperties->getProperty(key);
-
-	//Get the camera ID
-	wxListUint *l;
-	int n = comboCamera->FindString(comboCamera->GetValue());
-	if( n == wxNOT_FOUND)
-		return;
-		
-	l =(wxListUint*)  comboCamera->GetClientObject(n);
-	if(!l)
-		return;
-	
-	size_t camUniqueID=l->value;
-
-
-	switch(item->type)
-	{
-		case PROPERTY_TYPE_BOOL:
-		{
-			std::string s;
-			//Toggle the property in the grid
-			if(item->data == "0")
-				s= "1";
-			else
-				s="0";
-			visControl.setCamProperties(camUniqueID,key,s);
-		
-			//For some reason this does not  redraw neatly. Force a redraw
-			visControl.updateCamPropertyGrid(gridCameraProperties,camUniqueID);
-
-			event.Veto();
-			break;
-		}
-		case PROPERTY_TYPE_COLOUR:
-		{
-			//Show a wxColour choose dialog. 
-			wxColourData d;
-
-			unsigned char r,g,b,a;
-			parseColString(item->data,r,g,b,a);
-
-			d.SetColour(wxColour(r,g,b,a));
-			wxColourDialog *colDg=new wxColourDialog(this->GetParent(),&d);
-						
-
-			if( colDg->ShowModal() == wxID_OK)
-			{
-				wxColour c;
-				//Change the colour
-				c=colDg->GetColourData().GetColour();
-				
-				std::string s;
-				genColString(c.Red(),c.Green(),c.Blue(),s);
-			
-				//Pass the new colour to the viscontrol system, which updates
-				//the filters	
-				visControl.setCamProperties(camUniqueID,key,s);
-			}
-
-			//Set the filter property
-			//Disallow direct editing of the grid cell
-			event.Veto();
-
-			break;
-		}	
-		default:
-			//we will handle this after the user has edited the cell contents
-			//Lock the camera combo, so the user can't alter the camera data while we are using the editor
-			comboCamera->Enable(false);
-			break;
-	}
-
-	panelTop->forceRedraw();
-
-	setSaveStatus();
-}
 
 void MainWindowFrame::OnButtonGridCopy(wxCommandEvent &event)
 {
@@ -4916,11 +4697,7 @@ void MainWindowFrame::OnButtonGridCopy(wxCommandEvent &event)
 
 void MainWindowFrame::OnButtonGridSave(wxCommandEvent &event)
 {
-#if wxCHECK_VERSION(2,9,0)
 	if(!gridRawData->GetNumberRows()||!gridRawData->GetNumberCols())
-#else
-	if(!gridRawData->GetRows()||!gridRawData->GetCols())
-#endif
 	{
 		statusMessage(TRANS("No data to save"),MESSAGE_ERROR);
 		return;
@@ -5049,7 +4826,7 @@ void MainWindowFrame::OnButtonRemoveCam(wxCommandEvent &event)
 		
 		programmaticEvent=true;
 		comboCamera->SetValue(wxT(""));
-		gridCameraProperties->clear();
+		gridCameraProperties->Clear();
 		programmaticEvent=false;
 
 		setSaveStatus();
@@ -5067,12 +4844,10 @@ void MainWindowFrame::OnSpectraListbox(wxCommandEvent &event)
 	//Spin through the selected items
 	for(unsigned int ui=0;ui<plotList->GetCount(); ui++)
 	{
-	 	wxListUint *l;
 		unsigned int plotID;
 
 		//Retrieve the uniqueID
-		l=(wxListUint*)plotList->GetClientObject(ui);
-		plotID = l->value;
+		plotID = visControl.getPlotID(ui);
 
 		panelSpectra->setPlotVisible(plotID,plotList->IsSelected(ui));
 
@@ -5382,6 +5157,16 @@ void MainWindowFrame::restoreConfigDefaults()
 		visControl.setIonDisplayLimit(configFile.getMaxPoints());
 	}
 
+	
+	if(configFile.getWantStartupOrthoCam())
+	{
+		visControl.setCamProperties(visControl.getActiveCamId(), 
+					CAMERA_KEY_LOOKAT_PROJECTIONMODE,TRANS("Orthogonal"));
+	}
+}
+
+void MainWindowFrame::checkShowTips()
+{
 	//Show startup tip dialog as needed
 	if(configFile.wantStartupTips())
 	{
@@ -5390,13 +5175,12 @@ void MainWindowFrame::restoreConfigDefaults()
 		if(!tipFile.empty())
 		{
 			const unsigned int ROUGH_NUMBER_TIPS=22;
-			bool wantTipsAgain;
 			wxTipProvider *tipProvider = wxCreateFileTipProvider(wxStr(tipFile), 
 					(size_t) ((float)rand()/(float)RAND_MAX*(float)ROUGH_NUMBER_TIPS));
 
 			if(tipProvider)
 			{
-				wantTipsAgain=wxShowTip(this, tipProvider);
+				bool wantTipsAgain=wxShowTip(this, tipProvider);
 				delete tipProvider;
 				configFile.setWantStartupTips(wantTipsAgain);
 			}
@@ -5407,12 +5191,6 @@ void MainWindowFrame::restoreConfigDefaults()
 		{
 			WARN(false,"Tip file not found at startup, but user wanted it...");
 		}
-	}
-	
-	if(configFile.getWantStartupOrthoCam())
-	{
-		visControl.setCamProperties(visControl.getActiveCamId(), 
-					CAMERA_KEY_LOOKAT_PROJECTIONMODE,TRANS("Orthogonal"));
 	}
 }
 
@@ -5428,7 +5206,9 @@ void MainWindowFrame::restoreConfigPanelDefaults()
 	{
 		splitLeftRight->Unsplit(panelLeft);
 		checkMenuControlPane->Check(false);
-		
+	}
+	else
+	{
 		val=configFile.getLeftRightSashPos();
 		if(val > std::numeric_limits<float>::epsilon())
 		{
@@ -5498,26 +5278,17 @@ void MainWindowFrame::restoreConfigPanelDefaults()
 
 void MainWindowFrame::SetCommandLineFiles(wxArrayString &files)
 {
-	//WX Bug: Re-entrancy can occur during modal dialog display due to timers
-	// disable timer before showing dialog
-	updateTimer->Stop();
-	autoSaveTimer->Stop();
 	
 	textConsoleOut->Clear();
+	bool loadedOK=false;
 	//Load them up as data.
 	for(unsigned int ui=0;ui<files.size();ui++)
-		loadFile(files[ui],true);
-
-
-	if(files.GetCount())
 	{
-		//OK, we got here, so it must be loaded.
-		requireFirstUpdate=false;
+		loadedOK|=loadFile(files[ui],true);
 	}
 
-	//Restart timers
-	updateTimer->Start(UPDATE_TIMER_DELAY,wxTIMER_CONTINUOUS);
-	autoSaveTimer->Start(AUTOSAVE_DELAY*1000,wxTIMER_CONTINUOUS);
+	requireFirstUpdate=loadedOK;
+
 }
 
 void MainWindowFrame::OnNoteDataView(wxNotebookEvent &evt)
@@ -5862,15 +5633,6 @@ void MainWindowFrame::set_properties()
     checkLimitOutput->SetToolTip(wxTRANS("Limit the number of points that can be displayed in the 3D  scene. Does not affect filter tree calculations. Disabling this can severely reduce performance, due to large numbers of points being visible at once."));
     checkCaching->SetToolTip(wxTRANS("Enable/Disable caching of intermediate results during filter updates. Disabling caching will use less system RAM, though changes to any filter property will cause the entire filter tree to be recomputed, greatly slowing computations"));
 
-    gridFilterPropGroup->CreateGrid(0, 2);
-    gridFilterPropGroup->EnableDragRowSize(false);
-    gridFilterPropGroup->SetColLabelValue(0, wxTRANS("Property"));
-    gridFilterPropGroup->SetColLabelValue(1, wxTRANS("Value"));
-    gridCameraProperties->CreateGrid(4, 2);
-    gridCameraProperties->EnableDragRowSize(false);
-    gridCameraProperties->SetSelectionMode(wxGrid::wxGridSelectRows);
-    gridCameraProperties->SetColLabelValue(0, wxTRANS("Property"));
-    gridCameraProperties->SetColLabelValue(1, wxTRANS("Value"));
     gridCameraProperties->SetToolTip(wxTRANS("Camera data information"));
     noteCamera->SetScrollRate(10, 10);
 
@@ -5916,23 +5678,11 @@ void MainWindowFrame::set_properties()
 
 
     refreshButton->Enable(false);
-#if wxCHECK_VERSION(2, 9, 0)
     comboCamera->Bind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboCameraSetFocus, this);
     comboStash->Bind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboStashSetFocus, this);
     noteDataView->Bind(wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED, &MainWindowFrame::OnNoteDataView, this);
     treeFilters->Bind(wxEVT_KEY_DOWN,&MainWindowFrame::OnTreeKeyDown, this); //Only required for 2.9
-#else
-    comboCamera->Connect(wxID_ANY,
-                 wxEVT_SET_FOCUS,
-		   wxFocusEventHandler(MainWindowFrame::OnComboCameraSetFocus), NULL, this);
-    comboStash->Connect(wxID_ANY,
-                 wxEVT_SET_FOCUS,
-		   wxFocusEventHandler(MainWindowFrame::OnComboStashSetFocus), NULL, this);
-    noteDataView->Connect(wxID_ANY, wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED,
-		    wxNotebookEventHandler(MainWindowFrame::OnNoteDataView),NULL,this);
-    
-#endif
-    gridCameraProperties->clear();
+    gridCameraProperties->Clear();
     int widths[] = {-4,-2,-1};
     MainFrame_statusbar->SetStatusWidths(3,widths);
 
@@ -5961,10 +5711,7 @@ void MainWindowFrame::do_layout()
     wxBoxSizer* topPanelSizer = new wxBoxSizer(wxHORIZONTAL);
     wxBoxSizer* sizerFxCropRHS = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer* sizerFxCropLHS = new wxBoxSizer(wxVERTICAL);
-    wxBoxSizer* camPaneSizer = new wxBoxSizer(wxVERTICAL);
-    wxBoxSizer* camTopRowSizer = new wxBoxSizer(wxHORIZONTAL);
     wxBoxSizer* filterPaneSizer = new wxBoxSizer(wxVERTICAL);
-    wxBoxSizer* filterPropGridSizer = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer* filterTreeLeftRightSizer = new wxBoxSizer(wxHORIZONTAL);
     wxBoxSizer* filterRightOfTreeSizer = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer* filterMainCtrlSizer = new wxBoxSizer(wxVERTICAL);
@@ -5990,19 +5737,12 @@ void MainWindowFrame::do_layout()
     btnFilterTreeErrs->Show(false);
     filterTreeLeftRightSizer->Add(filterRightOfTreeSizer, 2, wxEXPAND, 0);
     filterTreePane->SetSizer(filterTreeLeftRightSizer);
-    filterPropGridSizer->Add(propGridLabel, 0, 0, 0);
-    filterPropGridSizer->Add(gridFilterPropGroup, 1, wxLEFT|wxEXPAND, 4);
-    filterPropertyPane->SetSizer(filterPropGridSizer);
+    do_filtergrid_prop_layout();
 //    filterSplitter->SplitHorizontally(filterTreePane, filterPropertyPane);//DISABLED This has to be done later to get the window to work.
     filterPaneSizer->Add(filterSplitter, 1, wxEXPAND, 0);
     noteData->SetSizer(filterPaneSizer);
-    camPaneSizer->Add(labelCameraName, 0, 0, 0);
-    camTopRowSizer->Add(comboCamera, 3, 0, 0);
-    camTopRowSizer->Add(buttonRemoveCam, 0, wxLEFT|wxRIGHT, 2);
-    camPaneSizer->Add(camTopRowSizer, 0, wxTOP|wxBOTTOM|wxEXPAND, 4);
-    camPaneSizer->Add(cameraNamePropertySepStaticLine, 0, wxEXPAND, 0);
-    camPaneSizer->Add(gridCameraProperties, 1, wxEXPAND, 0);
-    noteCamera->SetSizer(camPaneSizer);
+    do_cameragrid_prop_layout();
+
 #ifndef APPLE_EFFECTS_WORKAROUND
     postProcessSizer->Add(checkPostProcessing, 0, wxALL, 5);
 #endif
@@ -6104,3 +5844,38 @@ void MainWindowFrame::do_layout()
 
 }
 
+void MainWindowFrame::do_filtergrid_prop_layout()
+{
+	wxBoxSizer* filterPropGridSizer = new wxBoxSizer(wxVERTICAL);
+
+	filterPropGridSizer->Add(propGridLabel, 0, 0, 0);
+	filterPropGridSizer->Add(gridFilterPropGroup, 1, wxLEFT|wxEXPAND, 4);
+	filterPropertyPane->SetSizer(filterPropGridSizer);
+	filterPropertyPane->Fit();
+	filterPropGridSizer->Fit(filterPropertyPane);
+
+	Layout();
+	filterSplitter->UpdateSize();
+
+}
+
+void MainWindowFrame::do_cameragrid_prop_layout()
+{
+    wxBoxSizer* camPaneSizer = new wxBoxSizer(wxVERTICAL);
+    wxBoxSizer* camTopRowSizer = new wxBoxSizer(wxHORIZONTAL);
+    
+    camPaneSizer->Add(labelCameraName, 0, 0, 0);
+    camTopRowSizer->Add(comboCamera, 3, 0, 0);
+    camTopRowSizer->Add(buttonRemoveCam, 0, wxLEFT|wxRIGHT, 2);
+    camPaneSizer->Add(camTopRowSizer, 0, wxTOP|wxBOTTOM|wxEXPAND, 4);
+    camPaneSizer->Add(cameraNamePropertySepStaticLine, 0, wxEXPAND, 0);
+    camPaneSizer->Add(gridCameraProperties, 1, wxEXPAND, 0);
+
+    noteCamera->SetSizer(camPaneSizer);
+    noteCamera->Fit();
+    //camPaneSizer->Fit();
+
+    noteCamera->Layout();
+
+    //noteCamera->UpdateSize();
+}

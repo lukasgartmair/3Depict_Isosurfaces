@@ -1224,7 +1224,7 @@ void FilterTree::stripHazardousContents()
 
 bool FilterTree::isChild(const tree<Filter *> &treeInst,
 				const tree<Filter *>::iterator &testParent,
-				tree<Filter *>::iterator testChild) const 
+				tree<Filter *>::iterator testChild) 
 {
 	// NOTE: A comparison against tree root (treeInst.begin())is INVALID
 	// for trees that have multiple base nodes.
@@ -1420,7 +1420,7 @@ void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> &c
 #endif
 
 void FilterTree::safeDeleteFilterList( std::list<FILTER_OUTPUT_DATA> &outData, 
-						size_t typeMask, bool maskPrevents) const
+						size_t typeMask, bool maskPrevents) 
 {
 	//Loop through the list of vectors of filterstreamdata, then drop any elements that are deleted
 	for(list<FILTER_OUTPUT_DATA> ::iterator it=outData.begin(); 

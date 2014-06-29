@@ -73,7 +73,7 @@ protected:
     wxStaticBox* filterPropSizer_staticbox;
     wxStaticText* lblFilters;
     wxListBox* listFilters;
-    wxCustomPropGrid* filterGridProperties;
+    wxPropertyGrid* filterGridProperties,*backFilterPropGrid;
     wxButton* filterBtnResetAllFilters;
     wxButton* filterResetDefaultFilter;
     wxPanel* panelFilters;
@@ -107,11 +107,11 @@ public:
 	// end wxGlade
 	PrefDialog(wxWindow* parent, int id=wxID_ANY, const wxString& title=wxT("Preferences"), const wxPoint& pos=wxDefaultPosition, const wxSize& size=wxDefaultSize, long style=wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER);
 	virtual ~PrefDialog();
-	virtual void OnFilterCellChange(wxGridEvent &event); // wxGlade: <event_handler>
+	virtual void OnFilterCellChange(wxPropertyGridEvent &event); // wxGlade: <event_handler>
 	virtual void OnFilterListClick(wxCommandEvent &event); // wxGlade: <event_handler>
-	virtual void OnFilterGridCellEditorShow(wxGridEvent &event); // wxGlade: <event_handler>
 	virtual void OnResetFilterButton(wxCommandEvent &event); // wxGlade: <event_handler>
 	virtual void OnResetFilterAllButton(wxCommandEvent &event); // wxGlade: <event_handler>
+	virtual void OnIdle(wxIdleEvent &evt);
 
 	//set the filter defaults. note that the incoming pointers are cloned, and control is NOT transferred to this class
 	void setFilterDefaults(const std::vector<Filter * > &defs);
@@ -140,6 +140,9 @@ public:
     	virtual void OnCheckPreferOrtho(wxCommandEvent &event); // wxGlade: <event_handler>
 	void OnMouseMoveSlider(wxScrollEvent &event);
 	void OnMouseZoomSlider(wxScrollEvent &event);
+
+    	//Force a re-layout of the filter property grid
+	void do_filtergrid_prop_layout();
 
 	void initialise();
 	void cleanup();

@@ -1,6 +1,6 @@
 /*
  * wxcommon.h  - Common wxwidgets header stuff
- * Copyright (C) 2013  D Haley
+ * Copyright (C) 2014  D Haley
  * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -135,6 +135,13 @@ extern wxEventType RemoteUpdateAvailEvent;
 //Return true IFF process ID and process name match running process
 bool processMatchesName(size_t processID, const std::string &procName);
 
+//Copy data into a wx image from an unpadded RGBA block of given width/eight
+// image sould already have been initialised, with RGBA and size
+void copyRGBAtoWXImage(unsigned int width, unsigned int height,
+		const unsigned char *rgbaBuf, wxImage &image, const unsigned char *mask);
+
+//Combine an overlay using the alpha channel
+void combineWxImage(wxImage &base, const wxImage &overlay);
 
 //!Remote version thread checker, downloads RSS file from remote system and then
 // parses the file for the latest remote version number
