@@ -129,7 +129,7 @@ http://www.iupac.org/publications/pac/2003/7506/7506x0683.html
       <mass value="15.9994" error="0.0003"/>
       <isotope mass-number="16">
         <mass value="15.9949146223" error="0.0000000025"/>
-        <abundance value="0.99759" error="0.00016"/>
+        <abundance value="0.99757" error="0.00016"/>
       </isotope>
       <isotope mass-number="17">
         <mass value="16.99913150" error="0.00000022"/>
@@ -267,7 +267,7 @@ http://www.iupac.org/publications/pac/2003/7506/7506x0683.html
       <mass value="39.948" error="0.001"/>
       <isotope mass-number="36">
         <mass value="35.96754626" error="0.00000027"/>
-        <abundance value="0.0003365" error="0.000030"/>
+        <abundance value="0.003365" error="0.000030"/>
       </isotope>
       <isotope mass-number="38">
         <mass value="37.9627322" error="0.0000005"/>
@@ -328,7 +328,7 @@ http://www.iupac.org/publications/pac/2003/7506/7506x0683.html
   <entry symbol="Sc" atomic-number="21">
     <natural-abundance>
       <mass value="44.955910" error="0.000008"/>
-      <isotope mass-number="45">
+<isotope mass-number="45">
         <mass value="44.9559102" error="0.0000012"/>
         <abundance value="1" error="0"/>
       </isotope>
@@ -352,6 +352,10 @@ http://www.iupac.org/publications/pac/2003/7506/7506x0683.html
       <isotope mass-number="49">
         <mass value="48.9478707" error="0.0000010"/>
         <abundance value="0.0541" error="0.0002"/>
+      </isotope>
+      <isotope mass-number="50">
+        <mass value="49.9447912" error="0.0000010"/>
+        <abundance value="0.0518" error="0.0002"/>
       </isotope>
     </natural-abundance>
   </entry>
@@ -445,7 +449,7 @@ http://www.iupac.org/publications/pac/2003/7506/7506x0683.html
       </isotope>
       <isotope mass-number="62">
         <mass value="61.9283484" error="0.0000015"/>
-        <abundance value="0.0036345" error="0.000017"/>
+        <abundance value="0.036345" error="0.000017"/>
       </isotope>
       <isotope mass-number="64">
         <mass value="63.9279692" error="0.0000016"/>
@@ -732,7 +736,7 @@ http://www.iupac.org/publications/pac/2003/7506/7506x0683.html
       </isotope>
       <isotope mass-number="99">
         <mass value="98.9059385" error="0.0000022"/>
-        <abundance value=".01276" error="0.0014"/>
+        <abundance value=".1276" error="0.0014"/>
       </isotope>
       <isotope mass-number="100">
         <mass value="99.9042189" error="0.0000022"/>
@@ -1024,7 +1028,7 @@ http://www.iupac.org/publications/pac/2003/7506/7506x0683.html
       </isotope>
       <isotope mass-number="135">
         <mass value="134.905684" error="0.000003"/>
-        <abundance value="0.000003" error="0.00012"/>
+        <abundance value="0.06592" error="0.00012"/>
       </isotope>
       <isotope mass-number="136">
         <mass value="135.904571" error="0.000003"/>

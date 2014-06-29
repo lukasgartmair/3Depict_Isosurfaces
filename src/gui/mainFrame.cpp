@@ -1152,6 +1152,9 @@ void MainWindowFrame::OnDropFiles(const wxArrayString &files, int x, int y)
 
 					//update the tree control
 					visControl.updateWxTreeCtrl(treeFilters);
+				
+					doSceneUpdate();
+				
 				}
 				else
 				{
