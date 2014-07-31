@@ -20,6 +20,7 @@
 
 #include "wxcommon.h"
 #include "common/stringFuncs.h"
+#include "common/basics.h"
 
 //For colour property
 #include <wx/propgrid/advprops.h>
@@ -125,13 +126,14 @@ void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f, const string &
 				}
 				case PROPERTY_TYPE_COLOUR:
 				{
-					unsigned char r,g,b,a;
 					bool res;
-					res=parseColString(fp.data,r,g,b,a);
+					ColourRGBA rgba;
+
+					res=rgba.parse(fp.data);
 	
 					ASSERT(res);
 					pgp =  new wxColourProperty(fp.name,keyStr,
-								 wxColour(r,g,b) ) ;
+								 wxColour(rgba.r(),rgba.g(),rgba.b()) ) ;
 					break;
 				}
 				case PROPERTY_TYPE_FILE:
@@ -239,13 +241,13 @@ void updateCameraPropertyGrid(wxPropertyGrid *g, const Camera *c)
 				}
 				case PROPERTY_TYPE_COLOUR:
 				{
-					unsigned char r,g,b,a;
+					ColourRGBA rgba;
 					bool res;
-					res=parseColString(camProp.data,r,g,b,a);
+					res=rgba.parse(camProp.data);
 	
 					ASSERT(res);
 					pgp =  new wxColourProperty(camProp.name,keyStr,
-								 wxColour(r,g,b) ) ;
+								 wxColour(rgba.r(),rgba.g(),rgba.b()) ) ;
 					break;
 				}
 			}
@@ -279,8 +281,8 @@ std::string getPropValueFromEvent(wxPropertyGridEvent &event)
 		col << event.GetValue();
 		//Convert the colour to a string, so we can 
 		// send it to the backend.
-		genColString(col.Red(),col.Green(),col.Blue(),newValue);
-
+		ColourRGBA rgba(col.Red(),col.Green(),col.Blue());
+		newValue=rgba.rgbString();
 	}
 	else if (eventType == "long")
 	{

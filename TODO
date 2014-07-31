@@ -37,9 +37,9 @@ TODO List - worlds simplest bugtracking system
 
 	Outstanding bugs:
 		== Next release==
-		* Fix voxelisation "filter" option 
-			
+	
 		== Eventually==
+		* Fix voxelisation "filter" option 
 		* Cluster filter wont save state correctly if parent
 		  rangefile has disabled ions. It will output incorrect
 		  number of enabled ions, and get wiped during next ::initFilter
@@ -87,7 +87,6 @@ TODO List - worlds simplest bugtracking system
 		- Plots need to be able to set strings/legends
 		- There is little diference between plot1D and plot2D, really.
 	* work out which inline FIXMEs and TODOs are still valid, and need attention
-	* I have multiple colour classes floating about. might be an idea to unify them.
 	* K3DTree currently requires public access to members of boundcube
 	* Enums should be, where possible, moved into their relevant class' namespace
 	* Better error code behaviour for filters. There is a lot of needless duplication

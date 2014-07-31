@@ -48,7 +48,7 @@ enum
 };
 
 //Do the particular enums require a redraw?
-const bool MOUSE_ACTION_NEEDS_REDRAW[] = { false,true,true};
+const bool MOUSE_ACTION_NEEDS_REDRAW[] = { false,true,true,false};
 
 enum
 {
@@ -97,7 +97,7 @@ enum
 MathGLPane::MathGLPane(wxWindow* parent, int id) :
 wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 {
-	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(MOUSE_ACTION_NEEDS_REDRAW) == MOUSE_MODE_ENUM_END);
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(MOUSE_ACTION_NEEDS_REDRAW) == MOUSE_MODE_ENUM_END + 1);
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(mglTextureFile) == PLOT_TEXTURE_ENUM_END);
 
 	hasResized=true;
@@ -238,7 +238,7 @@ void MathGLPane::render(wxPaintEvent &event)
 		int clientW,clientH;
 		GetClientSize(&clientW,&clientH);
 		
-		wxString str=wxTRANS("No plots selected.");
+		wxString str=TRANS("No plots selected.");
 		dc->GetMultiLineTextExtent(str,&w,&h);
 		dc->DrawText(str,(clientW-w)/2, (clientH-h)/2);
 
@@ -292,7 +292,7 @@ void MathGLPane::render(wxPaintEvent &event)
 		char *rgbdata = (char*)malloc(w*h*3);
 		gr->GetRGB((char*)rgbdata,w*h*3);
 		
-		imageCacheBmp=wxBitmap(wxImage(w,h,(unsigned char*)rgbdata,true));
+		imageCacheBmp=wxImage(w,h,(unsigned char*)rgbdata,true);
 		free(rgbdata);
 	}
 
@@ -1287,8 +1287,8 @@ void MathGLPane::drawInteractOverlay(wxDC *dc) const
 			//---------
 			string labelText;
 			labelText = r.getName();
-			wxSize textSize=dc->GetTextExtent(wxStr(labelText));
-			dc->DrawText(wxStr(labelText),curMouse.x-textSize.GetWidth()/2, 
+			wxSize textSize=dc->GetTextExtent((labelText));
+			dc->DrawText((labelText),curMouse.x-textSize.GetWidth()/2, 
 					h/2-(textSize.GetHeight() + 1.5*ARROW_SIZE));
 			//---------
 		}	
@@ -1311,35 +1311,43 @@ void MathGLPane::drawInteractOverlay(wxDC *dc) const
 		}
 
 		const float THUMB_FRACTION=0.1;
+		const unsigned int MIN_THUMB_SIZE=10;
 		unsigned int thumbSize=THUMB_FRACTION*std::min(h,w);
 
-		for(size_t ui=0;ui<textureIDs.size();ui++)
-		{
-			size_t textureID;
-			textureID = textureIDs[ui];
-
-			ASSERT(textureID < PLOT_TEXTURE_ENUM_END);
-			std::string filename;
-			filename=locateDataFile(mglTextureFile[textureID]);
 		
-			//Need to draw a picture
-			wxImage img;
-			if(wxFileExists(wxStr(filename)) && img.LoadFile(wxStr(filename) ))
+
+		if(thumbSize > MIN_THUMB_SIZE)
+		{
+
+			for(size_t ui=0;ui<textureIDs.size();ui++)
 			{
-				int position[2];
-				float tmp;
-				
-				img.Rescale(thumbSize,thumbSize,wxIMAGE_QUALITY_HIGH);
+				size_t textureID;
+				textureID = textureIDs[ui];
 
-				wxBitmap bmp(img);
-				//Draw in upper right, by one fraction
-				tmp= (1.0-1.5*THUMB_FRACTION);
-				position[0] = tmp*w;
-				
-				//Compute the vertical spacing for each icon 
-				position[1] = (1.0-(tmp - 2.0*(float)ui*THUMB_FRACTION))*h;
+				ASSERT(textureID < PLOT_TEXTURE_ENUM_END);
+				std::string filename;
+				filename=locateDataFile(mglTextureFile[textureID]);
+		
+					
+				//Need to draw a picture
+				wxImage img;
+				if(wxFileExists((filename)) && img.LoadFile((filename) ))
+				{
+					int position[2];
+					float tmp;
+					
+					img.Rescale(thumbSize,thumbSize,wxIMAGE_QUALITY_HIGH);
 
-				dc->DrawBitmap(img,position[0],position[1]);
+					wxBitmap bmp(img);
+					//Draw in upper right, by one fraction
+					tmp= (1.0-1.5*THUMB_FRACTION);
+					position[0] = tmp*w;
+					
+					//Compute the vertical spacing for each icon 
+					position[1] = (1.0-(tmp - 2.0*(float)ui*THUMB_FRACTION))*h;
+
+					dc->DrawBitmap(img,position[0],position[1]);
+				}
 			}
 		}
 	}
@@ -1427,7 +1435,7 @@ void MathGLPane::drawRegionDraggingOverlay(wxDC *dc) const
 	std::string str;
 	stream_cast(str,regionLimitX);
 	wxString wxs;
-	wxs=wxStr(str);
+	wxs=(str);
 	wxCoord textW,textH;
 	dc->GetTextExtent(wxs,&textW,&textH);
 

@@ -24,9 +24,6 @@
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
 
-/* MathGL compilation OK */
-#undef HAVE_MGL
-
 /* PNG compilation OK */
 #undef HAVE_PNG
 
@@ -89,9 +86,6 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
-
-/* "Enable mgl1 support" */
-#undef USE_MGL1
 
 /* "Enable mgl2 support" */
 #undef USE_MGL2

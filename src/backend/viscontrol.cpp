@@ -300,10 +300,10 @@ unsigned int VisController::refreshFilterTree(bool doUpdateScene)
 				textConsole->AppendText(wxT("============\n\n\n"));
 
 			lastFilt=consoleMessages[ui].first;
-			textConsole->AppendText(wxStr(lastFilt->getUserString()));
+			textConsole->AppendText((lastFilt->getUserString()));
 			textConsole->AppendText(wxT("\n============\n"));
 		}
-		textConsole->AppendText(wxStr(consoleMessages[ui].second));
+		textConsole->AppendText((consoleMessages[ui].second));
 		textConsole->AppendText(wxT("\n"));
 	}
 
@@ -872,7 +872,7 @@ unsigned int VisController::updateScene(list<vector<const FilterStreamData *> > 
 	for(size_t ui=0;ui<plotLabels.size();ui++)
 	{
 		//Append the plot to the list in the user interface
-		plotSelList->Append(wxStr(plotLabels[ui].second));
+		plotSelList->Append((plotLabels[ui].second));
 		plotMap[ui] = plotLabels[ui].first;
 	}
 
@@ -1242,8 +1242,8 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 	//Try to restore the working directory as needed
 	std::string wd;
 	wd=currentState.getWorkingDir();
-	if(wd.size() && wxDirExists(wxStr(wd)))
-		wxSetWorkingDirectory(wxStr(currentState.getWorkingDir()));
+	if(wd.size() && wxDirExists((wd)))
+		wxSetWorkingDirectory((currentState.getWorkingDir()));
 
 	currentState.setStateModified(false);
 	return true;
@@ -1399,7 +1399,7 @@ void VisController::updateRawGrid() const
 		{
 			std::string s;
 			s=(labels[ui][uj]);
-			targetRawGrid->SetColLabelValue(curCol,wxStr(s));
+			targetRawGrid->SetColLabelValue(curCol,(s));
 			curCol++;
 		}
 
@@ -1414,7 +1414,7 @@ void VisController::updateRawGrid() const
 			{
 				std::string tmpStr;
 				stream_cast(tmpStr,plotData[ui][uj][uk]);
-				targetRawGrid->SetCellValue(uk,startCol,wxStr(tmpStr));
+				targetRawGrid->SetCellValue(uk,startCol,(tmpStr));
 			}
 			startCol++;
 		}
@@ -1458,7 +1458,7 @@ void VisController::updateConsole(const std::vector<std::string> &v, const Filte
 	{
 		std::string s;
 		s = f->getUserString() + string(" : ") + v[ui];
-		textConsole->AppendText(wxStr(s));
+		textConsole->AppendText((s));
 		textConsole->AppendText(wxT("\n"));
 
 	}

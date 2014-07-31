@@ -43,19 +43,19 @@ StashDialog::StashDialog(wxWindow* parent, int id, const wxString& title, const 
     wxDialog(parent, id, title, pos, size, style)
 {
     // begin wxGlade: StashDialog::StashDialog
-    label_5 = new wxStaticText(this, wxID_ANY, wxTRANS("Stashes"));
+    label_5 = new wxStaticText(this, wxID_ANY, TRANS("Stashes"));
     listStashes = new wxListCtrl(this, ID_LIST_STASH, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxSUNKEN_BORDER);
     btnRemove = new wxButton(this, wxID_REMOVE, wxEmptyString);
-    label_6 = new wxStaticText(this, wxID_ANY, wxTRANS("Stashed Tree"));
+    label_6 = new wxStaticText(this, wxID_ANY, TRANS("Stashed Tree"));
     treeFilters = new wxTreeCtrl(this, ID_TREE_FILTERS, wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER|wxTR_HIDE_ROOT);
-    label_7 = new wxStaticText(this, wxID_ANY, wxTRANS("Properties"));
+    label_7 = new wxStaticText(this, wxID_ANY, TRANS("Properties"));
     gridProperties = new wxPropertyGrid(this, ID_GRID_FILTER);
     btnOK = new wxButton(this, wxID_OK, wxEmptyString);
     
     //Due to a bug in wx, empty reports throw an assertion
     // 'unknown list item format", when there are no columns
-    listStashes->InsertColumn(0,wxTRANS("Stash Name"));
-    listStashes->InsertColumn(1,wxTRANS("Filter Count"));
+    listStashes->InsertColumn(0,TRANS("Stash Name"));
+    listStashes->InsertColumn(1,TRANS("Filter Count"));
 
     set_properties();
     do_layout();
@@ -88,13 +88,13 @@ void StashDialog::setVisController(VisController *s)
 void StashDialog::set_properties()
 {
     // begin wxGlade: StashDialog::set_properties
-    SetTitle(wxTRANS("Stashed Trees"));
+    SetTitle(TRANS("Stashed Trees"));
     SetSize(wxSize(600, 430));
 
-    btnRemove->SetToolTip(wxTRANS("Erase stashed item"));
-    treeFilters->SetToolTip(wxTRANS("Filter view for current stash"));
-    gridProperties->SetToolTip(wxTRANS("Settings for selected filter in current stash"));
-    listStashes->SetToolTip(wxTRANS("Available stashes"));
+    btnRemove->SetToolTip(TRANS("Erase stashed item"));
+    treeFilters->SetToolTip(TRANS("Filter view for current stash"));
+    gridProperties->SetToolTip(TRANS("Settings for selected filter in current stash"));
+    listStashes->SetToolTip(TRANS("Available stashes"));
     // end wxGlade
 }
 
@@ -166,13 +166,13 @@ void StashDialog::updateList()
 		long itemIdx;
 		
 		//First item is the stash name
-		itemIdx = listStashes->InsertItem(ui,wxStr(stashes[ui].first));
+		itemIdx = listStashes->InsertItem(ui,(stashes[ui].first));
 
 		//Second column is num filters
 		
 		visControl->getStashTree(stashes[ui].second,t);
 		stream_cast(strTmp,t.size());
-		listStashes->SetItem(itemIdx,1,wxStr(strTmp));
+		listStashes->SetItem(itemIdx,1,(strTmp));
 
 		//Set the stash ID as the list data item
 		//this is the key to the stash val
@@ -311,7 +311,7 @@ void StashDialog::updateTree()
 	
 		//This will use the user label or the type string.	
 		tid=treeFilters->AppendItem(treeIDs.top(),
-			wxStr((*filtIt)->getUserString()));
+			((*filtIt)->getUserString()));
 		
 		treeFilters->SetItemData(tid,new wxTreeUint(pos));
 		pos++;

@@ -72,17 +72,17 @@ ExportPosDialog::ExportPosDialog(wxWindow* parent, int id, const wxString& title
 	haveRefreshed=false;
 	exportVisible=true;
 	// begin wxGlade: ExportPosDialog::ExportPosDialog
-	lblExport = new wxStaticText(this, wxID_ANY, wxTRANS("Export:"));
-	radioVisible = new wxRadioButton(this,ID_RADIO_VISIBLE , wxTRANS("Visible"));
-	radioSelection = new wxRadioButton(this,ID_RADIO_SELECTION , wxTRANS("Selected Data"));
+	lblExport = new wxStaticText(this, wxID_ANY, TRANS("Export:"));
+	radioVisible = new wxRadioButton(this,ID_RADIO_VISIBLE , TRANS("Visible"));
+	radioSelection = new wxRadioButton(this,ID_RADIO_SELECTION , TRANS("Selected Data"));
 	treeData = new wxTreeCtrl(this, ID_TREE_FILTERS, wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_HIDE_ROOT|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER);
-	lblAvailableData = new wxStaticText(this, wxID_ANY, wxTRANS("Available Data"));
+	lblAvailableData = new wxStaticText(this, wxID_ANY, TRANS("Available Data"));
 	listAvailable = new wxListCtrl(this, ID_LIST_AVAILABLE, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxSUNKEN_BORDER|wxLC_VRULES);
 	btnAddData = new wxButton(this, ID_BTN_ADDDATA, wxT(">"));
 	btnAddNode = new wxButton(this,ID_BTN_ADDNODE, wxT(">>"));
 	btnAddAll = new wxButton(this, ID_BTN_ADDALL, wxT(">>>"));
 	panel_2 = new wxPanel(this, wxID_ANY);
-	label_4 = new wxStaticText(this, wxID_ANY, wxTRANS("Selection"));
+	label_4 = new wxStaticText(this, wxID_ANY, TRANS("Selection"));
 	listSelected = new wxListCtrl(this, ID_LIST_SELECTED, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxSUNKEN_BORDER);
 	btnSave = new wxButton(this, wxID_SAVE, wxEmptyString);
 	btnCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
@@ -107,11 +107,11 @@ ExportPosDialog::ExportPosDialog(wxWindow* parent, int id, const wxString& title
 	//--
 
 	//Add columns to report listviews
-	listSelected->InsertColumn(0,wxTRANS("Index"));
-	listSelected->InsertColumn(1,wxTRANS("Count"));
+	listSelected->InsertColumn(0,TRANS("Index"));
+	listSelected->InsertColumn(1,TRANS("Count"));
 	
-	listAvailable->InsertColumn(0,wxTRANS("Index"));
-	listAvailable->InsertColumn(1,wxTRANS("Count"));
+	listAvailable->InsertColumn(0,TRANS("Index"));
+	listAvailable->InsertColumn(1,TRANS("Count"));
 }
 
 ExportPosDialog::~ExportPosDialog()
@@ -217,13 +217,13 @@ void ExportPosDialog::OnTreeFiltersSelChanged(wxTreeEvent &event)
 					(unsigned char)(ionData->g*255),(unsigned char)(ionData->b*255));
 				//Add the item using the index as a str
 				stream_cast(label,ui);
-				listAvailable->InsertItem(ui,wxStr(label));
+				listAvailable->InsertItem(ui,(label));
 				
 				size_t basicCount;
 				basicCount=ionData->getNumBasicObjects();
 				stream_cast(label,basicCount);
 
-				listAvailable->SetItem(ui,1,wxStr(label));
+				listAvailable->SetItem(ui,1,(label));
 				
 				listAvailable->SetItemBackgroundColour(ui,c);
 
@@ -359,13 +359,13 @@ void ExportPosDialog::updateSelectedList()
 				(unsigned char)(ionData->b*255));
 		//Add the item using the index as a str
 		stream_cast(label,idx);
-		listSelected->InsertItem(idx,wxStr(label));
+		listSelected->InsertItem(idx,(label));
 		
 		size_t basicCount;
 		basicCount=ionData->getNumBasicObjects();
 		stream_cast(label,basicCount);
 
-		listSelected->SetItem(idx,1,wxStr(label));
+		listSelected->SetItem(idx,1,(label));
 		
 		listSelected->SetItemBackgroundColour(idx,c);
 
@@ -454,14 +454,14 @@ void ExportPosDialog::getExportVec(std::vector<const FilterStreamData * > &v) co
 void ExportPosDialog::set_properties()
 {
     // begin wxGlade: ExportPosDialog::set_properties
-    SetTitle(wxTRANS("Export Pos Data"));
+    SetTitle(TRANS("Export Pos Data"));
     // end wxGlade
 
-	treeData->SetToolTip(wxTRANS("Tree of filters, select leaves to show ion data."));
+	treeData->SetToolTip(TRANS("Tree of filters, select leaves to show ion data."));
 	
-	btnAddAll->SetToolTip(wxTRANS("Add all data from all filters"));
-	btnAddNode->SetToolTip(wxTRANS("Add all data from currently selected filter"));
-	btnAddData->SetToolTip(wxTRANS("Add selected data from currently selected filter"));
+	btnAddAll->SetToolTip(TRANS("Add all data from all filters"));
+	btnAddNode->SetToolTip(TRANS("Add all data from currently selected filter"));
+	btnAddData->SetToolTip(TRANS("Add selected data from currently selected filter"));
     radioVisible->SetValue(TRUE);
 }
 

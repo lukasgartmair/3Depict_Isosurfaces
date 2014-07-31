@@ -521,7 +521,7 @@ nodeptrEndJump:
 
 bool ConfigFile::createConfigDir()
 {
-	wxString filePath = wxStr(getConfigDir());
+	wxString filePath = (getConfigDir());
 
 	//Create the folder if it does not exist
 	if(!wxDirExists(filePath))
@@ -541,7 +541,7 @@ bool ConfigFile::createConfigDir()
 std::string ConfigFile::getConfigDir() 
 {
  	wxStandardPaths &paths = wxStandardPaths::Get();
-	wxString filePath = paths.GetDocumentsDir()+wxCStr("/.")+wxCStr(PROGRAM_NAME);
+	wxString filePath = paths.GetDocumentsDir()+("/.")+(PROGRAM_NAME);
 	return stlStr(filePath);
 }
 

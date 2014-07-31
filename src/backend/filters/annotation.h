@@ -48,7 +48,7 @@ class AnnotateFilter : public Filter
 		float textSize,annotateSize,sphereMarkerSize,lineSize;
 
 		//Annotation colour
-		float r,g,b,a;
+		ColourRGBAf rgba;
 
 		//Disable/enable annotation
 		bool active;

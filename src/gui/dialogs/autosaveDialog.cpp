@@ -36,7 +36,7 @@ AutosaveDialog::AutosaveDialog(wxWindow* parent, int id, const wxString& title, 
     // begin wxGlade: AutosaveDialog::AutosaveDialog
     const wxString *listStates_choices = NULL;
     listStates = new wxListBox(this, ID_LIST_STATES, wxDefaultPosition, wxDefaultSize, 0, listStates_choices, wxLB_SINGLE|wxLB_NEEDED_SB);
-    btnRemoveAll = new wxButton(this, ID_REMOVE_ALL, wxTRANS("Remove &All"));
+    btnRemoveAll = new wxButton(this, ID_REMOVE_ALL, TRANS("Remove &All"));
     btnCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
     btnOK = new wxButton(this, wxID_OK, wxEmptyString);
 
@@ -114,13 +114,13 @@ void AutosaveDialog::OnOK(wxCommandEvent &event)
 void AutosaveDialog::setItems( const std::vector<std::string> &newItems)
 {
 	for(size_t ui=0;ui<newItems.size();ui++)
-		listStates->Insert(wxStr(newItems[ui]),ui);
+		listStates->Insert((newItems[ui]),ui);
 }
 
 void AutosaveDialog::set_properties()
 {
     // begin wxGlade: AutosaveDialog::set_properties
-    SetTitle(wxTRANS("Restore state?"));
+    SetTitle(TRANS("Restore state?"));
     // end wxGlade
 }
 
@@ -130,7 +130,7 @@ void AutosaveDialog::do_layout()
     // begin wxGlade: AutosaveDialog::do_layout
     wxBoxSizer* sizer_1 = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer* sizer_2 = new wxBoxSizer(wxHORIZONTAL);
-    wxStaticText* labelHeader = new wxStaticText(this, wxID_ANY, wxTRANS("Multiple autosave states were found; would you like to restore one?"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
+    wxStaticText* labelHeader = new wxStaticText(this, wxID_ANY, TRANS("Multiple autosave states were found; would you like to restore one?"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
     sizer_1->Add(labelHeader, 0, wxALL|wxALIGN_CENTER_HORIZONTAL, 8);
     sizer_1->Add(listStates, 1, wxALL|wxEXPAND, 8);
     sizer_2->Add(btnRemoveAll, 0, wxLEFT|wxBOTTOM, 8);

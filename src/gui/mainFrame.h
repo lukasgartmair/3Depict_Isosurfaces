@@ -335,6 +335,7 @@ public:
 
     virtual void OnComboFilterEnter(wxCommandEvent &event); // 
     virtual void OnComboFilter(wxCommandEvent &event); // 
+    virtual void OnComboFilterText(wxCommandEvent &event); // wxGlade: <event_handler>
     
     virtual void OnStatusBarTimer(wxTimerEvent &event); // 
     virtual void OnProgressTimer(wxTimerEvent &event);

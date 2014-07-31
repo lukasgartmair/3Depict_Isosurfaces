@@ -102,9 +102,12 @@ std::string mglColourCode(float r, float g, float b)
 {
 	ASSERT(r >=0.0f && g >=0.0f && b >=0.0f)
 	ASSERT(r <=255.0f && g <=255.0f && b <=255.0f)
+
+	ColourRGBA rgba(r*255.0,g*255.0,b*255.0);
+
 	std::string s;
-	genColString((unsigned char)(r*255),
-		(unsigned char)(g*255),(unsigned char)(b*255),s);
+	//Make a #rrggbb hex string
+	s=rgba.rgbString();
 	s=s.substr(1);
 
 	return string("{x") + uppercase(s) + string("}");

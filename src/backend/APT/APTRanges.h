@@ -24,6 +24,7 @@
 
 
 #include "backend/APT/ionhit.h"
+#include "common/basics.h"
 
 enum{	
 	RANGE_ERR_OPEN =1, 
@@ -47,13 +48,6 @@ enum{
 	RANGE_ERR_ENUM_END
 };
 
-//!Data holder for colour as float
-typedef struct RGBf
-{
-	float red;
-	float green;
-	float blue;
-} RGBf;
 
 //Number of elements stored in the table
 const unsigned int NUM_ELEMENTS=119;
@@ -64,6 +58,7 @@ enum{ RANGE_FORMAT_ORNL,
 	RANGE_FORMAT_RRNG,
 	RANGE_FORMAT_END_OF_ENUM //not a format, just end of enumueration.
 };
+
 //!Data storage and retrieval class for various range files
 class RangeFile
 {

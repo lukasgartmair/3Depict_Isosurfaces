@@ -174,7 +174,7 @@ bool rangeFileLoadTests()
 	bool haveDir=false;
 	for(unsigned int ui=0;ui<THREEDEP_ARRAYSIZE(TESTING_RESOURCE_DIRS);ui++)
 	{
-		testDir=wxCStr(TESTING_RESOURCE_DIRS[ui]);
+		testDir=(TESTING_RESOURCE_DIRS[ui]);
 		if(wxDirExists(testDir))
 		{
 			haveDir=true;
@@ -199,7 +199,7 @@ bool rangeFileLoadTests()
 		std::string tmp;
 		tmp = std::string("*.") + rangeExts[ui];
 		
-		wxDir::GetAllFiles(testDir,&tmpArr,wxStr(tmp));
+		wxDir::GetAllFiles(testDir,&tmpArr,(tmp));
 		for(unsigned int uj=0;uj<tmpArr.GetCount();uj++)
 			arrayStr.Add(tmpArr[uj]);
 		tmpArr.clear();
@@ -257,7 +257,7 @@ bool rangeFileLoadTests()
 		fileLongname=stlStr(arrayStr[ui]);
 
 		wxFileName filename;
-		filename=wxStr(fileLongname);
+		filename=(fileLongname);
 		//This returns the short name of the file. Yes, its badly named.
 		fileShortname=stlStr(filename.GetFullName());
 		{
@@ -336,7 +336,7 @@ bool rangeFileLoadTests()
 		wxFileName filename;
 		
 		fileLongname=stlStr(arrayStr[ui]);
-		filename=wxStr(fileLongname);
+		filename=(fileLongname);
 		fileShortname=stlStr(filename.GetFullName());
 
 		//Check to see that the auto-parser correctly identifies the type
@@ -346,7 +346,7 @@ bool rangeFileLoadTests()
 			errString="Range type detection : ";
 			errString+=fileLongname;
 
-			if(!wxFileExists(wxStr(fileLongname)))
+			if(!wxFileExists((fileLongname)))
 			{
 				cerr << "File expected, but not found during test:" <<
 					fileLongname << endl;

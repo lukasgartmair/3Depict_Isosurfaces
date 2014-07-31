@@ -89,7 +89,7 @@ void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
 	
 		//This will use the user label or the type string.	
 		tid=t->AppendItem(treeIDs.top(),
-			wxStr((*filtIt)->getUserString()));
+			((*filtIt)->getUserString()));
 		t->SetItemData(tid,new wxTreeUint(nextID));
 	
 
@@ -184,8 +184,8 @@ void CopyGrid::selectData()
 
 void CopyGrid::saveData()
 {
-	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Save Data..."), wxT(""),
-		wxT(""),wxTRANS("Text File (*.txt)|*.txt|All Files (*)|*"),wxFD_SAVE);
+	wxFileDialog *wxF = new wxFileDialog(this,TRANS("Save Data..."), wxT(""),
+		wxT(""),TRANS("Text File (*.txt)|*.txt|All Files (*)|*"),wxFD_SAVE);
 
 	if( (wxF->ShowModal() == wxID_CANCEL))
 		return;
@@ -197,7 +197,7 @@ void CopyGrid::saveData()
 	if(!f)
 	{
 		wxMessageDialog *wxD  =new wxMessageDialog(this,
-			wxTRANS("Error saving file. Check output dir is writable."),wxTRANS("Save error"),wxOK|wxICON_ERROR);
+			TRANS("Error saving file. Check output dir is writable."),TRANS("Save error"),wxOK|wxICON_ERROR);
 
 		wxD->ShowModal();
 		wxD->Destroy();
@@ -404,7 +404,7 @@ void CopyGrid::copyData()
 	{
 		wxTextDataObject* clipData= new wxTextDataObject;
 		// Set data object value
-		clipData->SetText(wxStr(data));
+		clipData->SetText((data));
 		wxTheClipboard->UsePrimarySelection(false);
 		wxTheClipboard->SetData(clipData);
 		wxTheClipboard->Close();
@@ -455,7 +455,7 @@ void TextTreeCtrl::OnTreePaint(wxPaintEvent &event)
 	if(font.IsOk())
 		dc->SetFont(font);
 	
-	wxSize textSize=dc->GetTextExtent(wxStr(messageStrs[idx]));
+	wxSize textSize=dc->GetTextExtent((messageStrs[idx]));
 
 	//Don't go ahead with the drawing if the text
 	// won't fit in the control
@@ -475,11 +475,11 @@ void TextTreeCtrl::OnTreePaint(wxPaintEvent &event)
 
 	for(size_t ui=0;ui<messageStrs.size();ui++)
 	{
-		textSize=dc->GetTextExtent(wxStr(messageStrs[ui]));
+		textSize=dc->GetTextExtent((messageStrs[ui]));
 		int startX;
 		startX=w/2 - textSize.GetWidth()/2; 
 
-		dc->DrawText(wxStr(messageStrs[ui]),
+		dc->DrawText((messageStrs[ui]),
 					startX,startY);	
 		
 		startY+=HEIGHT_SPACING*textSize.GetHeight();
@@ -520,14 +520,14 @@ std::string TTFFinder::macFindFont(const char *fontFile)
 	//Try a few standard locations
 	while(strlen(dirs[ui]))
 	{
-		p->Add(wxCStr(dirs[ui]));
+		p->Add((dirs[ui]));
 		ui++;
 	};
 
 	wxString s;
 
 	//execute the search for the file
-	s= p->FindValidPath(wxCStr(fontFile));
+	s= p->FindValidPath((fontFile));
 
 
 	std::string res;
@@ -566,14 +566,14 @@ std::string TTFFinder::nxFindFont(const char *fontFile)
 	//Try a few standard locations
 	while(strlen(dirs[ui]))
 	{
-		p->Add(wxCStr(dirs[ui]));
+		p->Add((dirs[ui]));
 		ui++;
 	};
 
 	wxString s;
 
 	//execute the search for the file
-	s= p->FindValidPath(wxCStr(fontFile));
+	s= p->FindValidPath((fontFile));
 
 
 	std::string res;
@@ -602,7 +602,7 @@ std::string TTFFinder::winFindFont(const char *fontFile)
 	//Try a few standard locations
 	while(strlen(dirs[ui]))
 	{
-		p->Add(wxCStr(dirs[ui]));
+		p->Add((dirs[ui]));
 		ui++;
 	};
 
@@ -611,7 +611,7 @@ std::string TTFFinder::winFindFont(const char *fontFile)
   
  
 	//execute the search for the file
-	s= p->FindValidPath(wxCStr(fontFile));
+	s= p->FindValidPath((fontFile));
 
 
 	std::string res;

@@ -185,8 +185,7 @@ VoxeliseFilter::VoxeliseFilter()
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(VOXEL_REPRESENT_KEEPCACHE) == VOXEL_REPRESENT_END);
 
 	splatSize=1.0f;
-	a=0.9f;
-	r=g=b=0.5;
+	rgba=ColourRGBAf(0.5,0.5,0.5,0.9f);
 	isoLevel=0.5;
 	
 	filterBins=3;
@@ -232,10 +231,7 @@ Filter *VoxeliseFilter::cloneUncached() const
 {
 	VoxeliseFilter *p=new VoxeliseFilter();
 	p->splatSize=splatSize;
-	p->a=a;
-	p->r=r;
-	p->g=g;
-	p->b=b;
+	p->rgba=rgba;
 
 	p->isoLevel=isoLevel;
 	
@@ -625,10 +621,10 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			vs->representationType= representation;
 			vs->splatSize = splatSize;
 			vs->isoLevel=isoLevel;
-			vs->r=r;
-			vs->g=g;
-			vs->b=b;
-			vs->a=a;
+			vs->r=rgba.r();
+			vs->g=rgba.g();
+			vs->b=rgba.b();
+			vs->a=rgba.a();
 
 			if(cache)
 			{
@@ -993,7 +989,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			p.key=KEY_SPOTSIZE;
 			propertyList.addProperty(p,curGroup);
 
-			stream_cast(tmpStr,1.0-a);
+			stream_cast(tmpStr,1.0-rgba.a());
 			p.name=TRANS("Transparency");
 			p.data=tmpStr;
 			p.type=PROPERTY_TYPE_REAL;
@@ -1021,17 +1017,14 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			curGroup++;
 
 			//-- Isosurface appearance --
-			//Convert the ion colour to a hex string	
-			genColString((unsigned char)(r*255),(unsigned char)(g*255),
-					(unsigned char)(b*255),(unsigned char)(a*255),tmpStr);
 			p.name=TRANS("Colour");
-			p.data=tmpStr;
+			p.data=rgba.toColourRGBA().rgbString();
 			p.type=PROPERTY_TYPE_COLOUR;
 			p.helpText=TRANS("Colour of isosurface");
 			p.key=KEY_COLOUR;
 			propertyList.addProperty(p,curGroup);
 
-			stream_cast(tmpStr,1.0-a);
+			stream_cast(tmpStr,1.0-rgba.a());
 			p.name=TRANS("Transparency");
 			p.data=tmpStr;
 			p.type=PROPERTY_TYPE_REAL;
@@ -1235,7 +1228,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 				return false;
 			needUpdate=true;
 			//Alpha is opacity, which is 1-transparancy
-			a=1.0f-f;
+			rgba.a(1.0f-f);
 			//Go in and manually adjust the cached
 			//entries to have the new value, rather
 			//than doing a full recomputation
@@ -1245,7 +1238,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 				{
 					VoxelStreamData *d;
 					d=(VoxelStreamData*)filterOutputs[ui];
-					d->a=a;
+					d->a=rgba.a();
 				}
 			}
 			break;
@@ -1275,16 +1268,17 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 		}
 		case KEY_COLOUR:
 		{
-			unsigned char newR,newG,newB,newA;
+			ColourRGBA tmpRGBA;
 
-			parseColString(value,newR,newG,newB,newA);
+			if(!tmpRGBA.parse(value))
+				return false;
 
-			if(newB != b || newR != r ||
-				newG !=g || newA != a)
+			if(tmpRGBA.toRGBAf() != rgba)
+			{
+				rgba=tmpRGBA.toRGBAf();
 				needUpdate=true;
-			r=newR/255.0;
-			g=newG/255.0;
-			b=newB/255.0;
+			}
+
 			//Go in and manually adjust the cached
 			//entries to have the new value, rather
 			//than doing a full recomputation
@@ -1294,9 +1288,9 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 				{
 					VoxelStreamData *d;
 					d=(VoxelStreamData*)filterOutputs[ui];
-					d->r=r;
-					d->g=g;
-					d->b=b;
+					d->r=rgba.r();
+					d->g=rgba.g();
+					d->b=rgba.b();
 				}
 			}
 			break;
@@ -1648,8 +1642,8 @@ bool VoxeliseFilter::writeState(std::ostream &f,unsigned int format, unsigned in
 
 			f << tabs(depth+1) << "<representation value=\""<<representation << "\"/>" << endl;
 			f << tabs(depth+1) << "<isovalue value=\""<<isoLevel << "\"/>" << endl;
-			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
-				<< "\" a=\"" << a << "\"/>" <<endl;
+			f << tabs(depth+1) << "<colour r=\"" <<  rgba.r()<< "\" g=\"" << rgba.g() << "\" b=\"" <<rgba.b()
+				<< "\" a=\"" << rgba.a() << "\"/>" <<endl;
 
 			f << tabs(depth+1) << "<axialslice>" << endl;
 			f << tabs(depth+2) << "<offset value=\""<<sliceOffset<< "\"/>" << endl;
@@ -1836,8 +1830,10 @@ bool VoxeliseFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	//====
 	if(XMLHelpFwdToElem(nodePtr,"colour"))
 		return false;
-	if(!parseXMLColour(nodePtr,r,g,b,a))
+	ColourRGBAf tmpRgba;
+	if(!parseXMLColour(nodePtr,tmpRgba))
 		return false;
+	rgba=tmpRgba;
 
 	//====
 

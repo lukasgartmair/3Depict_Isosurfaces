@@ -1232,7 +1232,6 @@ void DrawGLText::draw() const
 			axis.fz=rotateAxis[2];
 
 
-//			cerr << "Gl rotate (1):" << rotateAxis << " , " << angle << endl;
 			glRotatef(angle*180.0f/M_PI,rotateAxis[0],rotateAxis[1],rotateAxis[2]);
 			quat_rot(&tmp,&axis,angle); //angle is in radiians
 
@@ -1250,7 +1249,6 @@ void DrawGLText::draw() const
 			rotateAxis = newUp.crossProd(Point3D(0,-1,0));
 			rotateAxis.normalise();
 			glRotatef(angle*180.0f/M_PI,rotateAxis[0],rotateAxis[1],rotateAxis[2]);
-			//cerr << "Gl rotate (2):" << rotateAxis << " , " << angle << endl;
 		}
 
 		//Ensure that the text is not back-culled (i.e. if the
@@ -1640,6 +1638,10 @@ void DrawRectPrism::recomputeParams(const vector<Point3D> &vecs,
 	}
 }
 
+DrawableOverlay::~DrawableOverlay()
+{
+}
+
 DrawTexturedQuadOverlay::DrawTexturedQuadOverlay()  
 {
 }
@@ -1649,16 +1651,12 @@ DrawTexturedQuadOverlay::~DrawTexturedQuadOverlay()
 	texPool->closeTexture(textureId);
 }
 
-void DrawTexturedQuadOverlay::setSize(float s)
-{
-	length=s;
-}
-
-
 void DrawTexturedQuadOverlay::draw() const
 {
 	if(!textureOK)
 		return;
+
+	ASSERT(height == width);
 
 	ASSERT(glIsTexture(textureId));
 	
@@ -1679,13 +1677,13 @@ void DrawTexturedQuadOverlay::draw() const
 	glColor3f(1.0f,1.0f,1.0f);
 	glBegin(GL_QUADS);
 		glTexCoord2f(0.0f,0.0f);
-		glVertex3f(position[0]-length/2.0,position[1]-length/2.0,0.0);
+		glVertex3f(position[0]-height/2.0,position[1]-height/2.0,0.0);
 		glTexCoord2f(0.0f,1.0f);
-		glVertex3f(position[0]-length/2.0,position[1]+length/2.0,0.0);
+		glVertex3f(position[0]-height/2.0,position[1]+height/2.0,0.0);
 		glTexCoord2f(1.0f,1.0f);
-		glVertex3f(position[0]+length/2.0,position[1]+length/2.0,0.0);
+		glVertex3f(position[0]+height/2.0,position[1]+height/2.0,0.0);
 		glTexCoord2f(1.0f,0.0f);
-		glVertex3f(position[0]+length/2.0,position[1]-length/2.0,0.0);
+		glVertex3f(position[0]+height/2.0,position[1]-height/2.0,0.0);
 	glEnd();
 
 	glDisable(GL_TEXTURE_2D);	
@@ -1705,11 +1703,6 @@ bool DrawTexturedQuadOverlay::setTexture(const char *textureFile)
 	ASSERT(texPool);	
 	textureOK= texPool->openTexture(textureFile,textureId);
 	return textureOK;
-}
-
-void DrawTexturedQuadOverlay::getBoundingBox(BoundCube &b) const
-{
-	b.setInvalid();
 }
 
 DrawAnimatedOverlay::DrawAnimatedOverlay()
@@ -1737,12 +1730,6 @@ bool DrawAnimatedOverlay::setTexture(const vector<string> &texFiles,
 	textureOK=texPool->openTexture3D(texFiles, textureId);
 	return textureOK;
 }
-
-void DrawAnimatedOverlay::setSize(float newLen)
-{
-	length=newLen;
-}
-
 
 void DrawAnimatedOverlay::draw() const
 {
@@ -1784,16 +1771,18 @@ void DrawAnimatedOverlay::draw() const
 	glTexEnvf (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MULT); 
 	
 	// Draw overlay quad 
+	ASSERT(width == height); // width/height should be the same
 	glColor4f(1.0f,1.0f,1.0f,alphaVal);
+
 	glBegin(GL_QUADS);
 		glTexCoord3f(0.0f,0.0f,texCoordZ);
-		glVertex3f(position[0]-length/2.0,position[1]-length/2.0,0.0);
+		glVertex3f(position[0]-width/2.0,position[1]-width/2.0,0.0);
 		glTexCoord3f(0.0f,1.0f,texCoordZ);
-		glVertex3f(position[0]-length/2.0,position[1]+length/2.0,0.0);
+		glVertex3f(position[0]-width/2.0,position[1]+width/2.0,0.0);
 		glTexCoord3f(1.0f,1.0f,texCoordZ);
-		glVertex3f(position[0]+length/2.0,position[1]+length/2.0,0.0);
+		glVertex3f(position[0]+width/2.0,position[1]+width/2.0,0.0);
 		glTexCoord3f(1.0f,0.0f,texCoordZ);
-		glVertex3f(position[0]+length/2.0,position[1]-length/2.0,0.0);
+		glVertex3f(position[0]+width/2.0,position[1]-width/2.0,0.0);
 	glEnd();
 
 	glDisable(GL_TEXTURE_3D);	
@@ -1806,10 +1795,7 @@ void DrawAnimatedOverlay::draw() const
 	glMatrixMode(GL_MODELVIEW);
 }
 
-void DrawAnimatedOverlay::getBoundingBox(BoundCube &b) const
-{
-	b.setInvalid();
-}
+
 
 DrawColourBarOverlay::DrawColourBarOverlay() 
 {
@@ -1834,8 +1820,8 @@ DrawColourBarOverlay::DrawColourBarOverlay(const DrawColourBarOverlay &oth)
 	height=oth.height;
 	width=oth.width;
 	
-	tlX=oth.tlX;
-	tlY=oth.tlY;
+	position[0]=oth.position[0];
+	position[1]=oth.position[1];
 };
 
 void DrawColourBarOverlay::draw() const
@@ -1854,10 +1840,10 @@ void DrawColourBarOverlay::draw() const
 				rgb[rgb.size()-(ui+1)].v[2],1.0);
 
 		//draw this quad (bar element)
-		glVertex3f(tlX,tlY+(float)ui*elemHeight,0);
-		glVertex3f(tlX,tlY+(float)(ui+1)*elemHeight,0);
-		glVertex3f(tlX+barWidth,tlY+(float)(ui+1)*elemHeight,0);
-		glVertex3f(tlX+barWidth,tlY+(float)(ui)*elemHeight,0);
+		glVertex3f(position[0],position[1]+(float)ui*elemHeight,0);
+		glVertex3f(position[0],position[1]+(float)(ui+1)*elemHeight,0);
+		glVertex3f(position[0]+barWidth,position[1]+(float)(ui+1)*elemHeight,0);
+		glVertex3f(position[0]+barWidth,position[1]+(float)(ui)*elemHeight,0);
 	}
 
 	glEnd();
@@ -1892,11 +1878,11 @@ void DrawColourBarOverlay::draw() const
 	glBegin(GL_LINES);
 		glColor4f(textGrey,textGrey,textGrey,1.0f);
 		//Top tick
-		glVertex3f(tlX,tlY,0);
-		glVertex3f(tlX+width,tlY,0);
+		glVertex3f(position[0],position[1],0);
+		glVertex3f(position[0]+width,position[1],0);
 		//Bottom tick
-		glVertex3f(tlX,tlY+height,0);
-		glVertex3f(tlX+width,tlY+height,0);
+		glVertex3f(position[0],position[1]+height,0);
+		glVertex3f(position[0]+width,position[1]+height,0);
 	glEnd();
 
 
@@ -1922,7 +1908,7 @@ void DrawColourBarOverlay::draw() const
 	font->FaceSize(3);
 	glDisable(GL_CULL_FACE);
 	glPushMatrix();
-	glTranslatef(tlX+width,tlY,0);
+	glTranslatef(position[0]+width,position[1],0);
 	string s;
 	stream_cast(s,max);
 	//Note negative sign to flip from y-down screen (opengl) to text dir
@@ -1933,7 +1919,7 @@ void DrawColourBarOverlay::draw() const
 	glPopMatrix();
 
 	glPushMatrix();
-	glTranslatef(tlX+width,tlY+height,0);
+	glTranslatef(position[0]+width,position[1]+height,0);
 	stream_cast(s,min);
 	//Note negative sign to flip from y-down screen (opengl) to text dir
 	//(y up)
@@ -1961,12 +1947,6 @@ void DrawColourBarOverlay::setColourVec(const vector<float> &r,
 
 
 }
-
-void DrawColourBarOverlay::getBoundingBox(BoundCube &b) const
-{
-	b.setInvalid();
-}
-
 
 DrawField3D::DrawField3D() : ptsCacheOK(false), alphaVal(0.2f), pointSize(1.0f), drawBoundBox(true),
 	boxColourR(1.0f), boxColourG(1.0f), boxColourB(1.0f), boxColourA(1.0f),

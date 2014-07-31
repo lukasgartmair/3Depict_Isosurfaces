@@ -634,7 +634,7 @@ void BasicGLPane::keyPressed(wxKeyEvent& event)
 
 				
 				currentScene.ensureVisible(visibleDir);
-				parentStatusBar->SetStatusText(wxTRANS("Use shift/ctrl-space or double tap to alter reset axis"));
+				parentStatusBar->SetStatusText(TRANS("Use shift/ctrl-space or double tap to alter reset axis"));
 				parentStatusBar->SetBackgroundColour(*wxCYAN)
 					;
 				parentStatusTimer->Start(statusDelay,wxTIMER_ONE_SHOT);
@@ -907,8 +907,8 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	showProgress=showProgress && ( totalTiles > 1);
 	if(showProgress)
 	{
-		wxD = new wxProgressDialog(wxTRANS("Image progress"), 
-					wxTRANS("Rendering tiles..."), totalTiles);
+		wxD = new wxProgressDialog(TRANS("Image progress"), 
+					TRANS("Rendering tiles..."), totalTiles);
 
 	}
 	//--
@@ -930,18 +930,26 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	// somwhere in the coordinate system, and I can't find it!
 	// inverting the tile frustrum ends up with the depth test 
 	// also inverting.
-	float oldLightPos[4];
-	currentScene.getLightPos(oldLightPos);
-	const int UNTRANS_AXIS=2;
-	for(size_t ui=0;ui<3;ui++)
-	{
-		if(ui == UNTRANS_AXIS)
-			continue;
+	const bool FLIP_LIGHT_HACK=true;
+	//x,y,z and w axis.
+	const bool IMPORTANT_AXIS[4]={true,false,true,false};
 
-		oldLightPos[ui]=-oldLightPos[ui];
-	
+	//opengl lighthas 4 
+	float oldLightPos[4];
+	if(FLIP_LIGHT_HACK)
+	{
+		currentScene.getLightPos(oldLightPos);
+		float newLightPos[4];
+		for(size_t ui=0;ui<4;ui++)
+		{
+			if(IMPORTANT_AXIS[ui])
+				newLightPos[ui]=oldLightPos[ui];
+			else
+				newLightPos[ui]=-oldLightPos[ui];
+		
+		}
+		currentScene.setLightPos(newLightPos);
 	}
-	currentScene.setLightPos(oldLightPos);
 	
 	if(showProgress)
 		wxD->Show();
@@ -978,15 +986,12 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 			wxD->Update(thisTileNum);
 
 	}
-	
-	//re-set light coordinates
-	for(size_t ui=0;ui<3;ui++)
+
+	if(FLIP_LIGHT_HACK)
 	{
-		if (ui == UNTRANS_AXIS)
-			continue;
-		oldLightPos[ui]=-oldLightPos[ui];
+		//re-set light coordinates
+		currentScene.setLightPos(oldLightPos);
 	}
-	currentScene.setLightPos(oldLightPos);
 
 	trDelete(tr);
 
@@ -1057,7 +1062,7 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	}
 	
 	//--------------	
-	bool isOK=image->SaveFile(wxCStr(filename),wxBITMAP_TYPE_PNG);
+	bool isOK=image->SaveFile(filename,wxBITMAP_TYPE_PNG);
 	
 
 	if(showProgress)
@@ -1088,8 +1093,8 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 
 	ASSERT(!currentScene.haveTempCam());
 	std::string outFile;
-	wxProgressDialog *wxD = new wxProgressDialog(wxTRANS("Animation progress"), 
-					wxTRANS("Rendering sequence..."), nFrames,this,wxPD_CAN_ABORT|wxPD_APP_MODAL );
+	wxProgressDialog *wxD = new wxProgressDialog(TRANS("Animation progress"), 
+					TRANS("Rendering sequence..."), nFrames,this,wxPD_CAN_ABORT|wxPD_APP_MODAL );
 
 	wxD->Show();
 	std::string tmpStr,tmpStrTwo;
@@ -1128,7 +1133,7 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 		stream_cast(tmpStr,ui+1);
 		//Tell user which image from the animation we are saving
 		tmpStr = std::string(TRANS("Saving Image ")) + tmpStr + std::string(TRANS(" of ")) + tmpStrTwo + "...";
-		if(!wxD->Update(ui,wxStr(tmpStr)))
+		if(!wxD->Update(ui,tmpStr))
 			break;
 
 		Refresh();

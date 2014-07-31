@@ -20,6 +20,7 @@
 
 #include "../filter.h"
 
+#include "../../common/basics.h"
 #include "../../common/translation.h"
 
 enum
@@ -57,8 +58,6 @@ class DataLoadFilter:public Filter
 		//!Type of file to open
 		unsigned int fileType;
 
-		//!Try our best to guess the file type?
-		bool guessType;
 
 
 		//!Whether to randomly sample dataset during load or not
@@ -68,7 +67,7 @@ class DataLoadFilter:public Filter
 		size_t maxIons;
 
 		//!Default ion colour vars
-		float r,g,b,a;
+		ColourRGBAf rgbaf;
 
 		//!Default ion size (view size)
 		float ionSize;

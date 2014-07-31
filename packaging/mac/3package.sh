@@ -45,6 +45,24 @@ if [ x`grep ${INFO_PLIST} -Depict` != x"" ] ; then
 	exit 1
 fi
 
+#ensure that we have some .vfm files in here
+if [ x`find ./ -name \*.vfm` == x"" ] ; then
+	echo "No VFM files (mathgl fonts) found!"
+	exit 1 
+fi
+
+#ensure that we have some .pdf files in here
+if [ x`find ./ -name \*.pdf` == x"" ] ; then
+	echo "No PDF files (manual) found!"
+	exit 1 
+fi
+
+#ensure that some .mo (translation files) are here
+if [ x`find ./ -name \*.mo` == x"" ] ; then
+	echo "No mo files (translations) found!"
+	exit 1 
+fi
+
 #--
 
 ARCHIVE_FILENAME=`echo "${BUILT_PROGRAMS_DIR}/${PROGRAM_NAME}-${VERSION}-${MAC_OS_VER}.pkg"`

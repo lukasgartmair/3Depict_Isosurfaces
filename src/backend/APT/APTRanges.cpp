@@ -470,11 +470,10 @@ unsigned int RangeFile::write(std::ostream &f, size_t format) const
 
 			for(size_t ui=0;ui<ranges.size();ui++)
 			{
+				ColourRGBA tmpRgba;
+				tmpRgba.fromRGBf(colours[ui]);
 				std::string colString;
-				genColString((unsigned char)colours[ui].red*255,
-					(unsigned char)colours[ui].green*255,
-					(unsigned char)colours[ui].blue*255,colString);
-
+				colString = tmpRgba.rgbString();
 				//strip leading #
 				colString=colString.substr(1);
 				ASSERT(colString.size() == 6);
@@ -1996,13 +1995,16 @@ unsigned int RangeFile::openRRNG(FILE *fpRange)
 							//which requires a leading #,
 							//in lowercase
 							value = string("#") + lowercase(value);
-							unsigned char r,g,b,a;
+							ColourRGBA tmpRgba;
+							if(!tmpRgba.parse(value))
+							{
+								delete[] inBuffer;
+								return RANGE_ERR_FORMAT;
+							}
 
-							parseColString(value,r,g,b,a);
-
-							col.red = (float)r/255.0f;
-							col.green=(float)g/255.0f;
-							col.blue=(float)b/255.0f;
+							col.red = (float)tmpRgba.r()/255.0f;
+							col.green=(float)tmpRgba.g()/255.0f;
+							col.blue=(float)tmpRgba.b()/255.0f;
 						}
 						else
 						{

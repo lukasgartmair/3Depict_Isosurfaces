@@ -566,11 +566,12 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 	size_t curGroup=0;
 
 	prop.name=TRANS("File");
-	prop.type=PROPERTY_TYPE_STRING;
+	//Wx- acceptable string format
+	prop.type=PROPERTY_TYPE_FILE;
 	prop.helpText=TRANS("File to use for range data");
 	prop.key=RANGE_KEY_RANGE_FILENAME;
 	prop.data=rngName;
-	prop.dataSecondary=TRANS("Range Files (*rng; *env; *rrng)|*rng;*env;*rrng|RNG File (*.rng)|*.rng|Environment File (*.env)|*.env|RRNG Files (*.rrng)|*.rrng|All Files (*)|*");
+	prop.dataSecondary=TRANS("Range Files (*rng; *env; *rrng)|*.rng;*.RNG;*env;*ENV;*.RRNG;*.rrng|RNG File (*.rng)|*.rng;*.RNG|Environment File (*.env)|*.env|RRNG Files (*.rrng)|*.rrng;*.RRNG|All Files (*)|*");
 
 
 	p.addProperty(prop,curGroup);	
@@ -635,16 +636,13 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 		
 			p.addProperty(prop,curGroup);
 
-			RGBf col;
-			string thisCol;
-		
+			ColourRGBAf col;
 			//Convert the ion colour to a hex string	
 			col=rng.getColour(ui);
-			genColString((unsigned char)(col.red*255),(unsigned char)(col.green*255),
-					(unsigned char)(col.blue*255),255,thisCol);
-
+			
 			prop.name=TRANS("Colour ") + suffix;
-			prop.data=thisCol;
+			prop.data=col.toColourRGBA().rgbaString();
+
 			prop.type=PROPERTY_TYPE_COLOUR;
 			prop.helpText=TRANS("Colour used to represent ion");
 			prop.key=NUM_ROWS_ION*ui+3+RANGE_KEY_ENABLE_ALL_IONS;
@@ -872,15 +870,9 @@ bool RangeFileFilter::setProperty(unsigned int key,
 					}	
 					case 2: //Colour of the ion
 					{
-						unsigned char r,g,b,a;
-						parseColString(value,r,g,b,a);
-
-						RGBf newCol;
-						newCol.red=(float)r/255.0f;
-						newCol.green=(float)g/255.0f;
-						newCol.blue=(float)b/255.0f;
-
-						rng.setColour(ionID,newCol);
+						ColourRGBA rgba;
+						rgba.parse(value);
+						rng.setColour(ionID,rgba.toRGBAf().toRGBf());
 						needUpdate=true;
 						break;
 					}
@@ -1031,14 +1023,12 @@ bool RangeFileFilter::writeState(std::ostream &f,unsigned int format, unsigned i
 			f << tabs(depth+1) << "<enabledions>"<< endl;
 			for(unsigned int ui=0;ui<enabledIons.size();ui++)
 			{
-				RGBf col;
-				string colourString;
+				ColourRGBAf col;
 				col = rng.getColour(ui);
 
-				genColString((unsigned char)(col.red*255),(unsigned char)(col.green*255),
-						(unsigned char)(col.blue*255),255,colourString);
+				
 				f<< tabs(depth+2) << "<ion id=\"" << ui << "\" enabled=\"" 
-					<< (int)enabledIons[ui] << "\" colour=\"" << colourString << "\"/>" << endl;
+					<< (int)enabledIons[ui] << "\" colour=\"" << col.toColourRGBA().rgbString()<< "\"/>" << endl;
 			}
 			f << tabs(depth+1) << "</enabledions>"<< endl;
 
@@ -1162,15 +1152,11 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 
 		tmpStr=(char *)xmlString;
 
-		unsigned char r,g,b,a;
-		if(!parseColString(tmpStr,r,g,b,a))
+		ColourRGBA rgbaTmp;
+		if(!rgbaTmp.parse(tmpStr))
 			return false;
 		
-		RGBf col;
-		col.red=(float)r/255.0f;
-		col.green=(float)g/255.0f;
-		col.blue=(float)b/255.0f;
-		tmpCol[ionID]=col;	
+		tmpCol[ionID]=rgbaTmp.toRGBAf().toRGBf();	
 		xmlFree(xmlString);
 	}
 

@@ -70,40 +70,40 @@ PrefDialog::PrefDialog(wxWindow* parent, int id, const wxString& title, const wx
     notePrefPanels_pane_3 = new wxPanel(notePrefPanels, wxID_ANY);
 	panelStartup = new wxPanel(notePrefPanels, wxID_ANY);
 	panelFilters = new wxPanel(notePrefPanels, wxID_ANY);
-	sizer_2_staticbox = new wxStaticBox(panelStartup, -1, wxTRANS("Panel Display"));
+	sizer_2_staticbox = new wxStaticBox(panelStartup, -1, TRANS("Panel Display"));
 #ifndef DISABLE_ONLINE_UPDATE
-	updateSizer_staticbox = new wxStaticBox(panelStartup, -1, wxTRANS("Online Updates"));
+	updateSizer_staticbox = new wxStaticBox(panelStartup, -1, TRANS("Online Updates"));
 #endif
-    	sizer_7_staticbox = new wxStaticBox(notePrefPanels_pane_3, wxID_ANY, wxTRANS("Startup"));
-    	sizerCamSpeed_staticbox = new wxStaticBox(notePrefPanels_pane_3, -1, wxTRANS("Camera Speed"));
-	lblFilters = new wxStaticText(panelFilters, wxID_ANY, wxTRANS("Available Filters"));
+    	sizer_7_staticbox = new wxStaticBox(notePrefPanels_pane_3, wxID_ANY, TRANS("Startup"));
+    	sizerCamSpeed_staticbox = new wxStaticBox(notePrefPanels_pane_3, -1, TRANS("Camera Speed"));
+	lblFilters = new wxStaticText(panelFilters, wxID_ANY, TRANS("Available Filters"));
 	listFilters = new wxListBox(panelFilters, ID_LIST_FILTERS, wxDefaultPosition, wxDefaultSize, 0, NULL, wxLB_SINGLE|wxLB_SORT);
 	filterGridProperties =new wxPropertyGrid(panelFilters, ID_GRID_PROPERTIES,
 						wxDefaultPosition,wxDefaultSize,PROPERTY_GRID_STYLE);
 	filterGridProperties->SetExtraStyle(PROPERTY_GRID_EXTRA_STYLE);
-	filterBtnResetAllFilters = new wxButton(panelFilters, ID_BTN_RESET_FILTER_ALL, wxTRANS("Reset All"));
-	filterResetDefaultFilter = new wxButton(panelFilters, ID_BTN_RESET_FILTER, wxTRANS("Reset"));
+	filterBtnResetAllFilters = new wxButton(panelFilters, ID_BTN_RESET_FILTER_ALL, TRANS("Reset All"));
+	filterResetDefaultFilter = new wxButton(panelFilters, ID_BTN_RESET_FILTER, TRANS("Reset"));
 	const wxString comboPanelStartMode_choices[] = {
-		wxNTRANS("Show all panels"),
-		wxNTRANS("Remember last"),
-		wxNTRANS("Show Selected")
+		NTRANS("Show all panels"),
+		NTRANS("Remember last"),
+		NTRANS("Show Selected")
 	};
 	comboPanelStartMode = new wxComboBox(panelStartup, ID_START_COMBO_PANEL, wxT(""), wxDefaultPosition, wxDefaultSize, 3, comboPanelStartMode_choices, wxCB_SIMPLE|wxCB_DROPDOWN|wxCB_READONLY);
-	chkControl = new wxCheckBox(panelStartup, ID_START_CHECK_CONTROL, wxTRANS("Control Pane"));
-	chkRawData = new wxCheckBox(panelStartup, ID_START_CHECK_RAWDATA, wxTRANS("Raw Data Panel"));
-	chkPlotlist = new wxCheckBox(panelStartup, ID_START_CHECK_PLOTLIST, wxTRANS("Plot List"));
+	chkControl = new wxCheckBox(panelStartup, ID_START_CHECK_CONTROL, TRANS("Control Pane"));
+	chkRawData = new wxCheckBox(panelStartup, ID_START_CHECK_RAWDATA, TRANS("Raw Data Panel"));
+	chkPlotlist = new wxCheckBox(panelStartup, ID_START_CHECK_PLOTLIST, TRANS("Plot List"));
 #ifndef DISABLE_ONLINE_UPDATE
-	checkAllowOnlineUpdate = new wxCheckBox(panelStartup, wxID_ANY, wxTRANS("Periodically notify about available updates"));
+	checkAllowOnlineUpdate = new wxCheckBox(panelStartup, wxID_ANY, TRANS("Periodically notify about available updates"));
 #endif
-    	chkPreferOrtho = new wxCheckBox(notePrefPanels_pane_3, wxID_ANY, wxTRANS("Prefer orthographic at startup"));
-	lblMoveSpeed = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, wxTRANS("Move Rate"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
-	labelSlowCamMoveRate = new wxStaticText(notePrefPanels_pane_3,wxID_ANY, wxTRANS("(slow)"));
+    	chkPreferOrtho = new wxCheckBox(notePrefPanels_pane_3, wxID_ANY, TRANS("Prefer orthographic at startup"));
+	lblMoveSpeed = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, TRANS("Move Rate"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
+	labelSlowCamMoveRate = new wxStaticText(notePrefPanels_pane_3,wxID_ANY, TRANS("(slow)"));
 	sliderCamMoveRate = new wxSlider(notePrefPanels_pane_3, ID_MOUSE_MOVE_SLIDER, 25, 1, 400,wxDefaultPosition,wxDefaultSize,wxSL_HORIZONTAL|wxSL_LABELS);
-	labelFastCamMoveRate = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, wxTRANS("(fast)"));
-	lblZoomSpeed = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, wxTRANS("Zoom Rate"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
-	labelSlowCamZoomRate = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, wxTRANS("(slow)"));
+	labelFastCamMoveRate = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, TRANS("(fast)"));
+	lblZoomSpeed = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, TRANS("Zoom Rate"), wxDefaultPosition, wxDefaultSize, wxALIGN_CENTRE);
+	labelSlowCamZoomRate = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, TRANS("(slow)"));
 	sliderCamZoomRate = new wxSlider(notePrefPanels_pane_3, ID_MOUSE_ZOOM_SLIDER, 25, 1, 400,wxDefaultPosition,wxDefaultSize,wxSL_HORIZONTAL|wxSL_LABELS);
-	labelSlowFastZoomRate = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, wxTRANS("(fast)"));
+	labelSlowFastZoomRate = new wxStaticText(notePrefPanels_pane_3, wxID_ANY, TRANS("(fast)"));
 	btnOK = new wxButton(this, wxID_OK, wxEmptyString);
 	btnCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
 
@@ -152,7 +152,7 @@ void PrefDialog::createFilterListing()
 	vector<size_t> v;
 	for(size_t ui=0;ui<filterDefaults.size();ui++)
 	{
-		s=wxStr(filterDefaults[ui]->typeString());
+		s=(filterDefaults[ui]->typeString());
 		v.push_back(filterDefaults[ui]->getType());
 		listFilters->Append(s);
 	}
@@ -167,7 +167,7 @@ void PrefDialog::createFilterListing()
 			//This is a bit of a hack, but it works.
 			Filter *t;
 			t=makeFilter(ui);
-			s = wxStr(t->typeString());
+			s = (t->typeString());
 			listFilters->Append(s);
 			delete t;
 		}
@@ -413,17 +413,17 @@ void PrefDialog::setStartupCheckboxEnables(unsigned int value)
 	switch(value)
 	{
 		case STARTUP_COMBO_SELECT_SHOW_ALL:
-			comboPanelStartMode->SetToolTip(wxTRANS("Show all panels when starting program"));
+			comboPanelStartMode->SetToolTip(TRANS("Show all panels when starting program"));
 			break;
 		case STARTUP_COMBO_SELECT_REMEMBER:
-			comboPanelStartMode->SetToolTip(wxTRANS("Show panels visible at last shutdown when starting program"));
+			comboPanelStartMode->SetToolTip(TRANS("Show panels visible at last shutdown when starting program"));
 			
 			chkRawData->SetValue(true);
 			chkControl->SetValue(true);
 			chkPlotlist->SetValue(true);
 			break;
 		case STARTUP_COMBO_SELECT_SPECIFY:
-			comboPanelStartMode->SetToolTip(wxTRANS("Show selected panels when starting program"));
+			comboPanelStartMode->SetToolTip(TRANS("Show selected panels when starting program"));
 			break;
 		default:
 			ASSERT(false);
@@ -472,19 +472,19 @@ void PrefDialog::OnMouseMoveSlider(wxScrollEvent &event)
 void PrefDialog::set_properties()
 {
     // begin wxGlade: PrefDialog::set_properties
-    SetTitle(wxTRANS("Preferences"));
+    SetTitle(TRANS("Preferences"));
     SetSize(wxSize(640, 487));
-    comboPanelStartMode->SetToolTip(wxTRANS("Set the method of panel layout when starting the program"));
+    comboPanelStartMode->SetToolTip(TRANS("Set the method of panel layout when starting the program"));
     comboPanelStartMode->SetSelection(0);
 #ifndef DISABLE_ONLINE_UPDATE
-    checkAllowOnlineUpdate->SetToolTip(wxTRANS("Lets the program check the internet to see if updates to the program version are available, then notifies you about updates now and again."));
+    checkAllowOnlineUpdate->SetToolTip(TRANS("Lets the program check the internet to see if updates to the program version are available, then notifies you about updates now and again."));
 #endif
-    chkPreferOrtho->SetToolTip(wxTRANS("By default, use an orthographic camera at startup. State files will override this preference."));
-    sliderCamMoveRate->SetToolTip(wxTRANS("Camera translation, orbit and swivel rates. "));
-    sliderCamZoomRate->SetToolTip(wxTRANS("Camera zooming rate."));
+    chkPreferOrtho->SetToolTip(TRANS("By default, use an orthographic camera at startup. State files will override this preference."));
+    sliderCamMoveRate->SetToolTip(TRANS("Camera translation, orbit and swivel rates. "));
+    sliderCamZoomRate->SetToolTip(TRANS("Camera zooming rate."));
 
-    filterResetDefaultFilter->SetToolTip(wxTRANS("Reset the filter initial values back to program defaults"));
-    filterBtnResetAllFilters->SetToolTip(wxTRANS("Reset all filter initial values back to program defaults"));
+    filterResetDefaultFilter->SetToolTip(TRANS("Reset the filter initial values back to program defaults"));
+    filterBtnResetAllFilters->SetToolTip(TRANS("Reset all filter initial values back to program defaults"));
     
     // end wxGlade
 }
@@ -556,9 +556,9 @@ void PrefDialog::do_layout()
 	sizerCamSpeed->AddStretchSpacer();
     sizer_5->Add(sizerCamSpeed, 1, wxEXPAND, 0);
     notePrefPanels_pane_3->SetSizer(sizer_5);
-	notePrefPanels->AddPage(panelFilters, wxTRANS("Filt. Default"));
-	notePrefPanels->AddPage(panelStartup, wxTRANS("Startup"));
-	notePrefPanels->AddPage(notePrefPanels_pane_3, wxTRANS("Camera"));
+	notePrefPanels->AddPage(panelFilters, TRANS("Filt. Default"));
+	notePrefPanels->AddPage(panelStartup, TRANS("Startup"));
+	notePrefPanels->AddPage(notePrefPanels_pane_3, TRANS("Camera"));
 	panelSizer->Add(notePrefPanels, 2, wxEXPAND, 0);
 	exitButtonSizer->Add(20, 20, 1, wxEXPAND, 0);
 	exitButtonSizer->Add(btnOK, 0, wxTOP, 8);

@@ -76,7 +76,7 @@ const char *annotationModeStrings[] =
 AnnotateFilter::AnnotateFilter() : annotationMode(ANNOTATION_TEXT),
 	position(Point3D(0,0,0)), target(Point3D(1,0,0)), upVec(Point3D(0,0,1)),
 	acrossVec(Point3D(0,1,0)), textSize(1.0f), annotateSize(1.0f),
-	sphereMarkerSize(1.5f),r(0),g(0),b(1),a(1),active(true),showAngleText(true), 
+	sphereMarkerSize(1.5f),rgba(0,0,1), active(true),showAngleText(true), 
 	reflexAngle(true), angleFormatPreDecimal(0),angleFormatPostDecimal(0),
 	linearFixedTicks(true),linearMeasureTicks(10),linearMeasureSpacing(10.0f),
 	fontSizeLinearMeasure(5)
@@ -93,9 +93,6 @@ AnnotateFilter::AnnotateFilter() : annotationMode(ANNOTATION_TEXT),
 	annotateSize=1;
 	sphereMarkerSize=1.5;
 	
-	//Set the colour to default blue
-	r=g=0;b=a=1.0;
-
 	active=true;
 	showAngleText=true;
 
@@ -129,11 +126,7 @@ Filter *AnnotateFilter::cloneUncached() const
 	p->annotateSize=annotateSize;
 	p->sphereMarkerSize=sphereMarkerSize;
 
-	p->r=r;
-	p->g=g;
-	p->b=b;
-	p->a=a;
-
+	p->rgba=rgba;
 	p->active=active;
 	p->showAngleText=showAngleText;
 
@@ -185,7 +178,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 		dt->setString(annotateText);
 		dt->setOrigin(position);
 		dt->setUp(upVec);
-		dt->setColour(r,g,b,a);
+		dt->setColour(rgba.r(),rgba.g(),rgba.b(),rgba.a());
 		dt->setTextDir(acrossVec);
 		dt->setSize((unsigned int)textSize);
 
@@ -215,7 +208,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 		dv->setOrigin(position);
 		dv->setVector(target-position);
 		dv->setArrowSize(annotateSize);
-		dv->setColour(r,g,b,a);	
+		dv->setColour(rgba.r(),rgba.g(),rgba.b(),rgba.a());	
 		dv->setLineSize(lineSize);
 	
 		dv->canSelect=true;
@@ -253,7 +246,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 			dS=new DrawSphere;
 			dS->setOrigin(anglePos[ui]);
 			dS->setRadius(sphereMarkerSize);
-			dS->setColour(r,g,b,a);
+			dS->setColour(rgba.r(),rgba.g(),rgba.b(),rgba.a());
 
 			dS->canSelect=true;
 			dS->wantsLight=true;
@@ -283,14 +276,14 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 		dv=new DrawVector;
 		dv->setOrigin(anglePos[0]);
 		dv->setVector(anglePos[1]-anglePos[0]);
-		dv->setColour(r,g,b,a);
+		dv->setColour(rgba.r(),rgba.g(),rgba.b(),rgba.a());
 		dv->setDrawArrow(false);
 		d->drawables.push_back(dv);
 
 		dv=new DrawVector;
 		dv->setOrigin(anglePos[0]);
 		dv->setVector(anglePos[2]-anglePos[0]);
-		dv->setColour(r,g,b,a);
+		dv->setColour(rgba.r(),rgba.g(),rgba.b(),rgba.a());
 		dv->setDrawArrow(false);
 		d->drawables.push_back(dv);
 
@@ -376,7 +369,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 			//Use user-specifications for colour,
 			//size and orientation
 			dt->setUp(upVec);
-			dt->setColour(r,g,b,a);
+			dt->setColour(rgba.r(),rgba.g(),rgba.b(),rgba.a());
 			dt->setTextDir(acrossVec);
 			dt->setSize((unsigned int)textSize);
 		
@@ -391,7 +384,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 		dv = new DrawVector;
 
 		dv->setOrigin(position);
-		dv->setColour(r,g,b,a);
+		dv->setColour(rgba.r(),rgba.g(),rgba.b(),rgba.a());
 		dv->setVector(target-position);
 		dv->setDrawArrow(false);
 
@@ -424,7 +417,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 				//Create the tick that will be added to the drawables
 				dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_POLYGON);
 					
-				dT->setColour(r,g,b,a);
+				dT->setColour(rgba.r(),rgba.g()	,rgba.b(),rgba.a());
 				dT->setOrigin(measureNormal*tickSpacings[ui] + position);
 				dT->setUp(upVec);	
 				dT->setTextDir(acrossVec);
@@ -446,7 +439,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 			dS = new DrawSphere;
 			dS->setRadius(sphereMarkerSize);
 			dS->setOrigin(position);
-			dS->setColour(r,g,b,a);
+			dS->setColour(rgba.r(),rgba.g(),rgba.b(),rgba.a());
 
 			dS->canSelect=true;
 			dS->wantsLight=true;
@@ -479,7 +472,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 			
 			dS->setRadius(sphereMarkerSize);
 			dS->setOrigin(target);
-			dS->setColour(r,g,b,a);
+			dS->setColour(rgba.r(),rgba.g(),rgba.b(),rgba.a());
 
 			dS->canSelect=true;
 			dS->wantsLight=true;
@@ -899,11 +892,9 @@ void AnnotateFilter::getProperties(FilterPropGroup &propertyList) const
 	}
 
 
-	genColString((unsigned char)(r*255.0),(unsigned char)(g*255.0),
-		(unsigned char)(b*255),(unsigned char)(a*255),tmpStr);
 	p.key=KEY_COLOUR;
 	p.name=TRANS("Colour");
-	p.data=tmpStr;
+	p.data=rgba.toColourRGBA().rgbString();
 	p.type=PROPERTY_TYPE_COLOUR;
 	p.helpText=TRANS("Colour for ruler and ticks");
 	propertyList.addProperty(p,curGroup);
@@ -1060,18 +1051,11 @@ bool AnnotateFilter::setProperty(  unsigned int key,
 		}
 		case KEY_COLOUR:
 		{
-			unsigned char newR,newG,newB,newA;
-
-			parseColString(value,newR,newG,newB,newA);
-
-			if(newB != b || newR != r ||
-				newG !=g || newA != a)
+			ColourRGBA tmpRgba;
+			tmpRgba.parse(value);
+			if(tmpRgba != rgba)
 			{
-				r=(float)newR/255.0;
-				g=(float)newG/255.0;
-				b=(float)newB/255.0;
-				a=(float)newA/255.0;
-
+				rgba = tmpRgba.toRGBAf();
 				needUpdate=true;
 			}
 			else
@@ -1161,6 +1145,7 @@ bool AnnotateFilter::setProperty(  unsigned int key,
 		{
 			if(!applyPropertyNow(linearMeasureTicks,value,needUpdate))
 				return false;
+			break;
 		}
 		case KEY_LINEAR_TICKSPACING:
 		{
@@ -1221,10 +1206,7 @@ bool AnnotateFilter::writeState(std::ostream &f,unsigned int format, unsigned in
 			//DEPRECATE: rename this element. It has been repurposed.
 			f << tabs(depth+1) << "<sphereanglesize value=\""<<sphereMarkerSize<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<linesize value=\""<<lineSize<< "\"/>"  << endl;
-			std::string colourString;
-			genColString((unsigned char)(r*255),(unsigned char)(g*255),
-				(unsigned char)(b*255),(unsigned char)(a*255),colourString);
-			f << tabs(depth+1) << "<colour value=\""<<colourString<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<colour value=\""<< rgba.toColourRGBA().rgbaString() << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<active value=\""<<(active? "1" : "0")<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<showangletext value=\""<<(showAngleText ? "1" : "0")<< "\"/>"  << endl;
@@ -1344,17 +1326,17 @@ bool AnnotateFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 		return false;
 	if(lineSize<0.0f)
 		return false;
+
+	//TODO: we have a standardised parsexmlColour func, use it
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"colour","value"))
 		return false;
 	
-	unsigned char rc,gc,bc,ac;
-	if(!parseColString(tmpStr,rc,gc,bc,ac))
-		return false;
-	r=(float)(rc)/255.0f;
-	g=(float)(gc)/255.0f;
-	b=(float)(bc)/255.0f;
-	a=(float)(ac)/255.0f;
+	ColourRGBA tmpRgba;
 
+	if(!tmpRgba.parse(tmpStr))
+		return false;
+
+	rgba=tmpRgba.toRGBAf();
 
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"active","value"))
 		return false;

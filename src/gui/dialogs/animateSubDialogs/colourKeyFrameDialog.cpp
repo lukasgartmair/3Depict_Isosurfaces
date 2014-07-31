@@ -53,23 +53,23 @@ ColourKeyFrameDialog::ColourKeyFrameDialog(wxWindow* parent, int id, const wxStr
 	wxDialog(parent, id, title, pos, size, wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER|wxMAXIMIZE_BOX|wxMINIMIZE_BOX)
 {
 	// begin wxGlade: ColourKeyFrameDialog::ColourKeyFrameDialog
-	sizerMainArea_staticbox = new wxStaticBox(this, -1, wxTRANS("Keyframe Data"));
-	labelTransition = new wxStaticText(this, wxID_ANY, wxTRANS("Transition"));
+	sizerMainArea_staticbox = new wxStaticBox(this, -1, TRANS("Keyframe Data"));
+	labelTransition = new wxStaticText(this, wxID_ANY, TRANS("Transition"));
 	//FIXME: THis is declared in animator.h - use that def.
 	const wxString comboTransition_choices[] = {
-        wxTRANS("Step"),
-        wxTRANS("Ramp")
+        TRANS("Step"),
+        TRANS("Ramp")
     };
 	comboTransition = new wxComboBox(this, ID_COMBO_TRANSITION, wxT(""), wxDefaultPosition, wxDefaultSize, 2, comboTransition_choices, wxCB_DROPDOWN|wxCB_READONLY);
-	labelFrameStart = new wxStaticText(this, wxID_ANY, wxTRANS("Start Frame"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
+	labelFrameStart = new wxStaticText(this, wxID_ANY, TRANS("Start Frame"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
 	textFrameStart = new wxTextCtrl(this, ID_TEXT_FRAME_START, wxEmptyString);
-	labelFrameEnd = new wxStaticText(this, wxID_ANY, wxTRANS("End Frame"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
+	labelFrameEnd = new wxStaticText(this, wxID_ANY, TRANS("End Frame"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
 	textFrameEnd = new wxTextCtrl(this, ID_TEXT_FRAME_END, wxEmptyString);
 	verticalLine = new wxStaticLine(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL);
-	labelStartVal = new wxStaticText(this, wxID_ANY, wxTRANS("Initial Value"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
-	btnStartColour = new wxButton(this, ID_BTN_START_VALUE, wxTRANS("startColour"), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
-	labelFinalVal = new wxStaticText(this, wxID_ANY, wxTRANS("Final Value"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
-	btnEndColour = new wxButton(this, ID_BTN_FINAL_VALUE, wxTRANS("endColour"), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+	labelStartVal = new wxStaticText(this, wxID_ANY, TRANS("Initial Value"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
+	btnStartColour = new wxButton(this, ID_BTN_START_VALUE, TRANS("startColour"), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+	labelFinalVal = new wxStaticText(this, wxID_ANY, TRANS("Final Value"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
+	btnEndColour = new wxButton(this, ID_BTN_FINAL_VALUE, TRANS("endColour"), wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
 	buttonCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
 	buttonOK = new wxButton(this, wxID_OK, wxEmptyString);
 
@@ -114,16 +114,14 @@ size_t ColourKeyFrameDialog::getEndFrame() const
 std::string ColourKeyFrameDialog::getEndValue() const 
 {
 	ASSERT(transitionMode!=TRANSITION_STEP);
-	std::string s;
-	genColString(endRed,endGreen,endBlue,s);
-	return s;
+	ColourRGBA rgb(endRed,endGreen,endBlue);
+	return rgb.rgbString();
 }
 
 std::string ColourKeyFrameDialog::getStartValue() const
 {
-	std::string s;
-	genColString(startRed,startGreen,startBlue,s);
-	return s;
+	ColourRGBA rgb(startRed,startGreen,startBlue);
+	return rgb.rgbString();
 }
 
 void ColourKeyFrameDialog::OnComboTransition(wxCommandEvent &event)
@@ -234,10 +232,10 @@ void ColourKeyFrameDialog::updateButtonColours()
 void ColourKeyFrameDialog::set_properties()
 {
 	// begin wxGlade: ColourKeyFrameDialog::set_properties
-	SetTitle(wxTRANS("Key Frame : Colour"));
+	SetTitle(TRANS("Key Frame : Colour"));
 	comboTransition->SetSelection(-1);
-	btnStartColour->SetToolTip(wxTRANS("Colour at the start of the transtition"));
-	btnEndColour->SetToolTip(wxTRANS("Colour at end of transition"));
+	btnStartColour->SetToolTip(TRANS("Colour at the start of the transtition"));
+	btnEndColour->SetToolTip(TRANS("Colour at end of transition"));
 	// end wxGlade
 }
 

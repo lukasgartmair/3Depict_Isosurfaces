@@ -167,14 +167,14 @@ am__3Depict_SOURCES_DIST = 3Depict.cpp testing/testing.cpp \
 	gl/textures.cpp gl/select.cpp gl/cameras.cpp gl/isoSurface.cpp \
 	gl/tr.cpp gl/scene.h gl/drawables.h gl/effect.h gl/textures.h \
 	gl/select.h gl/cameras.h gl/isoSurface.h gl/tr.h gl/glDebug.h \
-	common/pngread.c common/stringFuncs.cpp common/xmlHelper.cpp \
-	common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp \
-	common/basics.cpp common/assertion.cpp common/pngread.h \
-	common/stringFuncs.h common/constants.h common/xmlHelper.h \
-	common/colourmap.h common/mathfuncs.h common/basics.h \
-	common/translation.h common/endianTest.h common/assertion.h \
-	common/voxels.h common/array2D.h testing/mglTesting.cpp \
-	testing/mglTesting.h 3Depict.rc
+	common/pngread.c common/stringFuncs.cpp common/constants.cpp \
+	common/xmlHelper.cpp common/colourmap.cpp common/voxels.cpp \
+	common/mathfuncs.cpp common/basics.cpp common/assertion.cpp \
+	common/pngread.h common/stringFuncs.h common/constants.h \
+	common/xmlHelper.h common/colourmap.h common/mathfuncs.h \
+	common/basics.h common/translation.h common/endianTest.h \
+	common/assertion.h common/voxels.h common/array2D.h \
+	testing/mglTesting.cpp testing/mglTesting.h 3Depict.rc
 am__dirstamp = $(am__leading_dot)dirstamp
 am__objects_1 = 3Depict-3Depict.$(OBJEXT) \
 	testing/3Depict-testing.$(OBJEXT) \
@@ -239,6 +239,7 @@ am__objects_8 = gl/3Depict-scene.$(OBJEXT) \
 	gl/3Depict-tr.$(OBJEXT)
 am__objects_9 = common/3Depict-pngread.$(OBJEXT) \
 	common/3Depict-stringFuncs.$(OBJEXT) \
+	common/3Depict-constants.$(OBJEXT) \
 	common/3Depict-xmlHelper.$(OBJEXT) \
 	common/3Depict-colourmap.$(OBJEXT) \
 	common/3Depict-voxels.$(OBJEXT) \
@@ -483,7 +484,9 @@ MSYS_PATH = /c/msys/1.0/local/include/
 	$(GLU_LIBS) $(QHULL_LIBS) $(PNG_LIBS) $(am__append_2)
 
 #------- Common header files for all sub-modules
-COMMON_SOURCE_FILES = common/pngread.c common/stringFuncs.cpp common/xmlHelper.cpp common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp common/assertion.cpp
+COMMON_SOURCE_FILES = common/pngread.c common/stringFuncs.cpp common/constants.cpp common/xmlHelper.cpp\
+			 common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp common/assertion.cpp
+
 COMMON_HEADER_FILES = common/pngread.h common/stringFuncs.h  common/constants.h  common/xmlHelper.h common/colourmap.h \
 		      	common/mathfuncs.h common/basics.h common/translation.h common/endianTest.h common/assertion.h common/voxels.h \
 			common/array2D.h
@@ -873,6 +876,8 @@ common/3Depict-pngread.$(OBJEXT): common/$(am__dirstamp) \
 	common/$(DEPDIR)/$(am__dirstamp)
 common/3Depict-stringFuncs.$(OBJEXT): common/$(am__dirstamp) \
 	common/$(DEPDIR)/$(am__dirstamp)
+common/3Depict-constants.$(OBJEXT): common/$(am__dirstamp) \
+	common/$(DEPDIR)/$(am__dirstamp)
 common/3Depict-xmlHelper.$(OBJEXT): common/$(am__dirstamp) \
 	common/$(DEPDIR)/$(am__dirstamp)
 common/3Depict-colourmap.$(OBJEXT): common/$(am__dirstamp) \
@@ -948,6 +953,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-assertion.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-basics.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-colourmap.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-constants.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-mathfuncs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-pngread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-stringFuncs.Po@am__quote@
@@ -1938,6 +1944,20 @@ common/3Depict-stringFuncs.obj: common/stringFuncs.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='common/stringFuncs.cpp' object='common/3Depict-stringFuncs.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o common/3Depict-stringFuncs.obj `if test -f 'common/stringFuncs.cpp'; then $(CYGPATH_W) 'common/stringFuncs.cpp'; else $(CYGPATH_W) '$(srcdir)/common/stringFuncs.cpp'; fi`
+
+common/3Depict-constants.o: common/constants.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT common/3Depict-constants.o -MD -MP -MF common/$(DEPDIR)/3Depict-constants.Tpo -c -o common/3Depict-constants.o `test -f 'common/constants.cpp' || echo '$(srcdir)/'`common/constants.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) common/$(DEPDIR)/3Depict-constants.Tpo common/$(DEPDIR)/3Depict-constants.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='common/constants.cpp' object='common/3Depict-constants.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o common/3Depict-constants.o `test -f 'common/constants.cpp' || echo '$(srcdir)/'`common/constants.cpp
+
+common/3Depict-constants.obj: common/constants.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT common/3Depict-constants.obj -MD -MP -MF common/$(DEPDIR)/3Depict-constants.Tpo -c -o common/3Depict-constants.obj `if test -f 'common/constants.cpp'; then $(CYGPATH_W) 'common/constants.cpp'; else $(CYGPATH_W) '$(srcdir)/common/constants.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) common/$(DEPDIR)/3Depict-constants.Tpo common/$(DEPDIR)/3Depict-constants.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='common/constants.cpp' object='common/3Depict-constants.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o common/3Depict-constants.obj `if test -f 'common/constants.cpp'; then $(CYGPATH_W) 'common/constants.cpp'; else $(CYGPATH_W) '$(srcdir)/common/constants.cpp'; fi`
 
 common/3Depict-xmlHelper.o: common/xmlHelper.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT common/3Depict-xmlHelper.o -MD -MP -MF common/$(DEPDIR)/3Depict-xmlHelper.Tpo -c -o common/3Depict-xmlHelper.o `test -f 'common/xmlHelper.cpp' || echo '$(srcdir)/'`common/xmlHelper.cpp

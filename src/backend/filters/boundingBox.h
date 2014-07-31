@@ -40,7 +40,7 @@ class BoundingBoxFilter : public Filter
 		unsigned int fontSize;
 
 		//!Line colour
-		float rLine,gLine,bLine,aLine;
+		ColourRGBAf lineColour;
 		//!Line width 
 		float lineWidth;
 		//!Use 3D text?

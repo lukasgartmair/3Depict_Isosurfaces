@@ -18,6 +18,8 @@
 #ifndef COMMONCONSTANTS_H
 #define COMMONCONSTANTS_H
 
+#include "translation.h"
+
 //C-style Array size macro
 #define THREEDEP_ARRAYSIZE(f) (sizeof (f) / sizeof(*f))
 //C++1x availabilty (as far as we are concerned)
@@ -78,5 +80,12 @@ struct PLOT_ERROR
 	//!Edge mode
 	unsigned int edgeMode;
 };
+
+extern const char *RANGEFILE_WX_CONSTANT;
+
+extern const char *DTD_NAME;
+extern const char *PROGRAM_NAME;
+extern const char *PROGRAM_VERSION;
+extern const char *FONT_FILE;
 
 #endif

@@ -55,16 +55,4 @@ License: GPL-2+
  On Debian systems the full text of the Lesser GNU General Public License
  v2 can be found in the `/usr/share/common-licenses/LGPL-2' file.
 
-Files: src/gl/tr.cpp src/gl/tr.h
-Copyright: Copyright 2005, Brian Paul 
-Source: http://www.mesa3d.org/brianp/TR.html
-License: GPL-2+
- On Debian systems the full text of the GNU General Public License v2
- can be found in the `/usr/share/common-licenses/GPL-2' file.
 
-Files: data/naturalAbundance.xml
-Copyright: Copyright 2008, Metamolecular
-Source: http://metamolecular.com 
-License: expat
- On Debian systems the full text of th expat license can be found in the
- `/usr/share/common-licenses/expat' file.

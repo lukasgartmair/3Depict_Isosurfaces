@@ -201,9 +201,10 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 	}
 
 
-	//sort again	
-	GreaterWithCallback<size_t> g(callback,PROGRESS_REDUCE);
-	std::sort(ionsToLoad.begin(),ionsToLoad.end(),g);
+	//sort again
+	//NOTE: I tried to use a functor here to get progress
+	// It was not stable with parallel sort	
+	std::sort(ionsToLoad.begin(),ionsToLoad.end());
 
 	unsigned int curProg = PROGRESS_REDUCE;	
 
@@ -603,11 +604,11 @@ unsigned int limitLoadTextFile(unsigned int maxCols,
 		return TEXT_ERR_ALLOC_FAIL;
 	}
 
+	(*callback)(true);
 
 	//Sort the data such that we are going to
 	//always jump forwards in the file; better disk access and whatnot.
-	GreaterWithCallback<size_t> g(callback,PROGRESS_REDUCE);
-	std::sort(dataToLoad.begin(),dataToLoad.end(),g);
+	std::sort(dataToLoad.begin(),dataToLoad.end());
 
 	//OK, so we have  a list of newlines
 	//that we can use as entry points for random seek.

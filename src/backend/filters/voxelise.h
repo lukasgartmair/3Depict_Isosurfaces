@@ -48,7 +48,7 @@ private:
 	//This is filter's enabled ranges
 	RangeStreamData *rsdIncoming;
 	
-	float r,g,b,a;
+	ColourRGBAf rgba;
 
 	//!Filter mode to apply to data before output
 	unsigned int filterMode;

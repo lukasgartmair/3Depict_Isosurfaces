@@ -87,7 +87,7 @@ std::string locateDataFile(const char *name)
 
 			s+=name;
 
-			if(wxFileExists(wxStr(s)))
+			if(wxFileExists((s)))
 				return s;
 		}
 	}
@@ -95,7 +95,7 @@ std::string locateDataFile(const char *name)
 	std::string s;
 	s =name; 
 	
-	if(s.size() && wxFileExists(wxStr(s)))
+	if(s.size() && wxFileExists((s)))
 	{
 		return string(name);
 	}
@@ -121,7 +121,7 @@ std::string locateDataFile(const char *name)
 	{
 		s=std::string(possibleDirs[ui]) + name;
 
-		if(wxFileExists(wxStr(s)))
+		if(wxFileExists((s)))
 			return s;
 	}
 
@@ -138,7 +138,7 @@ std::string locateDataFile(const char *name)
     }
     CFRelease(resourcesURL);
 	std::string s=std::string(path) + "/" + name;
-		if(wxFileExists(wxStr(s)))
+		if(wxFileExists((s)))
 			return s;
 		else
 			return std::string("");
@@ -177,7 +177,7 @@ void *VersionCheckThread::Entry()
 	strUrl = std::string(RSS_FEED_LOCATION) + std::string("?progver=") + std::string(PROGRAM_VERSION) + 
 				std::string("&os=") + stlStr(::wxGetOsDescription());
 
-	wxURI uri(wxStr(strUrl));
+	wxURI uri((strUrl));
 	rssUrl = uri.BuildURI();
 
 	url.SetURL(rssUrl); 
@@ -297,8 +297,8 @@ void *VersionCheckThread::Entry()
 
 void wxErrMsg(wxWindow *win, const std::string &title, const std::string &mesg)
 {
-	wxMessageDialog *wxMesD  =new wxMessageDialog(win,wxStr(mesg)
-					,wxStr(title),wxOK|wxICON_ERROR);
+	wxMessageDialog *wxMesD  =new wxMessageDialog(win,(mesg)
+					,(title),wxOK|wxICON_ERROR);
 	wxMesD->ShowModal();
 	wxMesD->Destroy();
 }
@@ -342,7 +342,7 @@ bool processMatchesName(size_t processID, const std::string &procName)
 		procNameFound=pidFound=false;
 		for(unsigned int ui=0;ui<strVec.size(); ui++)
 		{
-			wxFileName fName(wxStr(strVec[ui]));
+			wxFileName fName((strVec[ui]));
 			std::string maybeProcName;
 			maybeProcName = stlStr(fName.GetFullName());
 			

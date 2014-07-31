@@ -157,7 +157,7 @@ bool filterCloneTests()
 			wxString wxs,tmpStr;
 
 			tmpStr=wxT("3Depict-unit-test-a");
-			tmpStr=tmpStr+wxStr(f->getUserString());
+			tmpStr=tmpStr+(f->getUserString());
 			
 			wxs= wxFileName::CreateTempFileName(tmpStr);
 			sOrig=stlStr(wxs);
@@ -176,7 +176,7 @@ bool filterCloneTests()
 
 			//write out file from cloned object
 			tmpStr=wxT("3Depict-unit-test-b");
-			tmpStr=tmpStr+wxStr(f->getUserString());
+			tmpStr=tmpStr+(f->getUserString());
 			wxs= wxFileName::CreateTempFileName(tmpStr);
 			sClone=stlStr(wxs);
 			fileOut.open(sClone.c_str());
@@ -201,7 +201,7 @@ bool filterCloneTests()
 
 		wxArrayString stdOut;
 		long res;
-		res=wxExecute(wxStr(command),stdOut, wxEXEC_BLOCK);
+		res=wxExecute((command),stdOut, wxEXEC_BLOCK);
 
 
 		string comment = f->getUserString() + string(" Orig: ")+ sOrig + string (" Clone:") +sClone+
@@ -243,7 +243,7 @@ bool filterCloneTests()
 			g->writeState(fileOut,STATE_FORMAT_XML);
 
 			//Re-run diff
-			res=wxExecute(wxStr(command),stdOut, wxEXEC_BLOCK);
+			res=wxExecute((command),stdOut, wxEXEC_BLOCK);
 			
 			comment = f->getUserString() + string("Orig: ")+ sOrig + string (" Clone:") +sClone+
 				string("Read-back filter output was different... (or diff not around?)");
@@ -251,8 +251,8 @@ bool filterCloneTests()
 		}
 		//----
 		//clean up
-		wxRemoveFile(wxStr(sOrig));
-		wxRemoveFile(wxStr(sClone));
+		wxRemoveFile((sOrig));
+		wxRemoveFile((sClone));
 
 		delete f;
 		delete g;
@@ -421,15 +421,19 @@ bool filterTreeTests()
 				throw false;
 			
 			TEST(!fTree.loadXML(nodePtr,cerr,""),"Tree load test");
+
+		
+
+			xmlFreeDoc(doc);	
 			//-----
 		}
 		catch(bool)
 		{
 			WARN(false,"Couldn't run XML reparse of output file - write permission?" );
-			wxRemoveFile(wxStr(tmpName));
+			wxRemoveFile((tmpName));
 			return true;
 		}
-		wxRemoveFile(wxStr(tmpName));
+		wxRemoveFile((tmpName));
 	}
 	else
 	{
@@ -495,7 +499,7 @@ bool filterRefreshNoOut()
 	TEST(outData.empty(),"External program refresh test");
 	fTree.safeDeleteFilterList(outData);
 
-	wxRemoveFile(wxStr(strData));
+	wxRemoveFile((strData));
 
 	return true;
 }

@@ -42,12 +42,12 @@ StringKeyFrameDialog::StringKeyFrameDialog(wxWindow* parent, int id, const wxStr
 	wxDialog(parent, id, title, pos, size, wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER)
 {
 	// begin wxGlade: StringKeyFrameDialog::StringKeyFrameDialog
-	labelStartFrame = new wxStaticText(this, wxID_ANY, wxTRANS("Start Frame: "));
+	labelStartFrame = new wxStaticText(this, wxID_ANY, TRANS("Start Frame: "));
 	textStartFrame = new wxTextCtrl(this, ID_TEXT_START_FRAME, wxEmptyString);
-	radioFromFile = new wxRadioButton(this, ID_RADIO_FROM_FILE, wxTRANS("From File"));
+	radioFromFile = new wxRadioButton(this, ID_RADIO_FROM_FILE, TRANS("From File"));
 	textFilename = new wxTextCtrl(this, ID_TEXT_FROM_FILE, wxEmptyString);
 	btnChooseFile = new wxButton(this, wxID_OPEN, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
-	radioFromTable = new wxRadioButton(this, ID_RADIO_FROM_TABLE, wxTRANS("From Table"));
+	radioFromTable = new wxRadioButton(this, ID_RADIO_FROM_TABLE, TRANS("From Table"));
 	gridStrings = new wxGrid(this, ID_GRID_STRINGS);
 	btnStringAdd = new wxButton(this, wxID_ADD, wxEmptyString);
 	btnRemove = new wxButton(this, wxID_REMOVE, wxEmptyString);
@@ -63,7 +63,7 @@ StringKeyFrameDialog::StringKeyFrameDialog(wxWindow* parent, int id, const wxStr
 	startFrameOK=filenameOK=false;
 	string s;
 	stream_cast(s,startFrame);
-	textStartFrame->SetValue(wxStr(s));
+	textStartFrame->SetValue((s));
 
 	radioFromFile->SetValue(true);
 
@@ -101,8 +101,8 @@ void StringKeyFrameDialog::buildGrid()
 		gridStrings->DeleteRows(0,gridStrings->GetNumberRows());
 
 	gridStrings->AppendCols(2);
-	gridStrings->SetColLabelValue(0,wxTRANS("Frame"));
-	gridStrings->SetColLabelValue(1,wxTRANS("Value"));
+	gridStrings->SetColLabelValue(0,TRANS("Frame"));
+	gridStrings->SetColLabelValue(1,TRANS("Value"));
 
 	gridStrings->AppendRows(valueStrings.size());
 	
@@ -116,8 +116,8 @@ void StringKeyFrameDialog::buildGrid()
 		stream_cast(pos,ui+startFrame);
 
 		//set the frame-value pair
-		gridStrings->SetCellValue(ui,0,wxStr(pos));
-		gridStrings->SetCellValue(ui,1,wxStr(valueStrings[ui]));
+		gridStrings->SetCellValue(ui,0,(pos));
+		gridStrings->SetCellValue(ui,1,(valueStrings[ui]));
 	}
 	gridStrings->EndBatch();
 }
@@ -237,8 +237,8 @@ void StringKeyFrameDialog::OnGridEditorShown(wxGridEvent &event)
 void StringKeyFrameDialog::OnBtnChooseFile(wxCommandEvent &event)
 {
 	//Pop up a directory dialog, to choose the base path for the new folder
-	wxFileDialog *wxD = new wxFileDialog(this,wxTRANS("Select text file..."), wxT(""),
-		wxT(""),wxTRANS("Text files (*.txt)|*.txt;|All Files (*)|*"),wxFD_OPEN|wxFD_FILE_MUST_EXIST);
+	wxFileDialog *wxD = new wxFileDialog(this,TRANS("Select text file..."), wxT(""),
+		wxT(""),TRANS("Text files (*.txt)|*.txt;|All Files (*)|*"),wxFD_OPEN|wxFD_FILE_MUST_EXIST);
 
 	unsigned int res;
 	res = wxD->ShowModal();
@@ -339,22 +339,22 @@ void StringKeyFrameDialog::OnBtnRemove(wxCommandEvent &event)
 void StringKeyFrameDialog::set_properties()
 {
 	// begin wxGlade: StringKeyFrameDialog::set_properties
-	SetTitle(wxTRANS("String Keyframes"));
+	SetTitle(TRANS("String Keyframes"));
 	SetSize(wxSize(542, 412));
-	SetToolTip(wxTRANS("Frame at which to start string sequence"));
-	textStartFrame->SetToolTip(wxTRANS("Frame offset for data start"));
-	textFilename->SetToolTip(wxTRANS("File to use as string data source, one value per row"));
-	btnChooseFile->SetToolTip(wxTRANS("Select file to use as data source"));
-	radioFromTable->SetToolTip(wxTRANS("Use table below for data source"));
+	SetToolTip(TRANS("Frame at which to start string sequence"));
+	textStartFrame->SetToolTip(TRANS("Frame offset for data start"));
+	textFilename->SetToolTip(TRANS("File to use as string data source, one value per row"));
+	btnChooseFile->SetToolTip(TRANS("Select file to use as data source"));
+	radioFromTable->SetToolTip(TRANS("Use table below for data source"));
 	gridStrings->CreateGrid(0, 2);
-	gridStrings->SetColLabelValue(0, wxTRANS("Frame"));
+	gridStrings->SetColLabelValue(0, TRANS("Frame"));
 	gridStrings->SetColSize(0, 1);
-	gridStrings->SetColLabelValue(1, wxTRANS("Value"));
+	gridStrings->SetColLabelValue(1, TRANS("Value"));
 	gridStrings->SetColSize(1, 3);
-	btnStringAdd->SetToolTip(wxTRANS("Add new data rows to table, hold shift/cmd to insert multiple rows"));
-	btnRemove->SetToolTip(wxTRANS("Remove selected strings from table"));
-	btnCancel->SetToolTip(wxTRANS("Abort value selection and return to previous window"));
-	btnOK->SetToolTip(wxTRANS("Accept data values"));
+	btnStringAdd->SetToolTip(TRANS("Add new data rows to table, hold shift/cmd to insert multiple rows"));
+	btnRemove->SetToolTip(TRANS("Remove selected strings from table"));
+	btnCancel->SetToolTip(TRANS("Abort value selection and return to previous window"));
+	btnOK->SetToolTip(TRANS("Accept data values"));
 	// end wxGlade
 }
 

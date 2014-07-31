@@ -34,6 +34,7 @@ if [ $1 = '--update-config=yes' ]; then
 
 	make clean
 fi
+read -p "have you changed the makefile?" yn
 
 make -j8
 
@@ -51,6 +52,7 @@ cp data/textures/tex-source/3Depict-icon.icns ./3Depict.app/Contents/Resources/3
 touch ./3Depict.app/Contents/PkgInfo
 touch ./3Depict.app/Contents/info.plist
 #copy textures
+cp ./data/* ./3Depict.app/Contents/Resources/
 cp ./data/textures/* ./3Depict.app/Contents/Resources/textures/
 cp ./data/textures/tex-source/3Depict-icon.icns ./3Depict.app/Contents/Resources
 

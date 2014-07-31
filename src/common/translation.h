@@ -32,9 +32,4 @@
 //!Gettext null-translation macro (mark for translation, but do nothing)
 #define NTRANS(x) (x)
 
-//!Wx friendly gettext translation macro
-#define wxTRANS(x) (wxString(gettext(x),*wxConvCurrent))
-
-#define wxNTRANS(x) wxT(x)
-
 #endif

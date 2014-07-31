@@ -36,10 +36,6 @@ class K3DTree;
 
 bool dummyCallback(bool);
 
-extern const char *DTD_NAME;
-extern const char *PROGRAM_NAME;
-extern const char *PROGRAM_VERSION;
-extern const char *FONT_FILE;
 
 
 //Set new locale code. Must be followed by a popLocale call before completion
@@ -406,72 +402,97 @@ public:
     friend class K3DTreeMk2;
 };
 
-
-
-
-//OK, this is a bit tricky. We override the operators to call
-//a callback, so the UI updates keep happening, even inside the STL function
-//----
-template<class T>
-class GreaterWithCallback 
+//!Data holder for colour as float
+typedef struct RGBf
 {
-	private:
-		bool (*callback)(bool);
-		//!Reduction frequency (use callback every k its)
-		unsigned int redMax;
-		//!Current reduction counter
-		unsigned int reduction;
-		//!pointer to progress value
-		unsigned int *prgPtr;
+	float red;
+	float green;
+	float blue;
+} RGBf;
+
+class ColourRGBAf;
+
+//Colour storage class. Uses uchar internally
+class ColourRGBA
+{
 	public:
-		//!Second argument is a "reduction" value to set the number of calls
-		//to the random functor before initiating a callback
-		GreaterWithCallback( bool (*ptr)(bool),unsigned int red) : callback(ptr), redMax(red), reduction(red)
-	{};
+		unsigned char data[4];
+	public:
+		ColourRGBA();
+		ColourRGBA(unsigned char , unsigned char, unsigned char);
+		ColourRGBA(unsigned char , unsigned char, unsigned char, unsigned char);
+		unsigned char r() const;
+		unsigned char g() const;
+		unsigned char b() const;
+		unsigned char a() const;
+		
+		//Parse a colour string, such as #aabbccdd into its RGBA 8-bit components. alpha value (last) can be omitted. Will assume 255.
+		bool parse(const std::string &);
 
-		bool operator()(const T &a, const T &b) 
-		{
-			if(!reduction--)
-			{
-				reduction=redMax;
-				//Execute callback
-				(*callback)(false);
-			}
+		//Convert an RGB its 
+		// hexadecimal colour string
+		// format is "#rrggbb" such as "#11ee00"
+		std::string rgbString() const;
+		//Convert RGB to hex colour string, with alpha channel
+		std::string rgbaString() const;
 
-			return a < b;
-		}
+		//convert data from RGB/[0->255] integers to [0->1] float.
+		// alpha channel is not used
+		RGBf toFloat() const;
+
+		void fromRGBAf(const ColourRGBAf &);
+		ColourRGBAf toRGBAf() const;
+		
+		void fromRGBf(const RGBf &);
+
+		bool operator==(const ColourRGBA &oth) const;
+		bool operator==(const ColourRGBAf &oth) const;
+		bool operator==(const RGBf &oth) const;
+		
+		bool operator!=(const ColourRGBA &oth) const;
+		bool operator!=(const ColourRGBAf &oth) const;
+		
+		unsigned char at(unsigned int idx) const;
+
 };
 
-
-template<class T>
-class EqualWithCallback 
+//Colour storage class. Uses float internally
+class ColourRGBAf
 {
 	private:
-		bool (*callback)(bool);
-		//!Reduction frequency (use callback every k its)
-		unsigned int redMax;
-		//!Current reduction counter
-		unsigned int reduction;
+		float data[4];
 	public:
-		//!Second argument is a "reduction" value to set the number of calls
-		//to the random functor before initiating a callback
-		EqualWithCallback( bool (*ptr)(bool),unsigned int red) : callback(ptr), redMax(red), reduction(red)
-			{ };
+		ColourRGBAf();
+		ColourRGBAf(float, float, float);
+		ColourRGBAf(float, float, float,float);
+		float r() const;
+		float g() const;
+		float b() const;
+		float a() const;
+		
+		void r(float);
+		void g(float);
+		void b(float);
+		void a(float);
 
-		bool operator()(const T &a, const T &b) 
-		{
-			if(!reduction--)
-			{
-				reduction=redMax;
-				//Execute callback
-				(*callback)(false);
-			}
 
-			return a ==b;
-		}
+		ColourRGBAf interpolate(float delta, const ColourRGBAf &other);
+		//convert to a ColourRGBA (uchar representation)
+		//TODO : Rename me!
+		ColourRGBA toColourRGBA() const; 
+		RGBf toRGBf() const; 
+		bool operator==(const ColourRGBA &oth) const;
+		bool operator!=(const ColourRGBA &oth) const;
+		bool operator==(const ColourRGBAf &oth) const;
+		bool operator!=(const ColourRGBAf &oth) const;
+		
+		//TODO: Deprecate me!
+		bool operator==(const RGBf &oth) const;
+		
+		void operator=(const RGBf &oth);
+		float &operator[](unsigned int idx) ;
+		float at(unsigned int idx) const;
 };
-//----
-
 
 //Randomly select subset. Subset will be (somewhat) sorted on output
 template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<T> &source, 
@@ -512,10 +533,7 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 			ticks[ui]=(size_t)(rng.genUniformDev()*(source.size()-1));
 
 		//Remove duplicates. Intersperse some callbacks to be nice
-		GreaterWithCallback<size_t> gFunctor(callback,50000);
-		std::sort(ticks.begin(),ticks.end(),gFunctor);
-		EqualWithCallback<size_t> eqFunctor(callback,50000);
-
+		std::sort(ticks.begin(),ticks.end());
 		std::vector<size_t>::iterator newLast;
 		newLast=std::unique(ticks.begin(),ticks.end());	
 		ticks.erase(newLast,ticks.end());
@@ -535,8 +553,8 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 	
 			}
 
-			std::sort(ticks.begin(),ticks.end(),gFunctor);
-			newLast=std::unique(ticks.begin(),ticks.end(),eqFunctor);	
+			std::sort(ticks.begin(),ticks.end());
+			newLast=std::unique(ticks.begin(),ticks.end());	
 			ticks.erase(newLast,ticks.end());
 		}
 
@@ -565,7 +583,7 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 		else
 		{
 			//Sort the ticks properly (mostly sorted anyway..)
-			std::sort(ticks.begin(),ticks.end(),gFunctor);
+			std::sort(ticks.begin(),ticks.end());
 
 			unsigned int curTick=0;
 			for(size_t ui=0;ui<source.size(); ui++)
@@ -686,13 +704,12 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 			ticks[ui]=(size_t)(rng.genUniformDev()*(max-1));
 
 		//Remove duplicates. Intersperse some callbacks to be nice
-		GreaterWithCallback<size_t> gFunctor(callback,50000);
-		std::sort(ticks.begin(),ticks.end(),gFunctor);
-		EqualWithCallback<size_t> eqFunctor(callback,50000);
-		
+		std::sort(ticks.begin(),ticks.end());
+		(*callback)(false);
 		std::vector<size_t>::iterator itLast;
-		itLast=std::unique(ticks.begin(),ticks.end(),eqFunctor);	
+		itLast=std::unique(ticks.begin(),ticks.end());	
 		ticks.erase(itLast,ticks.end());
+		(*callback)(false);
 		
 		//Top up with unique entries
 		while(ticks.size() < numTicksNeeded)
@@ -707,9 +724,11 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 	
 			}
 
-			std::sort(ticks.begin(),ticks.end(),gFunctor);
-			itLast=std::unique(ticks.begin(),ticks.end(),eqFunctor);	
+			std::sort(ticks.begin(),ticks.end());
+			(*callback)(false);
+			itLast=std::unique(ticks.begin(),ticks.end());	
 			ticks.erase(itLast,ticks.end());
+			(*callback)(false);
 		}
 
 
@@ -739,7 +758,7 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 		else
 		{
 			//Sort the ticks properly (mostly sorted anyway..)
-			std::sort(ticks.begin(),ticks.end(),gFunctor);
+			std::sort(ticks.begin(),ticks.end());
 			
 			unsigned int curTick=0;
 			for(size_t ui=0;ui<numTicksNeeded; ui++)

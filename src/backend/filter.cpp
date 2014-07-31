@@ -43,6 +43,7 @@ bool Filter::strongRandom= false;
 
 const char *STREAM_NAMES[] = { NTRANS("Ion"),
 				NTRANS("Plot"),
+				NTRANS("2D Plot"),
 				NTRANS("Draw"),
 				NTRANS("Range"),
 				NTRANS("Voxel")};
@@ -173,8 +174,8 @@ bool FilterProperty::checkSelfConsistent() const
 		}
 		case PROPERTY_TYPE_COLOUR:
 		{
-			unsigned char r,g,b,a;
-			if(!parseColString(data,r,g,b,a))
+			ColourRGBA rgba;
+			if(!rgba.parse(data))
 				return false;
 
 			break;
@@ -605,6 +606,7 @@ bool RangeStreamData::save(const char *filename, size_t format) const
 
 Filter::Filter() : cache(true), cacheOK(false)
 {
+	COMPILE_ASSERT( THREEDEP_ARRAYSIZE(STREAM_NAMES) == NUM_STREAM_TYPES);
 	for(unsigned int ui=0;ui<NUM_STREAM_TYPES;ui++)
 		numStreamsLastRefresh[ui]=0;
 }

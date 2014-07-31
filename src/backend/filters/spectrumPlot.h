@@ -33,7 +33,7 @@ class SpectrumPlotFilter : public Filter
 
 		//Vector of spectra. Each spectra is comprised of a sorted Y data
 		std::vector< std::vector<float > > spectraCache;
-		float r,g,b,a;
+		ColourRGBAf rgba;
 		unsigned int plotStyle;
 	public:
 		SpectrumPlotFilter();

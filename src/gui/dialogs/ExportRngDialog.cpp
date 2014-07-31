@@ -37,9 +37,9 @@ ExportRngDialog::ExportRngDialog(wxWindow* parent, int id, const wxString& title
     wxDialog(parent, id, title, pos, size, wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER)
 {
     // begin wxGlade: ExportRngDialog::ExportRngDialog
-    lblRanges = new wxStaticText(this, wxID_ANY, wxTRANS("Range Sources"));
+    lblRanges = new wxStaticText(this, wxID_ANY, TRANS("Range Sources"));
     listRanges = new wxListCtrl(this, ID_LIST_ACTIVATE, wxDefaultPosition, wxDefaultSize, wxLC_REPORT|wxSUNKEN_BORDER);
-    label_3 = new wxStaticText(this, wxID_ANY, wxTRANS("Details"));
+    label_3 = new wxStaticText(this, wxID_ANY, TRANS("Details"));
     gridDetails = new wxGrid(this, wxID_ANY);
     btnOK = new wxButton(this, wxID_SAVE, wxEmptyString);
     btnCancel = new wxButton(this, wxID_CANCEL, wxEmptyString);
@@ -50,9 +50,9 @@ ExportRngDialog::ExportRngDialog(wxWindow* parent, int id, const wxString& title
     // end wxGlade
 
     //Add columns to report listviews
-    listRanges->InsertColumn(0,wxTRANS("Source Filter"));
-    listRanges->InsertColumn(1,wxTRANS("Ions"));
-    listRanges->InsertColumn(2,wxTRANS("Ranges"));
+    listRanges->InsertColumn(0,TRANS("Source Filter"));
+    listRanges->InsertColumn(1,TRANS("Ions"));
+    listRanges->InsertColumn(2,TRANS("Ranges"));
 
 }
 
@@ -85,17 +85,17 @@ void ExportRngDialog::updateGrid(unsigned int index)
         	gridDetails->DeleteRows(0,gridDetails->GetNumberRows());
 
 	gridDetails->AppendCols(3);
-	gridDetails->SetColLabelValue(0,wxTRANS("Param"));
-	gridDetails->SetColLabelValue(1,wxTRANS("Value"));
-	gridDetails->SetColLabelValue(2,wxTRANS("Value2"));
+	gridDetails->SetColLabelValue(0,TRANS("Param"));
+	gridDetails->SetColLabelValue(1,TRANS("Value"));
+	gridDetails->SetColLabelValue(2,TRANS("Value2"));
 
 	unsigned int nRows;
 	nRows=rangeData->getRange().getNumIons()+rangeData->getRange().getNumRanges() + 4;
 	gridDetails->AppendRows(nRows);
 
 
-	gridDetails->SetCellValue(0,0,wxTRANS("Ion Name"));
-	gridDetails->SetCellValue(0,1,wxTRANS("Num Ranges"));
+	gridDetails->SetCellValue(0,0,TRANS("Ion Name"));
+	gridDetails->SetCellValue(0,1,TRANS("Num Ranges"));
 	unsigned int row=1;
 	std::string tmpStr;
 
@@ -106,16 +106,16 @@ void ExportRngDialog::updateGrid(unsigned int index)
 	{	
 		//Use format 
 		// ION NAME  | NUMBER OF RANGES
-		gridDetails->SetCellValue(row,0,wxStr(rangeData->getRange().getName(ui)));
+		gridDetails->SetCellValue(row,0,(rangeData->getRange().getName(ui)));
 		stream_cast(tmpStr,rangeData->getRange().getNumRanges(ui));
-		gridDetails->SetCellValue(row,1,wxStr(tmpStr));
+		gridDetails->SetCellValue(row,1,(tmpStr));
 		row++;
 	}
 
 	row++;	
-	gridDetails->SetCellValue(row,0,wxTRANS("Ion"));
-	gridDetails->SetCellValue(row,1,wxTRANS("Range Start"));
-	gridDetails->SetCellValue(row,2,wxTRANS("Range end"));
+	gridDetails->SetCellValue(row,0,TRANS("Ion"));
+	gridDetails->SetCellValue(row,1,TRANS("Range Start"));
+	gridDetails->SetCellValue(row,2,TRANS("Range end"));
 	row++;	
 
 	maxNum=rangeData->getRange().getNumRanges();
@@ -127,13 +127,13 @@ void ExportRngDialog::updateGrid(unsigned int index)
 		rngPair=rangeData->getRange().getRange(ui);
 		ionID=rangeData->getRange().getIonID(ui);
 		gridDetails->SetCellValue(row,0,
-			wxStr(rangeData->getRange().getName(ionID)));
+			(rangeData->getRange().getName(ionID)));
 
 		stream_cast(tmpStr,rngPair.first);
-		gridDetails->SetCellValue(row,1,wxStr(tmpStr));
+		gridDetails->SetCellValue(row,1,(tmpStr));
 
 		stream_cast(tmpStr,rngPair.second);
-		gridDetails->SetCellValue(row,2,wxStr(tmpStr));
+		gridDetails->SetCellValue(row,2,(tmpStr));
 			
 		row++;	
 	}	
@@ -148,8 +148,8 @@ void ExportRngDialog::OnSave(wxCommandEvent &event)
 		EndModal(wxID_CANCEL);
 
 	//create a file chooser for later.
-	wxFileDialog *wxF = new wxFileDialog(this,wxTRANS("Save pos..."), wxT(""),
-		wxT(""),wxTRANS("ORNL format RNG (*.rng)|*.rng|All Files (*)|*"),wxFD_SAVE);
+	wxFileDialog *wxF = new wxFileDialog(this,TRANS("Save pos..."), wxT(""),
+		wxT(""),TRANS("ORNL format RNG (*.rng)|*.rng|All Files (*)|*"),wxFD_SAVE);
 	//Show, then check for user cancelling export dialog
 	if(wxF->ShowModal() == wxID_CANCEL)
 	{
@@ -166,8 +166,8 @@ void ExportRngDialog::OnSave(wxCommandEvent &event)
 		std::string errString;
 		errString=TRANS("Unable to save. Check output destination can be written to.");
 		
-		wxMessageDialog *wxD  =new wxMessageDialog(this,wxStr(errString)
-						,wxTRANS("Save error"),wxOK|wxICON_ERROR);
+		wxMessageDialog *wxD  =new wxMessageDialog(this,(errString)
+						,TRANS("Save error"),wxOK|wxICON_ERROR);
 		wxD->ShowModal();
 		wxD->Destroy();
 		return;
@@ -217,15 +217,15 @@ void ExportRngDialog::updateRangeList()
 		rangeData=(RangeFileFilter *)rngFilters[ui];
 		std::string tmpStr;
 		long itemIndex;
-	       	itemIndex=listRanges->InsertItem(0, wxStr(rangeData->getUserString())); 
+	       	itemIndex=listRanges->InsertItem(0, (rangeData->getUserString())); 
 		unsigned int nIons,nRngs; 
 		nIons = rangeData->getRange().getNumIons();
 		nRngs = rangeData->getRange().getNumIons();
 
 		stream_cast(tmpStr,nIons);
-		listRanges->SetItem(itemIndex, 1, wxStr(tmpStr)); 
+		listRanges->SetItem(itemIndex, 1, (tmpStr)); 
 		stream_cast(tmpStr,nRngs);
-		listRanges->SetItem(itemIndex, 2, wxStr(tmpStr)); 
+		listRanges->SetItem(itemIndex, 2, (tmpStr)); 
 		
 	}
 }
@@ -233,14 +233,14 @@ void ExportRngDialog::updateRangeList()
 void ExportRngDialog::set_properties()
 {
     // begin wxGlade: ExportRngDialog::set_properties
-    SetTitle(wxTRANS("Export Range"));
+    SetTitle(TRANS("Export Range"));
     gridDetails->CreateGrid(0, 0);
 	gridDetails->SetRowLabelSize(0);
 	gridDetails->SetColLabelSize(0);
 
-    listRanges->SetToolTip(wxTRANS("List of rangefiles in filter tree"));
+    listRanges->SetToolTip(TRANS("List of rangefiles in filter tree"));
     gridDetails->EnableEditing(false);
-    gridDetails->SetToolTip(wxTRANS("Detailed view of selected range"));
+    gridDetails->SetToolTip(TRANS("Detailed view of selected range"));
     // end wxGlade
 }
 

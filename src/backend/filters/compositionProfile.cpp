@@ -51,7 +51,7 @@ const unsigned int MINEVENTS_DEFAULT =10;
 
 CompositionProfileFilter::CompositionProfileFilter() : primitiveType(PRIMITIVE_CYLINDER),
 	showPrimitive(true), lockAxisMag(false),normalise(true), fixedBins(0),
-	nBins(1000), binWidth(0.5f), minEvents(MINEVENTS_DEFAULT), r(0.0f),g(0.0f),b(1.0f),a(1.0f), plotStyle(0)
+	nBins(1000), binWidth(0.5f), minEvents(MINEVENTS_DEFAULT), rgba(0,0,1), plotStyle(0)
 {
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(PRIMITIVE_NAME) == PRIMITIVE_END);
 	
@@ -121,13 +121,10 @@ Filter *CompositionProfileFilter::cloneUncached() const
 	p->normalise=normalise;	
 	p->fixedBins=fixedBins;
 	p->lockAxisMag=lockAxisMag;
-
+	
+	p->rgba=rgba;
 	p->binWidth=binWidth;
 	p->nBins = nBins;
-	p->r=r;	
-	p->g=g;	
-	p->b=b;	
-	p->a=a;	
 	p->plotStyle=plotStyle;
 	p->errMode=errMode;
 	//We are copying wether to cache or not,
@@ -606,10 +603,10 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 			//If it only has one component, then 
 			//it's not really a composition profile is it?
 			plotData[ui]->dataLabel= TRANS("Freq. Profile");
-			plotData[ui]->r = r;
-			plotData[ui]->g = g;
-			plotData[ui]->b = b;
-			plotData[ui]->a = a;
+			plotData[ui]->r = rgba.r();
+			plotData[ui]->g = rgba.g();
+			plotData[ui]->b = rgba.b();
+			plotData[ui]->a = rgba.a();
 		}
 
 		plotData[ui]->xyData.reserve(ionFrequencies[ui].size());
@@ -877,14 +874,11 @@ bool CompositionProfileFilter::setProperty( unsigned int key,
 		}
 		case COMPOSITION_KEY_COLOUR:
 		{
-			unsigned char newR,newG,newB,newA;
-			parseColString(value,newR,newG,newB,newA);
-
-			r=((float)newR)/255.0f;
-			g=((float)newG)/255.0f;
-			b=((float)newB)/255.0f;
-			a=1.0;
-
+			ColourRGBA tmpRgba;
+			if(!tmpRgba.parse(value))
+				return false;
+			
+			rgba=tmpRgba.toRGBAf();
 			needUpdate=true;
 			break;	
 		}
@@ -1102,12 +1096,9 @@ void CompositionProfileFilter::getProperties(FilterPropGroup &propertyList) cons
 	//Convert the colour to a hex string
 	if(!haveRangeParent)
 	{
-		string thisCol;
-		genColString((unsigned char)(r*255.0),(unsigned char)(g*255.0),
-		(unsigned char)(b*255.0),(unsigned char)(a*255.0),thisCol);
 
 		p.name=TRANS("Colour");
-		p.data=thisCol; 
+		p.data=rgba.toColourRGBA().rgbString();
 		p.type=PROPERTY_TYPE_COLOUR;
 		p.helpText=TRANS("Colour of plot");
 		p.key=COMPOSITION_KEY_COLOUR;
@@ -1234,8 +1225,8 @@ bool CompositionProfileFilter::writeState(std::ostream &f,unsigned int format, u
 			f << tabs(depth+1) << "<fixedbins value=\"" << (int)fixedBins << "\"/>" << endl;
 			f << tabs(depth+1) << "<nbins value=\"" << nBins << "\"/>" << endl;
 			f << tabs(depth+1) << "<binwidth value=\"" << binWidth << "\"/>" << endl;
-			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
-				<< "\" a=\"" << a << "\"/>" <<endl;
+			f << tabs(depth+1) << "<colour r=\"" <<  rgba.r() << "\" g=\"" << rgba.g() << "\" b=\"" << rgba.b()
+				<< "\" a=\"" << rgba.a() << "\"/>" <<endl;
 
 			f << tabs(depth+1) << "<plottype value=\"" << plotStyle << "\"/>" << endl;
 			f << tabs(depth) << "</" << trueName()  << ">" << endl;
@@ -1491,7 +1482,7 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	//====
 	if(XMLHelpFwdToElem(nodePtr,"colour"))
 		return false;
-	if(!parseXMLColour(nodePtr,r,g,b,a))
+	if(!parseXMLColour(nodePtr,rgba))
 		return false;
 	//====
 	

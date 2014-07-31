@@ -68,7 +68,7 @@ const char *DEFAULT_LABEL="Mass-to-Charge (amu/e)";
 
 // == Pos load filter ==
 DataLoadFilter::DataLoadFilter() : fileType(FILEDATA_TYPE_POS), doSample(true), maxIons(MAX_IONS_LOAD_DEFAULT),
-	r(1.0f),g(0.0f),b(0.0f),a(1.0f),ionSize(2.0f), numColumns(4), enabled(true),
+	rgbaf(1.0f,0.0f,0.0f,1.0f),ionSize(2.0f), numColumns(4), enabled(true),
 	volumeRestrict(false), monitorTimestamp(-1),monitorSize((size_t)-1),wantMonitor(false),
 	valueLabel(TRANS(DEFAULT_LABEL)), endianMode(0)
 {
@@ -91,12 +91,8 @@ Filter *DataLoadFilter::cloneUncached() const
 	p->maxIons=maxIons;
 	p->ionSize=ionSize;
 	p->fileType=fileType;
-	p->guessType=guessType;
 	//Colours
-	p->r=r;	
-	p->g=g;	
-	p->b=b;	
-	p->a=a;	
+	p->rgbaf=rgbaf;	
 	//Bounding volume
 	p->bound.setBounds(bound);
 	p->volumeRestrict=volumeRestrict;
@@ -198,7 +194,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 		//the same timestamp as on the file.
 		if(wantMonitor)
 		{
-			if(!wxFile::Exists(wxStr(ionFilename)))
+			if(!wxFile::Exists((ionFilename)))
 			{
 				monitorTimestamp=-1;
 				monitorSize=-1;
@@ -214,7 +210,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 				size_t fileSizeVal;
 				getFilesize(ionFilename.c_str(),fileSizeVal);
 
-				if(wxFileModificationTime(wxStr(ionFilename)) ==monitorTimestamp
+				if(wxFileModificationTime((ionFilename)) ==monitorTimestamp
 					||  fileSizeVal!= monitorSize)
 				{
 					doUseCache=false;
@@ -235,9 +231,9 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	}
 
 	//If theres no file, then there is not a lot we can do..
-	if(!wxFile::Exists(wxStr(ionFilename)))
+	if(!wxFile::Exists((ionFilename)))
 	{
-		wxFileName f(wxStr(ionFilename));
+		wxFileName f((ionFilename));
 		
 		errStr= stlStr(f.GetFullName())  + TRANS(" does not exist");
 		return ERR_FILE_OPEN;
@@ -245,7 +241,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	
 	//If we have disable the filter, or we are are monitoring and 
 	//there is no file
-	if(!enabled ||(wantMonitor && !wxFile::Exists(wxStr(ionFilename))) )
+	if(!enabled ||(wantMonitor && !wxFile::Exists((ionFilename))) )
 	{
 		monitorTimestamp=-1;
 		monitorSize=-1;
@@ -257,7 +253,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 
 	//Update the monitoring timestamp such that we know
 	//when the file was last loaded
-	monitorTimestamp = wxFileModificationTime(wxStr(ionFilename));
+	monitorTimestamp = wxFileModificationTime((ionFilename));
 	size_t tmp;
 	if(getFilesize(ionFilename.c_str(),tmp))
 		monitorSize=tmp;
@@ -423,10 +419,10 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 			ASSERT(false);
 	}
 
-	ionData->r = r;
-	ionData->g = g;
-	ionData->b = b;
-	ionData->a = a;
+	ionData->r = rgbaf.r();
+	ionData->g = rgbaf.g();
+	ionData->b = rgbaf.b();
+	ionData->a = rgbaf.a();
 	ionData->ionSize=ionSize;
 	ionData->valueType=valueLabel;
 
@@ -633,13 +629,8 @@ void DataLoadFilter::getProperties(FilterPropGroup &propertyList) const
 		
 		curGroup++;
 
-		string thisCol;
-		//Convert the ion colour to a hex string	
-		genColString((unsigned char)(r*255),(unsigned char)(g*255),
-				(unsigned char)(b*255),(unsigned char)(a*255),thisCol);
-
 		p.name=TRANS("Default colour ");
-		p.data=thisCol; 
+		p.data=rgbaf.toColourRGBA().rgbaString(); 
 		p.type=PROPERTY_TYPE_COLOUR;
 		p.helpText=TRANS("Default colour for points, if not overridden by other filters");
 		p.key=DATALOAD_KEY_COLOUR;
@@ -748,17 +739,12 @@ bool DataLoadFilter::setProperty(  unsigned int key,
 		}
 		case DATALOAD_KEY_COLOUR:
 		{
-			unsigned char newR,newG,newB,newA;
+			ColourRGBA tmpRgba;
+			tmpRgba.parse(value);
 
-			parseColString(value,newR,newG,newB,newA);
-
-			if(newB != b || newR != r ||
-				newG !=g || newA != a)
+			if(tmpRgba != rgbaf.toColourRGBA())
 			{
-				r=newR/255.0;
-				g=newG/255.0;
-				b=newB/255.0;
-				a=newA/255.0;
+				rgbaf=tmpRgba.toRGBAf();
 
 
 				//Check the cache, updating it if needed
@@ -770,10 +756,10 @@ bool DataLoadFilter::setProperty(  unsigned int key,
 						{
 							IonStreamData *i;
 							i=(IonStreamData *)filterOutputs[ui];
-							i->r=r;
-							i->g=g;
-							i->b=b;
-							i->a=a;
+							i->r=rgbaf.r();
+							i->g=rgbaf.g();
+							i->b=rgbaf.b();
+							i->a=rgbaf.a();
 						}
 					}
 
@@ -1104,7 +1090,7 @@ bool DataLoadFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	if(XMLHelpFwdToElem(nodePtr,"colour"))
 		return false;
 
-	if(!parseXMLColour(nodePtr,r,g,b,a))
+	if(!parseXMLColour(nodePtr,rgbaf))
 		return false;	
 	//====
 
@@ -1166,8 +1152,8 @@ bool DataLoadFilter::writeState(std::ostream &f,unsigned int format, unsigned in
 			f << tabs(depth+1) << "<dosample value=\"" << doSample << "\"/>" << endl;
 			f << tabs(depth+1) << "<maxions value=\"" << maxIons << "\"/>" << endl;
 
-			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
-				<< "\" a=\"" << a << "\"/>" <<endl;
+			f << tabs(depth+1) << "<colour r=\"" <<  rgbaf.r() << "\" g=\"" << rgbaf.g() 
+				<< "\" b=\"" << rgbaf.b() << "\" a=\"" << rgbaf.a() << "\"/>" <<endl;
 			f << tabs(depth+1) << "<ionsize value=\"" << ionSize << "\"/>" << endl;
 			f << tabs(depth) << "</" << trueName() << ">" << endl;
 			break;
@@ -1216,7 +1202,7 @@ bool DataLoadFilter::monitorNeedsRefresh() const
 	{
 		//Check to see that the file exists, if
 		// not fall back to the cache.
-		if(!wxFile::Exists(wxStr(ionFilename)))
+		if(!wxFile::Exists((ionFilename)))
 			return cacheOK;
 
 
@@ -1225,7 +1211,7 @@ bool DataLoadFilter::monitorNeedsRefresh() const
 		if(sizeVal != monitorSize)
 			return true;
 
-		return( wxFileModificationTime(wxStr(ionFilename))
+		return( wxFileModificationTime((ionFilename))
 						!=monitorTimestamp);
 		
 		

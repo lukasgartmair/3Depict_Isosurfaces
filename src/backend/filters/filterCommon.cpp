@@ -111,9 +111,11 @@ bool readVectorsXML(xmlNodePtr nodePtr,	std::vector<Point3D> &vectorParams)
 	return true;
 }
 
-bool parseXMLColour(xmlNodePtr &nodePtr, float &r,float&g,float&b,float&a)
+bool parseXMLColour(xmlNodePtr &nodePtr, ColourRGBAf &rgba)
 {
 	xmlChar *xmlString;
+
+	float r,g,b,a;
 	std::string tmpStr;
 	//--red--
 	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"r");
@@ -185,6 +187,10 @@ bool parseXMLColour(xmlNodePtr &nodePtr, float &r,float&g,float&b,float&a)
 	//disallow negative or values gt 1.
 	if(a < 0.0f || a > 1.0f)
 		return false;
+	rgba.r(r);
+	rgba.g(g);
+	rgba.b(b);
+	rgba.a(a);
 
 	return true;
 }
@@ -738,13 +744,3 @@ std::string createTmpFilename(const char *dir,const char *extension)
 	return stlStr(tmpFilename);
 }
 
-//creates a temporary filename for use
-std::string removeFile(const char *tmpFilename)
-{
-	wxRemoveFile(wxCStr(tmpFilename));
-}
-
-std::string removeDir(const char *dir)
-{
-	wxRmdir(wxCStr(dir));
-}

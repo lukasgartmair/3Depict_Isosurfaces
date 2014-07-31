@@ -25,7 +25,7 @@ class SpatialAnalysisFilter : public Filter
 {
 	private:
 		//!Colour to use for output plots
-		float r,g,b,a;
+		ColourRGBAf rgba;
 
 		//!Which algorithm to use
 		unsigned int algorithm;

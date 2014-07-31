@@ -93,8 +93,8 @@ if [ x"`grep $VER ChangeLog`" == x"" ] ; then
 	echo " WARNING: Program version not set to match between configure.ac. and ChangeLog">> $MSG_FILE
 fi
 
-if [ x"`grep PROGRAM_VERSION src/common/basics.cpp | grep $VER`" == x"" ] ; then
-	echo " WARNING: Program version not set to match between configure.ac. and basics.cpp">> $MSG_FILE
+if [ x"`grep PROGRAM_VERSION src/common/constants.cpp | grep $VER`" == x"" ] ; then
+	echo " WARNING: Program version not set to match between configure.ac. and constants.cpp">> $MSG_FILE
 fi
 
 #Check version number in deb & rpm

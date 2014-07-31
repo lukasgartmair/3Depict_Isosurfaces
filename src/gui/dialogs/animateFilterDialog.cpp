@@ -149,31 +149,31 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
     splitPaneFilter = new wxSplitterWindow(filterViewPane, ID_SPLIT_FILTERVIEW, wxDefaultPosition, wxDefaultSize, wxSP_3D|wxSP_BORDER);
     filterRightPane = new wxPanel(splitPaneFilter, wxID_ANY);
     filterLeftPane = new wxPanel(splitPaneFilter, wxID_ANY);
-    keyFramesSizer_staticbox = new wxStaticBox(filterRightPane, -1, wxTRANS("Key frames"));
-    outputDataSizer_staticbox = new wxStaticBox(frameViewPane, -1, wxTRANS("Output Data"));
-    filterPropertySizer_staticbox = new wxStaticBox(filterLeftPane, -1, wxTRANS("Filters and properties"));
+    keyFramesSizer_staticbox = new wxStaticBox(filterRightPane, -1, TRANS("Key frames"));
+    outputDataSizer_staticbox = new wxStaticBox(frameViewPane, -1, TRANS("Output Data"));
+    filterPropertySizer_staticbox = new wxStaticBox(filterLeftPane, -1, TRANS("Filters and properties"));
     filterTreeCtrl =new wxTreeCtrl(filterLeftPane,ID_FILTER_TREE_CTRL , wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_HIDE_ROOT|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER|wxTR_EDIT_LABELS);
 
     propertyGrid = new wxPropertyGrid(filterLeftPane, ID_PROPERTY_GRID);
     animationGrid = new wxGrid(filterRightPane, ID_ANIMATION_GRID_CTRL);
     keyFrameRemoveButton = new wxButton(filterRightPane, wxID_REMOVE, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
-    labelWorkDir = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("Dir : "));
+    labelWorkDir = new wxStaticText(frameViewPane, wxID_ANY, TRANS("Dir : "));
     textWorkDir = new wxTextCtrl(frameViewPane, ID_TEXTBOX_WORKDIR, wxEmptyString);
     buttonWorkDir = new wxButton(frameViewPane, wxID_OPEN, wxEmptyString);
-    checkOutOnlyChanged = new wxCheckBox(frameViewPane, ID_CHECK_ONLYDATACHANGE, wxTRANS("Output only when refresh required"));
+    checkOutOnlyChanged = new wxCheckBox(frameViewPane, ID_CHECK_ONLYDATACHANGE, TRANS("Output only when refresh required"));
     outputDataSepLine = new wxStaticLine(frameViewPane, wxID_ANY);
-    labelDataType = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("Data Types:"));
-    checkImageOutput = new wxCheckBox(frameViewPane, ID_CHECK_IMAGE_OUT, wxTRANS("3D Images"));
-    lblImageName = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("File Suffix: "));
+    labelDataType = new wxStaticText(frameViewPane, wxID_ANY, TRANS("Data Types:"));
+    checkImageOutput = new wxCheckBox(frameViewPane, ID_CHECK_IMAGE_OUT, TRANS("3D Images"));
+    lblImageName = new wxStaticText(frameViewPane, wxID_ANY, TRANS("File Suffix: "));
     textImageName = new wxTextCtrl(frameViewPane, ID_TEXTBOX_IMAGEPREFIX, wxEmptyString);
-    labelImageSize = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("Size : "));
+    labelImageSize = new wxStaticText(frameViewPane, wxID_ANY, TRANS("Size : "));
     textImageSize = new wxTextCtrl(frameViewPane, ID_TEXTBOX_IMAGESIZE, wxEmptyString, wxDefaultPosition,wxDefaultSize, wxTE_READONLY );
-    buttonImageSize = new wxButton(frameViewPane, ID_BUTTON_IMAGE_RES, wxTRANS("..."));
-    checkPoints = new wxCheckBox(frameViewPane, ID_CHECK_POINT_OUT, wxTRANS("Point data"));
-    checkPlotData = new wxCheckBox(frameViewPane, ID_CHECK_PLOT_OUT, wxTRANS("Plots"));
-    checkVoxelData = new wxCheckBox(frameViewPane, ID_CHECK_VOXEL_OUT, wxTRANS("Voxel data"));
-    checkRangeData = new wxCheckBox(frameViewPane, ID_CHECK_RANGE_OUT, wxTRANS("Range files"));
-    labelRangeFormat = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("Format"));
+    buttonImageSize = new wxButton(frameViewPane, ID_BUTTON_IMAGE_RES, TRANS("..."));
+    checkPoints = new wxCheckBox(frameViewPane, ID_CHECK_POINT_OUT, TRANS("Point data"));
+    checkPlotData = new wxCheckBox(frameViewPane, ID_CHECK_PLOT_OUT, TRANS("Plots"));
+    checkVoxelData = new wxCheckBox(frameViewPane, ID_CHECK_VOXEL_OUT, TRANS("Voxel data"));
+    checkRangeData = new wxCheckBox(frameViewPane, ID_CHECK_RANGE_OUT, TRANS("Range files"));
+    labelRangeFormat = new wxStaticText(frameViewPane, wxID_ANY, TRANS("Format"));
     
     //Workaround for wx bug http://trac.wxwidgets.org/ticket/4398
     wxSortedArrayString rangeNames;
@@ -184,12 +184,12 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
 	//construct translation->comboRange_choices offset.
 	rangeMap[TRANS(str)] = ui;
 	//Add to filter name wxArray
-	wxString wxStrTrans = wxTRANS(str);
+	wxString wxStrTrans = TRANS(str);
 	rangeNames.Add(wxStrTrans);
     }
     comboRangeFormat = new wxChoice(frameViewPane, ID_COMBO_RANGE_TYPE, wxDefaultPosition, wxDefaultSize, rangeNames);
     static_line_1 = new wxStaticLine(frameViewPane, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL);
-    labelFrame = new wxStaticText(frameViewPane, wxID_ANY, wxTRANS("Frame"));
+    labelFrame = new wxStaticText(frameViewPane, wxID_ANY, TRANS("Frame"));
     frameSlider = new wxSlider(frameViewPane, ID_FRAME_SLIDER, 0, 0, 1);
     textFrame = new wxTextCtrl(frameViewPane, ID_FRAME_TEXTBOX, wxEmptyString);
     framePropGrid = new wxGrid(frameViewPane, ID_FILTER_PROPERTY_VALUE_GRID);
@@ -272,7 +272,7 @@ void ExportAnimationDialog::setDefImSize(unsigned int w, unsigned int h)
     string sFirst,sSecond;
     stream_cast(sFirst,imageWidth);
     stream_cast(sSecond,imageHeight);
-    textImageSize->SetValue(wxStr(string(sFirst+string("x")+sSecond)));
+    textImageSize->SetValue((string(sFirst+string("x")+sSecond)));
     
     imageSizeOK=true;
 }
@@ -424,17 +424,17 @@ void ExportAnimationDialog::updateFilterViewGrid()
 		filtProp=filtPropGroup.getPropValue(frameProps.getPropertyKey());
 
 		animationGrid->SetCellValue(ui,CELL_FILTERNAME, 
-				wxStr(filterPtr->getUserString()));
+				(filterPtr->getUserString()));
 		animationGrid->SetCellValue(ui,CELL_PROPERTYNAME, 
-				wxStr(filtProp.name));
+				(filtProp.name));
 		animationGrid->SetCellValue(ui,CELL_KEYINTERPMODE, 
-				wxCStr(INTERP_NAME[frameProps.getInterpMode()]));
+				(INTERP_NAME[frameProps.getInterpMode()]));
 		
 		string str;
 		stream_cast(str,frameProps.getMinFrame());
-		animationGrid->SetCellValue(ui,CELL_STARTFRAME, wxStr(str));
+		animationGrid->SetCellValue(ui,CELL_STARTFRAME, (str));
 		stream_cast(str,frameProps.getMaxFrame());
-		animationGrid->SetCellValue(ui,CELL_ENDFRAME, wxStr(str));
+		animationGrid->SetCellValue(ui,CELL_ENDFRAME, (str));
 	}
 
 	//Check for conflicting rows in the animation dialog,
@@ -503,11 +503,11 @@ void ExportAnimationDialog::updateFrameViewGrid()
 
 		//Modify the grid properties with the appropriate data
 		framePropGrid->SetCellValue(ui,FRAME_CELL_FILTERNAME, 
-				wxStr(filterName));
+				(filterName));
 		framePropGrid->SetCellValue(ui,FRAME_CELL_PROPNAME, 
-				wxStr(propertyName));
+				(propertyName));
 		framePropGrid->SetCellValue(ui,FRAME_CELL_VALUE, 
-				wxStr(animatedValue));
+				(animatedValue));
 	}
 
 }
@@ -529,7 +529,7 @@ void ExportAnimationDialog::updateFrameViewSlider()
 	stream_cast(textMax,propertyAnimator.getMaxFrame());
 
 	textCurrent= (textCurrent + std::string("/") + textMax);
-	textFrame->SetValue( wxStr(textCurrent));
+	textFrame->SetValue( (textCurrent));
 
 	programmaticEvent=false;
 
@@ -592,7 +592,7 @@ void ExportAnimationDialog::OnFrameViewSlider(wxScrollEvent &event)
 	stream_cast(tmp,frameSlider->GetMax());
 	frameText+=tmp;
 
-	textFrame->SetValue( wxStr(frameText));
+	textFrame->SetValue( (frameText));
 
 	currentFrame=sliderVal;
 	updateFrameViewGrid();
@@ -674,7 +674,7 @@ void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 	{
 		case PROPERTY_TYPE_BOOL:
 		{
-			wxTextEntryDialog *teD = new wxTextEntryDialog(this,wxTRANS("transition frame"),wxTRANS("Frame count"),
+			wxTextEntryDialog *teD = new wxTextEntryDialog(this,TRANS("transition frame"),TRANS("Frame count"),
 						wxT("0"),(long int)wxOK|wxCANCEL);
 	
 			std::string s;
@@ -746,7 +746,7 @@ void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 		case PROPERTY_TYPE_COLOUR:
 		{
 			ColourKeyFrameDialog *colDlg = new ColourKeyFrameDialog(this,
-					wxID_ANY,wxTRANS("Key frame : Colour")) ;
+					wxID_ANY,TRANS("Key frame : Colour")) ;
 			if( colDlg->ShowModal() != wxID_OK)
 			{
 				colDlg->Destroy();
@@ -799,8 +799,8 @@ void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 			{
 				sd->Destroy();
 				wxMessageDialog *wxD  =new wxMessageDialog(this,
-						wxTRANS("File existed, but was unable to read or interpret file contents."), 
-						wxTRANS("String load failed"),wxICON_ERROR|wxOK);
+						TRANS("File existed, but was unable to read or interpret file contents."), 
+						TRANS("String load failed"),wxICON_ERROR|wxOK);
 
 				wxD->ShowModal();
 				wxD->Destroy();
@@ -821,7 +821,7 @@ void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 		case PROPERTY_TYPE_REAL:
 		{
 			RealKeyFrameDialog<float> *r = new RealKeyFrameDialog<float>(this,
-					wxID_ANY,wxTRANS("Keyframe : decimal"));
+					wxID_ANY,TRANS("Keyframe : decimal"));
 			if(!getRealKeyFrame(frameProp,filterProp,r))
 				return;
 			frameProp.setInterpMode(r->getTransitionMode());
@@ -830,7 +830,7 @@ void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 		case PROPERTY_TYPE_INTEGER:
 		{
 			RealKeyFrameDialog<int> *r = new RealKeyFrameDialog<int>(this,
-					wxID_ANY,wxTRANS("Keyframe : integer"));
+					wxID_ANY,TRANS("Keyframe : integer"));
 			if(!getRealKeyFrame(frameProp,filterProp,r))
 				return;
 			frameProp.setInterpMode(r->getTransitionMode());
@@ -839,7 +839,7 @@ void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 		case PROPERTY_TYPE_POINT3D:
 		{
 			RealKeyFrameDialog<Point3D> *r = new RealKeyFrameDialog<Point3D>(this,
-					wxID_ANY,wxTRANS("Keyframe : 3D Point"));
+					wxID_ANY,TRANS("Keyframe : 3D Point"));
 			if(!getRealKeyFrame(frameProp,filterProp,r))
 				return;
 			//Animator needs special Linear ramping code, so select that
@@ -964,7 +964,7 @@ void ExportAnimationDialog::OnOutputDirText(wxCommandEvent &event)
 void ExportAnimationDialog::OnButtonWorkDir(wxCommandEvent &event)
 {
 	//Pop up a directory dialog, to choose the base path for the new folder
-	wxDirDialog *wxD = new wxDirDialog(this, wxTRANS("Select or create new folder"),
+	wxDirDialog *wxD = new wxDirDialog(this, TRANS("Select or create new folder"),
 	wxFileSelectorDefaultWildcardStr, wxFD_SAVE);
 
 	unsigned int res;
@@ -1046,7 +1046,7 @@ void ExportAnimationDialog::OnBtnResolution(wxCommandEvent &event)
 	
 	string s;
 	s=sWidth+"x" + sHeight;
-	textImageSize->SetValue(wxStr(s));
+	textImageSize->SetValue((s));
 
 	r->Destroy();
 }
@@ -1144,36 +1144,36 @@ void ExportAnimationDialog::getPathMapping(vector<pair<string,size_t> > &mapping
 void ExportAnimationDialog::set_properties()
 {
     // begin wxGlade: ExportAnimationDialog::set_properties
-    SetTitle(wxTRANS("Export Animation"));
-    filterTreeCtrl->SetToolTip(wxTRANS("Select filter"));
-    propertyGrid->SetToolTip(wxTRANS("Select property"));
+    SetTitle(TRANS("Export Animation"));
+    filterTreeCtrl->SetToolTip(TRANS("Select filter"));
+    propertyGrid->SetToolTip(TRANS("Select property"));
     animationGrid->CreateGrid(0, 5);
-    animationGrid->SetColLabelValue(0, wxTRANS("Filter"));
-    animationGrid->SetColLabelValue(1, wxTRANS("Property"));
-    animationGrid->SetColLabelValue(2, wxTRANS("Mode"));
-    animationGrid->SetColLabelValue(3, wxTRANS("Start Frame"));
-    animationGrid->SetColLabelValue(4, wxTRANS("End Frame"));
-    animationGrid->SetToolTip(wxTRANS("Keyframe table"));
-    keyFrameRemoveButton->SetToolTip(wxTRANS("Remove the selected keyframe from the table"));
-    textWorkDir->SetToolTip(wxTRANS("Enter where the animation frames will be exported to"));
-    buttonWorkDir->SetToolTip(wxTRANS("Browse to directory where the animation frames will be exported to"));
+    animationGrid->SetColLabelValue(0, TRANS("Filter"));
+    animationGrid->SetColLabelValue(1, TRANS("Property"));
+    animationGrid->SetColLabelValue(2, TRANS("Mode"));
+    animationGrid->SetColLabelValue(3, TRANS("Start Frame"));
+    animationGrid->SetColLabelValue(4, TRANS("End Frame"));
+    animationGrid->SetToolTip(TRANS("Keyframe table"));
+    keyFrameRemoveButton->SetToolTip(TRANS("Remove the selected keyframe from the table"));
+    textWorkDir->SetToolTip(TRANS("Enter where the animation frames will be exported to"));
+    buttonWorkDir->SetToolTip(TRANS("Browse to directory where the animation frames will be exported to"));
     checkImageOutput->SetValue(1);
-    textImageName->SetToolTip(wxTRANS("Title for files, result will be saved as #-name.png, where # is image number."));
-    textImageSize->SetToolTip(wxTRANS("Target resolution (image size)"));
+    textImageName->SetToolTip(TRANS("Title for files, result will be saved as #-name.png, where # is image number."));
+    textImageSize->SetToolTip(TRANS("Target resolution (image size)"));
     comboRangeFormat->SetSelection(-1);
-    frameSlider->SetToolTip(wxTRANS("Select frame for property display"));
-    textFrame->SetToolTip(wxTRANS("Enter frame number to change frame (eg 1/20)"));
-    checkPoints->SetToolTip(wxTRANS("Save point data (POS files) in output folder?"));
-    checkPlotData->SetToolTip(wxTRANS("Save plots (as text files) in output folder?"));
-    checkVoxelData->SetToolTip(wxTRANS("Save voxel data (raw files) in output folder?"));
-    checkRangeData->SetToolTip(wxTRANS("Save range files  in output folder?"));
+    frameSlider->SetToolTip(TRANS("Select frame for property display"));
+    textFrame->SetToolTip(TRANS("Enter frame number to change frame (eg 1/20)"));
+    checkPoints->SetToolTip(TRANS("Save point data (POS files) in output folder?"));
+    checkPlotData->SetToolTip(TRANS("Save plots (as text files) in output folder?"));
+    checkVoxelData->SetToolTip(TRANS("Save voxel data (raw files) in output folder?"));
+    checkRangeData->SetToolTip(TRANS("Save range files  in output folder?"));
     framePropGrid->CreateGrid(0, 3);
-    framePropGrid->SetColLabelValue(0, wxTRANS("Filter"));
-    framePropGrid->SetColLabelValue(1, wxTRANS("Property"));
-    framePropGrid->SetColLabelValue(2, wxTRANS("Value"));
-    framePropGrid->SetToolTip(wxTRANS("Animation parameters for current frame"));
-    cancelButton->SetToolTip(wxTRANS("Abort animation"));
-    okButton->SetToolTip(wxTRANS("Run Animation"));
+    framePropGrid->SetColLabelValue(0, TRANS("Filter"));
+    framePropGrid->SetColLabelValue(1, TRANS("Property"));
+    framePropGrid->SetColLabelValue(2, TRANS("Value"));
+    framePropGrid->SetToolTip(TRANS("Animation parameters for current frame"));
+    cancelButton->SetToolTip(TRANS("Abort animation"));
+    okButton->SetToolTip(TRANS("Run Animation"));
     // end wxGlade
 }
 
@@ -1244,8 +1244,8 @@ void ExportAnimationDialog::do_layout()
     propGridSizer->Add(framePropGrid, 1, wxEXPAND, 0);
     frameViewSizer->Add(propGridSizer, 2, wxALL|wxEXPAND, 3);
     frameViewPane->SetSizer(frameViewSizer);
-    viewNotebook->AddPage(filterViewPane, wxTRANS("Filter view"));
-    viewNotebook->AddPage(frameViewPane, wxTRANS("Frame view"));
+    viewNotebook->AddPage(filterViewPane, TRANS("Filter view"));
+    viewNotebook->AddPage(frameViewPane, TRANS("Frame view"));
     animateSizer->Add(viewNotebook, 1, wxEXPAND, 0);
     globalButtonSizer->Add(20, 1, 1, wxEXPAND, 0);
     globalButtonSizer->Add(cancelButton, 0, wxALL|wxALIGN_BOTTOM, 3);

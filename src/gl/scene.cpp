@@ -206,7 +206,7 @@ void Scene::updateCam(const Camera *camToUse, bool useIdent=true) const
 
 void Scene::updateProgressOverlay()
 {
-	progressAnimTex.setPos(0.9*winX,0.9*winY);
+	progressAnimTex.setPosition(0.9*winX,0.9*winY);
 	progressAnimTex.setSize(0.1*winX);
 	//Cycle every this many seconds
 	progressAnimTex.setRepeatTime(6.0f);
@@ -373,7 +373,28 @@ void Scene::drawObjectVector(const vector<const DrawableObj*> &drawObjs, bool &l
 
 		}
 		
+
+
+#ifdef DEBUG
+		//Ensure that the gl matrix sizes are correctly restored
+		int curDepth[3];
+		int oldMatMode;
+		curDepth[0] = glCurStackDepth(GL_MODELVIEW_STACK_DEPTH);		
+		curDepth[1] = glCurStackDepth(GL_PROJECTION_STACK_DEPTH);		
+		curDepth[2] = glCurStackDepth(GL_TEXTURE_STACK_DEPTH);		
+		glGetIntegerv( GL_MATRIX_MODE, &oldMatMode);
+#endif
 		drawObjs[ui]->draw();
+
+#ifdef DEBUG
+		ASSERT(curDepth[0] == glCurStackDepth(GL_MODELVIEW_STACK_DEPTH));	
+		ASSERT(curDepth[1] == glCurStackDepth(GL_PROJECTION_STACK_DEPTH));	
+		ASSERT(curDepth[2] == glCurStackDepth(GL_TEXTURE_STACK_DEPTH));		
+		ASSERT(curDepth[0] && curDepth[1] && curDepth[2]);
+		int newMatMode;
+		glGetIntegerv( GL_MATRIX_MODE, &newMatMode);
+		ASSERT(oldMatMode == newMatMode);
+#endif
 	}
 }
 
@@ -539,14 +560,14 @@ void Scene::drawHoverOverlay()
 				if(foundKeyTex)
 				{
 					//Make room for keyTex
-					binderIcons.setPos((0.93+SPACING)*winX,ICON_SIZE*winY*(1+(float)iconNum));
-					keyIcons.setPos(0.93*winX,ICON_SIZE*winY*(1+(float)iconNum));
-					mouseIcons.setPos((0.93-SPACING)*winX,ICON_SIZE*winY*(1+(float)iconNum));
+					binderIcons.setPosition((0.93+SPACING)*winX,ICON_SIZE*winY*(1+(float)iconNum));
+					keyIcons.setPosition(0.93*winX,ICON_SIZE*winY*(1+(float)iconNum));
+					mouseIcons.setPosition((0.93-SPACING)*winX,ICON_SIZE*winY*(1+(float)iconNum));
 				}
 				else
 				{
-					binderIcons.setPos(0.95*winX,ICON_SIZE*winY*(1+(float)iconNum));
-					mouseIcons.setPos(0.90*winX,ICON_SIZE*winY*(1+(float)iconNum));
+					binderIcons.setPosition(0.95*winX,ICON_SIZE*winY*(1+(float)iconNum));
+					mouseIcons.setPosition(0.90*winX,ICON_SIZE*winY*(1+(float)iconNum));
 				}
 
 				binderIcons.draw();

@@ -56,8 +56,7 @@ SpectrumPlotFilter::SpectrumPlotFilter()
 	logarithmic=1;
 
 	//Default to blue plot
-	r=g=0;
-	b=a=1;
+	rgba = ColourRGBAf(0,0,1.0f,1.0f);
 }
 
 Filter *SpectrumPlotFilter::cloneUncached() const
@@ -68,10 +67,7 @@ Filter *SpectrumPlotFilter::cloneUncached() const
 	p->maxPlot=maxPlot;
 	p->binWidth=binWidth;
 	p->autoExtrema=autoExtrema;
-	p->r=r;	
-	p->g=g;	
-	p->b=b;	
-	p->a=a;	
+	p->rgba=rgba;	
 	p->plotStyle=plotStyle;
 	p->logarithmic = logarithmic;
 
@@ -226,10 +222,10 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 	}
 
 	
-	d->r = r;
-	d->g = g;
-	d->b = b;
-	d->a = a;
+	d->r =rgba.r();
+	d->g = rgba.g();
+	d->b = rgba.b();
+	d->a = rgba.a();
 
 	d->logarithmic=logarithmic;
 	d->plotStyle = plotStyle;
@@ -453,14 +449,8 @@ void SpectrumPlotFilter::getProperties(FilterPropGroup &propertyList) const
 	p.key=KEY_SPECTRUM_PLOTTYPE;
 	propertyList.addProperty(p,curGroup);
 
-	string thisCol;
-
-	//Convert the colour to a hex string
-	genColString((unsigned char)(r*255.0),(unsigned char)(g*255.0),
-		(unsigned char)(b*255.0),(unsigned char)(a*255.0),thisCol);
-
 	p.name=TRANS("Colour");
-	p.data=thisCol; 
+	p.data=rgba.toColourRGBA().rgbaString(); 
 	p.type=PROPERTY_TYPE_COLOUR;
 	p.helpText=TRANS("Colour of plotted spectrum");
 	p.key=KEY_SPECTRUM_COLOUR;
@@ -623,17 +613,15 @@ bool SpectrumPlotFilter::setProperty( unsigned int key,
 		}
 		case KEY_SPECTRUM_COLOUR:
 		{
-			unsigned char newR,newG,newB,newA;
+			ColourRGBA tmpRgb;
+			tmpRgb.parse(value);
 
-			parseColString(value,newR,newG,newB,newA);
-
-			if(newB != b || newR != r ||
-				newG !=g || newA != a)
+			if(tmpRgb.toRGBAf() != rgba)
+			{
+				rgba=tmpRgb.toRGBAf();
 				needUpdate=true;
-			r=newR/255.0;
-			g=newG/255.0;
-			b=newB/255.0;
-			a=newA/255.0;
+			}
+			
 			if(cacheOK)
 			{
 				for(size_t ui=0;ui<filterOutputs.size();ui++)
@@ -643,9 +631,9 @@ bool SpectrumPlotFilter::setProperty( unsigned int key,
 						PlotStreamData *p;
 						p =(PlotStreamData*)filterOutputs[ui];
 
-						p->r=r;
-						p->g=g;
-						p->b=b;
+						p->r=rgba.r();
+						p->g=rgba.g();
+						p->b=rgba.b();
 					}
 				}
 
@@ -705,8 +693,8 @@ bool SpectrumPlotFilter::writeState(std::ostream &f,unsigned int format, unsigne
 					maxPlot  << "\" auto=\"" << autoExtrema << "\"/>" << endl;
 			f << tabs(depth+1) << "<binwidth value=\"" << binWidth<< "\"/>" << endl;
 
-			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
-				<< "\" a=\"" << a << "\"/>" <<endl;
+			f << tabs(depth+1) << "<colour r=\"" <<  rgba.r() << "\" g=\"" << rgba.g() << "\" b=\"" << rgba.b()
+				<< "\" a=\"" << rgba.a() << "\"/>" <<endl;
 			
 			f << tabs(depth+1) << "<logarithmic value=\"" << logarithmic<< "\"/>" << endl;
 
@@ -802,8 +790,10 @@ bool SpectrumPlotFilter::readState(xmlNodePtr &nodePtr, const std::string &state
 	//====
 	if(XMLHelpFwdToElem(nodePtr,"colour"))
 		return false;
-	if(!parseXMLColour(nodePtr,r,g,b,a))
+	ColourRGBAf tmpRgba;
+	if(!parseXMLColour(nodePtr,tmpRgba))
 		return false;
+	rgba=tmpRgba;
 	//====
 	
 	//Retrieve logarithmic mode
@@ -874,11 +864,10 @@ bool countTest()
 
 
 	bool needUp;
-	std::string s;
 	TEST(f->setProperty(KEY_SPECTRUM_LOGARITHMIC,"0",needUp),"Set prop");
 	
-	genColString(255,0,0,s);
-	TEST(f->setProperty(KEY_SPECTRUM_COLOUR,s,needUp),"Set prop");
+	ColourRGBA tmpRGBA(255,0,0);
+	TEST(f->setProperty(KEY_SPECTRUM_COLOUR,tmpRGBA.rgbString(),needUp),"Set prop");
 
 	vector<const FilterStreamData*> streamIn,streamOut;
 

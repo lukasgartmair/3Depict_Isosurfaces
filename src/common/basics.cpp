@@ -49,14 +49,6 @@ using std::vector;
 using std::list;
 
 
-//Name of the  DTD file for state loading
-const char *DTD_NAME="threeDepict-state.dtd";
-//Program name
-const char *PROGRAM_NAME = "3Depict";
-//Program version
-const char *PROGRAM_VERSION = "0.0.17";
-//Path to font for Default FTGL  font
-const char *FONT_FILE= "FreeSans.ttf";
 
 
 //default font to use.
@@ -304,7 +296,334 @@ string veryFuzzyTimeSince( time_t origTime, time_t nowTime)
 	return TRANS("moments ago");
 }
 
+ColourRGBA::ColourRGBA()
+{
+}
 
+ColourRGBA::ColourRGBA(unsigned char r, unsigned char g, unsigned char b, unsigned char a) 
+{
+	data[0]=r;
+	data[1]=g;
+	data[2]=b;
+	data[3]=a;
+}
+
+
+ColourRGBA::ColourRGBA(unsigned char r, unsigned char g, unsigned char b) 
+{
+	data[0]=r;
+	data[1]=g;
+	data[2]=b;
+}
+
+unsigned char ColourRGBA::at(unsigned int idx) const
+{
+	ASSERT(idx< 4);
+	return data[idx];
+}
+
+unsigned char ColourRGBA::r() const
+{
+    return data[0];
+}
+
+unsigned char ColourRGBA::g() const
+{
+    return data[1];
+}
+
+unsigned char ColourRGBA::b() const
+{
+    return data[2];
+}
+
+unsigned char ColourRGBA::a() const
+{
+    return data[3];
+}
+
+bool ColourRGBA::parse(const std::string &str)	
+{
+	//Input string is in 2 char hex form, 3 or 4 colour, with # leading. RGB order
+	//lowercase string.
+	if(str.size() != 9 && str.size() != 7)
+		return false;
+
+	if(str[0] != '#')
+		return false;
+
+	string rS,gS,bS,aS;
+	rS=str.substr(1,2);
+	gS=str.substr(3,2);
+	bS=str.substr(5,2);
+
+	if(!isxdigit(rS[0]) || !isxdigit(rS[1]))
+		return false;
+	if(!isxdigit(gS[0]) || !isxdigit(gS[1]))
+		return false;
+	if(!isxdigit(bS[0]) || !isxdigit(bS[1]))
+		return false;
+
+	unsigned char r,g,b,a;
+	hexStrToUChar(str.substr(1,2),r);	
+	hexStrToUChar(str.substr(3,2),g);	
+	hexStrToUChar(str.substr(5,2),b);	
+	//3 colour must have a=255.
+	if(str.size() == 7)
+		a = 255;
+	else
+	{
+		aS=str.substr(7,2);
+		if(!isxdigit(aS[0]) || !isxdigit(aS[1]))
+			return false;
+		hexStrToUChar(str.substr(7,2),a);	
+	}
+	
+	data[0]=r;
+	data[1]=g;
+	data[2]=b;
+	data[3]=a;
+	return true;
+}
+
+std::string ColourRGBA::rgbaString() const
+{
+	std::string s="#", tmp;
+	ucharToHexStr(data[0],tmp);
+	s+=tmp;
+	ucharToHexStr(data[1],tmp);
+	s+=tmp;
+	ucharToHexStr(data[2],tmp);
+	s+=tmp;
+	ucharToHexStr(data[3],tmp);
+	s+=tmp;
+
+	return s;
+}
+
+std::string ColourRGBA::rgbString() const
+{
+	string tmp,s;
+	s="#";
+	ucharToHexStr(data[0],tmp);
+	s+=tmp;
+	ucharToHexStr(data[1],tmp);
+	s+=tmp;
+	ucharToHexStr(data[2],tmp);
+	s+=tmp;
+
+	return s;
+}
+
+RGBf ColourRGBA::toFloat() const
+{
+	RGBf ret;
+	ret.red=(float)data[0]/255.0f;
+	ret.green=(float)data[1]/255.0f;
+	ret.blue=(float)data[2]/255.0f;
+
+	return ret;
+}
+
+ColourRGBAf ColourRGBA::toRGBAf() const
+{
+	ColourRGBAf tmp;
+		
+	for(unsigned int ui=0;ui<4;ui++)
+	{
+		tmp[ui] = (float)data[ui]/255.0f;
+	}
+
+	return tmp;
+}
+
+void ColourRGBA::fromRGBf(const RGBf &oth) 
+{
+	data[0]=oth.red*255.0f;
+	data[1]=oth.green*255.0f;
+	data[2]=oth.blue*255.0f;
+	data[3]=255.0f;
+}
+
+bool ColourRGBA::operator==(const ColourRGBA &oth) const
+{
+	for(unsigned int ui=0;ui<4;ui++)
+	{
+		if(data[ui] != oth.data[ui])
+			return false;
+	}
+	return true;
+}
+
+bool ColourRGBA::operator==(const ColourRGBAf &oth) const
+{
+	for(unsigned int ui=0;ui<4;ui++)
+	{
+		if(data[ui] != oth.at(ui))
+			return false;
+	}
+	return true;
+}
+
+bool ColourRGBA::operator==(const RGBf &oth) const
+{
+	return (data[0]/255.0f == oth.red && data[1]/255.0f == oth.green && data[2]/255.0f == oth.blue);
+		
+}
+
+bool ColourRGBA::operator!=(const ColourRGBA &oth) const
+{
+	return !(*this == oth);
+}
+
+bool ColourRGBA::operator!=(const ColourRGBAf &oth) const
+{
+	return !(*this == oth);
+}
+
+
+ColourRGBAf::ColourRGBAf()
+{
+}
+
+ColourRGBAf::ColourRGBAf(float r, float g, float b, float a) 
+{
+	ASSERT(r >=0 && r <=1.0f); 
+	ASSERT(g >=0 && g <=1.0f); 
+	ASSERT(b >=0 && b <=1.0f); 
+	ASSERT(a >=0 && a <=1.0f); 
+	data[0]=r;
+	data[1]=g;
+	data[2]=b;
+	data[3]=a;
+}
+
+
+ColourRGBAf::ColourRGBAf(float r, float g, float b) 
+{
+	ASSERT(r >=0 && r <=1.0f); 
+	ASSERT(g >=0 && g <=1.0f); 
+	ASSERT(b >=0 && b <=1.0f); 
+	data[0]=r;
+	data[1]=g;
+	data[2]=b;
+	data[3]=1.0f;
+}
+float ColourRGBAf::r() const
+{
+    return data[0];
+}
+
+float ColourRGBAf::g() const
+{
+    return data[1];
+}
+
+float ColourRGBAf::b() const
+{
+    return data[2];
+}
+
+float ColourRGBAf::a() const
+{
+    return data[3];
+}
+
+void ColourRGBAf::r(float v)
+{
+	ASSERT(v >=0.0f && v <=1.0f);
+	data[0]=v;
+}
+
+void ColourRGBAf::g(float v)
+{
+	ASSERT(v >=0.0f && v <=1.0f);
+	data[1]=v;
+}
+
+void ColourRGBAf::b(float v)
+{
+	ASSERT(v >=0.0f && v <=1.0f);
+	data[2]=v;
+}
+
+void ColourRGBAf::a(float v)
+{
+	ASSERT(v >=0.0f && v <=1.0f);
+	data[3]=v;
+}
+float &ColourRGBAf::operator[](unsigned int idx) 
+{
+	ASSERT(idx < 4);
+	return data[idx];
+}
+
+float ColourRGBAf::at(unsigned int idx) const
+{
+	return data[idx];
+}
+
+		
+ColourRGBAf ColourRGBAf::interpolate(float delta, const ColourRGBAf &other)
+{
+	ColourRGBAf result;
+
+	for(unsigned int ui=0;ui<3;ui++)
+		result[ui] = data[ui] + (other.data[ui] - data[ui])*delta;
+	return result;
+}
+
+ColourRGBA ColourRGBAf::toColourRGBA() const
+{
+	ColourRGBA tmp(data[0]*255.0f,data[1]*255.0f,
+			data[2]*255.0f,data[3]*255.0f);
+	return tmp;
+}
+
+RGBf ColourRGBAf::toRGBf() const
+{
+	RGBf tmp;
+	tmp.red=data[0];
+	tmp.green=data[1];
+	tmp.blue=data[2];
+	return tmp;
+}
+
+
+void ColourRGBAf::operator=(const RGBf &oth)
+{
+	data[0]= oth.red;
+	data[1]= oth.green;
+	data[2]= oth.blue;
+	data[3]= 1.0f;
+}
+
+
+bool ColourRGBAf::operator==(const ColourRGBA &oth) const
+{
+	for(unsigned int ui=0;ui<3;ui++)
+	{
+		if(data[ui] != (float)oth.at(ui)/255.0f)
+			return false;
+	}
+
+	return true;
+}
+
+bool ColourRGBAf::operator==(const ColourRGBAf &oth) const
+{
+	for(unsigned int ui=0;ui<3;ui++)
+	{
+		if(data[ui] != (float)oth.data[ui])
+			return false;
+	}
+
+	return true;
+}
+bool ColourRGBAf::operator!=(const ColourRGBAf  &oth) const
+{
+	return !(*this == oth);
+}
 void BoundCube::getBound(Point3D &retBound, unsigned int minMax) const
 {
 	retBound=Point3D(bounds[0][minMax],

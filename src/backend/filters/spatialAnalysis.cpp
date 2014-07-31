@@ -84,7 +84,7 @@ enum
 //!Error codes
 enum
 {
-	ERR_ABORT_FAIL,
+	ERR_ABORT_FAIL=1,
 	ERR_BINOMIAL_NO_MEM,
 	ERR_BINOMIAL_NO_RANGE,
 	ERR_BINOMIAL_BIN_FAIL,
@@ -154,8 +154,7 @@ SpatialAnalysisFilter::SpatialAnalysisFilter()
 	haveRangeParent=false;
 	
 	//Default colour is red
-	r=a=1.0f;
-	g=b=0.0f;
+	rgba=ColourRGBAf(1.0f,0,0);
 
 	//RDF params
 	numBins=100;
@@ -191,10 +190,7 @@ Filter *SpatialAnalysisFilter::cloneUncached() const
 {
 	SpatialAnalysisFilter *p=new SpatialAnalysisFilter;
 
-	p->r=r;
-	p->g=g;
-	p->b=b;
-	p->a=a;
+	p->rgba=rgba;
 	
 	p->algorithm=algorithm;
 	p->stopMode=stopMode;
@@ -632,11 +628,8 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 				
 			string thisCol;
 			//Convert the ion colour to a hex string	
-			genColString((unsigned char)(r*255),(unsigned char)(g*255),
-					(unsigned char)(b*255),(unsigned char)(a*255),thisCol);
-
 			p.name=TRANS("Plot colour ");
-			p.data=thisCol; 
+			p.data=rgba.toColourRGBA().rgbaString();
 			p.type=PROPERTY_TYPE_COLOUR;
 			p.helpText=TRANS("Colour of output plot");
 			p.key=KEY_COLOUR;
@@ -754,13 +747,9 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			p.key=KEY_NUMBINS;
 			propertyList.addProperty(p,curGroup);
 			
-			string thisCol;
-			//Convert the ion colour to a hex string	
-			genColString((unsigned char)(r*255),(unsigned char)(g*255),
-					(unsigned char)(b*255),(unsigned char)(a*255),thisCol);
-
+			
 			p.name=TRANS("Plot colour ");
-			p.data=thisCol; 
+			p.data=rgba.toColourRGBA().rgbString(); 
 			p.type=PROPERTY_TYPE_COLOUR;
 			p.helpText=TRANS("Colour of output plot");
 			p.key=KEY_COLOUR;
@@ -1028,17 +1017,15 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 		}
 		case KEY_COLOUR:
 		{
-			unsigned char newR,newG,newB,newA;
+			ColourRGBA tmpRgba;
 
-			parseColString(value,newR,newG,newB,newA);
+			if(!tmpRgba.parse(value))
+				return false;
 
-			if(newB != b || newR != r ||
-				newG !=g || newA != a)
+			
+			if(rgba.toColourRGBA() != tmpRgba)
 			{
-				r=newR/255.0;
-				g=newG/255.0;
-				b=newB/255.0;
-				a=newA/255.0;
+				rgba=tmpRgba.toRGBAf();
 
 				if(cacheOK)
 				{
@@ -1049,9 +1036,9 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 							PlotStreamData *p;
 							p =(PlotStreamData*)filterOutputs[ui];
 
-							p->r=r;
-							p->g=g;
-							p->b=b;
+							p->r=rgba.r();
+							p->g=rgba.g();
+							p->b=rgba.b();
 						}
 					}
 
@@ -1361,7 +1348,8 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 
 std::string  SpatialAnalysisFilter::getErrString(unsigned int code) const
 {
-	const char *errStrings[] = {"Spatial analysis aborted by user",
+	const char *errStrings[] = {"",
+				"Spatial analysis aborted by user",
 				"Insufficient memory to complete analysis",
 				"Insufficient bins in histogram for analysis",
 				"Insufficient memory for binomial. Reduce input size?",
@@ -1438,8 +1426,8 @@ bool SpatialAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsi
 			f << tabs(depth+1) << "<numbins value=\""<<numBins<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<excludesurface value=\""<<excludeSurface<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<reductiondistance value=\""<<reductionDistance<< "\"/>"  << endl;
-			f << tabs(depth+1) << "<colour r=\"" <<  r<< "\" g=\"" << g << "\" b=\"" <<b
-				<< "\" a=\"" << a << "\"/>" <<endl;
+			f << tabs(depth+1) << "<colour r=\"" <<  rgba.r() << "\" g=\"" << rgba.g() << "\" b=\"" <<rgba.b()
+				<< "\" a=\"" << rgba.a() << "\"/>" <<endl;
 			
 			f << tabs(depth+1) << "<densitycutoff value=\""<<densityCutoff<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<keepdensityupper value=\""<<(int)keepDensityUpper<< "\"/>"  << endl;
@@ -1557,8 +1545,10 @@ bool SpatialAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 	//====
 	if(XMLHelpFwdToElem(nodePtr,"colour"))
 		return false;
-	if(!parseXMLColour(nodePtr,r,g,b,a))
+	ColourRGBAf tmpRgbaf;
+	if(!parseXMLColour(nodePtr,tmpRgbaf))
 		return false;
+	rgba=tmpRgbaf;
 	//====
 
 
@@ -1953,6 +1943,8 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 		//Build the tree using the target ions
 		//(its roughly nlogn timing, but worst case n^2)
 		kdTree.buildByRef(pts[1]);
+		if(!(*callback)(true))
+			return ERR_ABORT_FAIL;
 		pts[1].clear();
 		
 		//Remove surface points from sources if desired
@@ -2006,6 +1998,8 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 
 		//Build the tree (its roughly nlogn timing, but worst case n^2)
 		kdTree.buildByRef(p);
+		if(!(*callback)(true))
+			return ERR_ABORT_FAIL;
 
 		//Remove surface points if desired
 		if(excludeSurface)
@@ -2116,9 +2110,9 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 				plotData[ui]->dataLabel=getUserString() + string(" ") +tmpStr + TRANS("NN Freq.");
 
 				//Red plot.
-				plotData[ui]->r=r;
-				plotData[ui]->g=g;
-				plotData[ui]->b=b;
+				plotData[ui]->r=rgba.r();
+				plotData[ui]->g=rgba.g();
+				plotData[ui]->b=rgba.b();
 				plotData[ui]->xyData.resize(numBins);
 
 				for(unsigned int uj=0;uj<numBins;uj++)
@@ -2173,9 +2167,9 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			plotData->yLabel=TRANS("Count");
 			plotData->dataLabel=getUserString() + TRANS(" RDF");
 
-			plotData->r=r;
-			plotData->g=g;
-			plotData->b=b;
+			plotData->r=rgba.r();
+			plotData->g=rgba.g();
+			plotData->b=rgba.b();
 			plotData->xyData.resize(numBins);
 
 			for(unsigned int uj=0;uj<numBins;uj++)
@@ -2245,13 +2239,13 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 	kdTree.setProgressPointer(&(progress.filterProgress));
 	
 	kdTree.buildByRef(p);
-	p.clear(); //We don't need pts any more, as tree *is* a copy.
 
 
 	//Update progress & User interface by calling callback
-	if(!(*callback)(false))
+	if(!(*callback)(true))
 		return ERR_ABORT_FAIL;
 
+	p.clear(); //We don't need pts any more, as tree *is* a copy.
 
 	//Its algorithm time!
 	//----
@@ -2539,7 +2533,7 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 
 
 	//Update progress & User interface by calling callback
-	if(!(*callback)(false))
+	if(!(*callback)(true))
 		return ERR_ABORT_FAIL;
 	p.clear(); //We don't need pts any more, as tree *is* a copy.
 
@@ -3062,6 +3056,8 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 	tree.setProgressPointer(&progress.filterProgress);
 	tree.setCallbackMethod(callback);
 	tree.buildByRef(dest);
+	if(!(*callback)(true))
+		return ERR_ABORT_FAIL;
 
 	progress.step=4;
 	progress.stepName=TRANS("Compute");
@@ -3136,9 +3132,9 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 		plotData->yLabel=TRANS("Count");
 		plotData->dataLabel=getUserString() + TRANS(" 1D Dist. Func.");
 
-		plotData->r=r;
-		plotData->g=g;
-		plotData->b=b;
+		plotData->r=rgba.r();
+		plotData->g=rgba.g();
+		plotData->b=rgba.b();
 		plotData->xyData.resize(numBins);
 
 		for(unsigned int uj=0;uj<numBins;uj++)
@@ -3792,6 +3788,8 @@ bool replaceTest()
 	}
 
 	wxRemoveFile(ionFile);
+
+	delete streamOut[0];
 	
 	return true;
 }

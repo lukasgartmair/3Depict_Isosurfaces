@@ -49,9 +49,9 @@ function setMacDeps {
 	#Dependency ID, URL and name
 	DEPIDS=( 0)
 	DEPNAMES=( mathgl)
-	DEPURLS=( http://sourceforge.net/projects/mathgl/files/mathgl/mathgl%202.1.3/mathgl-2.1.3.1.tar.gz/download)
-	DEPFILENAMES=( mathgl-2.1.3.1.tar.gz)
-	DEPMDSUM=( 1476ea6fd32938ab221fe169025747ed)
+	DEPURLS=( http://sourceforge.net/projects/mathgl/files/mathgl/mathgl%202.2.2/mathgl-2.2.2.1.tar.gz/download)
+	DEPFILENAMES=( mathgl-2.2.2.1.tar.gz)
+	DEPMDSUM=( cdee2784ce2f18ab9014bbd204b8589f)
 	
 }
 
@@ -100,18 +100,18 @@ function installMacPorts {
 function setSuseDeps {
 	DEPIDS=( 0)
 	DEPNAMES=( mathgl)
-	DEPURLS=( http://sourceforge.net/projects/mathgl/files/mathgl/mathgl%201.11.2/mathgl-1.11.2.tar.gz/download)
-	DEPFILENAMES=( mathgl-1.11.2.tar.gz)
-	DEPMDSUM=( acd33e68911d9506f60d769dce23f95e)
+	DEPURLS=( http://sourceforge.net/projects/mathgl/files/mathgl/mathgl%202.2.2/mathgl-2.2.2.1.tar.gz/download)
+	DEPFILENAMES=( mathgl-2.2.2.1.tar.gz)
+	DEPMDSUM=( cdee2784ce2f18ab9014bbd204b8589f)
 
 }
 
-function setCentOS5Deps {
+function setCentOS6Deps {
 	DEPIDS=( 0)
 	DEPNAMES=( mathgl)
-	DEPURLS=( http://sourceforge.net/projects/mathgl/files/mathgl/mathgl%201.11.2/mathgl-1.11.2.tar.gz/download)
-	DEPFILENAMES=( mathgl-1.11.2.tar.gz)
-	DEPMDSUM=( acd33e68911d9506f60d769dce23f95e)
+	DEPURLS=( http://sourceforge.net/projects/mathgl/files/mathgl/mathgl%202.2.2/mathgl-2.2.2.1.tar.gz/download)
+	DEPFILENAMES=( mathgl-2.2.2.1.tar.gz)
+	DEPMDSUM=( cdee2784ce2f18ab9014bbd204b8589f)
 
 }
 
@@ -228,7 +228,7 @@ function handleLinuxDistro()
 			elif [ x$DISTRIBUTOR == x"Fedora" ] ; then
 				LINUXDISTRO="RedhatLike"
 			elif [ x$DISTRIBUTOR == x"CentOS" ] ; then
-				LINUXDISTRO="RedhatLike"
+				LINUXDISTRO="CentOS6"
 			elif [ x`echo $DISTRIBUTOR  | grep -i redhat` != x"" ] ; then
 				LINUXDISTRO="RedhatLike"
 			else
@@ -269,30 +269,43 @@ function handleLinuxDistro()
 		RedhatLike)
 			echo "System appears to be redhat like"
 
-			sudo yum groupinstall "Development Tools" && sudo yum install yum-utils && sudo yum-builddep 3Depict
-			
+			sudo yum groupinstall "Development Tools" 
 			if [ $? -ne 0 ] ; then
-				echo "Failed to install build dependencies"
+				echo "Yum installation failed"
 				exit 1
-			else
-				echo "All done."
-				exit 0
+			fi
+			
+			sudo yum install yum-utils 
+			if [ $? -ne 0 ] ; then
+				echo "Yum installation failed"
+				exit 1
+			fi
+			sudo yum-builddep 3Depict
+			if [ $? -ne 0 ] ; then
+				echo "Yum installation failed"
+				exit 1
 			fi
 
 		;;
 		CentOS6)
 			echo "System appears to be CentOS6-like?"
 			
-			sudo yum groupinstall "Development Tools" && sudo yum install yum-utils && sudo yum install libxml2-devel ftgl-devel wxgtk-devel qhull-devel mathgl-devel
+			sudo yum groupinstall "Development Tools" && sudo yum install yum-utils libxml2-devel wxGTK-devel gsl-devel rpmdevtools
+			if [ $? -ne 0 ] ; then
+				echo "Yum installation failed"
+				exit 1
+			fi
+			
 
 			echo " OK, so this gets tricky. Centos doesn't ship mathgl. So we have to grab it from fedora's Git repository, and build the RPM, the install that."
 
 	
 			echo "Getting mgl dependencies"
-			sudo yum install gsl-devel libpng-devel libtool-ltdl-devel libtool swig freeglut-devel hdf-devel \
-				hdf5-static libjpeg-devel libtiff-devel fltk-devel qt4-devel wxGTK-devel giflib-devel \
-				autoconf automake libtool info texi2html texinfo-tex
-			if [ $? -eq 0 ] ; then
+			sudo yum install gsl-devel libpng-devel libtool-ltdl-devel libtool swig freeglut-devel \
+				libjpeg-devel libtiff-devel qt4-devel wxGTK-devel giflib-devel \
+				info texi2html texinfo-tex cmake libXmu-devel lua-devel python-devel
+			echo "Return code :"  $?
+			if [ $? -ne 0 ] ; then
 				echo "Yum installation failed"
 				exit 1
 			fi
@@ -300,24 +313,25 @@ function handleLinuxDistro()
 			if [ x`which git` == x"" ] ; then
 				echo "Installing git...."
 				sudo yum install git
-				if [ $? -eq 0 ] ; then
+				if [ $? -ne 0 ] ; then
 					echo "Yum git installation failed"
 					exit 1
 				fi
 			fi
+			
+			if [ ! -d mathgl ] ; then
 
-			git clone git://pkgs.fedoraproject.org/mathgl.git
-			if [ $? -eq 0 ] ; then
-				echo "git clone failed - couldn't retreive mathgl spec and patch data"
-				exit 1
-			elif [ ! -f mathgl ]  ; then
-				echo "Git clone succeded, but couldn't locate checkout dir, \"mathgl\""
-				exit 1
+				git clone git://pkgs.fedoraproject.org/mathgl.git
+				if [ $? -ne 0 ] ; then
+					echo "git clone failed - couldn't retreive mathgl spec and patch data"
+					exit 1
+				elif [ ! -d mathgl ]  ; then
+					echo "Git clone succeded, but couldn't locate checkout dir, \"mathgl\""
+					exit 1
+				fi
 			fi
 
 			cd mathgl
-			# We want this version
-			git checkout 152ad15
 
 			if [ $? -ne 0 ] ; then
 				echo  "Something went wrong when trying to check out the version of the repository we wanted"
@@ -335,33 +349,28 @@ function handleLinuxDistro()
 			cp mathgl.spec ~/rpmbuild/SPECS/
 			cp *patch ~/rpmbuild/SOURCES/
 
-			MATHGLVER=1.11.2
+			MATHGLVER=2.2.2.1
 			setCentOS6Deps			
 			pushd ~/rpmbuild/SOURCES/
 			runDownloads
 			checkHashes
-			mv sources/mathgl-${MATHGLVER}.tar..gz .
+			mv sources/mathgl-${MATHGLVER}.tar.gz .
 			popd
 
-			pushd ~/rpmbuild/SPEC/
-			rpmbuild -ba mathgl.spec
+			#HACK : Strip out the optional buildrequires from the spec file
+			for i in hdf-devel hdf5-static fltk-devel qtwebkit-devel  libharu-devel octave-devel openmpi-deve mpich-devel
+			do
+				sed -i "s/$i//" ~/rpmbuild/SPECS/mathgl.spec
+			done
+			
+			sed -i 's/^\s*BuildRequires:\s*$//' ~/rpmbuild/SPECS/mathgl.spec
 
-			if [ $? -ne 0 ] ; then
-				echo  "Runing RPMBuild failed - but we are close to getting mathgl installed, so please fix rpmbuild, and run rpmbuild -ba mathgl.spec from ~/rpmbuild/SPEC/"
-				exit 1
-			fi
-			popd
-
-
-			ARCH=`uname -m`
-			pushd ~/rpmbuild/RPMS/${ARCH}/
-			rpm -i mathgl-${MATHGLVER}*rpm
-
-			if [ $? -ne 0 ] ; then 
-				echo "So we built the RPMs OK, but for some reason we cannot isntall them. Not sure whats going on here. Aborting."
-				exit 1
-			fi
-			popd
+			echo "---------------- NOTICE ----------------"
+			echo " CentOS is missing most of the optional dependencies for mathgl. "
+			echo " this script cannot do the work required to install mathgl.  "
+			echo " An RPM \"Spec\" file has been left in ~/rpmbuild/SPECS/"
+			echo " go there, tweak that file and use \"rpmbuild -ba mathgl.spec\" to build it."
+			echo " This is not straightforwards - work is needed to make centos and mathgl play nice"
 			exit 0;
 		;;
 		SuseLike)
@@ -481,7 +490,7 @@ case $OS_NAME in
 		HASH_SUM=`md5 sources/$j | awk {'sub(/^.*= [ \t]*/, "", $0); print $0;'}`
 		;;
 	*)
-		HASH_SUM=`md5sum sources/$j | awk {'sub(/^.*= [ \t]*/, "", $0); print $0;'}`
+		HASH_SUM=`md5sum sources/$j | awk {'sub(/^.*= [ \t]*/, "", $0); print $0;'} | awk '{print $1}'`
 		;;
 esac
 
@@ -750,11 +759,12 @@ do
 				#patch mgl/mgl_export.cpp < ../../sources/mgl_export.patch 		
 				#After upgrade to 1.5.13, this patch required. 
 				#patch mgl/mgl_data_png.cpp < ../../sources/mgl_data_png.patch 
-				patch src/obj.cpp < ../../patches/macosx/mathgl2/diff-obj.c.patch
-				patch src/prc/writePRC.h < ../../patches/macosx/mathgl2/diff-prc-writePRC.h.patch
+				#patch src/obj.cpp < ../../patches/macosx/mathgl2/diff-obj.c.patch
+				#patch src/prc/writePRC.h < ../../patches/macosx/mathgl2/diff-prc-writePRC.h.patch
+				cmake .
+				patch ./CMakeCache.txt < ../../../../patches/0.0.17/macosx/mathgl2/CMakeCache.txt.patch
 			fi
 			#./configure --disable-gsl $PNGLIBS
-			cmake .
 			cmake .
 
 

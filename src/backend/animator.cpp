@@ -536,29 +536,11 @@ std::string InterpData::getInterpolatedData(const vector<pair<size_t,
 
 			//Parse the colour start and end strings
 			//---------
-			float colStart[4]; 
-			float colEnd[4];
+			ColourRGBA tmpCol[2];
 
-			unsigned char r,g,b,alpha;
-			ASSERT(parseColString(keyData[0].second,r,g,b,alpha));
-			ASSERT(parseColString(keyData[1].second,r,g,b,alpha));
-
-			parseColString(keyData[0].second,r,g,b,alpha);
-			alpha=255;
-
-			colStart[0] = r/255.0f;
-			colStart[1] = g/255.0f;
-			colStart[2] = b/255.0f;
-			colStart[3] = alpha/255.0f;
-
-
-			parseColString(keyData[1].second,r,g,b,alpha);
-
-
-			colEnd[0] = r/255.0f;
-			colEnd[1] = g/255.0f;
-			colEnd[2] = b/255.0f;
-			colEnd[3] = alpha/255.0f;
+			
+			tmpCol[0].parse(keyData[0].second);
+			tmpCol[1].parse(keyData[1].second);
 		
 			//---------
 			
@@ -576,23 +558,11 @@ std::string InterpData::getInterpolatedData(const vector<pair<size_t,
 			}
 		
 			//interpolate the colour value
-			unsigned char colInterp[4];
-			for(size_t ui=0; ui<4;ui++)
-			{
-				float tmp;
-				tmp=(interpLinearRamp(startF,endF,frame,
-							colStart[ui],colEnd[ui])*255.0f);
-
-				tmp = std::min(tmp,255.0f);
-				tmp=std::max(tmp,0.0f);
-
-				colInterp[ui] = (unsigned char)tmp;
-			}
-
-			std::string s;
-			genColString(colInterp[0],colInterp[1],colInterp[2],
-					colInterp[3],s);
-			return s;
+			ColourRGBAf interpCol;
+			float delta;
+			delta = (frame - startF )/ (endF - startF);
+			interpCol=tmpCol[0].toRGBAf().interpolate(delta,tmpCol[1].toRGBAf());
+			return interpCol.toColourRGBA().rgbaString();
 		}
 		case INTERP_LIST:
 		{

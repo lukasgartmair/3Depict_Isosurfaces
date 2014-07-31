@@ -22,6 +22,7 @@
 #include "../filter.h"
 
 #include "common/stringFuncs.h"
+#include "common/basics.h"
 #include "common/xmlHelper.h"
 
 #include "backend/APT/APTRanges.h"
@@ -105,8 +106,8 @@ bool readVectorsXML(xmlNodePtr nodePtr,
 
 
 //Parse a "colour" node, extracting rgba data
-bool parseXMLColour(xmlNodePtr &nodePtr, 
-		float &r, float&g, float&b, float&a);
+bool parseXMLColour(xmlNodePtr &nodePtr, ColourRGBAf &rgbaf); 
+		
 
 //Returns the ion stream's range ID from the rangefile, if and only if it every ion in input
 // is ranged tht way. Otherwise returns -1.

@@ -26,9 +26,6 @@
 #include "common/basics.h"
 #include "backend/tree.hh"
 
-#define wxCStr(a) wxString(a,*wxConvCurrent)
-#define wxStr(a) wxString(a.c_str(),*wxConvCurrent)
-
 
 //This function is adapted from
 //http://www.creatis.insa-lyon.fr/software/public/creatools/bbtk/v0_9_2/doc/doxygen/bbtk/bbtkWx_8h-source.html

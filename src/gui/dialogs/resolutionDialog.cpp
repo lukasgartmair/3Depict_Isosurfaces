@@ -42,12 +42,12 @@ ResolutionDialog::ResolutionDialog(wxWindow* parent, int id, const wxString& tit
     wxDialog(parent, id, title, pos, size, wxDEFAULT_DIALOG_STYLE|wxRESIZE_BORDER)
 {
     // begin wxGlade: ResolutionDialog::ResolutionDialog
-    labelWidth = new wxStaticText(this, wxID_ANY, wxTRANS("Width :"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
+    labelWidth = new wxStaticText(this, wxID_ANY, TRANS("Width :"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
     textWidth = new wxTextCtrl(this, ID_TEXT_WIDTH, wxT(""));
-    labelHeight = new wxStaticText(this, wxID_ANY, wxTRANS("Height :"));
+    labelHeight = new wxStaticText(this, wxID_ANY, TRANS("Height :"));
     textHeight = new wxTextCtrl(this, ID_TEXT_HEIGHT, wxT(""));
     static_line_2 = new wxStaticLine(this, wxID_ANY);
-    btnReset = new wxButton(this, ID_RESET, wxTRANS("Reset"));
+    btnReset = new wxButton(this, ID_RESET, TRANS("Reset"));
     btnOK = new wxButton(this, wxID_OK, wxEmptyString);
     button_2 = new wxButton(this, wxID_CANCEL, wxEmptyString);
 
@@ -90,10 +90,10 @@ void ResolutionDialog::setRes(unsigned int w, unsigned int h, bool asReset)
 
 	std::string s;
 	stream_cast(s,w);
-	textWidth->SetValue(wxStr(s));
+	textWidth->SetValue((s));
 
 	stream_cast(s,h);
-	textHeight->SetValue(wxStr(s));
+	textHeight->SetValue((s));
 
 	resWidth=w;
 	resHeight=h;
@@ -127,7 +127,7 @@ void ResolutionDialog::OnTextWidth(wxCommandEvent &event)
 	if(textStr.find_first_not_of("0123456789")!=std::string::npos )
 	{
 		stream_cast(textStr,resWidth);
-		textWidth->SetValue(wxStr(textStr));
+		textWidth->SetValue((textStr));
 		programmaticEvent--;
 		return;
 	}
@@ -149,7 +149,7 @@ void ResolutionDialog::OnTextWidth(wxCommandEvent &event)
 
 	resHeight=(unsigned int)(width*aspect);
 	stream_cast(textStr,resHeight);
-	textHeight->SetValue(wxStr(textStr));
+	textHeight->SetValue((textStr));
 
 
 	updateImage();
@@ -174,7 +174,7 @@ void ResolutionDialog::OnTextHeight(wxCommandEvent &event)
 	if(textStr.find_first_not_of("0123456789")!=std::string::npos )
 	{
 		stream_cast(textStr,resHeight);
-		textHeight->SetValue(wxStr(textStr));
+		textHeight->SetValue((textStr));
 		programmaticEvent--;
 		return;
 	}
@@ -197,7 +197,7 @@ void ResolutionDialog::OnTextHeight(wxCommandEvent &event)
 
 	resWidth=(unsigned int)(height/aspect);
 	stream_cast(textStr,resWidth);
-	textWidth->SetValue(wxStr(textStr));
+	textWidth->SetValue((textStr));
 
 	updateImage();
 
@@ -259,7 +259,7 @@ void ResolutionDialog::OnMouseWheelWidth(wxMouseEvent &event)
 	std::string textStr;
 	resHeight=(unsigned int)(resWidth*aspect);
 	stream_cast(textStr,resHeight);
-	textHeight->SetValue(wxStr(textStr));
+	textHeight->SetValue((textStr));
 	
 	updateImage();
 	programmaticEvent--;
@@ -304,7 +304,7 @@ void ResolutionDialog::OnMouseWheelHeight(wxMouseEvent &event)
 	std::string textStr;
 	resWidth=(unsigned int)(resHeight/aspect);
 	stream_cast(textStr,resWidth);
-	textWidth->SetValue(wxStr(textStr));
+	textWidth->SetValue((textStr));
 
 	updateImage();
 	programmaticEvent--;
@@ -333,7 +333,7 @@ void ResolutionDialog::finishDialog()
 void ResolutionDialog::set_properties()
 {
     // begin wxGlade: ResolutionDialog::set_properties
-    SetTitle(wxTRANS("Resolution Selection"));
+    SetTitle(TRANS("Resolution Selection"));
     // end wxGlade
 }
 

@@ -34,12 +34,12 @@ FilterErrorDialog::FilterErrorDialog(wxWindow* parent, int id, const wxString& t
     // begin wxGlade: FilterErrorDialog::FilterErrorDialog
     textErrorMessage = new wxTextCtrl(this, wxID_ANY, wxEmptyString,wxDefaultPosition,wxDefaultSize,wxTE_MULTILINE|wxTE_READONLY);
     bitmapError = new wxStaticBitmap(this, wxID_ANY, wxArtProvider::GetBitmap(wxART_ERROR));
-    labelError = new wxStaticText(this, wxID_ANY, wxTRANS("Error"));
+    labelError = new wxStaticText(this, wxID_ANY, TRANS("Error"));
     bitmapWarning = new wxStaticBitmap(this, wxID_ANY,wxArtProvider::GetBitmap(wxART_WARNING));
-    labelWarning = new wxStaticText(this, wxID_ANY, wxTRANS("Warning"));
+    labelWarning = new wxStaticText(this, wxID_ANY, TRANS("Warning"));
     btnOK = new wxButton(this, wxID_OK, wxEmptyString);
 
-    SetTitle(wxTRANS("Filter Errors"));
+    SetTitle(TRANS("Filter Errors"));
     set_properties();
     do_layout();
     // end wxGlade
@@ -49,7 +49,7 @@ FilterErrorDialog::FilterErrorDialog(wxWindow* parent, int id, const wxString& t
 void FilterErrorDialog::set_properties()
 {
     // begin wxGlade: FilterErrorDialog::set_properties
-    SetTitle(wxTRANS("Filter Errors"));
+    SetTitle(TRANS("Filter Errors"));
     SetSize(wxSize(551, 414));
     // end wxGlade
 }
@@ -65,7 +65,7 @@ void FilterErrorDialog::SetText(const std::vector<string> &text)
 	}
 
 	textErrorMessage->Clear();
-	textErrorMessage->AppendText(wxStr(bigMessage));
+	textErrorMessage->AppendText((bigMessage));
 }
 
 void FilterErrorDialog::do_layout()

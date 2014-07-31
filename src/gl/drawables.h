@@ -488,77 +488,6 @@ class DrawTexturedQuad : public DrawQuad
 };
 
 
-class DrawAnimatedOverlay : public DrawQuad
-{
-	private:
-		size_t nX,nY,nZ;
-
-		//ID of the texture to use when drawing, -1 if not bound
-		// to opengl
-		unsigned int textureId;
-
-		float position[2];
-
-		timeval animStartTime;
-
-		bool textureOK;
-
-		//Time delta before repeating animation
-		float repeatInterval;
-		
-		//Length to use for the quad to represent icon
-		float length;
-
-		//Time before showing the image
-		float delayBeforeShow;
-
-		//Time for fadein after show
-		float fadeIn;
-
-	public:
-		DrawAnimatedOverlay();
-		~DrawAnimatedOverlay();
-
-		virtual unsigned int getType() const {return DRAW_TYPE_ANIMATEDOVERLAY;}
-
-		//!This is an overlay
-		bool isOverlay() const {return true;};
-
-
-		//!Set the texture position in XY (z is ignored)
-		void setPos(float xp,float yp)
-		{
-			position[0]=xp;
-			position[1]=yp;
-		};
-
-		void setSize(float size);
-
-		//Set the time between repeats for the animation
-		void setRepeatTime(float timeV) { repeatInterval=timeV;}
-
-		//Set the time before the texture appears
-		void setShowDelayTime(float showDelayTime) 
-			{ ASSERT(showDelayTime >=0.0f);  delayBeforeShow = showDelayTime;}
-
-		//Set the time during which the alpha value will be ramped up.
-		// activated after the delay time (ie time before 100% visible is fadeInTime + 
-		//	delayTime.
-		void setFadeInTime(float fadeInTime)
-			{ ASSERT(fadeInTime >=0.0f); fadeIn=fadeInTime;}
-
-		//!Set the texture by name
-		bool setTexture(const vector<string> &textureFiles, float timeRepeat=1.0f);
-
-		void resetTime() ;
-
-		//!Draw object
-		void draw() const;
-
-		void getBoundingBox(BoundCube &b) const ;
-
-		bool isOK() const { return textureOK; }
-};
 
 //!A sphere drawing 
 class DrawSphere : public DrawableObj
@@ -909,21 +838,39 @@ struct RGBFloat
 	float v[3];
 };
 
-class DrawColourBarOverlay : public DrawableObj
+//Abstract class as base for overlays
+class DrawableOverlay : public DrawableObj
+{
+	protected:
+		//alpha (transparancy) value
+		float a;
+		//!Height and width of overlay (total)
+		float height,width;
+		//Fractional coordinates for the  top left of the overlay
+		float position[2];
+	public:
+		DrawableOverlay() {} ;
+		//Declared as pure virtual to force ABC
+		virtual ~DrawableOverlay() =0;
+		void setAlpha(float alpha) { a=alpha;};
+		void setSize(float widthN, float heightN) {height=heightN, width=widthN;} 
+		void setSize(float size) {width=height=size;};
+		void setPosition(float newTLX,float newTLY) { position[0]=newTLX; position[1]=newTLY;}
+
+		void getBoundingBox(BoundCube &b) const {b.setInvalid();};
+		//!This is an overlay
+		bool isOverlay() const {return true;};
+};
+
+class DrawColourBarOverlay : public DrawableOverlay
 {
 	private:
 		FTFont *font;
 
 		//!Colours for each element
 		vector<RGBFloat> rgb;
-		//alpha (transparancy) value
-		float a;
 		//!Minimum and maximum values for the colour bar (for ticks)
 		float min,max;
-		//!Height and width of bar (total)
-		float height,width;
-		//!top left of bar
-		float tlX,tlY;
 
 	public:
 	
@@ -933,63 +880,89 @@ class DrawColourBarOverlay : public DrawableObj
 		
 
 		virtual unsigned int getType() const {return DRAW_TYPE_COLOURBAR;}
-		
-	
-		void getBoundingBox(BoundCube &b) const ;
 
-		//!This is an overlay
-		bool isOverlay() const {return true;};
 		void setColourVec(const vector<float> &r,
 					const vector<float> &g,
 					const vector<float> &b);
 		//!Draw object
 		void draw() const;
 
-		void setAlpha(float alpha) { a=alpha;};
-		void setSize(float widthN, float heightN) {height=heightN, width=widthN;} 
-		void setPosition(float newTLX,float newTLY) { tlX=newTLX; tlY=newTLY;}
 		void setMinMax(float minNew,float maxNew) { min=minNew;max=maxNew;};
 		
 };
 
 //!A class to hande textures to draw
-class DrawTexturedQuadOverlay : public DrawableObj
+class DrawTexturedQuadOverlay : public DrawableOverlay
 {
 	private:
 		unsigned int textureId;
-		//Fractional coordinates for the 
-		float position[2];
 	
-		//Length of the rectangle to use for the icon
-		float length;
-
 		bool textureOK;
 	public:
 		DrawTexturedQuadOverlay();
 		~DrawTexturedQuadOverlay();
 		
 		virtual unsigned int getType() const {return DRAW_TYPE_TEXTUREDOVERLAY;}
-
-		//!This is an overlay
-		bool isOverlay() const {return true;};
 	
 		static void setWindowSize(unsigned int x, unsigned int y){winX=x;winY=y;};	
-
-		//!Set the texture position in XY (z is ignored)
-		void setPos(float xp,float yp){position[0]=xp; position[1]=yp;};
-
-		void setSize(float size);
-
 		//!Set the texture by name
 		bool setTexture(const char *textureFile);
+		//!Draw object
+		void draw() const;
 
+};
+
+
+//!Multi-frame texture - Animated overlay
+class DrawAnimatedOverlay : public DrawableOverlay
+{
+	private:
+		//ID of the texture to use when drawing, -1 if not bound
+		// to opengl
+		unsigned int textureId;
+
+		timeval animStartTime;
+
+		bool textureOK;
+
+		//Time delta before repeating animation
+		float repeatInterval;
+		
+		//Time before showing the image
+		float delayBeforeShow;
+
+		//Time for fadein after show
+		float fadeIn;
+
+	public:
+		DrawAnimatedOverlay();
+		~DrawAnimatedOverlay();
+
+		virtual unsigned int getType() const {return DRAW_TYPE_ANIMATEDOVERLAY;}
+
+		//Set the time between repeats for the animation
+		void setRepeatTime(float timeV) { repeatInterval=timeV;}
+
+		//Set the time before the texture appears
+		void setShowDelayTime(float showDelayTime) 
+			{ ASSERT(showDelayTime >=0.0f);  delayBeforeShow = showDelayTime;}
+
+		//Set the time during which the alpha value will be ramped up.
+		// activated after the delay time (ie time before 100% visible is fadeInTime + 
+		//	delayTime.
+		void setFadeInTime(float fadeInTime)
+			{ ASSERT(fadeInTime >=0.0f); fadeIn=fadeInTime;}
+
+		//!Set the texture by name
+		bool setTexture(const vector<string> &textureFiles, float timeRepeat=1.0f);
+
+		void resetTime() ;
 
 		//!Draw object
 		void draw() const;
 
-		void getBoundingBox(BoundCube &b) const ;
+		bool isOK() const { return textureOK; }
 };
-
 
 struct RGBThis
 {

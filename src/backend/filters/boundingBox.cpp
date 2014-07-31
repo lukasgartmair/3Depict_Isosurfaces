@@ -62,15 +62,13 @@ const char *BOUND_STYLE[] =
 
 
 BoundingBoxFilter::BoundingBoxFilter() : isVisible(true), boundStyle(BOUND_STYLE_TICKS),
-	fixedNumTicks(true), fontSize(5), rLine(0.0f), gLine(0.0f), bLine(1.0f), aLine(1.0f),
-	lineWidth(2.0f), threeDText(true)
+	fixedNumTicks(true), fontSize(5), lineColour(0,0,1.0f), lineWidth(2.0f), threeDText(true)
 {
 	for(unsigned int ui=0;ui<3;ui++)
 	{
 		numTicks[ui]=12;
 		tickSpacing[ui]=5.0f;
 	}
-
 
 	cacheOK=false;
 	cache=false; 
@@ -90,10 +88,6 @@ Filter *BoundingBoxFilter::cloneUncached() const
 	p->boundStyle=boundStyle;
 
 
-	p->rLine=rLine;
-	p->gLine=gLine;
-	p->bLine=bLine;
-	p->aLine=aLine;
 	p->threeDText=threeDText;	
 
 	p->lineWidth=lineWidth;
@@ -119,7 +113,7 @@ void BoundingBoxFilter::drawTicks(const BoundCube &bTotal, DrawStreamData *d) co
 	//Add the rectangle drawable
 	DrawRectPrism *dP = new DrawRectPrism;
 	dP->setAxisAligned(bTotal);
-	dP->setColour(rLine,gLine,bLine,aLine);
+	dP->setColour(lineColour.r(),lineColour.g(),lineColour.b(),lineColour.a());
 	dP->setLineWidth(lineWidth);
 	d->drawables.push_back(dP);
 
@@ -185,7 +179,8 @@ void BoundingBoxFilter::drawTicks(const BoundCube &bTotal, DrawStreamData *d) co
 			dV->setDrawArrow(false);
 			dV->setOrigin(tickPosition);
 			dV->setVector(tickVector);
-			dV->setColour(rLine,gLine,bLine,aLine);
+			dV->setColour(lineColour.r(),lineColour.g(),
+					lineColour.b(), lineColour.a());
 
 			d->drawables.push_back(dV);
 	
@@ -206,7 +201,8 @@ void BoundingBoxFilter::drawTicks(const BoundCube &bTotal, DrawStreamData *d) co
 				dT->setString(buffer);
 				dT->setSize(fontSize);
 				
-				dT->setColour(rLine,gLine,bLine,aLine);
+				dT->setColour(lineColour.r(),lineColour.g(),
+						lineColour.b(),lineColour.a());
 				dT->setOrigin(tickPosition + tickVector*2);	
 				dT->setUp(Point3D(0,0,1));	
 				dT->setTextDir(textVector);
@@ -226,7 +222,8 @@ void BoundingBoxFilter::drawTicks(const BoundCube &bTotal, DrawStreamData *d) co
 	//Handle "0" text value
 	dT->setString("0");
 	
-	dT->setColour(rLine,gLine,bLine,aLine);
+	dT->setColour(lineColour.r(),lineColour.g(),
+		lineColour.b(),lineColour.a());
 	dT->setSize(fontSize);
 	dT->setOrigin(tickOrigin+ Point3D(-1,-1,-1));
 	dT->setAlignment(DRAWTEXT_ALIGN_RIGHT);
@@ -241,7 +238,8 @@ void BoundingBoxFilter::drawDimension(const BoundCube &bTotal, DrawStreamData *d
 	//Add the rectangle drawable
 	DrawRectPrism *dP = new DrawRectPrism;
 	dP->setAxisAligned(bTotal);
-	dP->setColour(rLine,gLine,bLine,aLine);
+	dP->setColour(lineColour.r(),lineColour.g(),
+				lineColour.b(),lineColour.a());
 	dP->setLineWidth(lineWidth);
 	d->drawables.push_back(dP);
 
@@ -288,7 +286,8 @@ void BoundingBoxFilter::drawDimension(const BoundCube &bTotal, DrawStreamData *d
 		DrawVector *dV;
 		dV= new DrawVector;
 
-		dV->setColour(rLine,gLine,bLine,aLine);	
+		dV->setColour(lineColour.r(),lineColour.g(),
+				lineColour.b(),lineColour.a());	
 		dV->wantsLight=true;
 		
 		dV->setArrowSize(maxLen*ARROW_SCALE_FACTOR);
@@ -325,7 +324,8 @@ void BoundingBoxFilter::drawDimension(const BoundCube &bTotal, DrawStreamData *d
 		dT->setString(buffer);
 		dT->setSize(fontSize);
 
-		dT->setColour(rLine,gLine,bLine,aLine);
+		dT->setColour(lineColour.r(),lineColour.g(),
+				lineColour.b(),lineColour.a());
 		dT->setOrigin(centrePt[ui]);	
 		switch(ui)
 		{
@@ -488,7 +488,8 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 				//Add the rectangle drawable
 				DrawRectPrism *dP = new DrawRectPrism;
 				dP->setAxisAligned(bTotal);
-				dP->setColour(rLine,gLine,bLine,aLine);
+				dP->setColour(lineColour.r(),lineColour.g(),
+						lineColour.b(),lineColour.a());
 				dP->setLineWidth(lineWidth);
 				d->drawables.push_back(dP);
 				break;
@@ -615,10 +616,9 @@ void BoundingBoxFilter::getProperties(FilterPropGroup &propertyList) const
 
 
 		//Colour
-		genColString((unsigned char)(rLine*255.0),(unsigned char)(gLine*255.0),
-			(unsigned char)(bLine*255),(unsigned char)(aLine*255),tmpStr);
+
 		p.name=TRANS("Box Colour");
-		p.data= tmpStr;
+		p.data= lineColour.toColourRGBA().rgbString();
 		p.key=KEY_LINECOLOUR;
 		p.type=PROPERTY_TYPE_COLOUR;
 		p.helpText=TRANS("Colour of the bounding box");
@@ -644,8 +644,8 @@ void BoundingBoxFilter::getProperties(FilterPropGroup &propertyList) const
 			p.helpText=TRANS("Relative size for text");
 			propertyList.addProperty(p,curGroup);
 		}
-		propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
 	}
+	propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
 }
 
 bool BoundingBoxFilter::setProperty(  unsigned int key,
@@ -712,18 +712,15 @@ bool BoundingBoxFilter::setProperty(  unsigned int key,
 		}
 		case KEY_LINECOLOUR:
 		{
-			unsigned char newR,newG,newB,newA;
+			ColourRGBA newLineColour;
+			if(!newLineColour.parse(value))
+				return false;
 
-			parseColString(value,newR,newG,newB,newA);
 
-			if(newB != bLine || newR != rLine ||
-				newG !=gLine || newA != aLine)
+			if(lineColour.toColourRGBA() != newLineColour) 
 				needUpdate=true;
+			lineColour=newLineColour.toRGBAf();
 
-			rLine=newR/255.0;
-			gLine=newG/255.0;
-			bLine=newB/255.0;
-			aLine=newA/255.0;
 			needUpdate=true;
 			break;
 		}
@@ -799,8 +796,8 @@ bool BoundingBoxFilter::writeState(std::ostream &f,unsigned int format, unsigned
 				<< tickSpacing[1] << "\" z=\""<< tickSpacing[2] <<"\"/>"  << endl;
 			f << tabs(depth+1) << "<linewidth value=\"" << lineWidth << "\"/>"<<endl;
 			f << tabs(depth+1) << "<fontsize value=\"" << fontSize << "\"/>"<<endl;
-			f << tabs(depth+1) << "<colour r=\"" <<  rLine<< "\" g=\"" << gLine << "\" b=\"" <<bLine  
-								<< "\" a=\"" << aLine << "\"/>" <<endl;
+			f << tabs(depth+1) << "<colour r=\"" <<  lineColour.r()<< "\" g=\"" << lineColour.g() << "\" b=\"" <<lineColour.b()  
+								<< "\" a=\"" << lineColour.a() << "\"/>" <<endl;
 			f << tabs(depth) << "</" <<trueName()<< ">" << endl;
 			break;
 		}
@@ -996,8 +993,10 @@ bool BoundingBoxFilter::readState(xmlNodePtr &nodePtr, const std::string &stateF
 	if(XMLHelpFwdToElem(nodePtr,"colour"))
 		return false;
 
-	if(!parseXMLColour(nodePtr,rLine,gLine,bLine,aLine))
+	ColourRGBAf tmpCol;
+	if(!parseXMLColour(nodePtr,tmpCol))
 		return false;
+	lineColour=tmpCol;
 	//====
 
 	return true;	

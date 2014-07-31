@@ -34,6 +34,10 @@ std::string boolStrEnc(bool b);
 //	Whitespace is stripped from either end. If string cannot be understood, returns false
 bool boolStrDec(const std::string &s,bool &result);
 
+void ucharToHexStr(unsigned char c, std::string &s);
+
+void hexStrToUChar(const std::string &s, unsigned char &c);
+//TODO : Eliminate this function.
 //!Generate string that can be parsed by wxPropertyGrid for combo control
 //String format is CHOICEID:id1|string 1,id2|string 2,id3|string 3,.....,idN|string_N
 // where id1->idN are integers
@@ -66,20 +70,6 @@ std::string uppercase(std::string s);
 
 //Drop empty entries from a string of vector
 void stripZeroEntries(std::vector<std::string> &s);
-
-
-//Parse a colour string, such as #aabbccdd into its RGBA 8-bit components
-bool parseColString(const std::string &str,
-	unsigned char &r, unsigned char &g, unsigned char &b, unsigned char &a);
-
-//Convert an RGBA 8-bit/channel quadruplet into its hexadecimal colour string
-// format is "#rrggbbaa" such as "#11ee00aa"
-void genColString(unsigned char r, unsigned char g, 
-			unsigned char b, unsigned char a, std::string &s);
-//Convert an RGB 8-bit/channel quadruplet into its hexadecimal colour string
-// format is "#rrggbb" such as "#11ee00"
-void genColString(unsigned char r, unsigned char g, 
-			unsigned char b, std::string &s);
 
 //Check to see if a given string is a valid version number string,
 // consisting of decmials and ints (eg 0.1.2.3.4)

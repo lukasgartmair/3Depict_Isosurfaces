@@ -37,14 +37,23 @@
 				} \
 		std::cerr << "glErr Clean " << __FILE__ << ":" << __LINE__ << std::endl; \
 }
+
+inline int glCurStackDepth(int stackDepthSelector)
+{
+	ASSERT(stackDepthSelector == GL_MODELVIEW_STACK_DEPTH || 
+		stackDepthSelector == GL_PROJECTION_STACK_DEPTH ||
+		stackDepthSelector == GL_TEXTURE_STACK_DEPTH );
+	int gldepthdebug;
+	glGetIntegerv (stackDepthSelector,&gldepthdebug);
+	return gldepthdebug;
+}
 	
 
 #define glStackDepths() { \
-		int gldepthdebug[3];glGetIntegerv (GL_MODELVIEW_STACK_DEPTH, gldepthdebug);\
-	       	glGetIntegerv (GL_PROJECTION_STACK_DEPTH, gldepthdebug+1);\
-	       	glGetIntegerv (GL_TEXTURE_STACK_DEPTH, gldepthdebug+2);\
-		std::cerr << "OpenGL Stack Depths: ModelV:" << gldepthdebug[0] << " Pr: "\
-		 << gldepthdebug[1] << " Tex:" << gldepthdebug[2] << std::endl;}
+		std::cerr << "OpenGL Stack Depths: ModelV:" \
+		<< glCurStackDepth(GL_MODELVIEW_STACK_DEPTH) << " Pr: "\
+		<< glCurStackDepth(GL_PROJECTION_STACK_DEPTH) << " Tex:" \
+		<< glCurStackDepth(GL_TEXTURE_STACK_DEPTH)  << std::endl;}
 	
 
 inline void glPrintMatrix(int matrixMode )

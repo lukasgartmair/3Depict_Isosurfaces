@@ -228,7 +228,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 	string s;
 	wxString tempDir;
 	if(workingDir.size())
-		tempDir=(wxStr(workingDir) +wxT("/inputData"));
+		tempDir=((workingDir) +wxT("/inputData"));
 	else
 		tempDir=(wxT("inputData"));
 
@@ -322,7 +322,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 	if(workingDir.size())
 	{
 		//Set the working directory before launching
-		if(!wxSetWorkingDirectory(wxStr(workingDir)))
+		if(!wxSetWorkingDirectory((workingDir)))
 			return SETWORKDIR_FAIL;
 	}
 	else
@@ -333,7 +333,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 
 	bool result;
 	//Execute the program
-	result=wxShell(wxStr(substitutedCommand));
+	result=wxShell((substitutedCommand));
 
 	if(cleanInput)
 	{
@@ -342,7 +342,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 		for(unsigned int ui=0;ui<ionOutputNames.size();ui++)
 		{
 			//try to delete the file
-			wxRemoveFile(wxStr(ionOutputNames[ui]));
+			wxRemoveFile((ionOutputNames[ui]));
 
 			//call the update to be nice
 			(*callback)(false);
@@ -350,7 +350,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 		for(unsigned int ui=0;ui<plotOutputNames.size();ui++)
 		{
 			//try to delete the file
-			wxRemoveFile(wxStr(plotOutputNames[ui]));
+			wxRemoveFile((plotOutputNames[ui]));
 
 			//call the update to be nice
 			(*callback)(false);
@@ -365,7 +365,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 	wxDir *dir = new wxDir;
 	wxArrayString *a = new wxArrayString;
 	if(workingDir.size())
-		dir->GetAllFiles(wxStr(workingDir),a,wxT("*.pos"),wxDIR_FILES);
+		dir->GetAllFiles((workingDir),a,wxT("*.pos"),wxDIR_FILES);
 	else
 		dir->GetAllFiles(wxGetCwd(),a,wxT("*.pos"),wxDIR_FILES);
 
@@ -420,7 +420,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 
 	a->Clear();
 	if(workingDir.size())
-		dir->GetAllFiles(wxStr(workingDir),a,wxT("*.xy"),wxDIR_FILES);
+		dir->GetAllFiles((workingDir),a,wxT("*.xy"),wxDIR_FILES);
 	else
 		dir->GetAllFiles(wxGetCwd(),a,wxT("*.xy"),wxDIR_FILES);
 
@@ -594,7 +594,7 @@ bool ExternalProgramFilter::setProperty(  unsigned int key,
 			if(workingDir!=value)
 			{
 				//Check the directory exists
-				if(!wxDirExists(wxStr(value)))
+				if(!wxDirExists((value)))
 					return false;
 
 				workingDir=value;

@@ -137,7 +137,7 @@ void threeDepictApp::initLanguageSupport()
 		usrLocale->AddCatalogLookupPathPrefix(paths->GetResourcesDir());
 		usrLocale->AddCatalogLookupPathPrefix ( wxT ( "locales" ) );
 #endif
-		usrLocale->AddCatalog(wxCStr(PROGRAM_NAME));
+		usrLocale->AddCatalog((PROGRAM_NAME));
 
 
 
@@ -268,9 +268,9 @@ void threeDepictApp::OnInitCmdLine(wxCmdLineParser& parser)
 {
 	wxString name,version,preamble;
 
-	name=wxCStr(PROGRAM_NAME);
+	name=(PROGRAM_NAME);
 	name=name+ wxT(" ");
-	version=wxCStr(PROGRAM_VERSION);
+	version=(PROGRAM_VERSION);
 	version+=wxT("\n");
 
 	preamble=wxT("Copyright (C) 2013  3Depict team\n");

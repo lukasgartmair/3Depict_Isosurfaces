@@ -82,7 +82,7 @@ void ChoiceKeyFrameDialog::buildCombo(size_t defaultChoice)
 	comboChoice->Clear();
 
 	for(size_t ui=0;ui<choiceStrings.size();ui++)
-		comboChoice->Append(wxStr(choiceStrings[ui]));
+		comboChoice->Append((choiceStrings[ui]));
 
 	comboChoice->SetSelection(defaultChoice);
 }

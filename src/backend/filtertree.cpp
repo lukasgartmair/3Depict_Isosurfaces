@@ -43,6 +43,9 @@ class FilterRefreshCollector
 		//Pile of lists of pointers that we are tracking
 		vector<list<const FilterStreamData *> > nodes;
 
+		//List of pointers we should *not* erase
+		set<const FilterStreamData *> forgottenNodes;
+
 		//Find out if a filter tracks itself or not
 		static bool tracksSelf(const FilterStreamData *p) { return p->cached;}
 
@@ -78,22 +81,16 @@ void FilterRefreshCollector::checkSanity()
 		for(list<const FilterStreamData *>::iterator it=nodes[ui].begin();
 				it!=nodes[ui].end(); ++it)
 		{
-			//Check that we hve not already inserted this
+			//Should never have something that tracks itself
+			ASSERT(!tracksSelf(*it) )
+			//Check that we have not already inserted this
 			ASSERT(s.find(*it) == s.end())
 			s.insert(*it);
+
+			ASSERT(forgottenNodes.find(*it) == forgottenNodes.end());
 		}
 	}
 	s.clear();
-
-	//Should never have something that tracks itself
-	for(size_t ui=0;ui<nodes.size();ui++)
-	{
-		for(list<const FilterStreamData *>::iterator it=nodes[ui].begin();
-				it!=nodes[ui].end(); ++it)
-		{
-			ASSERT(!tracksSelf(*it) )
-		}
-	}
 
 }
 #endif
@@ -126,6 +123,8 @@ void FilterRefreshCollector::trackPointers(const vector<const FilterStreamData *
 
 			}
 
+			found|=(forgottenNodes.find(v[ui])  != forgottenNodes.end());
+
 			if(!found)
 				lKeep.push_back(v[ui]);
 		}
@@ -150,9 +149,10 @@ void FilterRefreshCollector::forgetPointers(const vector<const FilterStreamData 
 			it=std::find(nodes[ui].begin(),nodes[ui].end(),v[uj]) ;
 			if(it != nodes[ui].end())
 			{
-				nodes[ui].erase(it);
+				forgottenNodes.insert(*it);
 				//We deleted the source of this, no need to continue
 				// checking for this particular pointer.
+				nodes[ui].erase(it);
 				break;
 			}
 		}
@@ -652,37 +652,39 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			//Step 2: Check if we should cache this filter or not.
 			//Get the number of bytes that the filter expects to use
 			//---
-			unsigned long long cacheBytes;
-			if(inDataStack.empty())
-				cacheBytes=currentFilter->numBytesForCache(0);
-			else
-				cacheBytes=currentFilter->numBytesForCache(numElements(inDataStack.top()));
-
-			if(cacheBytes != (unsigned long long)(-1))
+			if(!currentFilter->haveCache())
 			{
-				//As long as we have caching enabled, let us cache according to the
-				//selected strategy
-				switch(cacheStrategy)
+				unsigned long long cacheBytes;
+				if(inDataStack.empty())
+					cacheBytes=currentFilter->numBytesForCache(0);
+				else
+					cacheBytes=currentFilter->numBytesForCache(numElements(inDataStack.top()));
+
+				if(cacheBytes != (unsigned long long)(-1))
 				{
-					case CACHE_NEVER:
-						currentFilter->setCaching(false);
-						break;
-					case CACHE_DEPTH_FIRST:
+					//As long as we have caching enabled, let us cache according to the
+					//selected strategy
+					switch(cacheStrategy)
 					{
-						float ramFreeForUse;
-						ramFreeForUse= maxCachePercent/(float)100.0f*getAvailRAM();
+						case CACHE_NEVER:
+							currentFilter->setCaching(false);
+							break;
+						case CACHE_DEPTH_FIRST:
+						{
+							float ramFreeForUse;
+							ramFreeForUse= maxCachePercent/(float)100.0f*getAvailRAM();
 
-						bool cache;
-						cache=(cacheBytes/(1024*1024) ) < ramFreeForUse;
+							bool cache;
+							cache=(cacheBytes/(1024*1024) ) < ramFreeForUse;
 
-						currentFilter->setCaching( cache);
-						break;
+							currentFilter->setCaching( cache);
+							break;
+						}
 					}
 				}
+				else
+					currentFilter->setCaching(false);
 			}
-			else
-				currentFilter->setCaching(false);
-
 			//---
 
 			//Step 3: Take the stack top, and turn it into "curdata" and refresh using the filter.
@@ -779,7 +781,7 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 				refreshCollector.trackPointers(curData);
 				
 				//Put this in the intermediary stack, 
-				//so it is available for any other children at this leve.
+				//so it is available for any other children at this level.
 				inDataStack.push(curData);
 			}
 			else if(curData.size())
@@ -788,7 +790,7 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 				outData.push_back(make_pair(currentFilter,curData));
 				refreshCollector.forgetPointers(curData);
 			}	
-			//Cur data is recorded either in outDta or on the data stack
+			//Cur data is recorded either in outData or on the data stack
 			curData.clear();
 			//---
 			
@@ -1320,7 +1322,6 @@ void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> &c
 	//Filter outputs should
 	//	- Always have isCached set to 0 or 1.
 	//	- Filter should report that it has a cache, if it is emitting cached objects
-	//	- If caching is disabled, filter should not be caching objects
 	bool hasSomeCached=false;
 	for(size_t ui=0; ui<curData.size(); ui++)
 	{
@@ -1328,13 +1329,7 @@ void FilterTree::checkRefreshValidity(const vector< const FilterStreamData *> &c
 				curData[ui]->cached == 0);
 
 		if(curData[ui]->parent == refreshFilter)
-		{
-			if(!(refreshFilter->cacheEnabled()) )
-			{
-				ASSERT(curData[ui]->cached==0);
-			}
 			hasSomeCached|=curData[ui]->cached;
-		}
 	}
 
 	ASSERT(!(hasSomeCached == false && refreshFilter->haveCache()));

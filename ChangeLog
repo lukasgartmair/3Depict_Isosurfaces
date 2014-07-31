@@ -26,6 +26,8 @@
 		- Remove 2.8 conditional code
 	- Mathgl < 2.0 (prior to 2011) no longer supported
 		- Remove 1.x conditional code
+	- Fix relatively frequent crashes when sampling data files
+		under parallel mode
 	- 2D plots (f(x,y) and scatter+size) now supported, but no
 	   filter actually currently uses this
 	- All filter properties must have a group title

@@ -215,7 +215,7 @@ RangeEditorDialog::RangeEditorDialog(wxWindow* parent, int id, const wxString& t
     gridRanges = new wxGrid(noteLeftRanges, ID_GRID_RANGES);
     btnRangeIonAdd = new wxButton(noteLeftRanges,wxID_ADD, wxEmptyString);
     btnRangeIonRemove = new wxButton(noteLeftRanges, wxID_REMOVE, wxEmptyString);
-    checkShowOverlay = new wxCheckBox(noteLeftOverlay, ID_CHECK_SHOW_OVERLAY, wxTRANS("Show Overlays"));
+    checkShowOverlay = new wxCheckBox(noteLeftOverlay, ID_CHECK_SHOW_OVERLAY, TRANS("Show Overlays"));
     textOverlayCmpnt = new wxTextCtrl(noteLeftOverlay, ID_TEXT_FILTER_CMPNT, wxEmptyString,
     						wxDefaultPosition,wxDefaultSize,wxTE_PROCESS_ENTER);
     listOverlay = new wxCheckListBox(noteLeftOverlay, ID_LIST_OVERLAY, wxDefaultPosition, wxDefaultSize, 0);
@@ -240,7 +240,7 @@ RangeEditorDialog::RangeEditorDialog(wxWindow* parent, int id, const wxString& t
     checkShowOverlay->SetValue(true);
 
     haveSetTextFocus=false;
-    textOverlayCmpnt->SetValue(wxTRANS("e.g. H2O"));
+    textOverlayCmpnt->SetValue(TRANS("e.g. H2O"));
 
     textOverlayCmpnt->Bind(wxEVT_SET_FOCUS, &RangeEditorDialog::OnTextOverlaySetFocus, this);
 }
@@ -513,7 +513,7 @@ void RangeEditorDialog::generateListEntries()
 		//Append the plot to the list in the user interface,
 		// with the plot Id embeded in the element
 		int idx;
-		idx=listPlots->Append(wxStr(title));
+		idx=listPlots->Append((title));
 		listToPlotIDs[idx]=plotIDs[ui];
 	}
 
@@ -534,7 +534,7 @@ void RangeEditorDialog::generateOverlayList(const vector<OVERLAY_DATA> &overlays
 
 	for(size_t ui=0;ui<overlays.size();ui++)
 	{
-		listOverlay->Insert(wxStr(overlays[ui].title),ui);
+		listOverlay->Insert((overlays[ui].title),ui);
 		listOverlay->Check(ui,overlays[ui].enabled);
 	}
 
@@ -557,10 +557,10 @@ void RangeEditorDialog::generateIonEntries(size_t rowVisibleHint)
 		gridIons->DeleteRows(0,gridIons->GetNumberRows());
 	
 	gridIons->AppendCols(4);
-	gridIons->SetColLabelValue(ION_COL_PLOT,wxTRANS("Plot"));
-	gridIons->SetColLabelValue(ION_COL_SHORTNAME,wxTRANS("Short Name"));
-	gridIons->SetColLabelValue(ION_COL_LONGNAME,wxTRANS("Long Name"));
-	gridIons->SetColLabelValue(ION_COL_COLOUR,wxTRANS("Colour"));
+	gridIons->SetColLabelValue(ION_COL_PLOT,TRANS("Plot"));
+	gridIons->SetColLabelValue(ION_COL_SHORTNAME,TRANS("Short Name"));
+	gridIons->SetColLabelValue(ION_COL_LONGNAME,TRANS("Long Name"));
+	gridIons->SetColLabelValue(ION_COL_COLOUR,TRANS("Colour"));
 	//--
 	
 	
@@ -598,12 +598,12 @@ void RangeEditorDialog::generateIonEntries(size_t rowVisibleHint)
 		gridIonIds[uj]=curIonRow;
 
 		gridIons->SetCellValue(curIonRow,
-				ION_COL_PLOT,wxStr(title));
+				ION_COL_PLOT,(title));
 
 		gridIons->SetCellValue(curIonRow,
-				ION_COL_SHORTNAME,wxStr(currentRange->getName(uj)));
+				ION_COL_SHORTNAME,(currentRange->getName(uj)));
 		gridIons->SetCellValue(curIonRow,
-				ION_COL_LONGNAME,wxStr(currentRange->getName(uj,false)));
+				ION_COL_LONGNAME,(currentRange->getName(uj,false)));
 		
 		//set the colour
 		wxGridCellAttr *attr = gridIons->GetOrCreateCellAttr(curIonRow,ION_COL_COLOUR);
@@ -626,12 +626,12 @@ void RangeEditorDialog::generateIonEntries(size_t rowVisibleHint)
 	for(size_t ui=0;ui<incompleteIons.size();ui++)
 	{
 		gridIons->SetCellValue(curIonRow,
-				ION_COL_PLOT,wxStr(title));
+				ION_COL_PLOT,(title));
 
 		gridIons->SetCellValue(curIonRow,
-				ION_COL_SHORTNAME,wxStr(incompleteIons[ui].getShortName()));
+				ION_COL_SHORTNAME,(incompleteIons[ui].getShortName()));
 		gridIons->SetCellValue(curIonRow,
-				ION_COL_LONGNAME,wxStr(incompleteIons[ui].getLongName()));
+				ION_COL_LONGNAME,(incompleteIons[ui].getLongName()));
 		
 		//set the colour
 		wxGridCellAttr *attr = gridIons->GetOrCreateCellAttr(curIonRow,ION_COL_COLOUR);
@@ -691,10 +691,10 @@ void RangeEditorDialog::generateRangeEntries(size_t rowVisibleHint)
 		gridRanges->DeleteRows(0,gridRanges->GetNumberRows());
 	
 	gridRanges->AppendCols(4);
-	gridRanges->SetColLabelValue(0,wxTRANS("Plot"));
-	gridRanges->SetColLabelValue(1,wxTRANS("Ion"));
-	gridRanges->SetColLabelValue(2,wxTRANS("Start"));
-	gridRanges->SetColLabelValue(3,wxTRANS("End"));
+	gridRanges->SetColLabelValue(0,TRANS("Plot"));
+	gridRanges->SetColLabelValue(1,TRANS("Ion"));
+	gridRanges->SetColLabelValue(2,TRANS("Start"));
+	gridRanges->SetColLabelValue(3,TRANS("End"));
 	//---
 
 	gridRangeIds.clear();
@@ -730,14 +730,14 @@ void RangeEditorDialog::generateRangeEntries(size_t rowVisibleHint)
 		std::string ionName;
 		ionName=currentRange->getName(currentRange->getIonID((unsigned int)ui));
 
-		gridRanges->SetCellValue(curRangeRow,RNG_COL_PLOT,wxStr(title));
-		gridRanges->SetCellValue(curRangeRow,RNG_COL_PARENT_ION,wxStr(ionName));
+		gridRanges->SetCellValue(curRangeRow,RNG_COL_PLOT,(title));
+		gridRanges->SetCellValue(curRangeRow,RNG_COL_PARENT_ION,(ionName));
 
 		std::string tmpStr;
 		stream_cast(tmpStr,rangeBound.first);
-		gridRanges->SetCellValue(curRangeRow,RNG_COL_START,wxStr(tmpStr));
+		gridRanges->SetCellValue(curRangeRow,RNG_COL_START,(tmpStr));
 		stream_cast(tmpStr,rangeBound.second);
-		gridRanges->SetCellValue(curRangeRow,RNG_COL_END,wxStr(tmpStr));
+		gridRanges->SetCellValue(curRangeRow,RNG_COL_END,(tmpStr));
 
 		curRangeRow++;
 	}
@@ -754,14 +754,14 @@ void RangeEditorDialog::generateRangeEntries(size_t rowVisibleHint)
 		std::string ionName;
 		ionName=incompleteRanges[ui].getIonName();
 
-		gridRanges->SetCellValue(curRangeRow,RNG_COL_PLOT,wxStr(title));
-		gridRanges->SetCellValue(curRangeRow,RNG_COL_PARENT_ION,wxStr(ionName));
+		gridRanges->SetCellValue(curRangeRow,RNG_COL_PLOT,(title));
+		gridRanges->SetCellValue(curRangeRow,RNG_COL_PARENT_ION,(ionName));
 
 		std::string tmpStr;
 		stream_cast(tmpStr,incompleteRanges[ui].getStart());
-		gridRanges->SetCellValue(curRangeRow,RNG_COL_START,wxStr(tmpStr));
+		gridRanges->SetCellValue(curRangeRow,RNG_COL_START,(tmpStr));
 		stream_cast(tmpStr,incompleteRanges[ui].getEnd());
-		gridRanges->SetCellValue(curRangeRow,RNG_COL_END,wxStr(tmpStr));
+		gridRanges->SetCellValue(curRangeRow,RNG_COL_END,(tmpStr));
 
 		for(size_t uj=0;uj<RNG_COL_ENUM_END; uj++)
 			gridRanges->SetCellBackgroundColour(curRangeRow,uj,incomplColour);
@@ -1253,11 +1253,11 @@ void RangeEditorDialog::OnBtnRangeIonAdd(wxCommandEvent &event)
 		!gridRanges->GetNumberRows() || !gridIons->GetNumberRows())
 	{
 		wxArrayString wxStrs;
-		wxStrs.Add(wxCStr("Ion"));
-		wxStrs.Add(wxCStr("Range"));
+		wxStrs.Add(("Ion"));
+		wxStrs.Add(("Range"));
 
-		wxSingleChoiceDialog *wxD = new wxSingleChoiceDialog(this, wxTRANS("Range or ion?"),
-				wxTRANS("Select type to add"),wxStrs,(void **)NULL,wxDEFAULT_DIALOG_STYLE|wxOK|wxCENTRE);
+		wxSingleChoiceDialog *wxD = new wxSingleChoiceDialog(this, TRANS("Range or ion?"),
+				TRANS("Select type to add"),wxStrs,(void **)NULL,wxDEFAULT_DIALOG_STYLE|wxOK|wxCENTRE);
 
 		wxD->ShowModal();
 
@@ -1538,16 +1538,16 @@ void RangeEditorDialog::OnTextOverlayEnter(wxCommandEvent &event)
 void RangeEditorDialog::set_properties()
 {
     // begin wxGlade: RangeEditorDialog::set_properties
-    SetTitle(wxTRANS("Range Editor"));
+    SetTitle(TRANS("Range Editor"));
     gridRanges->CreateGrid(0, 3);
     gridIons->CreateGrid(0, 3);
 
-    checkShowOverlay->SetToolTip(wxTRANS("Enable or disable all overlays"));
-    listOverlay->SetToolTip(wxTRANS("Entered overlays, use delete to remove"));
-    listPlots->SetToolTip(wxTRANS("Available plots for ranging"));
-    textOverlayCmpnt->SetToolTip(wxTRANS("Enter species to display as overlay, e.g. SiO2"));
-    gridRanges->SetToolTip(wxTRANS("Editable ranges"));
-    gridIons->SetToolTip(wxTRANS("Editable ions"));
+    checkShowOverlay->SetToolTip(TRANS("Enable or disable all overlays"));
+    listOverlay->SetToolTip(TRANS("Entered overlays, use delete to remove"));
+    listPlots->SetToolTip(TRANS("Available plots for ranging"));
+    textOverlayCmpnt->SetToolTip(TRANS("Enter species to display as overlay, e.g. SiO2"));
+    gridRanges->SetToolTip(TRANS("Editable ranges"));
+    gridIons->SetToolTip(TRANS("Editable ions"));
     // end wxGlade
 }
 
@@ -1582,9 +1582,9 @@ void RangeEditorDialog::do_layout()
     sizerOverlay->Add(sizerOverlayContainer, 1, wxEXPAND, 0);
     sizerOverlayPane->Add(sizerOverlay, 1, wxEXPAND, 0);
     noteLeftOverlay->SetSizer(sizerOverlayPane);
-    notebookLeft->AddPage(noteLeftPlots, wxTRANS("Plots"));
-    notebookLeft->AddPage(noteLeftRanges, wxTRANS("Ranges"));
-    notebookLeft->AddPage(noteLeftOverlay, wxTRANS("Overlay"));
+    notebookLeft->AddPage(noteLeftPlots, TRANS("Plots"));
+    notebookLeft->AddPage(noteLeftRanges, TRANS("Ranges"));
+    notebookLeft->AddPage(noteLeftOverlay, TRANS("Overlay"));
     sizerNote->Add(notebookLeft, 1, wxEXPAND, 0);
     panelSplitLeft->SetSizer(sizerNote);
     sizerRight->Add(plotPanel, 1, wxEXPAND, 0);

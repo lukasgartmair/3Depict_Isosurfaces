@@ -376,6 +376,11 @@ AC_ARG_ENABLE(openmp-parallel,
 AC_ARG_ENABLE(debug-checks,
   [  --disable-debug-checks Disable any debug checking, provides faster operation, but less information needed to debug internal problems, or to provide problem reports to developers ],[enable_no_debug_checks="yes"],[enable_no_debug_checks="no"])
 
+AC_ARG_ENABLE(ubsan,
+	[ --disable-ubsan Disable undefined behaviour sanitizer. Only takes effect on certain ubsan supporting compilers. Useful for working around ubsan aborts that you cant fix (eg 3rd party libs ],
+		[ enable_no_ubsan="yes"],[enable_no_ubsan="no"])
+
+
 
 if test x"$enable_openmp_parallel" != x"" ; 
 then
@@ -397,15 +402,43 @@ then
 
 	AC_SUBST(DEBUG_FLAGS)
 
-	if test x"$GCC" = xyes; then
+	if test x"$GCC" = x"yes" ; then
 		# Strip optimsation flags from debug build
+		#--
 		changequote({,})
 		CFLAGS=`echo "$CFLAGS" | sed -e 's/-O[0-9s]*//g'`
 		CXXFLAGS=`echo "$CXXFLAGS" | sed -e 's/-O[0-9s]*//g'`
 		changequote([,])
 		CFLAGS="$CFLAGS -g"
 		CXXFLAGS="$CXXFLAGS -g"
+		#--
 
+		#Check for UbSan availability
+		#--
+		if test x"${enable_no_ubsan}" == x"no" ; then
+
+			USE_UBSAN="no"
+
+			case "${host_os}" in
+				*inux*)
+					GCC_VER=`gcc --version | head -n 1 | awk '{ print $(NF)}'`
+					case "${GCC_VER}" in
+						4.9*)
+							USE_UBSAN="yes"
+						;;
+					esac
+				;;
+			esac
+
+			if test x"$USE_UBSAN" == x"yes" ; then
+				CFLAGS="$CFLAGS  -fsanitize=address -fsanitize=undefined -fsanitize=return -fsanitize=integer-divide-by-zero -fsanitize=vla-bound -fsanitize=null -fsanitize=signed-integer-overflow"
+				CXXFLAGS="$CXXFLAGS  -fsanitize=address -fsanitize=undefined -fsanitize=return -fsanitize=integer-divide-by-zero -fsanitize=vla-bound -fsanitize=null -fsanitize=signed-integer-overflow"
+				LDFLAGS="$LDFLAGS  -fsanitize=address -fsanitize=undefined -fsanitize=return "
+				AC_MSG_RESULT(["Enabling Gcc-UbSan"]);
+			fi
+		fi
+		#--
+	
 	fi
 
 else 

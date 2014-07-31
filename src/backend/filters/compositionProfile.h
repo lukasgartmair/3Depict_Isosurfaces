@@ -76,7 +76,7 @@ class CompositionProfileFilter : public Filter
 		//Plotting stuff
 		//--
 		//colour of plot
-		float r,g,b,a;
+		ColourRGBAf rgba;
 		//Mode for plotting (eg lines, steps)
 		unsigned int plotStyle;
 	
