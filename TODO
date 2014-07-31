@@ -9,7 +9,6 @@ TODO List - worlds simplest bugtracking system
 	To Implement:
 		== Next version ==
 		* Alpha blending on plane slice?
-		* Overlay for ranges
 	
 		== Eventually == 
 		* Voxel export dialog 

@@ -355,6 +355,11 @@ void AbundanceData::getSymbolIndices(const vector<string> &symbols,vector<size_t
 
 
 #ifdef DEBUG
+
+#include <set>
+
+using std::set;
+
 void AbundanceData::checkErrors() const
 {
 	//Ensure all isotopes sum to 1-ish
@@ -378,6 +383,21 @@ void AbundanceData::checkErrors() const
 
 	//Ensure Ti has 5 isotopes (original data file was missing)
 	ASSERT(isotopeData[symbolIndex("Ti")].size() == 5);
+
+	//Enusre all isotopes are uniquely numbered
+	// - loop over each atom
+	for(size_t ui=0;ui<isotopeData.size();ui++)
+	{
+		//now ovre each isotope
+		std::set<size_t> uniqNums;
+		uniqNums.clear();
+		for(size_t uj=0; uj<isotopeData[ui].size();uj++)
+		{
+			ASSERT(uniqNums.find(isotopeData[ui][uj].massNumber) == uniqNums.end());
+			uniqNums.insert(isotopeData[ui][uj].massNumber);
+			
+		}
+	}
 }
 
 bool AbundanceData::runUnitTests(const char *tableFile)
@@ -399,6 +419,8 @@ bool AbundanceData::runUnitTests(const char *tableFile)
 	massTable.generateIsotopeDist(elements,concentrations,massDist);
 
 	TEST(massDist.size() == 4, "Iron has 4 isotopes");
+
+	massTable.checkErrors();
 
 	return true;	
 
