@@ -26,6 +26,7 @@ enum
 	RANGE_KEY_RANGE_ACTIVE=1,
 	RANGE_KEY_DROP_UNRANGED,
 	RANGE_KEY_RANGE_FILENAME,
+	RANGE_KEY_ENABLE_LEGEND,
 	RANGE_KEY_ENABLE_ALL_IONS, //Limited to ~100K ions
 	RANGE_KEY_ENABLE_ALL_RANGES=100000,
 };
@@ -50,6 +51,9 @@ class RangeFileFilter : public Filter
 
 		//!range file object 
 		RangeFile rng;
+
+		//Show a legend of enabled ions
+		bool showLegend;
 
 	public:
 

@@ -44,6 +44,8 @@ class IonColourFilter: public Filter
 		//!Should we display the colour bar?
 		bool showColourBar;
 
+		//Transparency value
+		float alpha;
 	public:
 		IonColourFilter();
 		//!Duplicate filter contents, excluding cache.

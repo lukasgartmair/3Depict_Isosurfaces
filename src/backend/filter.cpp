@@ -256,6 +256,16 @@ void FilterPropGroup::getGroup(size_t targetGroup, vector<FilterProperty> &vec) 
 #endif
 }
 
+bool FilterPropGroup::hasGroup(size_t targetGroup) const
+{
+	for(size_t ui=0;ui<keyGroupings.size();ui++)
+	{
+		if(keyGroupings[ui].second==targetGroup)
+			return true;
+	}
+
+	return false;
+}
 void FilterPropGroup::getGroupTitle(size_t group, std::string &s) const
 {
 	ASSERT(group < groupNames.size());

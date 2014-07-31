@@ -131,7 +131,7 @@ unsigned int computeConvexHull(const std::vector<Point3D> &data,
 //Release the memory held by qhull, and notify the computeConvexHull routines that this has been done
 void freeConvexHull();
 //Draw a colour bar
-DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_t colourMap, bool reverseMap=false) ;
+DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_t colourMap, bool reverseMap=false, float alpha=1.0f) ;
 
 
 //Create a temporary filename, optionally providing an extension to use/

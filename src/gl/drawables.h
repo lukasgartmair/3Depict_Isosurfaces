@@ -102,6 +102,7 @@ enum
 	DRAW_TYPE_FIELD3D,
 	DRAW_TYPE_ISOSURFACE,
 	DRAW_TYPE_AXIS,
+	DRAW_TYPE_LEGENDOVERLAY,
 };
 
 //TODO: It seems unnecessary to have multiple types for the bind
@@ -151,7 +152,10 @@ class DrawableObj
 
 		static bool useAlphaBlend;
 	
+		//Size of the opengl window
 		static unsigned int winX,winY;
+
+		float getHighContrastValue() const;
 	public: 
 		//!Can be selected from openGL viewport interactively?
 		bool canSelect;
@@ -462,6 +466,7 @@ class DrawQuad : public DrawableObj
 
 class DrawTexturedQuad : public DrawQuad
 {
+	private:
 	//TODO: Move this back
 	// into the texture pool
 		unsigned char *textureData;
@@ -473,9 +478,16 @@ class DrawTexturedQuad : public DrawQuad
 		// to opengl
 		unsigned int textureId;
 		
+		//!FTGL font instance
+		FTFont *font;
+		
+		//disallow resetting base colour to white 
+		bool noColour;
+		
 	public:
 		DrawTexturedQuad();
 		~DrawTexturedQuad();
+		DrawTexturedQuad(const DrawTexturedQuad &d);
 
 		//Resize the texture contents, destroying any existing contents
 		void resize(size_t nx, size_t nY, unsigned int nChannels);
@@ -484,7 +496,9 @@ class DrawTexturedQuad : public DrawQuad
 		//Set the specified pixel in the texture to this value 
 		void setData(size_t x, size_t y, unsigned char *entry);
 		//Send the texture to the video card. 
-		void rebindTexture();	
+		void rebindTexture(unsigned int mode=GL_RGB);	
+		
+		void setUseColouring(bool useColouring) {noColour= !useColouring;};
 };
 
 
@@ -898,10 +912,11 @@ class DrawTexturedQuadOverlay : public DrawableOverlay
 		unsigned int textureId;
 	
 		bool textureOK;
+
 	public:
 		DrawTexturedQuadOverlay();
 		~DrawTexturedQuadOverlay();
-		
+
 		virtual unsigned int getType() const {return DRAW_TYPE_TEXTUREDOVERLAY;}
 	
 		static void setWindowSize(unsigned int x, unsigned int y){winX=x;winY=y;};	
@@ -909,7 +924,6 @@ class DrawTexturedQuadOverlay : public DrawableOverlay
 		bool setTexture(const char *textureFile);
 		//!Draw object
 		void draw() const;
-
 };
 
 
@@ -962,6 +976,31 @@ class DrawAnimatedOverlay : public DrawableOverlay
 		void draw() const;
 
 		bool isOK() const { return textureOK; }
+};
+
+class DrawPointLegendOverlay : public DrawableOverlay
+{
+	private:
+	static DrawTexturedQuad dQuad;
+	static bool quadSet;
+
+	FTFont *font;
+	//Items to draw n overlay, and colour to use to draw
+	vector<pair<string,RGBFloat> > legendItems;
+	bool enabled;
+	public:
+		DrawPointLegendOverlay();
+		~DrawPointLegendOverlay();
+		
+		DrawPointLegendOverlay(const DrawPointLegendOverlay &);
+
+		DrawableObj *clone() const;
+		virtual unsigned int getType() const {return DRAW_TYPE_LEGENDOVERLAY;}
+		void draw() const;
+
+		void clear(); 
+		void addItem(const string &s, float r, float g, float b);
+
 };
 
 struct RGBThis

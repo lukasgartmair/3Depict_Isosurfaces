@@ -401,12 +401,13 @@ bool filterAltersComposition(const Filter *f)
 
 			p=props.getPropValue(KEY_IONDOWNSAMPLE_PERSPECIES);
 
+			const int GROUP_SAMPLING=1;
 			
-			if(p.data== "1")
+			if(p.data== "1" && props.hasGroup(GROUP_SAMPLING))
 			{
 				vector<FilterProperty> propVec;
-				const int GROUP_SAMPLING=1;
 				props.getGroup(GROUP_SAMPLING,propVec);
+
 
 				//If using per-species mode, then
 				// we may affect the output ion composition

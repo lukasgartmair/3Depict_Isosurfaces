@@ -669,7 +669,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			
 			
 			if(showColourBar)
-				d->drawables.push_back(makeColourBar(minV,maxV,255,colourMap));
+				d->drawables.push_back(makeColourBar(minV,maxV,255,colourMap,1.0f));
 			d->cached=0;
 			d->parent=this;
 			

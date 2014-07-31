@@ -681,7 +681,7 @@ void freeConvexHull()
 	qhullInited=false;
 }
 
-DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_t colourMap, bool reverseMap) 
+DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_t colourMap, bool reverseMap, float alpha) 
 {
 	//Set up the colour bar. Place it in a draw stream type
 	DrawColourBarOverlay *dc = new DrawColourBarOverlay;
@@ -708,7 +708,7 @@ DrawColourBarOverlay *makeColourBar(float minV, float maxV,size_t nColours,size_
 	dc->setSize(0.08,0.6);
 	dc->setPosition(0.1,0.1);
 	dc->setMinMax(minV,maxV);
-
+	dc->setAlpha(alpha);
 
 	return dc;
 }

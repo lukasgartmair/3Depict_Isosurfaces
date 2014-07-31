@@ -594,7 +594,7 @@ void DataLoadFilter::getProperties(FilterPropGroup &propertyList) const
 	{
 		std::string tmpStr;
 
-		//FIXME: ATO Files need an imeplmentation of sampling read
+		//FIXME: ATO Files need an implementation of sampling read
 		if(fileType!=FILEDATA_TYPE_ATO)
 		{
 			stream_cast(tmpStr,doSample);
@@ -624,8 +624,12 @@ void DataLoadFilter::getProperties(FilterPropGroup &propertyList) const
 		p.type=PROPERTY_TYPE_BOOL;
 		p.helpText=TRANS("Watch file timestamp to track changes to file contents from other programs");
 		propertyList.addProperty(p,curGroup);
-		propertyList.setGroupTitle(curGroup,TRANS("Load params."));
+	}
+	
+	propertyList.setGroupTitle(curGroup,TRANS("Load params."));
 
+	if(enabled)
+	{
 		
 		curGroup++;
 
@@ -642,6 +646,7 @@ void DataLoadFilter::getProperties(FilterPropGroup &propertyList) const
 		p.type=PROPERTY_TYPE_REAL;
 		p.helpText=TRANS("Default size for points, if not overridden by other filters");
 		p.key=DATALOAD_KEY_IONSIZE;
+		
 		propertyList.addProperty(p,curGroup);
 		propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
 	}

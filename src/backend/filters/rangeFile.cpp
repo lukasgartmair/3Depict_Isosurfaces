@@ -38,6 +38,7 @@ enum
 RangeFileFilter::RangeFileFilter()
 {
 	dropUnranged=true;
+	showLegend=false;
 	assumedFileFormat=RANGE_FORMAT_ORNL;
 }
 
@@ -468,26 +469,42 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 		//======================================
 
 		//Having ranged all streams, merge them back into one ranged stream.
-		if(cache)
-		{
-			for(unsigned int ui=0;ui<d.size(); ui++)
-			{
-				d[ui]->cached=1; //IMPORTANT: ->cached must be set PRIOR to push back
-				filterOutputs.push_back(d[ui]);
-			}
-		}
-		else
-		{
-			for(unsigned int ui=0;ui<d.size(); ui++)
-				d[ui]->cached=0; //IMPORTANT: ->cached must be set PRIOR to push back
-			cacheOK=false;
-		}
+		for(unsigned int ui=0;ui<d.size(); ui++)
+			cacheAsNeeded(d[ui]);
 		
 		for(unsigned int ui=0;ui<d.size(); ui++)
 			getOut.push_back(d[ui]);
 	}
 
+	if(haveEnabled && showLegend)
+	{
+		//Create a legend bar, which shows the ions that are present
+		DrawStreamData *dS = new DrawStreamData;
 
+		dS->parent=this;
+
+		DrawPointLegendOverlay *dl=new DrawPointLegendOverlay;
+		dl->setPosition(0.1,0.1);
+	
+		for(unsigned int ui=0;ui<enabledIons.size();ui++)
+		{	
+			if(!enabledIons[ui])
+				continue;
+
+			RGBf curRGBf;
+			curRGBf =rng.getColour(ui);
+			dl->addItem(rng.getName(ui),
+				curRGBf.red, curRGBf.green,curRGBf.blue);
+		}
+
+		dS->drawables.push_back(dl);
+		cacheAsNeeded(dS);
+
+		getOut.push_back(dS);
+
+	}
+
+	
 	//Put out rangeData
 	RangeStreamData *rngData=new RangeStreamData;
 	rngData->parent=this;
@@ -498,12 +515,8 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 	rngData->enabledIons.resize(enabledIons.size());	
 	std::copy(enabledIons.begin(),enabledIons.end(),rngData->enabledIons.begin());
 	
-	
-	rngData->cached=cache;
-	
-	if(cache)
-		filterOutputs.push_back(rngData);
 
+	cacheAsNeeded(rngData);	
 	getOut.push_back(rngData);
 		
 	cacheOK=cache;
@@ -516,15 +529,9 @@ bool RangeFileFilter::updateRng()
 		return false;
 
 	unsigned int nRng = rng.getNumRanges();
-	enabledRanges.resize(nRng);
+	enabledRanges.resize(nRng,(char)1);
 	unsigned int nIon = rng.getNumIons();
-	enabledIons.resize(nIon);
-	//Turn all ranges to "on" 
-	for(unsigned int ui=0;ui<enabledRanges.size(); ui++)
-		enabledRanges[ui]=(char)1;
-	//Turn all ions to "on" 
-	for(unsigned int ui=0;ui<enabledIons.size(); ui++)
-		enabledIons[ui]=(char)1;
+	enabledIons.resize(nIon,(char)1);
 
 	return true;
 }
@@ -534,15 +541,9 @@ void RangeFileFilter::setRangeData(const RangeFile &rngNew)
 	rng=rngNew;		
 	
 	unsigned int nRng = rng.getNumRanges();
-	enabledRanges.resize(nRng);
+	enabledRanges.resize(nRng,1);
 	unsigned int nIon = rng.getNumIons();
-	enabledIons.resize(nIon);
-	//Turn all ranges to "on" 
-	for(unsigned int ui=0;ui<enabledRanges.size(); ui++)
-		enabledRanges[ui]=(char)1;
-	//Turn all ions to "on" 
-	for(unsigned int ui=0;ui<enabledIons.size(); ui++)
-		enabledIons[ui]=(char)1;
+	enabledIons.resize(nIon,1);
 
 	clearCache();
 }
@@ -571,7 +572,7 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 	prop.helpText=TRANS("File to use for range data");
 	prop.key=RANGE_KEY_RANGE_FILENAME;
 	prop.data=rngName;
-	prop.dataSecondary=TRANS("Range Files (*rng; *env; *rrng)|*.rng;*.RNG;*env;*ENV;*.RRNG;*.rrng|RNG File (*.rng)|*.rng;*.RNG|Environment File (*.env)|*.env|RRNG Files (*.rrng)|*.rrng;*.RRNG|All Files (*)|*");
+	prop.dataSecondary=TRANS(RANGEFILE_WX_CONSTANT);
 
 
 	p.addProperty(prop,curGroup);	
@@ -588,6 +589,17 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 	p.setGroupTitle(curGroup,TRANS("File"));
 
 	curGroup++;
+
+	
+	prop.name = TRANS("Legend");
+	prop.type = PROPERTY_TYPE_BOOL;
+	prop.helpText = TRANS("Display colour legend for enabled ions");
+	prop.key= RANGE_KEY_ENABLE_LEGEND;
+	prop.data=boolStrEnc(showLegend);
+	p.addProperty(prop,curGroup);
+	p.setGroupTitle(curGroup,TRANS("View"));
+	curGroup++;
+
 	//---
 	//Option to disable/enable all ions
 	if(rng.getNumIons())
@@ -650,12 +662,10 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 			p.addProperty(prop,curGroup);
 		}
 
+		p.setGroupTitle(curGroup,TRANS("Ions"));
+		curGroup++;
 	}
 	//----
-
-
-	p.setGroupTitle(curGroup,TRANS("Ions"));
-	curGroup++;
 
 	//----
 	if(rng.getNumRanges())
@@ -722,7 +732,6 @@ void RangeFileFilter::getProperties(FilterPropGroup &p) const
 		p.setGroupTitle(curGroup,TRANS("Ranges"));
 	}
 	//----
-	p.setGroupTitle(curGroup,TRANS("Ranges"));
 	
 }
 
@@ -768,6 +777,12 @@ bool RangeFileFilter::setProperty(unsigned int key,
 		case RANGE_KEY_DROP_UNRANGED: //Enable/disable unranged dropping
 		{
 			if(!applyPropertyNow(dropUnranged,value,needUpdate))
+				return false;
+			break;
+		}	
+		case RANGE_KEY_ENABLE_LEGEND:
+		{
+			if(!applyPropertyNow(showLegend,value,needUpdate))
 				return false;
 			break;
 		}	
@@ -1019,6 +1034,7 @@ bool RangeFileFilter::writeState(std::ostream &f,unsigned int format, unsigned i
 			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 
 			f << tabs(depth+1) << "<file name=\""<< escapeXML(convertFileStringToCanonical(rngName)) << "\"/>"  << endl;
+			f << tabs(depth+1) << "<legend enabled=\""<< boolStrEnc(showLegend) << "\"/>"  << endl;
 			f << tabs(depth+1) << "<dropunranged value=\""<<(int)dropUnranged<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<enabledions>"<< endl;
 			for(unsigned int ui=0;ui<enabledIons.size();ui++)
@@ -1078,7 +1094,7 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	rngName=(char *)xmlString;
 	xmlFree(xmlString);
 
-	//Override the string, as needed
+	//Override the string to strip leading ./ notation, as needed
 	if( (stateFileDir.size()) &&
 		(rngName.size() > 2 && rngName.substr(0,2) == "./") )
 	{
@@ -1092,9 +1108,23 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 		return false;
 		
 	//==
-	
+
+
+	//TODO: Deprecate me. Did not exist prior to 0.0.17/
+	// internal 3e88134daeea
+	xmlNodePtr tmpNode=nodePtr;
+	if(!XMLHelpFwdToElem(tmpNode,"legend"))
+	{
+		if(XMLHelpGetProp(showLegend,tmpNode,"enabled"))
+		{
+			return false;
+		}
+	}
+	else
+		showLegend=false;
+
 	std::string tmpStr;
-	//Retrieve user string
+	//Retrieve range status 
 	//==
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"dropunranged","value"))
 		return false;
@@ -1109,7 +1139,7 @@ bool RangeFileFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	//===
 	if(XMLHelpFwdToElem(nodePtr,"enabledions"))
 		return false;
-	xmlNodePtr tmpNode=nodePtr;
+	tmpNode=nodePtr;
 
 	nodePtr=nodePtr->xmlChildrenNode;
 
@@ -1238,7 +1268,10 @@ unsigned int RangeFileFilter::getRefreshBlockMask() const
 
 unsigned int RangeFileFilter::getRefreshEmitMask() const
 {
-	return STREAM_TYPE_RANGE | STREAM_TYPE_IONS ;
+	unsigned int retmask=  STREAM_TYPE_RANGE | STREAM_TYPE_IONS;
+	if(showLegend)
+		retmask |= STREAM_TYPE_DRAW;
+	return retmask;
 }
 
 unsigned int RangeFileFilter::getRefreshUseMask() const

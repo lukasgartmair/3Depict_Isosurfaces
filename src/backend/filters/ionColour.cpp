@@ -32,6 +32,7 @@ enum
 	KEY_IONCOLOURFILTER_NCOLOURS,
 	KEY_IONCOLOURFILTER_REVERSE,
 	KEY_IONCOLOURFILTER_SHOWBAR,
+	KEY_IONCOLOURFILTER_ALPHA,
 };
 
 enum
@@ -40,7 +41,7 @@ enum
 };
 
 IonColourFilter::IonColourFilter() : colourMap(0),reverseMap(false), 
-		nColours(MAX_NUM_COLOURS),showColourBar(true)
+		nColours(MAX_NUM_COLOURS),showColourBar(true), alpha(1.0f)
 {
 	mapBounds[0] = 0.0f;
 	mapBounds[1] = 100.0f;
@@ -57,6 +58,7 @@ Filter *IonColourFilter::cloneUncached() const
 	p->mapBounds[0]=mapBounds[0];
 	p->mapBounds[1]=mapBounds[1];
 	p->nColours =nColours;	
+	p->alpha = alpha;
 	p->showColourBar =showColourBar;	
 	p->reverseMap=reverseMap;	
 	
@@ -88,10 +90,11 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 
 		if(filterOutputs.size() && showColourBar)
 		{
+			//TODO:  Can I remove this? Caching for drawables now should work, right?
 			DrawStreamData *d = new DrawStreamData;
 			d->parent=this;
 			d->drawables.push_back(makeColourBar(mapBounds[0],
-					mapBounds[1],nColours,colourMap));
+					mapBounds[1],nColours,colourMap,alpha));
 			d->cached=0;
 			getOut.push_back(d);
 		}
@@ -191,7 +194,7 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 	if(foundIons && showColourBar)
 	{
 		DrawStreamData *d = new DrawStreamData;
-		d->drawables.push_back(makeColourBar(mapBounds[0],mapBounds[1],nColours,colourMap,reverseMap));
+		d->drawables.push_back(makeColourBar(mapBounds[0],mapBounds[1],nColours,colourMap,reverseMap,alpha));
 		d->parent=this;
 		d->cached=0;
 		getOut.push_back(d);
@@ -275,6 +278,12 @@ void IonColourFilter::getProperties(FilterPropGroup &propertyList) const
 	p.key=KEY_IONCOLOURFILTER_SHOWBAR;
 	p.data=boolStrEnc(showColourBar);
 	p.type=PROPERTY_TYPE_BOOL;
+	propertyList.addProperty(p,curGroup);
+	
+	p.name=TRANS("Opacity");
+	p.key=KEY_IONCOLOURFILTER_ALPHA;
+	stream_cast(p.data,alpha);
+	p.type=PROPERTY_TYPE_REAL;
 	propertyList.addProperty(p,curGroup);
 
 	stream_cast(tmpStr,nColours);
@@ -385,7 +394,12 @@ bool IonColourFilter::setProperty(  unsigned int key,
 				return false;
 			break;
 		}	
-
+		case KEY_IONCOLOURFILTER_ALPHA:
+		{
+			if(!applyPropertyNow(alpha,value,needUpdate))
+				return false;
+			break;
+		}
 		default:
 			ASSERT(false);
 	}	
@@ -417,7 +431,7 @@ bool IonColourFilter::writeState(std::ostream &f,unsigned int format, unsigned i
 			f << tabs(depth+1) << "<colourmap value=\"" << colourMap << "\"/>" << endl;
 			f << tabs(depth+1) << "<extrema min=\"" << mapBounds[0] << "\" max=\"" 
 				<< mapBounds[1] << "\"/>" << endl;
-			f << tabs(depth+1) << "<ncolours value=\"" << nColours << "\"/>" << endl;
+			f << tabs(depth+1) << "<ncolours value=\"" << nColours << "\" opacity=\"" << alpha << "\"/>" << endl;
 
 			f << tabs(depth+1) << "<showcolourbar value=\"" << boolStrEnc(showColourBar)<< "\"/>" << endl;
 			f << tabs(depth+1) << "<reversemap value=\"" << boolStrEnc(reverseMap)<< "\"/>" << endl;
@@ -465,6 +479,16 @@ bool IonColourFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	if(colourMap>= NUM_COLOURMAPS)
 	       return false;	
 	xmlFree(xmlString);
+
+	if(XMLHelpGetProp(alpha, nodePtr,"opacity"))
+	{
+		alpha=1.0f;
+	}
+	else
+	{
+		//clamp alpha to [0,1]
+		alpha = std::max(0.0f,std::min(alpha,1.0f));
+	}
 	//====
 	
 	//Retrieve Extrema 

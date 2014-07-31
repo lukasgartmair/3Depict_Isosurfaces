@@ -470,6 +470,7 @@ void IonDownsampleFilter::getProperties(FilterPropGroup &propertyList) const
 		else
 			typeVal=PROPERTY_TYPE_REAL;
 
+		bool haveProp=false;
 		//create a  single line for each
 		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
 		{
@@ -486,8 +487,12 @@ void IonDownsampleFilter::getProperties(FilterPropGroup &propertyList) const
 				p.helpText=TRANS("Sampling value for species");
 				p.key=KEY_IONDOWNSAMPLE_DYNAMIC+ui;
 				propertyList.addProperty(p,curGroup);
+				
+				haveProp=true;
 			}
 		}
+		if(haveProp)
+			propertyList.setGroupTitle(curGroup,TRANS("Sampling rates"));
 	}
 	else
 	{

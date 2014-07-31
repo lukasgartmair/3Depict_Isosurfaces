@@ -247,6 +247,9 @@ class FilterPropGroup
 
 		//!Grab all properties from the specified group
 		void getGroup(size_t group, vector<FilterProperty> &groupVec) const;
+		
+		//Confirm a particular group exists
+		bool hasGroup(size_t group) const;
 		//!Get the nth key
 		const FilterProperty &getNthProp(size_t nthProp) const { return properties[nthProp];};
 
@@ -504,6 +507,7 @@ class Filter
 	
 
 		//place a stream object into the filter cache, if required
+		// does not place object into filter output - you need to do that yourself
 		void cacheAsNeeded(FilterStreamData *s); 
 	public:	
 		Filter() ;

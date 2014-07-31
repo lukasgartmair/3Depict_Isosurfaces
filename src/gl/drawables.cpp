@@ -38,11 +38,13 @@ float DrawableObj::backgroundG;
 float DrawableObj::backgroundB;
 
 bool DrawableObj::useAlphaBlend;
-TexturePool *DrawableObj::texPool;
+TexturePool *DrawableObj::texPool=0;
 
 unsigned int DrawableObj::winX;
 unsigned int DrawableObj::winY;
 
+DrawTexturedQuad DrawPointLegendOverlay::dQuad;
+bool DrawPointLegendOverlay::quadSet=false;
 //==
 
 
@@ -229,6 +231,36 @@ DrawableObj::DrawableObj() : active(true), haveChanged(true), canSelect(false), 
 DrawableObj::~DrawableObj()
 {
 }
+	
+	
+float DrawableObj::getHighContrastValue() const
+{
+	//Perform luminence check on background to try to create most appropriate
+	// colour
+	//-------
+	// TODO: I have this in a few places now, need to refactor into a single colour class
+
+	//weights
+ 	const float CHANNEL_LUM_WEIGHTS[3] = { 0.299f,0.587f,0.114f};
+	float totalBright=backgroundR*CHANNEL_LUM_WEIGHTS[0] +
+			backgroundG*CHANNEL_LUM_WEIGHTS[1] +
+			backgroundB*CHANNEL_LUM_WEIGHTS[2];
+
+	float contrastCol;
+	if(totalBright > 0.5f)
+	{
+		//"bright" scene, use black text
+		contrastCol=0.0f;
+	}
+	else
+	{
+		//"Dark" background, use white text
+		contrastCol=1.0f;
+	}
+
+	return contrastCol;
+
+}
 
 void DrawableObj::explode(std::vector<DrawableObj *> &simpleObjects)
 {
@@ -248,7 +280,7 @@ void DrawableObj::clearTexPool()
 {
 	ASSERT(texPool);
 	delete texPool;
-
+	texPool=0;
 }
 
 Point3D DrawableObj::getCentroid() const
@@ -508,6 +540,12 @@ void DrawQuad::setVertices(const Point3D *v)
 		vertices[ui]=v[ui];
 }
 
+void DrawQuad::setVertex(unsigned int v, const Point3D &p)
+{
+	ASSERT(v <4);
+	vertices[v] = p;
+}
+
 Point3D DrawQuad::getOrigin() const
 {
 	return Point3D::centroid(vertices,4);
@@ -537,16 +575,24 @@ void DrawQuad::recomputeParams(const vector<Point3D> &vecs,
 	}
 }
 
-DrawTexturedQuad::DrawTexturedQuad() :textureData(0), textureId((unsigned int)-1)
+DrawTexturedQuad::DrawTexturedQuad() :textureData(0), textureId((unsigned int)-1), noColour(false)
 {
+}
+
+DrawTexturedQuad::DrawTexturedQuad(const DrawTexturedQuad &oth)
+{
+	ASSERT(false);
 }
 
 DrawTexturedQuad::~DrawTexturedQuad()
 {
-	if(textureData)
-		delete[] textureData;
-
-	texPool->closeTexture(textureId);
+	//hack to work around static construct/destruct.
+	// normally we use the texture pool do to everything
+	if(texPool && textureId != -1)
+	{
+		texPool->closeTexture(textureId);
+		textureId=-1;
+	}
 }
 
 void DrawTexturedQuad::draw() const
@@ -561,7 +607,9 @@ void DrawTexturedQuad::draw() const
 	
 	glBindTexture(GL_TEXTURE_2D,textureId);
 
-	glColor4f(1.0f,1.0f,1.0f,1.0f);
+	if(!noColour)
+		glColor4f(1.0f,1.0f,1.0f,1.0f);
+	
 	const float COORD_SEQ_X[]={ 0,0,1,1};
 	const float COORD_SEQ_Y[]={ 0,1,1,0};
 	glBegin(GL_QUADS);
@@ -601,23 +649,25 @@ void DrawTexturedQuad::resize(size_t numX, size_t numY,
 
 }
 
-void DrawTexturedQuad::rebindTexture()
+void DrawTexturedQuad::rebindTexture(unsigned int mode)
 {
 	ASSERT(texPool);
 	ASSERT(textureData);
 	if(textureId == (unsigned int)-1)
 		texPool->genTexID(textureId);
-	
+
+	ASSERT(!(mode == GL_RGB && channels !=3 ));
+	ASSERT(!(mode == GL_RGBA && channels !=4 ));
+
 	//Construc the texture
 	glBindTexture(GL_TEXTURE_2D,textureId);
 	glPixelStorei(GL_UNPACK_ALIGNMENT,1);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE); 
-	ASSERT(channels == 3);
 
-	glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,nX,nY,
-		0,GL_RGB,GL_UNSIGNED_BYTE,textureData);
+	glTexImage2D(GL_TEXTURE_2D,0,mode,nX,nY,
+		0,mode,GL_UNSIGNED_BYTE,textureData);
 
 
 
@@ -626,7 +676,7 @@ void DrawTexturedQuad::rebindTexture()
 void DrawTexturedQuad::setData(size_t x, size_t y, unsigned char *entry)
 {
 	ASSERT(textureData);
-	ASSERT(channels == 3);
+	ASSERT(x < nX && y < nY);
 
 	for(size_t ui=0;ui<channels;ui++)
 		textureData[(y*nX + x)*channels + ui] = entry[ui]; 	
@@ -1643,6 +1693,7 @@ DrawableOverlay::~DrawableOverlay()
 }
 
 DrawTexturedQuadOverlay::DrawTexturedQuadOverlay()  
+:  textureId(-1),textureOK(false)
 {
 }
 
@@ -1660,6 +1711,8 @@ void DrawTexturedQuadOverlay::draw() const
 
 	ASSERT(glIsTexture(textureId));
 	
+	//TODO: Is this redundant? might be already handled
+	// by scene?
 	glMatrixMode(GL_PROJECTION);	
 	glPushMatrix();
 	glLoadIdentity();
@@ -1837,52 +1890,30 @@ void DrawColourBarOverlay::draw() const
 		//Set the quad colour for bar element
 		glColor4f(rgb[rgb.size()-(ui+1)].v[0],
 				rgb[rgb.size()-(ui+1)].v[1],
-				rgb[rgb.size()-(ui+1)].v[2],1.0);
+				rgb[rgb.size()-(ui+1)].v[2],a);
 
 		//draw this quad (bar element)
-		glVertex3f(position[0],position[1]+(float)ui*elemHeight,0);
-		glVertex3f(position[0],position[1]+(float)(ui+1)*elemHeight,0);
-		glVertex3f(position[0]+barWidth,position[1]+(float)(ui+1)*elemHeight,0);
-		glVertex3f(position[0]+barWidth,position[1]+(float)(ui)*elemHeight,0);
+		glVertex2f(position[0],position[1]+(float)ui*elemHeight);
+		glVertex2f(position[0],position[1]+(float)(ui+1)*elemHeight);
+		glVertex2f(position[0]+barWidth,position[1]+(float)(ui+1)*elemHeight);
+		glVertex2f(position[0]+barWidth,position[1]+(float)(ui)*elemHeight);
 	}
 
 	glEnd();
 
-	//Perform luminence check on background to try to create most appropriate
-	// colour
-	//-------
-	// TODO: I have this in a few places now, need to refactor into a single colour class
-
-	//weights
- 	const float CHANNEL_LUM_WEIGHTS[3] = { 0.299f,0.587f,0.114f};
-	float totalBright=backgroundR*CHANNEL_LUM_WEIGHTS[0] +
-			backgroundG*CHANNEL_LUM_WEIGHTS[1] +
-			backgroundB*CHANNEL_LUM_WEIGHTS[2];
-
-	float textGrey;
-	if(totalBright > 0.5f)
-	{
-		//"bright" scene, use black text
-		textGrey=0.0f;
-	}
-	else
-	{
-		//"Dark" background, use white text
-		textGrey=1.0f;
-	}
-	
 
 	//-------
 
+	float textGrey=getHighContrastValue();
 	//Draw ticks on colour bar
 	glBegin(GL_LINES);
-		glColor4f(textGrey,textGrey,textGrey,1.0f);
+		glColor4f(textGrey,textGrey,textGrey,a);
 		//Top tick
-		glVertex3f(position[0],position[1],0);
-		glVertex3f(position[0]+width,position[1],0);
+		glVertex2f(position[0],position[1]);
+		glVertex2f(position[0]+width,position[1]);
 		//Bottom tick
-		glVertex3f(position[0],position[1]+height,0);
-		glVertex3f(position[0]+width,position[1]+height,0);
+		glVertex2f(position[0],position[1]+height);
+		glVertex2f(position[0]+width,position[1]+height);
 	glEnd();
 
 
@@ -1947,6 +1978,159 @@ void DrawColourBarOverlay::setColourVec(const vector<float> &r,
 
 
 }
+
+DrawPointLegendOverlay::DrawPointLegendOverlay() : enabled(true)
+{
+	a=1.0f;
+
+	std::string tmpStr =getDefaultFontFile();
+	font = new FTGLPolygonFont(tmpStr.c_str());
+
+	//check to see if we need to init the texture quad
+	if(!quadSet &&  texPool)
+	{
+
+		dQuad.setUseColouring(false);
+
+		//Create a ciruclar texture
+		const unsigned int N_CHANNELS=4;
+		unsigned int LEG_TEX_SIZE = 256; 
+		char *data = new char[4*LEG_TEX_SIZE*LEG_TEX_SIZE];
+		unsigned char colourWhite[N_CHANNELS]= { 255,255,255,255 };
+		unsigned char colourBlack[N_CHANNELS]= { 0,0,0,0 };
+
+		//TODO: Convert to single channel texture, to save space?
+		// DrawQuad does not support single channel at this time
+		dQuad.resize(LEG_TEX_SIZE,LEG_TEX_SIZE,N_CHANNELS);
+		const float HALF_CIRCLE_R2 = 0.25; 
+		#pragma omp parallel for
+		for(unsigned int nX=0;nX<LEG_TEX_SIZE;nX++)
+		{
+			float fx;
+			fx= (float) nX/(float)LEG_TEX_SIZE - 0.5;
+			for(unsigned int nY=0;nY<LEG_TEX_SIZE;nY++)
+			{
+				float fy;
+				fy = (float) nY/(float)LEG_TEX_SIZE -0.5;
+				if( fx*fx + fy*fy < HALF_CIRCLE_R2) 
+					dQuad.setData(nX,nY,colourWhite);
+				else
+					dQuad.setData(nX,nY,colourBlack);
+			}
+
+		}
+
+		dQuad.rebindTexture(GL_RGBA);
+
+		delete[] data;
+		quadSet=true;
+
+	}
+}
+
+DrawPointLegendOverlay::~DrawPointLegendOverlay()
+{
+}
+
+DrawableObj *DrawPointLegendOverlay::clone() const
+{
+	DrawPointLegendOverlay *dp = new DrawPointLegendOverlay(*this);
+
+	return dp;
+}
+
+DrawPointLegendOverlay::DrawPointLegendOverlay(const DrawPointLegendOverlay &oth)
+{
+	string f;
+	f=getDefaultFontFile();
+	
+	font = new FTGLPolygonFont(f.c_str());
+	a=oth.a;
+	legendItems = oth.legendItems;
+	enabled = oth.enabled;
+
+	height=oth.height;
+	width=oth.width;
+	
+	position[0]=oth.position[0];
+	position[1]=oth.position[1];
+	quadSet=oth.quadSet;
+}
+
+void DrawPointLegendOverlay::draw() const
+{
+
+	if(!enabled || legendItems.empty())
+		return;
+
+	ASSERT(winX >0 && winY > 0);
+	float curX = position[0];
+	float curY = position[1];
+
+	float delta = std::max(std::min(1.0f/legendItems.size(),0.02f),0.05f);
+	float size = delta*0.9f; 
+	glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+	float maxTextWidth=0;
+
+	
+	font->FaceSize(1);
+	for(unsigned int ui=0; ui<legendItems.size();ui++)
+	{
+		for(;ui<legendItems.size();ui++)
+		{
+
+			//Draw textured quad (circle)
+			//--
+			dQuad.setVertex(0,Point3D(curX,curY,0));
+			dQuad.setVertex(1,Point3D(curX+size,curY,0));
+			dQuad.setVertex(2,Point3D(curX+size,curY+size,0));
+			dQuad.setVertex(3,Point3D(curX,curY+size,0));
+
+			const RGBFloat *f;
+			f = &legendItems[ui].second;
+			glColor3f(f->v[0],f->v[1],f->v[2]);
+			dQuad.draw();
+
+
+			//--
+
+			//Draw text, if possible
+			if( font && !font->Error())
+			{
+				float textGrey=getHighContrastValue();
+				glColor3f(textGrey,textGrey,textGrey);
+				float fminX,fminY,fminZ;
+				float fmaxX,fmaxY,fmaxZ;
+				font->BBox(legendItems[ui].first.c_str(),fminX,
+						fminY,fminZ,fmaxX,fmaxY,fmaxZ);
+				glPushMatrix();
+				glTranslatef(curX+1.5*size,curY+0.85*size,0.0f);
+				glScalef(size,-size,0);
+				font->Render(legendItems[ui].first.c_str());
+				glPopMatrix();
+				maxTextWidth=std::max(fmaxX-fminX,maxTextWidth);
+			}
+			
+			
+			curY+=delta;
+		}
+
+		curX+=maxTextWidth + size;
+		curY=position[1] + 0.5*delta;
+	}
+	glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+}
+
+void DrawPointLegendOverlay::addItem(const std::string &s, float r, float g, float b)
+{
+	RGBFloat rgb;
+	rgb.v[0]=r;
+	rgb.v[1]= g;
+	rgb.v[2]= b;
+	legendItems.push_back(make_pair(s,rgb));
+}
+
 
 DrawField3D::DrawField3D() : ptsCacheOK(false), alphaVal(0.2f), pointSize(1.0f), drawBoundBox(true),
 	boxColourR(1.0f), boxColourG(1.0f), boxColourB(1.0f), boxColourA(1.0f),
@@ -2112,7 +2296,6 @@ void DrawField3D::draw() const
 		drawBox(field->getMinBounds(),field->getMaxBounds(),
 			boxColourR, boxColourG,boxColourB,alphaUse);
 	}
-	//Draw the projections
 }
 
 void DrawField3D::setAlpha(float newAlpha)
