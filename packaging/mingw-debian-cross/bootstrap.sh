@@ -71,9 +71,8 @@ if [ `id -u` -eq 0 ]; then
 	echo " If you know what you are doing, you can disable this check, but be aware you _can_ break your system by doing this."
 	exit 1;
 fi
-#1) Filezilla wxwidgets patch for 64 bit support under mingw
 #2) own patch for fixing wx-config's lack of sysroot support
-PATCHES_WXWIDGETS_PRE="wxWidgets-2.8.12-mingw64-1.patch configure-wxbool-patch"
+PATCHES_WXWIDGETS_PRE=""
 PATCHES_WXWIDGETS_POST="wx-config-sysroot.patch"
 #1) Zlib no longer needs to explicitly link libc, and will fail if it tries
 PATCHES_ZLIB="zlib-no-lc.patch"
@@ -88,7 +87,7 @@ PATCHES_GETTEXT="gettext-disable-tools"    #gettext-win32-prefix
 
 PATCHES_GLEW="glew-makefile.base"
 
-PATCHES_MATHGL="mathgl-cmake"
+PATCHES_MATHGL=""
 
 PATCH_LIST="$PATCHES_WXWIDGETS_PRE $PATCHES_WXWIDGETS_POST $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL $PATCHES_GLEW $PATCHES_MATHGL $PATCHES_FTGL_POSTCONF"
 
@@ -151,7 +150,7 @@ function grabDeps()
 {
 	pushd deps 2>/dev/null
 
-	DEB_PACKAGES="expat freetype ftgl gettext gsl libpng libxml2 mathgl qhull tiff wxwidgets2.8 zlib glew"
+	DEB_PACKAGES="expat freetype ftgl gettext gsl libpng libxml2 mathgl qhull tiff wxwidgets3.0 zlib glew"
 	if [ x$DIST_NAME == x"Ubuntu" ] || [ x$DIST_NAME == x"LinuxMint" ] ; then 
 		LIBJPEGNAME="libjpeg6b"
 	else
@@ -397,6 +396,10 @@ function build_glew()
 
 	popd >/dev/null
 	popd >/dev/null
+
+	#remove static library, as this can be incorrectly caught by linker
+	# leading to confusing messages
+	rm ${BASE}/lib/libglew*.a
 
 	echo "glew" >> $BUILD_STATUS_FILE
 }
@@ -748,7 +751,21 @@ function build_wx()
 
 	pushd ./bin/
 	unlink wx-config
-	cp `find ${BASE}/lib/wx/config/ -name \*release-2.8` wx-config
+
+
+	#Search for the wx-config file. It get installed into /lib/wx, but has
+	# unusual naming conventions
+	WX_CONFIG_FILE=`find ${BASE}/lib/wx/config/ -type f -executable -name \*release-\*`
+	if [ x$WX_CONFIG_FILE == x"" ] ; then
+		WX_CONFIG_FILE=`find ${BASE}/lib/wx/config/ -type f  -executable -name \*-unicode-\*`
+	fi
+
+	if [ x$WX_CONFIG_FILE == x"" ] ; then
+		echo "Couldn't find the wx-config script."
+		exit 1
+	fi
+
+	cp $WX_CONFIG_FILE wx-config 
 	APPLY_PATCH_ARG=$PATCHES_WXWIDGETS_POST
 	PATCH_LEVEL=0
 	applyPatches
@@ -757,7 +774,7 @@ function build_wx()
 	popd
 
 	pushd ./lib/
-	ln -s wx-2.8/wx/ wx
+	ln -s wx-3.0/wx/ wx
 	popd
 
 
@@ -901,14 +918,21 @@ function build_mathgl()
 	APPLY_PATCH_ARG=$PATCHES_MATHGL
 	applyPatches
 
+	#Strip invalid linker flags from cmake's link instructions
 	rm CMakeCache.txt
+	#Strip invalid linker flags from cmake's link instructions
+	find ./ -name link.txt -exec sed -i 's/-Wl,-z,relro//'  {} \;
 	cmake -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain$BITS_VAL
+	#Strip invalid linker flags from cmake's link instructions
+	find ./ -name link.txt -exec sed -i 's/-Wl,-z,relro//'  {} \;
+
+
 	cmake -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain$BITS_VAL
 
 	make -j $NUM_PROCS
 
 	if [ x"`find ./ -name \*dll`" == x"" ] ; then
-		echo Did cmake fail to make a DLL. Cmake rarely builds cleanly, but I should be able to find the DLL...
+		echo "Did cmake fail to make a DLL? Cmake rarely builds cleanly, but I should be able to find the DLL..."
 		exit 1
 	fi
 		
