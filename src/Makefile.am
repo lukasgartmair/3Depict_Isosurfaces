@@ -1,7 +1,7 @@
 MSYS_PATH=/c/msys/1.0/local/include/
 
 %.rc.o: 
-	$(WX_RESCOMP) $^ -o $@
+	$(WX_RESCOMP) $^ -o $@ 3Depict.rc
 
 3Depict_LDFLAGS=$(LDFLAGS) $(FT_LDFLAGS) $(GSL_LIBS) $(MGL_LIBS)
 

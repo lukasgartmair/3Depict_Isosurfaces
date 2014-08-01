@@ -1140,11 +1140,13 @@ PlotBase::PlotBase()
 	visible=true;
 }
 
+#ifdef DEBUG
 void PlotBase::checkConsistent() const
 {
 	ASSERT(parentObject);
 	ASSERT(parentPlotIndex != (unsigned int)-1);
 }
+#endif
 
 void PlotBase::getColour(float &rN, float &gN, float &bN) const
 {

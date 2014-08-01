@@ -19,10 +19,6 @@
 #ifndef DRAWABLES_H
 #define DRAWABLES_H
 
-#include "textures.h"
-#include "cameras.h"
-#include "isoSurface.h"
-
 //STL includes
 
 
@@ -36,6 +32,11 @@
 #endif
 
 #include <sys/time.h>
+
+#include "textures.h"
+#include "cameras.h"
+#include "isoSurface.h"
+
 
 //TODO: Work out if there is any way of obtaining the maximum 
 //number of items that can be drawn in an opengl context
