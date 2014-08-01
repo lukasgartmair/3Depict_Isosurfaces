@@ -22,6 +22,15 @@
 
 #include "common/basics.h"
 
+#ifdef CreateDialog
+#undef CreateDialog
+#endif
+
+#ifdef Yield
+#undef Yield
+#endif
+
+
 #ifdef __APPLE__ 
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>

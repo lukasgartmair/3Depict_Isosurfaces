@@ -1502,7 +1502,6 @@ bool isValidXML(const char *filename)
 	WARN(!result,"xmllint not installed in system PATH, cannot perform debug check")
 	return true;
 }
-#endif
 
 #if !defined(__WIN32__) && !defined(__WIN64)
 	
@@ -1520,5 +1519,11 @@ bool rmFile(const std::string &filename)
 {
 	return remove(filename.c_str()) == 0;
 }
+#elif defined(__WIN32) || defined(__WIN64)
+bool rmFile(const std::string &filename)
+{ 
+	return DeleteFile((const wchar_t*)filename.c_str()) == 0;
+}
+#endif
 
 #endif
