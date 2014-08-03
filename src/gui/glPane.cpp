@@ -1053,7 +1053,8 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 		//FIXME: HACK - using "blue screen" effect
 		//don't use background as mask colour.
 		// use depth buffer or gl alpha
-		unsigned char mask[3] = {rClear,gClear,bClear};
+		unsigned char mask[3] = {(unsigned char)rClear*255.0f,
+				(unsigned char)gClear*255.0f,(unsigned char)bClear*255.0f};
 		copyRGBAtoWXImage(width,height,imageBuffer,imageOverlay,mask);
 
 		free(imageBuffer);
