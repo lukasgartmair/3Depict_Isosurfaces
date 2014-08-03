@@ -1,6 +1,7 @@
---- a/Makefile	2013-07-07 15:37:19.000000000 +0200
-+++ b/Makefile	2013-07-07 15:44:55.000000000 +0200
-@@ -28,19 +28,12 @@
+diff -r 9bbbd8b43e5b Makefile
+--- a/Makefile	Sun Jun 29 17:24:13 2014 +0100
++++ b/Makefile	Sun Jun 29 17:25:52 2014 +0100
+@@ -28,19 +28,13 @@
  ## ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  ## THE POSSIBILITY OF SUCH DAMAGE.
  
@@ -17,19 +18,21 @@
 -else
 -$(error "Platform '$(SYSTEM)' not supported")
 -endif
--
+ 
 -GLEW_DEST ?= /usr
 +GLEW_DEST ?= BASEDIR
- BINDIR ?= $(GLEW_DEST)/bin
- LIBDIR ?= $(GLEW_DEST)/lib
- INCDIR ?= $(GLEW_DEST)/include/GL
---- a/config/Makefile.mingw	2013-07-07 15:43:48.000000000 +0200
-+++ b/config/Makefile.mingw	2013-07-07 15:47:32.000000000 +0200
+ BINDIR    ?= $(GLEW_DEST)/bin
+ LIBDIR    ?= $(GLEW_DEST)/lib
+ INCDIR    ?= $(GLEW_DEST)/include/GL
+diff -r 9bbbd8b43e5b config/Makefile.mingw
+--- a/config/Makefile.mingw	Sun Jun 29 17:24:13 2014 +0100
++++ b/config/Makefile.mingw	Sun Jun 29 17:25:52 2014 +0100
 @@ -1,7 +1,4 @@
  NAME = glew32
--CC = gcc
 -# use gcc for linking, with ld it does not work
--LD = gcc
+-CC := gcc
+-LD := gcc
+ LN :=
  CFLAGS.SO = -DGLEW_BUILD
- LDFLAGS.GL = -lglu32 -lopengl32 -lgdi32 -luser32 -lkernel32
+ LDFLAGS.GL = -lopengl32 -lgdi32 -luser32 -lkernel32
  LDFLAGS.EXTRA = -L/mingw/lib
