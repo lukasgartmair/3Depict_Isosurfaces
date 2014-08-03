@@ -25,7 +25,7 @@ BuildRequires: libpng-devel
 #Desktop file utils for installing desktop file
 BuildRequires: desktop-file-utils
 #WX widgets
-BuildRequires: wxGTK-devel
+BuildRequires: wxGTK3-devel
 #PDF latex build
 #BuildRequires: tex(latex)
 

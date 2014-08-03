@@ -1,7 +1,7 @@
-diff -r 1b997a96b779 src/wxcomponents.cpp
---- src/wx/wxcomponents.cpp	Sat Mar 23 17:50:44 2013 +0000
-+++ src/wx/wxcomponents.cpp	Sat Mar 23 17:56:14 2013 +0000
-@@ -857,16 +857,17 @@
+diff -r 7abb69436c2b src/wx/wxcomponents.cpp
+--- src/wx/wxcomponents.cpp	Sat Aug 02 05:39:24 2014 -0400
++++ src/wx/wxcomponents.cpp	Sat Aug 02 05:40:51 2014 -0400
+@@ -547,16 +547,17 @@
  	//(Oh look Ma, I'm autoconf!)
  
  	const char *dirs[] = {	".",

@@ -1,0 +1,65 @@
+diff -r 7372047ee6f9 src/common/basics.cpp
+--- src/common/basics.cpp	Sun Aug 03 16:58:06 2014 -0400
++++ src/common/basics.cpp	Sun Aug 03 17:01:04 2014 -0400
+@@ -1471,6 +1471,21 @@
+ 	return 0;
+ }
+ 
++bool isNotDirectory(const char *filename)
++{
++	struct stat statbuf;
++
++	if(stat(filename,&statbuf) == -1)
++		return false;
++
++	return (statbuf.st_mode !=S_IFDIR);
++}
++
++bool rmFile(const std::string &filename)
++{
++	return remove(filename.c_str()) == 0;
++}
++
+ #ifdef DEBUG
+ bool isValidXML(const char *filename)
+ {
+@@ -1503,27 +1518,6 @@
+ 	return true;
+ }
+ 
+-#if !defined(__WIN32__) && !defined(__WIN64)
+ 	
+-bool isNotDirectory(const char *filename)
+-{
+-	struct stat statbuf;
+-
+-	if(stat(filename,&statbuf) == -1)
+-		return false;
+-
+-	return (statbuf.st_mode !=S_IFDIR);
+-}
+-
+-bool rmFile(const std::string &filename)
+-{
+-	return remove(filename.c_str()) == 0;
+-}
+-#elif defined(__WIN32) || defined(__WIN64)
+-bool rmFile(const std::string &filename)
+-{ 
+-	return DeleteFile((const wchar_t*)filename.c_str()) == 0;
+-}
+-#endif
+ 
+ #endif
+diff -r 7372047ee6f9 src/gl/tr.cpp
+--- src/gl/tr.cpp	Sun Aug 03 16:58:06 2014 -0400
++++ src/gl/tr.cpp	Sun Aug 03 17:01:04 2014 -0400
+@@ -63,7 +63,7 @@
+ #include "common/assertion.h"
+ 
+ #include <math.h>
+-
++#include <stdlib.h>
+ 
+ #ifdef WIN32
+ #include <windows.h>
