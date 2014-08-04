@@ -33,6 +33,7 @@ enum
 	KEY_ALGORITHM,
 	KEY_DISTMAX,
 	KEY_NNMAX,
+	KEY_NNMAX_NORMALISE,
 	KEY_NUMBINS,
 	KEY_REMOVAL,
 	KEY_REDUCTIONDIST,
@@ -159,7 +160,8 @@ SpatialAnalysisFilter::SpatialAnalysisFilter()
 	//RDF params
 	numBins=100;
 	excludeSurface=false;
-
+	reductionDistance=distMax;
+	normaliseNNHist=true;
 	//Density filtering params
 	densityCutoff=1.0f;
 	keepDensityUpper=true;
@@ -179,7 +181,6 @@ SpatialAnalysisFilter::SpatialAnalysisFilter()
 	replaceTolerance=sqrt(std::numeric_limits<float>::epsilon());
 	replaceMode=REPLACE_MODE_SUBTRACT;
 	replaceMass=true;
-	reductionDistance=distMax;
 
 	cacheOK=false;
 	cache=true; //By default, we should cache, but decision is made higher up
@@ -578,6 +579,16 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			p.type=PROPERTY_TYPE_INTEGER;
 			p.helpText=TRANS("Maximum number of neighbours to examine");
 			p.key=KEY_NNMAX;
+			if(algorithm == ALGORITHM_RDF)
+			{
+				propertyList.addProperty(p,curGroup);
+
+				p.name=TRANS("Normalise bins");
+				p.data=boolStrEnc(normaliseNNHist);
+				p.type=PROPERTY_TYPE_BOOL;
+				p.helpText=TRANS("Normalise counts by binwidth. Needed when comparing NN histograms against one another");
+				p.key=KEY_NNMAX_NORMALISE;
+			}
 		}
 		else
 		{
@@ -987,26 +998,68 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 		}	
 		case KEY_DISTMAX:
 		{
-			if(!applyPropertyNow(distMax,value,needUpdate))
+			float ltmp;
+			if(stream_cast(ltmp,value))
 				return false;
+			
+			if(ltmp<= 0.0)
+				return false;
+			
+			distMax=ltmp;
+			needUpdate=true;
+			clearCache();
+
 			break;
 		}	
 		case KEY_NNMAX:
 		{
-			if(!applyPropertyNow(nnMax,value,needUpdate))
+			unsigned int ltmp;
+			if(stream_cast(ltmp,value))
+				return false;
+			
+			if(ltmp==0)
+				return false;
+			
+			nnMax=ltmp;
+			needUpdate=true;
+			clearCache();
+
+			break;
+		}	
+		case KEY_NNMAX_NORMALISE:
+		{
+			if(!applyPropertyNow(normaliseNNHist,value,needUpdate))
 				return false;
 			break;
 		}	
 		case KEY_NUMBINS:
 		{
-			if(!applyPropertyNow(numBins,value,needUpdate))
+			unsigned int ltmp;
+			if(stream_cast(ltmp,value))
 				return false;
+			
+			if(ltmp==0)
+				return false;
+			
+			numBins=ltmp;
+			needUpdate=true;
+			clearCache();
+
 			break;
 		}
 		case KEY_REDUCTIONDIST:
 		{
-			if(!applyPropertyNow(reductionDistance,value,needUpdate))
+			float ltmp;
+			if(stream_cast(ltmp,value))
 				return false;
+			
+			if(ltmp<= 0.0)
+				return false;
+			
+			reductionDistance=ltmp;
+			needUpdate=true;
+			clearCache();
+
 			break;
 		}	
 		case KEY_REMOVAL:
@@ -1422,6 +1475,7 @@ bool SpatialAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsi
 			f << tabs(depth+1) << "<algorithm value=\""<<algorithm<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<stopmode value=\""<<stopMode<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<nnmax value=\""<<nnMax<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<normalisennhist value=\""<<boolStrEnc(normaliseNNHist)<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<distmax value=\""<<distMax<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<numbins value=\""<<numBins<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<excludesurface value=\""<<excludeSurface<< "\"/>"  << endl;
@@ -1507,6 +1561,17 @@ bool SpatialAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 		return false;
 	//===
 	
+	//Retrieve histogram normalisation 
+	//TODO: COMPAT : did not exist prior to 0.0.17
+	// internal 5033191f0c61
+	//====== 
+	xmlNodePtr tmpNode = nodePtr;
+	if(!XMLGetNextElemAttrib(tmpNode,nnMax,"normalisennhist","value"))
+	{
+		normaliseNNHist=false;
+	}
+	//===
+	
 	//Retrieve distMax val
 	//====== 
 	if(!XMLGetNextElemAttrib(nodePtr,distMax,"distmax","value"))
@@ -1565,8 +1630,7 @@ bool SpatialAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 		return false;
 
 
-	//FIXME:COMPAT_BREAK : 3Depict <= 2025:fb7d66397b7b does not contain
-	xmlNodePtr tmpNode;
+	//FIXME:COMPAT_BREAK : 3Depict <= internal fb7d66397b7b does not contain
 	tmpNode=nodePtr;
 	if(!XMLHelpFwdToElem(nodePtr,"replace"))
 	{
@@ -2093,6 +2157,31 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 					ASSERT(false);
 			}
 
+		
+			vector<vector<float> > histogramFloat;
+			histogramFloat.resize(nnMax); 
+			//Normalise the NN histograms to a per bin width as required
+			if(normaliseNNHist)
+			{
+				for(unsigned int ui=0;ui<nnMax; ui++)
+				{
+					histogramFloat[ui].resize(numBins);
+					for(unsigned int uj=0;uj<numBins;uj++)
+						histogramFloat[ui][uj] = (float)histogram[ui][uj]/binWidth[ui] ;
+				}
+			
+			}
+			else
+			{
+				for(unsigned int ui=0;ui<nnMax;ui++)
+				{
+					histogramFloat[ui].resize(numBins);
+					for(unsigned int uj=0;uj<numBins;uj++)
+						histogramFloat[ui][uj] = (float)histogram[ui][uj];
+				}
+			}
+			histogram.clear();
+	
 			//Alright then, we have the histogram in x-{y1,y2,y3...y_n} form
 			//lets make some plots shall we?
 			PlotStreamData *plotData[nnMax];
@@ -2104,7 +2193,10 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 				plotData[ui]->parent=this;
 				plotData[ui]->plotMode=PLOT_MODE_1D;
 				plotData[ui]->xLabel=TRANS("Radial Distance");
-				plotData[ui]->yLabel=TRANS("Count");
+				if(normaliseNNHist)
+					plotData[ui]->yLabel=TRANS("Count/Distance");
+				else
+					plotData[ui]->yLabel=TRANS("Count");
 				std::string tmpStr;
 				stream_cast(tmpStr,ui+1);
 				plotData[ui]->dataLabel=getUserString() + string(" ") +tmpStr + TRANS("NN Freq.");
@@ -2118,10 +2210,10 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 				for(unsigned int uj=0;uj<numBins;uj++)
 				{
 					float dist;
-					ASSERT(ui < histogram.size() && uj<histogram[ui].size());
+					ASSERT(ui < histogramFloat.size() && uj<histogramFloat[ui].size());
 					dist = (float)uj*binWidth[ui];
 					plotData[ui]->xyData[uj] = std::make_pair(dist,
-							histogram[ui][uj]);
+							histogramFloat[ui][uj]);
 				}
 
 				cacheAsNeeded(plotData[ui]);

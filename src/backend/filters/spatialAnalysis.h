@@ -56,6 +56,10 @@ class SpatialAnalysisFilter : public Filter
 
 		//!Surface reduction distance (convex hull)
 		float reductionDistance;
+
+		//!Change the NN histograms from counts to counts/nm
+		// - this allows comparing different binwidth histograms
+		bool normaliseNNHist;
 		//--------
 		
 		//Density filtering specific params
