@@ -1,8 +1,9 @@
 #!/bin/bash
 
 COVERITY_BASEDIR=~/sources/cov-analysis-linux64-6/cov-analysis-linux64-6.6.1/
+#Replace with real key.
 COVERITY_KEY=QwQHOG5L3u53VhhdwKq6GA
-COVERITY_EMAIL_ID=mycae@gmx.com
+COVERITY_EMAIL_ID=email at email.com
 COVERITY_PROJECT=3depict
 
 PROJECT_BASEDIR=~/code/3Depict/
