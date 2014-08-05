@@ -4,7 +4,9 @@
 	dh $@ --parallel
 
 override_dh_auto_configure: 
-	dh_auto_configure -- --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --enable-openmp-parallel --disable-debug-checks --with-libpng-link="-lpng" --with-libpng-flags="-L/lib" --with-ftgl-prefix="/usr" --enable-mgl2
+	LDFLAGS="$(LDFLAGS) -Wl,--as-needed" dh_auto_configure -- --prefix=/usr \
+		 --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info \
+		 --enable-openmp-parallel --disable-debug-checks --with-libpng-link="-lpng" --with-libpng-flags="-L/lib" --with-ftgl-prefix="/usr" 
 
 
 override_dh_clean:
@@ -38,7 +40,7 @@ override_dh_auto_install:
 	#install icon (both SVG and XPM) into pixmaps
 	install -Dp -m 644 $(CURDIR)/data/3Depict.xpm $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.xpm
 	install -Dp -m 644 $(CURDIR)/data/textures/tex-source/3Depict-icon.svg $(CURDIR)/debian/3depict/usr/share/pixmaps/3depict.svg
-	install -Dp -m 644 $(CURDIR)/data/manual.pdf $(CURDIR)/debian/3depict/usr/share/3depict/3depict-manual.pdf
+	install -Dp -m 644 $(CURDIR)/docs/manual-latex/manual.pdf $(CURDIR)/debian/3depict/usr/share/3depict/3depict-manual.pdf
 	#---
 	
 	#Install the pre-built locale files that are shipped with the tarball.

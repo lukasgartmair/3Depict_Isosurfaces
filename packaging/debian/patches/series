@@ -1,4 +1,2 @@
 debian-desktop-naming.patch
 lowercase-textdomain.patch
-FTGL-lowercase.patch
-patch-caching-bug
