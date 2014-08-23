@@ -1163,14 +1163,20 @@ bool VisController::loadState(const char *cpFilename, std::ostream &errStream, b
 
 	//Load into a temporary state
 	// and if successful, transfer to full state
-	AnalysisState state;
-	bool result=state.load(cpFilename,errStream,merge);
+	AnalysisState tmpState;
+	bool result=tmpState.load(cpFilename,errStream);
 
 	if(!result)
 		return false;
-
-	currentState=state;
-
+	
+	if(merge)
+	{
+		currentState.merge(tmpState);
+	}
+	else
+	{
+		currentState=tmpState;
+	}
 	//Synchronise scene and viscontrol components to 
 	// current state
 

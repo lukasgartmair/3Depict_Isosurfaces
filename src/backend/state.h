@@ -143,11 +143,8 @@ class AnalysisState
 		// - returns true on success, false on fail
 		// - errStream will have human readable messages in 
 		//	the case that there is a failure
-		// - set merge to true, if should attempt to merge 
-		//	the two states together
 		bool load(const char *cpFilename, 
-				std::ostream &errStream, 
-				bool merge) ;
+				std::ostream &errStream);
 
 		//save an XML-ised representation of the analysis sate
 		//	- mapping provides the on-disk to local name mapping to use when saving
@@ -156,6 +153,8 @@ class AnalysisState
 		bool save(const char *cpFilename, std::map<string,string> &fileMapping,
 				bool writePackage) const ;
 
+		//Combine a separate state file into this one, avoiding clashes
+		bool merge(const AnalysisState &srcState);
 
 		//Return the current state's filename
 		string getFilename() const { return fileName; }

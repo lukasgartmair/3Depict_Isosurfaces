@@ -600,7 +600,6 @@ void DrawTexturedQuad::draw() const
 	ASSERT(glIsTexture(textureId));
 	
 	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D,textureId);
 	glPushAttrib(GL_CULL_FACE);
 	glDisable(GL_CULL_FACE);
 	
@@ -659,7 +658,7 @@ void DrawTexturedQuad::rebindTexture(unsigned int mode)
 	ASSERT(!(mode == GL_RGB && channels !=3 ));
 	ASSERT(!(mode == GL_RGBA && channels !=4 ));
 
-	//Construc the texture
+	//Construct the texture
 	glBindTexture(GL_TEXTURE_2D,textureId);
 	glPixelStorei(GL_UNPACK_ALIGNMENT,1);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);

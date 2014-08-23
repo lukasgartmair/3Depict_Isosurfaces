@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
 %:
-	dh $@ --parallel
+	dh $@ --parallel 
 
 override_dh_auto_configure: 
 	LDFLAGS="$(LDFLAGS) -Wl,--as-needed" dh_auto_configure -- --prefix=/usr \

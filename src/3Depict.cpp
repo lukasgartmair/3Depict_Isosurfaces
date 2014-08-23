@@ -45,14 +45,15 @@ private:
 	long language;
 
 	void initLanguageSupport();
-
+	//Don't load the main window, as debugging was in progress
+	bool dontLoad;
 
 public:
 
     threeDepictApp() ;
-    ~threeDepictApp() { if(usrLocale) delete usrLocale;}
     bool OnInit();
     virtual void OnInitCmdLine(wxCmdLineParser& parser);
+    virtual int OnExit();
     virtual bool OnCmdLineParsed(wxCmdLineParser& parser);
 		 
     int FilterEvent(wxEvent &event);
@@ -105,6 +106,7 @@ IMPLEMENT_APP(threeDepictApp)
 threeDepictApp::threeDepictApp()
 {
        	MainFrame=0;usrLocale=0;
+	dontLoad=false;
 #ifndef DEBUG
 	//Wx 2.9 and up now has assertions auto-enabled. 
 	//Disable for release builds
@@ -112,6 +114,16 @@ threeDepictApp::threeDepictApp()
 #endif
 }
 
+int threeDepictApp::OnExit()
+{
+	if(usrLocale) 	
+		delete usrLocale;
+	
+	//libxml2 by default seems to leak memory, unless you call this function
+	xmlCleanupParser();
+
+	return wxApp::OnExit();
+}
 
 void threeDepictApp::initLanguageSupport()
 {
@@ -303,7 +315,7 @@ bool threeDepictApp::OnCmdLineParsed(wxCmdLineParser& parser)
 				if( !f.FileExists() )
 				{
 					cerr << "Unable to locate file:" << strFile << endl;
-					continue;
+					return false;
 				}
 
 				cerr << "Loading :" << strFile << endl ;
@@ -313,7 +325,7 @@ bool threeDepictApp::OnCmdLineParsed(wxCmdLineParser& parser)
 				if(!visControl.loadState(strFile.c_str(),cerr,false,true))
 				{
 					cerr << "Error loading state file:" << endl;
-					exit(1);
+					return false;
 				}
 
 				//Run a refresh over the filter tree as a test
@@ -328,7 +340,7 @@ bool threeDepictApp::OnCmdLineParsed(wxCmdLineParser& parser)
 				if(!testFilterTree(f))
 				{
 					cerr << "Failed loading :" << strFile << " , aborting" << endl;
-					exit(1);
+					return false;
 				}
 				}
 
@@ -337,8 +349,8 @@ bool threeDepictApp::OnCmdLineParsed(wxCmdLineParser& parser)
 			}
 			
 			 
-			cerr << "Test XML File(s) Loaded OK" << endl;	
-			exit(0);
+			cerr << "Test XML File(s) Loaded OK" << endl;
+			dontLoad=true;	
 		}
 		else
 		{
@@ -346,29 +358,30 @@ bool threeDepictApp::OnCmdLineParsed(wxCmdLineParser& parser)
 			if(!runUnitTests()) 
 			{
 				cerr << "Unit tests failed" <<endl;
-				exit(1);
+				return false;
 			}
 			else
 			{
 				cerr << "Unit tests succeeded!" <<endl;
-				exit(0);
+				dontLoad=true;
 			}
 		}
 	}
+	else
 #endif
-
-	for(unsigned int ui=0;ui<parser.GetParamCount();ui++)
 	{
-		wxFileName f;
-		f.Assign(parser.GetParam(ui));
+		for(unsigned int ui=0;ui<parser.GetParamCount();ui++)
+		{
+			wxFileName f;
+			f.Assign(parser.GetParam(ui));
 
-		if( f.FileExists() )
-			commandLineFiles.Add(f.GetFullPath());
-		else
-			std::cerr << TRANS("File : ") << stlStr(f.GetFullPath()) << TRANS(" does not exist. Skipping") << std::endl;
+			if( f.FileExists() )
+				commandLineFiles.Add(f.GetFullPath());
+			else
+				std::cerr << TRANS("File : ") << stlStr(f.GetFullPath()) << TRANS(" does not exist. Skipping") << std::endl;
 
+		}
 	}
-
 	return true;
 }
 
@@ -402,7 +415,19 @@ bool threeDepictApp::OnInit()
     //Set the gettext language
     //Register signal handler for backtraces
     if (!wxApp::OnInit())
-    	return false; 
+    	return false;
+
+    //if we ran the debug code, don't load the main window
+    if(dontLoad)
+    {
+	OnExit();
+	//FIXME: This causes wx to shutdown incorrectly, but gives us the return code
+	// - I can't seem to simultaneously set the return code and 
+	// abort the init.
+	exit(0);
+	
+	return false;
+    }
 
     //Need to seed random number generator for entire program
     srand (time(NULL));

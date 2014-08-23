@@ -24,15 +24,14 @@ class FilterStreamData;
 class ProgressData;
 class RangeFileFilter;
 
-
 #include "APT/ionhit.h"
 
 #include "APT/APTRanges.h"
-
-#include "gl/drawables.h"
-#include "gl/select.h"
-
 #include "common/constants.h"
+
+#include "gl/select.h"
+#include "gl/drawables.h"
+
 #include "common/voxels.h"
 #include "common/stringFuncs.h"
 #include "common/array2D.h"

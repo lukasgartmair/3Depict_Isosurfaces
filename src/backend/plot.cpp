@@ -1140,13 +1140,6 @@ PlotBase::PlotBase()
 	visible=true;
 }
 
-#ifdef DEBUG
-void PlotBase::checkConsistent() const
-{
-	ASSERT(parentObject);
-	ASSERT(parentPlotIndex != (unsigned int)-1);
-}
-#endif
 
 void PlotBase::getColour(float &rN, float &gN, float &bN) const
 {
@@ -2028,20 +2021,12 @@ void PlotOverlays::draw(mglGraph *gr,
 		//Rescale to plot size
 		for(size_t uj=0;uj<overlayData[ui].coordData.size();uj++)
 		{
-			if(logMode)
-			{
-				//Compute log10(probability*maximum) = 
-				//	log10(probability) + log10(maximum)
-				// maximum = 10^boundMax.y
-
-				bufY[uj]=log10(bufY[uj]) +boundMax.y*0.95;
-				bufY[uj]=std::max(bufY[uj],0.0f);
-			}
-			else
-			{
-				bufY[uj]*=boundMax.y/maxV*0.95;
-			}
+			bufY[uj]*=boundMax.y/maxV*0.95;
 		}
+
+		mglData xDat,yDat;
+		xDat.Set(bufX);
+		yDat.Set(bufY);
 
 		//TODO: Deprecate me. Upstream now allows single stems
 		//Draw stems. can't use stem plot due to mathgl bug whereby single stems
@@ -2051,15 +2036,22 @@ void PlotOverlays::draw(mglGraph *gr,
 			if(bufX[uj]> boundMin.x && bufX[uj]< boundMax.x && 
 					boundMin.y < bufY[uj])
 			{
-				gr->Line (mglPoint(bufX[uj],std::max(0.0f,(float)boundMin.y)),
-					mglPoint(bufX[uj],bufY[uj]),colourCode.c_str(),100);
-
 				//Print labels near to the text
 				const float STANDOFF_FACTOR=1.05;
 				gr->Puts(mglPoint(bufX[uj],bufY[uj]*STANDOFF_FACTOR),
 					overlayData[ui].title.c_str());
 			}
 		}
+
+		//Draw stems.
+		gr->Stem(xDat,yDat,"k");
 	}
 }
 
+#ifdef DEBUG
+void PlotBase::checkConsistent() const
+{
+	ASSERT(parentObject);
+	ASSERT(parentPlotIndex != (unsigned int)-1);
+}
+#endif

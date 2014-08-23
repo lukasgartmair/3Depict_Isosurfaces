@@ -40,7 +40,8 @@ using std::accumulate;
 
 //Arbitrary maximum range file line size
 const size_t MAX_LINE_SIZE = 16536;
-
+//Arbitrary maximum range file size, in bytes
+const size_t MAX_RANGEFILE_SIZE = 20*1024*1024;
 const char *rangeErrStrings[] = 
 {
 	"",
@@ -62,6 +63,7 @@ const char *rangeErrStrings[] =
 	NTRANS("Range file appears to be inconsistent (eg, overlapping ranges)"),
 	NTRANS("No ion name mapping found  for multiple ion."),
 	NTRANS("Polyatomic extension range matches multiple masses in first section"),
+	NTRANS("Range file is exceedingly large. Refusing to open"),
 };
 
 const char *RANGE_EXTS[] = { "rng",
@@ -479,7 +481,7 @@ unsigned int RangeFile::write(std::ostream &f, size_t format) const
 				ASSERT(colString.size() == 6);
 
 				//FIXME: This is incomplete. we need to break the species apart into its 
-				// compponents, then decide to use the Element:count notation, or the Name:species notation
+				// components, then decide to use the Element:count notation, or the Name:species notation
 				string strName;
 				strName=ionNames[ionIDs[ui]].first;
 				if(elementSet.find(strName) != elementSet.end())
@@ -491,6 +493,8 @@ unsigned int RangeFile::write(std::ostream &f, size_t format) const
 				}
 				else
 				{
+					//Difference is we have to use the "Name" parameter if not in set
+					
 					f << "Range" << ui+1 <<"=" 
 					<< ranges[ui].first << " " << ranges[ui].second <<
 					" " << "Name:" << strName << ":1" << 
@@ -530,6 +534,12 @@ void RangeFile::clear()
 
 unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 {
+	size_t fileSize;
+	getFilesize(rangeFilename,fileSize);
+
+	if(fileSize > MAX_RANGEFILE_SIZE)
+		return RANGE_ERR_FILESIZE;
+
 	FILE *fpRange;
 	fpRange=fopen(rangeFilename,"r");
 	if (fpRange== NULL) 
@@ -593,10 +603,17 @@ unsigned int RangeFile::open(const char *rangeFilename, unsigned int fileFormat)
 
 bool RangeFile::openGuessFormat(const char *rangeFilename)
 {
-	unsigned int assumedFileFormat;
 
-
+	//Check the filesize before attempting to guess the format
+	size_t fileSize;
+	getFilesize(rangeFilename,fileSize);
+	if(fileSize > MAX_RANGEFILE_SIZE)
+	{
+		errState=RANGE_ERR_FILESIZE;
+		return false;
+	}
 	//Try to auto-detect the filetype
+	unsigned int assumedFileFormat;
 	assumedFileFormat=detectFileType(rangeFilename);
 
 	if(assumedFileFormat < RANGE_FORMAT_END_OF_ENUM)
@@ -1714,8 +1731,9 @@ unsigned int RangeFile::openENV(FILE *fpRange)
 	//There should be more data following the range information.
 	// if not, this is not really an env file
 	if(feof(fpRange))
+	{
 		return RANGE_ERR_FORMAT;
-
+	}	
 
 	return 0;
 }
@@ -1828,10 +1846,10 @@ unsigned int RangeFile::openRRNG(FILE *fpRange)
 					basicIonNames.push_back(split[1]);
 
 					if (basicIonNames.size()  > numBasicIons)
-				{
-					delete[] inBuffer;
-					return RANGE_ERR_FORMAT;
-				}
+					{
+						delete[] inBuffer;
+						return RANGE_ERR_FORMAT;
+					}
 				}
 				else
 				{

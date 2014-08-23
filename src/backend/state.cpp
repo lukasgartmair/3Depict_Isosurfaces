@@ -270,7 +270,7 @@ bool AnalysisState::save(const char *cpFilename, std::map<string,string> &fileMa
 	return true;
 }
 
-bool AnalysisState::load(const char *cpFilename, std::ostream &errStream, bool merge) 
+bool AnalysisState::load(const char *cpFilename, std::ostream &errStream ) 
 {
 	clear();
 
@@ -302,8 +302,7 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream, bool m
 	
 
 	//By default, lets not use relative paths
-	if(!merge)
-		useRelativePathsForSave=false;
+	useRelativePathsForSave=false;
 
 	//Lets do some parsing goodness
 	//ahh parsing - verbose and boring
@@ -770,40 +769,14 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream, bool m
 		}
 	}
 
-	if(!merge)
-	{
-		//Now replace it with the new data
-		activeTree.swap(newFilterTree);
-		std::swap(stashedTrees,newStashes);
-	}
-	else
-	{
-		//If we are merging, then there is a chance
-		//of a name-clash. We avoid this by trying to append -merge continuously
-		for(unsigned int ui=0;ui<newStashes.size();ui++)
-		{
-			//protect against overload (very unlikely)
-			unsigned int maxCount;
-			maxCount=100;
-			while(hasFirstInPairVec(stashedTrees,newStashes[ui]) && --maxCount)
-				newStashes[ui].first+=TRANS("-merge");
-
-			if(maxCount)
-				stashedTrees.push_back(newStashes[ui]);
-			else
-				errStream << TRANS(" Unable to merge stashes correctly. This is improbable, so please report this.") << endl;
-		}
-
-		activeTree.addFilterTree(newFilterTree,0);
-		undoTrees.clear();
-		redoTrees.clear();
-	}
+	//Now replace it with the new data
+	activeTree.swap(newFilterTree);
+	std::swap(stashedTrees,newStashes);
 
 	activeTree.initFilterTree();
 	
 	//Wipe the existing cameras, and then put the new cameras in place
-	if(!merge)
-		savedCameras.clear();
+	savedCameras.clear();
 	
 	//Set a default camera as needed. We don't need to track its unique ID, as this is
 	//"invisible" to the UI
@@ -817,42 +790,20 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream, bool m
 	//spin through
 	for(unsigned int ui=0;ui<newCameraVec.size();ui++)
 	{
-		if(merge)
+		//If there is no userstring, then its a  "default"
+		// camera (one that does not show up to the users,
+		// and cannot be erased from the scene)
+		// set it directly. Otherwise, its a user camera.
+		if(newCameraVec[ui]->getUserString().size())
 		{
-			//Don't merge the default camera (which has no name)
-			if(newCameraVec[ui]->getUserString().empty())
-				continue;
-
-			//Keep trying new names appending "-merge" each time to obtain a new, and hopefully unique name
-			// Abort after many times
-			unsigned int maxCount;
-			maxCount=100;
-			while(camNameExists(newCameraVec[ui]->getUserString()) && --maxCount)
-			{
-				newCameraVec[ui]->setUserString(newCameraVec[ui]->getUserString()+"-merge");
-			}
-
-			//If we have any attempts left, then it worked
-			if(maxCount)
-				savedCameras.push_back(newCameraVec[ui]);
+			savedCameras.push_back(newCameraVec[ui]);
+			activeCamera=ui;
 		}
 		else
 		{
-			//If there is no userstring, then its a  "default"
-			// camera (one that does not show up to the users,
-			// and cannot be erased from the scene)
-			// set it directly. Otherwise, its a user camera.
-			if(newCameraVec[ui]->getUserString().size())
-			{
-				savedCameras.push_back(newCameraVec[ui]);
-				activeCamera=ui;
-			}
-			else
-			{
-				ASSERT(savedCameras.size());
-				delete savedCameras[0];
-				savedCameras[0]=newCameraVec[ui];
-			}
+			ASSERT(savedCameras.size());
+			delete savedCameras[0];
+			savedCameras[0]=newCameraVec[ui];
 		}
 
 	}
@@ -889,14 +840,68 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream, bool m
 
 	//If we are merging then the default state has been altered
 	// if we are not merging, then it is overwritten
-	if(merge)
-		setModifyLevel(STATE_MODIFIED_DATA);
-	else
-		setModifyLevel(STATE_MODIFIED_NONE);
+	setModifyLevel(STATE_MODIFIED_NONE);
 
 	//Perform sanitisation on results
 	return true;
 }
+
+bool AnalysisState::merge(const AnalysisState &otherState)
+{
+
+	setModifyLevel(STATE_MODIFIED_DATA);
+
+	//If we are merging, then there is a chance
+	//of a name-clash. We avoid this by trying to append -merge continuously
+	vector<std::pair<string,FilterTree> > newStashes;
+	newStashes.resize(otherState.stashedTrees.size());
+	for(size_t ui=0;ui<otherState.stashedTrees.size();ui++)
+		newStashes[ui]=otherState.stashedTrees[ui];
+	for(unsigned int ui=0;ui<newStashes.size();ui++)
+	{
+		//protect against overload (very unlikely)
+		unsigned int maxCount;
+		maxCount=100;
+		while(hasFirstInPairVec(stashedTrees,newStashes[ui]) && --maxCount)
+			newStashes[ui].first+=TRANS("-merge");
+
+		if(maxCount)
+			stashedTrees.push_back(newStashes[ui]);
+		else
+		{
+			WARN(false," Unable to merge stashes correctly. This is improbable, so please report this.");
+		}
+	}
+	
+	FilterTree f = otherState.activeTree;
+	activeTree.addFilterTree(f,0);
+	
+	//wipe our undo/redo trees, as we can no longer rely on them
+	undoTrees.clear();
+	redoTrees.clear();
+
+	const vector<Camera *> &newCameraVec = otherState.savedCameras;	
+	for(unsigned int ui=0;ui<newCameraVec.size();ui++)
+	{
+		//Don't merge the default camera (which has no name)
+		if(newCameraVec[ui]->getUserString().empty())
+			continue;
+
+		//Keep trying new names appending "-merge" each time to obtain a new, and hopefully unique name
+		// Abort after many times
+		unsigned int maxCount;
+		maxCount=100;
+		while(camNameExists(newCameraVec[ui]->getUserString()) && --maxCount)
+		{
+			newCameraVec[ui]->setUserString(newCameraVec[ui]->getUserString()+"-merge");
+		}
+
+		//If we have any attempts left, then it worked
+		if(maxCount)
+			savedCameras.push_back(newCameraVec[ui]->clone());
+	}
+}
+
 
 bool AnalysisState::camNameExists(const std::string &s) const
 {
@@ -1173,7 +1178,7 @@ bool testStateReload()
 	someState.clear();
 
 	std::ofstream strm;
-	TEST(someState.load(saveString.c_str(),strm,false),"State load");
+	TEST(someState.load(saveString.c_str(),strm),"State load");
 
 	TEST(someState.getStashCount() == 1,"Stash save+load");
 	std::pair<string,FilterTree> stashOut;

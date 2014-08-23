@@ -99,7 +99,6 @@ class VisController
 		// this is used when loading a state file to prevent from bringing older selection state into current plots
 		bool deferClearPlotVisibility;
 
-		void clear();
 	
 
 		//!Retreive the updates to the filter tree from the scene
@@ -457,6 +456,11 @@ class VisController
 		void getAnimationState(PropertyAnimator &pA, 
 				std::vector<pair<string,size_t> > &pathMapping) const;
 
+		//wipe the state. Does not perform a refresh  need to do this manually
+		void clear();
+
+		//Return the number of filters that are currently in the state
+		size_t getNumFilters() const { return filterTree.size();}
 #ifdef DEBUG
 		//Check that the tree conrol is synced up to the filter map correctly
 		void checkTree(wxTreeCtrl *t);

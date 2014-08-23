@@ -45,6 +45,7 @@ enum{
 	RANGE_ERR_DATA_INCONSISTENT,
 	RANGE_ERR_DATA_NOMAPPED_IONNAME,
 	RANGE_ERR_NONUNIQUE_POLYATOMIC,
+	RANGE_ERR_FILESIZE,
 	RANGE_ERR_ENUM_END
 };
 
@@ -127,7 +128,7 @@ class RangeFile
 		RangeFile();
 
 		const RangeFile& operator=(const RangeFile &other);
-		//!Open a specified range file
+		//!Open a specified range file, returns zero on success, nonzero on failure
 		unsigned int open(const char *rangeFile, unsigned int format=RANGE_FORMAT_ORNL);	
 		//!Open a specified range file - returns true on success
 		bool openGuessFormat(const char *rangeFile);

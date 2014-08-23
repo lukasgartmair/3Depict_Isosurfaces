@@ -124,9 +124,6 @@ bool runUnitTests()
 	if(!filterTests())
 		return false;
 
-	if(!filterCloneTests())
-		return false;
-
 	if(!rangeFileLoadTests())
 		return false;
 
@@ -135,9 +132,6 @@ bool runUnitTests()
 		return false;
 	
 	if(!XMLTests())
-		return false;
-
-	if(!filterTreeTests())
 		return false;
 
 	if(!runVoxelTests())

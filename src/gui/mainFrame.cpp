@@ -1027,11 +1027,13 @@ void MainWindowFrame::OnFileOpen(wxCommandEvent &event)
 	//See if the user would like to save state, if we are opening a state file
 	// which will overwrite our current state
 	std::string filePath = stlStr(wxF.GetPath());
-	if(guessFileType(filePath) == FILE_TYPE_XML)
+	if(guessFileType(filePath) == FILE_OPEN_TYPE_XML)
 		checkAskSaveState();
-		
 	
-	
+	//Force an update with an empty scene	
+	visControl.clear();
+	doSceneUpdate();
+
 	textConsoleOut->Clear();
 	//Get vis controller to update tree control to match internal
 	// structure. Retain tree selection & visibility if we currently
@@ -1392,7 +1394,7 @@ void MainWindowFrame::OnRecentFile(wxCommandEvent &event)
 		else 
 		{
 			//See if the user wants to save the current state
-			if(guessFileType(stlStr(f)) == FILE_TYPE_XML)
+			if(guessFileType(stlStr(f)) == FILE_OPEN_TYPE_XML)
 				checkAskSaveState();
 	
 			loadOK=loadFile(f);	
@@ -3176,13 +3178,18 @@ void MainWindowFrame::updateLastRefreshBox()
 	size_t filterId;
 	if(!getTreeFilterId(treeFilters->GetSelection(),filterId))
 		return;
-	//retrieve the current active filter
-	const Filter *f= visControl.getFilterById(filterId);
-	
+
+	if(!visControl.getNumFilters())
+	{
+		listLastRefresh->DeleteAllItems();
+		return;
+	}	
 	//Prevent update flicker by disabling interaction
 	listLastRefresh->Freeze();
-
 	listLastRefresh->DeleteAllItems();
+	
+	//retrieve the current active filter
+	const Filter *f= visControl.getFilterById(filterId);
 	for(unsigned int ui=0;ui<NUM_STREAM_TYPES; ui++)
 	{
 		//Add items to the listbox in the form "type" "count"

@@ -63,7 +63,7 @@
 #include "common/assertion.h"
 
 #include <math.h>
-
+#include <cstdlib>
 
 #ifdef WIN32
 #include <windows.h>
