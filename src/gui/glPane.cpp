@@ -209,16 +209,6 @@ void BasicGLPane::forceRedraw()
 	wxPaintEvent ptEvent;
 	wxPostEvent(this,ptEvent);
 
-	//Hack to fix panel redraw commands not working under windows
-	//--
-#if defined(__WIN32) || defined(__WIN64)
-	wxYield();
-
-	Hide();
-	Show();
-
-#endif
-	//--
 }
 
 // some useful events to use
