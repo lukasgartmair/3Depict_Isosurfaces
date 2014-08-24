@@ -24,7 +24,6 @@
 
 #include <queue>
 
-#include <gsl/gsl_linalg.h>
 
 #include "algorithms/K3DTree-mk2.h"
 #include "backend/plot.h"
@@ -174,7 +173,7 @@ void makeCompositionTable(const IonStreamData *i ,const RangeFile *r,
 // provide the transformation vectors, so singular values only provide
 // scalar information separate from the original input basis. The first value
 // does *not* correspond to the "x" direction of your input, for example.
-void computeSingularValues(float *data, size_t numRows, size_t numCols,
+/*void computeSingularValues(float *data, size_t numRows, size_t numCols,
 				vector<float> &resultValues, vector<Point3D> &resultVectors)
 {
 
@@ -228,7 +227,7 @@ void computeSingularValues(float *data, size_t numRows, size_t numCols,
 	gsl_matrix_free(newSpace);
 	gsl_matrix_free(m);
 }
-
+*/
 
 void ClusterAnalysisFilter::checkIonEnabled(bool &core, bool &bulk) const
 {
@@ -639,6 +638,7 @@ ASSERT(!(haveBulk && !haveCore));
 		}
 	}
 
+/*
 	if(wantClusterMorphology)
 	{
 		//Compute the singular values for each cluster
@@ -777,7 +777,7 @@ ASSERT(!(haveBulk && !haveCore));
 
 		getOut.push_back(singularVectorDraw);
 	}
-
+*/
 	//Construct the output clustered data.
 	IonStreamData *i = new IonStreamData;
 	i->parent =this;	
@@ -2913,6 +2913,7 @@ void ClusterAnalysisFilter::genCompositionVersusSize(const vector<vector<IonHit>
 
 }
 
+/*
 void ClusterAnalysisFilter::getSingularValues(const vector<vector<IonHit> > &clusteredCore, 
 	const vector<vector<IonHit> > &clusteredBulk, vector<vector<float> > &singularValues,
 		vector<std::pair<Point3D,vector<Point3D> > > &singularVectors) const
@@ -2992,8 +2993,8 @@ void ClusterAnalysisFilter::getSingularValues(const vector<vector<IonHit> > &clu
 
 			//Cmpute the DIMENSION-D singular value decomposition for
 			//this vector set
-			computeSingularValues(data,numEntries,
-						DIMENSION,curSingularVals,curSingularBases);
+//			computeSingularValues(data,numEntries,
+//						DIMENSION,curSingularVals,curSingularBases);
 
 #pragma omp critical
 			{
@@ -3067,7 +3068,7 @@ void ClusterAnalysisFilter::getSingularValues(const vector<vector<IonHit> > &clu
 	if(data)
 		delete[] data;
 }
-
+*/
 
 #ifdef DEBUG
 

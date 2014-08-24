@@ -904,6 +904,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 		curGroup++;
 	}
 
+/*
 	//Start a new set for filtering
 	//----
 	//TODO: Other filtering? threshold/median? laplacian? etc
@@ -955,7 +956,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.setGroupTitle(curGroup,TRANS("Filtering"));
 	curGroup++;
 	//----
-
+*/
 	//start a new group for the visual representation
 	//----------------------------
 	choices.clear();
