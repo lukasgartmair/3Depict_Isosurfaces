@@ -104,7 +104,12 @@ const float BASELINE_SHIFT_FACTOR=0.0002f;
 
 const char *cameraIntroString=NTRANS("New camera name...");
 const char *stashIntroString=NTRANS("New stash name...");
+#if (defined(__WIN32) || defined(__WIN64))
+//Being non-empty string causes segfault under wine. Don't know why
+const char *ADD_FILTER_TEXT="";
+#else
 const char *ADD_FILTER_TEXT=NTRANS("New Filter...");
+#endif
 
 //Name of autosave state file. MUST end in .xml middle
 const char *AUTOSAVE_PREFIX= "autosave.";

@@ -6,7 +6,7 @@
 #follow some random poorly documented hierarchy and naming system. (Looking at you gettextize!)
 
 #extract program name from sources -- Now with added case sensitivity hack!
-PROGRAM_NAME=`cat ../src/common/basics.cpp | grep PROGRAM_NAME | awk -F= '{print $2}' | sed 's/;//g' | sed 's/\"//g' | sed 's/;//' | sed 's/^\s*//'`
+PROGRAM_NAME=`cat ../src/common/constants.cpp | grep PROGRAM_NAME | awk -F= '{print $2}' | sed 's/;//g' | sed 's/\"//g' | sed 's/;//' | sed 's/^\s*//'`
 #Where do we want to install the translations? (if using this script).
 TRANSLATION_INSTALL="/usr/share/locale/"
 
@@ -15,6 +15,10 @@ MAINTAINED_LOCALES="de_DE"
 
 echo "Program name is $PROGRAM_NAME"
 
+if [ x"$PROGRAM_NAME" == x"" ] ; then
+	echo "Unable to extract program name. Aborting"
+	exit 1;
+fi
 
 
 if [ $# -eq 0 ] ; then

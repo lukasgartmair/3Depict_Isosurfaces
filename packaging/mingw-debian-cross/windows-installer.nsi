@@ -12,6 +12,8 @@
 SetCompressor /FINAL /SOLID lzma
 SetCompressorDictSize 64
 
+!include "x64.nsh"
+
 ; MUI 1.67 compatible ------
 !include "MUI.nsh"
 
@@ -42,7 +44,7 @@ SetCompressorDictSize 64
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 OutFile "Setup.exe"
-InstallDir "$PROGRAMFILES\3Depict"
+InstallDir "$PROGRAMFILES64\3Depict"
 InstallDirRegKey HKLM "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show
 ShowUnInstDetails show
@@ -55,7 +57,6 @@ Section "3Depict program" SEC01
   ;INSERT_DLLS_HERE
 
   CreateDirectory "$SMPROGRAMS\3Depict"
-  CreateDirectory "$SMPROGRAMS\3Depict\textures"
   CreateShortCut "$SMPROGRAMS\3Depict\3Depict.lnk" "$INSTDIR\3Depict.exe"
   CreateShortCut "$DESKTOP\3Depict.lnk" "$INSTDIR\3Depict.exe"
   
