@@ -1137,12 +1137,14 @@ function build_3Depict()
 	if [  x"`grep -i $MANIFEST_TARG $MANIFEST`" == x"" ] ; then
 		echo "Manifest arch does not match!"	
 		echo " file examined: $MANIFEST"
+		echo " Expected :" $MANIFEST_TARG 
 		exit 1
 	fi
 
 	if [  x"`grep -i $MANIFEST_NOT $MANIFEST`" != x"" ] ; then
 		echo "Manifest arch does not match!"	
 		echo " file examined: $MANIFEST"
+		echo " This should be missing, but isnt:" $MANIFEST_NOT 
 		exit 1
 	fi
 
@@ -1159,14 +1161,6 @@ function build_3Depict()
 		exit 1
 	fi
 
-	if [ $IS_RELEASE -ne 0 ] ; then
-		#Sanity check that we are actually in debug mode
-		TEST_FLAG=`./3Depict --help  2>&1 | grep "\-\-test"`
-		if [ x"$TEST_FLAG" != x"" ] ; then
-			echo "3Depict\'s Unit tests available, but should not be, when in release mode" 
-			exit 1
-		fi
-	fi
 
 
 	#if the locales are missing, try to rebuild them
@@ -1281,6 +1275,21 @@ function make_package()
 		popd > /dev/null
 	fi
 
+	#Check for differeent DLL types (eg 32/64)
+	DLL_FILE_OUT="";
+	for i in $FOUND_DLLS
+	do
+		J=`file $i | awk -F: '{print $2}' | sed 's/\s*//'`
+		if [ x"$DLL_FILE_OUT" == x"" ] ; then	
+			DLL_FILE_OUT=$j
+		else
+			if [ x"$DLL_FILE_OUT" != x"$j" ] ; then
+				echo "DLL Mismatched file info. $i"
+				exit 1
+			fi
+		fi
+	done
+
 	if [ x"`cat windows-installer.nsi | grep INSERT_DLLS_HERE`" == x"" ]  ||  [ x"`cat windows-installer.nsi | grep INSERT_UNINST_DLLS_HERE`" == x"" ] ; then
 		echo "DLL insertion/removal tokens not found. Was looking for INSERT_DLLS_HERE and INSERT_UNINST_DLLS_HERE"
 		exit 1
@@ -1392,7 +1401,7 @@ build_ftgl
 build_glew
 
 build_mathgl 
-build_wx	# I'm not sure I've done this 100% right. Check wx-config output 
+build_wx	
 
 build_3Depict
 
