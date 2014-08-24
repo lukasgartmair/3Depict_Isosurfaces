@@ -1994,7 +1994,6 @@ DrawPointLegendOverlay::DrawPointLegendOverlay() : enabled(true)
 		//Create a ciruclar texture
 		const unsigned int N_CHANNELS=4;
 		unsigned int LEG_TEX_SIZE = 256; 
-		char *data = new char[4*LEG_TEX_SIZE*LEG_TEX_SIZE];
 		unsigned char colourWhite[N_CHANNELS]= { 255,255,255,255 };
 		unsigned char colourBlack[N_CHANNELS]= { 0,0,0,0 };
 
@@ -2021,7 +2020,6 @@ DrawPointLegendOverlay::DrawPointLegendOverlay() : enabled(true)
 
 		dQuad.rebindTexture(GL_RGBA);
 
-		delete[] data;
 		quadSet=true;
 
 	}

@@ -780,12 +780,9 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream )
 	
 	//Set a default camera as needed. We don't need to track its unique ID, as this is
 	//"invisible" to the UI
-	if(!savedCameras.size())
-	{
-		Camera *c=new CameraLookAt();
-		savedCameras.push_back(c);
-		activeCamera=0;
-	}
+	Camera *c=new CameraLookAt();
+	savedCameras.push_back(c);
+	activeCamera=0;
 
 	//spin through
 	for(unsigned int ui=0;ui<newCameraVec.size();ui++)
