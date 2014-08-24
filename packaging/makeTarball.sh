@@ -154,9 +154,17 @@ if [ x"$SOMEFILES" != x"" ] ; then
 fi
 
 #Check that PDF manual is built
-if [ ! -f docs/manual-latex/manual.pdf ] ; then
+PDF_FILE=docs/manual-latex/manual.pdf
+if [ ! -f  ] ; then
 	echo " WARNING : PDF manual was not found -- has it been compiled?" >> $MSG_FILE
 	echo "$FILES" >> $MSG_FILE
+else 
+	#Check PDF is actually a pdf
+	if [ x"`file $PDF_FILE | grep "PDF document" `" == x""  ] ; then
+		echo " WARNING : PDF manual found, but does not appear to be a valid PDF?" >> $MSG_FILE
+		echo "$FILES" >> $MSG_FILE
+	
+	fi
 fi
 
 #Check for outstanding mercurial changes

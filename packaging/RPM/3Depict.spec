@@ -1,5 +1,5 @@
 Name:		3Depict
-Version:	0.0.16
+Version:	0.0.17
 Release:	1%{?dist}
 Summary:	Valued 3D point cloud visualization and analysis
 Group:		Applications/Engineering
@@ -25,7 +25,7 @@ BuildRequires: libpng-devel
 #Desktop file utils for installing desktop file
 BuildRequires: desktop-file-utils
 #WX widgets
-BuildRequires: wxGTK3-devel
+BuildRequires: wxGTK-devel
 #PDF latex build
 #BuildRequires: tex(latex)
 
@@ -36,8 +36,7 @@ BuildRequires: qhull-devel
 Patch0: %{name}-%{version}-manual-pdf-loc.patch
 #Fedora specific font dir
 Patch1: %{name}-%{version}-font-path.patch
-#Upstream patches from 0.0.15 release tarball
-Patch2: %{name}-0.0.15-upstream.patch
+
 
 %description
 This software is designed to help users visualize and analyze 3D point clouds
@@ -51,7 +50,6 @@ useful for general scalar valued point data purposes.
 
 %patch0
 %patch1
-%patch2
 
 %build
 %configure --disable-debug-checks --enable-openmp-parallel --enable-mgl2
@@ -112,7 +110,13 @@ rm -rf %{buildroot}
 
 
 %changelog
-* Sun Apr 06 2014 D Haley <mycae(a!t)gmx.com> - 0.0.16-1
+* Sat Aug 02 2014 D Haley <mycae(a!t)gmx.com> - 0.0.17-1
+- Update to 0.0.17
+
+* Fri Jun 06 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.16-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
+
+* Sat Apr 26 2014 D Haley <mycae(a!t)gmx.com> - 0.0.16-1
 - Update to 0.0.16
 
 * Wed Feb 12 2014 D Haley <mycae(a!t)gmx.com> - 0.0.15-4

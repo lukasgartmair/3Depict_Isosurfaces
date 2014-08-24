@@ -1,0 +1,295 @@
+diff -r e500a2602f86 src/Makefile.am
+--- a/src/Makefile.am	Sun Jul 20 15:44:52 2014 +0100
++++ b/src/Makefile.am	Sun Jul 20 15:49:30 2014 +0100
+@@ -38,7 +38,7 @@
+ 		backend/filters/compositionProfile.cpp backend/filters/spatialAnalysis.cpp \
+ 		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
+ 		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp \
+-		backend/filters/algorithms/binomial.cpp  
++		backend/filters/algorithms/binomial.cpp  backend/filters/filterTemplate.cpp 
+ 
+ FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h \
+ 		backend/filters/dataLoad.h backend/filters/ionDownsample.h \
+@@ -48,7 +48,7 @@
+ 		backend/filters/compositionProfile.h backend/filters/spatialAnalysis.h \
+ 		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
+ 		backend/filters/annotation.h backend/filters/geometryHelpers.h \
+-		backend/filters/algorithms/binomial.h 
++		backend/filters/algorithms/binomial.h backend/filters/algorithms/filterTemplate.h
+ 
+ BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backend/filtertree.cpp \
+ 		     	backend/APT/ionhit.cpp backend/APT/APTFileIO.cpp backend/APT/APTRanges.cpp backend/APT/abundanceParser.cpp \
+diff -r e500a2602f86 src/backend/filter.cpp
+--- a/src/backend/filter.cpp	Sun Jul 20 15:44:52 2014 +0100
++++ b/src/backend/filter.cpp	Sun Jul 20 15:49:30 2014 +0100
+@@ -63,7 +63,8 @@
+ 				"clusteranalysis",
+ 				"voxelise",
+ 				"ioninfo",
+-				"annotation"
++				"annotation",
++				"template"
+ 				};
+ 
+ size_t numElements(const vector<const FilterStreamData *> &v, unsigned int mask)
+diff -r e500a2602f86 src/backend/filter.h
+--- a/src/backend/filter.h	Sun Jul 20 15:44:52 2014 +0100
++++ b/src/backend/filter.h	Sun Jul 20 15:49:30 2014 +0100
+@@ -71,6 +71,7 @@
+ 	FILTER_TYPE_VOXELS,
+ 	FILTER_TYPE_IONINFO,
+ 	FILTER_TYPE_ANNOTATION,
++	FILTER_TYPE_TEMPLATE,
+ 	FILTER_TYPE_ENUM_END // not a filter. just end of enum
+ };
+ 
+diff -r e500a2602f86 src/backend/filters/allFilter.cpp
+--- a/src/backend/filters/allFilter.cpp	Sun Jul 20 15:44:52 2014 +0100
++++ b/src/backend/filters/allFilter.cpp	Sun Jul 20 15:49:30 2014 +0100
+@@ -104,6 +104,9 @@
+ 		case FILTER_TYPE_ANNOTATION:
+ 			f = new AnnotateFilter;
+ 			break;	
++		case FILTER_TYPE_TEMPLATE:
++			f = new TemplateFilter;
++			break;	
+ 		default:
+ 			ASSERT(false);
+ 	}
+diff -r e500a2602f86 src/backend/filters/allFilter.h
+--- a/src/backend/filters/allFilter.h	Sun Jul 20 15:44:52 2014 +0100
++++ b/src/backend/filters/allFilter.h	Sun Jul 20 15:49:30 2014 +0100
+@@ -32,6 +32,7 @@
+ #include "voxelise.h"
+ #include "ionInfo.h"
+ #include "annotation.h"
++#include "filterTemplate.h"
+ 
+ //!Returns true if the string is a valid filter name
+ bool isValidFilterName(const std::string &s);
+diff -r e500a2602f86 src/gui/mainFrame.cpp
+--- a/src/gui/mainFrame.cpp	Sun Jul 20 15:44:52 2014 +0100
++++ b/src/gui/mainFrame.cpp	Sun Jul 20 15:49:30 2014 +0100
+@@ -116,7 +116,7 @@
+ //MainFrame's constructor
+ 
+ //--- These settings must be modified concomitantly.
+-const unsigned int FILTER_DROP_COUNT=14;
++const unsigned int FILTER_DROP_COUNT=15;
+ 
+ const char * comboFilters_choices[FILTER_DROP_COUNT] =
+ {
+@@ -134,6 +134,7 @@
+ 	NTRANS("Range File"),
+ 	NTRANS("Spat. Analysis"),
+ 	NTRANS("Voxelisation"),
++	NTRANS("Template")
+ };
+ 
+ //Mapping between filter ID and combo position
+@@ -152,6 +153,7 @@
+ 	FILTER_TYPE_RANGEFILE,
+ 	FILTER_TYPE_SPATIAL_ANALYSIS,
+ 	FILTER_TYPE_VOXELS,
++	FILTER_TYPE_TEMPLATE,
+  };
+ //----
+ 
+diff -r 036cf664e28d docs/developers/filter-template.patch
+--- a/docs/developers/filter-template.patch	Sun Aug 24 14:17:50 2014 +0100
++++ b/docs/developers/filter-template.patch	Sun Aug 24 14:18:26 2014 +0100
+@@ -1,97 +0,0 @@
+-diff -r e500a2602f86 src/Makefile.am
+---- a/src/Makefile.am	Sun Jul 20 15:44:52 2014 +0100
+-+++ b/src/Makefile.am	Sun Jul 20 15:49:30 2014 +0100
+-@@ -38,7 +38,7 @@
+- 		backend/filters/compositionProfile.cpp backend/filters/spatialAnalysis.cpp \
+- 		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
+- 		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp \
+--		backend/filters/algorithms/binomial.cpp  
+-+		backend/filters/algorithms/binomial.cpp  backend/filters/filterTemplate.cpp 
+- 
+- FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h \
+- 		backend/filters/dataLoad.h backend/filters/ionDownsample.h \
+-@@ -48,7 +48,7 @@
+- 		backend/filters/compositionProfile.h backend/filters/spatialAnalysis.h \
+- 		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
+- 		backend/filters/annotation.h backend/filters/geometryHelpers.h \
+--		backend/filters/algorithms/binomial.h 
+-+		backend/filters/algorithms/binomial.h backend/filters/algorithms/filterTemplate.h
+- 
+- BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backend/filtertree.cpp \
+- 		     	backend/APT/ionhit.cpp backend/APT/APTFileIO.cpp backend/APT/APTRanges.cpp backend/APT/abundanceParser.cpp \
+-diff -r e500a2602f86 src/backend/filter.cpp
+---- a/src/backend/filter.cpp	Sun Jul 20 15:44:52 2014 +0100
+-+++ b/src/backend/filter.cpp	Sun Jul 20 15:49:30 2014 +0100
+-@@ -63,7 +63,8 @@
+- 				"clusteranalysis",
+- 				"voxelise",
+- 				"ioninfo",
+--				"annotation"
+-+				"annotation",
+-+				"template"
+- 				};
+- 
+- size_t numElements(const vector<const FilterStreamData *> &v, unsigned int mask)
+-diff -r e500a2602f86 src/backend/filter.h
+---- a/src/backend/filter.h	Sun Jul 20 15:44:52 2014 +0100
+-+++ b/src/backend/filter.h	Sun Jul 20 15:49:30 2014 +0100
+-@@ -71,6 +71,7 @@
+- 	FILTER_TYPE_VOXELS,
+- 	FILTER_TYPE_IONINFO,
+- 	FILTER_TYPE_ANNOTATION,
+-+	FILTER_TYPE_TEMPLATE,
+- 	FILTER_TYPE_ENUM_END // not a filter. just end of enum
+- };
+- 
+-diff -r e500a2602f86 src/backend/filters/allFilter.cpp
+---- a/src/backend/filters/allFilter.cpp	Sun Jul 20 15:44:52 2014 +0100
+-+++ b/src/backend/filters/allFilter.cpp	Sun Jul 20 15:49:30 2014 +0100
+-@@ -104,6 +104,9 @@
+- 		case FILTER_TYPE_ANNOTATION:
+- 			f = new AnnotateFilter;
+- 			break;	
+-+		case FILTER_TYPE_TEMPLATE:
+-+			f = new TemplateFilter;
+-+			break;	
+- 		default:
+- 			ASSERT(false);
+- 	}
+-diff -r e500a2602f86 src/backend/filters/allFilter.h
+---- a/src/backend/filters/allFilter.h	Sun Jul 20 15:44:52 2014 +0100
+-+++ b/src/backend/filters/allFilter.h	Sun Jul 20 15:49:30 2014 +0100
+-@@ -32,6 +32,7 @@
+- #include "voxelise.h"
+- #include "ionInfo.h"
+- #include "annotation.h"
+-+#include "filterTemplate.h"
+- 
+- //!Returns true if the string is a valid filter name
+- bool isValidFilterName(const std::string &s);
+-diff -r e500a2602f86 src/gui/mainFrame.cpp
+---- a/src/gui/mainFrame.cpp	Sun Jul 20 15:44:52 2014 +0100
+-+++ b/src/gui/mainFrame.cpp	Sun Jul 20 15:49:30 2014 +0100
+-@@ -116,7 +116,7 @@
+- //MainFrame's constructor
+- 
+- //--- These settings must be modified concomitantly.
+--const unsigned int FILTER_DROP_COUNT=14;
+-+const unsigned int FILTER_DROP_COUNT=15;
+- 
+- const char * comboFilters_choices[FILTER_DROP_COUNT] =
+- {
+-@@ -134,6 +134,7 @@
+- 	NTRANS("Range File"),
+- 	NTRANS("Spat. Analysis"),
+- 	NTRANS("Voxelisation"),
+-+	NTRANS("Template")
+- };
+- 
+- //Mapping between filter ID and combo position
+-@@ -152,6 +153,7 @@
+- 	FILTER_TYPE_RANGEFILE,
+- 	FILTER_TYPE_SPATIAL_ANALYSIS,
+- 	FILTER_TYPE_VOXELS,
+-+	FILTER_TYPE_TEMPLATE,
+-  };
+- //----
+- 
+diff -r 036cf664e28d src/Makefile.am
+--- a/src/Makefile.am	Sun Aug 24 14:17:50 2014 +0100
++++ b/src/Makefile.am	Sun Aug 24 14:18:26 2014 +0100
+@@ -38,7 +38,7 @@
+ 		backend/filters/compositionProfile.cpp backend/filters/spatialAnalysis.cpp \
+ 		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
+ 		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp \
+-		backend/filters/algorithms/binomial.cpp  
++		backend/filters/algorithms/binomial.cpp  backend/filters/filterTemplate.cpp 
+ 
+ FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h \
+ 		backend/filters/dataLoad.h backend/filters/ionDownsample.h \
+@@ -48,7 +48,7 @@
+ 		backend/filters/compositionProfile.h backend/filters/spatialAnalysis.h \
+ 		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
+ 		backend/filters/annotation.h backend/filters/geometryHelpers.h \
+-		backend/filters/algorithms/binomial.h 
++		backend/filters/algorithms/binomial.h backend/filters/algorithms/filterTemplate.h
+ 
+ BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backend/filtertree.cpp \
+ 		     	backend/APT/ionhit.cpp backend/APT/APTFileIO.cpp backend/APT/APTRanges.cpp backend/APT/abundanceParser.cpp \
+diff -r 036cf664e28d src/backend/filter.cpp
+--- a/src/backend/filter.cpp	Sun Aug 24 14:17:50 2014 +0100
++++ b/src/backend/filter.cpp	Sun Aug 24 14:18:26 2014 +0100
+@@ -63,7 +63,8 @@
+ 				"clusteranalysis",
+ 				"voxelise",
+ 				"ioninfo",
+-				"annotation"
++				"annotation",
++				"template"
+ 				};
+ 
+ size_t numElements(const vector<const FilterStreamData *> &v, unsigned int mask)
+diff -r 036cf664e28d src/backend/filter.h
+--- a/src/backend/filter.h	Sun Aug 24 14:17:50 2014 +0100
++++ b/src/backend/filter.h	Sun Aug 24 14:18:26 2014 +0100
+@@ -71,6 +71,7 @@
+ 	FILTER_TYPE_VOXELS,
+ 	FILTER_TYPE_IONINFO,
+ 	FILTER_TYPE_ANNOTATION,
++	FILTER_TYPE_TEMPLATE,
+ 	FILTER_TYPE_ENUM_END // not a filter. just end of enum
+ };
+ 
+diff -r 036cf664e28d src/backend/filters/allFilter.cpp
+--- a/src/backend/filters/allFilter.cpp	Sun Aug 24 14:17:50 2014 +0100
++++ b/src/backend/filters/allFilter.cpp	Sun Aug 24 14:18:26 2014 +0100
+@@ -104,6 +104,9 @@
+ 		case FILTER_TYPE_ANNOTATION:
+ 			f = new AnnotateFilter;
+ 			break;	
++		case FILTER_TYPE_TEMPLATE:
++			f = new TemplateFilter;
++			break;	
+ 		default:
+ 			ASSERT(false);
+ 	}
+diff -r 036cf664e28d src/backend/filters/allFilter.h
+--- a/src/backend/filters/allFilter.h	Sun Aug 24 14:17:50 2014 +0100
++++ b/src/backend/filters/allFilter.h	Sun Aug 24 14:18:26 2014 +0100
+@@ -32,6 +32,7 @@
+ #include "voxelise.h"
+ #include "ionInfo.h"
+ #include "annotation.h"
++#include "filterTemplate.h"
+ 
+ //!Returns true if the string is a valid filter name
+ bool isValidFilterName(const std::string &s);
+diff -r 036cf664e28d src/gui/mainFrame.cpp
+--- a/src/gui/mainFrame.cpp	Sun Aug 24 14:17:50 2014 +0100
++++ b/src/gui/mainFrame.cpp	Sun Aug 24 14:18:26 2014 +0100
+@@ -121,7 +121,7 @@
+ //MainFrame's constructor
+ 
+ //--- These settings must be modified concomitantly.
+-const unsigned int FILTER_DROP_COUNT=14;
++const unsigned int FILTER_DROP_COUNT=15;
+ 
+ const char * comboFilters_choices[FILTER_DROP_COUNT] =
+ {
+@@ -139,6 +139,7 @@
+ 	NTRANS("Range File"),
+ 	NTRANS("Spat. Analysis"),
+ 	NTRANS("Voxelisation"),
++	NTRANS("Template")
+ };
+ 
+ //Mapping between filter ID and combo position
+@@ -157,6 +158,7 @@
+ 	FILTER_TYPE_RANGEFILE,
+ 	FILTER_TYPE_SPATIAL_ANALYSIS,
+ 	FILTER_TYPE_VOXELS,
++	FILTER_TYPE_TEMPLATE,
+  };
+ //----
+ 
