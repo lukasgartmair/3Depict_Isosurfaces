@@ -39,6 +39,12 @@ enum
 
 class threeDepictApp: public wxApp {
 private:
+#ifndef DEBUG
+	//instance of this class suppresses internal wx error dialogs.
+	// these are a nuisance in release code, as recovered errors often annoy the user
+	wxLogNull nullifyLogs;
+#endif
+
 	MainWindowFrame* MainFrame ;
 	wxArrayString commandLineFiles;
 	wxLocale* usrLocale;
@@ -62,9 +68,6 @@ public:
     void MacReopenFile(const wxString & fileName);
 #endif
 
-#ifdef DEBUG
-    void setEventloggerFile(const char *file);
-#endif
 };
 
 //Check version is in place because wxT is deprecated for wx 2.9
