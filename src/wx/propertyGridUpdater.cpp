@@ -61,7 +61,7 @@ void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f, const string &
 		g->Append(new wxPropertyCategory(string("") + title,title));
 		
 		
-		//Set the children of thies property
+		//Set the children of this property
 		for(size_t uj=0;uj<propGrouping.size();uj++)
 		{
 			FilterProperty fp;
@@ -83,6 +83,7 @@ void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f, const string &
 							boolVal);
 					break;
 				};
+				//TODO: we need a PROPERTY_TYPE_UINT
 				case PROPERTY_TYPE_INTEGER:
 				{
 					long long iV;
@@ -145,16 +146,24 @@ void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f, const string &
 					
 					break;
 				}
+				case PROPERTY_TYPE_DIR:
+				{
+					pgp = new wxDirProperty(fp.name,keyStr,fp.data);
+					break;
+				}
 			}
 
+			//Set the tooltip
 			pgp->SetHelpString(fp.helpText);
 
+			//add the property to the grid
 			g->Append(pgp);
 
 			switch(fp.type)
 			{
 				case PROPERTY_TYPE_BOOL:
 				{
+					//if a bool property, use a checkbox to edit
 					g->SetPropertyEditor(pgp,wxPGEditor_CheckBox);
 					break;
 				}
