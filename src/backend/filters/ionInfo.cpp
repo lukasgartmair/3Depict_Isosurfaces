@@ -540,7 +540,7 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 	vector<Point3D> hullPts;
 	if((errCode=computeConvexHull(data,&dummyProgress,callback,
 						hullPts,NO_FREE_QHULL)))
-		return errCode;
+		return ERR_BAD_QHULL;
 
 	Point3D midPt(0,0,0);
 
