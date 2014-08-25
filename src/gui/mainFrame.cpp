@@ -464,7 +464,7 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
     fileExport->Append(ID_FILE_EXPORT_IMAGE, TRANS("&Image...\tCtrl+I"), TRANS("Export Current 3D View"), wxITEM_NORMAL);
     fileExport->Append(ID_FILE_EXPORT_IONS, TRANS("Ion&s...\tCtrl+N"), TRANS("Export Ion Data"), wxITEM_NORMAL);
     fileExport->Append(ID_FILE_EXPORT_RANGE, TRANS("Ran&ges...\tCtrl+G"), TRANS("Export Range Data"), wxITEM_NORMAL);
-    fileExport->Append(ID_FILE_EXPORT_FILTER_ANIMATION, TRANS("&Animate Filters...\tCtrl+A"), TRANS("Export Animated Filter"), wxITEM_NORMAL);
+    fileExport->Append(ID_FILE_EXPORT_FILTER_ANIMATION, TRANS("&Animate Filters...\tCtrl+T"), TRANS("Export Animated Filter"), wxITEM_NORMAL);
     fileExport->Append(ID_FILE_EXPORT_ANIMATION, TRANS("Ani&mate Camera...\tCtrl+M"), TRANS("Export Animated Camera"), wxITEM_NORMAL);
     fileExport->Append(ID_FILE_EXPORT_PACKAGE, TRANS("Pac&kage...\tCtrl+K"), TRANS("Export analysis package"), wxITEM_NORMAL);
 
