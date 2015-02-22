@@ -44,8 +44,10 @@ const char *RSS_FEED_LOCATION="http://threedepict.sourceforge.net/rss.xml";
 
 //Auto update event for posting back to main thread upon completion
 wxEventType RemoteUpdateAvailEvent = wxNewEventType(); // You get to choose the name yourself
-		
 
+//Signalling event for main frame that it is completed
+wxEventType RefreshCompleteEvent= wxNewEventType(); // You get to choose the name yourself
+		
 //Maximum amount of content in RSS header is 1MB.
 const unsigned int MAX_RSS_CONTENT_SIZE=1024*1024;
 
@@ -105,17 +107,16 @@ std::string locateDataFile(const char *name)
 
 	//Possible search paths. Must have trailing slash. will
 	//be searched in sequence.
-	const unsigned int NUM_SEARCH_DIRS=6;
 	const char *possibleDirs[] = { "./",
 					"/usr/local/share/3Depict/",
 					"/usr/share/3Depict/",
 					"/usr/share/3depict/", //Under debian, we have to use lowercase according to the debian guidelines, so handle this case.
 					"../data/",
-					"./data/",
+					"./data/"
 					};
 
-	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(possibleDirs) == NUM_SEARCH_DIRS);
-	
+	const unsigned int NUM_SEARCH_DIRS=THREEDEP_ARRAYSIZE(possibleDirs);
+
 	std::string s;
 	for(unsigned int ui=0; ui<NUM_SEARCH_DIRS; ui++)
 	{

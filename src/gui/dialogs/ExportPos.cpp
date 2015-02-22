@@ -33,24 +33,11 @@ wxWindow *exportPosYieldWindow=0;
 bool abortOp;
 wxStopWatch *exportPosDelayTime=0;
 
-bool yieldCallback(bool)
-{
-	const unsigned int YIELD_MS=75;
-
-	ASSERT(exportPosDelayTime);
-	//Rate limit the updates
-	if(exportPosDelayTime->Time() > YIELD_MS)
-	{
-		wxSafeYield(exportPosYieldWindow);
-		exportPosDelayTime->Start();
-	}
-
-	return !abortOp;
-}
-
 
 using std::list;
 using std::pair;
+using std::string;
+using std::vector;
 
 enum
 {
@@ -149,11 +136,13 @@ void ExportPosDialog::initialiseData(FilterTree &f)
 	vector<const Filter*> dummyPersist;
 	upWxTreeCtrl(filterTree,treeData,filterMap,dummyPersist,0);	
 
+	vector<SelectionDevice *> devices;
 	ProgressData p;
-	//TODO: Is trashing the devices a problem? do we have to restore them??
-	std::vector<SelectionDevice *> dummyDevices;
 	std::vector<std::pair<const Filter *, string > > consoleStrings;
-	filterTree.refreshFilterTree(outputData,dummyDevices,consoleStrings,p,yieldCallback);
+
+	ATOMIC_BOOL wantAbort;
+	wantAbort=false;
+	filterTree.refreshFilterTree(outputData,devices,consoleStrings,p,wantAbort);
 
 	//Delete all filter items that came out of refresh, other than ion streams
 	filterTree.safeDeleteFilterList(outputData,STREAM_TYPE_IONS,true);

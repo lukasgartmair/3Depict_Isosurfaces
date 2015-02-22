@@ -20,13 +20,6 @@
 
 #include "translation.h"
 
-//C-style Array size macro
-#define THREEDEP_ARRAYSIZE(f) (sizeof (f) / sizeof(*f))
-//C++1x availabilty (as far as we are concerned)
-#if __cplusplus > 199711L
-	#define HAVE_CPP1X 1
-#endif
-
 //Hack-ish variable for minimal size of data to execute
 // openMP conditionals as parallel regions. This is highly empirical!
 const unsigned int OPENMP_MIN_DATASIZE=1000;

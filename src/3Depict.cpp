@@ -91,15 +91,6 @@ winconsole winC;
 #endif
 #endif
 
-//DEBUG NaN and INF
-#ifdef DEBUG
-#ifdef __linux__
-#include <fenv.h>
-void trapfpe () {
-//  feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
-}
-#endif
-#endif
 
 IMPLEMENT_APP(threeDepictApp)
 
@@ -168,7 +159,7 @@ void threeDepictApp::initLanguageSupport()
 #ifdef __WXMAC__
 			bindtextdomain( PROGRAM_NAME, paths->GetResourcesDir().mb_str(wxConvUTF8) );
 #elif defined(__WIN32) || defined(__WIN64)
-			cerr << paths->GetResourcesDir().mb_str(wxConvUTF8) << endl;
+			cerr << paths->GetResourcesDir().mb_str(wxConvUTF8) << std::endl;
 			std::string s;
 			s =  paths->GetResourcesDir().mb_str(wxConvUTF8);
 			s+="/locales/";
@@ -183,15 +174,15 @@ void threeDepictApp::initLanguageSupport()
 			switch(curPage)
 			{
 				case 1252:
-					cerr << "Bound cp1252" << endl;
+					std::cerr << "Bound cp1252" << std::endl;
 					bind_textdomain_codeset(PROGRAM_NAME, "CP1252");
 					break;
 				case 65001:
-					cerr << "Bound utf8"<< endl;
+					std::cerr << "Bound utf8"<< std::endl;
 					bind_textdomain_codeset(PROGRAM_NAME, "UTF-8");
 					break;
 				default:
-					cerr << "Unknown codepage " << curPage << endl;
+					std::cerr << "Unknown codepage " << curPage << std::endl;
 					break;
 			}			
 #else
@@ -202,7 +193,7 @@ void threeDepictApp::initLanguageSupport()
 	}
 	else
 	{
-		std::cout << "Language not supported, falling back to English" << endl;
+		std::cout << "Language not supported, falling back to English" << std::endl;
 		usrLocale = new wxLocale( wxLANGUAGE_ENGLISH );
 		language = wxLANGUAGE_ENGLISH;
 	}
@@ -314,42 +305,42 @@ bool threeDepictApp::OnCmdLineParsed(wxCmdLineParser& parser)
 				strFile=stlStr(f.GetFullPath());
 				if( !f.FileExists() )
 				{
-					cerr << "Unable to locate file:" << strFile << endl;
+					std::cerr << "Unable to locate file:" << strFile << std::endl;
 					return false;
 				}
 
-				cerr << "Loading :" << strFile << endl ;
+				std::cerr << "Loading :" << strFile << std::endl ;
 
 				{
 				VisController visControl;
-				if(!visControl.loadState(strFile.c_str(),cerr,false,true))
+				if(!visControl.state.load(strFile.c_str(),true,std::cerr))
 				{
-					cerr << "Error loading state file:" << endl;
+					std::cerr << "Error loading state file:" << std::endl;
 					return false;
 				}
 
 				//Run a refresh over the filter tree as a test
 				FilterTree f;
-				visControl.cloneFilterTree(f);
+				visControl.state.treeState.cloneFilterTree(f);
 				if(f.hasHazardousContents())
 				{
 					f.stripHazardousContents();
-					cerr << "For security reasons, the tree was pruned prior to execution." << endl;
+					std::cerr << "For security reasons, the tree was pruned prior to execution." << std::endl;
 				}
 				
 				if(!testFilterTree(f))
 				{
-					cerr << "Failed loading :" << strFile << " , aborting" << endl;
+					std::cerr << "Failed loading :" << strFile << " , aborting" << std::endl;
 					return false;
 				}
 				}
 
-				cerr << "OK" << endl; 
+				std::cerr << "OK" << std::endl; 
 
 			}
 			
 			 
-			cerr << "Test XML File(s) Loaded OK" << endl;
+			std::cerr << "Test XML File(s) Loaded OK" << std::endl;
 			dontLoad=true;	
 		}
 		else
@@ -357,12 +348,12 @@ bool threeDepictApp::OnCmdLineParsed(wxCmdLineParser& parser)
 			//Unit tests failed
 			if(!runUnitTests()) 
 			{
-				cerr << "Unit tests failed" <<endl;
+				std::cerr << "Unit tests failed" <<std::endl;
 				return false;
 			}
 			else
 			{
-				cerr << "Unit tests succeeded!" <<endl;
+				std::cerr << "Unit tests succeeded!" <<std::endl;
 				dontLoad=true;
 			}
 		}
@@ -411,6 +402,10 @@ bool threeDepictApp::OnInit()
 
     initLanguageSupport();
 	
+#if defined(DEBUG) && defined(__linux__)
+	//Virtualbox has a bug, where the video driver generates FPEs
+//   trapfpe(); //Under Linux, enable  segfault on invalid floating point operations
+#endif
 
     //Set the gettext language
     //Register signal handler for backtraces
@@ -441,9 +436,6 @@ bool threeDepictApp::OnInit()
 
     SetTopWindow(MainFrame);
 
-#if defined(DEBUG) && defined(__linux__)
-   trapfpe(); //Under Linux, enable  segfault on invalid floating point operations
-#endif
 
 #ifdef __APPLE__    
    	//Switch the working directory into the .app bundle's resources

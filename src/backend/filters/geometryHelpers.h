@@ -28,7 +28,8 @@ enum
 	CROP_SPHERE_OUTSIDE,
 	CROP_PLANE_FRONT,
 	CROP_PLANE_BACK,
-	CROP_CYLINDER_INSIDE,
+	CROP_CYLINDER_INSIDE_AXIAL,
+	CROP_CYLINDER_INSIDE_RADIAL,
 	CROP_CYLINDER_OUTSIDE,
 	CROP_AAB_OUTSIDE,
 	CROP_AAB_INSIDE,
@@ -83,10 +84,6 @@ class CropHelper
 
 		size_t curProgCount;
 		size_t totalDataCount;
-		unsigned int *progressPtr;
-	
-		bool (*callbackFunc)(bool);
-		size_t numCallback;
 		//--
 
 
@@ -114,9 +111,12 @@ class CropHelper
 		bool filterBoxInside(const Point3D &testPt) const;
 		//----
 
-		//Mapping functions. returns 0 -> mapMax
-		unsigned int mapCylinderInside(const Point3D &p) const;
+		//Mapping functions. returns 0 -> mapMax, along axial direction
+		unsigned int mapCylinderInsideAxial(const Point3D &p) const;
+		unsigned int mapCylinderInsideRadial(const Point3D &p) const;
 
+
+		//
 		unsigned int mapSphereInside(const Point3D &p) const;
 
 
@@ -141,8 +141,7 @@ class CropHelper
 	
 		//Input vectors and scalars represent the fundamental
 		// basis for the desired geometry
-		CropHelper(bool (*callback)(bool), unsigned int *prog, 
-			size_t totalData,size_t filterMode,
+		CropHelper(size_t totalData,size_t filterMode,
 			std::vector<Point3D> &vectors, std::vector<float> &scalars);
 		
 		//Filter the input ion data in order to generate output points
@@ -159,7 +158,7 @@ class CropHelper
 
 		//Choose the cropping mode for the filter
 		void setFilterMode(size_t filterMode);
-			
+
 };
 
 

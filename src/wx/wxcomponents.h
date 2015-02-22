@@ -70,7 +70,7 @@ protected:
 
 //!Update a wxTree control to layout according to the specified filter tree
 void upWxTreeCtrl(const FilterTree &filterTree, wxTreeCtrl *t,
-		std::map<size_t,Filter *> &filterMap,vector<const Filter *> &persistentFilters,
+		std::map<size_t,Filter *> &filterMap,std::vector<const Filter *> &persistentFilters,
 		const Filter *visibleFilt);
 
 //Subclassed wx tree ctrl to draw text in tree when empty

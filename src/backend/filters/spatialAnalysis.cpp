@@ -15,6 +15,8 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <gsl/gsl_sf_gamma.h>
+
 #include "spatialAnalysis.h"
 
 
@@ -27,6 +29,13 @@
 #include "backend/plot.h"
 #include "../APT/APTFileIO.h"
 
+using std::vector;
+using std::string;
+using std::pair;
+using std::make_pair;
+using std::map;
+using std::list;
+
 enum
 {
 	KEY_STOPMODE,
@@ -34,6 +43,7 @@ enum
 	KEY_DISTMAX,
 	KEY_NNMAX,
 	KEY_NNMAX_NORMALISE,
+	KEY_NNMAX_SHOWRANDOM,
 	KEY_NUMBINS,
 	KEY_REMOVAL,
 	KEY_REDUCTIONDIST,
@@ -131,13 +141,28 @@ const bool WANT_RANGE_PROPAGATION[] = { false,
 //Default distance to use when performing axial distance computations
 const float DEFAULT_AXIAL_DISTANCE = 1.0f;
 
-template<class T>
-bool xorFunc(const T a, const T b)
+
+//Helper function for computing a weighted mean
+float weightedMean(const vector<float> &x, const vector<float> &y,bool zeroOutSingularity=true)
 {
-  return (a || b) && !(a && b);
+	ASSERT(x.size() == y.size());
+
+	float num=0,denom=0;
+	for(size_t ui=0;ui<y.size();ui++)
+	{
+		num+=y[ui]*x[ui];
+		denom+=y[ui];
+	}
+
+	if(zeroOutSingularity)
+	{
+		if(denom <std::numeric_limits<float>::epsilon())
+			return 0;
+	}
+
+	ASSERT(denom);
+	return num/denom;
 }
-
-
 
 SpatialAnalysisFilter::SpatialAnalysisFilter()
 {
@@ -165,6 +190,7 @@ SpatialAnalysisFilter::SpatialAnalysisFilter()
 	//Density filtering params
 	densityCutoff=1.0f;
 	keepDensityUpper=true;
+	wantRandomNNHist=true;
 
 	//Binomial parameters
 	//--
@@ -178,7 +204,7 @@ SpatialAnalysisFilter::SpatialAnalysisFilter()
 	//--
 
 	//replace tolerance
-	replaceTolerance=sqrt(std::numeric_limits<float>::epsilon());
+	replaceTolerance=sqrtf(std::numeric_limits<float>::epsilon());
 	replaceMode=REPLACE_MODE_SUBTRACT;
 	replaceMass=true;
 
@@ -201,6 +227,8 @@ Filter *SpatialAnalysisFilter::cloneUncached() const
 	p->numBins=numBins;
 	p->excludeSurface=excludeSurface;
 	p->reductionDistance=reductionDistance;
+	p->normaliseNNHist = normaliseNNHist;
+	p->wantRandomNNHist=wantRandomNNHist;
 	
 	p->keepDensityUpper=keepDensityUpper;
 	p->densityCutoff=densityCutoff;
@@ -307,8 +335,36 @@ void SpatialAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 	haveRangeParent=false;
 }
 
+
+void SpatialAnalysisFilter::createDevice(vector<const FilterStreamData *> &getOut) 
+{
+	//Create the user interaction device required for the user
+	// to interact with the algorithm parameters 
+	SelectionDevice *s=0;
+	DrawStreamData *d= new DrawStreamData;
+	d->parent=this;
+	d->cached=0;
+
+	switch(algorithm)
+	{
+		case ALGORITHM_AXIAL_DF:
+			createCylinder(d,s);
+		break;
+		default:	
+			;
+	}
+
+	if(s)
+	{
+		devices.push_back(s);
+		getOut.push_back(d);
+	}
+	else
+		delete d;
+}
+
 unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 	//use the cached copy if we have it.
 	if(cacheOK)
@@ -316,6 +372,10 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		size_t mask=STREAM_TYPE_IONS;
 		if(!WANT_RANGE_PROPAGATION[algorithm])
 			mask|=STREAM_TYPE_RANGE;
+
+
+		//create selection device for this algrithm
+		createDevice(getOut);
 
 		//Propagate input streams as desired 
 		propagateStreams(dataIn,getOut,mask,true);
@@ -325,6 +385,12 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		return 0;
 	}
 
+	//Set K3D tree abort pointer and progress
+	K3DTree::setAbortFlag(Filter::wantAbort);
+	K3DTree::setProgressPtr(&progress.filterProgress);
+
+	K3DTreeMk2::setAbortFlag(Filter::wantAbort);
+	K3DTreeMk2::setProgressPtr(&progress.filterProgress);
 
 	//Find out how much total size we need in points vector
 	size_t totalDataSize=numElements(dataIn,STREAM_TYPE_IONS);
@@ -357,19 +423,19 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 	switch(algorithm)
 	{
 		case ALGORITHM_DENSITY:
-			result=algorithmDensity(progress,callback,totalDataSize,
+			result=algorithmDensity(progress,totalDataSize,
 					dataIn,getOut);
 			break;
 		case ALGORITHM_RDF:
-			result=algorithmRDF(progress,callback,totalDataSize,
+			result=algorithmRDF(progress,totalDataSize,
 					dataIn,getOut,rngF);
 			break;
 		case ALGORITHM_DENSITY_FILTER:
-			result=algorithmDensityFilter(progress,callback,totalDataSize,
+			result=algorithmDensityFilter(progress,totalDataSize,
 					dataIn,getOut);
 			break;
 		case ALGORITHM_AXIAL_DF:
-			result=algorithmAxialDf(progress,callback,totalDataSize,
+			result=algorithmAxialDf(progress,totalDataSize,
 					dataIn,getOut,rngF);
 			break;
 		case ALGORITHM_BINOMIAL:
@@ -378,12 +444,12 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 			{
 				return ERR_BINOMIAL_NO_RANGE;
 			}
-			result=algorithmBinomial(progress,callback,totalDataSize,
+			result=algorithmBinomial(progress,totalDataSize,
 						dataIn,getOut,rngF);
 			break;
 		}
 		case ALGORITHM_REPLACE:
-			result=algorithmReplace(progress,callback,totalDataSize,
+			result=algorithmReplace(progress,totalDataSize,
 						dataIn,getOut);
 			break;
 		default:
@@ -393,27 +459,25 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 	return result;
 }
 
-size_t SpatialAnalysisFilter::algorithmReplace(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
+size_t SpatialAnalysisFilter::algorithmReplace(ProgressData &progress, size_t totalDataSize, 
 			const vector<const FilterStreamData *>  &dataIn, 
 			vector<const FilterStreamData * > &getOut)
 {
 	//Merge the ions form the incoming streams
 	vector<IonHit> inIons;
-	Filter::collateIons(dataIn,inIons,progress,callback,totalDataSize);
+	Filter::collateIons(dataIn,inIons,progress,totalDataSize);
 	
 	vector<IonHit> fileIons;
 	const unsigned int loadPositions[] = {
 						0,1,2,3};
 	unsigned int errCode=GenericLoadFloatFile(4,4,loadPositions,
-			fileIons,replaceFile.c_str(),progress.filterProgress,callback);
+			fileIons,replaceFile.c_str(),progress.filterProgress,*Filter::wantAbort);
 
 	if(errCode)
 		return ERR_FILE_READ_FAIL;
 
 
 	K3DTreeMk2 tree;
-	tree.setProgressPointer(&progress.filterProgress);
-	tree.setCallback(callback);
 	tree.resetPts(fileIons,false);
 	tree.build();
 	BoundCube b;
@@ -579,15 +643,29 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			p.type=PROPERTY_TYPE_INTEGER;
 			p.helpText=TRANS("Maximum number of neighbours to examine");
 			p.key=KEY_NNMAX;
+			propertyList.addProperty(p,curGroup);
+			
 			if(algorithm == ALGORITHM_RDF)
 			{
-				propertyList.addProperty(p,curGroup);
 
 				p.name=TRANS("Normalise bins");
 				p.data=boolStrEnc(normaliseNNHist);
 				p.type=PROPERTY_TYPE_BOOL;
 				p.helpText=TRANS("Normalise counts by binwidth. Needed when comparing NN histograms against one another");
 				p.key=KEY_NNMAX_NORMALISE;
+				propertyList.addProperty(p,curGroup);
+
+
+
+				p.name=TRANS("Show Random");
+				p.data=boolStrEnc(wantRandomNNHist);
+				p.type=PROPERTY_TYPE_BOOL;
+				p.helpText=TRANS("Show a fitted (density matched) theoretical distribution");
+				p.key=KEY_NNMAX_SHOWRANDOM;
+				propertyList.addProperty(p,curGroup);
+
+
+
 			}
 		}
 		else
@@ -598,8 +676,8 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			p.type=PROPERTY_TYPE_REAL;
 			p.helpText=TRANS("Maximum distance from each point for search");
 			p.key=KEY_DISTMAX;
+			propertyList.addProperty(p,curGroup);
 		}
-		propertyList.addProperty(p,curGroup);
 
 	}
 	
@@ -656,11 +734,8 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 				
 				string sTmp;
 
-				if((size_t)std::count(ionSourceEnabled.begin(),
-					ionSourceEnabled.end(),true) == ionSourceEnabled.size())
-					sTmp="1";
-				else
-					sTmp="0";
+				sTmp = boolStrEnc((size_t)std::count(ionSourceEnabled.begin(),
+					ionSourceEnabled.end(),true) == ionSourceEnabled.size());
 
 				p.name=TRANS("Source");
 				p.data=sTmp;
@@ -688,11 +763,8 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 
 				curGroup++;
 				
-				if((size_t)std::count(ionTargetEnabled.begin(),
-					ionTargetEnabled.end(),true) == ionTargetEnabled.size())
-					sTmp="1";
-				else
-					sTmp="0";
+				sTmp = boolStrEnc((size_t)std::count(ionTargetEnabled.begin(),
+					ionTargetEnabled.end(),true) == ionTargetEnabled.size());
 				
 				p.name=TRANS("Target");
 				p.data=sTmp;
@@ -1032,6 +1104,12 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 				return false;
 			break;
 		}	
+		case KEY_NNMAX_SHOWRANDOM:
+		{
+			if(!applyPropertyNow(wantRandomNNHist,value,needUpdate))
+				return false;
+			break;
+		}	
 		case KEY_NUMBINS:
 		{
 			unsigned int ltmp;
@@ -1180,7 +1258,7 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 			if(stream_cast(newRad,value))
 				return false;
 
-			if(newRad < sqrt(std::numeric_limits<float>::epsilon()))
+			if(newRad < sqrtf(std::numeric_limits<float>::epsilon()))
 				return false;
 
 			if(scalarParams[0] != newRad )
@@ -1197,7 +1275,7 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 			if(!newPt.parse(value))
 				return false;
 
-			if(newPt.sqrMag() < sqrt(std::numeric_limits<float>::epsilon()))
+			if(newPt.sqrMag() < sqrtf(std::numeric_limits<float>::epsilon()))
 				return false;
 
 			if(!(vectorParams[1] == newPt ))
@@ -1399,7 +1477,7 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 	return true;
 }
 
-std::string  SpatialAnalysisFilter::getErrString(unsigned int code) const
+std::string  SpatialAnalysisFilter::getSpecificErrString(unsigned int code) const
 {
 	const char *errStrings[] = {"",
 				"Spatial analysis aborted by user",
@@ -1476,6 +1554,7 @@ bool SpatialAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsi
 			f << tabs(depth+1) << "<stopmode value=\""<<stopMode<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<nnmax value=\""<<nnMax<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<normalisennhist value=\""<<boolStrEnc(normaliseNNHist)<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<wantrandomnnhist value=\""<<boolStrEnc(wantRandomNNHist)<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<distmax value=\""<<distMax<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<numbins value=\""<<numBins<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<excludesurface value=\""<<excludeSurface<< "\"/>"  << endl;
@@ -1566,9 +1645,20 @@ bool SpatialAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 	// internal 5033191f0c61
 	//====== 
 	xmlNodePtr tmpNode = nodePtr;
-	if(!XMLGetNextElemAttrib(tmpNode,nnMax,"normalisennhist","value"))
+	if(!XMLGetNextElemAttrib(tmpNode,normaliseNNHist,"normalisennhist","value"))
 	{
 		normaliseNNHist=false;
+	}
+	//===
+	
+	//Retrieve histogram normalisation 
+	//TODO: COMPAT : did not exist prior to 0.0.18
+	// internal revision : 2302dbbfb3dd 
+	//====== 
+	tmpNode = nodePtr;
+	if(!XMLGetNextElemAttrib(tmpNode,wantRandomNNHist,"wantrandomnnhist","value"))
+	{
+		wantRandomNNHist=false;
 	}
 	//===
 	
@@ -1745,7 +1835,7 @@ void SpatialAnalysisFilter::setPropFromBinding(const SelectionBinding &b)
 		{
 			Point3D p;
 			b.getValue(p);
-			if(p.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()))
+			if(p.sqrMag() > sqrtf(std::numeric_limits<float>::epsilon()))
 				vectorParams[1]=p;
 			break;
 		}
@@ -1792,13 +1882,13 @@ void SpatialAnalysisFilter::resetParamsAsNeeded()
 		;
 	}
 }
-//Scan input datstreams to build a two point vectors,
+//Scan input datstreams to build two point vectors,
 // one of those with points specified as "target" 
 // which is a copy of the input points
 //Returns 0 on no error, otherwise nonzero
 size_t SpatialAnalysisFilter::buildSplitPoints(const vector<const FilterStreamData *> &dataIn,
 				ProgressData &progress, size_t totalDataSize,
-				const RangeFile *rngF, bool (*callback)(bool),
+				const RangeFile *rngF,
 				vector<Point3D> &pSource, vector<Point3D> &pTarget
 				) const
 {
@@ -1862,7 +1952,7 @@ size_t SpatialAnalysisFilter::buildSplitPoints(const vector<const FilterStreamDa
 
 				if(ionSourceEnabled[ionID])
 				{
-					if(extendPointVector(pSource,d->data,callback,
+					if(extendPointVector(pSource,d->data,
 					                     progress.filterProgress,curPos[0]))
 						return ERR_ABORT_FAIL;
 
@@ -1871,7 +1961,7 @@ size_t SpatialAnalysisFilter::buildSplitPoints(const vector<const FilterStreamDa
 
 				if(ionTargetEnabled[ionID])
 				{
-					if(extendPointVector(pTarget,d->data,callback,
+					if(extendPointVector(pTarget,d->data,
 					                     progress.filterProgress,curPos[1]))
 						return ERR_ABORT_FAIL;
 
@@ -1925,7 +2015,7 @@ void SpatialAnalysisFilter::filterSelectedRanges(const vector<IonHit> &ions, boo
 //Returns 0 on no error, otherwise nonzero
 size_t buildMonolithicPoints(const vector<const FilterStreamData *> &dataIn,
 				ProgressData &progress, size_t totalDataSize,
-				bool (*callback)(bool),	vector<Point3D> &p)
+				vector<Point3D> &p)
 {
 	//Build monolithic point set
 	//---
@@ -1934,8 +2024,8 @@ size_t buildMonolithicPoints(const vector<const FilterStreamData *> &dataIn,
 	size_t dataSize=0;
 
 	progress.filterProgress=0;
-	if(!(*callback)(true))
-		return ERR_ABORT_FAIL;
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 
 	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
 	{
@@ -1946,8 +2036,7 @@ size_t buildMonolithicPoints(const vector<const FilterStreamData *> &dataIn,
 				const IonStreamData *d;
 				d=((const IonStreamData *)dataIn[ui]);
 
-				if(extendPointVector(p,d->data,
-						callback,progress.filterProgress,
+				if(extendPointVector(p,d->data,	progress.filterProgress,
 						dataSize))
 					return ERR_ABORT_FAIL;
 
@@ -1963,7 +2052,7 @@ size_t buildMonolithicPoints(const vector<const FilterStreamData *> &dataIn,
 	return 0;
 }
 			
-size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
+size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, size_t totalDataSize, 
 		const vector<const FilterStreamData *>  &dataIn, 
 		vector<const FilterStreamData * > &getOut,const RangeFile *rngF)
 {
@@ -1975,12 +2064,10 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 	else
 		progress.maxStep=3;
 	
-	if(!(*callback)(true))
-		return ERR_ABORT_FAIL;
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 
 	K3DTree kdTree;
-	kdTree.setCallbackMethod(callback);
-	kdTree.setProgressPointer(&(progress.filterProgress));
 	
 	//Source points
 	vector<Point3D> p;
@@ -1998,7 +2085,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 		ASSERT(ionNames.size());
 		size_t errCode;
 		if((errCode=buildSplitPoints(dataIn,progress,totalDataSize,
-				rngF,callback,pts[0],pts[1])))
+				rngF,pts[0],pts[1])))
 			return errCode;
 
 		progress.step=2;
@@ -2007,8 +2094,8 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 		//Build the tree using the target ions
 		//(its roughly nlogn timing, but worst case n^2)
 		kdTree.buildByRef(pts[1]);
-		if(!(*callback)(true))
-			return ERR_ABORT_FAIL;
+		if(*Filter::wantAbort)
+			return FILTER_ERR_ABORT;
 		pts[1].clear();
 		
 		//Remove surface points from sources if desired
@@ -2018,8 +2105,8 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			progress.step++;
 			progress.stepName=TRANS("Surface");
 
-			if(!(*callback)(true))
-				return ERR_ABORT_FAIL;
+			if(*Filter::wantAbort)
+				return FILTER_ERR_ABORT;
 
 
 			//Take the input points, then use them
@@ -2027,7 +2114,8 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			//volume. 
 			vector<Point3D> returnPoints;
 			if(GetReducedHullPts(pts[0],reductionDistance,
-					&progress.filterProgress,callback,returnPoints))
+					&progress.filterProgress,*(Filter::wantAbort),
+					returnPoints))
 			{
 				if(errCode ==1)
 					return INSUFFICIENT_SIZE_ERR;
@@ -2038,8 +2126,8 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 				}
 			}
 			
-			if(!(*callback)(true))
-				return ERR_ABORT_FAIL;
+			if(*Filter::wantAbort)
+				return FILTER_ERR_ABORT;
 
 			pts[0].clear();
 			//Forget the original points, and use the new ones
@@ -2052,7 +2140,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 	else
 	{
 		size_t errCode;
-		if((errCode=buildMonolithicPoints(dataIn,progress,totalDataSize,callback,p)))
+		if((errCode=buildMonolithicPoints(dataIn,progress,totalDataSize,p)))
 			return errCode;
 		
 		progress.step=2;
@@ -2062,8 +2150,8 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 
 		//Build the tree (its roughly nlogn timing, but worst case n^2)
 		kdTree.buildByRef(p);
-		if(!(*callback)(true))
-			return ERR_ABORT_FAIL;
+		if(*Filter::wantAbort)
+			return FILTER_ERR_ABORT;
 
 		//Remove surface points if desired
 		if(excludeSurface)
@@ -2072,8 +2160,8 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			progress.step++;
 			progress.stepName=TRANS("Surface");
 		
-			if(!(*callback)(true))
-				return ERR_ABORT_FAIL;
+			if(*Filter::wantAbort)
+				return FILTER_ERR_ABORT;
 
 
 			//Take the input points, then use them
@@ -2082,7 +2170,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			vector<Point3D> returnPoints;
 			size_t errCode;
 			if((errCode=GetReducedHullPts(p,reductionDistance,
-					&progress.filterProgress,callback, 
+					&progress.filterProgress, *Filter::wantAbort,
 					returnPoints)) )
 			{
 				if(errCode ==1)
@@ -2101,8 +2189,8 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			//Forget the original points, and use the new ones
 			p.swap(returnPoints);
 			
-			if(!(*callback)(true))
-				return ERR_ABORT_FAIL;
+			if(*Filter::wantAbort)
+				return FILTER_ERR_ABORT;
 
 		}
 		
@@ -2138,7 +2226,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			//Run the analysis
 			errCode=generateNNHist(p,kdTree,nnMax,
 					numBins,histogram,binWidth,
-					&(progress.filterProgress),callback);
+					&(progress.filterProgress),*Filter::wantAbort);
 			switch(errCode)
 			{
 				case 0:
@@ -2161,29 +2249,26 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			vector<vector<float> > histogramFloat;
 			histogramFloat.resize(nnMax); 
 			//Normalise the NN histograms to a per bin width as required
-			if(normaliseNNHist)
+			for(unsigned int ui=0;ui<nnMax; ui++)
 			{
-				for(unsigned int ui=0;ui<nnMax; ui++)
+				histogramFloat[ui].resize(numBins);
+				if(normaliseNNHist)
 				{
-					histogramFloat[ui].resize(numBins);
 					for(unsigned int uj=0;uj<numBins;uj++)
 						histogramFloat[ui][uj] = (float)histogram[ui][uj]/binWidth[ui] ;
 				}
-			
-			}
-			else
-			{
-				for(unsigned int ui=0;ui<nnMax;ui++)
+				else
 				{
-					histogramFloat[ui].resize(numBins);
 					for(unsigned int uj=0;uj<numBins;uj++)
 						histogramFloat[ui][uj] = (float)histogram[ui][uj];
 				}
 			}
 			histogram.clear();
+
 	
 			//Alright then, we have the histogram in x-{y1,y2,y3...y_n} form
 			//lets make some plots shall we?
+			{
 			PlotStreamData *plotData[nnMax];
 
 			for(unsigned int ui=0;ui<nnMax;ui++)
@@ -2220,7 +2305,100 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 				
 				getOut.push_back(plotData[ui]);
 			}
+			}
 
+			//If requested, add a probability distribution.
+			// we need to scale it to match the displayed observed
+			// histogram
+			if(wantRandomNNHist)
+			{
+				vector<vector<float> > nnTheoHist;
+				nnTheoHist.resize(nnMax);
+				#pragma omp parallel for
+				for(unsigned int ui=0;ui<nnMax;ui++)
+				{
+
+					float total=0;
+					for(unsigned int uj=0;uj<numBins;uj++)
+						total+=histogramFloat[ui][uj]*binWidth[ui];
+
+
+					//Generate the eval points
+					vector<float> evalDist;
+					evalDist.resize(numBins);	
+					for(unsigned int uj=0;uj<numBins;uj++)
+						evalDist[uj] = (float)uj*binWidth[ui];
+
+					//Compute the random Knn density parameter from the histogram
+					//equation is from L. Stephenson PhD Thesis, Eq7.8, pp91, 2009,
+					// Univ. Sydney.
+					//--
+					// gamma(3/2+1)^(1/3)
+					const float GAMMA_FACTOR = 1.09954261650577;
+					const float SQRT_PI = 1.77245385090552;
+					
+
+					float mean=weightedMean(evalDist,histogramFloat[ui]);
+					
+					float densNumerator, densDenom;
+					densNumerator= gsl_sf_gamma( (ui+1) + 1.0/3.0);
+					densNumerator*=GAMMA_FACTOR;
+					densDenom=mean*SQRT_PI*gsl_sf_fact(ui);
+					float density;
+					density=densNumerator/densDenom;
+					density*=density*density; //Cubed
+
+					//--
+					//create the distribution
+					generateKnnTheoreticalDist(evalDist,density, ui+1,nnTheoHist[ui]);
+
+					//scale the dist
+					for(size_t uj=0;uj<nnTheoHist[ui].size();uj++)
+					{
+						nnTheoHist[ui][uj]*= total;
+					}
+
+				}
+
+				PlotStreamData *plotData[nnMax];
+				for(unsigned int ui=0;ui<nnMax;ui++)
+				{
+					plotData[ui] = new PlotStreamData;
+					plotData[ui]->index=ui+nnMax;
+					plotData[ui]->parent=this;
+					plotData[ui]->plotMode=PLOT_MODE_1D;
+					plotData[ui]->xLabel=TRANS("Radial Distance");
+
+//					plotData[ui]->lineStyle=LINE_STYLE_DASH;
+
+					if(normaliseNNHist)
+						plotData[ui]->yLabel=TRANS("Count/Distance");
+					else
+						plotData[ui]->yLabel=TRANS("Count");
+					std::string tmpStr;
+					stream_cast(tmpStr,ui+1);
+					plotData[ui]->dataLabel=getUserString() + string(" Random ") +tmpStr + TRANS("NN Freq.");
+
+					//Red plot.
+					plotData[ui]->r=rgba.r();
+					plotData[ui]->g=rgba.g();
+					plotData[ui]->b=rgba.b();
+					plotData[ui]->xyData.resize(numBins);
+
+					for(unsigned int uj=0;uj<numBins;uj++)
+					{
+						float dist;
+						ASSERT(ui < histogramFloat.size() && uj<histogramFloat[ui].size());
+						dist = (float)uj*binWidth[ui];
+						plotData[ui]->xyData[uj] = std::make_pair(dist,
+								nnTheoHist[ui][uj]);
+					}
+
+					cacheAsNeeded(plotData[ui]);
+					
+					getOut.push_back(plotData[ui]);
+				}
+			}
 			delete[] binWidth;
 			break;
 		}
@@ -2236,7 +2414,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 			//User is after an RDF analysis. Run it.
 			unsigned int errcode;
 			errcode=generateDistHist(p,kdTree,histogram,distMax,numBins,
-					warnBiasCount,&(progress.filterProgress),callback);
+					warnBiasCount,&(progress.filterProgress),*(Filter::wantAbort));
 
 			if(errcode)
 				return ERR_ABORT_FAIL;
@@ -2304,8 +2482,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, bool (*callba
 }
 
 size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress, 
-		bool (*callback)(bool), size_t totalDataSize, 
-		const vector<const FilterStreamData *>  &dataIn, 
+	size_t totalDataSize, const vector<const FilterStreamData *>  &dataIn, 
 		vector<const FilterStreamData * > &getOut)
 {
 	vector<Point3D> p;
@@ -2313,29 +2490,25 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 	progress.step=1;
 	progress.stepName=TRANS("Collate");
 	progress.maxStep=3;
-	if((errCode=buildMonolithicPoints(dataIn,progress,totalDataSize,callback,p)))
+	if((errCode=buildMonolithicPoints(dataIn,progress,totalDataSize,p)))
 		return errCode;
 
 	progress.step=2;
 	progress.stepName=TRANS("Build");
 	progress.filterProgress=0;
-	if(!(*callback)(true))
-		return ERR_ABORT_FAIL;
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 
 	BoundCube treeDomain;
 	treeDomain.setBounds(p);
 
 	//Build the tree (its roughly nlogn timing, but worst case n^2)
 	K3DTree kdTree;
-	kdTree.setCallbackMethod(callback);
-	kdTree.setProgressPointer(&(progress.filterProgress));
-	
 	kdTree.buildByRef(p);
 
 
-	//Update progress & User interface by calling callback
-	if(!(*callback)(true))
-		return ERR_ABORT_FAIL;
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 
 	p.clear(); //We don't need pts any more, as tree *is* a copy.
 
@@ -2346,8 +2519,8 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 	progress.step=3;
 	progress.stepName=TRANS("Analyse");
 	progress.filterProgress=0;
-	if(!(*callback)(true))
-		return ERR_ABORT_FAIL;
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 
 	//List of points for which there was a failure
 	//first entry is the point Id, second is the 
@@ -2403,14 +2576,14 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 
 						res.clear();
 						
-						//Update callback as needed
+						//Update progress as needed
 						if(!curProg--)
 						{
 							#pragma omp critical 
 							{
 							n+=NUM_CALLBACK/(nnMax);
 							progress.filterProgress= (unsigned int)(((float)n/(float)totalDataSize)*100.0f);
-							if(!(*callback)(false))
+							if(*Filter::wantAbort)
 								spin=true;
 							curProg=NUM_CALLBACK/(nnMax);
 							}
@@ -2465,13 +2638,13 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 							numInRad++;
 							//Advance ever so slightly beyond the next ion
 							deadDistSqr = res->sqrDist(r)+std::numeric_limits<float>::epsilon();
-							//Update callback as needed
+							//Update progress as needed
 							if(!curProg--)
 							{
 #pragma omp critical
 								{
 								progress.filterProgress= (unsigned int)((float)n/(float)totalDataSize*100.0f);
-								if(!(*callback)(false))
+								if(*Filter::wantAbort)
 								{
 #ifdef _OPENMP
 									spin=true;
@@ -2595,8 +2768,7 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 }
 
 size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress, 
-		bool (*callback)(bool), size_t totalDataSize, 
-		const vector<const FilterStreamData *>  &dataIn, 
+		size_t totalDataSize, const vector<const FilterStreamData *>  &dataIn, 
 		vector<const FilterStreamData * > &getOut)
 {
 	vector<Point3D> p;
@@ -2604,29 +2776,26 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 	progress.step=1;
 	progress.stepName=TRANS("Collate");
 	progress.maxStep=3;
-	if((errCode=buildMonolithicPoints(dataIn,progress,totalDataSize,callback,p)))
+	if((errCode=buildMonolithicPoints(dataIn,progress,totalDataSize,p)))
 		return errCode;
 
 	progress.step=2;
 	progress.stepName=TRANS("Build");
 	progress.filterProgress=0;
-	if(!(*callback)(true))
-		return ERR_ABORT_FAIL;
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 
 	BoundCube treeDomain;
 	treeDomain.setBounds(p);
 
 	//Build the tree (its roughly nlogn timing, but worst case n^2)
 	K3DTree kdTree;
-	kdTree.setCallbackMethod(callback);
-	kdTree.setProgressPointer(&(progress.filterProgress));
-	
 	kdTree.buildByRef(p);
 
 
-	//Update progress & User interface by calling callback
-	if(!(*callback)(true))
-		return ERR_ABORT_FAIL;
+	//Update progress 
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 	p.clear(); //We don't need pts any more, as tree *is* a copy.
 
 
@@ -2637,8 +2806,8 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 	progress.step=3;
 	progress.stepName=TRANS("Analyse");
 	progress.filterProgress=0;
-	if(!(*callback)(true))
-		return ERR_ABORT_FAIL;
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 
 	//List of points for which there was a failure
 	//first entry is the point Id, second is the 
@@ -2700,14 +2869,14 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 
 						res.clear();
 						
-						//Update callback as needed
+						//Update progress as needed
 						if(!curProg--)
 						{
 							#pragma omp critical 
 							{
 							n+=NUM_CALLBACK/(nnMax);
 							progress.filterProgress= (unsigned int)(((float)n/(float)totalDataSize)*100.0f);
-							if(!(*callback)(false))
+							if(*Filter::wantAbort)
 								spin=true;
 							curProg=NUM_CALLBACK/(nnMax);
 							}
@@ -2762,13 +2931,13 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 							numInRad++;
 							//Advance ever so slightly beyond the next ion
 							deadDistSqr = res->sqrDist(r)+std::numeric_limits<float>::epsilon();
-							//Update callback as needed
+							//Update progress as needed
 							if(!curProg--)
 							{
 #pragma omp critical
 								{
 								progress.filterProgress= (unsigned int)((float)n/(float)totalDataSize*100.0f);
-								if(!(*callback)(false))
+								if(*Filter::wantAbort)
 								{
 #ifdef _OPENMP
 									spin=true;
@@ -2904,7 +3073,7 @@ void SpatialAnalysisFilter::createCylinder(DrawStreamData * &drawData,
 	dC->setRadius(scalarParams[0]);
 	dC->setColour(0.5,0.5,0.5,0.3);
 	dC->setSlices(40);
-	dC->setLength(sqrt(vectorParams[1].sqrMag())*2.0f);
+	dC->setLength(sqrtf(vectorParams[1].sqrMag())*2.0f);
 	dC->setDirection(vectorParams[1]);
 	dC->wantsLight=true;
 	drawData->drawables.push_back(dC);
@@ -2959,8 +3128,7 @@ void SpatialAnalysisFilter::createCylinder(DrawStreamData * &drawData,
 }
 
 size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress, 
-		bool (*callback)(bool), size_t totalDataSize, 
-		const vector<const FilterStreamData *>  &dataIn, 
+		size_t totalDataSize, const vector<const FilterStreamData *>  &dataIn, 
 		vector<const FilterStreamData * > &getOut,const RangeFile *rngF)
 {
 	//Need bins to perform histogram
@@ -2971,15 +3139,12 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 	progress.filterProgress=0;
 	progress.maxStep=4;
 
-	bool wantAbort=false;
-
 	//Ions inside the selected cylinder,
 	// which are to be used as source points for dist. function query
 	vector<IonHit> ionsInside;
 	{
 		//Crop out a cylinder as the source data 
-		CropHelper cropHelp(callback,&progress.filterProgress,
-				totalDataSize, CROP_CYLINDER_INSIDE,
+		CropHelper cropHelp(totalDataSize, CROP_CYLINDER_INSIDE_AXIAL,
 				vectorParams,scalarParams);
 				
 		//Run cropping over the input datastreams
@@ -2999,21 +3164,15 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 					//If we fail, abort, but we should use
 					// the appropriate error code
 					ASSERT(errCode == ERR_CROP_CALLBACK_FAIL);
-					wantAbort=true;
 					break;
 				}
 			}
 
-			if(!(*callback)(false))
-			{
-				wantAbort=true;
-				break;
-			}
 		
 		}
 	}
 
-	if(wantAbort)
+	if(*Filter::wantAbort)
 		return ERR_ABORT_FAIL;
 
 	//Now, the ions outside the targeting volume may be reduced 
@@ -3064,8 +3223,7 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 			vP[1].extend(distMax);
 
 			//Crop out a cylinder as the source data 
-			CropHelper cropHelp(callback,&progress.filterProgress,
-					totalDataSize, CROP_CYLINDER_INSIDE,
+			CropHelper cropHelp(totalDataSize, CROP_CYLINDER_INSIDE_AXIAL,
 					vP,sP);
 
 			vector<IonHit> tmp;
@@ -3145,11 +3303,10 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 	ionsOutside.clear();
 
 	K3DTree tree;
-	tree.setProgressPointer(&progress.filterProgress);
-	tree.setCallbackMethod(callback);
+
 	tree.buildByRef(dest);
-	if(!(*callback)(true))
-		return ERR_ABORT_FAIL;
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 
 	progress.step=4;
 	progress.stepName=TRANS("Compute");
@@ -3171,7 +3328,8 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 			axisNormal.normalise();
 
 			errCode=generate1DAxialNNHist(src,tree,axisNormal, histogram,
-					binWidth,nnMax,numBins,&progress.filterProgress,callback);
+					binWidth,nnMax,numBins,&progress.filterProgress,
+					*Filter::wantAbort);
 
 			break;
 		}
@@ -3181,7 +3339,7 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 			axisNormal.normalise();
 
 			errCode=generate1DAxialDistHist(src,tree,axisNormal, histogram,
-					distMax,numBins,&progress.filterProgress,callback);
+					distMax,numBins,&progress.filterProgress,*Filter::wantAbort);
 
 			histOK = (errCode ==0);
 			break;
@@ -3268,23 +3426,15 @@ size_t SpatialAnalysisFilter::algorithmAxialDf(ProgressData &progress,
 		}
 		
 	}
-	
-	//Create the user interaction device required for the user
-	// to interact with the algorithm parameters 
-	SelectionDevice *s;
-	DrawStreamData *d= new DrawStreamData;
-	d->parent=this;
-	d->cached=0;
 
-	createCylinder(d,s);
-	devices.push_back(s);
-	getOut.push_back(d);
+	//create the selection device for this algorithm
+	createDevice(getOut);	
+
 	return 0;
 }
 
 size_t SpatialAnalysisFilter::algorithmBinomial(ProgressData &progress, 
-		bool (*callback)(bool), size_t totalDataSize, 
-		const vector<const FilterStreamData *>  &dataIn, 
+		size_t totalDataSize, const vector<const FilterStreamData *>  &dataIn, 
 		vector<const FilterStreamData * > &getOut,const RangeFile *rngF)
 {
 	vector<IonHit> ions;
@@ -3295,13 +3445,12 @@ size_t SpatialAnalysisFilter::algorithmBinomial(ProgressData &progress,
 	progress.maxStep=2;
 
 	//Merge the ions form the incoming streams
-	Filter::collateIons(dataIn,ions,progress,callback,totalDataSize);
+	Filter::collateIons(dataIn,ions,progress,totalDataSize);
 
 	//Tell user we are on next step
 	progress.step++;
 	progress.stepName=TRANS("Binomial");
 	progress.filterProgress=0;
-	(*callback)(true);
 
 	size_t errCode;
 
@@ -3599,7 +3748,7 @@ bool densityPairTest()
 
 	//Do the refresh
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh OK");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh OK");
 	delete f;
 	//Kill the input ion stream
 	delete d; 
@@ -3615,7 +3764,7 @@ bool densityPairTest()
 	for(unsigned int ui=0;ui<2;ui++)
 	{
 		TEST( fabs( dOut->data[0].getMassToCharge()  - 1.0/(4.0/3.0*M_PI))
-			< sqrt(std::numeric_limits<float>::epsilon()),"NN density test");
+			< sqrtf(std::numeric_limits<float>::epsilon()),"NN density test");
 	}	
 
 
@@ -3657,12 +3806,14 @@ bool nnHistogramTest()
 	
 	//Do the refresh
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh OK");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh OK");
 	delete f;
 
 	streamIn.clear();
 
-	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut.size() == 2,"stream count");
+	delete streamOut[1]; //wont use this
+	
 	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_PLOT,"plot outputting");
 	const PlotStreamData* dPlot=(const PlotStreamData *)streamOut[0];
 
@@ -3713,7 +3864,7 @@ bool rdfPlotTest()
 	
 	//Do the refresh
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh OK");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh OK");
 	delete f;
 
 
@@ -3800,7 +3951,7 @@ bool axialDistTest()
 	TEST(f->setProperty(KEY_REMOVAL,"0",needUp),"Set prop (disable surface removal)");
 	//Do the refresh
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Checking refresh code");
+	TEST(!f->refresh(streamIn,streamOut,p),"Checking refresh code");
 	delete f;
 	//Kill the input ion stream
 	delete d; 
@@ -3863,7 +4014,7 @@ bool replaceTest()
 	ProgressData p;
 	vector<const FilterStreamData*> streamIn,streamOut;
 	streamIn.push_back(d);
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh OK");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh OK");
 	delete f;
 	delete d;
 	streamIn.clear();

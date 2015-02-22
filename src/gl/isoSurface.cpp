@@ -18,28 +18,21 @@
 
 #include "isoSurface.h"
 
+#include "common/assertion.h"
+#include "common/voxels.h"
+
 #include <map>
+#include <list>
+#include <vector>
+#include <cstdlib>
+#include <iostream>
 
-#ifdef DEBUG
-template<class T1, class T2>
-bool mapUnique(const std::map<T1,T2> &m) 
-{
-	vector<T2> vec;
-	vec.reserve(m.size());
 
-	for(typename std::map<T1,T2>::const_iterator it = m.begin(); it!=m.end(); ++it)
-	{
-		if(std::find(vec.begin(),vec.end(),it->second) != vec.end())
-			return false;
-
-		vec.push_back(it->second);
-
-	}
-
-	return true;
-}
-#endif
-
+using std::list;
+using std::map;
+using std::vector;
+using std::pair;
+using std::make_pair;
 
 //input vector "vec" must be sorted and unique
 template<class T>
@@ -65,6 +58,10 @@ void removeElements( const std::vector<size_t> &elems,std::vector<T> &vec)
 	vec.resize(offset+1);
 }
 
+struct TriangleWithIndexedVertices
+{
+	size_t p[3];
+};
 
 
 
@@ -87,7 +84,7 @@ void TriangleWithVertexNorm::safeComputeACWNormal(Point3D &n) const
 	b = p[0]-p[2];
 
 	n=a.crossProd(b);
-	if(n.sqrMag() < sqrt(std::numeric_limits<float>::epsilon()) )
+	if(n.sqrMag() < sqrtf(std::numeric_limits<float>::epsilon()) )
 		n=Point3D(0,0,1);	
 	else
 		n.normalise();
@@ -471,7 +468,7 @@ int edgeRemap[12]  ={ 0,6,1,4,
 
 
 //vMarchingCubes iterates over the entire dataset, calling vMarchCube on each cube
-void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVertexNorm> &tVec)
+void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVertexNorm> &tVec , bool cleanup)
 {
 	size_t nx,ny,nz;
 	v.getSize(nx,ny,nz);
@@ -485,16 +482,10 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 	Point3D gridSpacing;
 	gridSpacing=v.getPitch();
 
-#ifdef DEBUG
-	BoundCube boundC;
-	boundC.setBounds(v.getMinBounds(),v.getMaxBounds());
-#endif
-
 	vector<TriangleWithIndexedVertices> indexedTriVec;
 
-	//Loop over the vertexs, with the mesh such that the 
-	//nominally cube centres are now on a grid that is dual
-	//to the original grid (excluding the external boundary of course)
+	//Loop over the mesh, to find which edges connect inside and
+	//outside the isoValue threshold, and thus need to be meshed.
 #pragma omp parallel for
         for(size_t iX = 0; iX < nx-1; iX++)
 	{
@@ -504,10 +495,6 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 		for(size_t iZ = 0; iZ < nz-1; iZ++)
 		{
 			iEdgeFlags=iFlagIndex=0;
-			Point3D position;
-			//Lower left corner of cell for dual grid
-			position=v.getPoint(iX,iY,iZ) + gridSpacing*0.5;
-
 			//Find which vertices are inside of the surface and which are outside
 			for(int iVertexTest = 0; iVertexTest < 8; iVertexTest++)
 			{
@@ -536,7 +523,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 				if(iEdgeFlags & (1<<iEdge))
 				{
 					//Store a  reference to the vertex position
-					asEdgeVertex[iEdge] = v.getEdgeIndex(iX,iY,iZ,edgeRemap[iEdge]);
+					asEdgeVertex[iEdge] = v.getEdgeUniqueIndex(iX,iY,iZ,edgeRemap[iEdge]);
 				}
 			}
 
@@ -579,8 +566,6 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 	// which share a particular edge (or rather, position along that edge)
 	// First element is the edge index. Second element is the list of triangles
 	// who share this edge.
-	//
-	// We will need this when we do the vertex normals.
 	std::map<size_t,list<size_t> > edgeTriMap;
 #pragma omp parallel for 
 	for(size_t ui=0;ui<indexedTriVec.size(); ui++)	
@@ -588,7 +573,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 		for(size_t uj=0;uj<3;uj++)
 		{
 			map<size_t,list<size_t> >::iterator it;
-			it = edgeTriMap.find((indexedTriVec[ui].p[uj] >>2 ) << 2);
+			it = edgeTriMap.find(indexedTriVec[ui].p[uj]); 
 			if(it == edgeTriMap.end())
 			{
 
@@ -596,7 +581,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 				seedList.push_back(ui);
 #pragma omp critical
 				edgeTriMap.insert(
-					make_pair((indexedTriVec[ui].p[uj] >>2 ) << 2,seedList));
+					make_pair(indexedTriVec[ui].p[uj],seedList));
 						
 			}
 			else
@@ -609,26 +594,27 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 
 
 	//Generate the position points for each edge
+
+	//First element is the edge (and thus vertex) ID. Second is the point
+	// that forms our vertex. IDs may not be contigous
 	map<size_t,Point3D> pointMap;
 	for(map<size_t,list<size_t> >::iterator it=edgeTriMap.begin();
 		it!=edgeTriMap.end(); ++it)
 	{
 		Point3D low,high,voxelFrameIntersection; 
 		float lowF,highF;
-
-		if(pointMap.find((it->first>>2)<<2) != pointMap.end())
-			continue;
-
 		//Low/high sides of edge's scalar values
 		v.getEdgeEndApproxVals(it->first,lowF,highF);
 
 
 		//Get the edge's low and high end node positions
-		v.getEdgeEnds((it->first>>2)<<2,low,high);
+		v.getEdgeEnds(it->first,low,high);
+
+
 		
 		//OK, now we have that, lets use the values to "lever" the 
 		//solution point note node locations for isosurface 
-		if(fabs(highF-lowF) < sqrt(std::numeric_limits<float>::epsilon()))
+		if(fabs(highF-lowF) < sqrtf(std::numeric_limits<float>::epsilon()))
 		{
 			//Prevent divide by zero
 			voxelFrameIntersection=(low+high)*0.5;
@@ -642,13 +628,13 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 		}
 
 			
-		pointMap.insert(make_pair((it->first>>2)<<2,voxelFrameIntersection));
+		pointMap.insert(make_pair(it->first,voxelFrameIntersection));
+
 	}	
 
-
-	tVec.resize(indexedTriVec.size());
+	//Assign verticies
 	vector<size_t> popTris;
-	//Set all triangle vertices
+	tVec.resize(indexedTriVec.size());
 	#pragma omp parallel for
 	for(size_t ui=0;ui<tVec.size();ui++)
 	{
@@ -656,7 +642,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 		//Do a lookup of the edge point locations
 		// by mapping the edge indices to the edge points 
 		for(int uj=0;uj<3;uj++)
-			tVec[ui].p[uj] = pointMap.at((indexedTriVec[ui].p[uj]>>2)<<2);
+			tVec[ui].p[uj] = pointMap.at(indexedTriVec[ui].p[uj]);
 
 		if(tVec[ui].isDegenerate())
 		{
@@ -664,77 +650,113 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 			popTris.push_back(ui);
 		}
 	}
+
+	map<size_t,Point3D> normalMap;
+	for(map<size_t,Point3D>::iterator it=pointMap.begin();it!=pointMap.end();it++)
+	{
+		size_t edgeId;
+		edgeId = it->first;
+
+		Point3D combinedNormal;	
+		combinedNormal=Point3D(0,0,0);
+		for(list<size_t>::iterator itJ=edgeTriMap[edgeId].begin();itJ!=edgeTriMap[edgeId].end();itJ++)
+		{
+			
+			Point3D tmpNorm;
+			tVec[*itJ].safeComputeACWNormal(tmpNorm);
+
+			float weight;
+			weight=tVec[*itJ].computeArea();
+			combinedNormal+=tmpNorm*weight;
+		}
+
+		combinedNormal.normalise();
+		normalMap[edgeId]=combinedNormal;
+	}
+
+	//Assign normals	
+
+#ifdef DEBUG
+	cerr << "There are :" << tVec.size() << " triangles" << endl;
+	cerr << "There are :" << normalMap.size() << " normals" << endl;
+#endif
+	for(size_t ui=0;ui<tVec.size();ui++)
+	{
 	
+		//Do a lookup of the edge point locations
+		// by mapping the edge indices to the edge points 
+		for(int uj=0;uj<3;uj++)
+			tVec[ui].normal[uj] = normalMap.at(indexedTriVec[ui].p[uj]);
+	}
 
 	//Remove any degenerate triangles from both indexed and real maps
-	removeElements(popTris,tVec);
-	removeElements(popTris,indexedTriVec);
-
-	if(tVec.empty())
-		return;
-	
-	//set all triangle edge normals by inverse face area weighting.
-	// The idea is that big triangles don't affect the normal at the point
-	// as they are quite delocalised. Little triangles affect it more.
-	// This is entirely empirical
-	// ----
-	
-	vector<Point3D> origNormal;
-	origNormal.resize(indexedTriVec.size());
-	#pragma omp parallel for
-	for(size_t ui=0;ui<indexedTriVec.size();ui++)
-		tVec[ui].safeComputeACWNormal(origNormal[ui]);
-
-
-	//Loop over all vertices again, then assign a weighted
-	//normal in place of the original normal. Lets cheat and
-	//re-use "pointmap".
-	// --
-	for(map<size_t,Point3D>::iterator it=pointMap.begin(); 
-					it!=pointMap.end();++it)
-		it->second=Point3D(0,0,0);
-
-	//Construct the shared normals
-	float smallNum=sqrt(std::numeric_limits<float>::epsilon());
-	for(size_t ui=0;ui<indexedTriVec.size();ui++)
+	if(cleanup)
 	{
-		//For each vertex in our current triangle
-		//update the weight mapping
-		float weight;
-		weight=tVec[ui].computeArea();
-
-		if(weight > smallNum)
-		{
-			for(int uj=0;uj<3;uj++)
-				pointMap.at((indexedTriVec[ui].p[uj]>>2) <<2)+=origNormal[ui]*weight;
-		}
+		removeElements(popTris,tVec);
+		removeElements(popTris,indexedTriVec);
 	}
-
-
-	//re-normalise normals
-	for(map<size_t,Point3D>::iterator it=pointMap.begin(); 
-					it!=pointMap.end();++it)
-	{
-		if(it->second.sqrMag() > smallNum)
-			it->second.normalise();
-		else
-			it->second=Point3D(0,0,1);
-	}
-
-	//assign these normals to the vertices of each triangle
-	#pragma omp parallel for
-	for(size_t ui=0;ui<indexedTriVec.size();ui++)
-	{
-		for(unsigned int uj=0;uj<3;uj++)
-			tVec[ui].normal[uj] = pointMap.at((indexedTriVec[ui].p[uj]>>2)<<2);
-	}	
-	// --
-	
-	// ----
-
-
 	//TODO: We could use something like triStripper 
 	// to optimise this, rather than just build the raw triangles
 	// http://users.telenet.be/tfautre/softdev/tristripper/
-
 }
+
+
+#ifdef DEBUG
+#include "common/mesh.h"
+bool testIsoSurface()
+{
+	Voxels<float> data;
+
+	data.resize(3,3,3);
+	data.fill(0);
+	data.setData(1,1,1,1.0);
+
+
+	vector<TriangleWithVertexNorm> tVec;
+	marchingCubes(data,0.5,tVec);
+
+	TEST(!tVec.empty(),"isosurface exists");
+
+
+	//Should be 2 rect. pyramids back to back, with no bases
+	TEST(tVec.size() == 8, "isosurf. triangle count"); 
+
+	//Ensure that all the points are contained within the original data bounding box
+
+	Point3D pMin,pMax;
+	data.getBounds(pMin,pMax);
+	BoundCube b;
+	b.setBounds(pMin,pMax);
+
+	for(size_t ui=0;ui<tVec.size();ui++)
+	{
+		for(size_t uj=0;uj<3;uj++)
+		{
+			TEST(b.containsPt(tVec[ui].p[uj]),"Mesh contained in voxel bounds");
+		}
+	}
+
+	//Convert the triangle soup into a mesh
+	Mesh debugMesh;
+	TRIANGLE t;
+	for(size_t ui=0;ui<tVec.size();ui++)
+	{
+
+		for(size_t uj=0;uj<3;uj++)
+		{
+			t.p[uj] = debugMesh.nodes.size();
+			debugMesh.nodes.push_back(tVec[ui].p[uj]);
+		}
+		
+		debugMesh.triangles.push_back(t);	
+	}	
+	ASSERT(debugMesh.isSane())
+
+	debugMesh.saveGmshMesh("debug-isosurf.msh");
+
+	//Convert all duplicate vertices into single blob 
+	debugMesh.mergeDuplicateVertices(0.0001);
+	ASSERT(debugMesh.isSane())
+	return true;
+}
+#endif

@@ -25,16 +25,39 @@
 class SpectrumPlotFilter : public Filter
 {
 	private:
+		//minimum and maximum plot bounds
 		float minPlot,maxPlot;
+		//step size to use for histogram binning
 		float binWidth;
+		//automatically determine plot limits?
 		bool autoExtrema;
+		//plots should be sown in log mode?
 		bool logarithmic;
+	
+		//perform fitting	
+		unsigned int fitMode;
+		// when fitting, only show the corrected spectrum, rather than fit itself 
+		bool showOnlyCorrected;
+
+		//start/end of mass values to use when fitting mass spectrum
+		float massBackStart, massBackEnd;
 
 
 		//Vector of spectra. Each spectra is comprised of a sorted Y data
 		std::vector< std::vector<float > > spectraCache;
 		ColourRGBAf rgba;
 		unsigned int plotStyle;
+
+		//!Normalisation mode for scaling plot intensity
+		unsigned int normaliseMode;
+
+		//!Lower and upper bound for normalisation of spectrum.
+		// used to "crop" spectra when searching for normalisation
+		std::pair<float,float> normaliseBounds;
+
+
+		void normalise(std::vector<std::pair<float,float> > &spectrumData) const;
+
 	public:
 		SpectrumPlotFilter();
 		//!Duplicate filter contents, excluding cache.
@@ -48,7 +71,7 @@ class SpectrumPlotFilter : public Filter
 		//!update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 			std::vector<const FilterStreamData *> &getOut, 
-			ProgressData &progress, bool (*callback)(bool));
+			ProgressData &progress);
 		
 		virtual std::string typeString() const { return std::string(TRANS("Spectrum"));};
 
@@ -59,7 +82,7 @@ class SpectrumPlotFilter : public Filter
 		bool setProperty(unsigned int key, 
 				const std::string &value, bool &needUpdate);
 		//!Get the human readable error string associated with a particular error code during refresh(...)
-		std::string getErrString(unsigned int code) const;
+		std::string getSpecificErrString(unsigned int code) const;
 
 		//!Set the user string.
 		void setUserString(const std::string &s);
@@ -82,6 +105,9 @@ class SpectrumPlotFilter : public Filter
 
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b)  ;
+
+		//!Does the filer need unranged data to operate?
+		bool needsUnrangedData() const;
 
 #ifdef DEBUG
 		bool runUnitTests() ;

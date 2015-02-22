@@ -20,6 +20,7 @@
 #include "ionhit.h"
 
 #include "../../common/stringFuncs.h"
+#include "../../common/basics.h"
 #include "../../common/translation.h"
 
 
@@ -109,7 +110,7 @@ const char *LAWATAP_ATO_ERR_STRINGS[] = { "",
 //---------
 
 unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumcols, const unsigned int index[], vector<IonHit> &posIons,const char *posFile, size_t limitCount,
-	       	unsigned int &progress, bool (*callback)(bool),bool strongSampling)
+	       	unsigned int &progress, ATOMIC_BOOL &wantAbort,bool strongSampling)
 {
 
 
@@ -178,7 +179,7 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 		delete[] buffer;
 		delete[] buffer2;
 		//Try opening it using the normal functions
-		return GenericLoadFloatFile(inputnumcols, outputnumcols, index, posIons,posFile,progress, callback);
+		return GenericLoadFloatFile(inputnumcols, outputnumcols, index, posIons,posFile,progress, wantAbort);
 	}
 
 	//Use a sampling method to load the pos file
@@ -191,7 +192,7 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 		rng.initTimer();
 		unsigned int dummy;
 		randomDigitSelection(ionsToLoad,maxIons,rng,
-				limitCount,dummy,callback,strongSampling);
+				limitCount,dummy,strongSampling);
 	}
 	catch(std::bad_alloc)
 	{
@@ -257,7 +258,7 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 
 			progress= (unsigned int)((float)(CFile.tellg())/((float)fileSize)*100.0f);
 			curProg=PROGRESS_REDUCE;
-			if(!(*callback)(false))
+			if(wantAbort)
 			{
 				delete[] buffer;
 				delete[] buffer2;
@@ -276,7 +277,7 @@ unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumc
 
 unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int outputnumcols, 
 		const unsigned int index[], vector<IonHit> &posIons,const char *posFile, 
-			unsigned int &progress, bool (*callback)(bool))
+			unsigned int &progress, ATOMIC_BOOL &wantAbort)
 {
 	ASSERT(outputnumcols==4); //Due to ionHit.setHit
 	//buffersize must be a power of two and at least sizeof(float)*outputnumCols
@@ -409,7 +410,7 @@ unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int output
 			{
 				progress= (unsigned int)((float)(CFile.tellg())/((float)fileSize)*100.0f);
 				curProg=PROGRESS_REDUCE;
-				if(!(*callback)(false))
+				if(wantAbort)
 				{
 					delete[] buffer;
 					delete[] buffer2;
@@ -436,7 +437,7 @@ unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int output
 //TODO: Add progress
 unsigned int limitLoadTextFile(unsigned int maxCols, 
 			vector<vector<float> > &data,const char *textFile, const char *delim, const size_t limitCount,
-				unsigned int &progress, bool (*callback)(bool),bool strongRandom)
+				unsigned int &progress, ATOMIC_BOOL &wantAbort,bool strongRandom)
 {
 	ASSERT(maxCols);
 	ASSERT(textFile);
@@ -596,7 +597,7 @@ unsigned int limitLoadTextFile(unsigned int maxCols,
 		rng.initTimer();
 		unsigned int dummy;
 		randomDigitSelection(dataToLoad,newLinePositions.size(),rng,
-				limitCount,dummy,callback,strongRandom);
+				limitCount,dummy,strongRandom);
 	}
 	catch(std::bad_alloc)
 	{
@@ -604,11 +605,23 @@ unsigned int limitLoadTextFile(unsigned int maxCols,
 		return TEXT_ERR_ALLOC_FAIL;
 	}
 
-	(*callback)(true);
-
+	//check for abort before/after sort, as this is a long process that we cannot
+	// safely abort
+	if(wantAbort)
+	{
+		delete[] buffer;
+		return POS_ABORT_FAIL;
+	}
 	//Sort the data such that we are going to
 	//always jump forwards in the file; better disk access and whatnot.
 	std::sort(dataToLoad.begin(),dataToLoad.end());
+	
+	//check again for abort
+	if(wantAbort)
+	{
+		delete[] buffer;
+		return POS_ABORT_FAIL;
+	}
 
 	//OK, so we have  a list of newlines
 	//that we can use as entry points for random seek.
@@ -677,7 +690,7 @@ unsigned int limitLoadTextFile(unsigned int maxCols,
 
 
 
-unsigned int LoadATOFile(const char *fileName, vector<IonHit> &ions, unsigned int &progress, bool (*callback)(bool),unsigned int forceEndian)
+unsigned int LoadATOFile(const char *fileName, vector<IonHit> &ions, unsigned int &progress, ATOMIC_BOOL &wantAbort,unsigned int forceEndian)
 {
 
 
@@ -784,7 +797,7 @@ unsigned int LoadATOFile(const char *fileName, vector<IonHit> &ions, unsigned in
 		RandNumGen rng;
 		rng.initTimer();
 		randomDigitSelection(randomNumbers,pointCount,rng, 
-					numToCheck,dummy,dummyCallback);
+					numToCheck,dummy,wantAbort);
 
 		//Make the travese in ascending order
 		std::sort(randomNumbers.begin(),randomNumbers.end());
@@ -1004,19 +1017,21 @@ bool testATOFormat()
 	unsigned int dummyProgress;
 
 
+	ATOMIC_BOOL wantAbort;
+	wantAbort=false;
 	vector<IonHit> ions;
 	//Load using auto-detection of endinanness
-	TEST(!LoadATOFile(filename.c_str(),ions,dummyProgress,dummyCallback),"ATO load test  (auto endianness)");
+	TEST(!LoadATOFile(filename.c_str(),ions,dummyProgress,wantAbort),"ATO load test  (auto endianness)");
 
 	TEST(ions.size() == 100,"ion size check");
 
-	TEST((ions[0].getPos().sqrDist(Point3D(1,1,0)) < sqrt(std::numeric_limits<float>::epsilon())),"Checking read/write OK");
+	TEST((ions[0].getPos().sqrDist(Point3D(1,1,0)) < sqrtf(std::numeric_limits<float>::epsilon())),"Checking read/write OK");
 	//Load using auto-detection of endinanness
 
 	//Load, forcing assuming cont4ents are little endianness as requried
-	TEST(!LoadATOFile(filename.c_str(),ions,dummyProgress,dummyCallback,1),"ATO load test (forced endianness)");
+	TEST(!LoadATOFile(filename.c_str(),ions,dummyProgress,wantAbort,1),"ATO load test (forced endianness)");
 	TEST(ions.size() == 100,"ion size check");
-	TEST((ions[0].getPos().sqrDist(Point3D(1,1,0)) < sqrt(std::numeric_limits<float>::epsilon())),"checking read/write OK");
+	TEST((ions[0].getPos().sqrDist(Point3D(1,1,0)) < sqrtf(std::numeric_limits<float>::epsilon())),"checking read/write OK");
 
 
 	

@@ -26,8 +26,12 @@
 
 #include <wx/clipbrd.h>
 
+#include <stack>
+
+
 using std::ofstream;
 using std::vector;
+using std::stack;
 
 const float FONT_HEADING_SCALEFACTOR=1.25f;
 
@@ -469,9 +473,7 @@ void TextTreeCtrl::OnTreePaint(wxPaintEvent &event)
 	}
 
 	//Draw each text in turn, advancing by spacing
-
-//FIXME dc->DrawText missing under windows?
-#ifndef __WIN32__
+	
 	// start far enough back so that 
 	float startY= 0.5*(h - blockHeight);
 
@@ -488,7 +490,6 @@ void TextTreeCtrl::OnTreePaint(wxPaintEvent &event)
 	}
 
 	delete dc;
-#endif
 }
 
 std::string TTFFinder::findFont(const char *fontFile)

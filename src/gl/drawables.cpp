@@ -24,7 +24,9 @@
 
 #include "common/colourmap.h"
 
+#include "common/voxels.h"
 
+#include "glDebug.h"
 
 
 const float DEPTH_SORT_REORDER_EPSILON = 1e-2;
@@ -56,7 +58,7 @@ void drawCone(const Point3D &axisVec, const Point3D &origin,
 {
 	Point3D axis;
 	axis =axisVec;
-	if(axis.sqrMag() < sqrt(std::numeric_limits<float>::epsilon()))
+	if(axis.sqrMag() < sqrtf(std::numeric_limits<float>::epsilon()))
 		axis=Point3D(0,0,1);
 	else
 		axis.normalise();
@@ -72,7 +74,7 @@ void drawCone(const Point3D &axisVec, const Point3D &origin,
 	
 	Point3D *ptArray = new Point3D[numSegments];
 
-	const float ROT_TOL=sqrt(std::numeric_limits<float>::epsilon()) ;
+	const float ROT_TOL=sqrtf(std::numeric_limits<float>::epsilon()) ;
 
 	//Only rotate if the angle is nonzero (note 2PI wraparound is possible from acos)
 	if((tiltAngle > ROT_TOL	|| fabs(tiltAngle - 2*M_PI) > ROT_TOL) && 
@@ -233,7 +235,7 @@ DrawableObj::~DrawableObj()
 }
 	
 	
-float DrawableObj::getHighContrastValue() const
+float DrawableObj::getHighContrastValue() 
 {
 	//Perform luminence check on background to try to create most appropriate
 	// colour
@@ -401,7 +403,7 @@ void DrawVector::draw() const
 	{
 		//Back off the distance a little, because otherwise the line can poke out
 		// the sides of the cone.
-		float backoffFactor = std::max(radius/sqrt(vector.sqrMag()),0.0f);
+		float backoffFactor = std::max(radius/sqrtf(vector.sqrMag()),0.0f);
 		Point3D tmpVec=vector*(1.0f-backoffFactor) + origin;
 		
 		if(doubleEnded)
@@ -429,7 +431,7 @@ void DrawVector::draw() const
 	glPopAttrib();
 
 	//If we only wanted the line, then we are done here.
-	if(arrowSize < sqrt(std::numeric_limits<float>::epsilon()) || !drawArrow)
+	if(arrowSize < sqrtf(std::numeric_limits<float>::epsilon()) || !drawArrow)
 		return ;
 
 	//Now compute & draw the cone tip
@@ -821,8 +823,8 @@ void DrawCylinder::draw() const
 
 	float length=sqrtf(direction.sqrMag());
 	float angle = dir.angle(dirNormal);
-	if(angle < M_PI - sqrt(std::numeric_limits<float>::epsilon()) &&
-		angle > sqrt(std::numeric_limits<float>::epsilon()))
+	if(angle < M_PI - sqrtf(std::numeric_limits<float>::epsilon()) &&
+		angle > sqrtf(std::numeric_limits<float>::epsilon()))
 	{
 		//we need to rotate
 		dir = dir.crossProd(dirNormal);
@@ -1757,6 +1759,207 @@ bool DrawTexturedQuadOverlay::setTexture(const char *textureFile)
 	return textureOK;
 }
 
+
+DrawProgressCircleOverlay::DrawProgressCircleOverlay()
+{
+	stepProgress=0;
+	step=0;
+	maxStep=0;
+
+}
+
+DrawProgressCircleOverlay::~DrawProgressCircleOverlay()
+{
+}
+
+void DrawProgressCircleOverlay::reset()
+{
+	stepProgress=0;
+	maxStep=0;
+	totalFilters=0;
+	curFilter=0;	
+}
+
+void DrawProgressCircleOverlay::draw( )const
+{
+	if(!maxStep)
+		return;
+
+	ASSERT(curFilter <=totalFilters);
+	//TODO: Is this redundant? might be already handled
+	// by scene?
+	glMatrixMode(GL_PROJECTION);	
+	glPushMatrix();
+	glLoadIdentity();
+	gluOrtho2D(0, winX, winY, 0);
+	
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+
+	glDisable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+	//size of gap to fit, in degrees
+	const float FILTER_SPACING_ANGLE= 20/totalFilters;
+	//Angular step when drawing wheel
+	const float DEG_STEP= 2;
+	
+	//fraction of radius for inner section
+	const float IN_RADIUS_FRACTION=0.85;
+	//compute circle radius
+	float radiusOut,radiusIn;
+	radiusOut = std::min(height,width)/2.0f;
+	radiusIn= radiusOut*IN_RADIUS_FRACTION; 
+
+
+
+	//Allows for gap between each step, and one at start and end
+	float thetaPerFilter = (360.0f - FILTER_SPACING_ANGLE*(totalFilters))/totalFilters;
+		
+	//Draw the complete filters 
+	float curTheta=FILTER_SPACING_ANGLE/2.0f;	
+	for(size_t ui=1;ui<curFilter;ui++)
+	{
+		drawSection(DEG_STEP,
+			IN_RADIUS_FRACTION*radiusIn, 
+			radiusOut,curTheta, 
+			curTheta+thetaPerFilter,true);
+		curTheta+=thetaPerFilter+FILTER_SPACING_ANGLE;
+	}
+
+
+	//Draw the completed Steps
+	float thetaPerStep =  thetaPerFilter/maxStep;
+	for(size_t ui=1;ui<step;ui++)
+	{
+		drawSection(DEG_STEP,
+			IN_RADIUS_FRACTION*radiusIn, 
+			radiusOut,curTheta, 
+			curTheta+thetaPerStep,true);
+		curTheta+=thetaPerStep;
+
+		if(ui < step-1)
+		{
+			//Draw a line to mark the step
+			glColor4f(1.0f,0.0f,0.0f,1.0f);
+			glBegin(GL_LINES);
+				glVertex3f(radiusIn*sin(curTheta),radiusIn*cos(curTheta),0);
+				glVertex3f(radiusOut*sin(curTheta),radiusOut*cos(curTheta),0);
+			glEnd();
+		}
+	}
+	//Draw the current step
+	if(stepProgress == 100)
+	{
+		drawSection(DEG_STEP,
+			IN_RADIUS_FRACTION*radiusIn, 
+			radiusOut,curTheta, 
+			curTheta+thetaPerStep,true);
+	}
+	else if (!stepProgress)
+	{
+		drawSection(DEG_STEP,
+			IN_RADIUS_FRACTION*radiusIn, 
+			radiusOut,curTheta, 
+			curTheta+thetaPerStep,false);
+	}
+	else
+	{
+		//draw two segments, one with the current progress value in the complete style
+		float interpFrac = (float)stepProgress/100.0f;
+		drawSection(DEG_STEP,
+			IN_RADIUS_FRACTION*radiusIn, 
+			radiusOut,curTheta, 
+			curTheta+thetaPerStep*interpFrac,true);
+		// and one with the incomplete style
+		drawSection(DEG_STEP,
+			IN_RADIUS_FRACTION*radiusIn, 
+			radiusOut,curTheta+thetaPerStep*interpFrac, 
+			curTheta+thetaPerStep,false);
+
+	}
+	curTheta+=thetaPerStep;
+	//Draw the remaining incomplete steps
+	for(size_t ui=step+1; ui<=maxStep;ui++)
+	{
+		drawSection(DEG_STEP,
+			IN_RADIUS_FRACTION*radiusIn, 
+			radiusOut,curTheta, 
+			curTheta+thetaPerStep,false);
+		curTheta+=thetaPerStep;
+	}
+
+	curTheta+=FILTER_SPACING_ANGLE;
+
+	//Draw the incomplete filters
+	for(size_t ui=curFilter+1; ui<=totalFilters;ui++)
+	{
+		drawSection(DEG_STEP,
+			IN_RADIUS_FRACTION*radiusIn, 
+			radiusOut,curTheta, 
+			curTheta+thetaPerFilter,false);
+		curTheta+=thetaPerFilter+FILTER_SPACING_ANGLE;
+	}
+	
+	glPopMatrix(); //Pop modelview matrix
+
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
+
+	glMatrixMode(GL_MODELVIEW);
+
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+}
+
+void DrawProgressCircleOverlay::drawSection(unsigned int degreeStep, 
+	float rIn, float rOut,float startTheta, float stopTheta, bool complete) const
+{
+	//TODO: all calulations that call this should use radiians	
+	float startThetaRad = startTheta*M_PI/180.0f;
+	float endThetaRad = stopTheta*M_PI/180.0f;
+	float degStepRad = degreeStep*M_PI/180.0f;
+
+	unsigned int nSegments = (endThetaRad-startThetaRad)/degStepRad;
+
+	if(!nSegments)
+		return;
+
+	float alphaBase,dt;
+	getAnimationStat(alphaBase,dt);	
+	if(alphaBase == 0.0f)
+		return;
+
+
+
+
+	const float ALPHA_COMPLETE=0.5*alphaBase;
+	const float ALPHA_INCOMPLETE=0.15*alphaBase;
+	if(complete)	
+		glColor4f(1.0f,1.0f,1.0f,ALPHA_COMPLETE);
+	else
+		glColor4f(1.0f,1.0f,1.0f,ALPHA_INCOMPLETE);
+
+	//Draw arc
+	glBegin(GL_TRIANGLE_STRIP);
+	float thetaOne=startThetaRad;
+	float thetaTwo=startThetaRad+degStepRad;
+	glVertex2f(position[0] + rIn*cos(thetaOne),position[1] + rIn*sin(thetaOne));
+	for(size_t ui=0;ui<nSegments;ui++)
+	{
+		thetaOne=startThetaRad + ui*degStepRad;;
+		thetaTwo=startThetaRad + (ui+1)*degStepRad;
+		
+		glVertex2f(position[0] + rOut*cos(thetaOne),position[1] + rOut*sin(thetaOne));
+		glVertex2f(position[0] + rIn*cos(thetaTwo),position[1] + rIn*sin(thetaTwo));
+
+
+	}
+	glVertex2f(position[0] + rOut*cos(thetaTwo),position[1] + rOut*sin(thetaTwo));
+	glEnd();
+}
+
+
 DrawAnimatedOverlay::DrawAnimatedOverlay()
 {
 	fadeIn=0.0f;
@@ -1783,30 +1986,47 @@ bool DrawAnimatedOverlay::setTexture(const vector<string> &texFiles,
 	return textureOK;
 }
 
+void DrawAnimatedOverlay::getAnimationStat(float &alpha , float &animDeltaTime) const
+{
+		
+	timeval t;
+	gettimeofday(&t,NULL);
+	animDeltaTime=(float)(t.tv_sec - animStartTime.tv_sec) +
+		(t.tv_usec-animStartTime.tv_usec)/1.0e6;
+
+
+	//Skip if we wish to show later
+	if(animDeltaTime < delayBeforeShow)
+	{
+		alpha= 0;
+		return;
+	}
+
+	animDeltaTime-=delayBeforeShow;
+
+	if(fadeIn > 0.0f && (fadeIn > animDeltaTime) ) 
+	{
+		alpha= (animDeltaTime )/(fadeIn) ;
+	}
+	else
+		alpha= 1.0f;
+	
+}
+
 void DrawAnimatedOverlay::draw() const
 {
 	if(!textureOK)
 		return;
 
-	float texCoordZ;
-	float alphaVal=1.0f;
-	{
-	timeval t;
-	gettimeofday(&t,NULL);
-	float animDeltaTime=(float)(t.tv_sec - animStartTime.tv_sec) +
-		(t.tv_usec-animStartTime.tv_usec)/1.0e6;
+	float alphaVal, animDeltaTime;
+	getAnimationStat(alphaVal,animDeltaTime);
 
-	//Skip if we wish to show later
-	if(animDeltaTime < delayBeforeShow)
+	if(alphaVal== 0.0f)
 		return;
-
-
-	if(fadeIn > 0.0f && (delayBeforeShow + fadeIn > animDeltaTime) ) 
-		alphaVal= (animDeltaTime - delayBeforeShow )/(fadeIn) ;
-
+	float texCoordZ;
 	texCoordZ=fmod(animDeltaTime,repeatInterval);
 	texCoordZ/=repeatInterval;
-	}
+
 	ASSERT(glIsTexture(textureId));
 	
 	glMatrixMode(GL_PROJECTION);	
@@ -1820,8 +2040,11 @@ void DrawAnimatedOverlay::draw() const
 
 	glEnable(GL_TEXTURE_3D);
 	glBindTexture(GL_TEXTURE_3D,textureId);
-	glTexEnvf (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MULT); 
-	
+
+	//TODO: Find correct blending mode. Default is good, but may change...	
+//	glTexEnvf (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_BLEND); 
+//	glBlendFunc(GL_ZERO, GL_ONE_MINUS_SRC_ALPHA);
+
 	// Draw overlay quad 
 	ASSERT(width == height); // width/height should be the same
 	glColor4f(1.0f,1.0f,1.0f,alphaVal);
@@ -2170,7 +2393,7 @@ void DrawField3D::setColourMinMax()
 			
 void DrawField3D::draw() const
 {
-	if(alphaVal < sqrt(std::numeric_limits<float>::epsilon()))
+	if(alphaVal < sqrtf(std::numeric_limits<float>::epsilon()))
 		return;
 
 	ASSERT(field);
@@ -2373,7 +2596,7 @@ void DrawIsoSurface::getBoundingBox(BoundCube &b) const
 
 void DrawIsoSurface::draw() const
 {
-	if(a< sqrt(std::numeric_limits<float>::epsilon()))
+	if(a< sqrtf(std::numeric_limits<float>::epsilon()))
 		return;
 
 	if(!cacheOK)

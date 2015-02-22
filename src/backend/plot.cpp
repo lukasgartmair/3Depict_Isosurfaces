@@ -42,6 +42,7 @@ const char *plotTypeStrings[]= {
 
 using std::string;
 using std::pair;
+using std::make_pair;
 using std::vector;
 
 //Axis min/max bounding box is disallowed to be exactly zero on any given axis
@@ -56,7 +57,7 @@ bool mglFloatTooClose(float a, float b)
 {
 	//For small numbers an absolute delta can catch
 	// too close values
-	if(fabs(a-b) < sqrt(std::numeric_limits<float>::epsilon()))
+	if(fabs(a-b) < sqrtf(std::numeric_limits<float>::epsilon()))
 		return true;
 
 	const int FLOAT_ACC_MASK=0xffff0000;
@@ -75,7 +76,7 @@ bool mglFloatTooClose(float a, float b)
 	u.i&=FLOAT_ACC_MASK;
 	b=u.f;
 
-	if(fabs(a-b) < sqrt(std::numeric_limits<float>::epsilon()))
+	if(fabs(a-b) < sqrtf(std::numeric_limits<float>::epsilon()))
 		return true;
 
 	return false;
@@ -149,55 +150,6 @@ string plotErrmodeString(unsigned int plotID)
 	return errModeStrings[plotID];
 }
 
-
-void genErrBars(const std::vector<float> &x, const std::vector<float> &y, 
-			std::vector<float> &errBars, const PLOT_ERROR &errMode)
-{
-	switch(errMode.mode)
-	{
-		case PLOT_ERROR_NONE:
-			return;	
-		case PLOT_ERROR_MOVING_AVERAGE:
-		{
-			ASSERT(errMode.movingAverageNum);
-			errBars.resize(y.size());
-			for(int ui=0;ui<(int)y.size();ui++)
-			{
-				float mean;
-				mean=0.0f;
-
-				//Compute the local mean
-				for(int uj=0;uj<(int)errMode.movingAverageNum;uj++)
-				{
-					//TODO: Why are we using (int) here?
-					int idx;
-					idx= std::max(ui+uj-(int)errMode.movingAverageNum/2,0);
-					idx=std::min(idx,(int)(y.size()-1));
-					ASSERT(idx<(int)y.size());
-					mean+=y[idx];
-				}
-
-				mean/=(float)errMode.movingAverageNum;
-
-				//Compute the local stddev
-				float stddev;
-				stddev=0;
-				for(int uj=0;uj<(int)errMode.movingAverageNum;uj++)
-				{
-					int idx;
-					idx= std::max(ui+uj-(int)errMode.movingAverageNum/2,0);
-					idx=std::min(idx,(int)(y.size()-1));
-					stddev+=(y[idx]-mean)*(y[idx]-mean);
-				}
-
-				stddev=sqrtf(stddev/(float)errMode.movingAverageNum);
-				errBars[ui]=stddev;
-			}
-			break;
-		}
-	}
-
-}
 //===
 
 PlotRegion::PlotRegion()
@@ -854,7 +806,21 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 			// mathgl does not like a zero coordinate for plotting
 			if(min.y == 0 && useLogPlot)
 			{
-				min.y=0.1;
+				float minYVal=0.1;
+				for(size_t ui=0;ui<plottingData.size();ui++)
+				{
+					if(!plottingData[ui]->visible || plottingData[ui]->getType() !=PLOT_MODE_1D)
+						continue;
+
+					float tmp ;
+					tmp=((Plot1D*)plottingData[ui])->getSmallestNonzero();
+					if(tmp >0)
+						minYVal=std::min(tmp,minYVal);
+
+
+				}
+				ASSERT(minYVal > 0);
+				min.y=minYVal;
 			}
 			
 
@@ -862,9 +828,9 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 			gr->SetRanges(min,max);
 			gr->SetOrigin(min);
 
-			WARN((fabs(min.x-max.x) > sqrt(std::numeric_limits<float>::epsilon())), 
+			WARN((fabs(min.x-max.x) > sqrtf(std::numeric_limits<float>::epsilon())), 
 					"WARNING: Mgl limits (X) too Close! Due to limitiations in MGL, This may inf. loop!");
-			WARN((fabs(min.y-max.y) > sqrt(std::numeric_limits<float>::epsilon())), 
+			WARN((fabs(min.y-max.y) > sqrtf(std::numeric_limits<float>::epsilon())), 
 					"WARNING: Mgl limits (Y) too Close! Due to limitiations in MGL, This may inf. loop!");
 
 			if(useLogPlot)
@@ -933,9 +899,9 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 					rMinX=std::max(rMinX,(float)min.x);
 					rMaxX=std::min(rMaxX,(float)max.x);
 
-					//If the region is of negligble size, don't bother drawing it
+					//If the region is of negligible size, don't bother drawing it
 					if(fabs(rMinX -rMaxX)
-						< sqrt(std::numeric_limits<float>::epsilon()))
+						< sqrtf(std::numeric_limits<float>::epsilon()))
 						continue;
 
 
@@ -1238,6 +1204,62 @@ PlotBase *Plot1D::clone() const
 	return p;
 }
 
+
+void Plot1D::setErrMode(PLOT_ERROR mode) 
+{
+	errMode=mode;
+	genErrBars();
+}
+
+
+void Plot1D::genErrBars() 
+{
+	switch(errMode.mode)
+	{
+		case PLOT_ERROR_NONE:
+			return;	
+		case PLOT_ERROR_MOVING_AVERAGE:
+		{
+			//FIXME: Has contiguous assumption implicit
+			ASSERT(errMode.movingAverageNum);
+			errBars.resize(yValues.size());
+			for(int ui=0;ui<(int)yValues.size();ui++)
+			{
+				float mean;
+				mean=0.0f;
+
+				//Compute the local mean
+				for(int uj=0;uj<(int)errMode.movingAverageNum;uj++)
+				{
+					//TODO: Why are we using (int) here?
+					int idx;
+					idx= std::max(ui+uj-(int)errMode.movingAverageNum/2,0);
+					idx=std::min(idx,(int)(yValues.size()-1));
+					ASSERT(idx<(int)yValues.size());
+					mean+=yValues[idx];
+				}
+
+				mean/=(float)errMode.movingAverageNum;
+
+				//Compute the local stddev
+				float stddev;
+				stddev=0;
+				for(int uj=0;uj<(int)errMode.movingAverageNum;uj++)
+				{
+					int idx;
+					idx= std::max(ui+uj-(int)errMode.movingAverageNum/2,0);
+					idx=std::min(idx,(int)(yValues.size()-1));
+					stddev+=(yValues[idx]-mean)*(yValues[idx]-mean);
+				}
+
+				stddev=sqrtf(stddev/(float)errMode.movingAverageNum);
+				errBars[ui]=stddev;
+			}
+			break;
+		}
+	}
+
+}
 
 void Plot1D::setData(const vector<float> &vX, const vector<float> &vY, 
 		const vector<float> &vErr)
@@ -1589,6 +1611,21 @@ void Plot1D::drawRegions(mglGraph *gr,
 	}
 }
 
+float Plot1D::getSmallestNonzero() const
+{
+	float minNonzero=std::numeric_limits<float>::max();
+	for(size_t ui=0;ui<yValues.size();ui++)
+	{
+		if(yValues[ui] > 0)
+			minNonzero=std::min(yValues[ui] ,minNonzero);
+	}
+
+	if(minNonzero == std::numeric_limits<float>::max())
+		return 0;
+	else
+		return minNonzero;
+}
+
 //--
 
 //2D plotting code
@@ -1669,6 +1706,7 @@ void Plot2DFunc::getRawData(std::vector<std::vector<float> >  &rawData,
 Plot2DScatter::Plot2DScatter()
 {
 	plotType=PLOT_2D_SCATTER;
+	scatterIntensityLog=false;
 }
 
 void Plot2DScatter::setData(const vector<pair<float,float> > &f) 
@@ -1739,15 +1777,26 @@ void Plot2DScatter::drawPlot(mglGraph *graph) const
 	}
 	else
 	{
-		sizeDat.Set(intensity);
+		//if we have intensity data, use it
+
+		if(!scatterIntensityLog)
+			sizeDat.Set(intensity);
+		else
+		{	
+			//if plotting in log mode, do so!
+			float *bufSize = new float[intensity.size()];
+			for(unsigned int ui=0;ui<intensity.size();ui++)
+				bufSize[ui]=log10f(intensity[ui]+1.0f);
+			sizeDat.Set(bufSize,intensity.size());
+			delete[] bufSize;
+		}
+		
 	}
 	
 	string colourCode;
 	colourCode=mglColourCode(r,g,b);
 	
-	graph->SetCut(false);
-	graph->Mark(xDat,yDat,sizeDat,"+",colourCode.c_str());
-	graph->SetCut(true);
+	graph->Mark(xDat,yDat,sizeDat,"o",colourCode.c_str());
 
 	
 }

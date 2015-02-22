@@ -247,7 +247,7 @@ unsigned int getIonstreamIonID(const IonStreamData *d, const RangeFile *r)
 
 //!Extend a point data vector using some ion data
 unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<IonHit> &vIonData,
-				bool (*callback)(bool),unsigned int &progress, size_t offset)
+				unsigned int &progress, size_t offset)
 {
 	unsigned int curProg=NUM_CALLBACK;
 	unsigned int n =offset;
@@ -270,7 +270,7 @@ unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<Ion
 			progress= (unsigned int)(((float)n/(float)dest.size())*100.0f);
 			if(!omp_get_thread_num())
 			{
-				if(!(*callback)(false))
+				if(*Filter::wantAbort)
 					spin=true;
 			}
 			}
@@ -291,7 +291,7 @@ unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<Ion
 		{
 			n+=NUM_CALLBACK;
 			progress= (unsigned int)(((float)n/(float)dest.size())*100.0f);
-			if(!(*callback)(false))
+			if(*(Filter::wantAbort))
 				return 1;
 		}
 
@@ -303,8 +303,9 @@ unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<Ion
 }
 
 
+//FIXME: Abort pointer?
 unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsigned int *progress,
-					bool (*callback)(bool),std::vector<Point3D> &curHull, bool freeHull)
+					std::vector<Point3D> &curHull, bool freeHull)
 {
 
 	size_t numPts;
@@ -325,11 +326,10 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 
 	//Do the convex hull in steps for two reasons
 	// 1) qhull chokes on large data
-	// 2) we need to run the callback every now and again, so we have to
+	// 2) we need to check for abort every now and again, so we have to
 	//   work in batches.
 	Point3D midPoint;
 	float maxSqrDist=-1;
-	size_t progressReduce=PROGRESS_REDUCE;
 	size_t n=0;
 	for(size_t ui=0; ui<data.size(); ui++)
 	{
@@ -393,19 +393,15 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 			}
 			n++;
 
-			//Update the progress information, and run callback periodically
-			if(!progressReduce--)
+			//Update the progress information, and run abort check
+			if(*Filter::wantAbort)
 			{
-				if(!(*callback)(false))
-				{
-					free(buffer);
-					return HULL_ERR_USER_ABORT;
-				}
-	
-				*progress= (unsigned int)((float)(n)/((float)numPts)*100.0f);
-
-				progressReduce=PROGRESS_REDUCE;
+				free(buffer);
+				return HULL_ERR_USER_ABORT;
 			}
+
+			*progress= (unsigned int)((float)(n)/((float)numPts)*100.0f);
+
 		}
 	}
 
@@ -446,7 +442,7 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 }
 
 unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progress,
-					bool (*callback)(bool),std::vector<Point3D> &curHull, bool freeHull)
+				const bool &abortPtr,std::vector<Point3D> &curHull, bool freeHull)
 {
 
 	//Easy case of no data
@@ -471,7 +467,6 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 	float maxSqrDist=-1;
 
 
-	size_t progressReduce=PROGRESS_REDUCE;
 
 	for(size_t uj=0; uj<data.size(); uj++)
 	{
@@ -525,18 +520,14 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 			}
 		}
 
-		if(!progressReduce--)
+		if(*Filter::wantAbort)
 		{
-			if(!(*callback)(false))
-			{
-				free(buffer);
-				return HULL_ERR_USER_ABORT;
-			}
-	
-			*progress= (unsigned int)((float)(uj)/((float)data.size())*100.0f);
-
-			progressReduce=PROGRESS_REDUCE;
+			free(buffer);
+			return HULL_ERR_USER_ABORT;
 		}
+
+		*progress= (unsigned int)((float)(uj)/((float)data.size())*100.0f);
+
 	}
 
 

@@ -132,6 +132,24 @@ bool needsRangeParent(const Filter *f)
 
 }
 
+unsigned int needsUnrangedData(const Filter *f)
+{
+	if(f->getType() == FILTER_TYPE_IONINFO)
+	{
+		const IonInfoFilter *fInfo = (const IonInfoFilter *)f;
+
+		return fInfo->needsUnrangedData();
+	}
+
+	if(f->getType() == FILTER_TYPE_SPECTRUMPLOT)
+	{
+		const SpectrumPlotFilter *fSp = (const SpectrumPlotFilter *)f;
+
+		return fSp->needsUnrangedData(); 
+	}
+	return false;
+}
+
 void FilterTreeAnalyse::getAnalysisResults(std::vector<FILTERTREE_ERR> &errs) const
 {
 	errs.resize(analysisResults.size());
@@ -140,6 +158,8 @@ void FilterTreeAnalyse::getAnalysisResults(std::vector<FILTERTREE_ERR> &errs) co
 
 void FilterTreeAnalyse::analyse(const FilterTree &f)
 {
+	clear();
+
 	f.getAccumulatedPropagationMaps(emitTypes,blockTypes);
 
 	//Check for a data pair where the output is entirely blocked,
@@ -154,6 +174,10 @@ void FilterTreeAnalyse::analyse(const FilterTree &f)
 
 	//Check for filters that do not have a parent, which is required
 	checkRequiredParent(f);
+
+	//check for unranged data required by child
+	checkUnrangedData(f);
+
 
 	emitTypes.clear();
 	blockTypes.clear();
@@ -380,6 +404,41 @@ void FilterTreeAnalyse::checkRequiredParent(const FilterTree &f)
 	}
 }
 
+void FilterTreeAnalyse::checkUnrangedData(const FilterTree &f)
+{
+	const tree<Filter *> &treeFilt=f.getTree();
+	for(tree<Filter*>::pre_order_iterator it(treeFilt.begin()); it!=treeFilt.end(); ++it)
+	{
+		//Check to see if we have a filter that can be affected by unranged data, missing or present
+
+		if((*it)->getType() == FILTER_TYPE_RANGEFILE)
+		{
+			const RangeFileFilter *rngF = (const RangeFileFilter *)(*it);
+
+			//we only need to investigate filters which drop data
+			if( !rngF->getDropUnranged() )
+				continue;
+
+			size_t minDepth=treeFilt.depth(it);	
+			for(tree<Filter*>::pre_order_iterator itJ(it); itJ!=treeFilt.end();++itJ)
+			{
+				//we need rnaged data, but don't have it. Warn 
+				if(needsUnrangedData(*itJ))
+				{
+					FILTERTREE_ERR treeErr;
+					treeErr.reportedFilters.push_back(*it);
+					treeErr.reportedFilters.push_back(*itJ);
+					treeErr.shortReportMessage=TRANS("Bad range filter settings");
+					treeErr.verboseReportMessage=TRANS("Rangefile set to drop unranged data, however a child filter requires it.");						
+					treeErr.severity=ANALYSE_SEVERITY_WARNING;
+
+					analysisResults.push_back(treeErr);
+				} 
+			}
+
+		}
+	} 
+}
 
 bool filterAltersComposition(const Filter *f)
 {

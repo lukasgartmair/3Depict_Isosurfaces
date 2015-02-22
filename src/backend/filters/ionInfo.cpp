@@ -18,6 +18,12 @@
 #include "ionInfo.h"
 
 #include "filterCommon.h"
+#include "algorithms/mass.h"
+
+using std::vector;
+using std::string;
+using std::pair;
+using std::make_pair;
 
 enum
 {
@@ -40,7 +46,7 @@ enum
 
 
 bool getRectilinearBounds(const std::vector<const FilterStreamData *> &dataIn, BoundCube &bound,
-					unsigned int *progress, unsigned int totalSize,bool (*callback)(bool))
+					unsigned int *progress, unsigned int totalSize)
 {
 	bound.setInvalid();
 
@@ -79,7 +85,7 @@ bool getRectilinearBounds(const std::vector<const FilterStreamData *> &dataIn, B
 			}
 		
 			*progress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-			if(!(*callback)(false))
+			if(*Filter::wantAbort)
 				return false;
 		}
 	}
@@ -103,7 +109,7 @@ bool getRectilinearBounds(const std::vector<const FilterStreamData *> &dataIn, B
 
 IonInfoFilter::IonInfoFilter() : wantIonCounts(true), wantNormalise(false),
 	range(0), wantVolume(false), volumeAlgorithm(VOLUME_MODE_RECTILINEAR),
-	cubeSideLen(1.0f)
+	cubeSideLen(1.0f), fitMode(FIT_MODE_NONE), massBackStart(1.2),massBackEnd(1.8),binWidth(0.05)
 {
 	cacheOK=false;
 	cache=true; //By default, we should cache, but decision is made higher up
@@ -180,7 +186,7 @@ Filter *IonInfoFilter::cloneUncached() const
 }
 
 unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 
 	//Count the number of ions input
@@ -197,11 +203,36 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 	//Compute ion counts/composition as needed
 	if(wantIonCounts)
 	{
+		
 		std::string str;
 		//Count the number of ions
 		if(range)
 		{
+			float intensity=0;
+			if(fitMode!= FIT_MODE_NONE)
+			{
+				BACKGROUND_PARAMS backParams;
+				backParams.massStart=massBackStart;
+				backParams.massEnd=massBackEnd;
+				backParams.binWidth=binWidth;
+				backParams.mode=fitMode;
+
+			
+				//fit a constant tof (1/sqrt (mass)) type background
+				if(doFitBackground(dataIn,backParams))
+				{
+					//display a warning that the background failed
+					consoleOutput.push_back(TRANS("Background fit failed - input data was considered ill formed (gauss-test)"));
+					consoleOutput.push_back(TRANS("Following data has not been corrected"));
+				}
+				else 
+				{
+					intensity=backParams.intensity;
+					
+				}
+			}
 			vector<size_t> numIons;
+
 			ASSERT(range);
 
 			const RangeFile *r=range->rangeFile;
@@ -218,12 +249,28 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 
 				for(size_t uj=0;uj<i->data.size(); uj++)
 				{
-					unsigned int id;
-					id = r->getIonID(i->data[uj].getMassToCharge());
-					if(id != (unsigned int) -1)
-						numIons[id]++;
+					unsigned int idIon;
+					idIon = r->getIonID(i->data[uj].getMassToCharge());
+					if(idIon != (unsigned int) -1)
+						numIons[idIon]++;
 					else
 						numIons[numIons.size()-1]++;
+				}
+			}
+
+			if(intensity > 0)
+			{
+				for(unsigned int ui=0;ui<r->getNumRanges(); ui++)
+				{
+					pair<float,float> masses;
+					float integral;
+					
+					//compute the integral of the fitted background, then subtract this from the
+					// ion count	
+					masses=r->getRange(ui);
+					integral = 2.0f*intensity*(sqrtf(masses.second) - sqrtf(masses.first));
+
+					numIons[r->getIonID(ui)]-=integral;	
 				}
 			}
 			
@@ -294,7 +341,7 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 			{
 				BoundCube bound;
 				if(!getRectilinearBounds(dataIn,bound,
-					&(progress.filterProgress),numTotalPoints,callback))
+					&(progress.filterProgress),numTotalPoints))
 					return ERR_USER_ABORT;
 
 				if(bound.isValid())
@@ -322,7 +369,7 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 			{
 				//OK, so here we need to do a convex hull estimation of the volume.
 				unsigned int err;
-				err=convexHullEstimateVol(dataIn,computedVol,callback);
+				err=convexHullEstimateVol(dataIn,computedVol);
 				if(err)
 					return err;
 
@@ -351,7 +398,7 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 	//These
 	if(wantIonCounts && wantVolume)
 	{
-		if(computedVol > sqrt(std::numeric_limits<float>::epsilon()))
+		if(computedVol > sqrtf(std::numeric_limits<float>::epsilon()))
 		{
 			float density;
 			std::string s;
@@ -406,6 +453,7 @@ void IonInfoFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.addProperty(p,curGroup);
 
 
+	propertyList.setGroupTitle(curGroup,TRANS("Ion data"));
 	if(wantIonCounts && range)
 	{
 		stream_cast(str,wantNormalise);
@@ -416,9 +464,61 @@ void IonInfoFilter::getProperties(FilterPropGroup &propertyList) const
 		p.helpText=TRANS("Normalise count data");
 
 		propertyList.addProperty(p,curGroup);
+
+
+		p.name=TRANS("Back. Correct");
+		choices.clear();
+		for(unsigned int ui=0;ui<FIT_MODE_ENUM_END; ui++)
+		{
+			choices.push_back(make_pair((unsigned int)ui,
+						TRANS(BACKGROUND_MODE_STRING[ui])));
+		}
+		str=choiceString(choices,fitMode);
+		p.data=str;
+		p.type=PROPERTY_TYPE_CHOICE;
+		p.helpText=TRANS("Background correction mode");
+		p.key=IONINFO_KEY_BACKMODE;
+		propertyList.addProperty(p,curGroup);
+
+
+		switch(fitMode)
+		{
+			case FIT_MODE_NONE:
+				break;
+			case FIT_MODE_CONST_TOF:
+				//we need mass start/end for our window
+				// and a binwidth to use for TOF binning
+				stream_cast(str,massBackStart);
+				p.data=str;
+				p.name=TRANS("Mass start");
+				p.type=PROPERTY_TYPE_REAL;
+				p.helpText=TRANS("Background correction fit starting mass");
+				p.key=IONINFO_KEY_BACK_MASSSTART;
+				propertyList.addProperty(p,curGroup);
+				
+				stream_cast(str,massBackEnd);
+				p.data=str;
+				p.name=TRANS("Mass end");
+				p.type=PROPERTY_TYPE_REAL;
+				p.helpText=TRANS("Background correction fit ending mass");
+				p.key=IONINFO_KEY_BACK_MASSEND;
+				propertyList.addProperty(p,curGroup);
+
+
+				stream_cast(str,binWidth);
+				p.data=str;
+				p.name=TRANS("Mass binning");
+				p.type=PROPERTY_TYPE_REAL;
+				p.helpText=TRANS("Bin size to use to build spectrum for performing fit");
+				p.key=IONINFO_KEY_BACK_BINSIZE;
+				propertyList.addProperty(p,curGroup);
+				break;
+			case FIT_MODE_ENUM_END:
+				ASSERT(false);
+	
+		}
 	}
 
-	propertyList.setGroupTitle(curGroup,TRANS("Ion data"));
 	curGroup++;
 
 	stream_cast(str,wantVolume);
@@ -430,7 +530,8 @@ void IonInfoFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.addProperty(p,curGroup);
 
 	if(wantVolume)
-	{
+	{	
+		choices.clear();
 		for(unsigned int ui=0;ui<VOLUME_MODE_END; ui++)
 		{
 			choices.push_back(make_pair((unsigned int)ui,
@@ -481,6 +582,52 @@ bool IonInfoFilter::setProperty(  unsigned int key,
 				return false;
 			break;
 		}
+		case IONINFO_KEY_BACKMODE:
+		{
+			unsigned int newMode;
+			for(size_t ui=0;ui<FIT_MODE_ENUM_END; ui++)
+			{
+				if(string(BACKGROUND_MODE_STRING[ui]) == string(value))
+				{
+					newMode=ui;
+					break;
+				}
+			}
+
+			ASSERT(newMode <FIT_MODE_ENUM_END)
+			
+			fitMode=newMode;
+			cacheOK=false;
+			needUpdate=true;
+			
+			break;
+		}
+		case IONINFO_KEY_BACK_MASSSTART:
+		{
+			float tmpMass;
+			if(stream_cast(tmpMass,value))
+				return false;
+			if(tmpMass >=massBackEnd)
+				return false;
+	
+			if(!applyPropertyNow(massBackStart,value,needUpdate))
+				return false;
+			break;
+		}
+		case IONINFO_KEY_BACK_MASSEND:
+		{
+			float tmpMass;
+			if(stream_cast(tmpMass,value))
+				return false;
+			if(tmpMass <=massBackStart)
+				return false;
+	
+			if(!applyPropertyNow(massBackEnd,value,needUpdate))
+				return false;
+			break;
+		}
+
+			
 		case IONINFO_KEY_VOLUME_ALGORITHM:
 		{
 			unsigned int newAlg=VOLUME_MODE_END;
@@ -501,6 +648,21 @@ bool IonInfoFilter::setProperty(  unsigned int key,
 			needUpdate=true;
 			break;	
 		}
+		case IONINFO_KEY_BACK_BINSIZE:
+		{
+			float tmpWidth;
+			if(stream_cast(tmpWidth,value))
+				return false;
+			if(tmpWidth <=0.0f)
+				return false;
+	
+			if(tmpWidth > massBackEnd - massBackStart)
+				tmpWidth=massBackEnd-massBackStart;
+		
+			binWidth=tmpWidth;
+			
+			break;
+		}
 		default:
 			ASSERT(false);
 	}
@@ -508,7 +670,7 @@ bool IonInfoFilter::setProperty(  unsigned int key,
 	return true;
 }
 
-std::string  IonInfoFilter::getErrString(unsigned int code) const
+std::string  IonInfoFilter::getSpecificErrString(unsigned int code) const
 {
 	const char *errStrs[] = { "",
 		"Aborted",
@@ -527,7 +689,7 @@ void IonInfoFilter::setPropFromBinding(const SelectionBinding &b)
 }
 
 unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStreamData*> &data, 
-								float &volume,bool (*callback)(bool))
+								float &volume)
 {
 	volume=0;
 
@@ -538,7 +700,7 @@ unsigned int IonInfoFilter::convexHullEstimateVol(const vector<const FilterStrea
 	//Compute the convex hull, leaving the qhull data structure intact
 	const bool NO_FREE_QHULL=false;
 	vector<Point3D> hullPts;
-	if((errCode=computeConvexHull(data,&dummyProgress,callback,
+	if((errCode=computeConvexHull(data,&dummyProgress,
 						hullPts,NO_FREE_QHULL)))
 		return errCode;
 
@@ -609,6 +771,9 @@ bool IonInfoFilter::writeState(std::ostream &f,unsigned int format, unsigned int
 			f << tabs(depth+1) << "<wantvolume value=\""<<wantVolume<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<volumealgorithm value=\""<<volumeAlgorithm<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<cubesidelen value=\""<<cubeSideLen<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<background mode=\"" << fitMode << "\">" << endl;
+				f << tabs(depth+2) << "<fitwindow start=\"" << massBackStart<< "\" end=\"" << massBackEnd << "\"/>" << endl;
+			f << tabs(depth+1) << "</background>" << endl;
 
 			f << tabs(depth) << "</" <<trueName()<< ">" << endl;
 			break;
@@ -679,6 +844,28 @@ bool IonInfoFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 	cubeSideLen=tmpFloat;
 	//--=
 
+	//Retrieve background fitting mode, if we have it
+	// Only available 3Depict >= 0.0.18
+	// internal rev > 3e41b89299f4
+	if(!XMLHelpFwdToElem(nodePtr,"background"))
+	{
+		if(XMLHelpGetProp(fitMode,nodePtr,"mode"))
+			return false;
+
+		if(!nodePtr->xmlChildrenNode)
+			return false;
+			
+		xmlNodePtr tmpNode=nodePtr;
+		nodePtr=nodePtr->xmlChildrenNode;
+		
+		if(!XMLGetNextElemAttrib(nodePtr,massBackStart,"fitwindow","start"))
+			return false;
+
+		if(XMLHelpGetProp(massBackEnd,nodePtr,"end"))
+			return false;
+		
+		nodePtr=tmpNode;
+	}
 
 	return true;
 }
@@ -698,6 +885,10 @@ unsigned int IonInfoFilter::getRefreshUseMask() const
 	return  STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
 }
 
+bool IonInfoFilter::needsUnrangedData() const
+{ 
+	return fitMode == FIT_MODE_CONST_TOF;
+}
 #ifdef DEBUG
 
 void makeBox(float boxSize,IonStreamData *d)
@@ -780,7 +971,7 @@ bool volumeBoxTest()
 	streamIn.push_back(d);
 	
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	f->refresh(streamIn,streamOut,p);
 
 	//No ions come out of the info
 	TEST(streamOut.empty(),"stream size test");
@@ -799,7 +990,7 @@ bool volumeBoxTest()
 	volReal =SOMEBOX*SOMEBOX*SOMEBOX; 
 
 	TEST(fabs(volMeasure -volReal) < 
-		10.0f*sqrt(std::numeric_limits<float>::epsilon()),
+		10.0f*sqrtf(std::numeric_limits<float>::epsilon()),
 					"volume estimation test (rect)");
 
 	
@@ -807,11 +998,11 @@ bool volumeBoxTest()
 	stream_cast(s,(int)VOLUME_MODE_CONVEX);
 	f->setProperty(IONINFO_KEY_VOLUME_ALGORITHM, s,needUp);
 	
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback), "refresh");
+	TEST(!f->refresh(streamIn,streamOut,p), "refresh");
 	volMeasure=f->getLastVolume();
 
 	TEST(fabs(volMeasure -volReal) < 
-		10.0f*sqrt(std::numeric_limits<float>::epsilon()),
+		10.0f*sqrtf(std::numeric_limits<float>::epsilon()),
 				"volume estimation test (convex)");
 	
 
@@ -849,7 +1040,7 @@ bool volumeSphereTest()
 	streamIn.push_back(d);
 	
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	f->refresh(streamIn,streamOut,p);
 
 	//No ions come out of the info
 	TEST(streamOut.empty(),"stream size test");
@@ -875,7 +1066,7 @@ bool volumeSphereTest()
 	vector<string> dummy;
 	f->getConsoleStrings(dummy);
 
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh error code");
 
 	volMeasure=f->getLastVolume();
 

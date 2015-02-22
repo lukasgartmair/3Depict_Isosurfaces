@@ -137,7 +137,7 @@ std::string getDefaultFontFile()
 void tickSpacingsFromInterspace(float start, float end, 
 		float interSpacing, std::vector<float> &spacings)
 {
-	ASSERT(interSpacing > sqrt(std::numeric_limits<float>::epsilon()));
+	ASSERT(interSpacing > sqrtf(std::numeric_limits<float>::epsilon()));
 	unsigned int nTicks;
 
 	if(end < start)
@@ -754,7 +754,7 @@ bool BoundCube::isFlat() const
 
 bool BoundCube::isNumericallyBig() const
 {
-	const float TOO_BIG=sqrt(std::numeric_limits<float>::max());
+	const float TOO_BIG=sqrtf(std::numeric_limits<float>::max());
 	for(unsigned int ui=0;ui<2; ui++)
 	{
 		for(unsigned int uj=0;uj<3; uj++)

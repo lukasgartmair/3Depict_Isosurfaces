@@ -25,9 +25,12 @@
 
 #include "./backend/viscontrol.h"
 
+#include <stack>
+
 using std::pair;
 using std::string;
 using std::stack;
+using std::vector;
 // begin wxGlade: ::extracode
 
 // end wxGlade
@@ -122,7 +125,7 @@ void StashDialog::OnListKeyDown(wxListEvent &event)
 				if ( item == -1 )
 					break;
 
-				visControl->eraseStash(listStashes->GetItemData(item));
+				visControl->state.eraseStash(listStashes->GetItemData(item));
 			}
 			
 			//Update the filter list
@@ -148,35 +151,31 @@ void StashDialog::OnTreeSelChange(wxTreeEvent &event)
 void StashDialog::updateList()
 {
 	//Generate the stash selection list
-	//
-	vector<pair<string,unsigned int> > stashes;
-
-	visControl->getStashes(stashes);
 
 	//Clear the existing list
 	listStashes->Freeze();
 	listStashes->DeleteAllItems();
-	
+
+	unsigned int nStashes=visControl->state.getStashCount();	
 	//Fill it with "stash" entries
 	//Add columns to report listviews
-	for (unsigned int ui=0; ui<stashes.size(); ui++)
+	for (unsigned int ui=0; ui<nStashes; ui++)
 	{
 		string strTmp;
-		FilterTree t;
+		pair<std::string,FilterTree> stash;
 		long itemIdx;
 		
 		//First item is the stash name
-		itemIdx = listStashes->InsertItem(ui,(stashes[ui].first));
+		itemIdx = listStashes->InsertItem(ui,stash.first);
 
 		//Second column is num filters
-		
-		visControl->getStashTree(stashes[ui].second,t);
-		stream_cast(strTmp,t.size());
+		visControl->state.copyStashedTree(ui,stash);
+		stream_cast(strTmp,stash.second.size());
 		listStashes->SetItem(itemIdx,1,(strTmp));
 
 		//Set the stash ID as the list data item
 		//this is the key to the stash val
-		listStashes->SetItemData(itemIdx,stashes[ui].second);	
+		listStashes->SetItemData(itemIdx,ui);	
 	}
 	listStashes->Thaw();
 }
@@ -205,7 +204,7 @@ void StashDialog::updateGrid()
 	unsigned int filterIdx = ((wxTreeUint *)tData)->value;
 
 	FilterTree t;
-	visControl->getStashTree(stashId,t);
+	visControl->state.copyStashedTree(stashId,t);
 
 	Filter *targetFilter=0;
 	unsigned int pos=0;
@@ -267,7 +266,7 @@ void StashDialog::updateTree()
 	if(!getStashIdFromList(stashId))
 		return;
 
-	visControl->getStashTree(stashId,curTree);
+	visControl->state.copyStashedTree(stashId,curTree);
 
 
 	uniqueIds.clear();
@@ -339,7 +338,7 @@ void StashDialog::OnBtnRemove(wxCommandEvent &event)
 		if ( item == -1 )
 			break;
 
-		visControl->eraseStash(listStashes->GetItemData(item));
+		visControl->state.eraseStash(listStashes->GetItemData(item));
 		updateList();
 		updateTree();
 		updateGrid();

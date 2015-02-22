@@ -21,113 +21,8 @@ using std::numeric_limits;
 const float FLOAT_SMALL=
 	sqrt(numeric_limits<float>::epsilon());
 
+
 #ifdef DEBUG
-
-bool testConvolve()
-{
-	{
-	Voxels<unsigned int> data,kernel,result;
-	data.setCallbackMethod(dummyCallback);
-	kernel.setCallbackMethod(dummyCallback);
-
-	const size_t NUM_SIZES=4;
-	const size_t TEST_SIZES[]= { 1, 3, 4, 7};
-
-	for(size_t ui=0;ui<BOUND_ENUM_END; ui++)
-	{
-		//Convolve several kernel sizes
-		//---
-		for(unsigned int ui=0;ui<NUM_SIZES;ui++)
-		{
-
-			size_t curSize;
-			curSize=TEST_SIZES[ui];
-
-			data.resize(curSize,curSize,curSize);
-			kernel.resize(curSize,curSize,curSize);
-
-			//Test with a whole bunch of different fill values
-			for(size_t fillVal=0;fillVal<5;fillVal++)
-			{
-				data.fill(fillVal);
-				kernel.fill(fillVal);
-
-				data.convolve(kernel,result,BOUND_CLIP);
-
-				size_t nX,nY,nZ;
-				result.getSize(nX,nY,nZ);
-
-				TEST(nX == 1,"convolve dimensions");
-				TEST(nY == 1,"convolve dimensions");
-				TEST(nZ == 1,"convolve dimensions");
-
-				TEST(result.max() == curSize*curSize*curSize*(fillVal*fillVal),
-						"Convolve maxima");
-			}
-		}
-		//--
-	
-		kernel.resize(1,1,1);
-		//Convolve several kernel sizes
-		for(unsigned int ui=0;ui<NUM_SIZES;ui++)
-		{
-
-			size_t curSize;
-			curSize=TEST_SIZES[ui];
-
-			data.resize(curSize,curSize,curSize);
-			data.fill(1);
-			kernel.fill(1);
-
-			data.convolve(kernel,result,BOUND_CLIP);
-			TEST(result == data, "convolve identity");
-		}
-		kernel.resize(3,3,3);
-	}
-	}
-
-	//Test integral stuff
-	{
-		Voxels<float> data;
-		data.resize(3,3,3);
-		data.fill(1);
-		TEST(fabs(data.trapezIntegral() - 1.0f )< FLOAT_SMALL,"Trapezoid test");
-
-		data.resize(5,5,5);
-		data.fill(1);
-		data.setBounds(Point3D(0,0,0),Point3D(1,1,1));
-		TEST(fabs(data.trapezIntegral() - 1.0f) < FLOAT_SMALL,"Trapezoid test");
-		data.setBounds(Point3D(0,0,0),Point3D(5,5,5));
-		TEST(fabs(data.trapezIntegral() - 125.0f) < FLOAT_SMALL,"Trapezoid test");
-	}
-
-	//Test convolution stuff
-	{
-	Voxels<float> data,kernel,result;
-	data.setCallbackMethod(dummyCallback);
-	kernel.setCallbackMethod(dummyCallback);
-	//Check that convolving with an impulse with 
-	//a Gaussian  gives us a Gaussian 
-	//back, roughly speaking
-	kernel.setGaussianKernelCube(1.0f,10.0f,10);
-
-	float trapz = kernel.trapezIntegral();
-	TEST(trapz < 1.5f && trapz > 0.5f, "Trapezoidal kernel integral test");
-	
-
-	data.resize(20,20,20);
-	data.fill(0.0f);
-	data.setData(10,10,10,1.0f);
-	data.convolve(kernel,result,BOUND_CLIP);
-
-	TEST(result.max() >  0 && result.max() < 1.0f,"result should be nonzero, and less than the original input (convolve only squeezes maxima/minima)");
-	//Gaussian @ x=0, stdev 1
-	TEST(fabs(result.max() - kernel.max())  < FLOAT_SMALL
-		,"Gaussian kernel test- maxima of convolved and kernel should be the same");
-	}
-
-	return true;
-}
 
 bool simpleMath()
 {
@@ -146,7 +41,6 @@ bool simpleMath()
 bool basicTests()
 {
 	Voxels<float> f;
-	f.setCallbackMethod(dummyCallback);
 	f.resize(3,3,3);
 	
 	size_t xs,ys,zs;
@@ -221,15 +115,52 @@ bool basicTests()
 }
 
 
+bool edgeCountTests()
+{
+	Voxels<float> v;
+	v.resize(4,4,4);
+
+
+	TEST(v.getEdgeUniqueIndex(0,0,0,3) == v.getEdgeUniqueIndex(0,1,1,0),"Edge coincidence");
+	TEST(v.getEdgeUniqueIndex(0,0,0,6) == v.getEdgeUniqueIndex(1,0,0,4),"Edge coincidence");
+	TEST(v.getEdgeUniqueIndex(0,0,0,2) == v.getEdgeUniqueIndex(0,0,1,0),"Edge coincidence");
+
+	//Check for edge -> index -> edge round tripping 
+	//for single cell
+	size_t x,y,z;
+	x=1;
+	y=2;
+	z=3;
+	for(size_t ui=0;ui<12;ui++)
+	{
+		size_t idx;
+		idx= v.getCellUniqueEdgeIndex(x,y,z,ui);
+		
+		size_t axis;
+		size_t xN,yN,zN;
+		v.getEdgeCell(idx,xN,yN,zN,axis);
+		
+		//if we ask for the cell, we should also 
+		//get the index
+		ASSERT(x == xN && y==yN && z==zN);	
+
+		//TODO: Check that the axis of the edge was preserved (not the edge itself)
+		ASSERT( axis == ui/4);
+	}
+	
+	return true;	
+}
 
 
 
 bool runVoxelTests()
 {
-//	TEST(testCubeIntercepts(),"cube intercept test");
+	bool wantAbort=false;
+	voxelsWantAbort = &wantAbort;
+
 	TEST(basicTests(),"basic voxel tests");
-	TEST(testConvolve()," voxel convolve");
 	TEST(simpleMath(), "voxel simple maths");	
+	TEST(edgeCountTests(), "voxel edge tests");	
 	return true;	
 }
 

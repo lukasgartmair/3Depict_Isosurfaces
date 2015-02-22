@@ -19,8 +19,10 @@
 
 #ifndef ISOSURFACE_H
 #define ISOSURFACE_H
+#include "common/mathfuncs.h"
 
-#include "common/voxels.h"
+template<class T>
+class Voxels;
 
 class TriangleWithVertexNorm
 {
@@ -35,15 +37,15 @@ class TriangleWithVertexNorm
 		bool isDegenerate() const;
 };
 
-struct TriangleWithIndexedVertices
-{
-	size_t p[3];
-};
 
 
 //Perform marching cube algorithm
 void marchingCubes(const Voxels<float> &v,float isoValue, 
-		std::vector<TriangleWithVertexNorm> &tVec);
+		std::vector<TriangleWithVertexNorm> &tVec,bool cleanup=true);
 
+
+#ifdef DEBUG
+bool testIsoSurface();
+#endif
 
 #endif

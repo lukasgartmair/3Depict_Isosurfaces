@@ -136,7 +136,7 @@ const char *VOXELISE_SLICE_INTERP_STRING[]={
 
 //This is not a member of voxels.h, as the voxels do not have any concept of the IonHit
 int countPoints(Voxels<float> &v, const std::vector<IonHit> &points, 
-				bool noWrap,bool (*callback)(bool))
+				bool noWrap)
 {
 
 	size_t x,y,z;
@@ -148,7 +148,7 @@ int countPoints(Voxels<float> &v, const std::vector<IonHit> &points,
 	{
 		if(!downSample--)
 		{
-			if(!(*callback)(false))
+			if(*Filter::wantAbort)
 				return 1;
 			downSample=MAX_CALLBACK;
 		}
@@ -160,6 +160,7 @@ int countPoints(Voxels<float> &v, const std::vector<IonHit> &points,
 				float value;
 				value=v.getData(x,y,z)+1.0f;
 
+				ASSERT(value >= 0.0f);
 				//Prevent wrap-around errors
 				if (noWrap) {
 					if (value > v.getData(x,y,z))
@@ -213,7 +214,6 @@ VoxeliseFilter::VoxeliseFilter()
 	denominatorAll = true;
 
 	sliceInterpolate=SLICE_INTERP_NONE;
-	sliceBoundMode=BOUND_MIRROR;
 	sliceAxis=0;
 	sliceOffset=0.5;
 	showColourBar=false;
@@ -279,7 +279,6 @@ Filter *VoxeliseFilter::cloneUncached() const
 	p->colourMapBounds[1] = colourMapBounds[1];
 
 	p->sliceInterpolate = sliceInterpolate;
-	p->sliceBoundMode= sliceBoundMode;
 	p->sliceAxis = sliceAxis;
 	p->sliceOffset = sliceOffset;
 
@@ -378,7 +377,7 @@ void VoxeliseFilter::initFilter(const std::vector<const FilterStreamData *> &dat
 }
 
 unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-		  std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+		  std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 	//Disallow copying of anything in the blockmask. Copy everything else
 	propagateStreams(dataIn,getOut,getRefreshBlockMask(),true);
@@ -428,9 +427,8 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 		if(minP == maxP)
 			return 0;
 	
-		//Rebuild the voxels from the point dta
+		//Rebuild the voxels from the point data
 		Voxels<float> vsDenom;
-		voxelData.setCallbackMethod(callback);
 		voxelData.init(nBins[0], nBins[1], nBins[2], bc);
 		voxelData.fill(0);
 		
@@ -438,7 +436,6 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL) {
 			//Check we actually have incoming data
 			ASSERT(rsdIncoming);
-			vsDenom.setCallbackMethod(callback);
 			vsDenom.init(nBins[0], nBins[1], nBins[2], bc);
 			vsDenom.fill(0);
 		}
@@ -472,7 +469,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 
 					if(thisIonEnabled)
 					{
-						countPoints(voxelData,is->data,true,callback);
+						countPoints(voxelData,is->data,true);
 					}
 				}
 			
@@ -492,14 +489,14 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 							thisIonEnabled=false;
 
 						if(thisIonEnabled)
-							countPoints(vsDenom,is->data,true,callback);
+							countPoints(vsDenom,is->data,true);
 					}
 				} else if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
 				{
-					countPoints(vsDenom,is->data,true,callback);
+					countPoints(vsDenom,is->data,true);
 				}
 
-				if(!(*callback)(false))
+				if(*Filter::wantAbort)
 					return VOXELISE_ABORT_ERR;
 			}
 		
@@ -520,9 +517,9 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 				{
 					is= (const IonStreamData *)dataIn[i];
 
-					countPoints(voxelData,is->data,true,callback);
+					countPoints(voxelData,is->data,true);
 					
-					if(!(*callback)(false))
+					if(*Filter::wantAbort)
 						return VOXELISE_ABORT_ERR;
 
 				}
@@ -543,40 +540,8 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 				break;
 			case VOXELISE_FILTERTYPE_GAUSS:
 			{
-				Voxels<float> kernel,res;
-
-				map<unsigned int, unsigned int> modeMap;
-
-
-				modeMap[VOXELISE_FILTERBOUNDMODE_ZERO]=BOUND_ZERO;
-				modeMap[VOXELISE_FILTERBOUNDMODE_BOUNCE]=BOUND_MIRROR;
-
-				//FIXME: This will be SLOW. need to use IIR or some other
-				//fast technique
-				
-				//Construct the gaussian convolution
-				kernel.setGaussianKernelCube(gaussDev,(float)filterBins,filterBins);
-				//Normalise the kernel
-				float sum;
-				sum=kernel.getSum();
-				kernel/=sum;
-
-				cerr << "Kernel (min/max):" << kernel.min() << "," << kernel.max() << endl;
-			
-				if(res.resize(voxelData))
-					return VOXELISE_MEMORY_ERR; 
-				
-
-				cerr << "Data:" << voxelData.min() << "," << voxelData.max() << endl;
-				//Gaussian kernel is separable (rank 1)
-				if(voxelData.convolve(kernel,res,BOUND_MIRROR))
-					return VOXELISE_CONVOLVE_ERR;
-				
-				cerr << "Result (min/max):" << res.min() << "," << res.max() << endl;
-
-				voxelData.swap(res);
-
-				res.clear();
+				//TODO: IMPLEMENT ME
+				ASSERT(false);
 				break;
 			}
 			default:
@@ -617,7 +582,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 		{
 			VoxelStreamData *vs = new VoxelStreamData();
 			vs->parent=this;
-			std::swap(vs->data,voxelData);
+			std::swap(*(vs->data),voxelData);
 			vs->representationType= representation;
 			vs->splatSize = splatSize;
 			vs->isoLevel=isoLevel;
@@ -669,7 +634,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			
 			
 			if(showColourBar)
-				d->drawables.push_back(makeColourBar(minV,maxV,255,colourMap,1.0f));
+				d->drawables.push_back(makeColourBar(minV,maxV,255,colourMap));
 			d->cached=0;
 			d->parent=this;
 			
@@ -904,7 +869,6 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 		curGroup++;
 	}
 
-/*
 	//Start a new set for filtering
 	//----
 	//TODO: Other filtering? threshold/median? laplacian? etc
@@ -956,7 +920,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.setGroupTitle(curGroup,TRANS("Filtering"));
 	curGroup++;
 	//----
-*/
+
 	//start a new group for the visual representation
 	//----------------------------
 	choices.clear();
@@ -1599,7 +1563,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 	return true;
 }
 
-std::string  VoxeliseFilter::getErrString(unsigned int code) const
+std::string  VoxeliseFilter::getSpecificErrString(unsigned int code) const
 {
 	const char *errStrs[]={
 	 	"",
@@ -1945,7 +1909,7 @@ void VoxeliseFilter::getTexturedSlice(const Voxels<float> &v,
 
 	ASSERT(offset >=0 && offset <=1.0f);
 
-	v.getSlice(axis,offset,data,interpolateMode,sliceBoundMode);
+	v.getInterpSlice(axis,offset,data,interpolateMode);
 
 	if(autoColourMap)
 	{
@@ -2046,7 +2010,7 @@ bool voxelSingleCountTest()
 	streamIn.push_back(ionData);
 
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"Refresh error code");
 	delete f;
 
 	TEST(streamOut.size() == 1,"stream count");
@@ -2055,16 +2019,16 @@ bool voxelSingleCountTest()
 
 	const VoxelStreamData *v= (const VoxelStreamData*)streamOut[0];
 
-	TEST(v->data.max() <=numIons,
+	TEST(v->data->max() <=numIons,
 			"voxel max less than input stream")
 
-	TEST(v->data.min() >= 0.0f,"voxel counting minimum sanity");
+	TEST(v->data->min() >= 0.0f,"voxel counting minimum sanity");
 
 	
 	float dataSum;
-	sumVoxels(v->data,dataSum);
+	sumVoxels(*(v->data),dataSum);
 	TEST(fabs(dataSum - (float)numIons ) < 
-		sqrt(std::numeric_limits<float>::epsilon()),"voxel counting all input ions ");
+		sqrtf(std::numeric_limits<float>::epsilon()),"voxel counting all input ions ");
 
 	delete ionData;
 	delete streamOut[0];
@@ -2093,6 +2057,10 @@ bool voxelMultiCountTest()
 
 	RGBf col; col.red=col.green=col.blue=1.0f;
 
+	//create several input ion streams, each
+	//containing the above data, but with differeing
+	//mass to charge values.
+	// - we range this data though!
 	const unsigned int MAX_NUM_RANGES=2;
 	for(unsigned int ui=0;ui<MAX_NUM_RANGES;ui++)
 	{
@@ -2140,7 +2108,7 @@ bool voxelMultiCountTest()
 				"Set normalise mode");
 
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"Refresh error code");
 	delete f;
 	for(unsigned int ui=0;ui<MAX_NUM_RANGES;ui++)
 		delete streamIn[ui];
@@ -2149,16 +2117,17 @@ bool voxelMultiCountTest()
 	
 	const VoxelStreamData *v= (const VoxelStreamData*)streamOut[1];
 
-	TEST(v->data.max() <=1.0f,
+	TEST(v->data->max() <=1.0f,
 			"voxel max less than input stream")
-	TEST(v->data.min() >= 0.0f,"voxel counting minimum sanity");
+	TEST(v->data->min() >= 0.0f,"voxel counting minimum sanity");
 
 
-	for(unsigned int ui=0;ui<v->data.getSize();ui++)
+	//all data should lie between 0 and 1
+	for(unsigned int ui=0;ui<v->data->getSize();ui++)
 	{
-		float delta;
-		delta=(v->data.getData(ui) - v->data.getData(0) );
-		ASSERT( v->data.getData(ui) == 0 || delta < std::numeric_limits<float>::epsilon());
+		float val;
+		val=v->data->getData(ui);
+		ASSERT(  val >= 0 && val <= 1.0f); 
 	}
 
 	delete v;

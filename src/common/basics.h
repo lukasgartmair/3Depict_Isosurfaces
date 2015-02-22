@@ -21,6 +21,29 @@
 #define BASICS_H
 //!Basic objects header file
 
+
+#if (_MSC_VER >= 1600) ||  (__cplusplus > 199711L) 
+	#define HAVE_CPP_1X
+#endif
+
+//C-style Array size macro
+#ifdef HAVE_CPP_1X
+	template<typename T, unsigned int s> constexpr unsigned int THREEDEP_ARRAYSIZE(T (&)[s]) {     return s;  } 
+#else
+	#define THREEDEP_ARRAYSIZE(f) (sizeof (f) / sizeof(*f))
+#endif
+
+//macro to switch between normal bool and atomic, as available.	
+#ifndef ATOMIC_BOOL
+
+	#ifdef HAVE_CPP_1X
+		#include <atomic>
+		#define ATOMIC_BOOL std::atomic<bool>
+	#else
+		#define ATOMIC_BOOL bool
+	#endif
+#endif
+
 #include "mathfuncs.h"
 #include "common/assertion.h"
 
@@ -32,10 +55,6 @@
 #include <algorithm>
 
 class K3DTree;
-
-
-bool dummyCallback(bool);
-
 
 
 //Set new locale code. Must be followed by a popLocale call before completion
@@ -91,6 +110,12 @@ enum
 	ERR_FILE_ENUM_END // not an error, just end of enum
 };
 
+//Exclusive or operator
+template<class T>
+bool xorFunc(const T a, const T b)
+{
+  return (a || b) && !(a && b);
+}
 
 //Perform a a<-b<-c<-a rotation of data
 template<class T>
@@ -496,9 +521,8 @@ class ColourRGBAf
 
 //Randomly select subset. Subset will be (somewhat) sorted on output
 template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<T> &source, 
-							RandNumGen &rng, size_t num,unsigned int &progress,bool (*callback)(bool), bool strongRandom=false)
+							RandNumGen &rng, size_t num,unsigned int &progress,bool strongRandom=false)
 {
-	const unsigned int NUM_CALLBACK=50000;
 	//If there are not enough points, just copy it across in whole
 	if(source.size() <= num)
 	{
@@ -532,7 +556,6 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 		for(size_t ui=0; ui<numTicksNeeded; ui++)
 			ticks[ui]=(size_t)(rng.genUniformDev()*(source.size()-1));
 
-		//Remove duplicates. Intersperse some callbacks to be nice
 		std::sort(ticks.begin(),ticks.end());
 		std::vector<size_t>::iterator newLast;
 		newLast=std::unique(ticks.begin(),ticks.end());	
@@ -562,8 +585,6 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 		//---------
 		
 		//Transfer the output
-		unsigned int curProg=NUM_CALLBACK;
-
 		if(num < source.size()/2)
 		{
 			size_t pos=0;
@@ -572,12 +593,7 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 
 				result[pos]=source[*it];
 				pos++;
-				if(!curProg--)
-				{
-					progress= (unsigned int)((float)(pos)/((float)num)*100.0f);
-					(*callback)(false);
-					curProg=NUM_CALLBACK;
-				}
+				progress= (unsigned int)((float)(pos)/((float)num)*100.0f);
 			}
 		}
 		else
@@ -597,12 +613,7 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 					result[ui-curTick]=source[ui];
 				}
 				
-				if(!curProg--)
-				{
-					progress= (unsigned int)(((float)(ui)/(float)source.size())*100.0f);
-					(*callback)(false);
-					curProg=NUM_CALLBACK;
-				}
+				progress= (unsigned int)(((float)(ui)/(float)source.size())*100.0f);
 			}
 		}
 
@@ -635,7 +646,6 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 		l.setState(start);
 
 		size_t ui=0;	
-		unsigned int curProg=NUM_CALLBACK;
 		//generate unique weak random numbers.
 		while(ui<num)
 		{
@@ -649,12 +659,7 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 				result[ui] =source[res];
 				ui++;
 			}
-			if(!curProg--)
-			{
-				progress= (unsigned int)((float)(ui)/((float)source.size())*100.0f);
-				(*callback)(false);
-				curProg=NUM_CALLBACK;
-			}
+			progress= (unsigned int)((float)(ui)/((float)source.size())*100.0f);
 		}
 
 	}
@@ -664,7 +669,7 @@ template<class T> size_t randomSelect(std::vector<T> &result, const std::vector<
 
 //Randomly select subset [0,max). Subset will be (somewhat) sorted on output
 template<class T> size_t randomDigitSelection(std::vector<T> &result, const size_t max,
-			RandNumGen &rng, size_t num,unsigned int &progress,bool (*callback)(bool),
+			RandNumGen &rng, size_t num,unsigned int &progress,
 			bool strongRandom=false)
 {
 	//If there are not enough points, just copy it across in whole
@@ -703,13 +708,11 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 		for(size_t ui=0; ui<numTicksNeeded; ui++)
 			ticks[ui]=(size_t)(rng.genUniformDev()*(max-1));
 
-		//Remove duplicates. Intersperse some callbacks to be nice
+		//Remove duplicates
 		std::sort(ticks.begin(),ticks.end());
-		(*callback)(false);
 		std::vector<size_t>::iterator itLast;
 		itLast=std::unique(ticks.begin(),ticks.end());	
 		ticks.erase(itLast,ticks.end());
-		(*callback)(false);
 		
 		//Top up with unique entries
 		while(ticks.size() < numTicksNeeded)
@@ -725,10 +728,8 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 			}
 
 			std::sort(ticks.begin(),ticks.end());
-			(*callback)(false);
 			itLast=std::unique(ticks.begin(),ticks.end());	
 			ticks.erase(itLast,ticks.end());
-			(*callback)(false);
 		}
 
 
@@ -747,12 +748,7 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 
 				result[pos]=*it;
 				pos++;
-				if(!curProg--)
-				{
-					progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
-					(*callback)(false);
-					curProg=CURPROG;
-				}
+				progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
 			}
 		}
 		else
@@ -769,12 +765,7 @@ template<class T> size_t randomDigitSelection(std::vector<T> &result, const size
 				else
 					result[ui-curTick]=ui;
 				
-				if(!curProg--)
-				{
-					progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
-					(*callback)(false);
-					curProg=CURPROG;
-				}
+				progress= (unsigned int)((float)(curProg)/((float)num)*100.0f);
 			}
 		}
 

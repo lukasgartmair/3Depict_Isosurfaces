@@ -261,10 +261,13 @@ case "${host_os}" in
 		#Add GLEW dependency for opengl > 1.1
 		GL_LIBS="$GL_LIBS -lglew32"
 		AC_SUBST(GL_LIBS)
+		AC_PROG_LN_S 
+		AC_PROG_RANLIB 
 	    ;;
 	darwin*)
 		#This is handled by the --with-apple-opengl-framework 
 		#option already. Nothing to do here
+
 	    ;;
 	 *)
 		AC_CHECK_LIB(GLU, gluSphere, GL_LIBS="$GL_LIBS -lglu", [AC_MSG_ERROR([Could not find GLU library])])
@@ -380,6 +383,8 @@ AC_ARG_ENABLE(ubsan,
 	[ --disable-ubsan Disable undefined behaviour sanitizer. Only takes effect on certain ubsan supporting compilers. Useful for working around ubsan aborts that you cant fix (eg 3rd party libs ],
 		[ enable_no_ubsan="yes"],[enable_no_ubsan="no"])
 
+AC_ARG_ENABLE(experimental-cpp11,
+  [  --enable-experimental-cpp11 Enable experimental C++11 support. Requires a full C++11 compiler (eg gcc/clang).])
 
 
 if test x"$enable_openmp_parallel" != x"" ; 
@@ -442,10 +447,16 @@ then
 	fi
 
 else 
-	if test x"$enable_debug_checks" !=x"yes" ;
+	if test x"$enable_debug_checks" != x"yes" ;
 	then
 		AC_MSG_ERROR(["Well something isnt right, debug checks should be enabled or disabled (yes/no"])
 	fi
+fi
+
+if test x"$enable_experimental_cpp11" == x"yes" ;
+then
+	#Should work for gcc/clang
+	CXXFLAGS="$CXXFLAGS --std=c++11"
 fi
 
 if test x"$CXX" = xdistcc ; then
@@ -457,11 +468,29 @@ fi
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
 AC_C_CONST
+AC_FUNC_MALLOC 
+AC_FUNC_REALLOC 
+AC_TYPE_SIZE_T 
+AC_TYPE_UINT64_T 
 
 # Checks for library functions.
-AC_CHECK_FUNCS([atexit])
-AC_CHECK_FUNCS([sqrt])
+AC_CHECK_FUNCS([atexit sqrt])
+AC_CHECK_FUNCS([floor getcwd gettimeofday isascii memset ])
+AC_CHECK_FUNCS([pow setlocale strdup sysinfo])
 AC_C_INLINE()
+
+#check for some headers
+AC_CHECK_HEADERS([fenv.h libintl.h sys/time.h])
+AC_CHECK_TYPES([ptrdiff_t])
+
+#Check platform specific headers
+case "${host_os}" in 
+	darwin*)
+		 AC_CHECK_HEADERS([mach/mach.h])
+		;;
+	*)
+		;;
+esac
 
 AC_PROG_INSTALL
 AC_OUTPUT

@@ -33,7 +33,7 @@ const long PROPERTY_GRID_EXTRA_STYLE= wxPG_EX_HELP_AS_TOOLTIPS;
 // Due to a wx bug, the grid cannot contain items and be shown
 // when passed ot this function
 // statestring contains the previous grid' state (also part of bug workaround)
-void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f, const std::string &stateString);
+void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f, const std::string &stateString="");
 
 void updateCameraPropertyGrid(wxPropertyGrid *g, const Camera *c); 
 

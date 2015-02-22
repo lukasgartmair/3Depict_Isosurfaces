@@ -21,14 +21,22 @@
 #include "filterCommon.h"
 #include "geometryHelpers.h"
 
+using std::vector;
+using std::string;
+using std::pair;
+using std::make_pair;
+using std::map;
+
 
 //!Possible primitive types for composition profiles
 enum
 {
-	PRIMITIVE_CYLINDER,
+	PRIMITIVE_CYLINDER_AXIAL,
+	PRIMITIVE_CYLINDER_RADIAL,
 	PRIMITIVE_SPHERE,
 	PRIMITIVE_END, //Not actually a primitive, just end of enum
 };
+
 
 //!Error codes
 enum
@@ -40,7 +48,8 @@ enum
 };
 
 const char *PRIMITIVE_NAME[]={
-	NTRANS("Cylinder"),
+	NTRANS("Cylinder (axial)"),
+	NTRANS("Cylinder (radial)"),
 	NTRANS("Sphere")
 };
 
@@ -49,7 +58,7 @@ const float DEFAULT_RADIUS = 10.0f;
 const unsigned int MINEVENTS_DEFAULT =10;
 
 
-CompositionProfileFilter::CompositionProfileFilter() : primitiveType(PRIMITIVE_CYLINDER),
+CompositionProfileFilter::CompositionProfileFilter() : primitiveType(PRIMITIVE_CYLINDER_AXIAL),
 	showPrimitive(true), lockAxisMag(false),normalise(true), fixedBins(0),
 	nBins(1000), binWidth(0.5f), minEvents(MINEVENTS_DEFAULT), rgba(0,0,1), plotStyle(0)
 {
@@ -65,7 +74,8 @@ CompositionProfileFilter::CompositionProfileFilter() : primitiveType(PRIMITIVE_C
 	haveRangeParent=false;
 }
 
-
+//Puts an ion in its appropriate range position, given ionID mapping,
+//range data (if any), mass to charge and the output table
 void CompositionProfileFilter::binIon(unsigned int targetBin, const RangeStreamData* rng, 
 	const map<unsigned int,unsigned int> &ionIDMapping,
 	vector<vector<size_t> > &frequencyTable, float massToCharge) 
@@ -151,8 +161,7 @@ void CompositionProfileFilter::initFilter(const std::vector<const FilterStreamDa
 }
 
 unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-			std::vector<const FilterStreamData *> &getOut, ProgressData &progress, 
-								bool (*callback)(bool))
+			std::vector<const FilterStreamData *> &getOut, ProgressData &progress) 
 {
 	//Clear selection devices
 	// FIXME: Leaking drawables.
@@ -166,7 +175,8 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		drawData->parent=this;
 		switch(primitiveType)
 		{
-			case PRIMITIVE_CYLINDER:
+			case PRIMITIVE_CYLINDER_AXIAL:
+			case PRIMITIVE_CYLINDER_RADIAL:
 			{
 				//Origin + normal
 				ASSERT(vectorParams.size() == 2);
@@ -176,7 +186,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 				dC->setRadius(scalarParams[0]);
 				dC->setColour(0.5,0.5,0.5,0.3);
 				dC->setSlices(40);
-				dC->setLength(sqrt(vectorParams[1].sqrMag())*2.0f);
+				dC->setLength(sqrtf(vectorParams[1].sqrMag())*2.0f);
 				dC->setDirection(vectorParams[1]);
 				dC->wantsLight=true;
 				drawData->drawables.push_back(dC);
@@ -397,11 +407,12 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 	size_t totalSize=numElements(dataIn);
 
 	map<size_t,size_t> primitiveMap;
-	primitiveMap[PRIMITIVE_CYLINDER] = CROP_CYLINDER_INSIDE;
+	primitiveMap[PRIMITIVE_CYLINDER_AXIAL] = CROP_CYLINDER_INSIDE_AXIAL;
+	primitiveMap[PRIMITIVE_CYLINDER_RADIAL] = CROP_CYLINDER_INSIDE_RADIAL;
 	primitiveMap[PRIMITIVE_SPHERE] = CROP_SPHERE_INSIDE;
 
-	CropHelper dataMapping(callback,&progress.filterProgress,
-			totalSize,primitiveMap[primitiveType], vectorParams,scalarParams  );
+	CropHelper dataMapping(totalSize,primitiveMap[primitiveType], 
+					vectorParams,scalarParams  );
 	dataMapping.setMapMaxima(numBins);
 
 	unsigned int curProg=NUM_CALLBACK;
@@ -448,7 +459,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 						n+=NUM_CALLBACK;
 						progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 						curProg=NUM_CALLBACK;
-						if(!(*callback)(false))
+						if(*Filter::wantAbort)
 						{
 							#ifdef _OPENMP
 								spin=true;
@@ -504,20 +515,22 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 		//  the volume of the primitive's shell
 		switch(primitiveType)
 		{
-			case PRIMITIVE_CYLINDER:
+			case PRIMITIVE_CYLINDER_AXIAL:
+			case PRIMITIVE_CYLINDER_RADIAL:
 			{
 				needNormalise=true;
-				for(unsigned int uj=0;uj<ionFrequencies[0].size(); uj++)
-				{
-					//Normalise by cylinder volume, pi*r^2*h
-					normalisationFactor[uj] = 1.0/(M_PI*
-						scalarParams[0]*scalarParams[0]*dx);
-				}
+				float nFact;
+				//Normalise by cylinder slice volume, pi*r^2*h.
+				// This is the same in both radial and axial mode as the radial slices are equi-volume, 
+				// same as axial mode
+				nFact=1.0/(M_PI*scalarParams[0]*scalarParams[0]*dx);
+				for(unsigned int uj=0;uj<normalisationFactor.size(); uj++)
+					normalisationFactor[uj] = nFact;
 				break;
 			}
 			case PRIMITIVE_SPHERE:
 			{
-				for(unsigned int uj=0;uj<ionFrequencies[0].size(); uj++)
+				for(unsigned int uj=0;uj<normalisationFactor.size(); uj++)
 				{
 					//Normalise by sphere shell volume, 
 					// 4/3 *PI*dx^3*((n+1)^3-n^3)
@@ -662,7 +675,7 @@ unsigned int CompositionProfileFilter::refresh(const std::vector<const FilterStr
 	return 0;
 }
 
-std::string  CompositionProfileFilter::getErrString(unsigned int code) const
+std::string  CompositionProfileFilter::getSpecificErrString(unsigned int code) const
 {
 	const char *errCodes[] =   { "",
 		"Too many bins in comp. profile.",
@@ -688,7 +701,7 @@ bool CompositionProfileFilter::setProperty( unsigned int key,
 			if(stream_cast(newBinWidth,value))
 				return false;
 
-			if(newBinWidth < sqrt(std::numeric_limits<float>::epsilon()))
+			if(newBinWidth < sqrtf(std::numeric_limits<float>::epsilon()))
 				return false;
 
 			binWidth=newBinWidth;
@@ -708,16 +721,16 @@ bool CompositionProfileFilter::setProperty( unsigned int key,
 			if(!newPt.parse(value))
 				return false;
 
-			if(primitiveType == PRIMITIVE_CYLINDER)
+			if(primitiveType == PRIMITIVE_CYLINDER_AXIAL)
 			{
 				if(lockAxisMag && 
-					newPt.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()))
+					newPt.sqrMag() > sqrtf(std::numeric_limits<float>::epsilon()))
 				{
 					newPt.normalise();
-					newPt*=sqrt(vectorParams[1].sqrMag());
+					newPt*=sqrtf(vectorParams[1].sqrMag());
 				}
 			}
-			if(newPt.sqrMag() < sqrt(std::numeric_limits<float>::epsilon()))
+			if(newPt.sqrMag() < sqrtf(std::numeric_limits<float>::epsilon()))
 				return false;
 
 			if(!(vectorParams[1] == newPt ))
@@ -770,7 +783,8 @@ bool CompositionProfileFilter::setProperty( unsigned int key,
 			// preserving data where possible
 			switch(primitiveType)
 			{
-				case PRIMITIVE_CYLINDER:
+				case PRIMITIVE_CYLINDER_AXIAL:
+				case PRIMITIVE_CYLINDER_RADIAL:
 				{
 					if(vectorParams.size() != 2)
 					{
@@ -830,7 +844,7 @@ bool CompositionProfileFilter::setProperty( unsigned int key,
 			if(stream_cast(newRad,value))
 				return false;
 
-			if(newRad < sqrt(std::numeric_limits<float>::epsilon()))
+			if(newRad < sqrtf(std::numeric_limits<float>::epsilon()))
 				return false;
 
 			if(scalarParams[0] != newRad )
@@ -955,7 +969,8 @@ void CompositionProfileFilter::getProperties(FilterPropGroup &propertyList) cons
 
 	switch(primitiveType)
 	{
-		case PRIMITIVE_CYLINDER:
+		case PRIMITIVE_CYLINDER_AXIAL:
+		case PRIMITIVE_CYLINDER_RADIAL:
 		{
 			ASSERT(vectorParams.size() == 2);
 			ASSERT(scalarParams.size() == 1);
@@ -1146,9 +1161,13 @@ unsigned int CompositionProfileFilter::getBinData(unsigned int &numBins, float &
 			//radius of sphere
 			length=scalarParams[0];
 			break;
-		case PRIMITIVE_CYLINDER:
+		case PRIMITIVE_CYLINDER_AXIAL:
 			//length of cylinder, full axis length
-			length=sqrt(vectorParams[1].sqrMag());
+			length=sqrtf(vectorParams[1].sqrMag());
+			break;
+		case PRIMITIVE_CYLINDER_RADIAL:
+			//radius of cylinder
+			length =sqrtf(scalarParams[0]);
 			break;
 		default:
 			ASSERT(false);
@@ -1160,7 +1179,8 @@ unsigned int CompositionProfileFilter::getBinData(unsigned int &numBins, float &
 	{
 		switch(primitiveType)
 		{
-			case PRIMITIVE_CYLINDER:
+			case PRIMITIVE_CYLINDER_AXIAL:
+			case PRIMITIVE_CYLINDER_RADIAL:
 			case PRIMITIVE_SPHERE:
 			{
 
@@ -1270,6 +1290,7 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	if(XMLHelpFwdToElem(nodePtr,"primitivetype"))
 		return false;
 
+
 	xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
 	if(!xmlString)
 		return false;
@@ -1279,6 +1300,16 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	if(stream_cast(primitiveType,tmpStr))
 		return false;
 
+	//FIXME: DEPRECATE 3Depict versions <=0.0.17 had only two primitives,
+	// cylinder and sphere. 
+/*	if(versionCheckGreater(Filter::stateWriterVersion,("0.0.17")))
+	{
+		//remap the primitive type as needed
+		if(primitiveType == PRIMITIVE_CYLINDER_RADIAL)
+			primitiveType=PRIMITIVE_SPHERE;
+
+	}
+*/
 	if(primitiveType >= PRIMITIVE_END)
 	       return false;	
 	xmlFree(xmlString);
@@ -1395,7 +1426,8 @@ bool CompositionProfileFilter::readState(xmlNodePtr &nodePtr, const std::string 
 	//Check the scalar params match the selected primitive	
 	switch(primitiveType)
 	{
-		case PRIMITIVE_CYLINDER:
+		case PRIMITIVE_CYLINDER_AXIAL:
+		case PRIMITIVE_CYLINDER_RADIAL:
 			if(vectorParams.size() != 2 || scalarParams.size() !=1)
 				return false;
 			break;
@@ -1656,7 +1688,7 @@ bool testCompositionCylinder()
 
 
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"Refresh error code");
 
 	//2* plot, 1*rng, 1*draw
 	TEST(streamOut.size() == 4, "output stream count");
@@ -1687,7 +1719,7 @@ bool testCompositionCylinder()
 			break;
 		}
 	}
-
+	TEST(plotData,"Should have plot data");
 	TEST(plotData->xyData.size(),"Plot data size");
 
 	for(size_t ui=0;ui<plotData->xyData.size(); ui++)
@@ -1744,7 +1776,7 @@ bool testDensityCylinder()
 	TEST(f->setProperty(COMPOSITION_KEY_RADIUS,"5",needUp),"Set radius");
 
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"Refresh error code");
 	delete f;
 	delete d;
 

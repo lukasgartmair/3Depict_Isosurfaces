@@ -32,6 +32,15 @@ enum
 	CACHE_NEVER,
 };
 
+//Unlock helper class for toggling a  boolean value at exit
+class AutoUnlocker
+{
+	private:
+		bool *lockBool;
+	public:
+		AutoUnlocker(bool *b) { lockBool= b; *lockBool=true;}
+		~AutoUnlocker() { *lockBool=false;}
+};
 
 
 
@@ -208,6 +217,7 @@ FilterTree::FilterTree()
 {
 	maxCachePercent=DEFAULT_MAX_CACHE_PERCENT;
 	cacheStrategy=CACHE_DEPTH_FIRST;
+	amRefreshing=false;
 }
 
 FilterTree::~FilterTree()
@@ -551,8 +561,17 @@ void FilterTree::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propS
 unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData, 
 		std::vector<SelectionDevice *> &devices,
 		vector<pair<const Filter* , string> > &consoleMessages,
-	       	ProgressData &curProg, bool (*callback)(bool)) const
+	       	ProgressData &curProg, ATOMIC_BOOL &abortRefresh) const
 {
+
+	//initially, we should not want to abort refreshing 
+	ASSERT(!abortRefresh);
+	//Tell the filter system about our abort flag
+	Filter::wantAbort=&abortRefresh;
+
+
+	//Lock the refresh state.
+	AutoUnlocker unlocker(&amRefreshing);
 	
 	unsigned int errCode=0;
 
@@ -608,7 +627,6 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 	curProg.totalNumFilters=countChildFilters(filters,baseTreeNodes)+baseTreeNodes.size();
 
 
-	(*callback)(false);
 
 	for(unsigned int itPos=0;itPos<baseTreeNodes.size(); itPos++)
 	{
@@ -693,7 +711,6 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			//	This is the guts of the system.
 			//---
 			//
-			(*callback)(false);
 
 			if(!currentFilter->haveCache())
 				currentFilter->clearConsole();
@@ -702,11 +719,8 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			try
 			{
 
-				errCode=currentFilter->refresh(inDataStack.top(),
-							curData,curProg,callback);
+				errCode=currentFilter->refresh(inDataStack.top(),curData,curProg);
 
-				//error codes above this value are reserved
-				ASSERT(errCode <=FILTERTREE_REFRESH_ERR_BEGIN);
 			}
 			catch(std::bad_alloc)
 			{
@@ -723,7 +737,6 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			//Ensure that (1) yield is called, regardless of what filter does
 			//(2) yield is called after 100% update	
 			curProg.filterProgress=100;	
-			(*callback)(false);
 
 
 			vector<SelectionDevice *> curDevices;
@@ -745,7 +758,7 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 				consoleMessages.push_back(make_pair(currentFilter,tmpMessages[ui]));
 
 			//check for any error in filter update (including user abort)
-			if(errCode)
+			if(errCode || abortRefresh)
 			{
 				//clear any intermediary pointers
 				popPointerStack(inDataStack,0);
@@ -764,6 +777,8 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 							delete data;
 					}
 				}
+				if(abortRefresh)
+					return FILTER_ERR_ABORT;
 				return errCode;
 			}
 
@@ -848,7 +863,7 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 
 string FilterTree::getRefreshErrString(unsigned int code)
 {
-	ASSERT(code >FILTERTREE_REFRESH_ERR_BEGIN && code < FILTERTREE_REFRESH_ERR_ENUM_END);
+	
 	const char *REFRESH_ERR_STRINGS[] = {"",
 		"Insufficient memory for refresh",
 		};
@@ -1658,7 +1673,7 @@ void FilterTree::removeSubtree(Filter *removeFilt)
 	initFilterTree();
 }
 
-void FilterTree::cloneSubtree(FilterTree &f,Filter *targetFilt) const
+void FilterTree::cloneSubtree(FilterTree &f,const Filter *targetFilt) const
 {
 	ASSERT(!f.filters.size()); //Should only be passing empty trees
 	

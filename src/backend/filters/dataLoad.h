@@ -128,7 +128,7 @@ class DataLoadFilter:public Filter
 		//!Refresh object data
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &getOut, 
-				ProgressData &progress, bool (*callback)(bool));
+				ProgressData &progress);
 
 		void updatePosData();
 
@@ -141,7 +141,7 @@ class DataLoadFilter:public Filter
 		bool setProperty( unsigned int key, const std::string &value, bool &needUpdate);
 		
 		//!Get the human readable error string associated with a particular error code during refresh(...)
-		std::string getErrString(unsigned int code) const;
+		std::string getSpecificErrString(unsigned int code) const;
 
 		//!Dump state to output stream, using specified format
 		bool writeState(std::ostream &f,unsigned int format, 
@@ -163,7 +163,7 @@ class DataLoadFilter:public Filter
 		virtual unsigned int getRefreshUseMask() const; 
 	
 		//!Pos filter has state overrides	
-		virtual void getStateOverrides(std::vector<string> &overrides) const; 
+		virtual void getStateOverrides(std::vector<std::string> &overrides) const; 
 		
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b)  ;

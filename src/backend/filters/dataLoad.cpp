@@ -27,6 +27,11 @@
 
 #include "backend/APT/APTFileIO.h"
 
+using std::string;
+using std::pair;
+using std::make_pair;
+using std::endl;
+
 //Default number of ions to load
 const size_t MAX_IONS_LOAD_DEFAULT=5*1024*1024/(4*sizeof(float)); //5 MB worth.
 
@@ -181,7 +186,7 @@ size_t DataLoadFilter::numBytesForCache(size_t nObjects) const
 }
 
 unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 
 	errStr="";
@@ -261,6 +266,10 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 	IonStreamData *ionData = new IonStreamData;
 	ionData->parent=this;	
 
+	progress.step=1;
+	progress.stepName=TRANS("Reading File");
+	progress.maxStep=1;
+
 	unsigned int uiErr;	
 	switch(fileType)
 	{
@@ -271,7 +280,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 				
 				//Load the pos file, limiting how much you pull from it
 				if((uiErr = LimitLoadPosFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
-									maxIons,progress.filterProgress,callback,strongRandom)))
+									maxIons,progress.filterProgress,(*Filter::wantAbort),strongRandom)))
 				{
 					consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
 					delete ionData;
@@ -284,7 +293,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 			{
 				//Load the entirety of the file
 				if((uiErr = GenericLoadFloatFile(numColumns, INDEX_LENGTH, index, ionData->data, ionFilename.c_str(),
-									progress.filterProgress,callback)))
+									progress.filterProgress,(*Filter::wantAbort))))
 				{
 					consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
 					delete ionData;
@@ -327,7 +336,8 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 			{
 				//Load the output data using a random sampling technique. Load up to 4 data columns
 				if((uiErr=limitLoadTextFile(4,outDat,ionFilename.c_str(),
-						TEXT_DELIMINATORS,maxIons,progress.filterProgress,callback,strongRandom)))
+						TEXT_DELIMINATORS,maxIons,progress.filterProgress,(*Filter::wantAbort),strongRandom)))
+
 				{
 					consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
 					delete ionData;
@@ -395,11 +405,10 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 		}
 		case FILEDATA_TYPE_ATO:
 		{
-			//TODO: Load Ato file with sampling?
-
-			//Load the pos file, limiting how much you pull from it
+			//TODO: Load Ato file with sampling
+			//Load the file
 			if((uiErr = LoadATOFile(ionFilename.c_str(), ionData->data,
-						progress.filterProgress,callback)))
+						progress.filterProgress,(*Filter::wantAbort))))
 			{
 				consoleOutput.push_back(string(TRANS("Error loading file: ")) + ionFilename);
 				delete ionData;
@@ -434,6 +443,7 @@ unsigned int DataLoadFilter::refresh(const std::vector<const FilterStreamData *>
 		delete ionData;
 		return	0;
 	}
+	progress.filterProgress=100;
 
 
 	BoundCube dataCube;
@@ -1127,7 +1137,7 @@ unsigned int DataLoadFilter::getRefreshUseMask() const
 	return 0;
 }
 
-std::string  DataLoadFilter::getErrString(unsigned int code) const
+std::string  DataLoadFilter::getSpecificErrString(unsigned int code) const
 {
 	ASSERT(errStr.size());
 	return errStr;
@@ -1140,7 +1150,6 @@ void DataLoadFilter::setPropFromBinding(const SelectionBinding &b)
 
 bool DataLoadFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
-	using std::endl;
 	switch(format)
 	{
 		case STATE_FORMAT_XML:
@@ -1294,7 +1303,7 @@ bool posFileTest()
 
 	vector<const FilterStreamData*> streamIn,streamOut;
 	ProgressData prog;
-	TEST(!d->refresh(streamIn,streamOut,prog,dummyCallback),"Refresh error code");
+	TEST(!d->refresh(streamIn,streamOut,prog),"Refresh error code");
 	delete d;
 
 
@@ -1379,7 +1388,7 @@ bool textFileTest()
 
 	vector<const FilterStreamData*> streamIn,streamOut;
 	ProgressData prog;
-	TEST(!d->refresh(streamIn,streamOut,prog,dummyCallback),"Refresh error code");
+	TEST(!d->refresh(streamIn,streamOut,prog),"Refresh error code");
 	delete d;
 
 

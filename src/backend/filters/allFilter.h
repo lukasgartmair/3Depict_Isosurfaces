@@ -37,11 +37,11 @@
 bool isValidFilterName(const std::string &s);
 
 //!Create a "true default" filter from its true name string
-Filter *makeFilter(const string  &s) ;
+Filter *makeFilter(const std::string  &s) ;
 //!Create a true default filter from its enum value FILTER_TYPE_*
 Filter *makeFilter(unsigned int ui) ;
 
 //!Create a true default filter from its type string
-Filter *makeFilterFromDefUserString(const string &s) ;
+Filter *makeFilterFromDefUserString(const std::string &s) ;
 
 #endif

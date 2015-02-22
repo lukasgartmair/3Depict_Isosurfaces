@@ -18,6 +18,9 @@
 #ifndef VOXELISE_H
 #define VOXELISE_H
 #include "../filter.h"
+
+#include "common/voxels.h"
+
 #include "../../common/translation.h"
 
 //!Filter that does voxelisation for various primitives (copied from CompositionFilter)
@@ -84,8 +87,6 @@ private:
 
 	//Interpolation mode to use when slicing	
 	size_t sliceInterpolate;
-	//Interpolation boundary handling mode
-	size_t sliceBoundMode;
 	//Axis that is normal to the slice 0,1,2 => x,y,z
 	size_t sliceAxis;
 	//Fractional offset from lower bound of data cube [0,1]
@@ -116,7 +117,7 @@ public:
 	//!update filter
 	unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 						 std::vector<const FilterStreamData *> &getOut, 
-						 ProgressData &progress, bool (*callback)(bool));
+						 ProgressData &progress);
 	
 	virtual std::string typeString() const { return std::string(TRANS("Voxelisation"));};
 
@@ -136,7 +137,7 @@ public:
 	bool setProperty(unsigned int key, 
 					 const std::string &value, bool &needUpdate);
 	//!Get the human readable error string associated with a particular error code during refresh(...)
-	std::string getErrString(unsigned int code) const;
+	std::string getSpecificErrString(unsigned int code) const;
 	
 	//!Dump state to output stream, using specified format
 	bool writeState(std::ostream &f,unsigned int format, 

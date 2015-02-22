@@ -61,9 +61,15 @@ class FilterTreeAnalyse
 		// are being used with sampling.
 		void spatialSampling(const FilterTree &f);
 
+		//check to see if there is a filter who is biasing composition
 		void compositionAltered(const FilterTree &f);
 
+		//check to see if there is a filter that needs a particular parent
 		void checkRequiredParent(const FilterTree &f);
+		
+		//check to see if there is a filter that needs unranged data to work,
+		// but does not have it 
+		void checkUnrangedData(const FilterTree &f);
 	public:
 		void analyse(const FilterTree &f);
 

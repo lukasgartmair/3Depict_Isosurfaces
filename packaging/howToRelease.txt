@@ -1,0 +1,47 @@
+== HOW TO PREP A RELEASE - A ROUGH GUIDE ==
+
+-- Pre-tarball tasks --
+* Ensure basic compilation works.
+* Ensure basic unit tests work, using ubsan/valgrind.
+* Run cppcheck, fixing any major issues (extras/cppcheck.sh)
+* Run coverity, fixing any major issues (extras/coverity.sh)
+* Review any outstanding bug reports
+* Update Changelog
+* Run "makeTranslations update" from translations dir to rebuild translation database
+	- remove any dead translations
+* Merge code into "threedepict" sf repository, then work from that repo
+* Copy, or link, makeTarball.sh into base 3depict dir
+* Run makeTarball.sh, fixing any error messages - this may take a few runs
+	- may need to build PDFs
+* Tarball will now be in tarball/3Depict-version.tar.gz
+* Update RPMs
+* Update DEBs
+* Optionally, ensure mac compilation works
+* Ensure windows compilation works
+	- suggest using mingw cross comp. dir
+* Merge updated RPM/ DEB and windows installer files and any source changes
+------------------------ 
+
+-- Tarball generation --
+* Re-run makeTarball.sh, fixing any new errors
+------------------------
+
+-- Installer uploading --
+* Convert Changelog to dos format, and rename Changelog.txt
+* Upload Changelog
+* Upload PDF manual
+* Rebuild doxygen documentation & upload
+* Upload new tarball -> sourceforge website
+* Update news, download pages to point to new tarball 
+	- maybe other pages? 
+* Build windows installers (64 and 32 bit)
+	- test windows installers under wine (quick but inaccurate), then under real windows
+* Upload windows installers
+	- update RSS file
+* Update DEB in debian-science repo
+	- ensure lintian clean, and request upload
+* Update RPM in fedora-updates
+	- ensure rpmlint clean, then upload to testing.
+* Update PPAs in Ubuntu-linux, where possible
+* Update download page to point to new installer
+-------------------------

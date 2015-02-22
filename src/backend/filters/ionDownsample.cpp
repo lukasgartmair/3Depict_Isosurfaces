@@ -22,12 +22,13 @@
 
 #include "ionDownsample.h"
 
+using std::vector;
+using std::string;
 
 //!Downsampling filter
 enum
 {
-	IONDOWNSAMPLE_ABORT_ERR=1,
-	IONDOWNSAMPLE_BAD_ALLOC,
+	IONDOWNSAMPLE_BAD_ALLOC=1,
 	IONDOWNSAMPLE_ERR_ENUM_END
 };
 
@@ -174,7 +175,7 @@ size_t IonDownsampleFilter::numBytesForCache(size_t nObjects) const
 }
 
 unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 	//use the cached copy if we have it.
 	if(cacheOK)
@@ -209,14 +210,13 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 							frac = (float)(((const IonStreamData*)dataIn[ui])->data.size())/(float)totalSize;
 
 							randomSelect(d->data,((const IonStreamData *)dataIn[ui])->data,
-										rng,maxAfterFilter*frac,progress.filterProgress,callback,strongRandom);
+										rng,maxAfterFilter*frac,progress.filterProgress,strongRandom);
 
 
 						}
 						else
 						{
 
-							unsigned int curProg=NUM_CALLBACK;
 							size_t n=0;
 							//Reserve 90% of storage needed.
 							//highly likely with even modest numbers of ions
@@ -225,23 +225,17 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 
 							ASSERT(dataIn[ui]->getStreamType() == STREAM_TYPE_IONS);
 
-							for(vector<IonHit>::const_iterator it=((const IonStreamData *)dataIn[ui])->data.begin();
+							for(std::vector<IonHit>::const_iterator it=((const IonStreamData *)dataIn[ui])->data.begin();
 								       it!=((const IonStreamData *)dataIn[ui])->data.end(); ++it)
 							{
 								if(rng.genUniformDev() <  fraction)
 									d->data.push_back(*it);
 							
-								//update progress every CALLBACK ions
-								if(!curProg--)
+								progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
+								if(*Filter::wantAbort)
 								{
-									curProg=NUM_CALLBACK;
-									n+=NUM_CALLBACK;
-									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-									if(!(*callback)(false))
-									{
-										delete d;
-										return IONDOWNSAMPLE_ABORT_ERR;
-									}
+									delete d;
+									return FILTER_ERR_ABORT;
 								}
 							}
 						}
@@ -347,14 +341,11 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 							//The total number of ions is the specified value for this ionID, multiplied by
 							//this stream's fraction of the total incoming data
 							randomSelect(d->data,input->data, rng,(size_t)(frac*ionLimits[ionIDVec[idPos]]),
-									progress.filterProgress,callback,strongRandom);
+									progress.filterProgress,strongRandom);
 						}
 						else
 						{
 							//Use the direct fractions as entered in by user. 
-
-							unsigned int curProg=NUM_CALLBACK;
-
 							float thisFraction = ionFractions[ionIDVec[idPos]];
 							
 							//Reserve 90% of storage needed.
@@ -370,17 +361,13 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 									if(rng.genUniformDev() <  thisFraction)
 										d->data.push_back(*it);
 								
-									//update progress every CALLBACK ions
-									if(!curProg--)
+									//update progress
+									progress.filterProgress= 
+										(unsigned int)((float)(n)/((float)totalSize)*100.0f);
+									if(*Filter::wantAbort)
 									{
-										n+=NUM_CALLBACK;
-										progress.filterProgress= 
-											(unsigned int)((float)(n)/((float)totalSize)*100.0f);
-										if(!(*callback)(false))
-										{
-											delete d;
-											return IONDOWNSAMPLE_ABORT_ERR;
-										}
+										delete d;
+										return FILTER_ERR_ABORT;
 									}
 								}
 						
@@ -615,10 +602,9 @@ bool IonDownsampleFilter::setProperty(  unsigned int key,
 }
 
 
-std::string  IonDownsampleFilter::getErrString(unsigned int code) const
+std::string  IonDownsampleFilter::getSpecificErrString(unsigned int code) const
 {
 	const char *errStrs[] = { "",	
-		"Downsample Aborted",
 		"Insuffient memory for downsample",
 	};	
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errStrs) == IONDOWNSAMPLE_ERR_ENUM_END);
@@ -808,7 +794,7 @@ bool fixedSampleTest()
 
 	//Do the refresh
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	f->refresh(streamIn,streamOut,p);
 
 	delete f;
 	delete d;
@@ -845,7 +831,7 @@ bool variableSampleTest()
 
 	//Do the refresh
 	ProgressData p;
-	TEST(!(f->refresh(streamIn,streamOut,p,dummyCallback)),"refresh error code");
+	TEST(!(f->refresh(streamIn,streamOut,p)),"refresh error code");
 
 	delete f;
 	delete d;

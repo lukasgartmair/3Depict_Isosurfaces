@@ -27,6 +27,10 @@ enum
 	IONINFO_KEY_NORMALISE,
 	IONINFO_KEY_VOLUME,
 	IONINFO_KEY_VOLUME_ALGORITHM,
+	IONINFO_KEY_BACKMODE,
+	IONINFO_KEY_BACK_MASSSTART,
+	IONINFO_KEY_BACK_MASSEND,
+	IONINFO_KEY_BACK_BINSIZE
 };
 
 //!Ion derived information filter, things like volume, composition, etc.
@@ -52,6 +56,14 @@ class IonInfoFilter : public Filter
 		//Side length for filled cube volume estimation
 		float cubeSideLen;
 
+		//mode for performing background correction
+		unsigned int fitMode;
+
+		//start/end mass for background correction
+		float massBackStart, massBackEnd;
+
+		//binwidth to use when performing background correction
+		float binWidth;
 #ifdef DEBUG
 		float lastVolume;
 #endif
@@ -62,8 +74,8 @@ class IonInfoFilter : public Filter
 		//Convex hull volume estimation routine.
 		//returns 0 on success. global "qh " "object"  will contain
 		//the hull. Volume is computed.
-		static unsigned int convexHullEstimateVol(const vector<const FilterStreamData*> &data, 
-							float &vol,bool (*callback)(bool));
+		static unsigned int convexHullEstimateVol(const std::vector<const FilterStreamData*> &data, 
+							float &vol);
 	public:
 		//!Constructor
 		IonInfoFilter();
@@ -80,7 +92,7 @@ class IonInfoFilter : public Filter
 		// ->cached.
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 							std::vector<const FilterStreamData *> &dataOut,
-							ProgressData &progress, bool (*callback)(bool));
+							ProgressData &progress);
 		//!Get (approx) number of bytes required for cache
 		size_t numBytesForCache(size_t nObjects) const;
 
@@ -102,7 +114,7 @@ class IonInfoFilter : public Filter
 		void setPropFromBinding( const SelectionBinding &b) ;
 
 		//!Get the human readable error string associated with a particular error code during refresh(...)
-		std::string getErrString(unsigned int code) const;
+		std::string getSpecificErrString(unsigned int code) const;
 
 		//!Dump state to output stream, using specified format
 		/* Current supported formats are STATE_FORMAT_XML
@@ -127,6 +139,9 @@ class IonInfoFilter : public Filter
 		//!Get the bitmask encoded list of filterstreams that this filter may use during ::refresh.
 		unsigned int getRefreshUseMask() const;
 
+
+		//!Does the filter need unranged input?
+		bool needsUnrangedData() const; 
 #ifdef DEBUG
 		bool runUnitTests();
 

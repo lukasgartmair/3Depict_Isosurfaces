@@ -29,7 +29,10 @@
 #include <set>
 
 using std::pair;
-using std::endl;
+using std::vector;
+using std::map;
+using std::set;
+using std::string;
 
 // begin wxGlade: ::extracode
 enum
@@ -419,13 +422,11 @@ void RangeEditorDialog::setCurrentRange(size_t forceSelected)
 			currentRange=0;
 			return;
 		}
-		cerr << "Selected item not wxNOT_FOUND" << endl;
 
 		curPlotID=listToPlotIDs[selectedItem];
 	}
 	else
 	{
-		cerr << "Not force selected" << endl;
 		curPlotID=listToPlotIDs[forceSelected];
 	}
 	

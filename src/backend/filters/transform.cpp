@@ -19,7 +19,10 @@
 
 #include "filterCommon.h"
 
-
+using std::vector;
+using std::string;
+using std::pair;
+using std::make_pair;
 
 
 enum
@@ -70,8 +73,8 @@ enum
 //!Error codes
 enum
 {
-	ERR_CALLBACK_FAIL=1,
-	ERR_NOMEM,
+	
+	ERR_NOMEM=1,
 	TRANSFORM_ERR_ENUM_END
 };
 
@@ -185,7 +188,7 @@ DrawStreamData* TransformFilter::makeMarkerSphere(SelectionDevice* &s) const
 }
 
 unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 	//use the cached copy if we have it.
 	if(cacheOK)
@@ -346,19 +349,19 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							d->valueType=src->valueType;
 
 							ASSERT(src->data.size() <= totalSize);
-							unsigned int curProg=NUM_CALLBACK;
 #ifdef _OPENMP
+							unsigned int curProg=PROGRESS_REDUCE;
 							//Parallel version
 							bool spin=false;
-							#pragma omp parallel for shared(spin)
+							#pragma omp parallel for shared(spin,n)
 							for(unsigned int ui=0;ui<src->data.size();ui++)
 							{
-								unsigned int thisT=omp_get_thread_num();
 								if(spin)
 									continue;
 
 								if(!curProg--)
 								{
+									unsigned int thisT=omp_get_thread_num();
 									#pragma omp critical
 									{
 									n+=NUM_CALLBACK;
@@ -368,7 +371,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 
 									if(thisT == 0)
 									{
-										if(!(*callback)(false))
+										if(*Filter::wantAbort)
 											spin=true;
 									}
 								}
@@ -381,7 +384,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							if(spin)
 							{			
 								delete d;
-								return ERR_CALLBACK_FAIL;
+								return FILTER_ERR_ABORT;
 							}
 
 #else
@@ -394,17 +397,12 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 								//set the position for the given ion
 								d->data[pos].setPos((it->getPosRef() - origin)*scaleFactor+origin);
 								d->data[pos].setMassToCharge(it->getMassToCharge());
-								//update progress every CALLBACK ions
-								if(!curProg--)
+								//update progress 
+								progress.filterProgress= (unsigned int)((float)(n++)/((float)totalSize)*100.0f);
+								if(*Filter::wantAbort)
 								{
-									n+=NUM_CALLBACK;
-									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-									if(!(*callback)(false))
-									{
-										delete d;
-										return ERR_CALLBACK_FAIL;
-									}
-									curProg=NUM_CALLBACK;
+									delete d;
+									return FILTER_ERR_ABORT;
 								}
 								pos++;
 							}
@@ -460,8 +458,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							d->valueType=src->valueType;
 
 							ASSERT(src->data.size() <= totalSize);
-							unsigned int curProg=NUM_CALLBACK;
 #ifdef _OPENMP
+							unsigned int curProg=PROGRESS_REDUCE;
 							//Parallel version
 							bool spin=false;
 							#pragma omp parallel for shared(spin)
@@ -482,7 +480,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 
 									if(thisT == 0)
 									{
-										if(!(*callback)(false))
+										if(*Filter::wantAbort)
 											spin=true;
 									}
 								}
@@ -495,7 +493,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							if(spin)
 							{			
 								delete d;
-								return ERR_CALLBACK_FAIL;
+								return FILTER_ERR_ABORT;
 							}
 
 #else
@@ -508,17 +506,11 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 								//set the position for the given ion
 								d->data[pos].setPos((it->getPosRef() - origin)*transformVec+origin);
 								d->data[pos].setMassToCharge(it->getMassToCharge());
-								//update progress every CALLBACK ions
-								if(!curProg--)
+								progress.filterProgress= (unsigned int)((float)(n++)/((float)totalSize)*100.0f);
+								if(*Filter::wantAbort)
 								{
-									n+=NUM_CALLBACK;
-									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-									if(!(*callback)(false))
-									{
-										delete d;
-										return ERR_CALLBACK_FAIL;
-									}
-									curProg=NUM_CALLBACK;
+									delete d;
+									return FILTER_ERR_ABORT;
 								}
 								pos++;
 							}
@@ -576,14 +568,13 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							d->valueType=src->valueType;
 							
 							ASSERT(src->data.size() <= totalSize);
-							unsigned int curProg=NUM_CALLBACK;
 #ifdef _OPENMP
 							//Parallel version
+							unsigned int curProg=PROGRESS_REDUCE;
 							bool spin=false;
 #pragma omp parallel for shared(spin)
 							for(unsigned int ui=0;ui<src->data.size();ui++)
 							{
-								unsigned int thisT=omp_get_thread_num();
 								if(spin)
 									continue;
 								
@@ -591,14 +582,14 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 								{
 #pragma omp critical
 									{
-										n+=NUM_CALLBACK;
+										n+=PROGRESS_REDUCE;
 										progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 									}
 									
 									
-									if(thisT == 0)
+									if(omp_get_thread_num() == 0)
 									{
-										if(!(*callback)(false))
+										if(*Filter::wantAbort)
 											spin=true;
 									}
 								}
@@ -611,7 +602,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							if(spin)
 							{			
 								delete d;
-								return ERR_CALLBACK_FAIL;
+								return FILTER_ERR_ABORT;
 							}
 							
 #else
@@ -625,16 +616,11 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 								d->data[pos].setPos((it->getPosRef() - origin));
 								d->data[pos].setMassToCharge(it->getMassToCharge());
 								//update progress every CALLBACK ions
-								if(!curProg--)
+								progress.filterProgress= (unsigned int)((float)(n++)/((float)totalSize)*100.0f);
+								if(*Filter::wantAbort)
 								{
-									n+=NUM_CALLBACK;
-									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-									if(!(*callback)(false))
-									{
-										delete d;
-										return ERR_CALLBACK_FAIL;
-									}
-									curProg=NUM_CALLBACK;
+									delete d;
+									return FILTER_ERR_ABORT;
 								}
 								pos++;
 							}
@@ -709,7 +695,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 									
 									if(thisT == 0)
 									{
-										if(!(*callback)(false))
+										if(*Filter::wantAbort)
 											spin=true;
 									}
 								}
@@ -722,7 +708,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 							if(spin)
 							{			
 								delete d;
-								return ERR_CALLBACK_FAIL;
+								return FILTER_ERR_ABORT;
 							}
 							
 #else
@@ -740,10 +726,10 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 								{
 									n+=NUM_CALLBACK;
 									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-									if(!(*callback)(false))
+									if(*Filter::wantAbort)
 									{
 										delete d;
-										return ERR_CALLBACK_FAIL;
+										return FILTER_ERR_ABORT;
 									}
 									curProg=NUM_CALLBACK;
 								}
@@ -835,10 +821,10 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 								{
 									n+=NUM_CALLBACK;
 									progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-									if(!(*callback)(false))
+									if(*Filter::wantAbort)
 									{
 										delete d;
-										return ERR_CALLBACK_FAIL;
+										return FILTER_ERR_ABORT;
 									}
 									curProg=NUM_CALLBACK;
 								}
@@ -926,10 +912,10 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 										{
 											curProg=NUM_CALLBACK;
 											progress.filterProgress= (unsigned int)((float)(ui)/((float)totalSize)*100.0f);
-											if(!(*callback)(false))
+											if(*Filter::wantAbort)
 											{
 												delete d;
-												return ERR_CALLBACK_FAIL;
+												return FILTER_ERR_ABORT;
 											}
 										}
 									}
@@ -956,10 +942,10 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 										{
 											curProg=NUM_CALLBACK;
 											progress.filterProgress= (unsigned int)((float)(ui)/((float)totalSize)*100.0f);
-											if(!(*callback)(false))
+											if(*Filter::wantAbort)
 											{
 												delete d;
-												return ERR_CALLBACK_FAIL;
+												return FILTER_ERR_ABORT;
 											}
 										}
 									}
@@ -990,8 +976,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		progress.filterProgress=0;
 		progress.stepName=TRANS("Collate");
 		progress.maxStep=3;
-		if(!(*callback)(true))
-			return ERR_CALLBACK_FAIL;
+		if(*Filter::wantAbort)
+			return FILTER_ERR_ABORT;
 		//we have to cross the streams (I thought that was bad?) 
 		//  - Each dataset is no longer independent, and needs to
 		//  be mixed with the other datasets. Bugger; sounds mem. expensive.
@@ -1043,10 +1029,10 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 						d->data[uj+curPos].setPos(src->data[uj].getPos());
 					}
 				
-					if(!(*callback)(true))
+					if(*Filter::wantAbort)
 					{
 						delete d;
-						return ERR_CALLBACK_FAIL;
+						return FILTER_ERR_ABORT;
 					}
 
 					curPos+=src->data.size();
@@ -1062,10 +1048,10 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		progress.step=2;
 		progress.filterProgress=0;
 		progress.stepName=TRANS("Shuffle");
-		if(!(*callback)(true))
+		if(*Filter::wantAbort)
 		{
 			delete d;
-			return ERR_CALLBACK_FAIL;
+			return FILTER_ERR_ABORT;
 		}
 		//Shuffle the value data.TODO: callback functor	
 
@@ -1077,19 +1063,19 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		r.seed(time(0));
 		std::shuffle(massData.begin(),massData.end(),r);
 #endif
-		if(!(*callback)(true))
+		if(*Filter::wantAbort)
 		{
 			delete d;
-			return ERR_CALLBACK_FAIL;
+			return FILTER_ERR_ABORT;
 		}
 
 		progress.step=3;
 		progress.filterProgress=0;
 		progress.stepName=TRANS("Splice");
-		if(!(*callback)(true))
+		if(*Filter::wantAbort)
 		{
 			delete d;
-			return ERR_CALLBACK_FAIL;
+			return FILTER_ERR_ABORT;
 		}
 		
 		
@@ -1100,10 +1086,10 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		for(size_t uj=0;uj<totalSize;uj++)
 			d->data[uj].setMassToCharge(massData[uj]);
 		
-		if(!(*callback)(true))
+		if(*Filter::wantAbort)
 		{
 			delete d;
-			return ERR_CALLBACK_FAIL;
+			return FILTER_ERR_ABORT;
 		}
 
 		massData.clear();
@@ -1486,10 +1472,9 @@ bool TransformFilter::setProperty(  unsigned int key,
 }
 
 
-std::string  TransformFilter::getErrString(unsigned int code) const
+std::string  TransformFilter::getSpecificErrString(unsigned int code) const
 {
 	const char *errStrs[] = { "",
-		"Aborted",//User aborted in a callback
 		"Unable to allocate memory"//Caught a memory issue,
 	};
 
@@ -1801,7 +1786,7 @@ bool rotateTest()
 	//OK, so now do the rotation
 	//Do the refresh
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh error code");
 	delete f;
 
 	TEST(streamOut.size() == 1,"stream count");
@@ -1821,7 +1806,7 @@ bool rotateTest()
 
 
 	TEST((massCentre[0]-massCentre[1]).sqrMag() < 
-			2.0*sqrt(std::numeric_limits<float>::epsilon()),"mass centre invariance");
+			2.0*sqrtf(std::numeric_limits<float>::epsilon()),"mass centre invariance");
 
 	//Rotating a sphere around its centre of mass
 	// should not massively change the bounding box
@@ -1883,7 +1868,7 @@ bool translateTest()
 	
 	//Do the refresh
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"Refresh error code");
 	delete f;
 	
 	TEST(streamOut.size() == 1,"stream count");
@@ -1903,7 +1888,7 @@ bool translateTest()
 		{
 			float f;
 			f=bc[0].getBound(ui,uj) -bc[1].getBound(ui,uj);
-			TEST(fabs(f-offsetPt[ui]) < sqrt(std::numeric_limits<float>::epsilon()), "bound translation");
+			TEST(fabs(f-offsetPt[ui]) < sqrtf(std::numeric_limits<float>::epsilon()), "bound translation");
 		}
 	}
 
@@ -1963,7 +1948,7 @@ bool scaleTest()
 
 	//Do the refresh
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh error code");
 	delete f;
 
 	TEST(streamOut.size() == 1,"stream count");
@@ -1983,7 +1968,7 @@ bool scaleTest()
 	float volumeDelta;
 	volumeDelta=fabs(bc[1].volume()/cubeOfScale - bc[0].volume() );
 
-	TEST(volumeDelta < 100.0f*sqrt(std::numeric_limits<float>::epsilon()), "scaled volume test");
+	TEST(volumeDelta < 100.0f*sqrtf(std::numeric_limits<float>::epsilon()), "scaled volume test");
 
 	delete streamOut[0];
 	delete d;
@@ -2036,7 +2021,7 @@ bool scaleAnisoTest()
 
 	//Do the refresh
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh error code");
 	delete f;
 
 	TEST(streamOut.size() == 1,"stream count");
@@ -2078,7 +2063,7 @@ bool shuffleTest()
 	//OK, so now run the shuffle 
 	//Do the refresh
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh error code");
 	delete f;
 
 	TEST(streamOut.size() == 1,"stream count");

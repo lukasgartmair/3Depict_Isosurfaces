@@ -55,13 +55,16 @@ class RangeFileFilter : public Filter
 		//Show a legend of enabled ions
 		bool showLegend;
 
+		//create a legend drawable. Note that the pointer 
+		// will not be deleted by this function 
+		DrawStreamData *createLegend() const;
 	public:
 
 		//!Set the format to assume when loading file
 		void setFormat(unsigned int format);
 	
 		std::vector<char> getEnabledRanges() const {return enabledRanges;};
-		void setEnabledRanges(const vector<char> &i) {enabledRanges = i;};
+		void setEnabledRanges(const std::vector<char> &i) {enabledRanges = i;};
 		
 		std::vector<char> getEnabledIons() const {return enabledIons;};
 
@@ -82,7 +85,7 @@ class RangeFileFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &getOut, 
-					ProgressData &progress, bool (*callback)(bool));
+					ProgressData &progress);
 		//!Force a re-read of the rangefile, returning false on failure, true on success
 		bool updateRng();
 		
@@ -111,7 +114,7 @@ class RangeFileFilter : public Filter
 		//!Set a region update
 		virtual void setPropFromRegion(unsigned int method, unsigned int regionID, float newPos);
 		//!Get the human readable error string associated with a particular error code during refresh(...)
-		std::string getErrString(unsigned int code) const;
+		std::string getSpecificErrString(unsigned int code) const;
 		
 		//!Dump state to output stream, using specified format
 		bool writeState(std::ostream &f,unsigned int format,
@@ -126,10 +129,11 @@ class RangeFileFilter : public Filter
 		bool readState(xmlNodePtr &node, const std::string &packDir);
 		
 		//!filter has state overrides	
-		virtual void getStateOverrides(std::vector<string> &overrides) const; 
+		virtual void getStateOverrides(std::vector<std::string> &overrides) const; 
 		//!Set internal property value using a selection binding  (Disabled, this filter has no bindings)
 		void setPropFromBinding(const SelectionBinding &b)  ;
 
+		bool getDropUnranged() const { return dropUnranged; }
 #ifdef DEBUG
 		bool runUnitTests();
 #endif

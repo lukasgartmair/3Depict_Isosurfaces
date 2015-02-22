@@ -28,6 +28,11 @@
 //workaround for decimal separator bug
 #include <wx/numformatter.h>
 
+#include <vector>
+#include <string>
+
+using std::vector;
+using std::string;
 
 void updateFilterPropertyGrid(wxPropertyGrid *g, const Filter *f, const string &stateString)
 {
@@ -242,10 +247,7 @@ void updateCameraPropertyGrid(wxPropertyGrid *g, const Camera *c)
 				case PROPERTY_TYPE_COLOUR:
 				{
 					ColourRGBA rgba;
-					bool res;
-					res=rgba.parse(camProp.data);
-	
-					ASSERT(res);
+					rgba.parse(camProp.data);
 					pgp =  new wxColourProperty(camProp.name,keyStr,
 								 wxColour(rgba.r(),rgba.g(),rgba.b()) ) ;
 					break;

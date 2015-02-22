@@ -25,6 +25,7 @@ class ProgressData;
 class RangeFileFilter;
 
 #include "APT/ionhit.h"
+#include "APT/APTFileIO.h"
 
 #include "APT/APTRanges.h"
 #include "common/constants.h"
@@ -32,9 +33,11 @@ class RangeFileFilter;
 #include "gl/select.h"
 #include "gl/drawables.h"
 
-#include "common/voxels.h"
 #include "common/stringFuncs.h"
 #include "common/array2D.h"
+
+template<typename T>
+class Voxels;
 
 //ifdef inclusion as there is some kind of symbol clash...
 #ifdef ATTRIBUTE_PRINTF
@@ -45,6 +48,7 @@ class RangeFileFilter;
 	#include <libxml/xmlreader.h>
 	#undef ATTRIBUTE_PRINTF
 #endif
+
 
 
 #include <wx/propgrid/propgrid.h>
@@ -73,6 +77,7 @@ enum
 	FILTER_TYPE_ANNOTATION,
 	FILTER_TYPE_ENUM_END // not a filter. just end of enum
 };
+
 
 extern const char *FILTER_NAMES[];
 
@@ -142,17 +147,17 @@ enum
 };
 
 
+//!Generic filter error codes
 enum
 {
-	FILTER_ERR_ABORT=1, //User abort
-	FILTER_ERR_ENUM_END
+	FILTER_ERR_ABORT = 1000000,
 };
 
 //---
 //
 
 //!Return the number of elements in a vector of filter data - i.e. the sum of the number of objects within each stream. Only masked streams (STREAM_TYPE_*) will be counted
-size_t numElements(const vector<const FilterStreamData *> &vm, unsigned int mask=STREAMTYPE_MASK_ALL);
+size_t numElements(const std::vector<const FilterStreamData *> &vm, unsigned int mask=STREAMTYPE_MASK_ALL);
 
 
 
@@ -246,7 +251,7 @@ class FilterPropGroup
 				groupCount=0;}
 
 		//!Grab all properties from the specified group
-		void getGroup(size_t group, vector<FilterProperty> &groupVec) const;
+		void getGroup(size_t group, std::vector<FilterProperty> &groupVec) const;
 		
 		//Confirm a particular group exists
 		bool hasGroup(size_t group) const;
@@ -286,6 +291,10 @@ public:
 	
 	//!Apply filter to input data stream	
 	std::vector<IonHit> data;
+
+	//!export given filterstream data pointers as ion data
+	static unsigned int exportStreams(const std::vector<const FilterStreamData *> &selected, 
+							const std::string &outFile, unsigned int format=IONFORMAT_POS);
 };
 
 //!Point with m-t-c value data
@@ -293,8 +302,9 @@ class VoxelStreamData : public FilterStreamData
 {
 public:
 	VoxelStreamData();
+	~VoxelStreamData();
 	VoxelStreamData( const Filter *f);
-	size_t getNumBasicObjects() const { return data.getSize();};
+	size_t getNumBasicObjects() const ;
 	void clear();
 	
 	unsigned int representationType;
@@ -302,7 +312,7 @@ public:
 	float splatSize;
 	float isoLevel;
 	//!Apply filter to input data stream	
-	Voxels<float> data;
+	Voxels<float> *data;
 		
 };
 
@@ -343,13 +353,13 @@ class PlotStreamData : public FilterStreamData
 		//!XY data pairs for plotting curve
 		std::vector<std::pair<float,float> > xyData;
 		//!Rectangular marked regions
-		vector<std::pair<float,float> > regions;
-		vector<string> regionTitle;
+		std::vector<std::pair<float,float> > regions;
+		std::vector<std::string> regionTitle;
 		//!Region colours
-		vector<float> regionR,regionB,regionG;
+		std::vector<float> regionR,regionB,regionG;
 
 		//!Region indices from parent region
-		vector<unsigned int> regionID;
+		std::vector<unsigned int> regionID;
 
 		//!Region parent filter pointer, used for matching interaction 
 		// with region to parent property
@@ -392,12 +402,17 @@ class Plot2DStreamData : public FilterStreamData
 		Array2D<float> xyData;
 		//Only rqeuired for xy plots
 		float xMin,xMax,yMin,yMax;
-		
-		//!Unstructured XY points
-		vector<pair<float,float> > scatterData;
-		//optional intensity data for scatter plots
-		vector<float> scatterIntensity;
 	
+
+		float r,g,b,a;
+	
+		//!Unstructured XY points
+		std::vector<std::pair<float,float> > scatterData;
+		//optional intensity data for scatter plots
+		std::vector<float> scatterIntensity;
+	
+		//Do we want to plot the scatter intensity in lgo mode?
+		bool scatterIntensityLog;	
 
 		//!Parent filter index
 		unsigned int index;
@@ -412,7 +427,7 @@ class DrawStreamData: public FilterStreamData
 {
 	public:
 		//!Vector of 3D objects to draw.
-		vector<DrawableObj *> drawables;
+		std::vector<DrawableObj *> drawables;
 		//!constructor
 		DrawStreamData(){ streamType=STREAM_TYPE_DRAW;};
 		DrawStreamData(const Filter *f){ streamType=STREAM_TYPE_DRAW;};
@@ -438,9 +453,9 @@ class RangeStreamData :  public FilterStreamData
 		//it merely provides access to existing data.
 		RangeFile *rangeFile;
 		//Enabled ranges from source filter
-		vector<char> enabledRanges;
+		std::vector<char> enabledRanges;
 		//Enabled ions from source filter 
-		vector<char> enabledIons;
+		std::vector<char> enabledIons;
 
 		
 		//!constructor
@@ -470,13 +485,14 @@ class Filter
 		static bool strongRandom;
 
 
+
 		//!Array of the number of streams propagated on last refresh
 		//This is initialised to -1, which is considered invalid
 		unsigned int numStreamsLastRefresh[NUM_STREAM_TYPES];
 	
 
 		//!temporary console output. Should be only nonzero size immediately after refresh
-		vector<string> consoleOutput;
+		std::vector<std::string> consoleOutput;
 		//!User settable labelling string (human readable ID, etc etc)
 		std::string userString;
 		//Filter output cache
@@ -487,16 +503,15 @@ class Filter
 
 
 		//Collate ions from filterstream data into an ionhit vector
-		static unsigned int collateIons(const vector<const FilterStreamData *> &dataIn,
-				vector<IonHit> &outVector, ProgressData &prog,
-				bool (*callback)(bool),size_t totalDataSize=(size_t)-1);
+		static unsigned int collateIons(const std::vector<const FilterStreamData *> &dataIn,
+				std::vector<IonHit> &outVector, ProgressData &prog, size_t totalDataSize=(size_t)-1);
 
 		//!Propagate the given input data to an output vector
-		static void propagateStreams(const vector<const FilterStreamData *> &dataIn,
-				vector<const FilterStreamData *> &dataOut,size_t mask=STREAMTYPE_MASK_ALL,bool invertMask=false) ;
+		static void propagateStreams(const std::vector<const FilterStreamData *> &dataIn,
+				std::vector<const FilterStreamData *> &dataOut,size_t mask=STREAMTYPE_MASK_ALL,bool invertMask=false) ;
 
 		//!Propagate the cache into output
-		void propagateCache(vector<const FilterStreamData *> &dataOut) const;
+		void propagateCache(std::vector<const FilterStreamData *> &dataOut) const;
 
 		//Set a property, without any checking of the new value 
 		// -clears cache on change
@@ -509,10 +524,20 @@ class Filter
 		//place a stream object into the filter cache, if required
 		// does not place object into filter output - you need to do that yourself
 		void cacheAsNeeded(FilterStreamData *s); 
+
+		//!Get the generic (applies to any filter) error codes
+		static std::string getBaseErrString(unsigned int errCode);
+
+		//!Get the per-filter error codes
+		virtual std::string getSpecificErrString(unsigned int errCode) const=0;
+
+	
 	public:	
 		Filter() ;
 		virtual ~Filter();
-		
+		//Abort pointer . This must be  nonzero during filter refreshes
+		static ATOMIC_BOOL *wantAbort;
+
 		//Pure virtual functions
 		//====
 		//!Duplicate filter contents, excluding cache.
@@ -521,7 +546,7 @@ class Filter
 		//!Apply filter to new data, updating cache as needed. Vector of returned pointers must be deleted manually, first checking ->cached.
 		virtual unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &dataOut,
-				ProgressData &progress, bool (*callback)(bool)) =0;
+				ProgressData &progress ) =0;
 		//!Erase cache
 		virtual void clearCache();
 
@@ -548,8 +573,8 @@ class Filter
 		virtual bool setProperty(unsigned int key,
 			const std::string &value, bool &needUpdate) = 0;
 
-		//!Get the human readable error string associated with a particular error code during refresh(...)
-		virtual std::string getErrString(unsigned int code) const =0;
+		//!Get the human readable error string associated with a particular error code during refresh(...). Do *not* override this for specific filter errors. Override getSpecificErrString
+		std::string getErrString(unsigned int code) const;
 
 		//!Dump state to output stream, using specified format
 		/* Current supported formats are STATE_FORMAT_XML
@@ -580,7 +605,7 @@ class Filter
 		//====
 	
 		//!Return the unique name for a given filter -- DO NOT TRANSLATE	
-		string trueName() const { return FILTER_NAMES[getType()];};
+		std::string trueName() const { return FILTER_NAMES[getType()];};
 
 
 
@@ -592,7 +617,7 @@ class Filter
 
 		//!Return the XML elements that refer to external entities (i.e. files) which do not move with the XML file
 		//Each element is to be referred to using "/" as entity separator, for the first pair element, and the attribute name for the second.
-		virtual void getStateOverrides(std::vector<string> &overrides) const {}; 
+		virtual void getStateOverrides(std::vector<std::string> &overrides) const {}; 
 
 		//!Enable/disable caching for this filter
 		void setCaching(bool enableCache) {cache=enableCache;};
@@ -619,7 +644,7 @@ class Filter
 		 * another at this level (for example setting two devices on one primitve,
 		 * with the same mouse/key bindings). So dont do that.
 		 */
-		void getSelectionDevices(vector<SelectionDevice *> &devices) const;
+		void getSelectionDevices(std::vector<SelectionDevice *> &devices) const;
 
 
 		//!Update the output statistics for this filter (num items of streams of each type output)
@@ -652,9 +677,12 @@ class Filter
 
 		//Can we be a useful filter, even if given no input specified by the Use mask?
 		virtual bool isUsefulAsAppend() const { return false;}
+	
+		template<typename T>	
+		static void getStreamsOfType(const std::vector<const FilterStreamData *> &vec, std::vector<const T *> &dataOut);
 #ifdef DEBUG
 		//!Run all the registered unit tests for this filter
-		virtual bool runUnitTests() { cerr << "No test for " << typeString() << endl; return true;} ;
+		virtual bool runUnitTests() { std::cerr << "No test for " << typeString() << std::endl; return true;} ;
 		//!Is the filter caching?
 		bool cacheEnabled() const {return cache;};
 
@@ -664,6 +692,17 @@ class Filter
 #endif
 
 };
+
+template<typename T>
+void Filter::getStreamsOfType(const std::vector<const FilterStreamData *> &vec, std::vector<const T *> &dataOut)
+{
+	T dummyInstance;
+	for(size_t ui=0;ui<vec.size() ; ui++)
+	{
+		if(vec[ui]->getStreamType() == dummyInstance.getStreamType())
+			dataOut.push_back((const T*)vec[ui]);
+	}
+}
 
 //Template specialisations & def for  applyPropertyNow
 //--
@@ -718,7 +757,7 @@ class ProgressData
 		//!Maximum steps
 		unsigned int maxStep;
 		
-		//!Pointer to the current filter that is being updated. Only valid during an update callback
+		//!Pointer to the current filter that is being updated. 
 		const Filter *curFilter;
 
 		//!Name of current operation, if specified

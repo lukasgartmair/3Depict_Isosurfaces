@@ -55,9 +55,9 @@ class CompositionProfileFilter : public Filter
 		//Lock the primitive axis during for cylinder?
 		bool lockAxisMag; 
 		//!Vector parameters for different primitives
-		vector<Point3D> vectorParams;
+		std::vector<Point3D> vectorParams;
 		//!Scalar parameters for different primitives
-		vector<float> scalarParams;
+		std::vector<float> scalarParams;
 
 		//!Frequency or percentile mode (0 - frequency; 1-normalised (ion freq))
 		bool normalise;
@@ -88,7 +88,7 @@ class CompositionProfileFilter : public Filter
 		
 		//!internal function for binning an ion dependant upon range data
 		static void binIon(unsigned int targetBin, const RangeStreamData* rng, const std::map<unsigned int,unsigned int> &ionIDMapping,
-			vector<vector<size_t> > &frequencyTable, float massToCharge);
+			std::vector<std::vector<size_t> > &frequencyTable, float massToCharge);
 
 		static unsigned int getPrimitiveId(const std::string &s);;
 
@@ -112,7 +112,7 @@ class CompositionProfileFilter : public Filter
 		//!update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 						std::vector<const FilterStreamData *> &getOut, 
-						ProgressData &progress, bool (*callback)(bool));
+						ProgressData &progress);
 		
 		virtual std::string typeString() const { return std::string(TRANS("Comp. Prof."));};
 
@@ -123,7 +123,7 @@ class CompositionProfileFilter : public Filter
 		bool setProperty(unsigned int key, 
 				const std::string &value, bool &needUpdate);
 		//!Get the human readable error string associated with a particular error code during refresh(...)
-		std::string getErrString(unsigned int code) const;
+		std::string getSpecificErrString(unsigned int code) const;
 		
 		//!Dump state to output stream, using specified format
 		bool writeState(std::ostream &f,unsigned int format, 

@@ -32,6 +32,9 @@
 
 #include <mgl2/canvas_wnd.h>
 
+using std::string;
+using std::vector;
+
 //Panning speed modifier
 const float MGL_PAN_SPEED=2.0f;
 //Mathgl uses floating point loop computation, and can get stuck. Limit zoom precision
@@ -94,6 +97,28 @@ enum
 };
 
 
+void zoomBounds(float minV,float maxV,  float centre, 
+		float zoomFactor,float &newMin, float &newMax)
+{
+	ASSERT(minV < maxV);
+	ASSERT(minV< centre && maxV > centre);
+	ASSERT(zoomFactor > 0);
+	
+	//find deltas, then multiply them out
+	float lowerDelta,upperDelta;
+	lowerDelta = (centre-minV);
+	upperDelta = (maxV-centre);
+	upperDelta*=zoomFactor;
+	lowerDelta*=zoomFactor;
+	ASSERT(upperDelta > 0 && lowerDelta > 0);
+
+	//compute new bounds
+	newMin= centre - lowerDelta;
+	newMax= centre + upperDelta;
+
+	ASSERT(newMin <=newMax);
+}
+
 MathGLPane::MathGLPane(wxWindow* parent, int id) :
 wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 {
@@ -106,7 +131,6 @@ wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 	leftWindow=true;
 	thePlot=0;	
 	gr=0;
-	ownPlotPtr=false;
 	lastEditedPlot=lastEditedRegion=-1;
 	regionSelfUpdate=false;
 	plotIsLogarithmic=false;
@@ -117,8 +141,6 @@ wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 
 MathGLPane::~MathGLPane()
 {
-	if(thePlot && ownPlotPtr)
-		delete thePlot;
 	if(gr)
 		delete gr;
 }
@@ -177,11 +199,7 @@ unsigned int MathGLPane::getAxisMask(int x, int y) const
 
 void MathGLPane::setPlotWrapper(PlotWrapper *newPlot,bool takeOwnPtr)
 {
-	if(thePlot && ownPlotPtr)
-		delete thePlot;
-
 	thePlot=newPlot;
-	ownPlotPtr=takeOwnPtr;
 
 	Refresh();
 }
@@ -251,6 +269,8 @@ void MathGLPane::render(wxPaintEvent &event)
 
 	}
 
+	trapfpe(false);
+
 	//If the plot has changed, been resized or is performing
 	// a mouse action that requires updating, we need to update it
 	//likewise if we don't have a plot, we need one.
@@ -282,7 +302,7 @@ void MathGLPane::render(wxPaintEvent &event)
 #ifdef DEBUG
 		if(strlen(gr->Message()))
 		{
-			cerr << "Mathgl reports error:" << gr->Message() << endl;
+			std::cerr << "Mathgl reports error:" << gr->Message() << std::endl;
 		}
 #endif
 		thePlot->resetChange();
@@ -296,6 +316,7 @@ void MathGLPane::render(wxPaintEvent &event)
 		free(rgbdata);
 	}
 
+	trapfpe(true);
 	dc->DrawBitmap(wxBitmap(imageCacheBmp),0,0);
 	//If we are engaged in a dragging operation
 	//draw the nice little bits we need
@@ -410,9 +431,11 @@ void MathGLPane::updateMouseCursor()
 		return;
 
 	//Set cursor to normal by default
-	SetCursor(wxNullCursor);
 	if(!readyForInput())
+	{
+		SetCursor(wxNullCursor);
 		return;
+	}
 
 	//Update mouse cursor
 	//---------------
@@ -444,9 +467,11 @@ void MathGLPane::updateMouseCursor()
 			SetCursor(wxCURSOR_SIZEWE);
 				break;
 			case AXIS_POSITION_INTERIOR:
-				SetCursor(wxCURSOR_MAGNIFIER);
+				//SetCursor(wxCURSOR_MAGNIFIER);
+				SetCursor(wxNullCursor);
 				break;
 			default:
+				SetCursor(wxNullCursor);
 				;
 		}
 	}
@@ -735,23 +760,28 @@ void MathGLPane::mouseWheelMoved(wxMouseEvent& event)
 
 
 
-	//Bigger numbers mean faster
-	const float SCROLL_WHEEL_ZOOM_RATE=0.75;
+	//Bigger numbers mean faster. 
+	const float SCROLL_WHEEL_ZOOM_RATE=0.20;
+
 	float zoomRate=(float)event.GetWheelRotation()/(float)event.GetWheelDelta();
 	zoomRate=zoomRate*SCROLL_WHEEL_ZOOM_RATE;
 
 	//Convert from additive space to multiplicative
 	float zoomFactor;
-	if(zoomRate < 0.0f)
-		zoomFactor=-1.0f/zoomRate;
+	if(zoomRate > 0.0f)
+	{
+		zoomFactor=1.0/(1.0+zoomRate);
+		ASSERT(zoomFactor> 1.0f);
+	}
 	else
-		zoomFactor=zoomRate;
+	{
+		zoomFactor=(1.0-zoomRate);
+		ASSERT(zoomFactor < 1.0f);
+	}
 
 
 
-	ASSERT(zoomFactor >0.0f);
-
-
+	//retrieve the mouse position
 	mglPoint mousePos;
 	float mglX,mglY;
 	toPlotCoords(curMouse.x,curMouse.y,mglX,mglY);
@@ -771,11 +801,11 @@ void MathGLPane::mouseWheelMoved(wxMouseEvent& event)
 		//below x axis -> y zoom only
 		case AXIS_POSITION_LOW_X:
 		{
-			float newYMax,newYMin;
-			//Zoom along Y
-			newYMin= mousePos.y + (yMin-mousePos.y)*zoomFactor ;
-			newYMax= mousePos.y + (yMax-mousePos.y)*zoomFactor ;
-	
+			float newYMin,newYMax;
+			//work out eyisting bounds on zooming
+			zoomBounds(yMin,yMax,mousePos.y,
+				zoomFactor, newYMin,newYMax);
+			//clamp to plot
 			newYMin=std::max(yPlotMin,newYMin);
 			newYMax=std::min(yPlotMax,newYMax);
 		
@@ -786,11 +816,11 @@ void MathGLPane::mouseWheelMoved(wxMouseEvent& event)
 		//Below y axis -> x zoom only
 		case AXIS_POSITION_LOW_Y:
 		{
-			float newXMax,newXMin;
-			//Zoom along X
-			newXMin= mousePos.x + (xMin-mousePos.x)*zoomFactor ;
-			newXMax= mousePos.x + (xMax-mousePos.x)*zoomFactor ;
-	
+			float newXMin,newXMax;
+			//work out existing bounds on zooming
+			zoomBounds(xMin,xMax,mousePos.x,
+				zoomFactor, newXMin,newXMax);
+
 			newXMin=std::max(xPlotMin,newXMin);
 			newXMax=std::min(xPlotMax,newXMax);
 		
@@ -803,13 +833,12 @@ void MathGLPane::mouseWheelMoved(wxMouseEvent& event)
 		{
 			float newXMax,newXMin;
 			float newYMax,newYMin;
+			//work out existing bounds on zooming
+			zoomBounds(xMin,xMax,mousePos.x,
+				zoomFactor, newXMin,newXMax);
+			zoomBounds(yMin,yMax,mousePos.y,
+				zoomFactor, newYMin,newYMax);
 			
-			//Zoom along X
-			newXMin= mousePos.x + (xMin-mousePos.x)*zoomFactor ;
-			newXMax= mousePos.x + (xMax-mousePos.x)*zoomFactor ;
-			newYMin= mousePos.y + (yMin-mousePos.y)*zoomFactor ;
-			newYMax= mousePos.y + (yMax-mousePos.y)*zoomFactor ;
-	
 				
 			newXMin=std::max(xPlotMin,newXMin);
 			newXMax=std::min(xPlotMax,newXMax);
@@ -882,7 +911,7 @@ void MathGLPane::leftMouseReleased(wxMouseEvent& event)
 	{
 		for(size_t ui=0;ui<updateHandlers.size(); ui++)
 		{
-			pair<wxWindow*,UpdateHandler> u;
+			std::pair<wxWindow*,UpdateHandler> u;
 			u=updateHandlers[ui];
 
 			//Call the function

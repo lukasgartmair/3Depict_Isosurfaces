@@ -1,5 +1,5 @@
 /*
- *	filter.h - modular data filter implementation 
+ *	filter.cpp - modular data filter implementation 
  *	Copyright (C) 2013, D Haley 
 
  *	This program is free software: you can redistribute it and/or modify
@@ -24,7 +24,10 @@
 
 #include "wx/wxcomponents.h"
 
+#include "common/voxels.h"
+
 #include <set>
+#include <deque>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -35,11 +38,14 @@ using std::vector;
 using std::string;
 using std::pair;
 using std::make_pair;
+using std::endl;
+using std::deque;
 
 
 
 
 bool Filter::strongRandom= false;
+ATOMIC_BOOL *Filter::wantAbort= 0;
 
 const char *STREAM_NAMES[] = { NTRANS("Ion"),
 				NTRANS("Plot"),
@@ -148,6 +154,25 @@ void Filter::cacheAsNeeded(FilterStreamData *stream)
 	}
 }
 
+std::string Filter::getErrString(unsigned int errCode) const
+{
+	//First see if we have a generic error code, before attempting to
+	// switch to a specific error code
+	std::string errString;
+	errString = getBaseErrString(errCode);
+	if(!errString.empty())
+		return errString;
+	return this->getSpecificErrString(errCode);
+}
+
+//If we recognise a base error string, check that
+std::string Filter::getBaseErrString(unsigned int errCode)
+{
+	if(errCode == FILTER_ERR_ABORT)
+		return TRANS("Aborted");
+
+	return string("");
+}
 
 #ifdef DEBUG
 bool FilterProperty::checkSelfConsistent() const
@@ -333,10 +358,6 @@ void FilterPropGroup::checkConsistent() const
 #endif
 
 
-void VoxelStreamData::clear()
-{
-	data.clear();
-}
 
 void DrawStreamData::clear()
 {
@@ -483,6 +504,10 @@ void PlotStreamData::checkSelfConsistent() const
 Plot2DStreamData::Plot2DStreamData()
 {
 	streamType=STREAM_TYPE_PLOT2D;
+	r=g=0.0f;
+	b=a=1.0f;
+
+	scatterIntensityLog=false;
 }
 
 size_t Plot2DStreamData::getNumBasicObjects() const
@@ -502,11 +527,12 @@ size_t Plot2DStreamData::getNumBasicObjects() const
 void Plot2DStreamData::checkSelfConsistent() const
 {
 	//only using scatter or xy, not both
-	ASSERT(!(xyData.empty() && scatterData.empty()));
+	ASSERT(xorFunc(xyData.empty(), scatterData.empty()));
 
 	//no intensity without data
 	if(scatterData.empty())
 		ASSERT(scatterIntensity.empty());
+
 
 	ASSERT(plotType < PLOT_TYPE_ENUM_END);
 }
@@ -528,6 +554,47 @@ FilterStreamData::FilterStreamData() : parent(0),cached((unsigned int)-1)
 
 FilterStreamData::FilterStreamData(const Filter  *theParent) : parent(theParent),cached((unsigned int)-1)
 {
+}
+
+
+unsigned int IonStreamData::exportStreams(const std::vector<const FilterStreamData * > &selectedStreams,
+		const std::string &outFile, unsigned int format)
+{
+
+	//test file open, and truncate file to zero bytes
+	std::ofstream f(outFile.c_str(),std::ios::trunc);
+	
+	if(!f)
+		return 1;
+
+	f.close();
+
+	for(unsigned int ui=0; ui<selectedStreams.size(); ui++)
+	{
+		switch(selectedStreams[ui]->getStreamType())
+		{
+			case STREAM_TYPE_IONS:
+			{
+				const IonStreamData *ionData;
+				ionData=((const IonStreamData *)(selectedStreams[ui]));
+				switch(format)
+				{
+					case IONFORMAT_POS:
+					{
+						//Append this ion stream to the posfile
+						IonHit::appendPos(ionData->data,outFile.c_str());
+
+						break;
+					}
+					default:
+						ASSERT(false);
+						break;
+				}
+			}
+		}
+	}
+
+	return 0;
 }
 
 IonStreamData::IonStreamData() : representationType(ION_REPRESENT_POINTS), 
@@ -591,12 +658,30 @@ VoxelStreamData::VoxelStreamData() : representationType(VOXEL_REPRESENT_POINTCLO
 	r(1.0f),g(0.0f),b(0.0f),a(0.3f), splatSize(2.0f),isoLevel(0.5f)
 {
 	streamType=STREAM_TYPE_VOXEL;
+	data = new Voxels<float>;
 }
 
 VoxelStreamData::VoxelStreamData(const Filter *f) : FilterStreamData(f), representationType(VOXEL_REPRESENT_POINTCLOUD),
 	r(1.0f),g(0.0f),b(0.0f),a(0.3f), splatSize(2.0f),isoLevel(0.5f)
 {
 	streamType=STREAM_TYPE_VOXEL;
+	data = new Voxels<float>;
+}
+
+VoxelStreamData::~VoxelStreamData()
+{
+	if(data)
+		delete data;
+}
+
+size_t VoxelStreamData::getNumBasicObjects() const
+{
+	return data->getSize(); 
+}
+
+void VoxelStreamData::clear()
+{
+	data->clear();
 }
 
 RangeStreamData::RangeStreamData() : rangeFile(0)
@@ -711,7 +796,7 @@ void Filter::propagateStreams(const vector<const FilterStreamData *> &dataIn,
 
 unsigned int Filter::collateIons(const vector<const FilterStreamData *> &dataIn,
 				vector<IonHit> &outVector, ProgressData &prog,
-				bool (*callback)(bool),size_t totalDataSize)
+				size_t totalDataSize)
 {
 	if(totalDataSize==(size_t)-1)
 		totalDataSize=numElements(dataIn,STREAM_TYPE_IONS);
@@ -739,7 +824,7 @@ unsigned int Filter::collateIons(const vector<const FilterStreamData *> &dataIn,
 				for(size_t ui=0;ui<dataSize; ui++)
 					outVector[offset+ui]=d->data[ui];
 
-				if(!(*callback)(false))
+				if(Filter::wantAbort)
 					return FILTER_ERR_ABORT;
 				offset+=d->data.size();
 

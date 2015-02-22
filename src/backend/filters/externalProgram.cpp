@@ -26,6 +26,10 @@
 #include <wx/filename.h>
 #include <wx/dir.h>
 
+using std::vector;
+using std::string;
+using std::pair;
+using std::make_pair;
 
 //!Error codes
 enum
@@ -209,7 +213,7 @@ size_t ExternalProgramFilter::substituteVariables(const std::string &commandStr,
 }
 
 unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 	//use the cached copy if we have it.
 	if(cacheOK)
@@ -341,19 +345,16 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 		//delete the input files.
 		for(unsigned int ui=0;ui<ionOutputNames.size();ui++)
 		{
-			//try to delete the file
-			wxRemoveFile((ionOutputNames[ui]));
+			//try to delete the file, if the command did not
+			// remove it
+			if(wxFileExists(ionOutputNames[ui]))
+				wxRemoveFile(ionOutputNames[ui]);
 
-			//call the update to be nice
-			(*callback)(false);
 		}
 		for(unsigned int ui=0;ui<plotOutputNames.size();ui++)
 		{
 			//try to delete the file
 			wxRemoveFile((plotOutputNames[ui]));
-
-			//call the update to be nice
-			(*callback)(false);
 		}
 	}
 	wxSetWorkingDirectory(origDir);	
@@ -399,7 +400,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			unsigned int index2[] = {
 					0, 1, 2, 3
 					};
-			if(GenericLoadFloatFile(4, 4, index2, d->data,sTmp.c_str(),dummy,dummyCallback))
+			if(GenericLoadFloatFile(4, 4, index2, d->data,sTmp.c_str(),dummy,*(Filter::wantAbort)))
 			{
 				delete d;
 				delete dir;
@@ -624,7 +625,7 @@ bool ExternalProgramFilter::setProperty(  unsigned int key,
 }
 
 
-std::string  ExternalProgramFilter::getErrString(unsigned int code) const
+std::string  ExternalProgramFilter::getSpecificErrString(unsigned int code) const
 {
 	const char *errStrs[] = 	{ "",
 			"Error processing command line",
@@ -743,6 +744,9 @@ unsigned int ExternalProgramFilter::getRefreshUseMask() const
 #ifdef DEBUG
 #include <memory>
 
+using std::auto_ptr;
+using std::ifstream;
+
 bool echoTest()
 {
 	int errCode;
@@ -771,7 +775,7 @@ bool echoTest()
 	//Simulate some data to send to the filter
 	vector<const FilterStreamData*> streamIn,streamOut;
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	f->refresh(streamIn,streamOut,p);
 
 
 	s=stlStr(tmpFilename);
@@ -832,9 +836,10 @@ bool posTest()
 		
 	wxMkdir(tmpDir);
 
-	tmpFilename=wxFileName::CreateTempFileName(tmpDir+ wxT("unittest-"));
-	tmpFilename+=wxT(".pos");
-	s ="mv -f \%i " + stlStr(tmpFilename);
+	std::string randName;
+	genRandomFilename(randName);
+	tmpFilename = tmpDir + "/" + randName + ".pos";
+	s ="mv -f \%i " + tmpFilename;
 
 	ASSERT(tmpFilename.size());
 	
@@ -844,7 +849,7 @@ bool posTest()
 	vector<const FilterStreamData*> streamIn,streamOut;
 	streamIn.push_back(someData.get());
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh error code");
 
 	//Should have exactly one stream, which is an ion stream
 	TEST(streamOut.size() == 1,"stream count");

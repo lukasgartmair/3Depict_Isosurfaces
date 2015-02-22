@@ -21,6 +21,7 @@
 
 #include <vector>
 #include <string>
+#include <map>
 
 
 #include "backend/APT/ionhit.h"
@@ -279,6 +280,18 @@ class RangeFile
 		//erase given ions and associated rnagefes)
 		void eraseIon(size_t ionId);
 
+		//can we decompose all composed ranges in this file into
+		// other components that already exist within this range?
+		bool isSelfDecomposable() const;
+		
+		//Generate a secondary rangefile with decomposable ranges as needed.	
+		bool decompose(RangeFile &rng) const;
+
+		//Obtain the decompsiition for this range. This maps composed ranges to their decomposed ones.
+		//  - This will perform a decompsition if needed, and return false if not self decomposable.
+		bool getDecomposition(
+			std::map<unsigned int, std::vector< std::pair< unsigned int, unsigned int > > > &decomposition) const;
+	
 		//Break a given string down into a series of substring-count pairs depicting basic ionic components
 		static bool decomposeIonNames(const std::string &name,
 

@@ -23,6 +23,8 @@
 #include <map>
 
 using std::map;
+using std::vector;
+using std::string;
 
 const unsigned int NUM_ROWS_ION=3;
 const unsigned int NUM_ROWS_RANGE=4;
@@ -98,7 +100,7 @@ void RangeFileFilter::initFilter(const std::vector<const FilterStreamData *> &da
 }
 
 unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-		std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+		std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 
 	//use the cached copy of the data if we have it.
@@ -237,7 +239,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 								curProg=NUM_CALLBACK;
 
 
-								if(!(*callback)(false))
+								if(*Filter::wantAbort)
 									spin=true;
 								}
 							}
@@ -359,7 +361,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 								curProg=NUM_CALLBACK;
 
 								
-								if(!(*callback)(false))
+								if(*Filter::wantAbort)
 								{
 									//Free space allocated for output ion streams...
 									for(unsigned int ui=0;ui<d.size();ui++)
@@ -410,7 +412,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 				}
 			}
 
-			if(!(*callback)(false))
+			if(*Filter::wantAbort)
 			{
 				//Free space allocated for output ion streams...
 				for(unsigned int ui=0;ui<d.size();ui++)
@@ -478,26 +480,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 
 	if(haveEnabled && showLegend)
 	{
-		//Create a legend bar, which shows the ions that are present
-		DrawStreamData *dS = new DrawStreamData;
-
-		dS->parent=this;
-
-		DrawPointLegendOverlay *dl=new DrawPointLegendOverlay;
-		dl->setPosition(0.1,0.1);
-	
-		for(unsigned int ui=0;ui<enabledIons.size();ui++)
-		{	
-			if(!enabledIons[ui])
-				continue;
-
-			RGBf curRGBf;
-			curRGBf =rng.getColour(ui);
-			dl->addItem(rng.getName(ui),
-				curRGBf.red, curRGBf.green,curRGBf.blue);
-		}
-
-		dS->drawables.push_back(dl);
+		DrawStreamData *dS = createLegend();
 		cacheAsNeeded(dS);
 
 		getOut.push_back(dS);
@@ -522,6 +505,8 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 	cacheOK=cache;
 	return 0;
 }
+
+
 
 bool RangeFileFilter::updateRng()
 {
@@ -782,8 +767,48 @@ bool RangeFileFilter::setProperty(unsigned int key,
 		}	
 		case RANGE_KEY_ENABLE_LEGEND:
 		{
-			if(!applyPropertyNow(showLegend,value,needUpdate))
+			if(!cacheOK || !cache)
+			{
+				if(!applyPropertyNow(showLegend,value,needUpdate))
+					return false;
+				break;
+			}
+
+			//Manually decode the value, then fiddle with the cache
+			// so we don't invalidate it and cause a full recomputation
+			bool newShow;
+			if(!boolStrDec(value,newShow))
 				return false;
+
+			if(showLegend == newShow)
+				return false;
+
+			if(showLegend)
+			{
+				//disabling legend, find it and destroy it in cache, rather
+				// than recomputing all ranging
+				for(size_t ui=0; ui<filterOutputs.size(); ui++)
+				{
+					if(filterOutputs[ui]->getStreamType() == STREAM_TYPE_DRAW)
+					{
+						delete filterOutputs[ui];
+						std::swap(filterOutputs[ui],filterOutputs.back());
+						filterOutputs.pop_back();
+						break;
+					}	
+				}
+			}
+			else
+			{
+				//enabling legend, create the new legened and add it to the cache
+				DrawStreamData *ds = createLegend();
+				ds->cached=1;
+				filterOutputs.push_back(ds);
+					
+			}
+
+			showLegend=newShow;
+			needUpdate=true;
 			break;
 		}	
 		case RANGE_KEY_ENABLE_ALL_RANGES:
@@ -998,7 +1023,7 @@ bool RangeFileFilter::setProperty(unsigned int key,
 }
 
 
-std::string  RangeFileFilter::getErrString(unsigned int code) const
+std::string  RangeFileFilter::getSpecificErrString(unsigned int code) const
 {
 	const char *errStrs[] ={ "",
 		"Ranging aborted by user",
@@ -1327,6 +1352,31 @@ bool RangeFileFilter::writePackageState(std::ostream &f, unsigned int format,
 	return result;
 }
 
+DrawStreamData *RangeFileFilter::createLegend() const
+{
+	//Create a legend bar, which shows the ions that are present
+	DrawStreamData *dS = new DrawStreamData;
+
+	dS->parent=this;
+
+	DrawPointLegendOverlay *dl=new DrawPointLegendOverlay;
+	dl->setPosition(0.1,0.1);
+
+	for(unsigned int ui=0;ui<enabledIons.size();ui++)
+	{	
+		if(!enabledIons[ui])
+			continue;
+
+		RGBf curRGBf;
+		curRGBf =rng.getColour(ui);
+		dl->addItem(rng.getName(ui),
+			curRGBf.red, curRGBf.green,curRGBf.blue);
+	}
+
+	dS->drawables.push_back(dl);
+
+	return dS;
+}
 #ifdef DEBUG
 
 bool testRanged();
@@ -1393,7 +1443,7 @@ bool testRanged()
 
 	//Run the initialisation stage
 	ProgressData prog;
-	TEST(!r->refresh(streamIn,streamOut,prog,dummyCallback),"Refresh error code");
+	TEST(!r->refresh(streamIn,streamOut,prog),"Refresh error code");
 	//--
 	
 	//Run the tests

@@ -32,6 +32,8 @@ private:
 
 	wxGLContext *context;
 
+	Scene *currentScene;
+
 	wxStatusBar *parentStatusBar;
 	wxTimer *parentStatusTimer;
 	unsigned int statusDelay;	
@@ -84,11 +86,10 @@ private:
 public:
 	bool displaySupported() const;
 
+	void setScene(Scene *s) { currentScene=s;}
+
 	//Enable/Disable the scene interaction for user objects?
 	void setSceneInteractionAllowed(bool enabled=true);
-
-	//!The scene object, holds all info about 3D drawable components
-	Scene currentScene;
 
 	//!Must be called before user has a chance to perform interaction
 	void setParentStatus(wxStatusBar *statusBar,
@@ -134,7 +135,7 @@ public:
 			wxString &path, wxString &prefix, wxString &extension);
 
 	//!Get the background colour
-	void getGlClearColour(float &r,float &g,float &b) { currentScene.getBackgroundColour(r,g,b);}
+	void getGlClearColour(float &r,float &g,float &b) { currentScene->getBackgroundColour(r,g,b);}
 	// events
 	void mouseMoved(wxMouseEvent& event);
 	void mouseDown(wxMouseEvent& event);

@@ -45,6 +45,7 @@
     #define GL_BGR 0x80E0
 #endif
 
+using std::string;
 
 enum
 {
@@ -117,13 +118,13 @@ bool BasicGLPane::displaySupported() const
 
 void BasicGLPane::setSceneInteractionAllowed(bool enabled)
 {
-	currentScene.lockInteraction(!enabled);
+	currentScene->lockInteraction(!enabled);
 }
 
 unsigned int  BasicGLPane::selectionTest(const wxPoint &p,bool &shouldRedraw)
 {
 
-	if(currentScene.isInteractionLocked())
+	if(currentScene->isInteractionLocked())
 	{
 		shouldRedraw=false;
 		return -1; 
@@ -144,8 +145,8 @@ unsigned int  BasicGLPane::selectionTest(const wxPoint &p,bool &shouldRedraw)
 	gluPickMatrix(p.x, oldViewport[3]-p.y,5, 5, oldViewport);
 	glMatrixMode(GL_MODELVIEW);
 
-	int lastSelected = currentScene.getLastSelected();
-	int selectedObject=currentScene.glSelect();
+	int lastSelected = currentScene->getLastSelected();
+	int selectedObject=currentScene->glSelect();
 
 	//If the object selection hasn't changed, we don't need to redraw
 	//if it has changed, we should redraw
@@ -165,7 +166,7 @@ unsigned int  BasicGLPane::selectionTest(const wxPoint &p,bool &shouldRedraw)
 unsigned int  BasicGLPane::hoverTest(const wxPoint &p,bool &shouldRedraw)
 {
 
-	if(currentScene.isInteractionLocked())
+	if(currentScene->isInteractionLocked())
 	{
 		shouldRedraw=false;
 		return -1;
@@ -182,15 +183,15 @@ unsigned int  BasicGLPane::hoverTest(const wxPoint &p,bool &shouldRedraw)
 	gluPickMatrix(p.x, oldViewport[3]-p.y,5, 5, oldViewport);
 	glMatrixMode(GL_MODELVIEW);
 
-	unsigned int lastHover = currentScene.getLastHover();
-	unsigned int hoverObject=currentScene.glSelect(false);
+	unsigned int lastHover = currentScene->getLastHover();
+	unsigned int hoverObject=currentScene->glSelect(false);
 
 	//FIXME: Should be able to make this more efficient	
 	shouldRedraw =  lastHover!=(unsigned int)-1;
 
 	//Set the scene's hover value
-	currentScene.setLastHover(hoverObject);
-	currentScene.setHoverMode(hoverObject != (unsigned int)-1);
+	currentScene->setLastHover(hoverObject);
+	currentScene->setHoverMode(hoverObject != (unsigned int)-1);
 
 	//Restore the previous matirx
 	glPopMatrix();
@@ -226,7 +227,7 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 
 	if(selectionMode )
 	{
-		if(currentScene.isInteractionLocked())
+		if(currentScene->isInteractionLocked())
 		{
 			event.Skip();
 			return;
@@ -263,7 +264,7 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 		GetClientSize(&w, &h);
 
 
-		currentScene.applyDevice((float)draggingStart.x/(float)w,
+		currentScene->applyDevice((float)draggingStart.x/(float)w,
 					(float)draggingStart.y/(float)h,
 					 p.x/(float)w,p.y/(float)h,
 					 keyFlags,mouseFlags,
@@ -300,8 +301,8 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 	{
 		//Commit the current temp cam using the last camera rate
 		//and then restart the motion.
-		if(!lastMoveShiftDown && currentScene.haveTempCam())
-			currentScene.commitTempCam();
+		if(!lastMoveShiftDown && currentScene->haveTempCam())
+			currentScene->commitTempCam();
 
 		camMultRate*=5.0f;
 
@@ -312,8 +313,8 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 	{
 		//Commit the current temp cam using the last camera rate
 		//and then restart the motion.
- 		if(lastMoveShiftDown && currentScene.haveTempCam())
-			currentScene.commitTempCam();
+ 		if(lastMoveShiftDown && currentScene->haveTempCam())
+			currentScene->commitTempCam();
 
 		lastMoveShiftDown=false;
 	}
@@ -348,22 +349,22 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 	switch(camMode)
 	{
 		case CAM_TRANSLATE:
-			currentScene.discardTempCam();
-			currentScene.setTempCam();
-			currentScene.getTempCam()->translate(lrMove,-udMove);
+			currentScene->discardTempCam();
+			currentScene->setTempCam();
+			currentScene->getTempCam()->translate(lrMove,-udMove);
 			break;
 		case CAM_PIVOT:
-			currentScene.discardTempCam();
-			currentScene.setTempCam();
-			currentScene.getTempCam()->pivot(lrMove,udMove);
+			currentScene->discardTempCam();
+			currentScene->setTempCam();
+			currentScene->getTempCam()->pivot(lrMove,udMove);
 			break;
 		case CAM_MOVE:
-			currentScene.setTempCam();
-			currentScene.getTempCam()->move(lrMove,udMove);
+			currentScene->setTempCam();
+			currentScene->getTempCam()->move(lrMove,udMove);
 			break;
 		case CAM_ROLL:
-			currentScene.setTempCam();
-			currentScene.getTempCam()->roll(atan2(udMove,lrMove));
+			currentScene->setTempCam();
+			currentScene->getTempCam()->roll(atan2(udMove,lrMove));
 						
 			break;	
 		default:
@@ -374,7 +375,7 @@ void BasicGLPane::mouseMoved(wxMouseEvent& event)
 	if(!event.m_leftDown)
 	{
 		dragging=false;
-		currentScene.commitTempCam();
+		currentScene->commitTempCam();
 	}
 	
 	haveCameraUpdates=true;
@@ -392,7 +393,7 @@ void BasicGLPane::mouseDown(wxMouseEvent& event)
 	//a temp cam is activated in the scene, or a binding refresh is underway,
 	//which is currently considered bad
 	if(!dragging && !applyingDevice && !selectionMode 
-			&& !currentScene.isInteractionLocked())
+			&& !currentScene->isInteractionLocked())
 	{
 		//Check to see if the user has clicked an object in the scene
 		bool redraw;
@@ -401,10 +402,10 @@ void BasicGLPane::mouseDown(wxMouseEvent& event)
 
 		//If the selected object is valid, then
 		//we did select an object. Treat this as a seletion event
-		if(currentScene.getLastSelected() != (unsigned int)-1)
+		if(currentScene->getLastSelected() != (unsigned int)-1)
 		{
 			selectionMode=true;
-			currentScene.setSelectionMode(true);
+			currentScene->setSelectionMode(true);
 		}
 		else
 		{
@@ -445,11 +446,11 @@ void BasicGLPane::mouseWheelMoved(wxMouseEvent& event)
 
 	cameraMoveRate*=CAMERA_SCROLL_RATE;
 	//Move by specified delta
-	currentScene.getActiveCam()->forwardsDolly(cameraMoveRate);
+	currentScene->getActiveCam()->forwardsDolly(cameraMoveRate);
 
 	//if we are using a temporary camera, update that too
-	if(currentScene.haveTempCam())
-		currentScene.getTempCam()->forwardsDolly(cameraMoveRate);
+	if(currentScene->haveTempCam())
+		currentScene->getTempCam()->forwardsDolly(cameraMoveRate);
 
 	haveCameraUpdates=true;
 	Refresh();
@@ -457,7 +458,7 @@ void BasicGLPane::mouseWheelMoved(wxMouseEvent& event)
 
 void BasicGLPane::mouseReleased(wxMouseEvent& event) 
 {
-	if(currentScene.isInteractionLocked())
+	if(currentScene->isInteractionLocked())
 	{
 		event.Skip();
 		return;
@@ -476,7 +477,7 @@ void BasicGLPane::mouseReleased(wxMouseEvent& event)
 			applyingDevice=true;
 
 
-			currentScene.applyDevice((float)draggingStart.x/(float)w,
+			currentScene->applyDevice((float)draggingStart.x/(float)w,
 						(float)draggingStart.y/(float)h,
 						 p.x/(float)w,p.y/(float)h,
 						 lastKeyFlags,lastMouseFlags,
@@ -486,7 +487,7 @@ void BasicGLPane::mouseReleased(wxMouseEvent& event)
 
 
 			selectionMode=false;
-			currentScene.setSelectionMode(selectionMode);
+			currentScene->setSelectionMode(selectionMode);
 
 			Refresh();
 		}
@@ -495,9 +496,9 @@ void BasicGLPane::mouseReleased(wxMouseEvent& event)
 	}
 	
 
-	if(currentScene.haveTempCam())
-		currentScene.commitTempCam();
-	currentScene.finaliseCam();
+	if(currentScene->haveTempCam())
+		currentScene->commitTempCam();
+	currentScene->finaliseCam();
 
 	haveCameraUpdates=true;
 	dragging=false;
@@ -520,14 +521,14 @@ void BasicGLPane::mouseLeftWindow(wxMouseEvent& event)
 		GetClientSize(&w, &h);
 
 		applyingDevice=true;
-		currentScene.applyDevice((float)draggingStart.x/(float)w,
+		currentScene->applyDevice((float)draggingStart.x/(float)w,
 					(float)draggingStart.y/(float)h,
 					 p.x/(float)w,p.y/(float)h,
 					 lastKeyFlags,lastMouseFlags,
 					 true);
 
 		selectionMode=false;
-		currentScene.setSelectionMode(selectionMode);
+		currentScene->setSelectionMode(selectionMode);
 		Refresh();
 		applyingDevice=false;
 
@@ -538,9 +539,9 @@ void BasicGLPane::mouseLeftWindow(wxMouseEvent& event)
 
 	if(event.m_leftDown)
 	{
-		if(currentScene.haveTempCam())
+		if(currentScene->haveTempCam())
 		{
-			currentScene.commitTempCam();
+			currentScene->commitTempCam();
 			dragging=false;
 		}
 	}
@@ -623,7 +624,7 @@ void BasicGLPane::keyPressed(wxKeyEvent& event)
 				}
 
 				
-				currentScene.ensureVisible(visibleDir);
+				currentScene->ensureVisible(visibleDir);
 				parentStatusBar->SetStatusText(TRANS("Use shift/ctrl-space or double tap to alter reset axis"));
 				parentStatusBar->SetBackgroundColour(*wxCYAN)
 					;
@@ -644,7 +645,7 @@ void BasicGLPane::setGlClearColour(float r, float g, float b)
 	ASSERT(g >= 0.0f && g <= 1.0f);
 	ASSERT(b >= 0.0f && b <= 1.0f);
 	
-	currentScene.setBackgroundColour(r,g,b);
+	currentScene->setBackgroundColour(r,g,b);
 	
 	Refresh();
 }
@@ -665,9 +666,9 @@ void BasicGLPane::keyReleased(wxKeyEvent& event)
 		case WXK_SUBTRACT:
 		{
 			//Do a backwards dolly by fixed amount
-			currentScene.getActiveCam()->forwardsDolly(cameraMoveRate);
-			if(currentScene.haveTempCam())
-				currentScene.getTempCam()->forwardsDolly(cameraMoveRate);
+			currentScene->getActiveCam()->forwardsDolly(cameraMoveRate);
+			if(currentScene->haveTempCam())
+				currentScene->getTempCam()->forwardsDolly(cameraMoveRate);
 			break;
 		}
 		case '+':
@@ -680,9 +681,9 @@ void BasicGLPane::keyReleased(wxKeyEvent& event)
 			cameraMoveRate= -cameraMoveRate;
 			
 			//Do a forwards dolly by fixed amount
-			currentScene.getActiveCam()->forwardsDolly(cameraMoveRate);
-			if(currentScene.haveTempCam())
-				currentScene.getTempCam()->forwardsDolly(cameraMoveRate);
+			currentScene->getActiveCam()->forwardsDolly(cameraMoveRate);
+			if(currentScene->haveTempCam())
+				currentScene->getTempCam()->forwardsDolly(cameraMoveRate);
 			break;
 		}
 		default:
@@ -725,8 +726,8 @@ bool BasicGLPane::prepare3DViewport(int tlx, int tly, int brx, int bry)
 	glViewport( tlx, tly, brx-tlx, bry-tly);
 
 	float aspect = (float)(brx-tlx)/(float)(bry-tly);
-	currentScene.setWinSize(brx-tlx,bry-tly);
-	currentScene.setAspect(aspect);
+	currentScene->setWinSize(brx-tlx,bry-tly);
+	currentScene->setAspect(aspect);
 
 	//Set modelview and projection matrices to the identity
 	// matrix
@@ -772,7 +773,7 @@ void BasicGLPane::render( wxPaintEvent& evt )
 	}
 
 	wxPaintDC(this); 
-	currentScene.draw();
+	currentScene->draw();
 	glFlush();
 	SwapBuffers();
 }
@@ -785,7 +786,7 @@ void BasicGLPane::OnEraseBackground(wxEraseEvent &evt)
 void BasicGLPane::updateClearColour()
 {
 	float rClear,gClear,bClear;
-	currentScene.getBackgroundColour(rClear,gClear,bClear);
+	currentScene->getBackgroundColour(rClear,gClear,bClear);
 	//Can't set the opengl window without a proper context
 	ASSERT(paneInitialised);
 	setGlClearColour(rClear,gClear,bClear);
@@ -838,7 +839,7 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 
 
 	glLoadIdentity();
-	const Camera *cm = currentScene.getActiveCam();
+	const Camera *cm = currentScene->getActiveCam();
 
 	//We cannot seem to draw outside the current viewport.
 	//in a cross platform manner.
@@ -847,20 +848,20 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	//Initialise tile data
 	TRcontext *tr; 
 	//Inform the tiling system about our camera config
-	float farPlane; 
-	float aspect=currentScene.getAspect();
+	float aspect=currentScene->getAspect();
 	
 	{
+	float farPlane; 
 	tr=generateTileContext(width,height, imageBuffer);
-	BoundCube bc = currentScene.getBound();
+	BoundCube bc = currentScene->getBound();
 	farPlane = 1.5*bc.getMaxDistanceToBox(cm->getOrigin());
 	
 	if(cm->getProjectionMode() == PROJECTION_MODE_PERSPECTIVE)
 	{
 		if(cm->type() == CAM_LOOKAT)
 		{
-			const CameraLookAt *cl =(const CameraLookAt*) currentScene.getActiveCam();
-			trPerspective(tr,cl->getFOV()/2.0,currentScene.getAspect(),
+			const CameraLookAt *cl =(const CameraLookAt*) currentScene->getActiveCam();
+			trPerspective(tr,cl->getFOV()/2.0,currentScene->getAspect(),
 							cl->getNearPlane(),farPlane);
 		}
 		else
@@ -885,7 +886,7 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	unsigned int nRow,nCol,nPass;
 	nRow=trGet(tr,TR_ROWS);
 	nCol=trGet(tr,TR_COLUMNS);
-	if(currentScene.hasOverlays())
+	if(currentScene->hasOverlays())
 		nPass = 2;
 	else
 		nPass=1;
@@ -928,7 +929,7 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	float oldLightPos[4];
 	if(FLIP_LIGHT_HACK)
 	{
-		currentScene.getLightPos(oldLightPos);
+		currentScene->getLightPos(oldLightPos);
 		float newLightPos[4];
 		for(size_t ui=0;ui<4;ui++)
 		{
@@ -938,7 +939,7 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 				newLightPos[ui]=-oldLightPos[ui];
 		
 		}
-		currentScene.setLightPos(newLightPos);
+		currentScene->setLightPos(newLightPos);
 	}
 	
 	if(showProgress)
@@ -964,7 +965,7 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	
 		//Start the tile
 		trBeginTile(tr);
-		currentScene.draw(true);
+		currentScene->draw(true);
 
 		glPopMatrix();
 
@@ -980,7 +981,7 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	if(FLIP_LIGHT_HACK)
 	{
 		//re-set light coordinates
-		currentScene.setLightPos(oldLightPos);
+		currentScene->setLightPos(oldLightPos);
 	}
 
 	trDelete(tr);
@@ -995,7 +996,7 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	//PASS 2
 	//--------------	
 
-	if(currentScene.hasOverlays())
+	if(currentScene->hasOverlays())
 	{
 		//alllocate RGBA (4-channel) image
 		imageBuffer= (unsigned char*) malloc(4*(width)*height);
@@ -1012,7 +1013,7 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 
 	
 		float rClear,gClear,bClear;
-		currentScene.getBackgroundColour(rClear,gClear,bClear);
+		currentScene->getBackgroundColour(rClear,gClear,bClear);
 		glClearColor( rClear, gClear, 
 					bClear,0.0f);
 
@@ -1024,7 +1025,7 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 			//Start the tile
 			trBeginTile(tr);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-			currentScene.drawOverlays(true);
+			currentScene->drawOverlays(true);
 			//ending the tile copies
 			// data 
 			haveMoreTiles=trEndTile(tr);
@@ -1082,7 +1083,7 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 	//
 
 
-	ASSERT(!currentScene.haveTempCam());
+	ASSERT(!currentScene->haveTempCam());
 	std::string outFile;
 	wxProgressDialog *wxD = new wxProgressDialog(TRANS("Animation progress"), 
 					TRANS("Rendering sequence..."), nFrames,this,wxPD_CAN_ABORT|wxPD_APP_MODAL );
@@ -1091,7 +1092,7 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 	std::string tmpStr,tmpStrTwo;
 	stream_cast(tmpStrTwo,nFrames);
 
-	Camera *origCam=currentScene.getActiveCam()->clone();
+	Camera *origCam=currentScene->getActiveCam()->clone();
 	
 	
 	for(unsigned int ui=0;ui<nFrames;ui++)
@@ -1109,14 +1110,14 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 		Camera *modifiedCam;
 		modifiedCam=origCam->clone();
 		modifiedCam->move(angle,0);
-		currentScene.setActiveCam(modifiedCam);
+		currentScene->setActiveCam(modifiedCam);
 
 		//Save the result
 		outFile = string(stlStr(path))+ string("/") + 
 				string(stlStr(prefix))+digitStr+ string(".") + string(stlStr(ext));
 		if(!saveImage(resX,resY,outFile.c_str(),false, false))
 		{
-			currentScene.setActiveCam(origCam);
+			currentScene->setActiveCam(origCam);
 			return false;
 		}
 
@@ -1130,10 +1131,10 @@ bool BasicGLPane::saveImageSequence(unsigned int resX, unsigned int resY, unsign
 		Refresh();
 	}
 
-	currentScene.setActiveCam(origCam);
+	currentScene->setActiveCam(origCam);
 
 	//Discard the current temp. cam to return the scene back to normal
-	currentScene.discardTempCam();
+	currentScene->discardTempCam();
 	wxD->Destroy();
 	
 	wxPaintEvent event;

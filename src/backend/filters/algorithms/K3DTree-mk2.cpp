@@ -27,6 +27,10 @@ using std::stack;
 using std::vector;
 using std::pair;
 
+unsigned int *K3DTreeMk2::progress=0;
+//Pointer for aborting during build process
+ATOMIC_BOOL *K3DTreeMk2::abort=0;
+
 void K3DTreeMk2::resetPts(std::vector<Point3D> &p, bool clear)
 {
 	//Compute bounding box for indexedPoints
@@ -106,10 +110,10 @@ size_t K3DTreeMk2::size() const
 	return indexedPoints.size();
 }
 
-bool K3DTreeMk2::build(bool wantCallback)
+bool K3DTreeMk2::build()
 {
-
-	const size_t PROGRESS_REDUCE=5000;
+	ASSERT(progress); // Check progress pointer is inited
+	ASSERT(abort); //Check abort pointer is initialised
 
 	using std::make_pair;
 
@@ -263,16 +267,20 @@ bool K3DTreeMk2::build(bool wantCallback)
 			}
 		}	
 
-		if(wantCallback && !(numSeen%PROGRESS_REDUCE) && progress)
-		{
-			*progress= (unsigned int)((float)numSeen/(float)nodes.size()*100.0f);
+		*progress= (unsigned int)((float)numSeen/(float)nodes.size()*100.0f);
 
-			if(!(*callback)(false))
-				return false;
-		}
+		if(*abort)
+			return false;
 
 	}while(!limits.empty());
 
+#ifdef DEBUG
+	for(unsigned int ui=0;ui<nodes.size();ui++)
+	{
+		ASSERT(nodes[ui].childLeft != (size_t)-2); 
+		ASSERT(nodes[ui].childRight != (size_t)-2); 
+	}
+#endif
 
 	return true;
 }
@@ -826,8 +834,9 @@ bool K3DMk2Tests()
 	pts.push_back(Point3D(0,0,0));
 	tree.resetPts(pts,false);
 
-	//build, but do not give progress
-	tree.build(false);
+
+	//build 
+	TEST(tree.build(),"Tree build");
 	
 	Point3D searchPt=Point3D(1,0,0);
 	BoundCube dummyCube;
@@ -852,7 +861,7 @@ bool K3DMk2Tests()
 	pts.push_back(Point3D(1.1,0.9,0.95));
 	
 	tree.resetPts(pts,false);
-	tree.build(false);
+	TEST(tree.build(),"Tree build");
 	
 	testBox.setBounds(Point3D(1.05,0.5,0.5),Point3D(1.5,1.5,1.5));
 	TEST(tree.getBoxInTree(testBox)==2,"subtree test pt2");

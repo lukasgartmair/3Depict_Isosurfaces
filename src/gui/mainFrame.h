@@ -42,11 +42,14 @@
 #include "backend/viscontrol.h"
 #include "backend/configFile.h"
 
+
+
 #ifndef THREEDEPICT_H 
 #define THREEDEPICT_H
 
 
 class FileDropTarget;
+class RefreshThread;
 
 enum
 {
@@ -54,6 +57,22 @@ enum
 	MESSAGE_INFO,
 	MESSAGE_HINT, //lowest priority message in the queue. Only one HINT can be in queue at a time
 	MESSAGE_NONE // pseudo-message to wipe all messages
+};
+
+
+//This is used to create and run a worker thread that will perform a refresh calculation
+class RefreshThread: public wxThread
+{
+	private:
+		RefreshController *refreshControl;
+		wxWindow *targetWindow;
+	public:
+		RefreshThread(wxWindow *target,RefreshController *rc); 
+		~RefreshThread();
+		//!Used internally by wxwidgets to launch thread
+		void *Entry();
+
+		void abort() {ASSERT(false);}
 };
 
 class MainWindowFrame: public wxFrame {
@@ -86,7 +105,9 @@ private:
     void do_filtergrid_prop_layout();
     //Force a re-layout of the camera property grid
     void do_cameragrid_prop_layout();
-   
+  
+	bool refreshThreadActive() { return refreshThread && refreshThread->IsRunning();};
+ 
    	//!Queue up a status message for display
     	void showStatusMessage(const char *message, unsigned int messageType=MESSAGE_ERROR); 
    	
@@ -97,6 +118,13 @@ private:
 	void updateProgressStatus();
 	//!Perform an update to the 3D Scene. Returns false if refresh failed
 	bool doSceneUpdate();
+	
+	//!Complete the scene update. Returns false if failed
+	void finishSceneUpdate(unsigned int errCode);
+
+	//!Wrapper for viscontrol's update function, as we need to
+	// prevent wx from firing events during tree update
+	void updateWxTreeCtrl( wxTreeCtrl *t, const Filter *f=0);
 
 	//!Update the post-processing effects in the 3D scene. 
 	void updatePostEffects(); 
@@ -107,7 +135,7 @@ private:
 	void setFilterTreeAnalysisImages(); 
 
 	//!Update the effects UI from some effects vector
-	void updateFxUI(const vector<const Effect *> &fx);
+	void updateFxUI(const std::vector<const Effect *> &fx);
 
 	void setLockUI(bool amlocking,unsigned int lockMode);
 
@@ -115,6 +143,11 @@ private:
 	bool glPanelOK;
 	//!Scene - user interaction interface "visualisation control"
 	VisController visControl;
+
+	//!Refresh control thread
+	RefreshThread *refreshThread;
+	//!Refresh control object
+	RefreshController *refreshControl;
 
 	//!Program on-disk configuration class
 	ConfigFile configFile;
@@ -147,7 +180,7 @@ private:
 	VersionCheckThread *verCheckThread;
 
 	//Map to convert filter drop down choices to IDs
-	map<std::string,size_t> filterMap;
+	std::map<std::string,size_t> filterMap;
    
 	//TODO: Refactor -  remove me.
 	// True if there are pending updates for the mahthgl window
@@ -155,11 +188,11 @@ private:
 
 	//List of pending messages to show in status bar
 	// first int is priority (eg MESSAGE_ERROR), string is message
-	list<pair<unsigned int, std::string > > statusQueue;
+	std::list<std::pair<unsigned int, std::string > > statusQueue;
 protected:
-    wxTimer *statusTimer;
-    wxTimer *progressTimer;
+    wxTimer *statusTimer; //One-shot timer that is used to clear the status bar
     wxTimer *updateTimer; //Periodically calls itself to check for updates from user interaction
+    wxTimer *progressTimer; //Periodically calls itself to refresh progress status
     wxTimer *autoSaveTimer; //Periodically calls itself to create an autosave state file
     wxMenuItem *checkMenuControlPane;
     wxMenuItem *checkMenuRawDataPane;
@@ -187,8 +220,6 @@ protected:
     wxStaticText* filteringLabel;
     wxComboBox* comboFilters;
     TextTreeCtrl* treeFilters;
-    wxStaticText* lastRefreshLabel;
-    wxListCtrl* listLastRefresh;
     wxCheckBox* checkAutoUpdate;
     wxButton* refreshButton;
     wxButton* btnFilterTreeExpand;
@@ -373,10 +404,10 @@ public:
     virtual void OnAutosaveTimer(wxTimerEvent &evt);
 
     virtual void OnCheckUpdatesThread(wxCommandEvent &evt);
+    virtual void OnFinishRefreshThread(wxCommandEvent &evt);
     virtual void OnIdle(wxIdleEvent &evt);
 
     virtual void SetCommandLineFiles(wxArrayString &files);
-    virtual void updateLastRefreshBox();
 
     //return type of file, based upon heuristic check
     static unsigned int guessFileType(const std::string &file);

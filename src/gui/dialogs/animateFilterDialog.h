@@ -102,24 +102,24 @@ public:
     //! Obtain the current state from the animation (keyframes)
     // the second element provides the mappings for the property animator to 
     // filter tree path locations
-    void getAnimationState(PropertyAnimator &prop,  vector<pair<string,size_t> > &pathMapping) const ;
+    void getAnimationState(PropertyAnimator &prop, std::vector<std::pair<std::string,size_t> > &pathMapping) const ;
     //!Obtain the current state from the animation
     void setAnimationState(const PropertyAnimator &prop,
-		    const vector<pair<string,size_t> > &pathMapping);
+		    const std::vector<std::pair<std::string,size_t> > &pathMapping);
 
     //!Obtain the filter tree path string->animation ID mapping
-    void getPathMapping(vector<pair<string,size_t> > &mapping, bool allowMissing=false) const;
+    void getPathMapping(std::vector<std::pair<std::string,size_t> > &mapping, bool allowMissing=false) const;
 
     void setDefImSize(unsigned int w, unsigned int h) ; 
 private:
     //!Tree of filters that can be manipulated
     const FilterTree *filterTree;
     //!Mapping from ID of filter to the pointer in the filter tree
-    map<size_t,Filter *> filterMap;
+    std::map<size_t,Filter *> filterMap;
 
     //!Mapping to allow for converting entry of RNG selection combo into
     // the correct range enum value
-    map<string,size_t> rangeMap;
+    std::map<std::string,size_t> rangeMap;
     //!Default height/width desired for output images
     size_t imageWidth,imageHeight;
     bool imageSizeOK;
@@ -127,9 +127,9 @@ private:
     PropertyAnimator propertyAnimator;
 
     //!Working directory for outputting data
-    string workDir;
+    std::string workDir;
 
-    string imagePrefix;
+    std::string imagePrefix;
     //!True if any con
     bool existsConflicts;
     //!true if the user has selected image output functionality

@@ -137,6 +137,7 @@ am__3Depict_SOURCES_DIST = 3Depict.cpp testing/testing.cpp \
 	backend/filters/ionInfo.cpp backend/filters/annotation.cpp \
 	backend/filters/geometryHelpers.cpp \
 	backend/filters/algorithms/binomial.cpp \
+	backend/filters/algorithms/mass.cpp \
 	backend/filters/allFilter.h backend/filters/filterCommon.h \
 	backend/filters/dataLoad.h backend/filters/ionDownsample.h \
 	backend/filters/rangeFile.h backend/filters/voxelise.h \
@@ -147,7 +148,8 @@ am__3Depict_SOURCES_DIST = 3Depict.cpp testing/testing.cpp \
 	backend/filters/spatialAnalysis.h \
 	backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
 	backend/filters/annotation.h backend/filters/geometryHelpers.h \
-	backend/filters/algorithms/binomial.h backend/animator.cpp \
+	backend/filters/algorithms/binomial.h \
+	backend/filters/algorithms/mass.h backend/animator.cpp \
 	backend/filtertreeAnalyse.cpp backend/filtertree.cpp \
 	backend/APT/ionhit.cpp backend/APT/APTFileIO.cpp \
 	backend/APT/APTRanges.cpp backend/APT/abundanceParser.cpp \
@@ -170,11 +172,13 @@ am__3Depict_SOURCES_DIST = 3Depict.cpp testing/testing.cpp \
 	common/pngread.c common/stringFuncs.cpp common/constants.cpp \
 	common/xmlHelper.cpp common/colourmap.cpp common/voxels.cpp \
 	common/mathfuncs.cpp common/basics.cpp common/assertion.cpp \
-	common/pngread.h common/stringFuncs.h common/constants.h \
-	common/xmlHelper.h common/colourmap.h common/mathfuncs.h \
-	common/basics.h common/translation.h common/endianTest.h \
-	common/assertion.h common/voxels.h common/array2D.h \
-	testing/mglTesting.cpp testing/mglTesting.h 3Depict.rc
+	common/mesh.cpp common/gsl_helper.cpp common/pngread.h \
+	common/stringFuncs.h common/constants.h common/xmlHelper.h \
+	common/colourmap.h common/mathfuncs.h common/basics.h \
+	common/translation.h common/endianTest.h common/assertion.h \
+	common/voxels.h common/array2D.h common/mesh.h \
+	common/gsl_helper.h testing/mglTesting.cpp \
+	testing/mglTesting.h 3Depict.rc
 am__dirstamp = $(am__leading_dot)dirstamp
 am__objects_1 = 3Depict-3Depict.$(OBJEXT) \
 	testing/3Depict-testing.$(OBJEXT) \
@@ -217,7 +221,8 @@ am__objects_6 = backend/filters/3Depict-allFilter.$(OBJEXT) \
 	backend/filters/3Depict-ionInfo.$(OBJEXT) \
 	backend/filters/3Depict-annotation.$(OBJEXT) \
 	backend/filters/3Depict-geometryHelpers.$(OBJEXT) \
-	backend/filters/algorithms/3Depict-binomial.$(OBJEXT)
+	backend/filters/algorithms/3Depict-binomial.$(OBJEXT) \
+	backend/filters/algorithms/3Depict-mass.$(OBJEXT)
 am__objects_7 = backend/3Depict-animator.$(OBJEXT) \
 	backend/3Depict-filtertreeAnalyse.$(OBJEXT) \
 	backend/3Depict-filtertree.$(OBJEXT) \
@@ -245,7 +250,9 @@ am__objects_9 = common/3Depict-pngread.$(OBJEXT) \
 	common/3Depict-voxels.$(OBJEXT) \
 	common/3Depict-mathfuncs.$(OBJEXT) \
 	common/3Depict-basics.$(OBJEXT) \
-	common/3Depict-assertion.$(OBJEXT)
+	common/3Depict-assertion.$(OBJEXT) \
+	common/3Depict-mesh.$(OBJEXT) \
+	common/3Depict-gsl_helper.$(OBJEXT)
 am__objects_10 = testing/3Depict-mglTesting.$(OBJEXT)
 am__objects_11 = $(am__objects_1) $(am__objects_2) $(am__objects_4) \
 	$(am__objects_5) $(am__objects_6) $(am__objects_2) \
@@ -379,6 +386,7 @@ INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
+LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MGL_CFLAGS = @MGL_CFLAGS@
@@ -401,6 +409,7 @@ PNG_CFLAGS = @PNG_CFLAGS@
 PNG_LIBS = @PNG_LIBS@
 QHULL_CFLAGS = @QHULL_CFLAGS@
 QHULL_LIBS = @QHULL_LIBS@
+RANLIB = @RANLIB@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
@@ -485,11 +494,12 @@ MSYS_PATH = /c/msys/1.0/local/include/
 
 #------- Common header files for all sub-modules
 COMMON_SOURCE_FILES = common/pngread.c common/stringFuncs.cpp common/constants.cpp common/xmlHelper.cpp\
-			 common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp common/assertion.cpp
+			 common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp common/assertion.cpp \
+			common/mesh.cpp common/gsl_helper.cpp
 
 COMMON_HEADER_FILES = common/pngread.h common/stringFuncs.h  common/constants.h  common/xmlHelper.h common/colourmap.h \
 		      	common/mathfuncs.h common/basics.h common/translation.h common/endianTest.h common/assertion.h common/voxels.h \
-			common/array2D.h
+			common/array2D.h common/mesh.h common/gsl_helper.h
 
 
 #-----------
@@ -504,7 +514,7 @@ FILTER_FILES = backend/filters/allFilter.cpp backend/filters/filterCommon.cpp \
 		backend/filters/compositionProfile.cpp backend/filters/spatialAnalysis.cpp \
 		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
 		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp \
-		backend/filters/algorithms/binomial.cpp  
+		backend/filters/algorithms/binomial.cpp  backend/filters/algorithms/mass.cpp  
 
 FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h \
 		backend/filters/dataLoad.h backend/filters/ionDownsample.h \
@@ -514,7 +524,7 @@ FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h
 		backend/filters/compositionProfile.h backend/filters/spatialAnalysis.h \
 		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
 		backend/filters/annotation.h backend/filters/geometryHelpers.h \
-		backend/filters/algorithms/binomial.h 
+		backend/filters/algorithms/binomial.h backend/filters/algorithms/mass.h
 
 BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backend/filtertree.cpp \
 		     	backend/APT/ionhit.cpp backend/APT/APTFileIO.cpp backend/APT/APTRanges.cpp backend/APT/abundanceParser.cpp \
@@ -533,8 +543,8 @@ BACKEND_HEADER_FILES = backend/animator.h backend/filtertreeAnalyse.h backend/fi
 #------------
 
 #------------ OpenGL interface files
-OPENGL_HEADER_FILES = gl/scene.h gl/drawables.h gl/effect.h gl/textures.h gl/select.h gl/cameras.h gl/isoSurface.h gl/tr.h gl/glDebug.h
-OPENGL_SOURCE_FILES = gl/scene.cpp gl/drawables.cpp gl/effect.cpp gl/textures.cpp gl/select.cpp gl/cameras.cpp gl/isoSurface.cpp gl/tr.cpp
+OPENGL_HEADER_FILES = gl/scene.h gl/drawables.h gl/effect.h gl/textures.h gl/select.h gl/cameras.h gl/isoSurface.h gl/tr.h gl/glDebug.h 
+OPENGL_SOURCE_FILES = gl/scene.cpp gl/drawables.cpp gl/effect.cpp gl/textures.cpp gl/select.cpp gl/cameras.cpp gl/isoSurface.cpp gl/tr.cpp 
 #------------
 
 #------------ Frontend (linked to UI in some way) files ---
@@ -798,6 +808,9 @@ backend/filters/algorithms/$(DEPDIR)/$(am__dirstamp):
 backend/filters/algorithms/3Depict-binomial.$(OBJEXT):  \
 	backend/filters/algorithms/$(am__dirstamp) \
 	backend/filters/algorithms/$(DEPDIR)/$(am__dirstamp)
+backend/filters/algorithms/3Depict-mass.$(OBJEXT):  \
+	backend/filters/algorithms/$(am__dirstamp) \
+	backend/filters/algorithms/$(DEPDIR)/$(am__dirstamp)
 backend/$(am__dirstamp):
 	@$(MKDIR_P) backend
 	@: > backend/$(am__dirstamp)
@@ -890,6 +903,10 @@ common/3Depict-basics.$(OBJEXT): common/$(am__dirstamp) \
 	common/$(DEPDIR)/$(am__dirstamp)
 common/3Depict-assertion.$(OBJEXT): common/$(am__dirstamp) \
 	common/$(DEPDIR)/$(am__dirstamp)
+common/3Depict-mesh.$(OBJEXT): common/$(am__dirstamp) \
+	common/$(DEPDIR)/$(am__dirstamp)
+common/3Depict-gsl_helper.$(OBJEXT): common/$(am__dirstamp) \
+	common/$(DEPDIR)/$(am__dirstamp)
 testing/3Depict-mglTesting.$(OBJEXT): testing/$(am__dirstamp) \
 	testing/$(DEPDIR)/$(am__dirstamp)
 
@@ -949,12 +966,15 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@backend/filters/algorithms/$(DEPDIR)/3Depict-K3DTree-mk2.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@backend/filters/algorithms/$(DEPDIR)/3Depict-K3DTree.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@backend/filters/algorithms/$(DEPDIR)/3Depict-binomial.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@backend/filters/algorithms/$(DEPDIR)/3Depict-mass.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@backend/filters/algorithms/$(DEPDIR)/3Depict-rdf.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-assertion.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-basics.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-colourmap.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-constants.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-gsl_helper.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-mathfuncs.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-mesh.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-pngread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-stringFuncs.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@common/$(DEPDIR)/3Depict-voxels.Po@am__quote@
@@ -1609,6 +1629,20 @@ backend/filters/algorithms/3Depict-binomial.obj: backend/filters/algorithms/bino
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o backend/filters/algorithms/3Depict-binomial.obj `if test -f 'backend/filters/algorithms/binomial.cpp'; then $(CYGPATH_W) 'backend/filters/algorithms/binomial.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/filters/algorithms/binomial.cpp'; fi`
 
+backend/filters/algorithms/3Depict-mass.o: backend/filters/algorithms/mass.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT backend/filters/algorithms/3Depict-mass.o -MD -MP -MF backend/filters/algorithms/$(DEPDIR)/3Depict-mass.Tpo -c -o backend/filters/algorithms/3Depict-mass.o `test -f 'backend/filters/algorithms/mass.cpp' || echo '$(srcdir)/'`backend/filters/algorithms/mass.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) backend/filters/algorithms/$(DEPDIR)/3Depict-mass.Tpo backend/filters/algorithms/$(DEPDIR)/3Depict-mass.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='backend/filters/algorithms/mass.cpp' object='backend/filters/algorithms/3Depict-mass.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o backend/filters/algorithms/3Depict-mass.o `test -f 'backend/filters/algorithms/mass.cpp' || echo '$(srcdir)/'`backend/filters/algorithms/mass.cpp
+
+backend/filters/algorithms/3Depict-mass.obj: backend/filters/algorithms/mass.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT backend/filters/algorithms/3Depict-mass.obj -MD -MP -MF backend/filters/algorithms/$(DEPDIR)/3Depict-mass.Tpo -c -o backend/filters/algorithms/3Depict-mass.obj `if test -f 'backend/filters/algorithms/mass.cpp'; then $(CYGPATH_W) 'backend/filters/algorithms/mass.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/filters/algorithms/mass.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) backend/filters/algorithms/$(DEPDIR)/3Depict-mass.Tpo backend/filters/algorithms/$(DEPDIR)/3Depict-mass.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='backend/filters/algorithms/mass.cpp' object='backend/filters/algorithms/3Depict-mass.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o backend/filters/algorithms/3Depict-mass.obj `if test -f 'backend/filters/algorithms/mass.cpp'; then $(CYGPATH_W) 'backend/filters/algorithms/mass.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/filters/algorithms/mass.cpp'; fi`
+
 backend/3Depict-animator.o: backend/animator.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT backend/3Depict-animator.o -MD -MP -MF backend/$(DEPDIR)/3Depict-animator.Tpo -c -o backend/3Depict-animator.o `test -f 'backend/animator.cpp' || echo '$(srcdir)/'`backend/animator.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) backend/$(DEPDIR)/3Depict-animator.Tpo backend/$(DEPDIR)/3Depict-animator.Po
@@ -2042,6 +2076,34 @@ common/3Depict-assertion.obj: common/assertion.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='common/assertion.cpp' object='common/3Depict-assertion.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o common/3Depict-assertion.obj `if test -f 'common/assertion.cpp'; then $(CYGPATH_W) 'common/assertion.cpp'; else $(CYGPATH_W) '$(srcdir)/common/assertion.cpp'; fi`
+
+common/3Depict-mesh.o: common/mesh.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT common/3Depict-mesh.o -MD -MP -MF common/$(DEPDIR)/3Depict-mesh.Tpo -c -o common/3Depict-mesh.o `test -f 'common/mesh.cpp' || echo '$(srcdir)/'`common/mesh.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) common/$(DEPDIR)/3Depict-mesh.Tpo common/$(DEPDIR)/3Depict-mesh.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='common/mesh.cpp' object='common/3Depict-mesh.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o common/3Depict-mesh.o `test -f 'common/mesh.cpp' || echo '$(srcdir)/'`common/mesh.cpp
+
+common/3Depict-mesh.obj: common/mesh.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT common/3Depict-mesh.obj -MD -MP -MF common/$(DEPDIR)/3Depict-mesh.Tpo -c -o common/3Depict-mesh.obj `if test -f 'common/mesh.cpp'; then $(CYGPATH_W) 'common/mesh.cpp'; else $(CYGPATH_W) '$(srcdir)/common/mesh.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) common/$(DEPDIR)/3Depict-mesh.Tpo common/$(DEPDIR)/3Depict-mesh.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='common/mesh.cpp' object='common/3Depict-mesh.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o common/3Depict-mesh.obj `if test -f 'common/mesh.cpp'; then $(CYGPATH_W) 'common/mesh.cpp'; else $(CYGPATH_W) '$(srcdir)/common/mesh.cpp'; fi`
+
+common/3Depict-gsl_helper.o: common/gsl_helper.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT common/3Depict-gsl_helper.o -MD -MP -MF common/$(DEPDIR)/3Depict-gsl_helper.Tpo -c -o common/3Depict-gsl_helper.o `test -f 'common/gsl_helper.cpp' || echo '$(srcdir)/'`common/gsl_helper.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) common/$(DEPDIR)/3Depict-gsl_helper.Tpo common/$(DEPDIR)/3Depict-gsl_helper.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='common/gsl_helper.cpp' object='common/3Depict-gsl_helper.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o common/3Depict-gsl_helper.o `test -f 'common/gsl_helper.cpp' || echo '$(srcdir)/'`common/gsl_helper.cpp
+
+common/3Depict-gsl_helper.obj: common/gsl_helper.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT common/3Depict-gsl_helper.obj -MD -MP -MF common/$(DEPDIR)/3Depict-gsl_helper.Tpo -c -o common/3Depict-gsl_helper.obj `if test -f 'common/gsl_helper.cpp'; then $(CYGPATH_W) 'common/gsl_helper.cpp'; else $(CYGPATH_W) '$(srcdir)/common/gsl_helper.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) common/$(DEPDIR)/3Depict-gsl_helper.Tpo common/$(DEPDIR)/3Depict-gsl_helper.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='common/gsl_helper.cpp' object='common/3Depict-gsl_helper.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o common/3Depict-gsl_helper.obj `if test -f 'common/gsl_helper.cpp'; then $(CYGPATH_W) 'common/gsl_helper.cpp'; else $(CYGPATH_W) '$(srcdir)/common/gsl_helper.cpp'; fi`
 
 testing/3Depict-mglTesting.o: testing/mglTesting.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT testing/3Depict-mglTesting.o -MD -MP -MF testing/$(DEPDIR)/3Depict-mglTesting.Tpo -c -o testing/3Depict-mglTesting.o `test -f 'testing/mglTesting.cpp' || echo '$(srcdir)/'`testing/mglTesting.cpp

@@ -21,6 +21,10 @@
 
 #include "common/colourmap.h"
 
+using std::vector;
+using std::string;
+using std::pair;
+using std::make_pair;
 
 
 const unsigned int MAX_NUM_COLOURS=256;
@@ -78,7 +82,7 @@ size_t IonColourFilter::numBytesForCache(size_t nObjects) const
 
 
 unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 	//use the cached copy if we have it.
 	if(cacheOK)
@@ -172,7 +176,7 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 						n+=NUM_CALLBACK;
 						progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 						curProg=NUM_CALLBACK;
-						if(!(*callback)(false))
+						if(*Filter::wantAbort)
 						{
 							for(unsigned int ui=0;ui<nColours;ui++)
 								delete d[ui];
@@ -407,7 +411,7 @@ bool IonColourFilter::setProperty(  unsigned int key,
 }
 
 
-std::string  IonColourFilter::getErrString(unsigned int code) const
+std::string  IonColourFilter::getSpecificErrString(unsigned int code) const
 {
 	//Currently the only error is aborting
 	return std::string(TRANS("Aborted"));
@@ -635,7 +639,7 @@ bool ionCountTest()
 	TEST(f->setProperty(KEY_IONCOLOURFILTER_SHOWBAR,"0",needUpdate),"Set prop");
 	
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh error code");
 	delete f;
 	delete d;
 	

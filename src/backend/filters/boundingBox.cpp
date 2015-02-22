@@ -19,6 +19,11 @@
 
 #include "filterCommon.h"
 
+using std::vector;
+using std::string;
+using std::pair;
+using std::make_pair;
+
 enum
 {
 	KEY_VISIBLE=1,
@@ -355,7 +360,7 @@ void BoundingBoxFilter::drawDimension(const BoundCube &bTotal, DrawStreamData *d
 }
 
 unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 
 	if(!isVisible)
@@ -429,7 +434,7 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 
 						if(thisT == 0)
 						{
-							if(!(*callback)(false))
+							if(*Filter::wantAbort)
 								spin=true;
 						}
 					}
@@ -456,7 +461,7 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 					{
 						n+=NUM_CALLBACK;
 						progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
-						if(!(*callback)(false))
+						if(*Filter::wantAbort)
 						{
 							delete d;
 							return BOUNDINGBOX_ABORT_ERR;
@@ -766,7 +771,7 @@ bool BoundingBoxFilter::setProperty(  unsigned int key,
 }
 
 
-std::string  BoundingBoxFilter::getErrString(unsigned int code) const
+std::string  BoundingBoxFilter::getSpecificErrString(unsigned int code) const
 {
 
 	//Currently the only error is aborting
@@ -1070,7 +1075,7 @@ bool boxVolumeTest()
 
 
 	ProgressData p;
-	TEST(!b->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	TEST(!b->refresh(streamIn,streamOut,p),"Refresh error code");
 	//---
 
 	//Run tests 

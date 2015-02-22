@@ -73,7 +73,7 @@ class IonDownsampleFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &getOut, 
-				 ProgressData &progress, bool (*callback)(bool));
+				 ProgressData &progress);
 
 		//!return string naming the human readable type of this class
 		virtual std::string typeString() const { return std::string(TRANS("Ion Sampler"));}
@@ -86,7 +86,7 @@ class IonDownsampleFilter : public Filter
 		//!Set the properties for the nth filter
 		bool setProperty( unsigned int key, const std::string &value, bool &needUpdate);
 		//!Get the human readable error string associated with a particular error code during refresh(...)
-		std::string getErrString(unsigned int code) const;
+		std::string getSpecificErrString(unsigned int code) const;
 		
 		//!Dump state to output stream, using specified format
 		bool writeState(std::ostream &f,unsigned int format, 
