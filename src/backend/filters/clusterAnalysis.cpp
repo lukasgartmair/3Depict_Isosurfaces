@@ -257,7 +257,7 @@ void ClusterAnalysisFilter::buildRangeEnabledMap(const RangeStreamData *r,
 
 ClusterAnalysisFilter::ClusterAnalysisFilter() : algorithm(CLUSTER_LINK_ERODE),
 	enableCoreClassify(false), coreDist(0.0f), coreKNN(1), linkDist(0.5f), 
-	enableBulkLink(false), bulkLink(1), enableErosion(false), dErosion(0.25),
+	enableBulkLink(false), bulkLink(0.25), enableErosion(false), dErosion(0.25),
 	wantClusterID(false), wantCropSize(false), nMin(0),nMax(std::numeric_limits<size_t>::max()),
 	wantClusterSizeDist(false),logClusterSize(false),
 	wantClusterComposition(true),normaliseComposition(true),

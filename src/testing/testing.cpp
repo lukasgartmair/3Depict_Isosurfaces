@@ -171,8 +171,8 @@ bool runUnitTests()
 	if(!testFileIO())
 		return false;
 
-	if(!mglTest())
-		return false;
+//	if(!mglTest())
+//		return false;
 
 	if(!abundanceTests())
 		return false;

@@ -25,7 +25,7 @@ BuildRequires: libpng-devel
 #Desktop file utils for installing desktop file
 BuildRequires: desktop-file-utils
 #WX widgets
-BuildRequires: wxGTK3-devel
+BuildRequires: wxGTK-devel
 #PDF latex build
 #BuildRequires: tex(latex)
 
@@ -36,9 +36,6 @@ BuildRequires: qhull-devel
 Patch0: %{name}-%{version}-manual-pdf-loc.patch
 #Fedora specific font dir
 Patch1: %{name}-%{version}-font-path.patch
-#Upstream post-release patches
-Patch2: %{name}-%{version}-upstream.patch
-
 
 
 %description
@@ -53,10 +50,9 @@ useful for general scalar valued point data purposes.
 
 %patch0
 %patch1
-%patch2
 
 %build
-%configure --disable-debug-checks --enable-openmp-parallel --with-wx-config="wx-config-3.0"
+%configure --disable-debug-checks --enable-openmp-parallel --enable-mgl2
 make %{?_smp_mflags}
 
 %install

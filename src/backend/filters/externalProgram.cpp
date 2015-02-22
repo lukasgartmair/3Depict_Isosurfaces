@@ -552,7 +552,7 @@ void ExternalProgramFilter::getProperties(FilterPropGroup &propertyList) const
 	
 	p.name=TRANS("Work Dir");
 	p.data= workingDir;
-	p.type=PROPERTY_TYPE_STRING;
+	p.type=PROPERTY_TYPE_DIR;
 	p.helpText=TRANS("Directory to run the command in");
 	p.key=EXTERNALPROGRAM_KEY_WORKDIR;		
 	propertyList.addProperty(p,curGroup);
