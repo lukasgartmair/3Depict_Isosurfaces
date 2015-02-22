@@ -7,11 +7,13 @@
 	- Clustering ellipse fitting implemented. Can now determine
 	 best-fit ellipsoids on clusters, and plot them in 2D to identify
 	 lath/rod/sphere/disc shapes
+	- New, more prominent progress spinner
 
 	Technical bugfixes/changes:
 	- Significant refactoring of internals to allow for threading. 
 		- State has been made more prominent, viscontrol less.
 		- New "TreeState" object created
+	- Compiles with c++11
 
 * 01 Sep 2014 : 0.0.17
 	Features
