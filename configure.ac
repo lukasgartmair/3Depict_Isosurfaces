@@ -1,4 +1,4 @@
-AC_INIT([3Depict], [0.0.17]) 
+AC_INIT([3Depict], [0.0.18]) 
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 AC_PROG_CXX
 AC_PROG_CC
