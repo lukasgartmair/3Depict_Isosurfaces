@@ -808,7 +808,7 @@ void MathGLPane::mouseWheelMoved(wxMouseEvent& event)
 		case AXIS_POSITION_LOW_X:
 		{
 			float newYMin,newYMax;
-			//work out eyisting bounds on zooming
+			//work out existing bounds on zooming
 			zoomBounds(yMin,yMax,mousePos.y,
 				zoomFactor, newYMin,newYMax);
 			//clamp to plot

@@ -389,7 +389,7 @@ void ExportAnimationDialog::setAnimationState(const PropertyAnimator &prop,
 
 	//Sync this into the dialog 
 	// -> we need to examine the animation state, and only
-	// keeo paths we recognise, rewriting the id values
+	// keep paths we recognise, rewriting the id values
 	propertyAnimator.updateMappings(idRemap);
 
 }
@@ -653,7 +653,7 @@ void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 	wxTreeItemData *tData=filterTreeCtrl->GetItemData(tId);
 	filterId = ((wxTreeUint *)tData)->value;
 
-	//grab tyhe key from the property grid
+	//grab the key from the property grid
 	size_t key;
 	std::string keyStr;
 	keyStr=event.GetProperty()->GetName();

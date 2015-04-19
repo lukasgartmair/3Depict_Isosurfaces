@@ -512,7 +512,7 @@ void RangeEditorDialog::generateListEntries()
 			continue;	
 
 		//Append the plot to the list in the user interface,
-		// with the plot Id embeded in the element
+		// with the plot Id embedded in the element
 		int idx;
 		idx=listPlots->Append((title));
 		listToPlotIDs[idx]=plotIDs[ui];
@@ -1104,7 +1104,7 @@ void RangeEditorDialog::OnGridRangesCellChange(wxGridEvent &event)
 				return;
 			}
 			
-			//Disallow inversio of range start/end
+			//Disallow inversion of range start/end
 			if(f >=currentRange->getRange(rangeId).second)
 			{
 				event.Veto();
@@ -1125,7 +1125,7 @@ void RangeEditorDialog::OnGridRangesCellChange(wxGridEvent &event)
 				return;
 			}
 			
-			//Disallow inversoin of range start/end
+			//Disallow inversion of range start/end
 			if(f <=currentRange->getRange(rangeId).first)
 			{
 				event.Veto();

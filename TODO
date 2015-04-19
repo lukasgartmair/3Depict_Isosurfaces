@@ -6,6 +6,7 @@ TODO List - worlds simplest bugtracking system
 	To Implement:
 		== Next version ==
 		* Voxelisation filter should not show ions disabled in upstream range
+		* Voxelisation filter should not show ions disabled in upstream range
 	
 		== Eventually == 
 		* Voxel export dialog 
@@ -33,6 +34,8 @@ TODO List - worlds simplest bugtracking system
 
 	Outstanding bugs:
 		== Next release==
+		* Fix voxelisation "filter" option
+		* Fix/revert broken isosurfacing
 	
 		== Eventually==
 		* Cluster filter wont save state correctly if parent

@@ -49,7 +49,7 @@ enum
 #include <wx/tipdlg.h>
 
 #include <wx/utils.h>  // Needed for wxLaunchDefaultApplication
-//extra imporst
+//extra imports
 #undef I // Not sure who is defining this, but it is causing problems - mathgl?
 #include "common/voxels.h"
 
@@ -694,7 +694,7 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
     noteFxPanelCrop->Enable(false);
     noteFxPanelStereo->Enable(false);
 #else
-    //Disable Fx panel stereo controls explicitly
+    //Disable effects panel stereo controls explicitly
     comboFxStereoMode->Enable(false);
     sliderFxStereoBaseline->Enable(false);
     checkFxStereoLensFlip->Enable(false);
@@ -3135,7 +3135,7 @@ void MainWindowFrame::updateEditRangeMenu()
 	visControl.state.treeState.getFiltersByType(filtersSpectra,FILTER_TYPE_SPECTRUMPLOT);
 
 	//Only show the menu item if we have both ranges and plots in our
-	// fitler tree
+	// filter tree
 	bool wantEnable = filtersRange.size() && filtersSpectra.size();
 	editRangeMenuItem->Enable(wantEnable);
 }
@@ -3471,7 +3471,7 @@ void MainWindowFrame::OnGridCameraPropertyChange(wxPropertyGridEvent &event)
 		}
 		else
 		{
-			//So wx makes life har dhere. We need to do a dance to get the selection
+			//So wx makes life hard here. We need to do a dance to get the selection
 			// as a string
 			unsigned int ul;
 			ul=ll.ToLong();
