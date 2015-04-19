@@ -50,7 +50,7 @@ class InterpData
 		// for the properties given as a parameter.
 		// should only be called for frames that lie within the interpolated
 		// range
-		std::string getInterpolatedData(const vector<pair<size_t,
+		std::string getInterpolatedData(const std::vector<std::pair<size_t,
  					std::string>  > &keyData,size_t frame) const;
 
 		float interpLinearRamp(size_t startFrame, size_t endFrame, size_t curFrame,
@@ -67,7 +67,7 @@ class FrameProperties
 		//Property Key for filter
 		size_t propertyKey;
 		//!First in pair is frame offset, second is property at that frame
-		vector<pair<size_t,std::string> > frameData;
+		std::vector<std::pair<size_t,std::string> > frameData;
 
 		//!Interpolation information
 		InterpData interpData;
@@ -118,7 +118,7 @@ class PropertyAnimator
 	private:
 		//Vector containing each properties new
 		// value/key pairing
-		vector<FrameProperties> keyFrames;
+		std::vector<FrameProperties> keyFrames;
 	public:
 		PropertyAnimator();
 
@@ -132,8 +132,8 @@ class PropertyAnimator
 
 		//!Get all the properties that intersect or precede 
 		// a particular keyframe.
-		void getPropertiesAtFrame(size_t keyframe, vector<size_t> &propIds,
-			vector<FrameProperties> &props) const;
+		void getPropertiesAtFrame(size_t keyframe, std::vector<size_t> &propIds,
+			std::vector<FrameProperties> &props) const;
 
 		//Obtain the as-animated version of a specific filter for a particular frame.
 		// returns empty string if the filter ID/key is not known.
@@ -163,7 +163,7 @@ class PropertyAnimator
 		void removeNthKeyFrame(size_t frameNum);
 
 		//Remove the specified key frames. Input vector contents will be sorted.
-		void removeKeyFrames(vector<size_t> &vec);
+		void removeKeyFrames(std::vector<size_t> &vec);
 
 		//!Dump state to output stream, using specified format
 		/* Current supported formats are STATE_FORMAT_XML.
@@ -177,7 +177,7 @@ class PropertyAnimator
 
 
 		//!Obtain the complete listing of IDs used internally
-		void getIdList(vector<unsigned int> &ids) const;
+		void getIdList(std::vector<unsigned int> &ids) const;
 
 		//!Force the internal IDs for filters to a new value
 		void updateMappings(const std::map<size_t,size_t> &newMap);

@@ -19,12 +19,6 @@
 #ifndef DRAWABLES_H
 #define DRAWABLES_H
 
-
-//STL includes
-
-
-
-
 //MacOS is "special" and puts it elsewhere
 #ifdef __APPLE__ 
 	#include <OpenGL/glu.h>
@@ -37,6 +31,9 @@
 #include "textures.h"
 #include "cameras.h"
 #include "isoSurface.h"
+
+template<class T>
+class Voxels;
 
 //TODO: Work out if there is any way of obtaining the maximum 
 //number of items that can be drawn in an opengl context
@@ -104,6 +101,7 @@ enum
 	DRAW_TYPE_ISOSURFACE,
 	DRAW_TYPE_AXIS,
 	DRAW_TYPE_LEGENDOVERLAY,
+	DRAW_TYPE_PROGRESSCIRCLE_OVERLAY,
 };
 
 //TODO: It seems unnecessary to have multiple types for the bind
@@ -156,7 +154,7 @@ class DrawableObj
 		//Size of the opengl window
 		static unsigned int winX,winY;
 
-		float getHighContrastValue() const;
+		static float getHighContrastValue();
 	public: 
 		//!Can be selected from openGL viewport interactively?
 		bool canSelect;
@@ -209,7 +207,7 @@ class DrawableObj
 		virtual ~DrawableObj();
 
 		//!If we offer any kind of external pointer interface; use this to do a recomputation as needed. This is needed for selection binding behaviour
-		virtual void recomputeParams(const vector<Point3D> &vecs, const vector<float> &scalars, unsigned int mode) {};
+		virtual void recomputeParams(const std::vector<Point3D> &vecs, const std::vector<float> &scalars, unsigned int mode) {};
 		
 		//!Set the current camera
 		static void setCurCamera(const Camera *c){curCamera=c;};
@@ -418,9 +416,6 @@ class DrawTriangle : public DrawableObj
  */
 class DrawQuad : public DrawableObj
 {
-	private:
-		//!Colours of the vertices (rgba colour model)
-		float r[4],g[4],b[4],a[4];
 	protected:
 		//!Vertices of the quad
 		Point3D vertices[4];
@@ -430,6 +425,8 @@ class DrawQuad : public DrawableObj
 		/*! Lighting for this class is per triangle only no
 		 * per vertex lighting */
 		Point3D normal;
+		//!Colours of the vertices (rgba colour model)
+		float r[4],g[4],b[4],a[4];
 	public:
 		//!Constructor
 		DrawQuad() {};
@@ -449,6 +446,9 @@ class DrawQuad : public DrawableObj
 		void setVertices(const Point3D *);
 		//!Set the colour of a vertex
 		void setColour(unsigned int, float r, float g, float b, float a);
+		//!Set the colour of all vertices
+		void setColour(float r, float g, float b, float a);
+
 		//!Update the normal to the surface from vertices
 		/*!Uses the first 3 vertices to calculate the normal.
 		 */
@@ -461,8 +461,8 @@ class DrawQuad : public DrawableObj
 		
 		//!Recompute the internal parameters using the input vector information
 		// i.e. this is used for (eg) mouse interaction
-		void recomputeParams(const vector<Point3D> &vecs, 
-				const vector<float> &scalars, unsigned int mode);
+		void recomputeParams(const std::vector<Point3D> &vecs, 
+				const std::vector<float> &scalars, unsigned int mode);
 };
 
 class DrawTexturedQuad : public DrawQuad
@@ -475,15 +475,21 @@ class DrawTexturedQuad : public DrawQuad
 		size_t channels;
 		size_t displayMode;
 
+		//FIXME: This should be non-mutable.  We need
+		// to move texture rebinding to a pre-processing step, not at draw time
 		//ID of the texture to use when drawing, -1 if not bound
 		// to opengl
-		unsigned int textureId;
+		mutable unsigned int textureId;
 		
 		//!FTGL font instance
 		FTFont *font;
 		
 		//disallow resetting base colour to white 
 		bool noColour;
+
+		//we can only bind from the main thread.
+		// this is true by default, until the texture is bound
+		mutable bool needsBinding;
 		
 	public:
 		DrawTexturedQuad();
@@ -497,7 +503,7 @@ class DrawTexturedQuad : public DrawQuad
 		//Set the specified pixel in the texture to this value 
 		void setData(size_t x, size_t y, unsigned char *entry);
 		//Send the texture to the video card. 
-		void rebindTexture(unsigned int mode=GL_RGB);	
+		void rebindTexture(unsigned int mode=GL_RGB) const;	
 		
 		void setUseColouring(bool useColouring) {noColour= !useColouring;};
 };
@@ -547,8 +553,8 @@ class DrawSphere : public DrawableObj
 
 		//!Recompute the internal parameters using the input vector information
 		// i.e. this is used for (eg) mouse interaction
-		void recomputeParams(const vector<Point3D> &vecs, 
-				const vector<float> &scalars, unsigned int mode);
+		void recomputeParams(const std::vector<Point3D> &vecs, 
+				const std::vector<float> &scalars, unsigned int mode);
 
 };
 
@@ -609,7 +615,7 @@ class DrawCylinder : public DrawableObj
 		void getBoundingBox(BoundCube &b) const ;
 
 		//!Recompute the internal parameters using the input vector information
-		void recomputeParams(const vector<Point3D> &vecs, const vector<float> &scalars, unsigned int mode);
+		void recomputeParams(const std::vector<Point3D> &vecs, const std::vector<float> &scalars, unsigned int mode);
 
 		virtual bool needsDepthSorting() const;
 
@@ -801,8 +807,8 @@ class DrawGLText : public DrawableObj
 		void setAlignment(unsigned int mode);
 		
 		//Binding parameter recomputation
-		void recomputeParams(const vector<Point3D> &vecs, 
-				const vector<float> &scalars, unsigned int mode);
+		void recomputeParams(const std::vector<Point3D> &vecs, 
+				const std::vector<float> &scalars, unsigned int mode);
 };
 
 
@@ -845,7 +851,7 @@ class DrawRectPrism  : public DrawableObj
 		void getBoundingBox(BoundCube &b) const;
 		
 		//!Recompute the internal parameters using the input vector information
-		void recomputeParams(const vector<Point3D> &vecs, const vector<float> &scalars, unsigned int mode);
+		void recomputeParams(const std::vector<Point3D> &vecs, const std::vector<float> &scalars, unsigned int mode);
 };
 
 struct RGBFloat
@@ -883,7 +889,7 @@ class DrawColourBarOverlay : public DrawableOverlay
 		FTFont *font;
 
 		//!Colours for each element
-		vector<RGBFloat> rgb;
+		std::vector<RGBFloat> rgb;
 		//!Minimum and maximum values for the colour bar (for ticks)
 		float min,max;
 
@@ -896,9 +902,9 @@ class DrawColourBarOverlay : public DrawableOverlay
 
 		virtual unsigned int getType() const {return DRAW_TYPE_COLOURBAR;}
 
-		void setColourVec(const vector<float> &r,
-					const vector<float> &g,
-					const vector<float> &b);
+		void setColourVec(const std::vector<float> &r,
+					const std::vector<float> &g,
+					const std::vector<float> &b);
 		//!Draw object
 		void draw() const;
 
@@ -927,7 +933,6 @@ class DrawTexturedQuadOverlay : public DrawableOverlay
 		void draw() const;
 };
 
-
 //!Multi-frame texture - Animated overlay
 class DrawAnimatedOverlay : public DrawableOverlay
 {
@@ -949,6 +954,8 @@ class DrawAnimatedOverlay : public DrawableOverlay
 		//Time for fadein after show
 		float fadeIn;
 
+	protected:		
+		void getAnimationStat(float &alpha, float &deltaTime) const;
 	public:
 		DrawAnimatedOverlay();
 		~DrawAnimatedOverlay();
@@ -969,7 +976,7 @@ class DrawAnimatedOverlay : public DrawableOverlay
 			{ ASSERT(fadeInTime >=0.0f); fadeIn=fadeInTime;}
 
 		//!Set the texture by name
-		bool setTexture(const vector<string> &textureFiles, float timeRepeat=1.0f);
+		bool setTexture(const std::vector<std::string> &textureFiles, float timeRepeat=1.0f);
 
 		void resetTime() ;
 
@@ -977,6 +984,47 @@ class DrawAnimatedOverlay : public DrawableOverlay
 		void draw() const;
 
 		bool isOK() const { return textureOK; }
+};
+
+//!Draw a progress (segments with completion) overlay
+class DrawProgressCircleOverlay : public DrawAnimatedOverlay
+{
+
+	//Shows the progress of K filters, each with M steps,  and each
+	// step has a (0-100) progress. Result is drawn as filled arcs.
+	// Each filter is one arc, and this is divided into steps.
+	// each step then fills up
+
+	private:
+		//Progress in the current step, range [0,100]
+		unsigned int stepProgress;
+		//Number of steps in process 
+		unsigned int maxStep;
+		//The step that we are currently in
+		unsigned int step;
+		//Number of filters that are to be analysed 
+		unsigned int totalFilters;
+		//Filter that we are analysing (0->n-1)
+		unsigned int curFilter;
+		
+
+		//Draw a 2D wheel shaped section. Complete variable toggles the style of the drawing from a completed, to a n incompleted segment
+		void drawSection(unsigned int degreeStep, 
+	float rIn, float rOut,float startTheta, float stopTheta, bool complete) const;
+	public:
+		DrawProgressCircleOverlay();
+		~DrawProgressCircleOverlay();
+		void setCurFilter(unsigned int v) { curFilter= v;}
+		void setMaxStep(unsigned int v) { maxStep= v;}
+		void setNumFilters(unsigned int v) { totalFilters= v;}
+		void setProgress(unsigned int newProg) { ASSERT(newProg <=100); stepProgress = newProg;}
+		void setStep(unsigned int v) { ASSERT(v<=maxStep); step= v;}
+
+		void reset();
+
+		static void setWindowSize(unsigned int x, unsigned int y){winX=x;winY=y;};
+		virtual unsigned int getType() const {return DRAW_TYPE_PROGRESSCIRCLE_OVERLAY;}
+		void draw() const;
 };
 
 class DrawPointLegendOverlay : public DrawableOverlay
@@ -987,7 +1035,7 @@ class DrawPointLegendOverlay : public DrawableOverlay
 
 	FTFont *font;
 	//Items to draw n overlay, and colour to use to draw
-	vector<pair<string,RGBFloat> > legendItems;
+	std::vector<std::pair<std::string,RGBFloat> > legendItems;
 	bool enabled;
 	public:
 		DrawPointLegendOverlay();
@@ -1000,7 +1048,7 @@ class DrawPointLegendOverlay : public DrawableOverlay
 		void draw() const;
 
 		void clear(); 
-		void addItem(const string &s, float r, float g, float b);
+		void addItem(const std::string &s, float r, float g, float b);
 
 };
 
@@ -1103,7 +1151,7 @@ private:
 
 	Voxels<float> *voxels;	
 
-	mutable vector<TriangleWithVertexNorm> mesh;
+	mutable std::vector<TriangleWithVertexNorm> mesh;
 
 	//!Warning. Although I declare this as const, I do some naughty mutating to the cache.
 	void updateMesh() const;	

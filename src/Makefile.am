@@ -21,10 +21,11 @@ bin_PROGRAMS= 3Depict
 
 #------- Common header files for all sub-modules
 COMMON_SOURCE_FILES = common/pngread.c common/stringFuncs.cpp common/constants.cpp common/xmlHelper.cpp\
-			 common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp common/assertion.cpp
+			 common/colourmap.cpp common/voxels.cpp common/mathfuncs.cpp common/basics.cpp common/assertion.cpp \
+			common/mesh.cpp common/gsl_helper.cpp
 COMMON_HEADER_FILES = common/pngread.h common/stringFuncs.h  common/constants.h  common/xmlHelper.h common/colourmap.h \
 		      	common/mathfuncs.h common/basics.h common/translation.h common/endianTest.h common/assertion.h common/voxels.h \
-			common/array2D.h
+			common/array2D.h common/mesh.h common/gsl_helper.h
 
 #-----------
 
@@ -38,7 +39,7 @@ FILTER_FILES = backend/filters/allFilter.cpp backend/filters/filterCommon.cpp \
 		backend/filters/compositionProfile.cpp backend/filters/spatialAnalysis.cpp \
 		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
 		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp \
-		backend/filters/algorithms/binomial.cpp  
+		backend/filters/algorithms/binomial.cpp  backend/filters/algorithms/mass.cpp  
 
 FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h \
 		backend/filters/dataLoad.h backend/filters/ionDownsample.h \
@@ -48,7 +49,7 @@ FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h
 		backend/filters/compositionProfile.h backend/filters/spatialAnalysis.h \
 		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
 		backend/filters/annotation.h backend/filters/geometryHelpers.h \
-		backend/filters/algorithms/binomial.h 
+		backend/filters/algorithms/binomial.h backend/filters/algorithms/mass.h
 
 BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backend/filtertree.cpp \
 		     	backend/APT/ionhit.cpp backend/APT/APTFileIO.cpp backend/APT/APTRanges.cpp backend/APT/abundanceParser.cpp \
@@ -66,8 +67,8 @@ BACKEND_HEADER_FILES =  backend/animator.h backend/filtertreeAnalyse.h backend/f
 #------------
 
 #------------ OpenGL interface files
-OPENGL_HEADER_FILES = gl/scene.h gl/drawables.h gl/effect.h gl/textures.h gl/select.h gl/cameras.h gl/isoSurface.h gl/tr.h gl/glDebug.h
-OPENGL_SOURCE_FILES =  gl/scene.cpp gl/drawables.cpp gl/effect.cpp gl/textures.cpp gl/select.cpp gl/cameras.cpp gl/isoSurface.cpp gl/tr.cpp
+OPENGL_HEADER_FILES = gl/scene.h gl/drawables.h gl/effect.h gl/textures.h gl/select.h gl/cameras.h gl/isoSurface.h gl/tr.h gl/glDebug.h 
+OPENGL_SOURCE_FILES =  gl/scene.cpp gl/drawables.cpp gl/effect.cpp gl/textures.cpp gl/select.cpp gl/cameras.cpp gl/isoSurface.cpp gl/tr.cpp 
 #------------
 
 

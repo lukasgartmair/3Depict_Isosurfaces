@@ -1,14 +1,11 @@
 TODO List - worlds simplest bugtracking system 
 
 --Packaging--
-	* Update manual with
-		- cluster ID 
-		- Set operations
 
 --Main app--
 	To Implement:
 		== Next version ==
-		* Alpha blending on plane slice?
+		* Voxelisation filter should not show ions disabled in upstream range
 	
 		== Eventually == 
 		* Voxel export dialog 
@@ -28,10 +25,8 @@ TODO List - worlds simplest bugtracking system
 		* Better progress during cluster ranging
 		* Billboard text
 		* Camera animation control (slerp?)
-		* CSR fit to NN Hist in spatial analysis 
 		* Bounding box tick values could be improved - scientific
 		  notation, better font size control, absol. coords, etc
-		* Voxelisation filter should not show ions disabled in upstream range
 		* Range file drag/drop ignores drop coordinates; this could be useful
 		  in trying to interpret where the user wants to drop the object
 		* Plots cannot currently be updated on name change. Need to add "needUpdate" to setUserString
@@ -40,12 +35,10 @@ TODO List - worlds simplest bugtracking system
 		== Next release==
 	
 		== Eventually==
-		* Fix voxelisation "filter" option 
 		* Cluster filter wont save state correctly if parent
 		  rangefile has disabled ions. It will output incorrect
 		  number of enabled ions, and get wiped during next ::initFilter
 		* Lighting calculations on isosurfaces can be problematic. See example package
-		* Loading a full pos file directly onto the video card cannot be aborted.
 		* Select an X-Y crop, camera coords, on a dataset,
 		  then view   target  (-9.14237,-0.995174,83.2904) origin
 		  (188.23,-0.995174,83.2904). Now press ctrl+space. Note
@@ -69,24 +62,30 @@ TODO List - worlds simplest bugtracking system
 		* Pos limit loader could alter its behaviour when
 		 sampling rates some percentage to be determined (load
 		 file, skip buffer).
-		* Clustering could be paralellised, but is complex. Split & weld along KD tree lines using 
-		  cluster BB interactions.
+		* Clustering can now be paralellised. 
+			- consider implementing/using sphere grab algorithm, which is much faster
 		* Examine performance characteristics of HULL_GRAB in ioninfo
 		* Conversion of double axis-angle rotations to single axis angle rotations - any value here?
-		* Ranging does two full passes, one to estimate output size, and one to actually range
-			- why not simply sample the input to estimate output size??
+			- Use TRIAD/ Wahba's problem to solve. Should be a lot faster?
 	
 	Misc:
 
 
 -- Refactor/cleanup --
+	* read/write xml could have default reader/writer routines
+	Variables could be registered, then an order independant parser
+	could be used to "vacuum" most of the data. Bounds/corretness
+	checking could be used thereafter, and fallback to traditional
+	xml tree traversal could be done after that
 	* Plotting code is a nightmare. Data model for plot.h is not
 	   very well thought out, leading to large duplication, and elaborate special-case-ing
 		- Plots need log/non-log axes
 		- Plots need to be connected/disconnected
 		- Plots need to be able to specify bounding boxes separate from their data
+			- This would aid things like bar plots, pie charts
 		- Plots need to be able to set strings/legends
 		- There is little diference between plot1D and plot2D, really.
+		- Error bar handling is a bit of a hack.  Error generation should be moved to filters
 	* work out which inline FIXMEs and TODOs are still valid, and need attention
 	* K3DTree currently requires public access to members of boundcube
 	* Enums should be, where possible, moved into their relevant class' namespace

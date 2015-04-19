@@ -45,5 +45,8 @@ struct TriangleWithIndexedVertices
 void marchingCubes(const Voxels<float> &v,float isoValue, 
 		std::vector<TriangleWithVertexNorm> &tVec);
 
+#ifdef DEBUG
+bool testIsoSurface();
+#endif
 
 #endif

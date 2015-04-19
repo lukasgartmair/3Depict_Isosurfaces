@@ -164,7 +164,7 @@ private:
     void generatePlotRegions();
 
     //Generate the list of overlays
-    void generateOverlayList(const vector<OVERLAY_DATA> &overlays) ;
+    void generateOverlayList(const std::vector<OVERLAY_DATA> &overlays) ;
 
     //Rebuild the range entry grid
     void generateRangeEntries(size_t rowVisibleHint=(size_t)-1);

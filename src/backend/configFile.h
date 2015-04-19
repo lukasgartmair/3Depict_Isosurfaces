@@ -19,6 +19,7 @@
 #ifndef CONFIGFILE_H
 #define CONFIGFILE_H
 
+#include <deque>
 
 #include "backend/filter.h"
 
@@ -51,13 +52,13 @@ class ConfigFile
 {
 	private:
 		std::deque<std::string> recentFiles;
-		vector<Filter *> filterDefaults;
+		std::vector<Filter *> filterDefaults;
 		
 		//!Did the configuration load from file OK?
 		bool configLoadOK;
 		
 		//!Panel 
-		vector<bool> startupPanelView;
+		std::vector<bool> startupPanelView;
 
 		//!Any errors that occur during file IO. Set by class members during read()/write()
 		std::string errMessage;
@@ -117,9 +118,9 @@ class ConfigFile
 		static unsigned int getMaxHistory();
 
 		//Get a vector of the default filter pointers
-		void getFilterDefaults(vector<Filter* > &defs);
+		void getFilterDefaults(std::vector<Filter* > &defs);
 		//Set the default filter pointers (note this will take ownership of the pointer)
-		void setFilterDefaults(const vector<Filter* > &defs);
+		void setFilterDefaults(const std::vector<Filter* > &defs);
 
 		//Get a clone of the default filter for a given type,
 		//even if it is not in the array (use hardcoded)

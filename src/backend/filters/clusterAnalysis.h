@@ -20,7 +20,12 @@
 #include "../filter.h"
 #include "../../common/translation.h"
 
+#include "algorithms/K3DTree-mk2.h"
+
 #include <map>
+#include <vector>
+
+
 
 //!Cluster analysis filter
 class ClusterAnalysisFilter : public Filter
@@ -54,7 +59,6 @@ class ClusterAnalysisFilter : public Filter
 		//convert clusters mass to an ID #?
 		bool wantClusterID;
 		//---	
-
 		//post processing options
 		//Minimum/max number of "core" entires to qualify as,
 		//well, a meaningful cluster
@@ -77,51 +81,54 @@ class ClusterAnalysisFilter : public Filter
 		//!Which ions are core/builk for a  particular incoming range?
 		std::vector<bool> ionCoreEnabled,ionBulkEnabled;
 
+
+		unsigned int buildKDTrees(std::vector<IonHit> &coreIons, std::vector<IonHit> &bulkIons,K3DTreeMk2 &coreTree,K3DTreeMk2 &bulkTree, ProgressData &prog) const;
+
 		//Do cluster refresh using Link Algorithm (Core + max sep)
 		unsigned int refreshLinkClustering(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector< std::vector<IonHit> > &clusteredCore, 
-				std::vector<std::vector<IonHit>  > &clusteredBulk,ProgressData &progress,
-					       		bool (*callback)(bool));
+				std::vector<std::vector<IonHit>  > &clusteredBulk,ProgressData &progress);
 
 
-		//Helper function to create core and bulk vectors of ions from input ionstreams
+		//Helper function to create core and bulk std::vectors of ions from input ionstreams
 		void createRangedIons(const std::vector<const FilterStreamData *> &dataIn,
 						std::vector<IonHit> &core,std::vector<IonHit> &bulk,
-					       		ProgressData &p,bool (*callback)(bool)) const;
+					       		ProgressData &p) const;
 
 
 		//Check to see if there are any core or bulk ions enabled respectively.
 		void checkIonEnabled(bool &core, bool &bulk) const;
 
 		static void buildRangeEnabledMap(const RangeStreamData *r,
-					map<size_t,size_t> &rangeEnabledMap);
+					std::map<size_t,size_t> &rangeEnabledMap);
 
 		//Strip out clusters with a given number of elements
-		bool stripClusterBySize(vector<vector<IonHit> > &clusteredCore,
-						vector<vector<IonHit> > &clusteredBulk,
-							bool (*callback)(bool), ProgressData &p) const;
+		bool stripClusterBySize(std::vector<std::vector<IonHit> > &clusteredCore,
+						std::vector<std::vector<IonHit> > &clusteredBulk,
+							ProgressData &p) const;
 		//Build a plot that is the cluster size distribution as a function of cluster size
-		PlotStreamData *clusterSizeDistribution(const vector<vector<IonHit> > &solutes, 
-						const vector<vector<IonHit> > &matrix) const;
+		PlotStreamData *clusterSizeDistribution(const std::vector<std::vector<IonHit> > &solutes, 
+						const std::vector<std::vector<IonHit> > &matrix) const;
 
 
 		//Build plots that are the cluster size distribution as
 		// a function of cluster size, specific to each ion type.
-		void genCompositionVersusSize(const vector<vector<IonHit> > &clusteredCore,
-				const vector<vector<IonHit> > &clusteredBulk, const RangeFile *rng,
-							vector<PlotStreamData *> &plots) const;
+		void genCompositionVersusSize(const std::vector<std::vector<IonHit> > &clusteredCore,
+				const std::vector<std::vector<IonHit> > &clusteredBulk, const RangeFile *rng,
+							std::vector<PlotStreamData *> &plots) const;
 
 #ifdef DEBUG
 		bool paranoidDebugAssert(const std::vector<std::vector<IonHit > > &core, 
 				const std::vector<std::vector<IonHit> > &bulk) const;
+		
+		//Check to see if the singular value routine is working
+		static bool singularValueTest(); 
+
 #endif
-#ifdef DEBUG
-	public:
-#endif
-		//COmpute the singular values that area associated with each cluster
-		void getSingularValues(const vector<vector<IonHit> > &clusteredCore,
-				const vector<vector<IonHit> > &clusteredBulk, vector<vector<float> > &singularValues,
-				vector<std::pair<Point3D,vector<Point3D> > > &singularVectors) const;
+		///Find the best fit ellipse, per Karnesky et al to a set of IonHit events. Returned values are a pair : [ centroid, vector<semiaxes of ellipse> ]
+		static void getEllipsoidalFit(const std::vector<IonHit> &coreAtoms, const std::vector<IonHit> &bulkAtoms,
+
+		std::pair< Point3D, std::vector<Point3D> > &ellipseData);
 	public:
 		ClusterAnalysisFilter(); 
 		//!Duplicate filter contents, excluding cache.
@@ -138,13 +145,13 @@ class ClusterAnalysisFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &getOut, 
-					ProgressData &progress, bool (*callback)(bool));
+					ProgressData &progress);
 		//!Get the type string  for this filter
 		virtual std::string typeString() const { return std::string(TRANS("Cluster Analysis"));};
 
-		std::string getErrString(unsigned int i) const;
+		std::string getSpecificErrString(unsigned int i) const;
 
-		//!Get the properties of the filter, in key-value form. First vector is for each output.
+		//!Get the properties of the filter, in key-value form. First std::vector is for each output.
 		void getProperties(FilterPropGroup &propertyList) const;
 
 		//!Set the properties for the nth filter

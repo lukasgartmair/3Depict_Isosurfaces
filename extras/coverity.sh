@@ -6,6 +6,8 @@ COVERITY_KEY=QwQHOG5L3u53VhhdwKq6GA
 COVERITY_EMAIL_ID=email at email.com
 COVERITY_PROJECT=3depict
 
+THREEDEPICT_VERSION="0.0.18~rc1"
+
 PROJECT_BASEDIR=~/code/3Depict/
 
 
@@ -19,8 +21,8 @@ function cov_build()
 	#Current version of coverity doesn't work with gcc > 4.6
 	cat > $COVERITY_TMPSCRIPT << "EOF"
 #!/bin/bash
-export CXX=gcc-4.6
-export CC=gcc-4.6
+export CXX=gcc
+export CC=gcc
 export LDFLAGS=-lstdc++
 ./configure --disable-ubsan || { exit 1; }
 make clean || { exit 1; }
@@ -75,6 +77,8 @@ function verify_environment()
 
 	if [ ! -f ${COVERITY_BASEDIR}/bin/cov-build ] ; then
 		echo "Coverity tool \"cov-build\" not found. Expected ${COVERITY_BASEDIR}/bin/cov-build"
+		DOEXIT=1
+	fi
 
 	if [ x"$COVERITY_KEY" == x"" ] ; then
 		echo "Coverity key not set. Please edit script to set"
@@ -96,10 +100,12 @@ function verify_environment()
 
 function cov_submit()
 {
- echo  curl   --form project=$COVERITY_PROJECT\
+ curl   --form project=$COVERITY_PROJECT\
 	--form token=$COVERITY_KEY\
-	--form email=$COVERITY_\
-	--form file=@tarball/file/location \
+	--form email=$COVERITY_EMAIL_ID\
+	--form version=$THREEDEPICT_VERSION\
+	--form description="Coverity scan upload"\
+	--form file=@../cov-upload.tar.gz \
 	https://scan.coverity.com/builds?project=3depict
 }
 

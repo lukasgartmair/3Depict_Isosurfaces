@@ -1,3 +1,24 @@
+* 05 Apr 2014 : 0.0.18
+	Features:
+	- User interface now uses its own CPU. Should be much more
+	  responsive during refreshes
+	- Spectra can be normalised to allow for easier inter-spectra
+	comparison. Several normalisation modes have been added.
+	- Clustering ellipse fitting implemented. Can now determine
+	 best-fit ellipsoids on clusters, and plot them in 2D to identify
+	 lath/rod/sphere/disc shapes
+	- Voxelisation filter now supports fast blurring 
+	
+	User Visible Changes:
+	- Axial slice in voxelisation can now be made translucent
+	- More noticable progress feedback, now as a progress "spinner"
+
+	Technical bugfixes/changes:
+	- Significant refactoring of internals to allow for threading. 
+		- State has been made more prominent, viscontrol less.
+		- New "TreeState" object created
+	- New library added for voxelisation/image support : libvigra
+
 * 01 Sep 2014 : 0.0.17
 	Features
 	- Upgrade to wxWidgets 3 (wx3)

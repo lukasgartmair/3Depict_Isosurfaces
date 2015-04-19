@@ -26,6 +26,7 @@
 #include "./backend/filter.h"
 
 using std::vector;
+using std::string;
 
 
 //
@@ -38,6 +39,7 @@ unsigned int ANIMATE_PROGRESS_NUMFRAMES=3;
 Scene::Scene() : tempCam(0), cameraSet(true), outWinAspect(1.0f)
 {
 	glewInited=false;
+	visControl=0;
 
 	lastHovered=lastSelected=(unsigned int)(-1);
 	lockInteract=false;
@@ -47,7 +49,6 @@ Scene::Scene() : tempCam(0), cameraSet(true), outWinAspect(1.0f)
 	useEffects=false;
 	showAxis=true;
 	attemptedLoadProgressAnim=false;
-	showProgressAnimation=false;
 	witholdCamUpdate=false;
 
 	//default to black
@@ -59,7 +60,6 @@ Scene::Scene() : tempCam(0), cameraSet(true), outWinAspect(1.0f)
 	lightPosition[1]= 1.0;
 	lightPosition[2]= 1.0;
 	lightPosition[3]=0.0;
-
 
 	DrawableObj::setTexPool(new TexturePool);
 
@@ -90,6 +90,8 @@ unsigned int Scene::initDraw()
 		glewInited=true;
 	}
 #endif
+
+
 	glClearColor( rBack, gBack, bBack,1.0f );
 	glClear(GL_COLOR_BUFFER_BIT |GL_DEPTH_BUFFER_BIT);
 
@@ -158,7 +160,17 @@ unsigned int Scene::initDraw()
 			animFiles[ui]=animFilename;
 		}
 
+
 		progressAnimTex.setTexture(animFiles);
+		//Cycle every this many seconds
+		progressAnimTex.setRepeatTime(6.0f);
+		//Ramp opacity for this long (seconds)
+		progressAnimTex.setFadeInTime(2.0f);
+		//Don't show the animation until this many sceonds
+		progressAnimTex.setShowDelayTime(1.5f);
+		
+		progressCircle.setFadeInTime(1.5f);
+		progressCircle.setShowDelayTime(1.0f);
 
 		updateProgressOverlay();
 	}
@@ -206,19 +218,20 @@ void Scene::updateCam(const Camera *camToUse, bool useIdent=true) const
 
 void Scene::updateProgressOverlay()
 {
-	progressAnimTex.setPosition(0.9*winX,0.9*winY);
+	const float xPos= 0.85*winX;
+	const float yPos=0.85*winY;
+
+	progressAnimTex.setPosition(xPos,yPos);
 	progressAnimTex.setSize(0.1*winX);
-	//Cycle every this many seconds
-	progressAnimTex.setRepeatTime(6.0f);
-	//Ramp opacity for this long (seconds)
-	progressAnimTex.setFadeInTime(1.0f);
-	//Don't show the animation until this many sceonds
-	progressAnimTex.setShowDelayTime(1.0f);
+	//Draw the progress animation bar
+	progressCircle.setPosition(xPos,yPos);
+	progressCircle.setSize(0.15*winX);
 }
 
 void Scene::draw(bool noUpdateCam) 
 {
-
+	glError();
+	ASSERT(visControl);
 	glPushMatrix();
 
 	Camera *camToUse;
@@ -325,6 +338,7 @@ void Scene::draw(bool noUpdateCam)
 		//Draw progress, if needed
 		drawProgressAnim();
 	}
+	glError();
 }
 
 void Scene::drawObjectVector(const vector<const DrawableObj*> &drawObjs, bool &lightsOn, bool drawOpaques) const
@@ -467,6 +481,8 @@ void Scene::drawHoverOverlay()
 	glAlphaFunc(GL_GREATER,0.01f);
 	
 	vector<const SelectionBinding *> binder;
+	//!Devices for interactive object properties
+	const std::vector<SelectionDevice *> &selectionDevices = visControl->getSelectionDevices();
 	for(unsigned int uj=0;uj<selectionDevices.size();uj++)
 	{
 		if(selectionDevices[uj]->getAvailBindings(objects[lastHovered],binder))
@@ -592,13 +608,24 @@ void Scene::drawHoverOverlay()
 
 void Scene::drawProgressAnim() const
 {
-	if(!showProgressAnimation)
+	if(!visControl->state.treeState.isRefreshing())
 		return;
 
+	if(useLighting)
+		glDisable(GL_LIGHTING);
+
+	progressCircle.draw();
 	if(!progressAnimTex.isOK())
+	{
+		if(useLighting)
+			glEnable(GL_LIGHTING);
 		return;
+	}
 
 	progressAnimTex.draw();
+
+	if(useLighting)
+		glEnable(GL_LIGHTING);
 }
 
 void Scene::commitTempCam()
@@ -652,7 +679,6 @@ void Scene::clearAll()
 
 	clearObjs();
 	clearRefObjs();
-	clearBindings();	
 }
 
 void Scene::clearObjs()
@@ -661,13 +687,6 @@ void Scene::clearObjs()
 		delete objects[ui];
 	objects.clear();
 	lastHovered=-1;
-}
-
-void Scene::clearBindings()
-{
-	//Note that the filter is responsible for cleaning the
-	// bindings. So, we just forget about it, without delete-ing
-	selectionDevices.clear();
 }
 
 
@@ -687,13 +706,6 @@ void Scene::setLightPos(const float *f)
 	for(unsigned int ui=0;ui<4;ui++)
 		lightPosition[ui]=f[ui];
 }
-
-void Scene::setShowProgress(bool show)
-{
-	showProgressAnimation=show;
-	progressAnimTex.resetTime();
-}
-
 
 void Scene::setAspect(float newAspect)
 {
@@ -899,19 +911,13 @@ void Scene::finaliseCam()
 	}
 }
 
-void Scene::addSelectionDevices(const vector<SelectionDevice *> &d)
-{
-	for(unsigned int ui=0;ui<d.size();ui++)
-	{
-#ifdef DEBUG
-		//Ensure that pointers coming in are valid, by attempting to perform an operation on them
-		vector<std::pair<const Filter *,SelectionBinding> > tmp;
-		d[ui]->getModifiedBindings(tmp);
-		tmp.clear();
-#endif
-		selectionDevices.push_back(d[ui]);
-	}
-}
+void Scene::resetProgressAnim()
+{ 	
+	progressAnimTex.resetTime(); 
+	progressCircle.resetTime(); 
+	progressCircle.reset();
+};
+
 
 //Values are in the range [0 1].
 void Scene::applyDevice(float startX, float startY, float curX, float curY,
@@ -978,6 +984,7 @@ void Scene::applyDevice(float startX, float startY, float curX, float curY,
 	SelectionBinding *binder;
 
 	vector<SelectionBinding*> activeBindings;
+	std::vector<SelectionDevice *> &selectionDevices = visControl->getSelectionDevices();
 	for(unsigned int ui=0;ui<selectionDevices.size();ui++)
 	{
 		if(selectionDevices[ui]->getBinding(
@@ -1010,11 +1017,11 @@ void Scene::applyDevice(float startX, float startY, float curX, float curY,
 	//Inform viscontrol about updates, if we have applied any
 	if(activeBindings.size() && permanent)
 	{
-		visControl->setUpdates();
+		visControl->state.treeState.setUpdates();
 		//If the viscontrol is in the middle of an update,
 		//tell it to abort.
-		if(visControl->isRefreshing())
-			visControl->abort();
+		if(visControl->state.treeState.isRefreshing())
+			visControl->state.treeState.setAbort();
 	}
 
 }
@@ -1026,19 +1033,6 @@ void Scene::getEffects(vector<const Effect *> &eff) const
 	for(unsigned int ui=0;ui<effects.size();ui++)	
 		eff[ui]=effects[ui];
 }	
-
-
-void Scene::getModifiedBindings(std::vector<std::pair<const Filter *, SelectionBinding> > &bindings) const
-{
-	for(unsigned int ui=0;ui<selectionDevices.size();ui++)
-		selectionDevices[ui]->getModifiedBindings(bindings);
-}
-
-void Scene::resetModifiedBindings()  
-{
-	for(unsigned int ui=0;ui<selectionDevices.size();ui++)
-		selectionDevices[ui]->resetModifiedBindings();
-}
 
 
 void Scene::setEffectVec(vector<Effect *> &e)

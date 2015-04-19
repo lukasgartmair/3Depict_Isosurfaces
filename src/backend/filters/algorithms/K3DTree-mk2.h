@@ -83,10 +83,8 @@ class K3DTreeMk2
 
 		BoundCube treeBounds;
 		
-		//Callback for progress reporting
-		bool (*callback)(bool);
-
-		unsigned int *progress; //Progress counter
+		static unsigned int *progress; //Progress counter
+		static ATOMIC_BOOL *abort; //set to true if build should abort. Must be initalised prior to build
 
 	public:
 		//KD Tree constructor
@@ -95,15 +93,25 @@ class K3DTreeMk2
 		//!Cleans up tree, deallocates nodes
 		~K3DTreeMk2(){};
 
+		static void setProgressPtr(unsigned int *ptr){progress=ptr;}
+		static void setAbortFlag(ATOMIC_BOOL *ptr){abort=ptr;}
+
 		//Reset the points
 		void resetPts(std::vector<Point3D> &pts, bool clear=true);
 		void resetPts(std::vector<IonHit> &pts, bool clear=true);
+	
+	
+		//Set a pointer that can be used to indicate that we need to abort build
+		static void setAbortPtr(bool *abortFlag);
+		//Set a pointer that can be used to write the current progress
+		static void setProgressPointer(unsigned int *p) ;
+		
 
 		/*! Builds a balanced KD tree from a list of points
-		 *  previously set by "resetPts". returns false if callback returns
+		 *  previously set by "resetPts". returns false if abort checks return
 		 *  false;
 		 */	
-		bool build(bool wantCallback=true);
+		bool build();
 
 		void getBoundCube(BoundCube &b);
 
@@ -143,11 +151,6 @@ class K3DTreeMk2
 
 		size_t getOrigIndex(size_t treeIndex) const ;
 		
-		//Set the callback routine for progress reporting
-		void setCallback(bool (*cb)(bool)) {callback = cb;}
-		
-		//Set a pointer that can be used to write the current progress
-		void setProgressPointer(unsigned int *p) { progress=p;};
 
 		//Erase tree contents
 		void clear() { nodes.clear(); indexedPoints.clear();};

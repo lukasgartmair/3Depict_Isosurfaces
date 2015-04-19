@@ -18,7 +18,19 @@
 
 #include "isoSurface.h"
 
+#include "common/assertion.h"
+#include "common/voxels.h"
+
 #include <map>
+#include <list>
+#include <vector>
+
+
+using std::list;
+using std::map;
+using std::vector;
+using std::pair;
+using std::make_pair;
 
 #ifdef DEBUG
 template<class T1, class T2>
@@ -536,7 +548,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 				if(iEdgeFlags & (1<<iEdge))
 				{
 					//Store a  reference to the vertex position
-					asEdgeVertex[iEdge] = v.getEdgeIndex(iX,iY,iZ,edgeRemap[iEdge]);
+					asEdgeVertex[iEdge] = v.deprecatedGetEdgeUniqueIndex(iX,iY,iZ,edgeRemap[iEdge]);
 				}
 			}
 
@@ -588,7 +600,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 		for(size_t uj=0;uj<3;uj++)
 		{
 			map<size_t,list<size_t> >::iterator it;
-			it = edgeTriMap.find((indexedTriVec[ui].p[uj] >>2 ) << 2);
+			it = edgeTriMap.find(indexedTriVec[ui].p[uj]); 
 			if(it == edgeTriMap.end())
 			{
 
@@ -596,7 +608,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 				seedList.push_back(ui);
 #pragma omp critical
 				edgeTriMap.insert(
-					make_pair((indexedTriVec[ui].p[uj] >>2 ) << 2,seedList));
+					make_pair(indexedTriVec[ui].p[uj],seedList));
 						
 			}
 			else
@@ -616,7 +628,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 		Point3D low,high,voxelFrameIntersection; 
 		float lowF,highF;
 
-		if(pointMap.find((it->first>>2)<<2) != pointMap.end())
+		if(pointMap.find((it->first)) != pointMap.end())
 			continue;
 
 		//Low/high sides of edge's scalar values
@@ -624,7 +636,9 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 
 
 		//Get the edge's low and high end node positions
-		v.getEdgeEnds((it->first>>2)<<2,low,high);
+		v.getEdgeEnds(it->first,low,high);
+
+
 		
 		//OK, now we have that, lets use the values to "lever" the 
 		//solution point note node locations for isosurface 
@@ -642,7 +656,8 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 		}
 
 			
-		pointMap.insert(make_pair((it->first>>2)<<2,voxelFrameIntersection));
+		pointMap.insert(make_pair(it->first,voxelFrameIntersection));
+
 	}	
 
 
@@ -656,7 +671,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 		//Do a lookup of the edge point locations
 		// by mapping the edge indices to the edge points 
 		for(int uj=0;uj<3;uj++)
-			tVec[ui].p[uj] = pointMap.at((indexedTriVec[ui].p[uj]>>2)<<2);
+			tVec[ui].p[uj] = pointMap.at((indexedTriVec[ui].p[uj]));
 
 		if(tVec[ui].isDegenerate())
 		{
@@ -706,7 +721,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 		if(weight > smallNum)
 		{
 			for(int uj=0;uj<3;uj++)
-				pointMap.at((indexedTriVec[ui].p[uj]>>2) <<2)+=origNormal[ui]*weight;
+				pointMap.at((indexedTriVec[ui].p[uj]))+=origNormal[ui]*weight;
 		}
 	}
 
@@ -726,7 +741,7 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 	for(size_t ui=0;ui<indexedTriVec.size();ui++)
 	{
 		for(unsigned int uj=0;uj<3;uj++)
-			tVec[ui].normal[uj] = pointMap.at((indexedTriVec[ui].p[uj]>>2)<<2);
+			tVec[ui].normal[uj] = pointMap.at((indexedTriVec[ui].p[uj]));
 	}	
 	// --
 	
@@ -738,3 +753,63 @@ void marchingCubes(const Voxels<float> &v,float isoValue, vector<TriangleWithVer
 	// http://users.telenet.be/tfautre/softdev/tristripper/
 
 }
+
+#ifdef DEBUG
+#include "common/mesh.h"
+bool testIsoSurface()
+{
+	Voxels<float> data;
+
+	data.resize(4,4,4);
+	data.fill(0);
+	data.setData(1,1,1,1.0);
+
+
+	vector<TriangleWithVertexNorm> tVec;
+	marchingCubes(data,0.5,tVec);
+
+	TEST(!tVec.empty(),"isosurface exists");
+
+	
+
+	//Should be 2 rect. pyramids back to back, with no bases
+	TEST(tVec.size() == 8, "isosurf. triangle count"); 
+	//Ensure that all the points are contained within the original data bounding box
+
+	Point3D pMin,pMax;
+	data.getBounds(pMin,pMax);
+	BoundCube b;
+	b.setBounds(pMin,pMax);
+
+	for(size_t ui=0;ui<tVec.size();ui++)
+	{
+		for(size_t uj=0;uj<3;uj++)
+		{
+			TEST(b.containsPt(tVec[ui].p[uj]),"Mesh contained in voxel bounds");
+		}
+	}
+
+	//Convert the triangle soup into a mesh
+	Mesh debugMesh;
+	TRIANGLE t;
+	for(size_t ui=0;ui<tVec.size();ui++)
+	{
+
+		for(size_t uj=0;uj<3;uj++)
+		{
+			t.p[uj] = debugMesh.nodes.size();
+			debugMesh.nodes.push_back(tVec[ui].p[uj]);
+		}
+		
+		debugMesh.triangles.push_back(t);	
+	}	
+	ASSERT(debugMesh.isSane())
+
+	debugMesh.saveGmshMesh("debug-isosurf.msh");
+
+	//Convert all duplicate vertices into single blob 
+	debugMesh.mergeDuplicateVertices(0.0001);
+	ASSERT(debugMesh.isSane())
+	return true;
+}
+#endif

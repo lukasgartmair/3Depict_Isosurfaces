@@ -96,6 +96,7 @@ const char *elementList[] = {
 };	
 
 
+//Known issues - will not decompose brackets, eg Fe(OH)2
 bool RangeFile::decomposeIonNames(const std::string &name,
 		std::vector<pair<string,size_t> > &fragments)
 {
@@ -199,17 +200,17 @@ bool RangeFile::decomposeIonNames(const std::string &name,
 	vector<bool> toKill(fragments.size(),false);
 	for(size_t ui=0;ui<fragments.size();ui++)
 	{
-		//skip empty framgnets
+		//skip empty fragments
 		if(fragments[ui].first.empty())
-			ui++;
+			continue;	
 
 		for(size_t uj=ui+1;uj<fragments.size();uj++)
 		{
-			//skip empty gragments
+			//skip empty fragments
 			if(fragments[uj].first.empty())
-				uj++;
+				continue;	
 
-			//Collect fragment multiplcities if they have the same name
+			//Collect fragment multiplicities if they have the same name
 			if(fragments[uj].first == fragments[ui].first)
 			{
 				fragments[ui].second+=fragments[uj].second;
@@ -2869,4 +2870,81 @@ void RangeFile::eraseIon(size_t ionId)
 	}
 
 
+}
+
+bool RangeFile::decompose(RangeFile &rng) const
+{
+	//find the list of decomposables
+	rng=*this;	
+	for(size_t ui=0; ui<ionNames.size(); ui++)
+	{	
+		vector<pair<string,size_t > > fragments;
+		if(!decomposeIonNames(ionNames[ui].first,fragments))
+			return false;
+
+		for(size_t uj=0; uj<fragments.size();uj++)
+		{
+			if(rng.getIonID(fragments[uj].first) == -1)
+			{
+				//make a new random colour
+				RGBf col;
+				col.red=rand()/(float)std::numeric_limits<int>::max();
+				col.green=rand()/(float)std::numeric_limits<int>::max();
+				col.blue=rand()/(float)std::numeric_limits<int>::max();
+				//Create a new ion to support this fragment
+				rng.addIon(fragments[uj].first,fragments[uj].first,col);
+			}
+		}	
+	}	
+	ASSERT(rng.isSelfDecomposable());
+
+	return true;
+}
+
+bool RangeFile::isSelfDecomposable() const
+{
+	for(size_t ui=0; ui<ionNames.size(); ui++)
+	{	
+		vector<pair<string,size_t > > fragments;
+		if(!decomposeIonNames(ionNames[ui].first,fragments))
+			return false;
+		//ion cannot be decomposed into smaller fragments. 
+		//This is not a decomposable rangefile
+		if(getIonID(ionNames[ui].first) == -1)
+			return false;
+	}	
+
+	return true;
+}
+
+bool RangeFile::getDecomposition(std::map<unsigned int, vector< std::pair<unsigned int, unsigned int> > > &decomposition) const
+{
+	decomposition.clear();
+	//TODO: Convert to cached, statified map?
+	for(size_t ui=0;ui<ionNames.size(); ui++)
+	{
+		vector<pair<string,size_t> > thisFragment;
+		if(!decomposeIonNames(ionNames[ui].first,thisFragment))
+			return false;
+
+		//convert the name,count pairs to  ionID, count pairs
+		vector<pair<unsigned int, unsigned int> > fragmentAsRanges;
+		fragmentAsRanges.resize(thisFragment.size());
+		
+		for(size_t uj=0;uj<fragmentAsRanges.size();uj++)
+		{	
+			unsigned int ionID;
+			ionID = getIonID(thisFragment[uj].first);
+			
+			if(ionID ==(unsigned int)-1)
+				return false;
+	
+			fragmentAsRanges[uj] = make_pair(ionID,thisFragment[uj].second);
+		}
+		decomposition[ui] = fragmentAsRanges;
+	
+		fragmentAsRanges.clear();	
+	}
+
+	return true;
 }

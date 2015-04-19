@@ -175,7 +175,7 @@ int countBinnedIons(const std::vector<IonHit> &ions, const RangeFile *rng,
 	Point3D lowBound;
 	totalBound.getBound(lowBound,0);
 
-	completedGridEntries.reserve((filteredIons.size()/segmentOptions.nIons)*0.5f);
+	completedGridEntries.reserve(((float)filteredIons.size()/segmentOptions.nIons)*0.5f);
 	for(size_t ui=0;ui<filteredIons.size(); ui++)
 	{	
 		//Find the X y division for hte ion

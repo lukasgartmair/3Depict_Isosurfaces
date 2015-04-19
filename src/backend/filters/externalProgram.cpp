@@ -26,11 +26,16 @@
 #include <wx/filename.h>
 #include <wx/dir.h>
 
+using std::vector;
+using std::string;
+using std::pair;
+using std::make_pair;
 
 //!Error codes
 enum
 {
 	COMMANDLINE_FAIL=1,
+	SYSTEM_EXEC_FAIL,
 	SETWORKDIR_FAIL,
 	WRITEPOS_FAIL,
 	WRITEPLOT_FAIL,
@@ -209,19 +214,21 @@ size_t ExternalProgramFilter::substituteVariables(const std::string &commandStr,
 }
 
 unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 	//use the cached copy if we have it.
 	if(cacheOK)
 	{
 		propagateCache(getOut);
-
+		progress.filterProgress=100;
 		return 0;
 	}
 
 	if(commandLine.empty())
+	{
+		progress.filterProgress=100;
 		return 0;
-
+	}
 	vector<string> ionOutputNames,plotOutputNames;
 
 	//Compute the bounding box of the incoming streams
@@ -245,8 +252,11 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 		if(!wxDirExists(tempDir) )	
 			return MAKEDIR_FAIL;
 
-	}
 	
+	}
+	progress.maxStep=3;
+	progress.step=1;
+	progress.stepName=TRANS("Collate Input");	
 	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
 	{
 		switch(dataIn[ui]->getStreamType())
@@ -308,8 +318,10 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 	//Nothing to do.
 	if(plotOutputNames.empty() &&
 		ionOutputNames.empty())
+	{
+		progress.filterProgress=100;
 		return 0;
-
+	}
 	std::string substitutedCommand;
 	size_t errCode;
 	errCode=substituteVariables(commandLine,ionOutputNames,plotOutputNames,
@@ -331,9 +343,16 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			return SETWORKDIR_FAIL;
 	}
 
-	bool result;
+	int result;
+	progress.step=2;
+	progress.stepName=TRANS("Execute");	
+
 	//Execute the program
-	result=wxShell((substitutedCommand));
+	//TODO: IO redirection - especially under windows?
+	result=std::system(substitutedCommand.c_str());
+
+	if(result == -1)
+		return SYSTEM_EXEC_FAIL; 
 
 	if(cleanInput)
 	{
@@ -341,23 +360,20 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 		//delete the input files.
 		for(unsigned int ui=0;ui<ionOutputNames.size();ui++)
 		{
-			//try to delete the file
-			wxRemoveFile((ionOutputNames[ui]));
+			//try to delete the file, if the command did not
+			// remove it
+			if(wxFileExists(ionOutputNames[ui]))
+				wxRemoveFile(ionOutputNames[ui]);
 
-			//call the update to be nice
-			(*callback)(false);
 		}
 		for(unsigned int ui=0;ui<plotOutputNames.size();ui++)
 		{
 			//try to delete the file
 			wxRemoveFile((plotOutputNames[ui]));
-
-			//call the update to be nice
-			(*callback)(false);
 		}
 	}
 	wxSetWorkingDirectory(origDir);	
-	if(!result)
+	if(result)
 		return COMMAND_FAIL; 
 	
 	wxSetWorkingDirectory(origDir);	
@@ -369,6 +385,8 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 	else
 		dir->GetAllFiles(wxGetCwd(),a,wxT("*.pos"),wxDIR_FILES);
 
+	progress.step=3;
+	progress.stepName=TRANS("Collate output");	
 
 	//read the output files, which is assumed to be any "pos" file
 	//in the working dir
@@ -399,7 +417,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 			unsigned int index2[] = {
 					0, 1, 2, 3
 					};
-			if(GenericLoadFloatFile(4, 4, index2, d->data,sTmp.c_str(),dummy,dummyCallback))
+			if(GenericLoadFloatFile(4, 4, index2, d->data,sTmp.c_str(),dummy,*(Filter::wantAbort)))
 			{
 				delete d;
 				delete dir;
@@ -531,6 +549,7 @@ unsigned int ExternalProgramFilter::refresh(const std::vector<const FilterStream
 
 	delete dir;
 	delete a;
+	progress.filterProgress=100;
 
 	return 0;
 }
@@ -624,10 +643,11 @@ bool ExternalProgramFilter::setProperty(  unsigned int key,
 }
 
 
-std::string  ExternalProgramFilter::getErrString(unsigned int code) const
+std::string  ExternalProgramFilter::getSpecificErrString(unsigned int code) const
 {
 	const char *errStrs[] = 	{ "",
 			"Error processing command line",
+			"Unable to launch external program",
 			"Unable to set working directory",
 			"Error saving posfile result for external program",
 			"Error saving plot result for externalprogram",
@@ -636,7 +656,7 @@ std::string  ExternalProgramFilter::getErrString(unsigned int code) const
 			"Unable to parse plot result from external program",
 			"Unable to load ions from external program", 
 			"Unable to perform commandline substitution",
-			"Error executing external program" };
+			"Error executing external program, returned nonzero" };
 	
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errStrs) == EXT_PROG_ERR_ENUM_END);
 	ASSERT(code < EXT_PROG_ERR_ENUM_END);
@@ -743,6 +763,9 @@ unsigned int ExternalProgramFilter::getRefreshUseMask() const
 #ifdef DEBUG
 #include <memory>
 
+using std::auto_ptr;
+using std::ifstream;
+
 bool echoTest()
 {
 	int errCode;
@@ -771,7 +794,7 @@ bool echoTest()
 	//Simulate some data to send to the filter
 	vector<const FilterStreamData*> streamIn,streamOut;
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	f->refresh(streamIn,streamOut,p);
 
 
 	s=stlStr(tmpFilename);
@@ -832,9 +855,10 @@ bool posTest()
 		
 	wxMkdir(tmpDir);
 
-	tmpFilename=wxFileName::CreateTempFileName(tmpDir+ wxT("unittest-"));
-	tmpFilename+=wxT(".pos");
-	s ="mv -f \%i " + stlStr(tmpFilename);
+	std::string randName;
+	genRandomFilename(randName);
+	tmpFilename = tmpDir + "/" + randName + ".pos";
+	s ="mv -f \%i " + tmpFilename;
 
 	ASSERT(tmpFilename.size());
 	
@@ -844,7 +868,7 @@ bool posTest()
 	vector<const FilterStreamData*> streamIn,streamOut;
 	streamIn.push_back(someData.get());
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh error code");
 
 	//Should have exactly one stream, which is an ion stream
 	TEST(streamOut.size() == 1,"stream count");

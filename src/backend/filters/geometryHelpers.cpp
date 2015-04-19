@@ -21,6 +21,8 @@
 
 #include "backend/APT/ionhit.h"
 
+#include "backend/filter.h"
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -39,12 +41,10 @@ const size_t MIN_SAMPLE_TEST = 1000;
 const size_t MIN_PARALLELISE = 20000;
 //---
 
-CropHelper::CropHelper(bool (*callback)(bool), unsigned int *p, 
-			size_t totalData,size_t filterMode,
+CropHelper::CropHelper(	size_t totalData,size_t filterMode,
 			vector<Point3D> &vectors, vector<float> &scalars)
 {
 	algorithm=filterMode;
-	curProgCount=0;
 	mapMax=0;
 	invertedClip=false;
 
@@ -77,7 +77,8 @@ CropHelper::CropHelper(bool (*callback)(bool), unsigned int *p,
 		}
 		case CROP_CYLINDER_OUTSIDE:
 			invertedClip=true;
-		case CROP_CYLINDER_INSIDE:
+		case CROP_CYLINDER_INSIDE_AXIAL:
+		case CROP_CYLINDER_INSIDE_RADIAL:
 		{
 			ASSERT(vectors.size() == 2);
 			ASSERT(scalars.size() == 1);
@@ -104,9 +105,6 @@ CropHelper::CropHelper(bool (*callback)(bool), unsigned int *p,
 	setAlgorithm();
 
 
-	numCallback=DEFAULT_NUM_CALLBACK;
-	callbackFunc=callback;
-	progressPtr=p;
 	totalDataCount=totalData;
 }
 
@@ -127,10 +125,14 @@ void CropHelper::setAlgorithm()
 		case CROP_PLANE_BACK:
 			cropFunc=&CropHelper::filterPlaneFront;
 			break;
-		case CROP_CYLINDER_INSIDE:
 		case CROP_CYLINDER_OUTSIDE:
+		case CROP_CYLINDER_INSIDE_AXIAL:
 			cropFunc=&CropHelper::filterCylinderInside;
-			mapFunc=&CropHelper::mapCylinderInside;
+			mapFunc=&CropHelper::mapCylinderInsideAxial;
+			break;
+		case CROP_CYLINDER_INSIDE_RADIAL:
+			cropFunc=&CropHelper::filterCylinderInside;
+			mapFunc=&CropHelper::mapCylinderInsideRadial;
 			break;
 		case CROP_AAB_INSIDE:
 		case CROP_AAB_OUTSIDE:
@@ -142,25 +144,26 @@ void CropHelper::setAlgorithm()
 }
 
 unsigned int CropHelper::runFilter(const vector<IonHit> &dataIn,
-				vector<IonHit> &dataOut ) 
+				vector<IonHit> &dataOut, float progressStart,
+				float progressEnd, unsigned int &progress ) 
 {
-	//FIXME!: Shouldn't be using this here - should be obeying
-	// system-wide rng preferences
-	RandNumGen rng;
-	rng.initTimer();
-
 	float allocHint=0;
 	//If we have enough input data, try sampling
 	// the input randomly to test if we can 
 	// pre-allocate enough space for output data
 	if(dataIn.size() > MIN_SAMPLE_TEST)
 	{
+		//FIXME!: Shouldn't be using this here - should be obeying
+		// system-wide rng preferences
+		RandNumGen rng;
+		rng.initTimer();
+
 		const size_t SAMPLE_SIZE=30;
 
 		vector<size_t> samples;
 		unsigned int dummy;
 		randomDigitSelection(samples,dataIn.size(),rng, 
-				SAMPLE_SIZE,dummy, dummyCallback);
+				SAMPLE_SIZE,dummy);
 
 		size_t tally=0;
 		for(size_t ui=0;ui<SAMPLE_SIZE;ui++)
@@ -174,45 +177,37 @@ unsigned int CropHelper::runFilter(const vector<IonHit> &dataIn,
 
 
 #ifndef _OPENMP
-		return runFilterLinear(dataIn,dataOut,allocHint);
+	return runFilterLinear(dataIn,dataOut,allocHint,progressStart,progressEnd,progress);
 #else
 	if(dataIn.size() < MIN_PARALLELISE  || rng.genUniformDev() < 0.5f)
 		return runFilterLinear(dataIn,dataOut,allocHint);
 	else
 	{
-		return runFilterParallel(dataIn,dataOut,allocHint);
+		return runFilterParallel(dataIn,dataOut,allocHint,progressStart,progressEnd,progress);
 	}
 #endif
 }
 
 unsigned int CropHelper::runFilterLinear(const vector<IonHit> &dataIn,
-				vector<IonHit> &dataOut,float allocHint ) 
+				vector<IonHit> &dataOut,float allocHint, float minProg,float maxProg, unsigned int &prog ) 
 {
 	if(allocHint > 0.0f)
 		dataOut.reserve((unsigned int) ( (float)dataIn.size()*allocHint));
 
-	size_t &n=curProgCount;
-	size_t curProg=0;
 	//Run the data filtering using a single threaded algorithm
 	// copying to output
 	if(!invertedClip)
 	{
 		for(size_t ui=0; ui<dataIn.size(); ui++)
 		{
-		//Use XOR operand on cropFunc conditional
 			if(((this->*cropFunc)(dataIn[ui].getPosRef())))
 				dataOut.push_back(dataIn[ui]);
 
-			//update progress every CALLBACK ions
-			if(!curProg--)
-			{
-				n+=numCallback;
-				*progressPtr= (unsigned int)((float)(n)/((float)totalDataCount)*100.0f);
-				curProg=numCallback;
+			if(ui & 100)
+				prog = (float)ui/(float)dataIn.size() * (maxProg-minProg)+minProg;
 
-				if(!(*callbackFunc)(false))
-					return ERR_CROP_CALLBACK_FAIL;
-			}
+			if(*Filter::wantAbort)
+				return ERR_CROP_CALLBACK_FAIL;
 		}
 
 	}
@@ -223,29 +218,26 @@ unsigned int CropHelper::runFilterLinear(const vector<IonHit> &dataIn,
 			if(!((this->*cropFunc)(dataIn[ui].getPosRef())))
 				dataOut.push_back(dataIn[ui]);
 
-			//update progress every CALLBACK ions
-			if(!curProg--)
-			{
-				n+=numCallback;
-				*progressPtr= (unsigned int)((float)(n)/((float)totalDataCount)*100.0f);
-				curProg=numCallback;
+			if(ui & 100)
+				prog = (float)ui/(float)dataIn.size() * (maxProg-minProg)+minProg;
 
-				if(!(*callbackFunc)(false))
-					return ERR_CROP_CALLBACK_FAIL;
-			}
+			if(*Filter::wantAbort)
+				return ERR_CROP_CALLBACK_FAIL;
 		}
 	}
 
+	prog=maxProg;
 	return 0;
 }
 
 unsigned int CropHelper::runFilterParallel(const vector<IonHit> &dataIn,
-				vector<IonHit> &dataOut, float allocHint )
+				vector<IonHit> &dataOut, float allocHint, float minProg,float maxProg, unsigned int &prog )
 {
 #ifdef _OPENMP
 
-	size_t &n=curProgCount;
-	size_t curProg=0;
+	size_t n=0;
+	const size_t PROGRESS_REDUCE=5000;
+	size_t curProg=PROGRESS_REDUCE;
 
 	//Create a vector of indices for which 
 	// points successfully passed the test
@@ -271,21 +263,22 @@ unsigned int CropHelper::runFilterParallel(const vector<IonHit> &dataIn,
 		if(spin)
 			continue;
 
-		//Use XOR operand on cropFunc conditionale
+		//Use XOR operand on cropFunc conditional
 		if(((this->*cropFunc)(dataIn[ui].getPosRef())) ^ invertedClip)
 			inside[omp_get_thread_num()].push_back(ui);
 		
-		//update progress every CALLBACK ions
+		//update progress every PROGRESS_REDUCE ions
 		if(!curProg--)
 		{
 #pragma omp critical
 			{
-			n+=numCallback;
-			*progressPtr= (unsigned int)((float)(n)/((float)totalDataCount)*100.0f);
-			if(!(*callbackFunc)(false))
+			n+=PROGRESS_REDUCE;
+			prog = (float)n/(float)dataIn.size() * (maxProg-minProg)+minProg;
+			
+			if(*Filter::wantAbort)
 				spin=true;
 			}
-			curProg=numCallback;
+			curProg=PROGRESS_REDUCE;
 		}
 	}
 
@@ -317,6 +310,8 @@ unsigned int CropHelper::runFilterParallel(const vector<IonHit> &dataIn,
 #else
 	ASSERT(false); // what are you doing here??
 #endif
+
+	prog=maxProg;
 	return 0;
 }
 
@@ -376,7 +371,7 @@ bool CropHelper::filterCylinderInside(const Point3D &testPt) const
 unsigned int CropHelper::mapSphereInside(const Point3D &testPt) const
 {
 	float radius;
-	radius = sqrt(testPt.sqrDist(pA));
+	radius = sqrtf(testPt.sqrDist(pA));
 
 	if(radius <=fB)
 		return (unsigned int) (mapMax*(radius/fB));
@@ -384,7 +379,7 @@ unsigned int CropHelper::mapSphereInside(const Point3D &testPt) const
 		return -1;
 }
 
-unsigned int CropHelper::mapCylinderInside( const Point3D &testPt) const
+unsigned int CropHelper::mapCylinderInsideAxial( const Point3D &testPt) const
 {
 
 	//pA - cylinder origin
@@ -427,15 +422,62 @@ unsigned int CropHelper::mapCylinderInside( const Point3D &testPt) const
 
 }
 
+unsigned int CropHelper::mapCylinderInsideRadial( const Point3D &testPt) const
+{
+
+	//pA - cylinder origin
+	//fA - cylinder half length (origin to end, along axis)
+	//fB - cylinder sqr radius
+	//qA - rotation quaternion
+	Point3D ptmp;
+	float fSqrRad;
+	if(nearAxis)
+	{
+		ptmp=testPt-pA;
+
+		if(!(ptmp[2] < fA && ptmp[2] > -fA && 
+				ptmp[0]*ptmp[0]+ptmp[1]*ptmp[1] < fB) )
+			return (unsigned int)-1;
+		else
+		{
+			fSqrRad=ptmp[0]*ptmp[0] + ptmp[1]*ptmp[1];
+		}
+	}
+	else
+	{
+		Point3f p;
+		//Translate to get position w respect to cylinder centre
+		ptmp=testPt-pA;
+		p.fx=ptmp[0];
+		p.fy=ptmp[1];
+		p.fz=ptmp[2];
+		//rotate ion position into cylindrical coordinates
+		quat_rot_apply_quat(&p,&qA);
+
+		//Check inside upper and lower bound of cylinder
+		// and check inside cylinder radius
+		if(!(p.fz < fA && p.fz > -fA && 
+				p.fx*p.fx+p.fy*p.fy < fB))
+			return (unsigned int)-1;
+
+		fSqrRad=ptmp[0]*ptmp[0] + ptmp[1]*ptmp[1];
+		
+	}
+
+	//Area is constant in square space
+	return (unsigned int)(fSqrRad/fB*(float)mapMax);
+
+}
+
 //Direction is the axis along the full length of the cylinder
 void CropHelper::setupCylinder(Point3D origin,float radius, Point3D direction)
 {
-	ASSERT(direction.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()));
+	ASSERT(direction.sqrMag() > sqrtf(std::numeric_limits<float>::epsilon()));
 	ASSERT(radius > 0.0f);
 
 	pA=origin;
 	//cylinder half length
-	fA=sqrt(direction.sqrMag())/2.0f;
+	fA=sqrtf(direction.sqrMag())/2.0f;
 	//cylinder square radius
 	fB=radius*radius;
 	
@@ -445,8 +487,8 @@ void CropHelper::setupCylinder(Point3D origin,float radius, Point3D direction)
 	float angle = zDir.angle(direction);
 	//Check that we actually need to rotate, to avoid numerical singularity
 	//when cylinder axis is too close to (or is) z-axis
-	if(angle > sqrt(std::numeric_limits<float>::epsilon())
-	&& angle < M_PI - sqrt(std::numeric_limits<float>::epsilon()))
+	if(angle > sqrtf(std::numeric_limits<float>::epsilon())
+	&& angle < M_PI - sqrtf(std::numeric_limits<float>::epsilon()))
 	{
 		//Cross product desired direction with 
 		//zDirection to produce rotation vector, that when applied

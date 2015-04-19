@@ -137,7 +137,7 @@ std::string getDefaultFontFile()
 void tickSpacingsFromInterspace(float start, float end, 
 		float interSpacing, std::vector<float> &spacings)
 {
-	ASSERT(interSpacing > sqrt(std::numeric_limits<float>::epsilon()));
+	ASSERT(interSpacing > sqrtf(std::numeric_limits<float>::epsilon()));
 	unsigned int nTicks;
 
 	if(end < start)
@@ -754,7 +754,7 @@ bool BoundCube::isFlat() const
 
 bool BoundCube::isNumericallyBig() const
 {
-	const float TOO_BIG=sqrt(std::numeric_limits<float>::max());
+	const float TOO_BIG=sqrtf(std::numeric_limits<float>::max());
 	for(unsigned int ui=0;ui<2; ui++)
 	{
 		for(unsigned int uj=0;uj<3; uj++)
@@ -1471,6 +1471,30 @@ unsigned int loadTextStringData(const char *cpFilename, vector<vector<string> > 
 	return 0;
 }
 
+
+#if !defined(__WIN32__) && !defined(__WIN64)
+	
+bool isNotDirectory(const char *filename)
+{
+	struct stat statbuf;
+
+	if(stat(filename,&statbuf) == -1)
+		return false;
+
+	return (statbuf.st_mode !=S_IFDIR);
+}
+
+bool rmFile(const std::string &filename)
+{
+	return remove(filename.c_str()) == 0;
+}
+#elif defined(__WIN32) || defined(__WIN64)
+bool rmFile(const std::string &filename)
+{ 
+	return DeleteFile((const wchar_t*)filename.c_str()) == 0;
+}
+#endif
+
 #ifdef DEBUG
 bool isValidXML(const char *filename)
 {
@@ -1502,28 +1526,4 @@ bool isValidXML(const char *filename)
 	WARN(!result,"xmllint not installed in system PATH, cannot perform debug check")
 	return true;
 }
-
-#if !defined(__WIN32__) && !defined(__WIN64)
-	
-bool isNotDirectory(const char *filename)
-{
-	struct stat statbuf;
-
-	if(stat(filename,&statbuf) == -1)
-		return false;
-
-	return (statbuf.st_mode !=S_IFDIR);
-}
-
-bool rmFile(const std::string &filename)
-{
-	return remove(filename.c_str()) == 0;
-}
-#elif defined(__WIN32) || defined(__WIN64)
-bool rmFile(const std::string &filename)
-{ 
-	return DeleteFile((const wchar_t*)filename.c_str()) == 0;
-}
-#endif
-
 #endif

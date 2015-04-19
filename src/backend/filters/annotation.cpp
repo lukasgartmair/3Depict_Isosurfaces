@@ -19,6 +19,11 @@
 
 #include "filterCommon.h"
 
+using std::string;
+using std::vector;
+using std::pair;
+using std::make_pair;
+
 //grab size when doing convex hull calculations
 const unsigned int HULL_GRAB_SIZE=4096;
 
@@ -151,7 +156,7 @@ Filter *AnnotateFilter::cloneUncached() const
 }
 
 unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 
 	//Clear selection devices, first deleting any we have
@@ -160,7 +165,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 	//Pipe everything through
 	propagateStreams(dataIn,getOut);
 
-	//If we are not endabled, do not draw anyhting into the output
+	//If we are not enabled, do not draw anything into the output
 	if(!active)
 		return 0;
 
@@ -303,7 +308,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 
 			//Work out the angle if there is a non-degenerate vector.
 			//otherwise set it to the "undefined" value of zero
-			if(fabs(d1.dotProd(d2))  > sqrt(std::numeric_limits<float>::epsilon()))
+			if(fabs(d1.dotProd(d2))  > sqrtf(std::numeric_limits<float>::epsilon()))
 				angleVal =d1.angle(d2);
 
 			if(reflexAngle)
@@ -394,12 +399,12 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 		vector<float> tickSpacings;
 		if(linearFixedTicks)
 		{
-			tickSpacingsFromFixedNum(0,sqrt(target.sqrDist(position)),
+			tickSpacingsFromFixedNum(0,sqrtf(target.sqrDist(position)),
 					linearMeasureTicks,tickSpacings);
 		}
 		else
 		{
-			tickSpacingsFromInterspace(0,sqrt(target.sqrDist(position)),
+			tickSpacingsFromInterspace(0,sqrtf(target.sqrDist(position)),
 						linearMeasureSpacing,tickSpacings);
 		}
 
@@ -1067,7 +1072,7 @@ bool AnnotateFilter::setProperty(  unsigned int key,
 			float tmp;
 			stream_cast(tmp,value);
 			if(fabs(tmp-textSize) > std::numeric_limits<float>::epsilon() 
-				&& tmp > sqrt(std::numeric_limits<float>::epsilon()))
+				&& tmp > sqrtf(std::numeric_limits<float>::epsilon()))
 			{
 				needUpdate=true;
 				textSize=tmp;
@@ -1173,7 +1178,7 @@ bool AnnotateFilter::setProperty(  unsigned int key,
 	return true;
 }
 
-std::string  AnnotateFilter::getErrString(unsigned int code) const
+std::string  AnnotateFilter::getSpecificErrString(unsigned int code) const
 {
 	ASSERT(false);
 }
@@ -1470,11 +1475,11 @@ bool rulerTest()
 	TEST(f->setProperty(KEY_POSITION,s,needUp),"Set prop");
 	stream_cast(s,Point3D(1,1,1));
 	TEST(f->setProperty(KEY_TARGET,s,needUp),"Set prop");
-	stream_cast(s,sqrt(2)/10);
+	stream_cast(s,sqrtf(2)/10);
 	TEST(f->setProperty(KEY_LINEAR_TICKSPACING,s,needUp),"Set prop");
 	
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"Refresh error code");
 
 	delete f;
 
@@ -1551,7 +1556,7 @@ bool angleTest()
 	TEST(f->setProperty(KEY_ANGLE_POS_TWO,s,needUp),"Set prop");
 	
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"Refresh error code");
 
 	delete f;
 
@@ -1627,7 +1632,7 @@ bool arrowTest()
 	TEST(f->setProperty(KEY_TARGET,s,needUp),"Set target prop");
 	
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh error code");
 
 	delete f;
 
@@ -1702,7 +1707,7 @@ bool textArrowTest()
 	TEST(f->setProperty(KEY_TARGET,s,needUp),"Set prop");
 	
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"Refresh error code");
 
 	delete f;
 

@@ -23,6 +23,7 @@
 #include <wx/dir.h>
 
 #include <fstream>
+#include <map>
 
 #include "wx/wxcommon.h"
 
@@ -32,6 +33,9 @@
 #include "backend/configFile.h"
 #include "backend/filters/algorithms/binomial.h"
 #include "backend/filters/algorithms/K3DTree-mk2.h"
+#include "backend/filters/algorithms/K3DTree.h"
+#include "backend/filters/algorithms/mass.h"
+
 #include "backend/APT/ionhit.h"
 #include "backend/APT/APTFileIO.h"
 #include "backend/APT/abundanceParser.h"
@@ -39,6 +43,7 @@
 #include "common/stringFuncs.h"
 #include "common/xmlHelper.h"
 
+#include "gl/isoSurface.h"
 
 const char *TESTING_RESOURCE_DIRS[] = {
 		"../test/",
@@ -47,6 +52,10 @@ const char *TESTING_RESOURCE_DIRS[] = {
 
 #include "filtertesting.cpp"
 
+using std::ifstream;
+using std::cerr;
+using std::endl;
+using std::map;
 
 //!Try loading each range file in the testing folder
 bool rangeFileLoadTests();
@@ -61,6 +70,9 @@ bool XMLTests();
 bool locateDataTests();
 
 bool abundanceTests();
+
+//run the tests for algorithms/ 
+bool algorithmTests();
 
 bool basicFunctionTests()
 {
@@ -111,19 +123,30 @@ bool basicFunctionTests()
 
 bool runUnitTests()
 {
+	//Set the abort pointer for the filter
+#ifdef HAVE_CPP_1X
+	ATOMIC_BOOL abortFlag(false);
+#else
+	ATOMIC_BOOL abortFlag=false;
+#endif
+	Filter::wantAbort=&abortFlag;
+	K3DTree::setAbortFlag(&abortFlag);
+	K3DTreeMk2::setAbortFlag(&abortFlag);
+
+	unsigned int progressVar=0;
+	K3DTree::setProgressPtr(&progressVar);
+	K3DTreeMk2::setProgressPtr(&progressVar);
 
 	cerr << "Running unit tests..." ;
 
-	if(!K3DMk2Tests())
+	if(!algorithmTests())
 		return false;
-
 
 	if(!testIonHit())
 		return false;
 
 	if(!filterTests())
 		return false;
-
 	if(!rangeFileLoadTests())
 		return false;
 
@@ -137,8 +160,6 @@ bool runUnitTests()
 	if(!runVoxelTests())
 		return false;
 
-	if(!testBinomial())
-		return false;
 
 	if(!runStateTests())
 		return false;
@@ -148,13 +169,16 @@ bool runUnitTests()
 
 	if(!testFileIO())
 		return false;
-
-	if(!mglTest())
-		return false;
+	//MGL test is disabled, due to a bug in mathgl in debian testing
+	// which causes threading segfaults. This is fixed in recent versions
+//	if(!mglTest())
+//		return false;
 
 	if(!abundanceTests())
 		return false;
 
+	if(!testIsoSurface())
+		return false;
 	cerr << " OK" << endl << endl;
 
 	return true;
@@ -166,7 +190,9 @@ bool rangeFileLoadTests()
 	//whichever is first. 
 	wxString testDir;
 	bool haveDir=false;
-	for(unsigned int ui=0;ui<THREEDEP_ARRAYSIZE(TESTING_RESOURCE_DIRS);ui++)
+	size_t n;
+	n = THREEDEP_ARRAYSIZE(TESTING_RESOURCE_DIRS);
+	for(unsigned int ui=0;ui<n;ui++)
 	{
 		testDir=(TESTING_RESOURCE_DIRS[ui]);
 		if(wxDirExists(testDir))
@@ -303,7 +329,7 @@ bool rangeFileLoadTests()
 
 
 
-	map<string,int> typeMapping;
+	map<string,unsigned int> typeMapping;
 
 	typeMapping["test1.rng"]=RANGE_FORMAT_ORNL;
 	typeMapping["test2.rng"]=RANGE_FORMAT_ORNL; 
@@ -520,6 +546,21 @@ bool abundanceTests()
 		WARN(false,"Unable to locate natural abundance file, skipping");
 	}
 	
+	return true;
+}
+
+bool algorithmTests()
+{
+	if(!testAnderson())
+		return false;
+	if(!testBackgroundFit())
+		return false;
+
+	if(!K3DMk2Tests())
+		return false;
+	
+	if(!testBinomial())
+		return false;
 	return true;
 }
 

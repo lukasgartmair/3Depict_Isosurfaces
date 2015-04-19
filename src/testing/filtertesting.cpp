@@ -15,6 +15,14 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <string>
+#include <list>
+#include <set>
+#include <fstream>
+#include <iostream>
+
+
+using namespace std;
 
 //!Run each filter through its own unit test function
 bool filterTests();
@@ -57,7 +65,12 @@ bool testFilterTree(const FilterTree &f,
 	std::vector<std::pair<const Filter *, string > > consoleMessages;
 
 	ProgressData prog;
-	if(f.refreshFilterTree(outData,devices,consoleMessages,prog,dummyCallback))
+#ifdef  HAVE_CPP_1X
+	ATOMIC_BOOL wantAbort(false);
+#else
+	ATOMIC_BOOL wantAbort=false;
+#endif
+	if(f.refreshFilterTree(outData,devices,consoleMessages,prog,wantAbort))
 	{
 		f.safeDeleteFilterList(outData);
 		return false;

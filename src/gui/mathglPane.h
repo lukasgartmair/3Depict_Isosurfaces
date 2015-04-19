@@ -22,6 +22,8 @@
 
 #include "backend/plot.h"
 
+#include <vector>
+
 // begin wxGlade: ::extracode
 // end wxGlade
 
@@ -43,7 +45,7 @@ private:
 	wxBitmap imageCacheBmp;	
 	
 	
-	vector<pair<wxWindow*,UpdateHandler> > updateHandlers;
+	std::vector<std::pair<wxWindow*,UpdateHandler> > updateHandlers;
 
 	//Current mouse position
 	wxPoint curMouse;
@@ -74,11 +76,9 @@ private:
 	bool limitInteract;
 
 	//!Pointer to the plot data holding class
+	// TODO: Make const, as this should be owned by the analysis state
 	PlotWrapper *thePlot;
 	
-	//!Should we take ownership of deleting the plot pointer
-	bool ownPlotPtr;
-
 	//!True if regions should update themselves
 	bool regionSelfUpdate;
 
@@ -160,7 +160,7 @@ public:
 	//Returns the ID of the last edited region
 	void getLastEdited(size_t &lastPlot,size_t &lastRegion) const { lastRegion=lastEditedRegion; lastPlot=lastEditedPlot;};
 	//Add a callback for the given window that will be called when the panel needs updating
-	void registerUpdateHandler(wxWindow *w, UpdateHandler handler) { updateHandlers.push_back(make_pair(w,handler));};
+	void registerUpdateHandler(wxWindow *w, UpdateHandler handler) { updateHandlers.push_back(std::make_pair(w,handler));};
 
 	//Resize event for window
 	void resized(wxSizeEvent& evt);

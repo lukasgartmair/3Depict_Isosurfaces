@@ -18,6 +18,7 @@
 #include "assertion.h"
 #include <iostream>
 
+#ifdef DEBUG
 void userAskAssert(const char * const filename, const unsigned int lineNumber) 
 {
 
@@ -44,3 +45,32 @@ void userAskAssert(const char * const filename, const unsigned int lineNumber)
 	if(y == 'a')
 		skipAll=true;
 }
+
+//DEBUG NaN and INF
+#ifdef __linux__
+#ifdef DEBUG
+#include <fenv.h>
+void trapfpe (bool doTrap) 
+{
+	if(doTrap)
+	{
+		feenableexcept(FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
+	}
+	else 
+	{
+		fedisableexcept((FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW));
+	}
+}
+
+bool getTrapfpe() 
+{ 
+	return fegetexcept() & (FE_INVALID|FE_DIVBYZERO|FE_OVERFLOW);
+}
+#endif
+#else
+void trapfpe(bool doTrap)
+{
+}
+#endif
+
+#endif

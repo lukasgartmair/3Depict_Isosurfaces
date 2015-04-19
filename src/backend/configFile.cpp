@@ -40,6 +40,7 @@ const unsigned int MAX_MOUSE_PERCENT= 400;
 
 using std::endl;
 using std::string;
+using std::deque;
 
 
 ConfigFile::ConfigFile() : configLoadOK(false), panelMode(CONFIG_PANELMODE_REMEMBER),

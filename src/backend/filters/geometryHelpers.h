@@ -28,7 +28,8 @@ enum
 	CROP_SPHERE_OUTSIDE,
 	CROP_PLANE_FRONT,
 	CROP_PLANE_BACK,
-	CROP_CYLINDER_INSIDE,
+	CROP_CYLINDER_INSIDE_AXIAL,
+	CROP_CYLINDER_INSIDE_RADIAL,
 	CROP_CYLINDER_OUTSIDE,
 	CROP_AAB_OUTSIDE,
 	CROP_AAB_INSIDE,
@@ -81,13 +82,9 @@ class CropHelper
 		CropFuncPtr cropFunc;
 		MapFuncPtr mapFunc;
 
-		size_t curProgCount;
 		size_t totalDataCount;
-		unsigned int *progressPtr;
-	
-		bool (*callbackFunc)(bool);
-		size_t numCallback;
 		//--
+	
 
 
 		//Various testing point containment against primitive
@@ -114,9 +111,12 @@ class CropHelper
 		bool filterBoxInside(const Point3D &testPt) const;
 		//----
 
-		//Mapping functions. returns 0 -> mapMax
-		unsigned int mapCylinderInside(const Point3D &p) const;
+		//Mapping functions. returns 0 -> mapMax, along axial direction
+		unsigned int mapCylinderInsideAxial(const Point3D &p) const;
+		unsigned int mapCylinderInsideRadial(const Point3D &p) const;
 
+
+		//
 		unsigned int mapSphereInside(const Point3D &p) const;
 
 
@@ -132,24 +132,26 @@ class CropHelper
 		// allocHint, if >0 , is the recommended fraction of input to reserve
 		// ahead of copying
 		unsigned int runFilterLinear(const std::vector<IonHit> &dataIn,
-				std::vector<IonHit> &dataOut,float allocHint);
+				std::vector<IonHit> &dataOut,float allocHint, 
+				float minProg, float maxProg, unsigned int &prog);
 	
 		//Run the input filtering in parallel (multi CPU) mode
 		unsigned int runFilterParallel(const std::vector<IonHit> &dataIn,
-				std::vector<IonHit> &dataOut,float allocHint);
+				std::vector<IonHit> &dataOut,float allocHint,
+				float minProg, float maxProg, unsigned int &prog);
 	public:
 	
 		//Input vectors and scalars represent the fundamental
 		// basis for the desired geometry
-		CropHelper(bool (*callback)(bool), unsigned int *prog, 
-			size_t totalData,size_t filterMode,
+		CropHelper(size_t totalData,size_t filterMode,
 			std::vector<Point3D> &vectors, std::vector<float> &scalars);
 		
 		//Filter the input ion data in order to generate output points
 		// output data may contain previous data - this will be appended to,
 		// not overwritten
 		unsigned int runFilter(const std::vector<IonHit> &dataIn,
-				std::vector<IonHit> &dataOut);
+				std::vector<IonHit> &dataOut,
+				float progStart, float progEnd,unsigned int &prog) ;
 
 
 		void setMapMaxima(size_t maxima){ASSERT(maxima); mapMax=maxima;};
@@ -159,7 +161,7 @@ class CropHelper
 
 		//Choose the cropping mode for the filter
 		void setFilterMode(size_t filterMode);
-			
+
 };
 
 

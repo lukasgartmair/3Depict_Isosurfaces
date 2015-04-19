@@ -25,14 +25,22 @@
 	
 	#include <sys/time.h>
 
+	//Do we want to trap floating point exceptions 
+	void trapfpe (bool doTrap=true);
+	//Do we want to trap floating point exceptions 
+	bool getTrapfpe ();
+	//Ask the user about continuing (or not) in the case of an assertion
 	void userAskAssert(const char * const filename, const unsigned int lineNumber); 
+	//Warn the programmer about an error detected by a check
 	void warnProgrammer(const char * const filename, const unsigned int lineNumber,
 							const char *message);
 
+	//Assertion macro. Used to trigger fatal errors in program (debug mode)
 	#ifndef ASSERT
 	#define ASSERT(f) {if(!(f)) { userAskAssert(__FILE__,__LINE__);}}
 	#endif
 
+	//warn programmer about unusual situation occurrence
 	#ifndef WARN
 	#define WARN(f,g) { if(!(f)) { warnProgrammer(__FILE__,__LINE__,g);}}
 	#endif
@@ -52,21 +60,28 @@
 	std::cerr << (TIME_DEBUG_tend.tv_sec - TIME_DEBUG_t.tv_sec) + ((float)TIME_DEBUG_tend.tv_usec-(float)TIME_DEBUG_t.tv_usec)/1.0e6 << std::endl;
 
 	#ifndef TEST
+	#define EQ_TOL(f,g) (fabs( (f) - (g)) < 0.001)
+	#define EQ_TOLV(f,g,h) (fabs( (f) - (g)) < (h))
+
 	#define TEST(f,g) if(!(f)) { std::cerr << "Test fail :" << __FILE__ << ":" << __LINE__ << "\t"<< (g) << std::endl;return false;}
 	#endif
 
 	//A hack to generate compile time asserts (thanks Internet).
 	//This causes gcc to give "duplicate case value", if the predicate is false
+	#ifndef  HAVE_CPP_1X
 	#define COMPILE_ASSERT(pred)            \
-	    switch(0){case 0:case pred:;}
-
-
+		{ switch(0){case 0:case pred:;}}
+	#else
+	#define COMPILE_ASSERT(pred) {static_assert( pred , "Static assertion failed" );}
+	#endif
 #else
 	#define ASSERT(f)
 	#define COMPILE_ASSERT(f)
 	#define WARN(f,g) 
 	#define TEST(f,g)
-	
+	//Do we want to trap floating point exceptions 
+	void trapfpe (bool doTrap=true);
+		
 
 #endif
 

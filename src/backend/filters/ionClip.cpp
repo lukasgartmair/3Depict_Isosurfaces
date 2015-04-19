@@ -23,6 +23,11 @@
 
 #include <map>
 
+using std::vector;
+using std::string;
+using std::pair;
+using std::make_pair;
+using std::map;
 
 //!Error codes
 enum 
@@ -125,8 +130,7 @@ size_t IonClipFilter::numBytesForCache(size_t nObjects) const
 
 //!update filter
 unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-			std::vector<const FilterStreamData *> &getOut, ProgressData &progress, 
-								bool (*callback)(bool))
+			std::vector<const FilterStreamData *> &getOut, ProgressData &progress) 
 {
 	ASSERT(vectorParams.size() || scalarParams.size());	
 	//Clear selection devices, first deleting any we have
@@ -252,7 +256,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 				dC->setRadius(scalarParams[0]);
 				dC->setColour(0.5,0.5,0.5,1.0);
 				dC->setSlices(40);
-				dC->setLength(sqrt(vectorParams[1].sqrMag()));
+				dC->setLength(sqrtf(vectorParams[1].sqrMag()));
 				dC->setDirection(vectorParams[1]);
 				dC->wantsLight=true;
 				drawData->drawables.push_back(dC);
@@ -379,6 +383,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 				getOut.push_back(dataIn[ui]);
 		}
 			
+		progress.filterProgress=100;
 		return 0;
 	}
 
@@ -396,7 +401,7 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 		primitiveTypeMap[make_pair((size_t)PRIMITIVE_SPHERE,true)]=CROP_SPHERE_OUTSIDE;
 		primitiveTypeMap[make_pair((size_t)PRIMITIVE_PLANE,false)]=CROP_PLANE_FRONT;
 		primitiveTypeMap[make_pair((size_t)PRIMITIVE_PLANE,true)]=CROP_PLANE_BACK;
-		primitiveTypeMap[make_pair((size_t)PRIMITIVE_CYLINDER,false)]=CROP_CYLINDER_INSIDE;
+		primitiveTypeMap[make_pair((size_t)PRIMITIVE_CYLINDER,false)]=CROP_CYLINDER_INSIDE_AXIAL;
 		primitiveTypeMap[make_pair((size_t)PRIMITIVE_CYLINDER,true)]=CROP_CYLINDER_OUTSIDE;
 		primitiveTypeMap[make_pair((size_t)PRIMITIVE_AAB,false)]=CROP_AAB_INSIDE;
 		primitiveTypeMap[make_pair((size_t)PRIMITIVE_AAB,true)]=CROP_AAB_OUTSIDE;
@@ -404,10 +409,10 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 		size_t mode;
 		mode = primitiveTypeMap[make_pair(primitiveType,invertedClip)];
 		size_t totalSize=numElements(dataIn);
-		CropHelper cropper(callback,&progress.filterProgress,
-					totalSize,mode,
-					vectorParams,scalarParams  );
+		CropHelper cropper(totalSize,mode,vectorParams,scalarParams  );
 
+		float minProg,maxProg;
+		size_t cumulativeSize=0;
 		for(unsigned int ui=0;ui<dataIn.size() ;ui++)
 		{
 			//Loop through each data set
@@ -417,9 +422,13 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 				{
 					d=new IonStreamData;
 					d->parent=this;
+					minProg=cumulativeSize/(float)totalSize;
+					cumulativeSize+=d->data.size();
+					maxProg=cumulativeSize/(float)totalSize;
 
 					//Filter input data to output data.
-					if(cropper.runFilter(((const IonStreamData *)dataIn[ui])->data,d->data))
+					if(cropper.runFilter(((const IonStreamData *)dataIn[ui])->data,
+						d->data,minProg,maxProg,progress.filterProgress))
 					{
 						delete d;
 						return CALLBACK_FAIL; 
@@ -754,10 +763,10 @@ bool IonClipFilter::setProperty(unsigned int key,
 			if(primitiveType == PRIMITIVE_CYLINDER)
 			{
 				if(lockAxisMag && 
-					newPt.sqrMag() > sqrt(std::numeric_limits<float>::epsilon()))
+					newPt.sqrMag() > sqrtf(std::numeric_limits<float>::epsilon()))
 				{
 					newPt.normalise();
-					newPt*=sqrt(vectorParams[1].sqrMag());
+					newPt*=sqrtf(vectorParams[1].sqrMag());
 				}
 			}
 			if(!(vectorParams[1] == newPt ))
@@ -797,7 +806,7 @@ bool IonClipFilter::setProperty(unsigned int key,
 }
 
 //!Get the human readable error string associated with a particular error code during refresh(...)
-std::string IonClipFilter::getErrString(unsigned int code) const
+std::string IonClipFilter::getSpecificErrString(unsigned int code) const
 {
 	const char *errCode[] = { "",
 				"Insufficient mem. for Ionclip",
@@ -1077,7 +1086,7 @@ bool sphereTest()
 
 	//Do the refresh
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	f->refresh(streamIn,streamOut,p);
 
 	delete f;
 	delete d;
@@ -1095,7 +1104,7 @@ bool sphereTest()
 		Point3D p;
 		p=dOut->data[ui].getPos();
 
-		TEST(sqrt(p.sqrDist(pOrigin)) 
+		TEST(sqrtf(p.sqrDist(pOrigin)) 
 			<= TEST_RADIUS,"Sphere containment");
 	}
 	
@@ -1134,7 +1143,7 @@ bool planeTest()
 
 	//Do the refresh
 	ProgressData p;
-	f->refresh(streamIn,streamOut,p,dummyCallback);
+	f->refresh(streamIn,streamOut,p);
 
 	delete f;
 	delete d;
@@ -1186,7 +1195,7 @@ bool cylinderTest(const Point3D &pAxis, const unsigned int *span, float testRadi
 	TEST(f->setProperty(KEY_PRIMITIVE_SHOW,"0",needUp),"Set prop");
 	//Do the refresh
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"Refresh error code");
 	delete f;
 	delete d;
 	
@@ -1198,7 +1207,7 @@ bool cylinderTest(const Point3D &pAxis, const unsigned int *span, float testRadi
 	DrawCylinder *dC = new DrawCylinder;
 	dC->setRadius(testRadius);
 	dC->setOrigin(pOrigin);
-	float len = sqrt(pAxis.sqrMag());
+	float len = sqrtf(pAxis.sqrMag());
 
 	Point3D axisNormal(pAxis);
 	axisNormal.normalise();
@@ -1211,7 +1220,7 @@ bool cylinderTest(const Point3D &pAxis, const unsigned int *span, float testRadi
 
 	delete dC;
 
-	b.expand(sqrt(std::numeric_limits<float>::epsilon()));
+	b.expand(sqrtf(std::numeric_limits<float>::epsilon()));
 	for(unsigned int ui=0;ui<dOut->data.size();ui++)
 	{
 		Point3D p;
@@ -1258,7 +1267,7 @@ bool rectTest()
 	TEST(f->setProperty(KEY_CORNER,s,needUp),"Set prop");
 
 	ProgressData p;
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"Refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"Refresh error code");
 	delete f;
 	delete d;
 

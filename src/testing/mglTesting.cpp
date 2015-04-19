@@ -36,13 +36,15 @@
 // a reference image (if possible)
 bool mglTest()
 {
-	WARN(false,"Disabled until upstream fix propagates");
-	return true;
-	
-		
+
+	//something is wrong with mathgl's FP handling
+	bool fpeTrapped=getTrapfpe();
+	if(fpeTrapped)
+		trapfpe(false);
+
 	unsigned int w=1024,h=768;
 	mglGraph *grS;
-	grS = new mglGraph(0,w,h);
+	grS = new mglGraph(w,h);
 
 	//Create some fake data
 	mglData someDataX,someDataY;
@@ -167,6 +169,8 @@ bool mglTest()
 	rmFile(s);
 	rmFile(t+".svg");
 
+	if(fpeTrapped)
+		trapfpe(true);
 	return true;
 }
 

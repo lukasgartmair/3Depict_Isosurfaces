@@ -103,23 +103,31 @@ class Point3D
                 //!returns the square of distance another pt
                 float sqrDist(const Point3D &pt) const;
 
-                //!Calculate the dot product of this and another pint
+                //!overload for array indexing returns |pt|^2
+                float sqrMag() const;
+		
+		//!Apply float->float transformation
+		void sqrt() { for(unsigned int ui=0;ui<3;ui++) value[ui]=sqrtf(value[ui]); }
+                
+		//ISO31-11 spherical co-ordinates. theta is clockwise rotation around z- axis.
+		// phi is elevation from x-y plane
+		void sphericalAngles(float &theta, float &phi) const;	
+
+		//!Calculate the dot product of this and another pint
                 float dotProd(const Point3D &pt) const;
                 //!Calculate the cross product of this and another point
                 Point3D crossProd(const Point3D &pt) const;
 
-				//!Calculate the angle between two position vectors in radiians
-				float angle(const Point3D &pt) const;
+		//!Calculate the angle between two position vectors in radiians
+		float angle(const Point3D &pt) const;
 
 		//Extend the current vector by the specified distance
 		void extend(float distance);
 
-                //!overload for array indexing returns |pt|^2
-                float sqrMag() const;
 
-				//!Retrieve by value
+		//!Retrieve by value
                 float operator[](unsigned int ui) const; 
-				//!Retrieve element by referene
+		//!Retrieve element by referene
                 float &operator[](unsigned int ui) ;
 
                 //!Is a given point stored inside a box bounded by orign and this pt?

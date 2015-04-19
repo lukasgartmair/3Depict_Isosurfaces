@@ -135,7 +135,7 @@ void TexturePool::genTexID(unsigned int &texID, size_t texType)
 {
 	texture tex;
 	tex.data=0;
-  
+ 
 	glGenTextures(1,&tex.glID);
 	texID = tex.glID;
 	

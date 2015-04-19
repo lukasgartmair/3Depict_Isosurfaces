@@ -35,8 +35,7 @@
 					fprintf(stderr, "glError: %s caught at %s:%u\n", (char *)gluErrorString(err), __FILE__, __LINE__); \
 					err = glGetError(); \
 				} \
-		std::cerr << "glErr Clean " << __FILE__ << ":" << __LINE__ << std::endl; \
-}
+		}
 
 inline int glCurStackDepth(int stackDepthSelector)
 {

@@ -115,18 +115,18 @@ unsigned int getIonstreamIonID(const IonStreamData *d, const RangeFile *r);
 
 //!Extend a point data vector using some ion data
 unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<IonHit> &vIonData,
-				bool (*callback)(bool),unsigned int &progress, size_t offset);
+				unsigned int &progress, size_t offset);
 
 const RangeFile *getRangeFile(const std::vector<const FilterStreamData*> &dataIn);
 
 //Compute the convex hull of a set of input points from fiilterstream data
 unsigned int computeConvexHull(const std::vector<const FilterStreamData*> &data, 
-			unsigned int *progress, bool (*callback)(bool), 
-			std::vector<Point3D> &hullPts, bool freeHull=true);
+			unsigned int *progress, 
+			std::vector<Point3D> &hullPts, bool wantVolume, bool freeHull=true);
 //Compute the convex hull of a set of input points
 unsigned int computeConvexHull(const std::vector<Point3D> &data, 
-			unsigned int *progress, bool (*callback)(bool), 
-			std::vector<Point3D> &hullPts, bool freeHull=true);
+			unsigned int *progress, const bool &abortPtr,
+			std::vector<Point3D> &hullPts, bool wantVolume, bool freeHull=true);
 
 //Release the memory held by qhull, and notify the computeConvexHull routines that this has been done
 void freeConvexHull();

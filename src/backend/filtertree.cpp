@@ -32,6 +32,15 @@ enum
 	CACHE_NEVER,
 };
 
+//Unlock helper class for toggling a  boolean value at exit
+class AutoUnlocker
+{
+	private:
+		bool *lockBool;
+	public:
+		AutoUnlocker(bool *b) { lockBool= b; *lockBool=true;}
+		~AutoUnlocker() { *lockBool=false;}
+};
 
 
 
@@ -68,7 +77,10 @@ class FilterRefreshCollector
 		void collectAll();
 		unsigned int getLevel() const { return nodes.size();}
 		void collectToLevel(unsigned int level);
-	
+
+#ifdef DEBUG
+		bool  isTracked(const FilterStreamData *ptr) const;
+#endif	
 };
 
 #ifdef DEBUG
@@ -92,6 +104,21 @@ void FilterRefreshCollector::checkSanity()
 	}
 	s.clear();
 
+}
+
+bool FilterRefreshCollector::isTracked(const FilterStreamData *ptr) const
+{
+	for(unsigned int ui=0;ui<nodes.size();ui++)
+	{
+		for(list<const FilterStreamData *>::const_iterator it=nodes[ui].begin();
+			it!=nodes[ui].end(); ++it)
+		{
+			if(*it == ptr)
+				return true;
+		}
+	}
+
+	return false;
 }
 #endif
 
@@ -208,6 +235,7 @@ FilterTree::FilterTree()
 {
 	maxCachePercent=DEFAULT_MAX_CACHE_PERCENT;
 	cacheStrategy=CACHE_DEPTH_FIRST;
+	amRefreshing=false;
 }
 
 FilterTree::~FilterTree()
@@ -224,6 +252,8 @@ FilterTree::FilterTree(const FilterTree &orig) :
 	for(tree<Filter *>::pre_order_iterator it=filters.begin();
 		it!=filters.end();++it)
 		(*it)=(*it)->cloneUncached();
+	
+	amRefreshing=false;
 }
 
 size_t FilterTree::depth(const tree<Filter*>::pre_order_iterator &it) const
@@ -241,6 +271,7 @@ void FilterTree::swap(FilterTree &other)
 
 const FilterTree &FilterTree::operator=(const FilterTree &orig)
 {
+	ASSERT(!amRefreshing)
 	clear();
 
 	cacheStrategy=orig.cacheStrategy;
@@ -548,11 +579,62 @@ void FilterTree::getFilterRefreshStarts(vector<tree<Filter *>::iterator > &propS
 
 }
 
+void FilterTree::getConsoleMessagesToNodes(std::vector<tree<Filter *>::iterator > &nodes,
+			std::vector<pair<const Filter*,string> > &messages) const
+{
+
+
+	//obtain a unique list of all filters who are parents of the nodes
+	if(!nodes.size())
+		return;
+
+	std::set<Filter*> filterSet;
+	for(unsigned int ui=0;ui<nodes.size();ui++)
+	{
+		tree<Filter*>::iterator it;
+		it=nodes[ui];
+
+		if(it==filters.begin())
+			filterSet.insert(*it);
+		
+		while(filters.is_valid(it) && 
+			filters.parent(it)!= filters.begin())
+		{
+			filterSet.insert(*it);	
+			it=filters.parent(it);
+		}
+	}
+
+	filterSet.insert(*(filters.begin()));
+
+
+	//now loop through the filters and obtain the console messages
+	for(set<Filter *>::iterator it=filterSet.begin();it!=filterSet.end();it++)
+	{
+		vector<string> tmpMsgs;
+		(*it)->getConsoleStrings(tmpMsgs);
+
+		for(size_t ui=0;ui<tmpMsgs.size();ui++)
+		{
+			messages.push_back(make_pair(*it,tmpMsgs[ui]));
+		}
+	}
+}
+
 unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData, 
 		std::vector<SelectionDevice *> &devices,
 		vector<pair<const Filter* , string> > &consoleMessages,
-	       	ProgressData &curProg, bool (*callback)(bool)) const
+	       	ProgressData &curProg, ATOMIC_BOOL &abortRefresh) const
 {
+
+	//initially, we should not want to abort refreshing 
+	ASSERT(!abortRefresh);
+	//Tell the filter system about our abort flag
+	Filter::wantAbort=&abortRefresh;
+
+
+	//Lock the refresh state.
+	AutoUnlocker unlocker(&amRefreshing);
 	
 	unsigned int errCode=0;
 
@@ -608,7 +690,6 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 	curProg.totalNumFilters=countChildFilters(filters,baseTreeNodes)+baseTreeNodes.size();
 
 
-	(*callback)(false);
 
 	for(unsigned int itPos=0;itPos<baseTreeNodes.size(); itPos++)
 	{
@@ -633,7 +714,7 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			//Step 0 : Pop the cache until we reach our current level, 
 			//	delete any pointers that would otherwise be lost.
 			//	Recall that the zero size in the stack may not correspond to the
-			//	tree root, but rather corresponds to our insertion level
+			//	tree root, but rather corresponds to the filter we started refreshing from
 			//---
 			size_t popLevel;
 			popLevel=filters.depth(filtIt) - filters.depth(baseTreeNodes[itPos])+1;
@@ -675,7 +756,7 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 							ramFreeForUse= maxCachePercent/(float)100.0f*getAvailRAM();
 
 							bool cache;
-							cache=(cacheBytes/(1024*1024) ) < ramFreeForUse;
+							cache=((float)cacheBytes/(1024*1024) ) < ramFreeForUse;
 
 							currentFilter->setCaching( cache);
 							break;
@@ -693,7 +774,6 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			//	This is the guts of the system.
 			//---
 			//
-			(*callback)(false);
 
 			if(!currentFilter->haveCache())
 				currentFilter->clearConsole();
@@ -702,11 +782,7 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			try
 			{
 
-				errCode=currentFilter->refresh(inDataStack.top(),
-							curData,curProg,callback);
-
-				//error codes above this value are reserved
-				ASSERT(errCode <=FILTERTREE_REFRESH_ERR_BEGIN);
+				errCode=currentFilter->refresh(inDataStack.top(),curData,curProg);
 			}
 			catch(std::bad_alloc)
 			{
@@ -719,11 +795,15 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			//Perform sanity checks on filter output
 			checkRefreshValidity(curData,currentFilter);
 			ASSERT(curProg.step == curProg.maxStep || errCode);
+			//when completing, we should have full progress 
+			std::string progWarn = std::string("Progress did not reach 100\% for filter: ");
+			progWarn+=currentFilter->getUserString();
+			
+			WARN( (curProg.filterProgress == 100 || errCode),progWarn.c_str());
 #endif
 			//Ensure that (1) yield is called, regardless of what filter does
 			//(2) yield is called after 100% update	
 			curProg.filterProgress=100;	
-			(*callback)(false);
 
 
 			vector<SelectionDevice *> curDevices;
@@ -745,25 +825,35 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 				consoleMessages.push_back(make_pair(currentFilter,tmpMessages[ui]));
 
 			//check for any error in filter update (including user abort)
-			if(errCode)
+			if(errCode || abortRefresh)
 			{
 				//clear any intermediary pointers
 				popPointerStack(inDataStack,0);
 				ASSERT(inDataStack.empty());
-				//Clean up the output that we didn't use
+				
+				//remove duplicates, as more than one output data may
+				// output the same pointer
+				std::set<const FilterStreamData *> uniqSet;
 				for(list<FILTER_OUTPUT_DATA>::iterator it=outData.begin();
 						it!=outData.end();++it)
 				{
 					for(size_t ui=0;ui<it->second.size();ui++)
-					{
-						const FilterStreamData *data;
-						data = it->second[ui];
-
-						//Output data is uncached - delete it
-						if(!data->cached)
-							delete data;
-					}
+						uniqSet.insert(it->second[ui]);
 				}
+
+	
+				//Clean up the output that we didn't use
+				for(std::set<const FilterStreamData *>::iterator it=uniqSet.begin();
+					it!=uniqSet.end(); ++it)
+				{
+					const FilterStreamData *data;
+					data = *it;
+					//Output data is uncached - it is our job to delete it
+					if(!data->cached)
+						delete data;
+				}
+				if(abortRefresh)
+					return FILTER_ERR_ABORT;
 				return errCode;
 			}
 
@@ -809,19 +899,19 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 	// minimises unnecessary output)
 	//Construct a single list of all pointers in output,
 	//checking for uniqueness. Delete duplicates
-	list<const FilterStreamData *> flatList;
 	
 	for(list<FILTER_OUTPUT_DATA>::iterator it=outData.begin();it!=outData.end(); )
 	{
-		vector<const FilterStreamData *>::iterator itJ;
+		std::set<const FilterStreamData *> uniqueSet;
 
+		vector<const FilterStreamData *>::iterator itJ;
 		itJ=it->second.begin();
 		while(itJ!=it->second.end()) 
 		{
 			//Each stream data pointer should only occur once in the entire lot.
-			if(find(flatList.begin(),flatList.end(),*itJ) == flatList.end())
+			if(uniqueSet.find(*itJ) == uniqueSet.end())
 			{
-				flatList.push_back(*itJ);
+				uniqueSet.insert(*itJ);
 				++itJ;
 			}
 			else
@@ -835,10 +925,6 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 		else
 			++it;
 	}
-
-	//outData List is complete, and contains only unique entries. clear the checking list.
-	flatList.clear();
-
 	//======
 
 
@@ -848,7 +934,7 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 
 string FilterTree::getRefreshErrString(unsigned int code)
 {
-	ASSERT(code >FILTERTREE_REFRESH_ERR_BEGIN && code < FILTERTREE_REFRESH_ERR_ENUM_END);
+	
 	const char *REFRESH_ERR_STRINGS[] = {"",
 		"Insufficient memory for refresh",
 		};
@@ -1016,7 +1102,7 @@ unsigned int FilterTree::loadXML(const xmlNodePtr &treeParent, std::ostream &err
 		newFilt=0;
 		nodeUnderstood=true; //assume by default we understand, and set false if not
 
-		//If we encounter a "children" node. then we need to look at the children of this filter
+		//If we encounter a "children" node. Then we need to look at the children of this filter
 		if (!xmlStrcmp(nodePtr->name,(const xmlChar*)"children"))
 		{
 			//Can't have children without parent
@@ -1658,7 +1744,7 @@ void FilterTree::removeSubtree(Filter *removeFilt)
 	initFilterTree();
 }
 
-void FilterTree::cloneSubtree(FilterTree &f,Filter *targetFilt) const
+void FilterTree::cloneSubtree(FilterTree &f,const Filter *targetFilt) const
 {
 	ASSERT(!f.filters.size()); //Should only be passing empty trees
 	

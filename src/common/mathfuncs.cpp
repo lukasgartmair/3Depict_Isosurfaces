@@ -247,18 +247,47 @@ float Point3D::angle(const Point3D &pt) const
 	return acos(dotProd(pt)/(sqrtf(sqrMag()*pt.sqrMag())));
 }
 
+
+void Point3D::sphericalAngles(float &theta, float &phi) const
+{
+	float sqrVal=sqrMag();
+	theta=acos(value[2]/sqrtf(sqrVal));
+	//phi
+	phi=atan2(value[1],value[0]);
+
+#ifdef DEBUG
+	static bool amRecursing;
+	if(amRecursing)
+		return;
+	amRecursing=true;
+	//Check that the definition of the spherical coordinates matches
+	Point3D retreived(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta));
+	float tmpTheta,tmpPhi;
+	retreived.sphericalAngles(tmpTheta,tmpPhi);
+	ASSERT(EQ_TOL(tmpTheta,theta));
+	ASSERT(EQ_TOL(tmpPhi,phi));
+
+	retreived*=sqrtf(sqrVal);
+	for(unsigned int ui=0;ui<3;ui++)
+	{
+		ASSERT(EQ_TOL(retreived[ui] ,value[ui]));
+	}
+	amRecursing=false;
+#endif
+}
+
 bool Point3D::orthogonalise(const Point3D &pt)
 {
 	Point3D crossp;
 	crossp=this->crossProd(pt);
 
 	//They are co-linear, or near-enough to be not resolvable.
-	if(crossp.sqrMag()  < sqrt(std::numeric_limits<float>::epsilon()))
+	if(crossp.sqrMag()  < sqrtf(std::numeric_limits<float>::epsilon()))
 		return false;
 	crossp.normalise();
 
 	crossp=crossp.crossProd(pt);
-	*this=crossp.normalise()*sqrt(this->sqrMag());	
+	*this=crossp.normalise()*sqrtf(this->sqrMag());	
 
 	return true;
 }
@@ -576,7 +605,7 @@ void quat_rot(Point3D &p, const Point3D &r, float angle)
 void quat_rot(Point3f *point, const Point3f *rotVec, float angle)
 {
 	ASSERT(rotVec->fx*rotVec->fx + rotVec->fy*rotVec->fy + rotVec->fz*rotVec->fz - 1.0f < 
-			5.0f*sqrt(std::numeric_limits<float>::epsilon()));
+			5.0f*sqrtf(std::numeric_limits<float>::epsilon()));
 
 	double sinCoeff;
        	Quaternion rotQuat;
@@ -645,7 +674,7 @@ void quat_rot_array(Point3f *pointArr, unsigned int n,
 	Quaternion temp;
 	{
 		ASSERT(rotVec->fx*rotVec->fx + rotVec->fy*rotVec->fy + rotVec->fz*rotVec->fz - 1.0f < 
-				5.0f*sqrt(std::numeric_limits<float>::epsilon()));
+				5.0f*sqrtf(std::numeric_limits<float>::epsilon()));
 
 		double sinCoeff;
 		
@@ -685,7 +714,7 @@ void quat_rot_array(Point3f *pointArr, unsigned int n,
 void quat_get_rot_quat(const Point3f *rotVec, float angle,Quaternion *rotQuat) 
 {
 	ASSERT(rotVec->fx*rotVec->fx + rotVec->fy*rotVec->fy + rotVec->fz*rotVec->fz - 1.0f < 
-			5.0f*sqrt(std::numeric_limits<float>::epsilon()));
+			5.0f*sqrtf(std::numeric_limits<float>::epsilon()));
 	double sinCoeff;
 #ifdef _GNU_SOURCE
 	double cosCoeff;

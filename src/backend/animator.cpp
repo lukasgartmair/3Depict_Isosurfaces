@@ -19,7 +19,17 @@
 #include "animator.h"
 #include "common/stringFuncs.h"
 #include "common/basics.h"
+
 #include <map>
+#include <set>
+
+using std::string;
+using std::map;
+using std::vector;
+using std::pair;
+using std::make_pair;
+using std::endl;
+using std::set;
 
 const char *INTERP_NAME[] ={ "Step",
 	"Linear",
@@ -560,7 +570,7 @@ std::string InterpData::getInterpolatedData(const vector<pair<size_t,
 			//interpolate the colour value
 			ColourRGBAf interpCol;
 			float delta;
-			delta = (frame - startF )/ (endF - startF);
+			delta = (float)(frame - startF )/ (float)(endF - startF);
 			interpCol=tmpCol[0].toRGBAf().interpolate(delta,tmpCol[1].toRGBAf());
 			return interpCol.toColourRGBA().rgbaString();
 		}

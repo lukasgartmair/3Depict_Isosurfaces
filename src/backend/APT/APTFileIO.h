@@ -66,25 +66,25 @@ enum posErrors
 //!Load a pos file into a T of IonHits
 unsigned int GenericLoadFloatFile(unsigned int inputnumcols, unsigned int outputnumcols, 
 		const unsigned int index[], vector<IonHit> &posIons,const char *posFile, 
-				unsigned int &progress, bool (*callback)(bool));
+				unsigned int &progress, ATOMIC_BOOL &wantAbort);
 
 
 unsigned int LimitLoadPosFile(unsigned int inputnumcols, unsigned int outputnumcols, const unsigned int index[], 
 			vector<IonHit> &posIons,const char *posFile, size_t limitCount,
-					       	unsigned int &progress, bool (*callback)(bool),bool strongRandom);
+					       	unsigned int &progress, ATOMIC_BOOL &wantAbort,bool strongRandom);
 
 
 
 unsigned int limitLoadTextFile(unsigned int numColsTotal, 
 			vector<vector<float> > &data,const char *posFile, const char *deliminator, const size_t limitCount,
-					       	unsigned int &progress, bool (*callback)(bool),bool strongRandom);
+					       	unsigned int &progress, ATOMIC_BOOL &wantAbort,bool strongRandom);
 
 
 //Load a CAMECA LAWATAP "ATO" formatted file.
 //	- This is a totally different format to the "FlexTAP" ato format
 //Supported versions are "version 3"
 //	Force endian : 0 - do not force, autodetect, 1 - force little, 2- force big
-unsigned int LoadATOFile(const char *fileName, vector<IonHit> &ions, unsigned int &progressm, bool (*callback)(bool), unsigned int forceEndian=0);
+unsigned int LoadATOFile(const char *fileName, vector<IonHit> &ions, unsigned int &progressm, ATOMIC_BOOL &wantAbort, unsigned int forceEndian=0);
 
 
 #ifdef DEBUG

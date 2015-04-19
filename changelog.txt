@@ -1,3 +1,61 @@
+* 05 Apr 2014 : 0.0.18
+	Features:
+	- User interface now uses its own CPU. Should be much more
+	  responsive during refreshes
+	- Spectra can be normalised to allow for easier inter-spectra
+	comparison. Several normalisation modes have been added.
+	- Clustering ellipse fitting implemented. Can now determine
+	 best-fit ellipsoids on clusters, and plot them in 2D to identify
+	 lath/rod/sphere/disc shapes
+	- Voxelisation filter now supports fast blurring 
+	
+	User Visible Changes:
+	- Axial slice in voxelisation can now be made translucent
+	- More noticable progress feedback, now as a progress "spinner"
+
+	Technical bugfixes/changes:
+	- Significant refactoring of internals to allow for threading. 
+		- State has been made more prominent, viscontrol less.
+		- New "TreeState" object created
+	- New library added for voxelisation/image support : libvigra
+
+* 01 Sep 2014 : 0.0.17
+	Features
+	- Upgrade to wxWidgets 3 (wx3)
+		- Now using wx3 property grid. Property grid interaction
+		  greatly improved.
+			- Categories collapsible
+			- file browse buttons
+			- One-click check buttons/dropdown
+	- Set (Subtraction/Union/Intersection) operations on points
+		- Can, eg load data from separate file after performing
+		operations on primary file
+		
+
+	User Visible Changes
+	- Fix bug in left/right panel startup size setting
+	- Exporting images with colour bar now works correctly
+	- Cursor now shows OS' busy status during refresh
+	- Files no longer disappear from recent when loading
+	- Fix range propagation behaviour when using spatial analysis
+	- Clustering now supports cluster ID->value mode (Feature request)
+	- Status messages are now queued, so they won't be missed
+	- Fixed profile minimum events not working
+
+	Technical bugfixes/changes:
+	- wxWidgets < 2.9 (prior to 2010) no longer supported
+		- Remove 2.8 conditional code
+	- Mathgl < 2.0 (prior to 2011) no longer supported
+		- Remove 1.x conditional code
+	- Fix relatively frequent crashes when sampling data files
+		under parallel mode
+	- 2D plots (f(x,y) and scatter+size) now supported, but no
+	   filter actually currently uses this
+	- All filter properties must have a group title
+	- Fix crash in mac OSX if expected data files not found
+	- Refactoring for filter caching and property setting
+	- Fix linker failure when using distcc
+
 * 01 Mar 2014 : 0.0.16
 	Features:
 	- Added experimental LAWATAP (ATO) file support

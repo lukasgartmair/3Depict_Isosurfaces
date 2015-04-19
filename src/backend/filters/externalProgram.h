@@ -45,7 +45,7 @@ class ExternalProgramFilter : public Filter
 		bool cleanInput;
 
 		static size_t substituteVariables(const std::string &commandStr,
-				const vector<string> &ions, const vector<string> &plots, 
+				const std::vector<std::string> &ions, const std::vector<std::string> &plots, 
 							std::string &substitutedCommand);
 
 	public:
@@ -64,7 +64,7 @@ class ExternalProgramFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &getOut, 
-					ProgressData &progress, bool (*callback)(bool));
+					ProgressData &progress);
 		
 		virtual std::string typeString() const { return std::string(TRANS("Ext. Program"));};
 
@@ -75,7 +75,7 @@ class ExternalProgramFilter : public Filter
 		bool setProperty(unsigned int key, 
 				const std::string &value, bool &needUpdate);
 		//!Get the human readable error string associated with a particular error code during refresh(...)
-		std::string getErrString(unsigned int code) const;
+		std::string getSpecificErrString(unsigned int code) const;
 		
 		//!Dump state to output stream, using specified format
 		bool writeState(std::ostream &f,unsigned int format,

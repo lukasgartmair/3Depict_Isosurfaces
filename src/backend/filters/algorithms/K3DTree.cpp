@@ -21,6 +21,10 @@
 
 using std::vector;
 
+unsigned int *K3DTree::progress=0;
+//Pointer for aborting during build process
+const ATOMIC_BOOL *K3DTree::abort=0;
+
 //Axis compare
 //==========
 AxisCompare::AxisCompare() : axis(0)
@@ -87,7 +91,7 @@ void K3DNode::dump(std::ostream &strm, unsigned int depth) const
 
 //K3D Tree
 //=============
-K3DTree::K3DTree() : treeSize(0),maxDepth(0),root(0), callback(0),progress(0)
+K3DTree::K3DTree() : treeSize(0),maxDepth(0),root(0)
 {
 }
 
@@ -207,6 +211,10 @@ void K3DTree::kill()
 //Build the KD tree
 void K3DTree::build(vector<Point3D> pts)
 {
+
+	ASSERT(progress); // Check progress pointer is inited
+	ASSERT(abort); //Check abort pointer is initialised
+
 	//che. to see if the pts vector is empty
 	if(!pts.size())
 	{
@@ -270,28 +278,29 @@ K3DNode *K3DTree::buildRecurse(vector<Point3D>::iterator pts_start, vector<Point
 	if(median)
 	{
 		
-		//Only do process if callback is OK
-		if((*callback)(false))
+		//Abort recursion if we need to abort
+		if(*abort)
+			node->setLeft(0);
+		else
 		{
+			//process data as per normal
 			node->setLeft(buildRecurse(pts_start,pts_start + median,depth+1));
 			*progress= (unsigned int)((float)curNodeCount/(float)treeSize*100.0f);
 		}
-		else 
-			node->setLeft(0);
 	}
 	else
 		node->setLeft(0);	
 
 	if(median!=ptsSize)
 	{
-		//Only do process if callback is OK
-		if((*callback)(false))
+		//Only do process if not aborting
+		if(*abort)
+			node->setRight(0);
+		else
 		{
 			node->setRight(buildRecurse(pts_start + median + 1, pts_end,depth+1));
 			*progress= (unsigned int)((float)curNodeCount/(float)treeSize*100.0f);
 		}
-		else
-			node->setRight(0);
 
 	}
 	else
@@ -539,13 +548,13 @@ void K3DTree::findKNearest(const Point3D &searchPt, const BoundCube &domainCube,
 				float deadDistSqr) const
 {
 	//find the N nearest points
-	float sqrDist;
 	bestPts.clear();
 	bestPts.reserve(num);
 
-	const Point3D *p;
 	for(unsigned int ui=0; ui<num; ui++)
 	{
+		const Point3D *p;
+		float sqrDist;
 		p= findNearest(searchPt, domainCube,
 						deadDistSqr);
 

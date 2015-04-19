@@ -35,7 +35,8 @@ bool qhullInited=false;
 
 //Wrapper for qhull single-pass run
 unsigned int doHull(unsigned int bufferSize, double *buffer, 
-			vector<Point3D> &resHull, Point3D &midPoint,bool freeHullOnExit);
+			vector<Point3D> &resHull, Point3D &midPoint,	
+			bool wantVolume, bool freeHullOnExit);
 
 void writeVectorsXML(ostream &f,const char *containerName,
 		const vector<Point3D> &vectorParams, unsigned int depth)
@@ -247,7 +248,7 @@ unsigned int getIonstreamIonID(const IonStreamData *d, const RangeFile *r)
 
 //!Extend a point data vector using some ion data
 unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<IonHit> &vIonData,
-				bool (*callback)(bool),unsigned int &progress, size_t offset)
+				unsigned int &progress, size_t offset)
 {
 	unsigned int curProg=NUM_CALLBACK;
 	unsigned int n =offset;
@@ -270,7 +271,7 @@ unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<Ion
 			progress= (unsigned int)(((float)n/(float)dest.size())*100.0f);
 			if(!omp_get_thread_num())
 			{
-				if(!(*callback)(false))
+				if(*Filter::wantAbort)
 					spin=true;
 			}
 			}
@@ -291,7 +292,7 @@ unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<Ion
 		{
 			n+=NUM_CALLBACK;
 			progress= (unsigned int)(((float)n/(float)dest.size())*100.0f);
-			if(!(*callback)(false))
+			if(*(Filter::wantAbort))
 				return 1;
 		}
 
@@ -303,8 +304,9 @@ unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<Ion
 }
 
 
+//FIXME: Abort pointer?
 unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsigned int *progress,
-					bool (*callback)(bool),std::vector<Point3D> &curHull, bool freeHull)
+					std::vector<Point3D> &curHull, bool wantVolume,bool freeHull)
 {
 
 	size_t numPts;
@@ -325,11 +327,10 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 
 	//Do the convex hull in steps for two reasons
 	// 1) qhull chokes on large data
-	// 2) we need to run the callback every now and again, so we have to
+	// 2) we need to check for abort every now and again, so we have to
 	//   work in batches.
 	Point3D midPoint;
 	float maxSqrDist=-1;
-	size_t progressReduce=PROGRESS_REDUCE;
 	size_t n=0;
 	for(size_t ui=0; ui<data.size(); ui++)
 	{
@@ -373,7 +374,7 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 
 					unsigned int errCode=0;
 					
-					errCode=doHull(bufferOffset,buffer,curHull,midPoint,freeHull);
+					errCode=doHull(bufferOffset,buffer,curHull,midPoint,wantVolume,freeHull);
 					if(errCode)
 					{
 						free(buffer);
@@ -393,19 +394,15 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 			}
 			n++;
 
-			//Update the progress information, and run callback periodically
-			if(!progressReduce--)
+			//Update the progress information, and run abort check
+			if(*Filter::wantAbort)
 			{
-				if(!(*callback)(false))
-				{
-					free(buffer);
-					return HULL_ERR_USER_ABORT;
-				}
-	
-				*progress= (unsigned int)((float)(n)/((float)numPts)*100.0f);
-
-				progressReduce=PROGRESS_REDUCE;
+				free(buffer);
+				return HULL_ERR_USER_ABORT;
 			}
+
+			*progress= (unsigned int)((float)(n)/((float)numPts)*100.0f);
+
 		}
 	}
 
@@ -430,12 +427,13 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 			buffer[3*(bufferOffset+ui)+2]=curHull[ui][2];
 		}
 
-		unsigned int errCode=doHull(bufferOffset+curHull.size(),buffer,curHull,midPoint,freeHull);
+		unsigned int errCode=doHull(bufferOffset+curHull.size(),buffer,
+						curHull,midPoint,wantVolume,freeHull);
 
 		if(errCode)
 		{
 			free(buffer);
-			//Free the last convex hull mem
+			//FIXME: Free the last convex hull mem??
 			return errCode;
 		}
 	}
@@ -446,7 +444,7 @@ unsigned int computeConvexHull(const vector<const FilterStreamData*> &data, unsi
 }
 
 unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progress,
-					bool (*callback)(bool),std::vector<Point3D> &curHull, bool freeHull)
+				const bool &abortPtr,std::vector<Point3D> &curHull, bool wantVolume, bool freeHull)
 {
 
 	//Easy case of no data
@@ -471,7 +469,6 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 	float maxSqrDist=-1;
 
 
-	size_t progressReduce=PROGRESS_REDUCE;
 
 	for(size_t uj=0; uj<data.size(); uj++)
 	{
@@ -510,7 +507,7 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 
 				unsigned int errCode=0;
 				
-				errCode=doHull(bufferOffset,buffer,curHull,midPoint,freeHull);
+				errCode=doHull(bufferOffset,buffer,curHull,midPoint,wantVolume,freeHull);
 				if(errCode)
 					return errCode;
 
@@ -525,18 +522,14 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 			}
 		}
 
-		if(!progressReduce--)
+		if(*Filter::wantAbort)
 		{
-			if(!(*callback)(false))
-			{
-				free(buffer);
-				return HULL_ERR_USER_ABORT;
-			}
-	
-			*progress= (unsigned int)((float)(uj)/((float)data.size())*100.0f);
-
-			progressReduce=PROGRESS_REDUCE;
+			free(buffer);
+			return HULL_ERR_USER_ABORT;
 		}
+
+		*progress= (unsigned int)((float)(uj)/((float)data.size())*100.0f);
+
 	}
 
 
@@ -563,7 +556,7 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 			buffer[3*(bufferOffset+ui)+2]=curHull[ui][2];
 		}
 
-		unsigned int errCode=doHull(bufferOffset+curHull.size(),buffer,curHull,midPoint,freeHull);
+		unsigned int errCode=doHull(bufferOffset+curHull.size(),buffer,curHull,midPoint,wantVolume,freeHull);
 
 		if(errCode)
 		{
@@ -579,13 +572,19 @@ unsigned int computeConvexHull(const vector<Point3D> &data, unsigned int *progre
 }
 
 unsigned int doHull(unsigned int bufferSize, double *buffer, 
-			vector<Point3D> &resHull, Point3D &midPoint, bool freeHullOnExit)
+			vector<Point3D> &resHull, Point3D &midPoint, bool wantVolume ,
+			bool freeHullOnExit)
 {
 	if(qhullInited)
 	{
-		qh_freeqhull(true);
+		qh_freeqhull(qh_ALL);
+		int curlong,totlong;
+		//This seems to be required? Cannot find any documentation on the difference
+		// between qh_freeqhull and qh_memfreeshort. qhull appears to leak when just using qh_freeqhull
+		qh_memfreeshort (&curlong, &totlong);    
 		qhullInited=false;
 	}
+
 
 	const int dim=3;
 	//Now compute the new hull
@@ -609,11 +608,23 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 		outSquelch=stderr;
 	}
 
+	 //Joggle the output, such that only simplical facets are generated, Also compute area/volume
+	const char *argsOptions[]= { "qhull QJ FA",
+				   "qhull QJ"
+					};
+
+	const char *args;
+	if(wantVolume)
+		args = argsOptions[0];
+	else
+		args=argsOptions[1];
+	
+
 	qh_new_qhull(	dim,
 			bufferSize,
 			buffer,
 			false,
-			(char *)"qhull QJ", //Joggle the output, such that only simplical facets are generated
+			(char *)args ,
 			outSquelch, //QHULL's interface is bizarre, no way to set null pointer in qhull 2012 - result is inf. loop in qhull_fprintf and error reporting func. 
 			outSquelch);
 	qhullInited=true;
@@ -666,7 +677,11 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 	//--
 	if(freeHullOnExit)
 	{
-		qh_freeqhull(true);
+		qh_freeqhull(qh_ALL);
+		int curlong,totlong;
+		//This seems to be required? Cannot find any documentation on the difference
+		// between qh_freeqhull and qh_memfreeshort. qhull appears to leak when just using qh_freeqhull
+		qh_memfreeshort (&curlong, &totlong);    
 		qhullInited=false;
 	
 	}
@@ -677,7 +692,11 @@ unsigned int doHull(unsigned int bufferSize, double *buffer,
 
 void freeConvexHull()
 {
-	qh_freeqhull(true);
+	qh_freeqhull(qh_ALL);
+	int curlong,totlong;
+	//This seems to be required? Cannot find any documentation on the difference
+	// between qh_freeqhull and qh_memfreeshort. qhull appears to leak when just using qh_freeqhull
+	qh_memfreeshort (&curlong, &totlong);    
 	qhullInited=false;
 }
 

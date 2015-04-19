@@ -35,14 +35,14 @@ enum
 unsigned int generateNNHist( const std::vector<Point3D> &pointList, 
 			const K3DTree &tree,unsigned int nnMax, unsigned int numBins,
 		       	std::vector<std::vector<size_t> > &histogram, float *binWidth,
-		       	unsigned int *progressPtr,bool (*callback)(bool));
+		       	unsigned int *progressPtr,ATOMIC_BOOL &wantAbort);
 
 //!Generate an NN histogram using distance max cutoffs. Input histogram must be zeroed,
 //if a voxelsname is given, a 3D RDF will be recorded. in this case voxelBins must be nonzero
 unsigned int generateDistHist(const std::vector<Point3D> &pointList, const K3DTree &tree,
 			unsigned int *histogram, float distMax,
 			unsigned int numBins, unsigned int &warnBiasCount,
-			unsigned int *progressPtr,bool (*callback)(bool));
+			unsigned int *progressPtr,ATOMIC_BOOL &wantAbort);
 
 //!Returns a subset of points guaranteed to lie at least reductionDim inside hull of input points
 /*! Calculates the hull of the input ions and then scales the hull such that the 
@@ -50,7 +50,7 @@ unsigned int generateDistHist(const std::vector<Point3D> &pointList, const K3DTr
  * reductionDim
  */
 unsigned int GetReducedHullPts(const std::vector<Point3D> &pts, float reductionDim,
-		unsigned int  *progress, bool (callback)(bool),std::vector<Point3D> &returnIons );
+		unsigned int  *progress, ATOMIC_BOOL &wantAbort, std::vector<Point3D> &returnIons );
 
 
 //Return a 1D histogram of NN frequencies, by projecting the NNs within a given search onto a specified axis, stopping at some fixed sstance
@@ -58,7 +58,7 @@ unsigned int GetReducedHullPts(const std::vector<Point3D> &pts, float reductionD
 //	- axisDir  must be normalised.
 unsigned int generate1DAxialDistHist(const std::vector<Point3D> &pointList, const K3DTree &tree,
 		const Point3D &axisDir, unsigned int *histogram, float distMax, unsigned int numBins,
-		unsigned int *progressPtr, bool (*callback)(bool));
+		unsigned int *progressPtr, ATOMIC_BOOL &wantAbort);
 
 
 //Generate a 1D distribution of NN distances s projected onto a specified axis
@@ -68,5 +68,12 @@ unsigned int generate1DAxialDistHist(const std::vector<Point3D> &pointList, cons
 unsigned int generate1DAxialNNHist(const std::vector<Point3D> &pointList, const K3DTree &tree,
 			const Point3D &axisDir, unsigned int *histogram, 
 			float &binWidth, unsigned int nnMax, unsigned int numBins,
-			unsigned int *progressPtr, bool (*callback)(bool));
+			unsigned int *progressPtr, ATOMIC_BOOL &wantAbort);
+
+
+//generate the Knn probability distribution for a given nn occurring at a radius in 3D space
+// with a fixed density parameter. Radii are the positions to evaluate the distribution
+// nnDist will store the answer.  It is required that both density >=0 and nn >0.
+void generateKnnTheoreticalDist(const std::vector<float> &radii, float density, unsigned int nn,
+					std::vector<float> &nnDist);
 #endif

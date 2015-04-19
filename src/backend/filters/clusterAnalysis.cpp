@@ -16,18 +16,22 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "clusterAnalysis.h"
-
-
-
 #include "filterCommon.h"
-
 
 #include <queue>
 
+#include <gsl/gsl_linalg.h>
+#include <gsl/gsl_eigen.h>
 
-#include "algorithms/K3DTree-mk2.h"
+#include "../../common/gsl_helper.h"
 #include "backend/plot.h"
 
+using std::vector;
+using std::string;
+using std::pair;
+using std::make_pair;
+using std::map;
+using std::max;
 
 enum
 {
@@ -56,8 +60,7 @@ enum
 
 enum
 {
-	ABORT_ERR=1,
-	NOCORE_ERR,
+	NOCORE_ERR=1,
 	NOBULK_ERR,
 	CLUSTER_ERR_ENUM_END
 };
@@ -173,42 +176,33 @@ void makeCompositionTable(const IonStreamData *i ,const RangeFile *r,
 // provide the transformation vectors, so singular values only provide
 // scalar information separate from the original input basis. The first value
 // does *not* correspond to the "x" direction of your input, for example.
-/*void computeSingularValues(float *data, size_t numRows, size_t numCols,
+void computeEigenValues(gsl_matrix *m, size_t numRows, size_t numCols,
 				vector<float> &resultValues, vector<Point3D> &resultVectors)
 {
 
 	//Although this function *mostly* works on arbitrary datasizes, the vector<Point3D> is of course
 	//fixed to being 3D..
-	ASSERT(numCols == 3);
+	ASSERT(numCols == 3 && numRows == 3);
 
-	gsl_matrix *m=gsl_matrix_alloc(numRows,numCols);
-	for(unsigned int ui=0;ui<numRows;ui++)
-	{
-		for(unsigned int uj=0;uj<numCols; uj++)
-			gsl_matrix_set(m,ui,uj,data[ui*numCols+uj]);
-	}
 
-	//Set up the output vector space, the singular result space and
+	//Set up the output vector space, the eigen result space and
 	//some scratch space for the program
-	gsl_vector *singularVals= gsl_vector_alloc(numCols); //Singular value results
-	gsl_matrix *newSpace = gsl_matrix_alloc(numCols,numCols); // Singular basis vectors
-	gsl_vector *workspace = gsl_vector_alloc(numCols); //scratch space
-
-	//Transformation space set to orthogonal Cartesian
-	gsl_matrix_set_identity(newSpace); //U
+	gsl_vector *eigenVals= gsl_vector_alloc(numCols); //Eigen value results
+	gsl_matrix *eigenVecs= gsl_matrix_alloc(numCols,numCols); // Eigen vectors
+	gsl_eigen_symmv_workspace *workspace = gsl_eigen_symmv_alloc(numCols); //scratch space
 
 	//Decompose matrix. Note that input matrix is overwritten by gsl. 
-	gsl_linalg_SV_decomp(m,newSpace,
-			singularVals,workspace);
+	gsl_eigen_symmv(m,eigenVals,
+			eigenVecs,workspace);
+	gsl_eigen_symmv_sort (eigenVals, eigenVecs, GSL_EIGEN_SORT_VAL_DESC);
 
 	resultValues.clear();
 	for(size_t ui=0;ui<numCols;ui++)
 	{
 		float v;
-		v = gsl_vector_get(singularVals,ui);
-
-		ASSERT(v >=0.0f);
+		v = gsl_vector_get(eigenVals,ui);
 		resultValues.push_back(v);
+
 	}
 
 	//Copy out the decomposed V matrix
@@ -216,18 +210,17 @@ void makeCompositionTable(const IonStreamData *i ,const RangeFile *r,
 	for(size_t ui=0;ui<numCols; ui++)
 	{
 		for(size_t uj=0;uj<numCols; uj++)
-			resultVectors[ui][uj] = gsl_matrix_get(newSpace,ui,uj);
+			resultVectors[ui][uj] = gsl_matrix_get(eigenVecs,ui,uj);
 	}
 
 
 	//Free storage space
-	gsl_vector_free(singularVals); 
-	gsl_vector_free(workspace);
+	gsl_vector_free(eigenVals); 
+	gsl_matrix_free(eigenVecs); 
+	gsl_eigen_symmv_free(workspace);
 	
-	gsl_matrix_free(newSpace);
-	gsl_matrix_free(m);
 }
-*/
+
 
 void ClusterAnalysisFilter::checkIonEnabled(bool &core, bool &bulk) const
 {
@@ -442,7 +435,7 @@ void ClusterAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 }
 
 unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 	// - cluster ID alters the mass, so we can't use this analysis
 	// at the same time
@@ -468,6 +461,9 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 
 	//OK, we actually have to do some work.
 	//================
+	//Set K3D tree abort pointer and progress
+	K3DTreeMk2::setAbortFlag(Filter::wantAbort);
+	K3DTreeMk2::setProgressPtr(&progress.filterProgress);
 
 	
 	//Find out how much total size we need in points vector
@@ -540,7 +536,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 		{
 			unsigned int errCode;
 			errCode=refreshLinkClustering(dataIn,clusteredCore,
-						clusteredBulk,progress,callback);
+						clusteredBulk,progress);
 
 			if(errCode)
 				return errCode;
@@ -561,7 +557,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 		paranoidDebugAssert(clusteredCore,clusteredBulk);
 #endif
 	if(wantCropSize)
-		stripClusterBySize(clusteredCore,clusteredBulk,callback,progress);
+		stripClusterBySize(clusteredCore,clusteredBulk,progress);
 
 	bool haveBulk,haveCore;
 	haveBulk=clusteredBulk.size();
@@ -638,63 +634,53 @@ ASSERT(!(haveBulk && !haveCore));
 		}
 	}
 
-/*
 	if(wantClusterMorphology)
 	{
 		//Compute the singular values for each cluster
 		//which describe the cluster morphology, their basis vectors, and 
 		//the mass centre for the clusters
 
-		//The premise of this analysis technique is outlined in Sudbrack,2004 - to some extent.
-		// In that work, they have several methods of doing morphology analysis, including where they 
-		//  use a PCA which wraps up the SVD to do the calculations.
-		// Here we use the SVD, which is faster & more space efficient, as we don't form the covariance 
-		// matrix, but work directly on our data.
-
-		// Aside from a sqrt, we should get the same answer for the ellipsoidal fit. 
-		//
-		// Showing SVD & PCA to be equivalent enough for our use:
-		//  SVD : X=USV', PCA: XX'=WDW' ;
-		//
-		//PCA, sub-ing Xs SVD representation:
-		//  XX' = (USV')(USV')'
-		//  XX' = (USV')(VSU')
-		//  XX' = US(V'V)SU'
-		//  V is orthogonal, thus V'V =I
-		//  as transpose of orthogonal is its own inverse.
-		//  XX' = US^2U'
-		//
-		// In our case, X_i=P_i-P_bar, where P_i is the i-th point in the cluster
-		//
-		//  Thus D=S^2  and, D, being diagonal implies S=D^0.5
 		//Sudbrack, C. : Decomposition behavior in model Ni-Al-Cr-X superalloys: 
 		// temporal evolution and compositional pathways on a nanoscale (Ph.D. Thesis, 2004) 
 		//http://arc.nucapt.northwestern.edu/refbase/files/Sudbrack_Ph.D._thesis_2004_6MB.pdf 
 
-		//Singular values, 
-		//Mass centres of clusters & Singular vectors 
-		vector<vector<float> > singularVals;
+		//Eigen values, 
+		//Mass centres of clusters & Eigen vectors 
 		vector<std::pair<Point3D,std::vector<Point3D> > > singularVectors;
-		getSingularValues(clusteredCore,clusteredBulk,
-					singularVals,singularVectors);
+		vector<vector<float> > singularVals; 
 
-		ASSERT(singularVals.size() == clusteredCore.size());
-		ASSERT(singularVectors.size() == clusteredCore.size());
+		singularVectors.resize(clusteredCore.size());
+		singularVals.resize(clusteredCore.size());
+		for(unsigned int ui=0;ui<clusteredCore.size();ui++)
+		{
+			if(clusteredBulk.size())	
+				getEllipsoidalFit(clusteredCore[ui],clusteredBulk[ui],singularVectors[ui]);
+			else
+			{
+				vector<IonHit> dummy;
+				getEllipsoidalFit(clusteredCore[ui],dummy,singularVectors[ui]);
+			}
+			vector<float> thisSingVals;
+			thisSingVals.resize(3);
+			
+			for(unsigned int uj=0;uj<3;uj++)
+			{
+				thisSingVals[uj] =sqrtf(singularVectors[ui].second[uj].sqrMag());
+			}
+			singularVals[ui].swap(thisSingVals);
+		}	
 
 		//Ok, so we have the singular values, now create a 
 		//plot with the values in it
-		PlotStreamData *p = new PlotStreamData;
+		Plot2DStreamData *p = new Plot2DStreamData;
 		p->parent=this;
 
-		p->plotMode=PLOT_MODE_1D;
-		p->plotStyle=PLOT_LINE_POINTS;
+		p->plotType=PLOT_2D_SCATTER;
 		p->dataLabel=TRANS("Morphology Plot");
 		p->xLabel=TRANS("\\lambda_1:\\lambda_2 ratio");
 		p->yLabel=TRANS("\\lambda_2:\\lambda_3 ratio");
-		p->xyData.reserve(singularVals.size());
-		//the Y label makes more sense than the plot label here.
-		p->useDataLabelAsYDescriptor=false;
-
+		p->scatterData.reserve(singularVals.size());
+		p->scatterIntensityLog=true;
 
 #pragma omp parallel for
 		for(unsigned int ui=0; ui<singularVals.size();ui++)
@@ -702,26 +688,36 @@ ASSERT(!(haveBulk && !haveCore));
 			if(singularVals[ui].size() == 3 && 
 				singularVals[ui].back() > std::numeric_limits<float>::epsilon())
 			{
-				p->xyData.push_back(make_pair(singularVals[ui][0]/singularVals[ui][1],
-						singularVals[ui][1]/singularVals[ui][2]));
+
+				//sort the singular values
+				vector<float> v;
+				v.resize(3);
+				for(size_t uj=0;uj<3;uj++)	
+					v[uj]= singularVals[ui][uj];
+
+				std::sort(v.begin(),v.end());
+
+				if( v[0] < std::numeric_limits<float>::epsilon() )
+					continue;
+
+				//Plot (sec largest/largest) (y-coord)  vs. ( sec. smallest/largest) (x-coord) eigenvalues
+				//Keeping data in [0,1] range (thanks to AJL for pointing out the flip!)
+				pair<float,float> pr(v[0]/v[1],v[1]/v[2]);
+				#pragma omp critical
+				{
+				p->scatterData.push_back(pr);
+				p->scatterIntensity.push_back(clusteredCore[ui].size());
+				}
 
 			}
 		}
 
-		if(p->xyData.size())
+		if(p->scatterData.size())
 		{
 			p->index=curPlotIndex;
 			curPlotIndex++;
-			p->autoSetHardBounds();
 
-			if(cache)
-			{
-				p->cached=1;
-				filterOutputs.push_back(p);
-			}
-			else
-				p->cached=0;
-
+			cacheAsNeeded(p);
 			getOut.push_back(p);
 
 		}
@@ -730,7 +726,10 @@ ASSERT(!(haveBulk && !haveCore));
 			consoleOutput.push_back(TRANS("No clusters had sufficient dimensionality to compute singular values"));
 			delete p;
 		}
-		
+	
+
+		//Draw the singular vectors in 3D, per cluster
+		{	
 		
 		DrawStreamData *singularVectorDraw = new DrawStreamData;
 		singularVectorDraw->parent=this;
@@ -740,8 +739,7 @@ ASSERT(!(haveBulk && !haveCore));
 		//the length of each part of the axis shows the primary directions
 		//for that part of the cluster
 		for(unsigned int ui=0;ui<singularVectors.size();ui++)
-		{	
-
+		{
 			for(unsigned int uj=0;uj<3;uj++)
 			{
 				//Need at least j-rank on the singular vectors.
@@ -752,32 +750,31 @@ ASSERT(!(haveBulk && !haveCore));
 				DrawVector *d;
 				d= new DrawVector;
 				d->setColour(uj ==0, uj == 1, uj ==2,1);
-				Point3D start,singVector;
+				d->setDrawArrow(false);
+				
+				Point3D start,semiAxis;
 
-				//make a little cross in free space
-				singVector=singularVectors[ui].second[uj]*singularVals[ui][uj];
-				start=singularVectors[ui].first-singVector*0.5f;
+				semiAxis=singularVectors[ui].second[uj];
+				start=singularVectors[ui].first;
 
 
 				//First in current singular pair is cluster origin
 				d->setOrigin(start);
 				//Second contains each individual  thing
-				d->setVector(singVector*0.5f);
+				d->setVector(semiAxis);
 				singularVectorDraw->drawables.push_back(d);
 			}
 		}
 
-		if(cache)
-		{
-			WARN(false,"Drawable caching is broken now. Refusing to cache!");
-			singularVectorDraw->cached=0;
-		}
-		else
-			singularVectorDraw->cached=0;
-
+		cacheAsNeeded(singularVectorDraw);
+	
 		getOut.push_back(singularVectorDraw);
+
+		}
+	
+
 	}
-*/
+
 	//Construct the output clustered data.
 	IonStreamData *i = new IonStreamData;
 	i->parent =this;	
@@ -1058,7 +1055,6 @@ void ClusterAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	}
 
 
-	/*
 	tmpStr=boolStrEnc(wantClusterMorphology);
 	p.name=TRANS("Morphology Dist.");
 	p.data=tmpStr;
@@ -1066,7 +1062,6 @@ void ClusterAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	p.helpText=TRANS("Create a plot showing cluster aspect ratio");
 	p.key=KEY_WANT_CLUSTERMORPHOLOGY;
 	propertyList.addProperty(p,curGroup);
-	*/
 
 
 	tmpStr=boolStrEnc(wantClusterID);
@@ -1752,7 +1747,13 @@ bool ClusterAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &pa
 		if(!XMLGetAttrib(tmpPtr,enabled,"enabled"))
 			return false;
 
+		std::string tmpName;
+		if(!XMLGetAttrib(tmpPtr,tmpName,"name"))
+			return false;
+	
 		ionCoreEnabled.push_back(enabled);
+		
+		ionNames.push_back(tmpName);
 	}
 
 	if(XMLHelpFwdToElem(nodePtr,"bulk"))
@@ -1790,10 +1791,16 @@ unsigned int ClusterAnalysisFilter::getRefreshBlockMask() const
 
 unsigned int ClusterAnalysisFilter::getRefreshEmitMask() const
 {
-	if(wantClusterSizeDist || wantClusterComposition || wantClusterMorphology)
-		return STREAM_TYPE_IONS | STREAM_TYPE_PLOT | STREAM_TYPE_DRAW;
-	else
-		return STREAM_TYPE_IONS;
+	unsigned int mask = STREAM_TYPE_IONS;
+
+
+	if(wantClusterSizeDist || wantClusterComposition )
+		mask|= STREAM_TYPE_PLOT | STREAM_TYPE_DRAW;
+		
+	if(wantClusterMorphology)
+		mask|= STREAM_TYPE_PLOT2D | STREAM_TYPE_DRAW;
+
+	return mask;
 }
 
 unsigned int ClusterAnalysisFilter::getRefreshUseMask() const
@@ -1801,10 +1808,9 @@ unsigned int ClusterAnalysisFilter::getRefreshUseMask() const
 	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE;	
 }
 
-std::string ClusterAnalysisFilter::getErrString(unsigned int i) const
+std::string ClusterAnalysisFilter::getSpecificErrString(unsigned int i) const
 {
 	const char *errStrs[] = {"",
-		"Clustering aborted",
 		"No core ions for cluster",
 		"No bulk ions for cluster" };
 
@@ -1821,8 +1827,8 @@ void ClusterAnalysisFilter::setPropFromBinding(const SelectionBinding &b)
 
 unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<const FilterStreamData *> &dataIn,
 		std::vector< std::vector<IonHit> > &clusteredCore, 
-		std::vector<std::vector<IonHit>  > &clusteredBulk,ProgressData &progress,
-					bool (*callback)(bool)) 
+		std::vector<std::vector<IonHit>  > &clusteredBulk,ProgressData &progress)
+					
 {
 
 	//Clustering algorithm, as per 
@@ -1859,14 +1865,13 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	// In the implementation, there are more steps, due to data structure construction
 	// and other computational concerns
 	
-	bool needCoring=enableCoreClassify;
 	bool needErosion=enableErosion && enableBulkLink;
 	unsigned int numClusterSteps=4;
 	if(enableBulkLink)
 		numClusterSteps+=2;
 	if(needErosion)
 		numClusterSteps++;
-	if(needCoring)
+	if(enableCoreClassify)
 		numClusterSteps++;
 
 
@@ -1905,11 +1910,11 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	progress.filterProgress=0;
 	progress.stepName=TRANS("Collate");
 	progress.maxStep=numClusterSteps;
-	if(!(*callback)(true))
-		return ABORT_ERR;
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 
 	vector<IonHit> coreIons,bulkIons;
-	createRangedIons(dataIn,coreIons,bulkIons,progress,callback);
+	createRangedIons(dataIn,coreIons,bulkIons,progress);
 
 	if(coreIons.empty())
 		return 0;
@@ -1918,129 +1923,25 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	K3DTreeMk2 coreTree,bulkTree;
 	BoundCube bCore,bBulk;
 
-	//Build the core KD tree
+	//Build the core KD & bulk trees
 	//----------
 	progress.step++;
 	progress.filterProgress=0;
 	progress.stepName=TRANS("Build Core");
-	if(!(*callback)(true))
-		return ABORT_ERR;
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 
-	//Build the core tree (eg, solute ions)
-	coreTree.setCallback(callback);
-	coreTree.setProgressPointer(&(progress.filterProgress));
-	coreTree.resetPts(coreIons,false);
-	coreTree.build();
+	unsigned int errCode;
+	errCode=buildKDTrees(coreIons,bulkIons,coreTree,bulkTree,progress);
 
+
+	if(errCode)
+		return errCode;
 	coreTree.getBoundCube(bCore);
-	//----------
-
-	if(needCoring)
-	{
-		//Perform Clustering Stage (1) : clustering classification
-		//==	
-		progress.step++;
-		progress.stepName=TRANS("Classify Core");
-		if(!(*callback)(true))
-			return ABORT_ERR;
-		
-		vector<bool> coreOK;
-		ASSERT(coreIons.size() == coreTree.size());
-		coreOK.resize(coreTree.size());
-		float coreDistSqr=coreDist*coreDist;
-
-		//TODO: the trees internal Tags prevent us from parallelising this. 
-		//       :(. If we could pass a tag map to the tree, this would solve the problem
-		for(size_t ui=0;ui<coreTree.size();ui++)
-		{
-			const Point3D *p;
-			size_t pNN;	
-			unsigned int k;
-			vector<size_t> tagsToClear;
-		
-			//Don't match ourselves -- to do this we must "tag" this tree node before we start
-			p=coreTree.getPt(ui);
-			coreTree.tag(ui);
-			tagsToClear.push_back(ui);
-			
-			k=1;
-
-			//Loop through this ions NNs, seeing if the kth NN is within a given radius
-			do
-			{
-				pNN=coreTree.findNearestUntagged(*p,bCore,true);
-				tagsToClear.push_back(pNN);
-				k++;
-
-			}while( pNN !=(size_t)-1 && k<coreKNN);
-			
-
-			//Core is only OK if the NN is good, and within the 
-			//specified distance
-			if(pNN == (size_t)-1)
-			{
-				coreOK[coreTree.getOrigIndex(ui)]=false;
-				ASSERT(tagsToClear.back() == (size_t) -1);
-				tagsToClear.pop_back(); //get rid of the -1
-			}
-			else
-			{
-				float nnSqrDist;
-				nnSqrDist=p->sqrDist(*(coreTree.getPt(pNN)));
-				coreOK[coreTree.getOrigIndex(ui)] = nnSqrDist < coreDistSqr;
-			}
-
-
-			//reset the tags, so we can find near NNs
-			coreTree.clearTags(tagsToClear);
-			tagsToClear.clear();
-
-			if(!(ui%PROGRESS_REDUCE))
-			{
-				progress.filterProgress= (unsigned int)(((float)ui/(float)coreTree.size())*100.0f);
-				if(!(*callback)(false))
-					return ABORT_ERR;
-			}
-		}
-
-
-		for(size_t ui=coreOK.size();ui;)
-		{
-			ui--;
-
-			if(!coreOK[ui])
-			{
-				//We have to convert the core ion to a bulk ion
-				//as it is rejected.
-				bulkIons.push_back(coreIons[ui]);
-				coreIons[ui]=coreIons.back();
-				coreIons.pop_back();
-			}
-		}
-
-		//Re-Build the core KD tree
-		coreTree.setCallback(callback);
-		coreTree.setProgressPointer(&(progress.filterProgress));
-		coreTree.resetPts(coreIons,false);
-		coreTree.build();
-
-		coreTree.getBoundCube(bCore);
-		//==	
-	}
-
-
-	//Build the bulk tree (eg matrix ions.), as needed
 	if(enableBulkLink)
-	{
-		progress.step++;
-		progress.stepName=TRANS("Build Bulk");
-		if(!(*callback)(true))
-			return ABORT_ERR;
-		bulkTree.setCallback(callback);
-		bulkTree.setProgressPointer(&(progress.filterProgress));
-		bulkTree.resetPts(bulkIons,false);
-		bulkTree.build();
-	}
+		bulkTree.getBoundCube(bBulk);
+		
+
 	//----------
 	
 	
@@ -2053,16 +1954,14 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 
 	//Update progress stuff
 	progress.step++;
-	progress.stepName=TRANS("Core");
 	progress.filterProgress=0;
-	if(!(*callback)(true))
-		return ABORT_ERR;
+	progress.stepName=TRANS("Core");
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 		
 
 	vector<vector<size_t> > allCoreClusters,allBulkClusters;
 	const float linkDistSqr=linkDist*linkDist;
-	
-	size_t progressCount=0;
 	
 	//When this queue is exhausted, move to the next cluster
 	for(size_t ui=0;ui<coreTree.size();ui++)
@@ -2133,14 +2032,10 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 				}
 			
 
-				progressCount++;
-				if(!(progressCount%PROGRESS_REDUCE))
-				{
-					//Progress may be a little non-linear if cluster sizes are not random
-					progress.filterProgress= (unsigned int)(((float)ui/(float)coreTree.size())*100.0f);
-					if(!(*callback)(false))
-						return ABORT_ERR;
-				}
+				//Progress may be a little non-linear if cluster sizes are not random
+				progress.filterProgress= (unsigned int)(((float)ui/(float)coreTree.size())*100.0f);
+				if(*Filter::wantAbort)
+					return FILTER_ERR_ABORT;
 			}
 
 
@@ -2160,8 +2055,8 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	//====
 
 	//update progress
-	if(!(*callback)(false))
-		return ABORT_ERR;
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 
 	//NOTE : Speedup trick. If we know the cluster size at this point
 	// and we know we don't want to count the bulk, we can strip out clusters
@@ -2198,10 +2093,10 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 
 		//Update progress stuff
 		progress.step++;
-		progress.stepName=TRANS("Bulk");
 		progress.filterProgress=0;
-		if(!(*callback)(true))
-			return ABORT_ERR;
+		progress.stepName=TRANS("Bulk");
+		if(*Filter::wantAbort)
+			return FILTER_ERR_ABORT;
 
 		if(bulkTree.size())
 		{
@@ -2298,8 +2193,8 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 							prog=PROGRESS_REDUCE;
 							//Progress may be a little non-linear if cluster sizes are not random
 							progress.filterProgress= (unsigned int)(((float)ui/(float)allCoreClusters.size())*100.0f);
-							if(!(*callback)(false))
-								return ABORT_ERR;
+							if(*Filter::wantAbort)
+								return FILTER_ERR_ABORT;
 
 						}
 					}
@@ -2328,10 +2223,10 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	{
 		//Update progress stuff
 		progress.step++;
-		progress.stepName=TRANS("Erode");
 		progress.filterProgress=0;
-		if(!(*callback)(true))
-			return ABORT_ERR;
+		progress.stepName=TRANS("Erode");
+		if(*Filter::wantAbort)
+			return FILTER_ERR_ABORT;
 
 		//Now perform the "erosion" step, where we strip off previously
 		//tagged matrix, if it is within a given distance of some untagged
@@ -2388,7 +2283,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 				numCounted+=PROGRESS_REDUCE;
 				//Progress may be a little non-linear if cluster sizes are not random
 				progress.filterProgress= (unsigned int)(((float)numCounted/(float)allBulkClusters.size())*100.0f);
-				if(!(*callback)(false))
+				if(*Filter::wantAbort)
 					spin=true;
 				}
 
@@ -2397,17 +2292,17 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		}
 
 		if(spin)
-			return ABORT_ERR;
+			return FILTER_ERR_ABORT;
 	}
 	//===
 
 	progress.step++;
-	progress.stepName=TRANS("Re-Collate");
 	progress.filterProgress=0;
+	progress.stepName=TRANS("Re-Collate");
 
 	//update progress
-	if(!(*callback)(true))
-		return ABORT_ERR;
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
 	clusteredCore.resize(allCoreClusters.size());
 	clusteredBulk.resize(allBulkClusters.size());
 
@@ -2437,11 +2332,134 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		}
 	}
 
-	//Update progress
-	(*callback)(false);
 
 	return 0;	
 }
+
+unsigned int ClusterAnalysisFilter::buildKDTrees(vector<IonHit> &coreIons, vector<IonHit> & bulkIons,
+		K3DTreeMk2 &coreTree, K3DTreeMk2 &bulkTree, ProgressData &progress) const
+{
+		
+	coreTree.resetPts(coreIons,false);
+	if(!coreTree.build())
+		return FILTER_ERR_ABORT;
+
+	BoundCube bCore;
+	coreTree.getBoundCube(bCore);
+
+
+	if(enableCoreClassify)
+	{
+		//Perform Clustering Stage (1) : clustering classification
+		// This modifies the trees, so we have to do it here.
+		//==	
+		progress.step++;
+		progress.filterProgress=0;
+		progress.stepName=TRANS("Classify Core");
+		if(*Filter::wantAbort)
+			return FILTER_ERR_ABORT;
+		
+		vector<bool> coreOK;
+		ASSERT(coreIons.size() == coreTree.size());
+		coreOK.resize(coreTree.size());
+		float coreDistSqr=coreDist*coreDist;
+
+		//TODO: the trees internal Tags prevent us from parallelising this. 
+		//       :(. If we could pass a tag map to the tree, this would solve the problem
+		for(size_t ui=0;ui<coreTree.size();ui++)
+		{
+			const Point3D *p;
+			size_t pNN;	
+			unsigned int k;
+			vector<size_t> tagsToClear;
+		
+			//Don't match ourselves -- to do this we must "tag" this tree node before we start
+			p=coreTree.getPt(ui);
+			coreTree.tag(ui);
+			tagsToClear.push_back(ui);
+			
+			k=1;
+
+			//Loop through this ions NNs, seeing if the kth NN is within a given radius
+			do
+			{
+				pNN=coreTree.findNearestUntagged(*p,bCore,true);
+				tagsToClear.push_back(pNN);
+				k++;
+
+			}while( pNN !=(size_t)-1 && k<coreKNN);
+			
+
+			//Core is only OK if the NN is good, and within the 
+			//specified distance
+			if(pNN == (size_t)-1)
+			{
+				coreOK[coreTree.getOrigIndex(ui)]=false;
+				ASSERT(tagsToClear.back() == (size_t) -1);
+				tagsToClear.pop_back(); //get rid of the -1
+			}
+			else
+			{
+				float nnSqrDist;
+				nnSqrDist=p->sqrDist(*(coreTree.getPt(pNN)));
+				coreOK[coreTree.getOrigIndex(ui)] = nnSqrDist < coreDistSqr;
+			}
+
+
+			//reset the tags, so we can find near NNs
+			coreTree.clearTags(tagsToClear);
+			tagsToClear.clear();
+
+			progress.filterProgress= (unsigned int)(((float)ui/(float)coreTree.size())*100.0f);
+			if(*Filter::wantAbort)
+				return FILTER_ERR_ABORT;
+		}
+
+
+		for(size_t ui=coreOK.size();ui;)
+		{
+			ui--;
+
+			if(!coreOK[ui])
+			{
+				//We have to convert the core ion to a bulk ion
+				//as it is rejected.
+				bulkIons.push_back(coreIons[ui]);
+				coreIons[ui]=coreIons.back();
+				coreIons.pop_back();
+			}
+		}
+
+		//Re-Build the core KD tree
+		coreTree.resetPts(coreIons,false);
+		if(!coreTree.build())
+			return FILTER_ERR_ABORT;
+		//==	
+	}
+	coreTree.getBoundCube(bCore);
+	//----------
+
+
+
+	//Build the bulk tree (eg matrix ions.), as needed
+	if(enableBulkLink)
+	{
+		progress.step++;
+		progress.filterProgress=0;
+		progress.stepName=TRANS("Build Bulk");
+		if(*Filter::wantAbort)
+			return FILTER_ERR_ABORT;
+
+		bulkTree.resetPts(bulkIons,false);
+		if(!bulkTree.build())
+			return FILTER_ERR_ABORT;
+
+	}
+
+	return 0;
+}
+
+
 
 #ifdef DEBUG
 
@@ -2491,6 +2509,9 @@ bool ClusterAnalysisFilter::paranoidDebugAssert(
 						//What!? We Don't have an NN? How did we get 
 						//clustered in the first place? This is wrong.
 						failure=true;
+					#ifdef DEBUG	
+						using std::cerr;	
+						using std::endl;	
 						cerr << "FAILED! " << endl;
 
 						cerr << "BULK:" << bulk[ui].size() << endl;
@@ -2504,7 +2525,7 @@ bool ClusterAnalysisFilter::paranoidDebugAssert(
 						{
 							cerr << core[ui][un].getPos() << endl;
 						}
-
+					#endif
 
 						break;
 					}
@@ -2526,7 +2547,7 @@ bool ClusterAnalysisFilter::paranoidDebugAssert(
 #endif
 
 void ClusterAnalysisFilter::createRangedIons(const std::vector<const FilterStreamData *> &dataIn,vector<IonHit> &core,
-			vector<IonHit> &bulk, ProgressData &p, bool (*callback)(bool)) const
+			vector<IonHit> &bulk, ProgressData &p) const
 {
 
 	//TODO: Progress reporting and callback
@@ -2687,7 +2708,7 @@ PlotStreamData* ClusterAnalysisFilter::clusterSizeDistribution(const vector<vect
 
 bool ClusterAnalysisFilter::stripClusterBySize(vector<vector<IonHit> > &clusteredCore,
 						vector<vector<IonHit> > &clusteredBulk,
-							bool (*callback)(bool),ProgressData &progress) const
+							ProgressData &progress) const
 
 {
 
@@ -2713,13 +2734,10 @@ bool ClusterAnalysisFilter::stripClusterBySize(vector<vector<IonHit> > &clustere
 				clusteredBulk[ui].swap(clusteredBulk.back());
 				clusteredBulk.pop_back();
 			}
-			if(!(ui%PROGRESS_REDUCE)  && clusteredCore.size())
-			{
-				progress.filterProgress= (unsigned int)(((float)ui/(float)clusteredCore.size()+1)*100.0f);
+			progress.filterProgress= (unsigned int)(((float)ui/(float)clusteredCore.size()+1)*100.0f);
 				
-				if(!(*callback)(false))
-					return ABORT_ERR;
-			}
+			if(*Filter::wantAbort)
+				return FILTER_ERR_ABORT;
 		}
 	}
 	else
@@ -2735,13 +2753,11 @@ bool ClusterAnalysisFilter::stripClusterBySize(vector<vector<IonHit> > &clustere
 				clusteredCore[ui].swap(clusteredCore.back());
 				clusteredCore.pop_back();
 			}
-			if(!(ui%PROGRESS_REDUCE) )
-			{
-				progress.filterProgress= (unsigned int)(((float)ui/(float)clusteredCore.size()+1)*100.0f);
-				
-				if(!(*callback)(false))
-					return ABORT_ERR;
-			}
+
+			progress.filterProgress= (unsigned int)(((float)ui/(float)clusteredCore.size()+1)*100.0f);
+			
+			if(*Filter::wantAbort)
+				return FILTER_ERR_ABORT;
 		}
 
 	}
@@ -2913,166 +2929,174 @@ void ClusterAnalysisFilter::genCompositionVersusSize(const vector<vector<IonHit>
 
 }
 
-/*
-void ClusterAnalysisFilter::getSingularValues(const vector<vector<IonHit> > &clusteredCore, 
-	const vector<vector<IonHit> > &clusteredBulk, vector<vector<float> > &singularValues,
-		vector<std::pair<Point3D,vector<Point3D> > > &singularVectors) const
+//Sudbrack, C. : Decomposition behavior in model Ni-Al-Cr-X superalloys: 
+// temporal evolution and compositional pathways on a nanoscale (Ph.D. Thesis, 2004) 
+//http://arc.nucapt.northwestern.edu/refbase/files/Sudbrack_Ph.D._thesis_2004_6MB.pdf 
+//============
+
+//un-normalised deviation matrix summation (L, equation A1.1)
+void computeMatrixEntries(const vector<IonHit> &atoms,const Point3D &clusterCentre,  gsl_matrix *m)
 {
-	const unsigned int DIMENSION=3;
-
-	float *data=0;
-	size_t dataSize=0;
-	if(clusteredBulk.size())
+	//TODO: ASsert matrix is 3x3
+	//Fill the data array with deviation vectors
+	for(size_t ui=0;ui<atoms.size();ui++)
 	{
-		ASSERT(clusteredCore.size() == clusteredBulk.size());
-//#pragma omp parallel for shared(singularValues,clusteredCore,clusteredBulk) private(data,dataSize)
-		for(unsigned int ui=0;ui<clusteredCore.size(); ui++)
+		Point3D delta;
+		delta=atoms[ui].getPos() - clusterCentre;
+		//compute diagonal terms
+		for(size_t uj=0;uj<3;uj++)
 		{
-			vector<float> curSingularVals;
-			vector<Point3D> curSingularBases;
-
-			curSingularVals.clear();
-			curSingularBases.clear();
-			//For this cluster, compute its singular values amplitudes
-			// (ignore direction)
-			size_t numEntries = clusteredCore[ui].size() + clusteredBulk[ui].size();
-
-
-			//Check to see if we have sufficient data to compute an SVD
-			if(numEntries <=DIMENSION )
-			{
-#pragma omp critical
-				{
-				singularValues.push_back(curSingularVals);
-				singularVectors.push_back(make_pair(Point3D(0,0,0),curSingularBases));
-				}
-				continue; 
-			}
+			//Stephenson matrix and sudbrack matrix dont match
+			// on main diagonal ?
+			// - stephenson matrix has error, as does sudbrack matrix (in writing, not code) 
+			unsigned int a,b;
+			a= (uj+1)%3; //for ui=0 [a b] <=>[y,z]; similarly,  {x,z}, {x,y}
+			b= (uj+2)%3;
 			
-			//Allocate space, by growing as needed
-			if(numEntries*DIMENSION > dataSize)
-			{
-				//TODO: Is it faster to pre-compute the maximum cluster size?
-				//      then determine the cluster backbone from that? 
-				//      Should we be using realloc?
-				if(data)
-					delete[] data;
-				data = new float[numEntries*DIMENSION];
-				dataSize=numEntries*DIMENSION;
-			}
-
-			//Compute the cluster's centre of mass (assuming unit mass per object)
-			Point3D centroid[2];
-			IonHit::getCentroid(clusteredCore[ui],centroid[0]);
-			IonHit::getCentroid(clusteredBulk[ui],centroid[1]);
-		
-			Point3D clusterCentre;
-			clusterCentre= centroid[0]+centroid[1];
-			clusterCentre*=1.0f/(float)(clusteredCore[ui].size()+clusteredBulk[ui].size());
-			
-			//Fill the data array
-			float *p;
-			p=data;
-			for(size_t uj=0;uj<clusteredCore[ui].size();uj++)
-			{
-				for(size_t uk=0;uk<DIMENSION;uk++)
-				{
-					*(p) = clusteredCore[ui][uj].getPos()[uk]-clusterCentre[uk];
-					p++;
-				}
-			}
-			
-			for(size_t uj=0;uj<clusteredBulk[ui].size();uj++)
-			{
-				for(size_t uk=0;uk<DIMENSION;uk++)
-				{
-					*(p) = clusteredBulk[ui][uj].getPos()[uk]-clusterCentre[uk];
-					p++;
-				}
-			}
-
-			//Cmpute the DIMENSION-D singular value decomposition for
-			//this vector set
-//			computeSingularValues(data,numEntries,
-//						DIMENSION,curSingularVals,curSingularBases);
-
-#pragma omp critical
-			{
-			singularValues.push_back(curSingularVals);
-			singularVectors.push_back(make_pair(clusterCentre,curSingularBases));
-			}
-
+			float v1,v2,vRes;	
+			v1 = delta[a];
+			v2 = delta[b];
+			vRes=v1*v1+v2*v2;
+			float v;
+			v=gsl_matrix_get(m,uj,uj);
+			v+=vRes;
+			gsl_matrix_set(m,uj,uj,v);
 		}
+
+		//compute off-diagonal terms. Note matrix is symmetric,
+		// so we only need to compute xy,xz and yz 
+		// Written equation in sudbrack thesis is incorrect, and mixes distance^4 and
+		// distance^2
+		float v;
+		//xy
+		v= gsl_matrix_get(m,0,1);
+		v-=delta[0]*delta[1];
+		gsl_matrix_set(m,0,1,v);
+		//xz
+		v= gsl_matrix_get(m,0,2);
+		v-=delta[0]*delta[2];
+		gsl_matrix_set(m,0,2,v);
+		//yz
+		v= gsl_matrix_get(m,1,2);
+		v-=delta[1]*delta[2];
+		gsl_matrix_set(m,1,2,v);
+
+	}
+
+
+	//Mirror the off-diagonal terms
+	float v;
+	//yx
+	v= gsl_matrix_get(m,0,1);
+	gsl_matrix_set(m,1,0,v);
+	//zx
+	v= gsl_matrix_get(m,0,2);
+	gsl_matrix_set(m,2,0,v);
+	//zy
+	v= gsl_matrix_get(m,1,2);
+	gsl_matrix_set(m,2,1,v);
+}
+
+// NOTE: This is not the enclosing ellipse. For that, see:
+// Nima Moshtagh - "MINIMUM VOLUME ENCLOSING ELLIPSOIDS", U.Penn. 
+// 10.1.1.116.7691.
+void ClusterAnalysisFilter::getEllipsoidalFit(const vector<IonHit> &coreAtoms, const vector<IonHit> &bulkAtoms,
+		std::pair< Point3D, vector<Point3D> > &ellipseData) 
+{
+
+
+	
+	gsl_matrix *m = gsl_matrix_alloc(3,3);
+	gsl_matrix_set_zero(m);
+
+
+	Point3D clusterCentre;
+	if(bulkAtoms.size())
+	{	
+		//Compute the cluster's centre of mass (assuming unit mass per object)
+		//---
+		Point3D centroid[2];
+		IonHit::getCentroid(coreAtoms,centroid[0]);
+		IonHit::getCentroid(bulkAtoms,centroid[1]);
+
+		//compute overall centroid
+		float coreFactor,bulkFactor;
+		coreFactor = coreAtoms.size()/(float)(coreAtoms.size() + bulkAtoms.size());
+		bulkFactor = bulkAtoms.size()/(float)(coreAtoms.size() + bulkAtoms.size());
+		clusterCentre= centroid[0]*coreFactor + centroid[1]*bulkFactor;
+		//---
+	
+		//compute the components of the distance deviation matrix	
+		computeMatrixEntries(coreAtoms,clusterCentre,m);
+		computeMatrixEntries(bulkAtoms,clusterCentre,m);
+
 	}
 	else
 	{
+		IonHit::getCentroid(coreAtoms,clusterCentre);
+		computeMatrixEntries(coreAtoms,clusterCentre,m);
+	}	
 
-//#pragma omp parallel for shared(singularValues,clusteredCore,clusteredBulk) private(data,dataSize)
-		for(unsigned int ui=0;ui<clusteredCore.size(); ui++)
+	//normalise matrix entries	
+	gsl_matrix_scale(m,1.0/(double)(coreAtoms.size() + bulkAtoms.size()));
+
+	//std::cerr << "Fit matrix is :" << std::endl;
+	//gslPrint(m);
+
+	//compute SVD to obtain eigenvalues
+	vector<float> vals;
+	vector<Point3D> pts;
+	computeEigenValues(m,3,3,vals,pts);
+
+	gsl_matrix_free(m);
+
+	//Convert eigenvalues to their positive form
+	 
+
+	//Check that the values are sorted in *descending* order (e1 >=e2 >=e3)
+	ASSERT(vals[0] >=vals[1] && vals[1]>=vals[2]);
+
+	//Convert to semi-axes of ellipse
+	ellipseData.second.resize(3,Point3D(0,0,0));
+
+	float semiAxes[3];
+	for(size_t ui=0;ui<3;ui++)
+	{
+		unsigned int a,b,c;
+		a=ui;
+		b=(ui+1)%3;
+		c=(ui+2)%3;
+
+	
+		if(vals[b] + vals[c] > vals[a])
 		{
-			vector<float> curSingularVals;
-			vector<Point3D> curSingularBases;
-
-			curSingularVals.clear();
-			curSingularBases.clear();
-			//For this cluster, compute its singular values amplitudes
-			// (ignore direction)
-			size_t numEntries = clusteredCore[ui].size(); 
-
-
-			//Check to see if we have sufficient data to compute an SVD
-			if(numEntries <=DIMENSION )
-			{
-#pragma omp critical
-				{
-				singularValues.push_back(curSingularVals);
-				singularVectors.push_back(make_pair(Point3D(0,0,0),curSingularBases));
-				}
-				continue; 
-			}
-			//Compute the cluster's centre of mass (assuming unit mass per object)
-			Point3D centroid;
-			IonHit::getCentroid(clusteredCore[ui],centroid);
-			centroid*=1.0f/(float)(clusteredCore[ui].size());
-			//Allocate space, by growing as needed
-			if(numEntries*DIMENSION > dataSize)
-			{
-				//TODO: Is it faster to pre-compute the maximum cluster size?
-				//      then determine the cluster backbone from that? 
-				//      Should we be using realloc?
-				if(data)
-					delete[] data;
-				data = new float[numEntries*DIMENSION];
-				dataSize=numEntries*DIMENSION;
-			}
-
-			//Fill the data array
-			for(size_t uj=0;uj<clusteredCore[ui].size();uj++)
-			{
-				for(size_t uk=0;uk<DIMENSION;uk++)
-					data[uj*DIMENSION + uk] = clusteredCore[ui][uj].getPos()[uk];
-			}
-			//Cmpute the DIMENSION-D singular value decomposition for
-			//this vector set, and the basis vectors 
-			computeSingularValues(data,numEntries,
-				DIMENSION,curSingularVals,curSingularBases);
-
-#pragma omp critical
-			{
-			singularValues.push_back(curSingularVals);
-			singularVectors.push_back(make_pair(centroid,curSingularBases));
-			}
+			//sudbrack's example code does something different to the equations, and multiples by 2,
+			// perhaps obtaining full diameter axis, rather than semi.
+			semiAxes[ui]=sqrt(5.0/2.0*(vals[b] + vals[c] - vals[a]));
+		}
+		else
+		{
+			WARN(true,"Imaginary semi axis value - zeroing");
+			semiAxes[ui] =0;
 		}
 	}
 
-	if(data)
-		delete[] data;
+	for(unsigned int ui=0;ui<3;ui++)
+	{
+		pts[ui]*=semiAxes[ui];
+	}
+
+	ellipseData.first=clusterCentre;
+	ellipseData.second.swap(pts);
 }
-*/
+//============
+
 
 #ifdef DEBUG
 
 #include <memory>
+
+using std::auto_ptr;
 
 //Cluster Ids for generating cluster test datasets with genCluster
 enum
@@ -3094,6 +3118,7 @@ bool isolatedClusterTest();
 //Test the core mode of the core-link clustering algorithm
 bool coreClusterTest();
 
+
 //Unit tests
 bool ClusterAnalysisFilter::runUnitTests()
 {
@@ -3101,6 +3126,8 @@ bool ClusterAnalysisFilter::runUnitTests()
 		return false;
 
 	if(!coreClusterTest())
+		return false;
+	if(!singularValueTest())
 		return false;	
 	return true;
 }
@@ -3263,7 +3290,7 @@ bool isolatedClusterTest()
 
 		//Do the refresh
 		ProgressData p;
-		TEST(!(f->refresh(streamIn,streamOut,p,dummyCallback)),"Refresh err code");
+		TEST(!(f->refresh(streamIn,streamOut,p)),"Refresh err code");
 
 		//Kill the input ion stream, and remove old pointer
 		delete d; 
@@ -3375,7 +3402,7 @@ bool coreClusterTest()
 
 	//Do the refresh
 	ProgressData p;
-	TEST(!(f->refresh(streamIn,streamOut,p,dummyCallback)),"Refresh err code");
+	TEST(!(f->refresh(streamIn,streamOut,p)),"Refresh err code");
 	delete f;
 	delete ionData;
 	delete rng;
@@ -3392,6 +3419,113 @@ bool coreClusterTest()
 	return true;	
 }
 
+bool ClusterAnalysisFilter::singularValueTest()
+{
+
+	gsl_matrix *m = gsl_matrix_alloc(3,3);
+	gsl_matrix_set(m,0,0,1);
+	gsl_matrix_set(m,0,1,3);
+	gsl_matrix_set(m,0,2,0);
+	
+
+	gsl_matrix_set(m,1,0,3);
+	gsl_matrix_set(m,1,1,-3);
+	gsl_matrix_set(m,1,2,2);
+
+	gsl_matrix_set(m,2,0,0);
+	gsl_matrix_set(m,2,1,2);
+	gsl_matrix_set(m,2,2,3);
+
+	vector<float> vals;
+	vector<Point3D> pts;
+	computeEigenValues(m,3,3,vals,pts);
+	gsl_matrix_free(m);
+
+	TEST(vals.size() == pts.size(),"Vector sizes");
+	TEST(vals.size() == 3,"vector size");
+
+	//check eigen values, sorted in desc. order
+	TEST(EQ_TOL(vals[0] ,4.0) ,"Correct eigen value");
+	TEST(EQ_TOL(vals[1] ,2.0) ,"Correct eigen value");
+	TEST(EQ_TOL(vals[2] ,-5.000),"Correct eigen value");
+
+
+	pts.clear();
+
+	//check the matrix makes sense
+	vector<IonHit> ionVec;
+	ionVec.push_back(IonHit(Point3D(0,0,1),1));	
+	ionVec.push_back(IonHit(Point3D(0,0,-1),1));
+	ionVec.push_back(IonHit(Point3D(1,0,0),1));	
+	ionVec.push_back(IonHit(Point3D(-1,0,0),1));
+	ionVec.push_back(IonHit(Point3D(0,1,0),1));	
+	ionVec.push_back(IonHit(Point3D(0,-1,0),1));
+
+	m = gsl_matrix_alloc(3,3);
+	gsl_matrix_set_zero(m);
+	computeMatrixEntries(ionVec,Point3D(0,0,0),m);
+	//gslPrint(m);
+	gsl_matrix_free(m);
+	{
+	vector<IonHit> dummy;
+	pair<Point3D, vector<Point3D> > resultEllipse;
+	getEllipsoidalFit(ionVec,dummy, resultEllipse);
+	for(size_t ui=0;ui<resultEllipse.second.size() ;ui++)
+	{
+		ASSERT(EQ_TOL(resultEllipse.second[ui].sqrMag(), 5.0/2.0*2.0/3.0));
+		
+	}
+	}
+	ionVec.clear();
+	pts.clear();
+
+	//generate some random points in an ellipse
+	RandNumGen rng;
+	rng.initTimer();
+
+	const float SEMI_AXIS[] = {1,2,3};
+	const unsigned int NUM_PTS = 10000;
+	
+	
+	Point3D p;
+	while(ionVec.size() < NUM_PTS)	
+	{
+
+		float f[3];
+		for(unsigned int ui=0;ui<3;ui++)
+		{
+			f[ui]=rng.genUniformDev()-0.5f;
+			ASSERT(f[ui] <0.51 && f[ui] >-0.51);
+		}
+	      //generate some random points, then check for inside ellipse
+		p = Point3D(2.0*SEMI_AXIS[0]*f[0], 2.0*SEMI_AXIS[1]*f[1],
+				2.0*SEMI_AXIS[2]*f[2]);
+
+		//check if the pt is outside the ellipsoid
+		Point3D ellipsePt;
+		for(size_t ui=0;ui<3;ui++)
+			ellipsePt[ui]=p[ui]/SEMI_AXIS[ui];
+
+		if( ellipsePt.sqrMag() < 1.0f)
+			ionVec.push_back(IonHit(p,1.0));
+	}
+
+	IonHit::makePos(ionVec,"test-ellipsoid.pos");
+
+
+	//Run the ellipsoidal fit. This will crash if any NaNs or imag. values
+	// are generated.
+	vector<IonHit> dummy;
+	pair<Point3D, vector<Point3D> > resultEllipse;
+	getEllipsoidalFit(ionVec,dummy, resultEllipse);
+
+	for(size_t ui=0;ui<3;ui++)
+	{
+		TEST(fabs(sqrtf(resultEllipse.second[ui].sqrMag()) -SEMI_AXIS[ui]) < 0.25f,"Semi axes retrieval");
+	}
+
+	return true;
+}
 
 
 #endif

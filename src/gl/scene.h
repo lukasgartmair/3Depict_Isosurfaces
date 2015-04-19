@@ -22,8 +22,6 @@
 class Scene;
 class VisController;
 class Filter;
-class SelectionDevice;
-class SelectionBinding;
 
 #include "drawables.h"
 
@@ -32,6 +30,7 @@ class SelectionBinding;
 
 #include "glDebug.h"
 
+#include <vector>
 
 //!The scene class brings together elements such as objects, lights, and cameras
 //to enable scene rendering
@@ -46,10 +45,6 @@ class Scene
 		
 		//!Objects used for drawing that will not be destroyed
 		std::vector<const DrawableObj * > refObjects;
-
-
-		//!Bindings for interactive object properties
-		std::vector<SelectionDevice *> selectionDevices;
 
 		//!Various OpenGL effects
 		std::vector<const Effect *> effects;
@@ -92,10 +87,10 @@ class Scene
 		//Prevent camera updates from being passed to opengl
 		bool witholdCamUpdate;
 
-		//!Last hoeverd object	
+		//!Last hovered object	
 		unsigned int lastHovered;
 
-		//!Should alpha belnding be used?
+		//!Should alpha blending be used?
 		bool useAlpha;
 		//!Should lighting calculations be performed?
 		bool useLighting;
@@ -108,18 +103,16 @@ class Scene
 		//!Background colour
 		float rBack,gBack,bBack;
 
-		//!Should we a progress animation to the user in 3D?
-		bool showProgressAnimation;
-
 		//!Have we attempted to load the progress animation
 		bool attemptedLoadProgressAnim;
 
-		//texture to use for pgoress animation
+		//texture to use for progress animation
 		DrawAnimatedOverlay progressAnimTex;
 
 		//Lighting vector
 		float lightPosition[4];
 
+		
 		///!Draw the hover overlays
 		void drawHoverOverlay();
 
@@ -141,13 +134,15 @@ class Scene
 		Scene &operator=(const Scene &);
 				
 	public:
+		DrawProgressCircleOverlay progressCircle;
+		
 		//!Constructor
 		Scene();
 		//!Destructor
 		virtual ~Scene();
 
 		//!Set the vis control
-		void setViscontrol(VisController *v) { visControl=v;};
+		void setVisControl(VisController *v) { visControl=v;};
 		//!Draw the objects in the active window. May adjust cameras and compute bounding as needed.
 		void draw(bool noUpdateCam=false);
 
@@ -160,18 +155,16 @@ class Scene
 		void clearObjs();
 		//! Clear the reference object vector
 		void clearRefObjs();
-		//!Clear object bindings vector
-		void clearBindings();
 
 		//!Do we have overlay items?
 		bool hasOverlays() const;	
 
 		//!Obtain the scene's light coordinates in camera relative space
-		// requires an array os size 4  (xyzw)
+		// requires an array of size 4  (xyzw)
 		void getLightPos(float *f) const;
 		
 		//!Obtain the scene's light coordinates in camera relative space
-		// requires an array os size 4  (xyzw)
+		// requires an array of size 4  (xyzw)
 		void setLightPos(const float *f);
 
 		//!Set the aspect ratio of the output window. Required.
@@ -194,11 +187,10 @@ class Scene
 		void addRefDrawable(const DrawableObj *);
 	
 
-		bool setProgressAnimation(const vector<string> &animFiles);
+		bool setProgressAnimation(const std::vector<std::string> &animFiles);
 
-		void setShowProgress(bool show) ;
+		void resetProgressAnim() ;
 
-		bool getShowProgress() const { return showProgressAnimation; }
 
 		//!remove a drawable object
 		void removeDrawable(unsigned int);
@@ -251,9 +243,6 @@ class Scene
 		//if nothing, returns -1
 		unsigned int glSelect(bool storeSelection=true);
 
-		//!Add selection devices to the scene.
-		void addSelectionDevices(const std::vector<SelectionDevice *> &d);
-
 		//!Clear the current selection devices 
 		void clearDevices();
 
@@ -265,7 +254,7 @@ class Scene
 
 		// is interaction currently locked?
 		bool isInteractionLocked()  const { return lockInteract;}
-		//!Prevent user interactoin
+		//!Prevent user interaction
 		void lockInteraction(bool amLocking=true) { lockInteract=amLocking;};
 		//!Set selection mode true=select on, false=select off.
 		//All this does internally is modify how drawing works.
@@ -274,24 +263,18 @@ class Scene
 		//!Set the hover mode to control drawing
 		void setHoverMode(bool hMode) { hoverMode=hMode;};
 
-		//!Return the last object over whichthe cursor was hovered	
+		//!Return the last object over which the cursor was hovered	
 		void setLastHover(unsigned int hover) { lastHovered=hover;};
 		//!Get the last selected object from call to glSelect()
 		unsigned int getLastSelected() const { return lastSelected;};
 	
-		//!Return the last object over whichthe cursor was hovered	
+		//!Return the last object over which the cursor was hovered	
 		unsigned int getLastHover() const { return lastHovered;};
 		//!Duplicates the internal camera vector. return value is active camera
 		//in returned vector
 		unsigned int duplicateCameras(std::vector<Camera *> &cams) const; 
 		//!Get a copy of the effects pointers
 		void getEffects(std::vector<const Effect *> &effects) const; 
-
-		//!Return any devices that have been modified since their creation
-		void getModifiedBindings(std::vector<std::pair<const Filter *,SelectionBinding > > &bindings) const;
-
-		//!Reset any modifiecations to bindings back to the unmodified state
-		void resetModifiedBindings();
 
 		//!Set whether to use alpha blending
 		void setAlpha(bool newAlpha) { useAlpha=newAlpha;};
@@ -307,7 +290,7 @@ class Scene
 		//!Set window size
 		void setWinSize(unsigned int x, unsigned int y) {winX=x;winY=y; updateProgressOverlay();}
 
-		//!Get the scene boundinng box
+		//!Get the scene bounding box
 		BoundCube getBound() const { return boundCube;}
 
 		//!Set the background colour
@@ -329,7 +312,7 @@ class Scene
 		 * and will be deleted during destruction, clear, or next setEffectVec call
 		 * input vector will be cleared.
 		 */
-		void setEffectVec(vector<Effect *> &e);
+		void setEffectVec(std::vector<Effect *> &e);
 
 		//!Add an effect
 		unsigned int addEffect(Effect *e);
@@ -339,7 +322,7 @@ class Scene
 		//!Clear effects vector
 		void clearEffects();
 
-		static string getGlVersion() { return  string((char *)glGetString(GL_VERSION)); }
+		static std::string getGlVersion() { return  std::string((char *)glGetString(GL_VERSION)); }
 };
 
 #endif

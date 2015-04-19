@@ -60,6 +60,9 @@ class SpatialAnalysisFilter : public Filter
 		//!Change the NN histograms from counts to counts/nm
 		// - this allows comparing different binwidth histograms
 		bool normaliseNNHist;
+		
+		//!Do we want to display theoretical random NN distances on top?
+		bool wantRandomNNHist;
 		//--------
 		
 		//Density filtering specific params
@@ -72,9 +75,9 @@ class SpatialAnalysisFilter : public Filter
 		float densityCutoff; 
 
 		//!Vector paramaters for different primitives
-		vector<Point3D> vectorParams;
+		std::vector<Point3D> vectorParams;
 		//!Scalar paramaters for different primitives
-		vector<float> scalarParams;
+		std::vector<float> scalarParams;
 	
 		//Reset the scalar and vector parameters
 		// to their defaults, if the required parameters
@@ -112,7 +115,7 @@ class SpatialAnalysisFilter : public Filter
 		//Replace specific code
 		//---------
 		//file to use as other data source
-		string replaceFile;
+		std::string replaceFile;
 
 		//replacement operator mode
 		unsigned int replaceMode;
@@ -125,53 +128,59 @@ class SpatialAnalysisFilter : public Filter
 		//---------
 	
 		//Radial distribution function - creates a 1D histogram of spherical atom counts, centered around each atom
-		size_t algorithmRDF(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
-			const vector<const FilterStreamData *>  &dataIn, 
-			vector<const FilterStreamData * > &getOut,const RangeFile *rngF);
+		size_t algorithmRDF(ProgressData &progress, size_t totalDataSize, 
+			const std::vector<const FilterStreamData *>  &dataIn, 
+			std::vector<const FilterStreamData * > &getOut,const RangeFile *rngF);
 
 
 		//Local density function - places a sphere around each point to compute per-point density
-		size_t algorithmDensity(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
-			const vector<const FilterStreamData *>  &dataIn, 
-			vector<const FilterStreamData * > &getOut);
+		size_t algorithmDensity(ProgressData &progress, size_t totalDataSize, 
+			const std::vector<const FilterStreamData *>  &dataIn, 
+			std::vector<const FilterStreamData * > &getOut);
 		
 		//Density filter function - same as density function, but then drops points from output
 		// based upon their local density and some density cutoff data
-		size_t algorithmDensityFilter(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
-			const vector<const FilterStreamData *>  &dataIn, 
-			vector<const FilterStreamData * > &getOut);
+		size_t algorithmDensityFilter(ProgressData &progress, size_t totalDataSize, 
+			const std::vector<const FilterStreamData *>  &dataIn, 
+			std::vector<const FilterStreamData * > &getOut);
 
-		size_t algorithmAxialDf(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
-			const vector<const FilterStreamData *>  &dataIn, 
-			vector<const FilterStreamData * > &getOut,const RangeFile *rngF);
+		size_t algorithmAxialDf(ProgressData &progress, size_t totalDataSize, 
+			const std::vector<const FilterStreamData *>  &dataIn, 
+			std::vector<const FilterStreamData * > &getOut,const RangeFile *rngF);
 		
-		size_t algorithmBinomial(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
-			const vector<const FilterStreamData *>  &dataIn, 
-			vector<const FilterStreamData * > &getOut,const RangeFile *rngF);
+		size_t algorithmBinomial(ProgressData &progress, size_t totalDataSize, 
+			const std::vector<const FilterStreamData *>  &dataIn, 
+			std::vector<const FilterStreamData * > &getOut,const RangeFile *rngF);
 
-		size_t algorithmReplace(ProgressData &progress, bool (*callback)(bool), size_t totalDataSize, 
-			const vector<const FilterStreamData *>  &dataIn, 
-			vector<const FilterStreamData * > &getOut);
+		size_t algorithmReplace(ProgressData &progress, size_t totalDataSize, 
+			const std::vector<const FilterStreamData *>  &dataIn, 
+			std::vector<const FilterStreamData * > &getOut);
 
 		//Create a 3D manipulable cylinder as an output drawable
 		// using the parameters stored inside the vector/scalar params
 		// both parameters are outputs from this function
 		void createCylinder(DrawStreamData* &d, SelectionDevice * &s) const;
 
+
+		//Wrapper routeine to create the appropriate selection
+		// device for whatever algorithm is in use; device list will be appended to
+		// and if needed, output object will be generated 
+		void createDevice(std::vector<const FilterStreamData *> &getOut);
+
 		//Scan input datstreams to build a two point vectors,
 		// one of those with points specified as "target" 
 		// which is a copy of the input points
 		//Returns 0 on no error, otherwise nonzero
-		size_t buildSplitPoints(const vector<const FilterStreamData *> &dataIn,
+		size_t buildSplitPoints(const std::vector<const FilterStreamData *> &dataIn,
 					ProgressData &progress, size_t totalDataSize,
-					const RangeFile *rngF, bool (*callback)(bool),
-					vector<Point3D> &pSource, vector<Point3D> &pTarget) const;
+					const RangeFile *rngF,
+					std::vector<Point3D> &pSource, std::vector<Point3D> &pTarget) const;
 
 
 		//From the given input ions, filter them down using the user
 		// selection for ranges. If sourceFilter is true, filter by user
 		// source selection, otherwise by user target selection
-		void filterSelectedRanges(const vector<IonHit> &ions, bool sourceFilter, const RangeFile *rngF, vector<IonHit> &output) const;
+		void filterSelectedRanges(const std::vector<IonHit> &ions, bool sourceFilter, const RangeFile *rngF, std::vector<IonHit> &output) const;
 	public:
 		SpatialAnalysisFilter(); 
 		//!Duplicate filter contents, excluding cache.
@@ -188,7 +197,7 @@ class SpatialAnalysisFilter : public Filter
 		//update filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &getOut, 
-					ProgressData &progress, bool (*callback)(bool));
+					ProgressData &progress);
 		//!Get the type string  for this fitler
 		virtual std::string typeString() const { return std::string(TRANS("Spat. Analysis"));};
 
@@ -199,7 +208,7 @@ class SpatialAnalysisFilter : public Filter
 		bool setProperty(unsigned int key, 
 				const std::string &value, bool &needUpdate);
 		//!Get the human readable error string associated with a particular error code during refresh(...)
-		std::string getErrString(unsigned int code) const;
+		std::string getSpecificErrString(unsigned int code) const;
 		
 		//!Dump state to output stream, using specified format
 		bool writeState(std::ostream &f,unsigned int format,

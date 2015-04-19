@@ -97,6 +97,10 @@ const char * comboRange_choices[RANGE_FORMAT_NUM_OPTIONS] =
 using std::string;
 using std::cout;
 using std::endl;
+using std::pair;
+using std::vector;
+using std::set;
+using std::map;
 
 
 template<class T>

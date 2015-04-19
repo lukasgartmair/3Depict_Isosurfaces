@@ -27,6 +27,7 @@ class AxisCompare;
 class K3DTree;
 
 
+
 //!Functor allowing for sorting of points in 3D
 /*! Used by KD Tree to sort points based around which splitting axis is being used
  * once the axis is set, points will be ranked based upon their relative value in
@@ -100,10 +101,10 @@ class K3DTree
 		K3DNode *buildRecurse(std::vector<Point3D>::iterator pts_start,
 			       	std::vector<Point3D>::iterator pts_end, unsigned int depth );
 		
-		bool (*callback)(bool);
-
-		unsigned int *progress; //Progress counter
 		size_t curNodeCount; //Counter for build operations
+
+		static unsigned int *progress; //Progress counter
+		static const ATOMIC_BOOL *abort; //aborting flag
 	public:
 	
 		//KD Tree constructor
@@ -111,13 +112,10 @@ class K3DTree
 
 		//!Cleans up tree, deallocates nodes
 		~K3DTree();
-		
-		//Set the callback routine for progress reporting
-		void setCallbackMethod(bool (*cb)(bool)) {callback = cb;}
-		
-		void setProgressPointer(unsigned int *p) { progress=p;};
-	
 
+		static void setProgressPtr(unsigned int *ptr){progress=ptr;}
+		static void setAbortFlag(const ATOMIC_BOOL *ptr){abort=ptr;}
+	
 		/*! Builds a balanced KD tree from a list of points
 		 * This call is being passed by copy in order to prevent
 		 * re-ordering of the points. It may be worth having two calls

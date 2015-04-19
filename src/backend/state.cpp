@@ -25,13 +25,37 @@
 const unsigned int MAX_UNDO_SIZE=10;
 
 #include <unistd.h>
+#include <stack>
+
+using std::vector;
+using std::string;
+using std::pair;
+using std::make_pair;
+using std::map;
+using std::endl; //TODO: Remove me?
+
+//FIXME: Global - need to make part of AnalysisState.
+//	 then provide references as needed
+//true if modification to state has occurred
+int stateModifyLevel=STATE_MODIFIED_NONE;
+
+void setStateModifyLevel(int newLevel)
+{
+	stateModifyLevel=std::max(newLevel,stateModifyLevel);
+}
+
+int getStateModifyLevel()
+{
+	return stateModifyLevel;
+}
 
 
 AnalysisState::AnalysisState()
 {
-	modifyLevel=STATE_MODIFIED_NONE;
 	useRelativePathsForSave=false;
 	activeCamera=0;
+	
+	savedCameras.push_back(new CameraLookAt);	
 
 	plotLegendEnable=true;
 
@@ -43,8 +67,8 @@ void AnalysisState::operator=(const AnalysisState &oth)
 {
 	clear();
 
-	activeTree=oth.activeTree;
-	
+	treeState=oth.treeState;	
+
 	stashedTrees=oth.stashedTrees;
 
 	effects.resize(oth.effects.size());
@@ -58,8 +82,6 @@ void AnalysisState::operator=(const AnalysisState &oth)
 	enabledStartupPlots=oth.enabledStartupPlots;
 	plotLegendEnable=oth.plotLegendEnable;
 	
-	undoTrees=oth.undoTrees; 
-	redoTrees=oth.redoTrees;
 
 	fileName=oth.fileName;
 	workingDir=oth.workingDir;
@@ -72,11 +94,6 @@ void AnalysisState::operator=(const AnalysisState &oth)
 	worldAxisMode=oth.worldAxisMode;
 	activeCamera=oth.activeCamera;
 
-	modifyLevel=oth.modifyLevel;
-
-
-	redoFilterStack=oth.redoFilterStack;
-	undoFilterStack=oth.undoFilterStack;
 
 	animationState=oth.animationState;
 	animationPaths=oth.animationPaths;
@@ -91,16 +108,13 @@ AnalysisState::~AnalysisState()
 
 void AnalysisState::clear()
 {
-	activeTree.clear();
+	treeState.clear();
 	
 	stashedTrees.clear();
 
 	clearCams();
 
 	clearEffects();
-
-	undoTrees.clear(); 
-	redoTrees.clear();
 
 
 	enabledStartupPlots.clear();
@@ -125,7 +139,7 @@ void AnalysisState::clearEffects()
 
 }
 bool AnalysisState::save(const char *cpFilename, std::map<string,string> &fileMapping,
-		bool writePackage) const
+		bool writePackage, bool setStateModifyLevel) const
 {
 	//Open file for output
 	std::ofstream f(cpFilename);
@@ -194,7 +208,7 @@ bool AnalysisState::save(const char *cpFilename, std::map<string,string> &fileMa
 
 	//Write filter tree
 	//---------------
-	if(!activeTree.saveXML(f,fileMapping,writePackage,useRelativePathsForSave))
+	if(!treeState.getTreeRef().saveXML(f,fileMapping,writePackage,useRelativePathsForSave))
 		return  false;
 	//---------------
 
@@ -265,13 +279,27 @@ bool AnalysisState::save(const char *cpFilename, std::map<string,string> &fileMa
 	//Debug check to ensure we have written a valid xml file
 	ASSERT(isValidXML(cpFilename));
 
-	modifyLevel=STATE_MODIFIED_NONE;
+	if(setStateModifyLevel)
+		stateModifyLevel=STATE_MODIFIED_NONE;
 
 	return true;
 }
 
-bool AnalysisState::load(const char *cpFilename, std::ostream &errStream ) 
+bool AnalysisState::load(const char *cpFilename, bool doMerge,std::ostream &errStream ) 
 {
+	if(doMerge)
+	{
+		//create another state, and then perform merge
+		AnalysisState otherState;
+		bool loadOK;
+		loadOK=	otherState.load(cpFilename,false,errStream);
+	
+		if(!loadOK)	
+			return loadOK;
+		this->merge(otherState);
+		return true;
+	}
+
 	clear();
 
 	//Load the state from an XML file
@@ -565,12 +593,20 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream )
 				newCameraVec.push_back(thisCam);	
 			}
 
-			//Enforce active cam value validity
-			if(newCameraVec.size() < activeCamera)
-				activeCamera=0;
 
 		}
+
 		
+		//Enforce active cam value validity.
+		if(newCameraVec.empty())	
+			newCameraVec.push_back(new CameraLookAt);
+
+		if(newCameraVec.size() < activeCamera)
+			activeCamera=0;
+
+		//Now the cameras are loaded into a temporary vector. We will 
+		// copy them into the scene soon
+
 		nodePtr=nodeStack.top();
 		nodeStack.pop();
 		
@@ -647,7 +683,7 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream )
 				e = makeEffect(tmpStr);
 				if(!e)
 				{
-					errStream << TRANS("Unrecognised effect :") << tmpStr << endl;
+					errStream << TRANS("Unrecognised effect :") << tmpStr << std::endl;
 					throw 1;
 				}
 
@@ -657,7 +693,7 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream )
 					if(newEffectVec[ui]->getType()== e->getType())
 					{
 						delete e;
-						errStream << TRANS("Duplicate effect found") << tmpStr << TRANS(" cannot use.") << endl;
+						errStream << TRANS("Duplicate effect found") << tmpStr << TRANS(" cannot use.") << std::endl;
 						throw 1;
 					}
 
@@ -770,11 +806,9 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream )
 	}
 
 	//Now replace it with the new data
-	activeTree.swap(newFilterTree);
+	treeState.swapFilterTree(newFilterTree);
 	std::swap(stashedTrees,newStashes);
 
-	activeTree.initFilterTree();
-	
 	//Wipe the existing cameras, and then put the new cameras in place
 	savedCameras.clear();
 	
@@ -783,7 +817,7 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream )
 	Camera *c=new CameraLookAt();
 	savedCameras.push_back(c);
 	activeCamera=0;
-
+	bool defaultSet = false;
 	//spin through
 	for(unsigned int ui=0;ui<newCameraVec.size();ui++)
 	{
@@ -791,16 +825,18 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream )
 		// camera (one that does not show up to the users,
 		// and cannot be erased from the scene)
 		// set it directly. Otherwise, its a user camera.
-		if(newCameraVec[ui]->getUserString().size())
+
+		//if there are multiple without a string, only use the first
+		if(newCameraVec[ui]->getUserString().size() && !defaultSet)
 		{
 			savedCameras.push_back(newCameraVec[ui]);
-			activeCamera=ui;
 		}
 		else
 		{
 			ASSERT(savedCameras.size());
 			delete savedCameras[0];
 			savedCameras[0]=newCameraVec[ui];
+			defaultSet=true;
 		}
 
 	}
@@ -835,18 +871,17 @@ bool AnalysisState::load(const char *cpFilename, std::ostream &errStream )
 		free(wd);
 	}
 
-	//If we are merging then the default state has been altered
-	// if we are not merging, then it is overwritten
-	setModifyLevel(STATE_MODIFIED_NONE);
+	// state is overwritten
+	setStateModifyLevel(STATE_MODIFIED_NONE);
 
 	//Perform sanitisation on results
 	return true;
 }
 
-bool AnalysisState::merge(const AnalysisState &otherState)
+void AnalysisState::merge(const AnalysisState &otherState)
 {
 
-	setModifyLevel(STATE_MODIFIED_DATA);
+	setStateModifyLevel(STATE_MODIFIED_DATA);
 
 	//If we are merging, then there is a chance
 	//of a name-clash. We avoid this by trying to append -merge continuously
@@ -870,12 +905,13 @@ bool AnalysisState::merge(const AnalysisState &otherState)
 		}
 	}
 	
-	FilterTree f = otherState.activeTree;
-	activeTree.addFilterTree(f,0);
+	FilterTree f = otherState.treeState.getTreeRef();
+
+	//wipe treestate's undo/redo trees, as we can no longer rely on them
+	treeState.clearUndoRedoStacks();	
+
+	treeState.addFilterTree(f,0);
 	
-	//wipe our undo/redo trees, as we can no longer rely on them
-	undoTrees.clear();
-	redoTrees.clear();
 
 	const vector<Camera *> &newCameraVec = otherState.savedCameras;	
 	for(unsigned int ui=0;ui<newCameraVec.size();ui++)
@@ -910,11 +946,6 @@ bool AnalysisState::camNameExists(const std::string &s) const
 	return false;
 }
 
-void AnalysisState::copyFilterTree(FilterTree &f) const
-{
-	f = activeTree;
-}
-
 int AnalysisState::getWorldAxisMode() const 
 {
 	return worldAxisMode;
@@ -943,6 +974,8 @@ const Camera *AnalysisState::getCam(size_t offset) const
 
 void AnalysisState::removeCam(size_t offset)
 {
+	setStateModifyLevel(STATE_MODIFIED_ANCILLARY);
+
 	ASSERT(offset < savedCameras.size());
 	savedCameras.erase(savedCameras.begin()+offset);
 	if(activeCamera >=savedCameras.size())
@@ -951,17 +984,34 @@ void AnalysisState::removeCam(size_t offset)
 
 void AnalysisState::addCamByClone(const Camera *c)
 {
-	setModifyLevel(STATE_MODIFIED_ANCILLARY);
+	setStateModifyLevel(STATE_MODIFIED_ANCILLARY);
 	savedCameras.push_back(c->clone());
+}
+
+void AnalysisState::addCam(const std::string &camName, bool makeActive)
+{
+	//Duplicate the current camera, and give it a new name
+	Camera *c=getCam(getActiveCam())->clone();
+	c->setUserString(camName);
+	setStateModifyLevel(STATE_MODIFIED_ANCILLARY);
+	savedCameras.push_back(c);
+
+	if(makeActive)
+		activeCamera=savedCameras.size()-1;
 }
 
 bool AnalysisState::setCamProperty(size_t offset, unsigned int key, const std::string &str)
 {
 	if(offset == activeCamera)
-		setModifyLevel(STATE_MODIFIED_VIEW);
+		setStateModifyLevel(STATE_MODIFIED_VIEW);
 	else
-		setModifyLevel(STATE_MODIFIED_ANCILLARY);
+		setStateModifyLevel(STATE_MODIFIED_ANCILLARY);
 	return savedCameras[offset]->setProperty(key,str);
+}
+
+std::string AnalysisState::getCamName(size_t offset) const
+{
+	return  savedCameras[offset]->getUserString();
 }
 
 bool AnalysisState::getUseRelPaths() const 
@@ -994,7 +1044,7 @@ void AnalysisState::copyEffects(vector<Effect *> &e) const
 void AnalysisState::setBackgroundColour(float r, float g, float b)
 {
 	if(rBack != r || gBack!=g || bBack!=b)
-		setModifyLevel(STATE_MODIFIED_VIEW);
+		setStateModifyLevel(STATE_MODIFIED_VIEW);
 	rBack=r;
 	gBack=g;
 	bBack=b;
@@ -1004,13 +1054,13 @@ void AnalysisState::setBackgroundColour(float r, float g, float b)
 void AnalysisState::setWorldAxisMode(unsigned int mode)
 {
 	if(mode)
-		setModifyLevel(STATE_MODIFIED_VIEW);
+		setStateModifyLevel(STATE_MODIFIED_VIEW);
 	worldAxisMode=mode;
 }
 
 void AnalysisState::setCamerasByCopy(vector<Camera *> &c, unsigned int active)
 {
-	setModifyLevel(STATE_MODIFIED_DATA);
+	setStateModifyLevel(STATE_MODIFIED_DATA);
 	clearCams();
 
 	savedCameras.swap(c);
@@ -1024,14 +1074,14 @@ void AnalysisState::setCameraByClone(const Camera *c, unsigned int offset)
 	savedCameras[offset]=c->clone(); 
 
 	if(offset == activeCamera)
-		setModifyLevel(STATE_MODIFIED_VIEW);
+		setStateModifyLevel(STATE_MODIFIED_VIEW);
 	else
-		setModifyLevel(STATE_MODIFIED_ANCILLARY);
+		setStateModifyLevel(STATE_MODIFIED_ANCILLARY);
 }
 
 void AnalysisState::setEffectsByCopy(const vector<const Effect *> &e)
 {
-	setModifyLevel(STATE_MODIFIED_VIEW);
+	setStateModifyLevel(STATE_MODIFIED_VIEW);
 	clearEffects();
 
 	effects.resize(e.size());
@@ -1048,27 +1098,33 @@ void AnalysisState::setUseRelPaths(bool useRel)
 void AnalysisState::setWorkingDir(const std::string &work)
 {
 	if(work!=workingDir)
-		setModifyLevel(STATE_MODIFIED_DATA);
+		setStateModifyLevel(STATE_MODIFIED_DATA);
 
 	workingDir=work;
 }
 
-void AnalysisState::setFilterTreeByClone(const FilterTree &f)
-{
-	setModifyLevel(STATE_MODIFIED_DATA);
-	activeTree=f;
-}
-
 void AnalysisState::setStashedTreesByClone(const vector<std::pair<string,FilterTree> > &s)
 {
-	setModifyLevel(STATE_MODIFIED_ANCILLARY);
+	setStateModifyLevel(STATE_MODIFIED_ANCILLARY);
 	stashedTrees=s;
 }
 
 void AnalysisState::addStashedTree(const std::pair<string,FilterTree> &s)
 {
-	setModifyLevel(STATE_MODIFIED_ANCILLARY);
+	setStateModifyLevel(STATE_MODIFIED_ANCILLARY);
 	stashedTrees.push_back(s);
+}
+
+void AnalysisState::addStashedToFilters(const Filter *parentFilter, unsigned int stashOffset)
+{
+	//Save current filter state to undo stack
+	treeState.pushUndoStack();
+
+	//Retrieve the specified stash
+	pair<string,FilterTree> f;
+	copyStashedTree(stashOffset,f);
+
+	treeState.addFilterTree(f.second,parentFilter);
 }
 
 void AnalysisState::copyStashedTrees(std::vector<std::pair<string,FilterTree > > &s) const
@@ -1078,27 +1134,330 @@ void AnalysisState::copyStashedTrees(std::vector<std::pair<string,FilterTree > >
 
 void AnalysisState::copyStashedTree(size_t offset,std::pair<string,FilterTree> &s) const
 {
-	s.first=stashedTrees[offset].first;
-	s.second=stashedTrees[offset].second;
+	s=stashedTrees[offset];
+}
+
+void AnalysisState::copyStashedTree(size_t offset,FilterTree &s) const
+{
+	s=stashedTrees[offset].second;
+}
+
+void AnalysisState::stashFilters(unsigned int filterId, const char *stashName)
+{
+	//Obtain the parent filter that we 
+	const Filter *target = treeState.getFilterById(filterId);
+	
+	FilterTree newTree;
+	const FilterTree &curTree = treeState.getTreeRef();
+	curTree.cloneSubtree(newTree,target);
+
+	addStashedTree(std::make_pair(string(stashName),newTree));
+}
+
+//Get the stash name
+std::string AnalysisState::getStashName(size_t offset) const
+{
+	ASSERT(offset < stashedTrees.size());
+	return  stashedTrees[offset].first;
 }
 
 
-void AnalysisState::pushUndoStack()
+
+void AnalysisState::eraseStash(size_t offset)
+{
+	ASSERT(offset < stashedTrees.size());
+	setStateModifyLevel(STATE_MODIFIED_ANCILLARY);
+	stashedTrees.erase(stashedTrees.begin() + offset);
+}
+
+bool AnalysisState::hasStateOverrides() const
+{
+	if(treeState.hasStateOverrides())
+		return true;
+
+	for(size_t ui=0;ui<stashedTrees.size();ui++)
+	{
+		if(stashedTrees[ui].second.hasStateOverrides())
+			return true;
+	}
+
+	return false;
+}
+
+void TreeState::operator=(const TreeState &oth) 
+{
+#ifdef DEBUG
+	//Should not be refreshing
+	wxMutexLocker lock(amRefreshing);
+	ASSERT(!lock.IsOk());
+#endif
+	filterTree=oth.filterTree;	
+	
+	fta=oth.fta;
+	filterMap=oth.filterMap;	
+	redoFilterStack=oth.redoFilterStack;
+	undoFilterStack=oth.undoFilterStack;
+	
+	fta=oth.fta;
+	selectionDevices=oth.selectionDevices;
+	pendingUpdates=oth.pendingUpdates;
+	wantAbort=oth.wantAbort;
+	
+}
+
+void TreeState::addFilter(Filter *f, bool isBase,size_t parentId)
+{ 
+	pushUndoStack();
+	if(!isBase)
+		filterTree.addFilter(f,filterMap[parentId]);
+	else
+		filterTree.addFilter(f,0);
+
+
+	vector<bool> idInUse(filterMap.size()+1,false);
+	for(map<size_t,Filter*>::const_iterator it=filterMap.begin();it!=filterMap.end();++it)
+	{
+		idInUse[it->first] = true; 
+	}
+
+	//Find which ID we can use for inserting stuff into the filtermap
+	size_t idToUse;
+	for(size_t ui=0;ui<filterMap.size();ui++)
+	{
+		if(!idInUse[ui])
+		{
+			idToUse=ui;
+			continue;
+		}
+	}	
+	
+
+	//Add new entry to filer map
+	filterMap[idToUse] = f;
+}
+
+void TreeState::addFilterTree(FilterTree &f, bool isBase,size_t parentId)
+{ 
+	ASSERT(!(isBase && parentId==(unsigned int)-1));
+
+	if(isBase)
+		filterTree.addFilterTree(f,0);
+	else
+		filterTree.addFilterTree(f,filterMap[parentId]);
+
+	//FIXME: This technically does not need to be cleared. We can
+	// tweak the filter map to remain valid. It is the caller's problem
+	// to rebuild as needed
+
+	//The filter map is now invalid, as we added an element to the tree,
+	//and don't have a unique value for it. we need to relayout.
+	filterMap.clear();
+}
+
+void TreeState::switchoutFilterTree(FilterTree &f)
+{
+	//Create a clone of the internal tree
+	f=filterTree;
+
+	//Fix up the internal filterMap to reflect the contents of the new tree
+	//---
+	//
+	//Build a map from old filter*->new filter *
+	tree<Filter*>::pre_order_iterator itB;
+	itB=filterTree.depthBegin();
+	std::map<Filter*,Filter*> filterRemap;
+	for(tree<Filter*>::pre_order_iterator itA=f.depthBegin(); itA!=f.depthEnd(); ++itA)
+	{
+		ASSERT(itB != filterTree.depthEnd());
+		filterRemap[*itA]=*itB;	
+		++itB;
+	}
+
+	//Overwrite the internal map
+	for(map<size_t,Filter*>::iterator it=filterMap.begin();it!=filterMap.end();++it)
+		it->second=filterRemap[it->second];
+
+
+	//Swap the internal tree with our clone
+	f.swap(filterTree);
+	
+}
+
+//!Duplicate a branch of the tree to a new position. Do not copy cache,
+bool TreeState::copyFilter(size_t toCopy, size_t newParent,bool copyToRoot) 
+{
+	pushUndoStack();
+	
+	bool ret;
+	if(copyToRoot)
+		ret=filterTree.copyFilter(filterMap[toCopy],0);
+	else
+	
+		ret=filterTree.copyFilter(filterMap[toCopy],filterMap[newParent]);
+
+	if(ret)
+	{
+		//Delete the filtermap, as the current data is not valid anymore
+		filterMap.clear();
+	}
+
+	return ret;
+}
+
+
+const Filter* TreeState::getFilterById(size_t filterId) const 
+{
+	//If triggering this assertion, check that
+	//::updateWxTreeCtrl called after calling addFilterTree.
+	ASSERT(filterMap.size());
+
+	//Check that the mapping exists
+	ASSERT(filterMap.find(filterId)!=filterMap.end());
+	return filterMap.at(filterId);
+}
+
+
+size_t TreeState::getIdByFilter(const Filter* f) const
+{
+	for(map<size_t,Filter*>::const_iterator it=filterMap.begin(); it!=filterMap.end();++it)
+	{
+		if(it->second == f)
+			return it->first;
+	}	
+
+	ASSERT(false);
+	return (size_t)-1;
+}
+void TreeState::getFiltersByType(std::vector<const Filter *> &filters, unsigned int type)  const
+{
+	filterTree.getFiltersByType(filters,type);
+}
+
+
+void TreeState::setCachePercent(unsigned int newPct)
+{
+	filterTree.setCachePercent(newPct);
+}
+
+
+void TreeState::removeFilterSubtree(size_t filterId)
+{
+	//Save current filter state to undo stack
+	pushUndoStack();
+       	filterTree.removeSubtree(filterMap[filterId]);
+
+	//FIXME: Faster implementation involving removal from map
+	//--
+	map<size_t,Filter*> newMap;
+	for(map<size_t,Filter*>::iterator it=filterMap.begin(); it!=filterMap.end();++it)
+	{
+		if(filterTree.contains(it->second))
+			newMap[it->first] = it->second;
+	}
+	newMap.swap(filterMap);
+	//--
+
+}
+
+bool TreeState::reparentFilter(size_t filter, size_t newParent)
+{
+	//Save current filter state to undo stack
+	pushUndoStack();
+
+	//Try to reparent this filter. It might not work, if, for example
+	// the new parent is actually a child of the filter we are trying to
+	// assign the parent to. 
+	if(!filterTree.reparentFilter(filterMap[filter],filterMap[newParent]))
+	{
+		//Didn't work. Pop the undo stack, to reverse our 
+		//push, but don't restore it,
+		// as this would cost us our filter caches
+		popUndoStack(false);
+		return false;
+	}
+	
+	return true;
+}
+
+bool TreeState::setFilterProperty(size_t filterId, 
+				unsigned int key, const std::string &value, bool &needUpdate)
+{
+	//Save current filter state to undo stack
+	//for the case where the property change is good
+	pushUndoStack();
+	bool setOK;
+	setOK=filterTree.setFilterProperty(filterMap[filterId],key,value,needUpdate);
+
+	if(!setOK)
+	{
+		//Didn't work, so we need to discard the undo
+		//Pop the undo stack, but don't restore it -
+		// restoring would destroy the cache
+		popUndoStack(false);
+	}
+
+	return setOK;
+}
+
+void TreeState::setFilterString(size_t filterId, const std::string &s)
+{
+	Filter *f;
+	f = filterMap[filterId];
+	
+	f->setUserString(s);
+}
+
+unsigned int TreeState::refresh(std::list<FILTER_OUTPUT_DATA> &refreshData,
+				std::vector<std::pair<const Filter*, std::string> > &consoleMessages, ProgressData &curProg)
+{
+	//Attempt to acquire a lock. Return -1 if locking fails
+	wxMutexLocker lock(amRefreshing);
+	if(!lock.IsOk())
+	{
+		ASSERT(false); // should not get here. Caller should not
+				// try to double-refresh
+		return -1;
+	}
+	ASSERT(refreshData.empty())
+
+	//Analyse the filter tree structure for any errors
+	//--	
+	fta.analyse(filterTree);
+	//--
+
+	//Reset the progress back to zero	
+	curProg.reset();
+	//clear old devices
+	selectionDevices.clear();
+	//Remove any updates
+	pendingUpdates=false;
+	wantAbort=false;
+
+	//Run the tree refresh system.
+	unsigned int errCode;
+	errCode=filterTree.refreshFilterTree(refreshData,selectionDevices,
+			consoleMessages,curProg,wantAbort);
+
+	//return error code, if any
+	return errCode;
+}
+
+void TreeState::pushUndoStack()
 {
 	if(undoFilterStack.size() > MAX_UNDO_SIZE)
 		undoFilterStack.pop_front();
 
-	undoFilterStack.push_back(activeTree);
+	undoFilterStack.push_back(filterTree);
 	redoFilterStack.clear();
 }
 
-void AnalysisState::popUndoStack(bool restorePopped)
+void TreeState::popUndoStack(bool restorePopped)
 {
 	ASSERT(undoFilterStack.size());
 
 	//Save the current filters to the redo stack.
 	// note that the copy constructor will generate a clone for us.
-	redoFilterStack.push_back(activeTree);
+	redoFilterStack.push_back(filterTree);
 
 	if(redoFilterStack.size() > MAX_UNDO_SIZE)
 		redoFilterStack.pop_front();
@@ -1106,38 +1465,93 @@ void AnalysisState::popUndoStack(bool restorePopped)
 	if(restorePopped)
 	{
 		//Swap the current filter cache out with the undo stack result
-		std::swap(activeTree,undoFilterStack.back());
+		filterTree.swap(undoFilterStack.back());
 		
 	}
 
 	//Pop the undo stack
 	undoFilterStack.pop_back();
 
-	setModifyLevel(STATE_MODIFIED_DATA);
+	setStateModifyLevel(STATE_MODIFIED_DATA);
 }
 
-void AnalysisState::popRedoStack()
+void TreeState::popRedoStack()
 {
 	ASSERT(undoFilterStack.size() <=MAX_UNDO_SIZE);
-	undoFilterStack.push_back(activeTree);
+	undoFilterStack.push_back(filterTree);
 
-	activeTree.clear();
 	//Swap the current filter cache out with the redo stack result
-	activeTree.swap(redoFilterStack.back());
+	filterTree.swap(redoFilterStack.back());
 	
 	//Pop the redo stack
 	redoFilterStack.pop_back();
 
-	setModifyLevel(STATE_MODIFIED_DATA);
+	setStateModifyLevel(STATE_MODIFIED_DATA);
 }
 
-
-void AnalysisState::eraseStash(size_t offset)
+void TreeState::applyBindings(const std::vector<std::pair<const Filter *,SelectionBinding> > &bindings)
 {
-	ASSERT(offset < stashedTrees.size());
-	setModifyLevel(STATE_MODIFIED_ANCILLARY);
-	stashedTrees.erase(stashedTrees.begin() + offset);
+	if(!bindings.size())
+		return;
+	pushUndoStack();
+
+	for(unsigned int ui=0;ui<bindings.size();ui++)
+	{
+#ifdef DEBUG
+		bool haveBind;
+		haveBind=false;
+#endif
+		for(tree<Filter *>::iterator it=filterTree.depthBegin(); 
+				it!=filterTree.depthEnd();++it)
+		{
+			if(*it  == bindings[ui].first)
+			{
+				//We are modifying the contents of
+				//the filter, this could make a change that
+				//modifies output so we need to clear 
+				//all subtree caches to force reprocessing
+
+				filterTree.clearCache(*it,false);
+
+				(*it)->setPropFromBinding(bindings[ui].second);
+#ifdef DEBUG
+				haveBind=true;
+#endif
+				break;
+			}
+		}
+
+		ASSERT(haveBind);
+
+	}
+
 }
+
+void TreeState::applyBindingsToTree()
+{
+	//Clear any updates
+	pendingUpdates=false;
+		
+	//Retrieve all the modified bindings
+	vector<pair<const Filter *,SelectionBinding> > bindings;
+	for(unsigned int ui=0;ui<selectionDevices.size();ui++)
+		selectionDevices[ui]->getModifiedBindings(bindings);
+
+	applyBindings(bindings);	
+
+	//Clear the modifications to the selection devices
+	for(unsigned int ui=0;ui<selectionDevices.size();ui++)
+		selectionDevices[ui]->resetModifiedBindings();
+
+
+}
+
+bool TreeState::hasUpdates() const
+{
+	return pendingUpdates;
+}
+
+
 
 #ifdef DEBUG
 
@@ -1159,9 +1573,11 @@ bool testStateReload()
 	FilterTree tree;
 	IonDownsampleFilter *f = new IonDownsampleFilter;
 	tree.addFilter(f,NULL);
+	ASSERT(tree.size());
 
-	someState.setFilterTreeByClone(tree);
 	someState.addStashedTree(make_pair("someStash",tree));
+	ASSERT(tree.size());
+	someState.treeState.swapFilterTree(tree);
 
 	std::string saveString;
 	genRandomFilename(saveString);
@@ -1175,15 +1591,13 @@ bool testStateReload()
 	someState.clear();
 
 	std::ofstream strm;
-	TEST(someState.load(saveString.c_str(),strm),"State load");
+	TEST(someState.load(saveString.c_str(),false,strm),"State load");
 
 	TEST(someState.getStashCount() == 1,"Stash save+load");
 	std::pair<string,FilterTree> stashOut;
 	someState.copyStashedTree(0,stashOut);
 	TEST(stashOut.first == "someStash","Stash name conservation");
 
-	TEST(stashOut.second.size() == tree.size(),"reloaded stash count");
-	
 	rmFile(saveString);
 
 	return true;

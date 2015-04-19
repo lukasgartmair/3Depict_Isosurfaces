@@ -129,6 +129,9 @@ std::string locateDataFile(const char *name);
 //Custom event for remote update thread posting
 extern wxEventType RemoteUpdateAvailEvent; 
 
+//Custom event for signalling that a refresh is completed
+extern wxEventType RefreshCompleteEvent; 
+
 //Return true IFF process ID and process name match running process
 bool processMatchesName(size_t processID, const std::string &procName);
 

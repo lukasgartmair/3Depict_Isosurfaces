@@ -20,6 +20,8 @@
 
 #include "../filterCommon.h"
 
+#include <gsl/gsl_sf_gamma.h>
+
 using std::vector;
 
 #ifdef _OPENMP
@@ -175,7 +177,7 @@ const unsigned int MAX_NN_DISTS = 0x8000000; //96 MB samples at a time
 //it has been shrunk such that the closest distance from the hull to the original data
 //is reductionDim 
 unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim,  
-		unsigned int *progress, bool (*callback)(bool), vector<Point3D> &pointResult)
+		unsigned int *progress, ATOMIC_BOOL &wantAbort, vector<Point3D> &pointResult)
 {
 	//TODO: This could be made to use a fixed amount of ram, by
 	//partitioning the input points, and then
@@ -191,7 +193,7 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 
 	unsigned int dummyProg;
 	vector<Point3D> theHull;
-	if(computeConvexHull(points,progress,callback,theHull,false))
+	if(computeConvexHull(points,progress,wantAbort,theHull,false))
 		return 2;
 
 	Point3D midPoint(0,0,0);
@@ -373,7 +375,7 @@ reduced_loop_next:
 unsigned int generateNNHist( const vector<Point3D> &pointList, 
 			const K3DTree &tree,unsigned int nnMax, unsigned int numBins,
 		       	vector<vector<size_t> > &histogram, float *binWidth , unsigned int *progressPtr,
-			bool (*callback)(bool))
+			ATOMIC_BOOL &wantAbort)
 {
 	if(pointList.size() <=nnMax)
 		return RDF_ERR_INSUFFICIENT_INPUT_POINTS;
@@ -429,12 +431,12 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 			{
 				numAnalysed+=CALLBACK_REDUCE;
 				*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
-				if(!(*callback)(false))
+				if(wantAbort)
 					spin=true;
 			}			
 #else
 			*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*50.0f);
-			if(!(*callback)(false))
+			if(wantAbort)
 			{
 				delete[] maxSqrDist;
 				return RDF_ABORT_FAIL;
@@ -526,7 +528,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 		#pragma omp critical
 		{
 			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*50.0f + 50.0f);
-			if(!(*callback)(false))
+			if(wantAbort)
 				spin=true;
 			numAnalysed+=CALLBACK_REDUCE;
 		}			
@@ -536,7 +538,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 		if(!(callbackReduce--))
 		{
 			*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*50.0f + 50.0f);
-			if(!(*callback)(false))
+			if(wantAbort)
 			{
 				delete[] maxSqrDist;
 				return RDF_ABORT_FAIL;
@@ -558,7 +560,7 @@ unsigned int generateNNHist( const vector<Point3D> &pointList,
 
 unsigned int generate1DAxialDistHist(const vector<Point3D> &pointList, const K3DTree &tree,
 		const Point3D &axisDir, unsigned int *histogram, float distMax, unsigned int numBins,
-		unsigned int *progressPtr, bool (*callback)(bool))
+		unsigned int *progressPtr, ATOMIC_BOOL &wantAbort)
 {
 	ASSERT(fabs(axisDir.sqrMag() -1.0f) < sqrt(std::numeric_limits<float>::epsilon()));
 #ifdef DEBUG
@@ -662,7 +664,7 @@ unsigned int generate1DAxialDistHist(const vector<Point3D> &pointList, const K3D
 			{
 			numAnalysed+=CALLBACK_REDUCE_VAL;
 			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
-			if(!(*callback)(false))
+			if(wantAbort)
 			{
 #ifdef _OPENMP
 				spin=true;
@@ -686,7 +688,7 @@ unsigned int generate1DAxialDistHist(const vector<Point3D> &pointList, const K3D
 
 unsigned int generate1DAxialNNHist(const vector<Point3D> &pointList, const K3DTree &tree,
 		const Point3D &axisDir, unsigned int *histogram, float &binWidth, unsigned int nnMax, unsigned int numBins,
-		unsigned int *progressPtr, bool (*callback)(bool))
+		unsigned int *progressPtr, ATOMIC_BOOL &wantAbort)
 {
 #ifdef DEBUG
 	for(unsigned int ui=0;ui<numBins;ui++)
@@ -749,12 +751,12 @@ unsigned int generate1DAxialNNHist(const vector<Point3D> &pointList, const K3DTr
 			{
 				numAnalysed+=CALLBACK_REDUCE;
 				*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
-				if(!(*callback)(false))
+				if(wantAbort)
 					spin=true;
 			}			
 #else
 			*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*100.0f);
-			if(!(*callback)(false))
+			if(wantAbort)
 			{
 				delete[] maxAxialDist;
 				return RDF_ABORT_FAIL;
@@ -827,14 +829,14 @@ unsigned int generate1DAxialNNHist(const vector<Point3D> &pointList, const K3DTr
 		}
 	
 
-		//Callbacks to perform UI updates as needed
+		//Callbacks to check for abort as needed
 #ifdef _OPENMP 
 		if(!(callbackReduce--))
 		{
 		#pragma omp critical
 		{
 			*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
-			if(!(*callback)(false))
+			if(wantAbort)
 				spin=true;
 			numAnalysed+=CALLBACK_REDUCE;
 		}			
@@ -844,7 +846,7 @@ unsigned int generate1DAxialNNHist(const vector<Point3D> &pointList, const K3DTr
 		if(!(callbackReduce--))
 		{
 			*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*100.0f);
-			if(!(*callback)(false))
+			if(wantAbort)
 			{
 				delete[] maxAxialDist;
 				return RDF_ABORT_FAIL;
@@ -868,7 +870,7 @@ unsigned int generate1DAxialNNHist(const vector<Point3D> &pointList, const K3DTr
 unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &tree,
 			unsigned int *histogram, float distMax,
 			unsigned int numBins, unsigned int &warnBiasCount,
-			unsigned int *progressPtr,bool (*callback)(bool))
+			unsigned int *progressPtr,ATOMIC_BOOL &wantAbort)
 {
 
 
@@ -970,7 +972,7 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 				{
 					numAnalysed+=numAnalysedThread;
 					*progressPtr= (unsigned int)((float)(numAnalysed)/((float)pointList.size())*100.0f);
-					if(!(*callback)(false))
+					if(wantAbort)
 						spin=true;
 				}
 				if(spin)
@@ -978,7 +980,7 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 				numAnalysedThread=0;
 #else
 				*progressPtr= (unsigned int)((float)(ui)/((float)pointList.size())*100.0f);
-				if(!(*callback)(false))
+				if(wantAbort)
 					return RDF_ABORT_FAIL;
 #endif
 				callbackReduce=CALLBACK_REDUCE;
@@ -1003,3 +1005,43 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 	//Calculations complete!
 	return 0;
 }
+
+
+
+void generateKnnTheoreticalDist(const std::vector<float> &radii, float density, unsigned int nn,
+					std::vector<float> &nnDist)
+{
+	ASSERT(density >=0);
+	ASSERT(nn>0);
+	//Reference :Stephenson, 2009, simplified using D=3
+
+	//Distribution requires evaluation of :
+	//- the gamma function gamma(5/2)
+	const float GAMMA_2PT5 = 1.32934038817914;
+	// - power of pi : pi^(D/2)
+	const float PI_POW_D_2 = pow(M_PI,3.0/2.0);
+	
+	const float LAMBDA_FACTOR =  PI_POW_D_2/GAMMA_2PT5;
+
+	double pBase,lambda;
+
+	//radius independant ocmponent
+	lambda = density*LAMBDA_FACTOR;
+	pBase = 3.0/gsl_sf_fact(nn-1);
+	pBase*= pow(lambda,nn);
+	
+
+	nnDist.resize(radii.size());
+	for(size_t ui=0;ui<radii.size();ui++)
+	{
+		double r,p;
+		p=pBase;
+		r =radii[ui];	
+		p*= pow(r,3*nn-1);
+		p*=exp(-lambda*r*r*r);
+		nnDist[ui]=p;
+	}
+
+}
+
+

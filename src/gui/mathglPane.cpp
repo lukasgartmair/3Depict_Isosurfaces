@@ -32,6 +32,9 @@
 
 #include <mgl2/canvas_wnd.h>
 
+using std::string;
+using std::vector;
+
 //Panning speed modifier
 const float MGL_PAN_SPEED=2.0f;
 //Mathgl uses floating point loop computation, and can get stuck. Limit zoom precision
@@ -128,7 +131,6 @@ wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 	leftWindow=true;
 	thePlot=0;	
 	gr=0;
-	ownPlotPtr=false;
 	lastEditedPlot=lastEditedRegion=-1;
 	regionSelfUpdate=false;
 	plotIsLogarithmic=false;
@@ -139,8 +141,6 @@ wxPanel(parent, id,  wxDefaultPosition, wxDefaultSize)
 
 MathGLPane::~MathGLPane()
 {
-	if(thePlot && ownPlotPtr)
-		delete thePlot;
 	if(gr)
 		delete gr;
 }
@@ -199,11 +199,7 @@ unsigned int MathGLPane::getAxisMask(int x, int y) const
 
 void MathGLPane::setPlotWrapper(PlotWrapper *newPlot,bool takeOwnPtr)
 {
-	if(thePlot && ownPlotPtr)
-		delete thePlot;
-
 	thePlot=newPlot;
-	ownPlotPtr=takeOwnPtr;
 
 	Refresh();
 }
@@ -273,6 +269,11 @@ void MathGLPane::render(wxPaintEvent &event)
 
 	}
 
+#ifdef DEBUG
+	bool doTrap=getTrapfpe();
+	if(doTrap)
+		trapfpe(false);
+#endif
 	//If the plot has changed, been resized or is performing
 	// a mouse action that requires updating, we need to update it
 	//likewise if we don't have a plot, we need one.
@@ -304,7 +305,7 @@ void MathGLPane::render(wxPaintEvent &event)
 #ifdef DEBUG
 		if(strlen(gr->Message()))
 		{
-			cerr << "Mathgl reports error:" << gr->Message() << endl;
+			std::cerr << "Mathgl reports error:" << gr->Message() << std::endl;
 		}
 #endif
 		thePlot->resetChange();
@@ -318,6 +319,10 @@ void MathGLPane::render(wxPaintEvent &event)
 		free(rgbdata);
 	}
 
+#ifdef DEBUG
+	if(doTrap)
+		trapfpe(true);
+#endif
 	dc->DrawBitmap(wxBitmap(imageCacheBmp),0,0);
 	//If we are engaged in a dragging operation
 	//draw the nice little bits we need
@@ -912,7 +917,7 @@ void MathGLPane::leftMouseReleased(wxMouseEvent& event)
 	{
 		for(size_t ui=0;ui<updateHandlers.size(); ui++)
 		{
-			pair<wxWindow*,UpdateHandler> u;
+			std::pair<wxWindow*,UpdateHandler> u;
 			u=updateHandlers[ui];
 
 			//Call the function

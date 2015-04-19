@@ -16,10 +16,16 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "spectrumPlot.h"
+#include "algorithms/mass.h"
 
 #include "../plot.h"
 
 #include "filterCommon.h"
+
+using std::string;
+using std::vector;
+using std::pair;
+
 
 //!Error codes
 enum 
@@ -30,6 +36,7 @@ enum
 	SPECTRUM_ERR_ENUM_END,
 };
 
+
 enum
 {
 	KEY_SPECTRUM_BINWIDTH,
@@ -37,14 +44,40 @@ enum
 	KEY_SPECTRUM_MIN,
 	KEY_SPECTRUM_MAX,
 	KEY_SPECTRUM_LOGARITHMIC,
+	KEY_SPECTRUM_NORMALISE,
+	KEY_SPECTRUM_NORMALISE_LOWERBOUND,
+	KEY_SPECTRUM_NORMALISE_UPPERBOUND,
 	KEY_SPECTRUM_PLOTTYPE,
-	KEY_SPECTRUM_COLOUR
+	KEY_SPECTRUM_COLOUR,
+	KEY_SPECTRUM_BACKMODE,
+	KEY_SPECTRUM_BACKMODE_FLAT_START,
+	KEY_SPECTRUM_BACKMODE_FLAT_END,
+	KEY_SPECTRUM_CORRECTED_ONLY
 };
 
 //Limit user to two :million: bins
 const unsigned int SPECTRUM_MAX_BINS=2000000;
 
 const unsigned int SPECTRUM_AUTO_MAX_BINS=45000;
+
+
+//String to use on plot's y label
+const char *YLABEL_STRING=NTRANS("Count");
+
+enum
+{
+	NORMALISE_NONE,
+	NORMALISE_MAX,
+	NORMALISE_MAX_IN_BOUND,
+	NORMALISE_INTEGRAL_ONE,
+	NORMALISE_ENUM_END
+};
+
+const char *NORMALISE_STRING[] = {NTRANS("None"),
+				NTRANS("Maximum"),
+				NTRANS("Max in limit"),
+				NTRANS("Probability"),
+					};
 
 SpectrumPlotFilter::SpectrumPlotFilter()
 {
@@ -54,6 +87,12 @@ SpectrumPlotFilter::SpectrumPlotFilter()
 	binWidth=0.05;
 	plotStyle=0;
 	logarithmic=1;
+	fitMode=0;
+	massBackStart=1.2;
+	massBackEnd=1.9;
+	showOnlyCorrected=false;
+	normaliseMode=NORMALISE_NONE;
+	normaliseBounds=std::make_pair(0.0,100.0);
 
 	//Default to blue plot
 	rgba = ColourRGBAf(0,0,1.0f,1.0f);
@@ -70,6 +109,15 @@ Filter *SpectrumPlotFilter::cloneUncached() const
 	p->rgba=rgba;	
 	p->plotStyle=plotStyle;
 	p->logarithmic = logarithmic;
+	p->fitMode = fitMode;
+	p->massBackStart = massBackStart;
+	p->massBackEnd = massBackEnd;
+
+	p->normaliseMode=normaliseMode;
+	p->normaliseBounds=normaliseBounds;
+
+	p->showOnlyCorrected= showOnlyCorrected;
+
 
 
 	//We are copying wether to cache or not,
@@ -86,7 +134,7 @@ size_t SpectrumPlotFilter::numBytesForCache(size_t nObjects) const
 	//Check that we have good plot limits, and bin width. if not, we cannot estimate cache size
 	if(minPlot ==std::numeric_limits<float>::max() ||
 		maxPlot==-std::numeric_limits<float>::max()  || 
-		binWidth < sqrt(std::numeric_limits<float>::epsilon()))
+		binWidth < sqrtf(std::numeric_limits<float>::epsilon()))
 	{
 		return (size_t)(-1);
 	}
@@ -95,7 +143,7 @@ size_t SpectrumPlotFilter::numBytesForCache(size_t nObjects) const
 }
 
 unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
-	std::vector<const FilterStreamData *> &getOut, ProgressData &progress, bool (*callback)(bool))
+	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 
 	if(cacheOK)
@@ -148,7 +196,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 							n+=NUM_CALLBACK;
 							progress.filterProgress= (unsigned int)((float)(n)/((float)totalSize)*100.0f);
 							curProg=NUM_CALLBACK;
-							if(!(*callback)(false))
+							if(*Filter::wantAbort)
 								return SPECTRUM_ABORT_FAIL;
 						}
 					}
@@ -180,7 +228,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 		if(minPlot ==std::numeric_limits<float>::max() || 
 			minPlot ==-std::numeric_limits<float>::max() || 
 			fabs(delta) >  std::numeric_limits<float>::max() || // Check for out-of-range
-			 binWidth < sqrt(std::numeric_limits<float>::epsilon())	)
+			 binWidth < sqrtf(std::numeric_limits<float>::epsilon())	)
 		{
 			//If not, then simply set it to some defaults.
 			minPlot=0; maxPlot=1.0; binWidth=0.1;
@@ -234,7 +282,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 	d->index=0;
 	d->parent=this;
 	d->dataLabel = getUserString();
-	d->yLabel= TRANS("Count");
+	d->yLabel=TRANS(YLABEL_STRING);
 
 	//Check all the incoming ion data's type name
 	//and if it is all the same, use it for the plot X-axis
@@ -341,7 +389,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 					unsigned int bin;
 					bin = (unsigned int)((ions->data[uj].getMassToCharge()-minPlot)/binWidth);
 					//Dependant upon the bounds,
-					//actual data could be anywhere.
+					//actual data could be anywhere. >=0 is implicit
 					if( bin < d->xyData.size())
 						d->xyData[bin].second++;
 
@@ -351,7 +399,7 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 						n+=NUM_CALLBACK;
 						progress.filterProgress= (unsigned int)(((float)(n)/((float)totalSize))*100.0f);
 						curProg=NUM_CALLBACK;
-						if(!(*callback)(false))
+						if(*Filter::wantAbort)
 						{
 							delete d;
 							return SPECTRUM_ABORT_FAIL;
@@ -368,12 +416,156 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 
 	}
 
+	if(fitMode!= FIT_MODE_NONE)
+	{
+		BACKGROUND_PARAMS backParams;
+		backParams.massStart=massBackStart;
+		backParams.massEnd=massBackEnd;
+		backParams.binWidth=binWidth;
+		backParams.mode=fitMode;
+
+	
+		//fit a constant tof (1/sqrt (mass)) type background
+		if(doFitBackground(dataIn,backParams))
+		{
+			//display a warning that the background failed
+			consoleOutput.push_back(TRANS("Background fit failed - input data was considered ill formed (gauss-test)"));
+		}
+		else 
+		{
+			if (!showOnlyCorrected)
+			{
+				//Create a new plot which shows the spectrum's background
+				PlotStreamData *plotBack = new PlotStreamData;
+				plotBack->parent = this;
+				plotBack->dataLabel=string(TRANS("Background:")) + d->dataLabel;	
+				plotBack->plotMode=d->plotMode;
+				plotBack->xLabel=d->xLabel;	
+				plotBack->index=d->index+1;	
+				plotBack->yLabel=d->yLabel;
+				plotBack->xyData.reserve(d->xyData.size());
+				for(size_t ui=0;ui<d->xyData.size(); ui++)
+				{
+					//negative sqrt cannot does not work. Equation only valid for positive masses
+					if(d->xyData[ui].first <=0)
+						continue;
+		
+					plotBack->xyData.push_back( std::make_pair(d->xyData[ui].first,
+							backParams.intensity/(sqrtf(d->xyData[ui].first))));
+			
+				}
+
+				cacheAsNeeded(plotBack);
+
+				getOut.push_back(plotBack);
+			}
+			else
+			{
+				//Correct the mass spectrum that we display
+				for(size_t ui=0;ui<d->xyData.size(); ui++)
+				{
+					//negative sqrt cannot does not work. Equation only valid for positive masses
+					if(d->xyData[ui].first <=0)
+					{
+						d->xyData[ui].second =0;
+						continue;
+					}
+	
+					d->xyData[ui].second-=backParams.intensity/sqrtf(d->xyData[ui].first);
+
+			
+				}
+				//prevent negative values in log mode
+				if(logarithmic)
+				{
+					for(size_t ui=0;ui<d->xyData.size(); ui++)
+						d->xyData[ui].second=std::max(0.0f,d->xyData[ui].second);
+				}
+				
+			}
+		}
+	}
+
+	if(normaliseMode != NORMALISE_NONE)
+	{
+		normalise(d->xyData);
+		switch(normaliseMode)
+		{
+			case NORMALISE_MAX:
+			case NORMALISE_MAX_IN_BOUND:
+				d->yLabel=TRANS("Relative ") + d->yLabel;
+				break;
+			case NORMALISE_INTEGRAL_ONE:
+				d->yLabel=TRANS("Probability Density"); 
+				
+				break;	
+
+			default:
+				ASSERT(false);
+
+		}
+	}	
 	cacheAsNeeded(d);
 	
 	getOut.push_back(d);
 
 	return 0;
 }
+
+
+void SpectrumPlotFilter::normalise(vector<pair<float,float> > &xyData) const
+{
+	float scaleFact=0;
+	switch(normaliseMode)
+	{
+		case NORMALISE_NONE:
+			return;
+		case NORMALISE_MAX:
+			#if defined(_OPENMP) && _OPENMP > 200805 //OPENMP 3.0
+			#pragma omp parallel for reduction(max:maxV)
+			#endif
+			for(size_t ui=0;ui<xyData.size();ui++)
+			{
+				scaleFact=std::max(xyData[ui].second,scaleFact);
+			}
+			break;
+		case NORMALISE_MAX_IN_BOUND:
+			#if defined(_OPENMP) && _OPENMP > 200805 //OPENMP 3.0
+			#pragma omp parallel for reduction(max:scaleFact)
+			#endif
+			for(size_t ui=0;ui<xyData.size();ui++)
+			{
+				if(xyData[ui].first < normaliseBounds.second &&
+					xyData[ui].first >=normaliseBounds.first)
+					scaleFact=std::max(xyData[ui].second,scaleFact);
+			}
+			break;
+		case NORMALISE_INTEGRAL_ONE:
+		{
+			#pragma omp parallel for reduction(+:scaleFact)
+			for(size_t ui=0;ui<xyData.size();ui++)
+				scaleFact+=xyData[ui].second;
+			float binDelta=1.0;
+			if(xyData.size() > 1)
+				binDelta=xyData[1].first - xyData[0].first;
+			scaleFact*=binDelta;
+			break;
+		}
+			
+		default:
+			ASSERT(false);
+	}
+
+	if(scaleFact > 0 )
+	{
+		#pragma omp parallel for
+		for(size_t ui=0;ui<xyData.size();ui++)
+		{
+			xyData[ui].second/=scaleFact;
+		}
+	}
+}
+
 
 void SpectrumPlotFilter::getProperties(FilterPropGroup &propertyList) const
 {
@@ -426,20 +618,50 @@ void SpectrumPlotFilter::getProperties(FilterPropGroup &propertyList) const
 	p.helpText=TRANS("Convert the plot to logarithmic mode");
 	propertyList.addProperty(p,curGroup);
 
-	//Let the user know what the valid values for plot type are
 	vector<pair<unsigned int,string> > choices;
-
-
 	string tmpStr;
-	tmpStr=plotString(PLOT_LINE_LINES);
-	choices.push_back(make_pair((unsigned int) PLOT_LINE_LINES,tmpStr));
-	tmpStr=plotString(PLOT_LINE_BARS);
-	choices.push_back(make_pair((unsigned int)PLOT_LINE_BARS,tmpStr));
-	tmpStr=plotString(PLOT_LINE_STEPS);
-	choices.push_back(make_pair((unsigned int)PLOT_LINE_STEPS,tmpStr));
-	tmpStr=plotString(PLOT_LINE_STEM);
-	choices.push_back(make_pair((unsigned int)PLOT_LINE_STEM,tmpStr));
+	for(unsigned int ui=0;ui<NORMALISE_ENUM_END;ui++)
+	{	
+		tmpStr=TRANS(NORMALISE_STRING[ui]);
+		choices.push_back(make_pair( ui,tmpStr));
+	}
+	
+	tmpStr= choiceString(choices,normaliseMode);
+	p.name=TRANS("Normalisation");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Rescale the plot height, to make inter-spectrum comparisons easier");
+	p.key=KEY_SPECTRUM_NORMALISE;
+	propertyList.addProperty(p,curGroup);
 
+
+	if(normaliseMode == NORMALISE_MAX_IN_BOUND)
+	{
+		p.name=TRANS("Lower Bound");
+		stream_cast(tmpStr,normaliseBounds.first);
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_REAL;
+		p.helpText=TRANS("Do not use data below this x-value for normalisation");
+		p.key=KEY_SPECTRUM_NORMALISE_LOWERBOUND;
+		propertyList.addProperty(p,curGroup);
+
+		p.name=TRANS("Upper Bound");
+		stream_cast(tmpStr,normaliseBounds.second);
+		p.data=tmpStr;
+		p.type=PROPERTY_TYPE_REAL;
+		p.helpText=TRANS("Do not use data above this x-value for normalisation");
+		p.key=KEY_SPECTRUM_NORMALISE_UPPERBOUND;
+		propertyList.addProperty(p,curGroup);
+
+	}
+	
+	//Let the user know what the valid values for plot type are
+	choices.clear();
+	for(unsigned int ui=PLOT_LINE_LINES; ui<PLOT_LINE_STEM+1;ui++)
+	{
+		tmpStr=plotString(ui);
+		choices.push_back(make_pair( ui,tmpStr));
+	}
 
 	tmpStr= choiceString(choices,plotStyle);
 	p.name=TRANS("Plot Type");
@@ -457,6 +679,62 @@ void SpectrumPlotFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.addProperty(p,curGroup);
 
 	propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
+
+	curGroup++;
+
+	choices.clear();
+	for(unsigned int ui=0;ui<FIT_MODE_ENUM_END; ui++)
+	{
+		tmpStr=TRANS(BACKGROUND_MODE_STRING[ui]);
+		choices.push_back(make_pair(ui,tmpStr));
+	}
+	
+	p.name=TRANS("Model");
+	p.key=KEY_SPECTRUM_BACKMODE;
+	p.type=PROPERTY_TYPE_CHOICE;
+	p.helpText=TRANS("Fitting method to use");
+	p.data=choiceString(choices,fitMode);
+	propertyList.addProperty(p,curGroup);
+
+
+	switch(fitMode)
+	{
+		case FIT_MODE_NONE:
+			break;
+		case FIT_MODE_CONST_TOF:
+			//Add start/end TOF 
+			p.name=TRANS("Fit Start");
+			p.helpText=TRANS("Start mass value for fitting background");
+			p.type=PROPERTY_TYPE_REAL;
+			p.key=KEY_SPECTRUM_BACKMODE_FLAT_START;
+			stream_cast(p.data,massBackStart);
+			propertyList.addProperty(p,curGroup);
+
+			p.name=TRANS("Fit End");
+			p.helpText=TRANS("End mass value for fitting background");
+			p.type=PROPERTY_TYPE_REAL;
+			p.key=KEY_SPECTRUM_BACKMODE_FLAT_END;
+			stream_cast(p.data,massBackEnd);
+
+			propertyList.addProperty(p,curGroup);
+			break;
+		default:
+			ASSERT(false);
+	}
+
+	if(fitMode != FIT_MODE_NONE)
+	{
+		p.name=TRANS("Corr. Only");
+		p.helpText=TRANS("Only show corrected spectrum, not fit");
+		p.key=KEY_SPECTRUM_CORRECTED_ONLY;
+		p.type=PROPERTY_TYPE_BOOL;
+		p.data=boolStrEnc(showOnlyCorrected);
+		propertyList.addProperty(p,curGroup);
+
+	}
+
+	propertyList.setGroupTitle(curGroup,TRANS("Background Mode"));	
+	
 }
 
 bool SpectrumPlotFilter::setProperty( unsigned int key, 
@@ -564,7 +842,7 @@ bool SpectrumPlotFilter::setProperty( unsigned int key,
 				//we cached, in order to avoid recomputation
 				for(size_t ui=0;ui<filterOutputs.size();ui++)
 				{
-					if(filterOutputs[ui]->getStreamType() == STREAM_TYPE_PLOT)
+					if(filterOutputs[ui]->getStreamType() == STREAM_TYPE_PLOT )
 					{
 						PlotStreamData *p;
 						p =(PlotStreamData*)filterOutputs[ui];
@@ -608,6 +886,10 @@ bool SpectrumPlotFilter::setProperty( unsigned int key,
 				}
 
 			}
+			else
+			{
+				clearCache();
+			}
 
 			break;
 		}
@@ -638,6 +920,115 @@ bool SpectrumPlotFilter::setProperty( unsigned int key,
 				}
 
 			}
+			else
+				clearCache();
+			break;
+		}
+		case KEY_SPECTRUM_BACKMODE:
+		{
+			unsigned int newMode;
+			for(size_t ui=0;ui<FIT_MODE_ENUM_END; ui++)
+			{
+				if(string(BACKGROUND_MODE_STRING[ui]) == string(value))
+				{
+					newMode=ui;
+					break;
+				}
+			}
+
+			ASSERT(newMode <FIT_MODE_ENUM_END)
+			
+			fitMode=newMode;
+			cacheOK=false;
+			needUpdate=true;
+			clearCache();
+			
+			break;
+		}
+	
+		case KEY_SPECTRUM_BACKMODE_FLAT_START:
+		{
+			float tmpStart;
+			if(stream_cast(tmpStart,value))
+				return false;
+			if( tmpStart>=massBackEnd)
+				return false;
+
+			if(!applyPropertyNow(massBackStart,value,needUpdate))
+				return false;
+			break;
+		}
+		case KEY_SPECTRUM_BACKMODE_FLAT_END:
+		{
+			float tmpEnd;
+			if(stream_cast(tmpEnd,value))
+				return false;
+			if( tmpEnd<=massBackStart)
+				return false;
+
+			if(!applyPropertyNow(massBackEnd,value,needUpdate))
+				return false;
+			break;
+		}
+		case KEY_SPECTRUM_CORRECTED_ONLY:
+		{
+			if(!applyPropertyNow(showOnlyCorrected,value,needUpdate))
+				return false;
+			break;
+		}
+		case KEY_SPECTRUM_NORMALISE:
+		{
+			unsigned int newMode;
+			for(size_t ui=0;ui<NORMALISE_ENUM_END; ui++)
+			{
+				if(string(NORMALISE_STRING[ui]) == string(value))
+				{
+					newMode=ui;
+					break;
+				}
+			}
+			ASSERT(newMode <NORMALISE_ENUM_END)
+		
+			//TODO: Cache introspection?	
+			normaliseMode=newMode;
+			cacheOK=false;
+			needUpdate=true;
+			clearCache();
+			break;
+
+		}
+		case KEY_SPECTRUM_NORMALISE_LOWERBOUND:
+		{
+			float tmpVal;
+			if(stream_cast(tmpVal,value))
+				return false;
+			if( tmpVal>=normaliseBounds.second)
+				return false;
+
+			if(!applyPropertyNow(normaliseBounds.first,value,needUpdate))
+				return false;
+			
+		
+			//TODO: Cache introspection?	
+			normaliseBounds.first=tmpVal;
+			cacheOK=false;
+			break;
+		}
+		case KEY_SPECTRUM_NORMALISE_UPPERBOUND:
+		{
+			float tmpVal;
+			if(stream_cast(tmpVal,value))
+				return false;
+			if( tmpVal<=normaliseBounds.first)
+				return false;
+
+			if(!applyPropertyNow(normaliseBounds.second,value,needUpdate))
+				return false;
+			
+		
+			//TODO: Cache introspection?	
+			normaliseBounds.second=tmpVal;
+			cacheOK=false;
 			break;
 		}
 		default:
@@ -661,7 +1052,7 @@ void SpectrumPlotFilter::setUserString(const std::string &s)
 }
 
 
-std::string  SpectrumPlotFilter::getErrString(unsigned int code) const
+std::string  SpectrumPlotFilter::getSpecificErrString(unsigned int code) const
 {
 	const char *errStrs[] = {
 		"",
@@ -673,6 +1064,8 @@ std::string  SpectrumPlotFilter::getErrString(unsigned int code) const
 	ASSERT(code < SPECTRUM_ERR_ENUM_END);
 	return errStrs[code];
 }
+
+
 
 void SpectrumPlotFilter::setPropFromBinding(const SelectionBinding &b)
 {
@@ -699,6 +1092,13 @@ bool SpectrumPlotFilter::writeState(std::ostream &f,unsigned int format, unsigne
 			f << tabs(depth+1) << "<logarithmic value=\"" << logarithmic<< "\"/>" << endl;
 
 			f << tabs(depth+1) << "<plottype value=\"" << plotStyle<< "\"/>" << endl;
+			f << tabs(depth+1) << "<background mode=\"" << fitMode << "\">" << endl;
+				f << tabs(depth+2) << "<fitwindow start=\"" << massBackStart<< "\" end=\"" << massBackEnd << "\"/>" << endl;
+				f << tabs(depth+2) << "<showonlycorrected value=\"" << boolStrEnc(showOnlyCorrected)  <<  "\"/>" << endl;
+
+
+			f << tabs(depth+1) << "</background>" << endl;
+			f << tabs(depth+1) << "<normalise mode=\"" << normaliseMode << "\" lowbound=\"" << normaliseBounds.first << "\" highbound=\"" << normaliseBounds.second << "\"/>" << endl;
 			
 			f << tabs(depth) << "</" << trueName() <<  ">" << endl;
 			break;
@@ -724,6 +1124,7 @@ bool SpectrumPlotFilter::readState(xmlNodePtr &nodePtr, const std::string &state
 	xmlChar *xmlString=xmlGetProp(nodePtr,(const xmlChar *)"value");
 	if(!xmlString)
 		return false;
+
 	userString=(char *)xmlString;
 	xmlFree(xmlString);
 	//===
@@ -812,6 +1213,63 @@ bool SpectrumPlotFilter::readState(xmlNodePtr &nodePtr, const std::string &state
 	       return false;	
 	//====
 
+	//Retrieve background fitting mode, if we have it
+	// Only available 3Depict >= 0.0.18
+	// internal rev > 5e7b66e5ce3d
+	xmlNodePtr  tmpNode=nodePtr;
+	if(!XMLHelpFwdToElem(nodePtr,"background"))
+	{
+		if(XMLHelpGetProp(fitMode,nodePtr,"mode"))
+			return false;
+
+		if(!nodePtr->xmlChildrenNode)
+			return false;
+			
+		tmpNode=nodePtr;
+		nodePtr=nodePtr->xmlChildrenNode;
+		
+		if(!XMLGetNextElemAttrib(nodePtr,massBackStart,"fitwindow","start"))
+			return false;
+
+		if(XMLHelpGetProp(massBackEnd,nodePtr,"end"))
+			return false;
+		
+		if(!XMLGetNextElemAttrib(nodePtr,showOnlyCorrected,"showonlycorrected","value"))
+			return false;
+		nodePtr=tmpNode;
+	}
+	else
+	{
+		nodePtr=tmpNode;
+	}
+	
+	// Only available 3Depict >= 0.0.18
+	// internal rev > 73289623683a tip
+	if(!XMLHelpFwdToElem(nodePtr,"normalise"))
+	{
+		if(XMLHelpGetProp(normaliseMode,nodePtr,"mode"))
+			return false;
+
+		float tmpLow,tmpHigh;		
+		if(XMLHelpGetProp(tmpLow,nodePtr,"lowbound"))
+			return false;
+	
+		if(XMLHelpGetProp(tmpHigh,nodePtr,"highbound"))
+			return false;
+
+		if(tmpLow >=tmpHigh)
+			return false;
+
+		normaliseBounds.first=tmpLow;
+		normaliseBounds.second=tmpHigh;
+	}
+	else
+	{
+		//initialise to some default value
+		normaliseBounds=std::make_pair(0,100);
+		normaliseMode=NORMALISE_NONE;
+	}
+
 	return true;
 }
 
@@ -829,6 +1287,11 @@ unsigned int SpectrumPlotFilter::getRefreshEmitMask() const
 unsigned int SpectrumPlotFilter::getRefreshUseMask() const
 {
 	return STREAM_TYPE_IONS;
+}
+
+bool SpectrumPlotFilter::needsUnrangedData() const
+{
+	return fitMode == FIT_MODE_CONST_TOF;
 }
 
 #ifdef DEBUG
@@ -852,6 +1315,7 @@ IonStreamData *synDataPoints(const unsigned int span[], unsigned int numPts)
 
 bool countTest()
 {
+	using std::auto_ptr;
 	auto_ptr<IonStreamData> d;
 	const unsigned int VOL[]={
 				10,10,10
@@ -877,7 +1341,7 @@ bool countTest()
 	//Do the refresh
 	ProgressData p;
 	f->setCaching(false);
-	TEST(!f->refresh(streamIn,streamOut,p,dummyCallback),"refresh error code");
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh error code");
 	delete f;
 	
 	TEST(streamOut.size() == 1,"stream count");
@@ -888,10 +1352,10 @@ bool countTest()
 
 	
 	//Check the plot colour is what we want.
-	TEST(fabs(plot->r -1.0f) < sqrt(std::numeric_limits<float>::epsilon()),"colour (r)");
+	TEST(fabs(plot->r -1.0f) < sqrtf(std::numeric_limits<float>::epsilon()),"colour (r)");
 	TEST(plot->g< 
-		sqrt(std::numeric_limits<float>::epsilon()),"colour (g)");
-	TEST(plot->b < sqrt(std::numeric_limits<float>::epsilon()),"colour (b)");
+		sqrtf(std::numeric_limits<float>::epsilon()),"colour (g)");
+	TEST(plot->b < sqrtf(std::numeric_limits<float>::epsilon()),"colour (b)");
 
 	//Count the number of ions in the plot, and check that it is equal to the number of ions we put in.
 	float sumV=0;

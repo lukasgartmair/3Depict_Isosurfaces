@@ -85,7 +85,7 @@ class AnnotateFilter : public Filter
 		// ->cached.
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 							std::vector<const FilterStreamData *> &dataOut,
-							ProgressData &progress, bool (*callback)(bool));
+							ProgressData &progress);
 		//!Get (approx) number of bytes required for cache
 		size_t numBytesForCache(size_t nObjects) const;
 
@@ -107,7 +107,7 @@ class AnnotateFilter : public Filter
 		void setPropFromBinding( const SelectionBinding &b) ;
 
 		//!Get the human readable error string associated with a particular error code during refresh(...)
-		std::string getErrString(unsigned int code) const;
+		std::string getSpecificErrString(unsigned int code) const;
 
 		//!Dump state to output stream, using specified format
 		/* Current supported formats are STATE_FORMAT_XML

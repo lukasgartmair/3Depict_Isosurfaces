@@ -23,7 +23,8 @@
 #include "backend/filter.h"
 #include "common/array2D.h"
 #include <map>
-
+#include <vector>
+#include <utility>
 
 #if  defined(WIN32) || defined(WIN64)
 	//Help mathgl out a bit: we don't need the GSL on this platform
@@ -59,6 +60,7 @@ enum
 {
 	PLOT_MODE_1D,
 	PLOT_MODE_2D,
+	PLOT_MODE_COLUMN,
 	PLOT_MODE_MIXED, //special marker - different types of plots, when looking at multiple plots
 	PLOT_MODE_ENUM_END //not a plot, just end of enum
 };
@@ -96,7 +98,7 @@ class PlotRegion
 		};
 		
 		//Bounding limits for axial bind
-		vector<std::pair<float,float> > bounds;
+		std::vector<std::pair<float,float> > bounds;
 
 		//Bounding region colour
 		float r,g,b;
@@ -116,7 +118,7 @@ class PlotRegion
 		void setUpdateMethod(size_t updateMethod, void *parentObject);
 
 		//Update the parent object using the curretn update method
-		void updateParent(size_t method, const vector<float> &newBounds, bool updateSelf=true);
+		void updateParent(size_t method, const std::vector<float> &newBounds, bool updateSelf=true);
 
 		//Retrieve the parent as a filter object - must be in ACCESS_MODE_FILTER
 		Filter *getParentAsFilter() const { ASSERT(accessMode==ACCESS_MODE_FILTER); return (Filter*)parentObject;};
@@ -132,14 +134,14 @@ class RegionGroup
 {
 	private:
 		//cache for region overlaps, to reduce need to search
-		mutable vector<pair<size_t,size_t> > overlapIdCache;
-		mutable vector<pair<float,float> > overlapCoordsCache;
+		mutable std::vector<std::pair<size_t,size_t> > overlapIdCache;
+		mutable std::vector<std::pair<float,float> > overlapCoordsCache;
 
 		mutable bool haveOverlapCache;
 	public:
 		RegionGroup() { haveOverlapCache=false;};
 		//!Interactive, or otherwise marked plot regions
-		vector<PlotRegion> regions;
+		std::vector<PlotRegion> regions;
 
 
 		void clear() {regions.clear(); };
@@ -164,16 +166,16 @@ class RegionGroup
 				unsigned int movementType, float &maxX, float &maxY) const;
 
 
-		void getOverlaps(vector<pair<size_t,size_t> > &ids,
-				vector< pair<float,float> > &coords) const;
+		void getOverlaps(std::vector<std::pair<size_t,size_t> > &ids,
+				std::vector< std::pair<float,float> > &coords) const;
 };
 
 struct  OVERLAY_DATA
 {
 	//Coordinate and amplitude
-	vector<pair<float, float> > coordData;
+	std::vector<std::pair<float, float> > coordData;
 	//title for all of te specified overlay data
-	string title;
+	std::string title;
 	//If the overlay is enabled or not
 	bool enabled;
 };
@@ -185,7 +187,7 @@ class PlotOverlays
 	private:
 		bool isEnabled;
 		// List of the overlays that can be shown on the given plot
-		vector<OVERLAY_DATA>  overlayData;
+		std::vector<OVERLAY_DATA>  overlayData;
 	public:
 		PlotOverlays() : isEnabled(true) {}
 		//Add a new overlay to the plot
@@ -203,7 +205,7 @@ class PlotOverlays
 		void clear() {overlayData.clear();}
 		void erase(size_t item) {ASSERT(item < overlayData.size()); overlayData.erase(overlayData.begin() + item);;}
 
-		const vector<OVERLAY_DATA> &getOverlays() const { return overlayData;};
+		const std::vector<OVERLAY_DATA> &getOverlays() const { return overlayData;};
 
 };
 
@@ -229,14 +231,14 @@ class PlotBase
 		void copyBase(PlotBase *target) const;
 
 		//Find the upper and lower limit of a given dataset
-		static void computeDataBounds(const vector<float> &d, float &minV,float &maxV) ;
+		static void computeDataBounds(const std::vector<float> &d, float &minV,float &maxV) ;
 		
 		//Find the upper and lower limit of a given dataset
-		static void computeDataBounds(const vector<float> &d, const vector<float> &errorBar,
+		static void computeDataBounds(const std::vector<float> &d, const std::vector<float> &errorBar,
 								float &minV,float &maxV);
 
 		//Find the upper and lower limit of a given dataset
-		static void computeDataBounds(const vector<pair<float,float> > &d, 
+		static void computeDataBounds(const std::vector<std::pair<float,float> > &d, 
 					float &minVx,float &maxVx,float &minVy, float &maxVy);
 	public:
 		PlotBase();
@@ -284,7 +286,7 @@ class PlotBase
 		
 
 		//Retrieve the raw data associated with this plot.
-		virtual void getRawData(vector<vector<float> > &f,
+		virtual void getRawData(std::vector<std::vector<float> > &f,
 				std::vector<std::string> &labels) const=0;
 
 		//set the plot axis strings (x,y and title)
@@ -319,19 +321,24 @@ class Plot1D : public PlotBase
 		bool logarithmic;
 		//!Data
 		std::vector<float> xValues,yValues,errBars;
-		
+
+		//Do we want to draw error bars?
+		PLOT_ERROR errMode;	
+
+		//Set the error bars for this plot
+		void genErrBars();	
 	public:
 		Plot1D();
 		virtual bool isEmpty() const;
 		virtual PlotBase *clone() const;
 			
 		//!Set the plot data from a pair and symmetric Y error
-		void setData(const vector<std::pair<float,float> > &v);
-		void setData(const vector<std::pair<float,float> > &v,const vector<float> &symYErr);
+		void setData(const std::vector<std::pair<float,float> > &v);
+		void setData(const std::vector<std::pair<float,float> > &v,const std::vector<float> &symYErr);
 		//!Set the plot data from two vectors and symmetric Y error
-		void setData(const vector<float> &vX, const vector<float> &vY);
-		void setData(const vector<float> &vX, const vector<float> &vY,
-							const vector<float> &symYErr);
+		void setData(const std::vector<float> &vX, const std::vector<float> &vY);
+		void setData(const std::vector<float> &vX, const std::vector<float> &vY,
+							const std::vector<float> &symYErr);
 
 		
 		//!Move a region to a new location. 
@@ -370,6 +377,13 @@ class Plot1D : public PlotBase
 		bool wantLogPlot() const { return logarithmic;};
 		void setLogarithmic(bool p){logarithmic=p;};
 
+		//obtain the smallest nonzero value, if possible (otherwise, returns 0)
+		// - used to get limits for logarithmic plots, for example
+		float getSmallestNonzero() const;
+
+		//Set the current error mode
+		void setErrMode(PLOT_ERROR newErrMode) ;  
+
 };
 
 //!2D function, f(x,y). 
@@ -399,9 +413,12 @@ class Plot2DFunc : public PlotBase
 class Plot2DScatter : public PlotBase
 {
 	private:
-		vector<pair<float,float> > points;
-		vector<float > intensity;
+		std::vector<std::pair<float,float> > points;
+		std::vector<float > intensity;
 	public:
+		//Do we want to display the points in logarithmic terms?
+		bool scatterIntensityLog;
+
 		Plot2DScatter();
 		virtual bool isEmpty() const;
 		virtual PlotBase *clone() const;
@@ -415,8 +432,8 @@ class Plot2DScatter : public PlotBase
 				std::vector<std::string> &labels) const;
 
 		//reset the data stored in the plot
-		void setData(const vector<pair<float,float> > &pts);
-		void setData(const vector<pair<float,float> > &pts ,const vector<float> &intens);
+		void setData(const std::vector<std::pair<float,float> > &pts);
+		void setData(const std::vector<std::pair<float,float> > &pts ,const std::vector<float> &intens);
 };
 
 //Wrapper class for containing multiple plots 
@@ -474,7 +491,7 @@ class PlotWrapper
 		size_t numPlots() const { return plottingData.size();}
 
 		//Retrieve the IDs for the stored plots
-		void getPlotIDs(vector<unsigned int> &ids) const ;
+		void getPlotIDs(std::vector<unsigned int> &ids) const ;
 
 		//Retrieve the title of the plot
 		std::string getTitle(size_t plotId) const;
@@ -546,7 +563,7 @@ class PlotWrapper
 		bool isPlotVisible(unsigned int plotID) const;
 		
 		
-		void getVisibleIDs(vector<unsigned int> &plotID) const;
+		void getVisibleIDs(std::vector<unsigned int> &plotID) const;
 
 		//!Disable user bounds
 		void disableUserBounds(){plotChanged=true;applyUserBounds=false;};
@@ -580,15 +597,15 @@ class PlotWrapper
 		void getRegion(unsigned int plotId, unsigned int regionId, PlotRegion &r) const;
 
 		//Get all of the (id, regions) for plots. Bool allows for only the plots that are visible to be obtained
-		void getRegions(vector<pair<size_t,vector<PlotRegion> > > &regions, bool visibleOnly=true) const;
+		void getRegions(std::vector<std::pair<size_t,std::vector<PlotRegion> > > &regions, bool visibleOnly=true) const;
 		
 		//Return the ID and coordinates of any overlapping regions
 		// - this only returns overlaps for individual plots - not between plots
-		void getRegionOverlaps(std::vector<pair<size_t,size_t> > &ids,
-							std::vector< pair<float,float> > &coords) const;
+		void getRegionOverlaps(std::vector<std::pair<size_t,size_t> > &ids,
+							std::vector< std::pair<float,float> > &coords) const;
 
 		//!Retrieve the raw data associated with the selected plots.
-		void getRawData(vector<vector<vector<float> > >  &data, std::vector<std::vector<std::string> >  &labels) const;
+		void getRawData(std::vector<std::vector<std::vector<float> > >  &data, std::vector<std::vector<std::string> >  &labels) const;
 	
 
 		//!obtain the type of a plot, given the plot's uniqueID
@@ -614,7 +631,7 @@ class PlotWrapper
 
 		//TODO: convert to serialised parent path
 		//Override the last-visible selection. This allows for overriding which plots were selected, which is normally handled internally
-		void overrideLastVisible(vector< pair<const void *,unsigned int>  > &overridden); 
+		void overrideLastVisible(std::vector< std::pair<const void *,unsigned int>  > &overridden); 
 };
 
 #endif
