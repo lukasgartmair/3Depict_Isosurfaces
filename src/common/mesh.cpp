@@ -2583,7 +2583,7 @@ void Mesh::erasePhysGroup(unsigned int physGroup, unsigned int typeMask)
 // method
 // EFFICIENT FEATURE EXTRACTION FOR 2D/3D OBJECTS
 // IN MESH REPRESENTATION. Dept. Electrical and Computer Engineering,
-// Carnegie Mellon UNiversity
+// Carnegie Mellon University
 // Original URL :  http://amp.ece.cmu.edu/Publication/Cha/icip01_Cha.pdf
 //  Retrieved from internet archive.
 float Mesh::getVolume() const
@@ -3128,7 +3128,7 @@ bool TRIANGLE::edgesMismatch(const TRIANGLE &other) const
 			//If the triangles have all 3 vertices in common, they will match IFF they
 			// have a rotationally invariant sequence that matches (3 matching edges). As permutations
 			// other than vertex sequence rotation will flip the triangle normal
-			// eg : 1-2-3 matches 2-3-1,  but not  1-3-2
+			// egg : 1-2-3 matches 2-3-1,  but not  1-3-2
 			return !rotateMatch(pA,pB,3);
 		}
 		else

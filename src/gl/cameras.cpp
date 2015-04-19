@@ -606,7 +606,7 @@ void CameraLookAt::getProperties(CameraProperties &p) const
 	cp.key=CAMERA_KEY_LOOKAT_ORIGIN;
 	p.addEntry(cp);
 
-	//Add camea target pt
+	//Add came target pt
 	stream_cast(cp.data,target);
 	cp.name=TRANS("Target");
 	cp.type=PROPERTY_TYPE_POINT3D;

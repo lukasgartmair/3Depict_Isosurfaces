@@ -401,7 +401,7 @@ void BasicGLPane::mouseDown(wxMouseEvent& event)
 
 
 		//If the selected object is valid, then
-		//we did select an object. Treat this as a seletion event
+		//we did select an object. Treat this as a selection event
 		if(currentScene->getLastSelected() != (unsigned int)-1)
 		{
 			selectionMode=true;
@@ -714,8 +714,8 @@ bool BasicGLPane::prepare3DViewport(int tlx, int tly, int brx, int bry)
 	GLint dims[2]; 
 	glGetIntegerv(GL_MAX_VIEWPORT_DIMS, dims); 
 
-	//Ensure that the opengGL function didn't tell us porkies
-	//but double check for the non-debug bulds next line
+	//Ensure that the openGL function didn't tell us porkies
+	//but double check for the non-debug builds next line
 	ASSERT(dims[0] && dims[1]);
 
 	//check for exceeding max viewport and we have some space
@@ -917,15 +917,15 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 	//--------------	
 
 	//HACK: Flip the all but scene's light z coordinate
-	// for some reason, the frustrum has an inversion
-	// somwhere in the coordinate system, and I can't find it!
-	// inverting the tile frustrum ends up with the depth test 
+	// for some reason, the frustum has an inversion
+	// somewhere in the coordinate system, and I can't find it!
+	// inverting the tile frustum ends up with the depth test 
 	// also inverting.
 	const bool FLIP_LIGHT_HACK=true;
 	//x,y,z and w axis.
 	const bool IMPORTANT_AXIS[4]={true,false,true,false};
 
-	//opengl lighthas 4 
+	//opengl light has 4 
 	float oldLightPos[4];
 	if(FLIP_LIGHT_HACK)
 	{

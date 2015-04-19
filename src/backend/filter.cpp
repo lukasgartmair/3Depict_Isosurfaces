@@ -349,7 +349,7 @@ void FilterPropGroup::checkConsistent() const
 	ASSERT(groupNames.size() ==groupCount);
 
 
-	//check that each group ahas a name
+	//check that each group has a name
 	for(size_t ui=0;ui<groupNames.size(); ui++)
 	{
 		ASSERT(!groupNames[ui].empty())
@@ -840,7 +840,7 @@ unsigned int Filter::collateIons(const vector<const FilterStreamData *> &dataIn,
 
 void Filter::updateOutputInfo(const std::vector<const FilterStreamData *> &dataOut)
 {
-	//Reset the number ouf output streams to zero
+	//Reset the number of output streams to zero
 	for(unsigned int ui=0;ui<NUM_STREAM_TYPES;ui++)
 		numStreamsLastRefresh[ui]=0;
 	

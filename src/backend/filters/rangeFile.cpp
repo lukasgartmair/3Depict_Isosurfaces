@@ -59,7 +59,7 @@ Filter *RangeFileFilter::cloneUncached() const
 	p->assumedFileFormat=assumedFileFormat;
 	p->dropUnranged=dropUnranged;
 
-	//We are copying wether to cache or not,
+	//We are copying whether to cache or not,
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
@@ -294,7 +294,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 		//=========================================
 		if(haveEnabled)
 		{
-			//	I tried parallelising this a few different ways, but the linear performance wa simply better.
+			//	I tried parallelising this a few different ways, but the linear performance was simply better.
 			//		- Tried an array of openmp locks
 			//		- Tried keeping a unique offset number and fixing the size of the output vectors
 			//		- Tried straight criticalling the push_back

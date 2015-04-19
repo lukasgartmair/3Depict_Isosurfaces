@@ -178,7 +178,7 @@ int countBinnedIons(const std::vector<IonHit> &ions, const RangeFile *rng,
 	completedGridEntries.reserve(((float)filteredIons.size()/segmentOptions.nIons)*0.5f);
 	for(size_t ui=0;ui<filteredIons.size(); ui++)
 	{	
-		//Find the X y division for hte ion
+		//Find the X y division for the ion
 		unsigned int xPos,yPos;
 		Point3D ionOffset;
 		ionOffset=filteredIons[ui].getPos() - lowBound;
@@ -209,7 +209,7 @@ int countBinnedIons(const std::vector<IonHit> &ions, const RangeFile *rng,
 		//Update grid end
 		gridEntries[binIdx].endPt[extrusionAxis]=ionOffset[extrusionAxis];
 
-		//Check to see if we need to finsh this grid entry
+		//Check to see if we need to finish this grid entry
 		if(gridEntries[binIdx].totalIons ==segmentOptions.nIons)
 		{
 #ifdef DEBUG
@@ -305,7 +305,7 @@ void genBinomialHistogram(const vector<GRID_ENTRY> &completedGridEntries,
 	normFreq.resize(mapIonFrequencies.size());
 	for(size_t ui=0;ui<mapIonFrequencies.size();ui++)
 	{
-		//For each type (vector entry), compute the compositon of each block
+		//For each type (vector entry), compute the composition of each block
 		map<unsigned int,unsigned int>::const_iterator it;
 		size_t total;
 		total=0;
@@ -313,7 +313,7 @@ void genBinomialHistogram(const vector<GRID_ENTRY> &completedGridEntries,
 		{
 			total+=it->second;
 		}
-		//Create the entries for the normalised frequency, watching fout for /= 0
+		//Create the entries for the normalised frequency, watching out for /= 0
 		for(it=mapIonFrequencies[ui].begin(); it!=mapIonFrequencies[ui].end();++it)
 		{
 			if(total)
@@ -655,9 +655,9 @@ bool testBinomialRandomnessTruePositive()
 		TEST(binStats.pValueOK[0],"Pvalue reported as correctly computed");
 		//Note that this next test is quite wide, as the pvalues are for 
 		// *two different observation underlying probabilities*.
-		//In one, the binomial prob is known (PVAL, eg =0.7), in the other we estimate it 
-		//from obsercvation - which has an error associated with it due to the 
-		//finite number of observations (eg pObs = 0.698). Chi-square is quite sensitive to this
+		//In one, the binomial prob is known (PVAL, e.g. =0.7), in the other we estimate it 
+		//from observation - which has an error associated with it due to the 
+		//finite number of observations (e.g. pObs = 0.698). Chi-square is quite sensitive to this
 		//difference.
 		TEST(fabs(binStats.pValue[0]-pValue)/pValue < 2.0,"cross-check pvalue computation");
 	}

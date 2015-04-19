@@ -858,7 +858,7 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			}
 
 
-			//Update the filter output statistics, eg num objects of each type output 
+			//Update the filter output statistics, e.g. num objects of each type output 
 			currentFilter->updateOutputInfo(curData);
 			
 			

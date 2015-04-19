@@ -178,7 +178,7 @@ Filter *IonInfoFilter::cloneUncached() const
 	p->cubeSideLen=cubeSideLen;
 	p->volumeAlgorithm=volumeAlgorithm;
 
-	//We are copying wether to cache or not,
+	//We are copying whether to cache or not,
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;

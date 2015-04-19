@@ -466,7 +466,7 @@ bool locateDataTests()
 			check=true;
 		else
 		{
-			//Check only if compiled for thiarch arch
+			//Check only if compiled for a specific arch
 			if(arch == "win")
 			{
 #if defined(__WIN32__) || defined(__WIN64)

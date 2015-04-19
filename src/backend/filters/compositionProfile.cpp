@@ -137,7 +137,7 @@ Filter *CompositionProfileFilter::cloneUncached() const
 	p->nBins = nBins;
 	p->plotStyle=plotStyle;
 	p->errMode=errMode;
-	//We are copying wether to cache or not,
+	//We are copying whether to cache or not,
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;

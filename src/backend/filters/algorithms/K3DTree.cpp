@@ -184,7 +184,7 @@ K3DTree::~K3DTree()
 			}
 		}
 		
-	//Keep going until we meet the root nde for the third time (one left, one right, one finish)	
+	//Keep going until we meet the root node for the third time (one left, one right, one finish)	
 	}while(!(curNode==root &&  visit== 2));
 
 	std::cerr << "===COMPARE===" << std::endl;

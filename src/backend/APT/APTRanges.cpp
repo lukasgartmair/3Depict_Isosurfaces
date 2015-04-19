@@ -668,7 +668,7 @@ unsigned int RangeFile::openDoubleRNG(FILE *fpRange)
 	if(errCode)
 		return errCode;
 
-	//Spin forwards ot the "polyatomic extension" line
+	//Spin forwards to the "polyatomic extension" line
 
 		
 	char *inBuffer = new char[MAX_LINE_SIZE];
@@ -698,7 +698,7 @@ unsigned int RangeFile::openDoubleRNG(FILE *fpRange)
 	//Now merge the two range files by using the mass pair data as a key
 
 	//Find the matching ranges
-	//range IDs from first and second file who have matching rnage values
+	//range IDs from first and second file who have matching range values
 	vector< pair<size_t,size_t> > rangeMatches;
 	//IonID from the first dataset that we will need to replace
 	vector<size_t> overrideIonID;
@@ -914,7 +914,7 @@ unsigned int RangeFile::openRNG( FILE *fpRange)
 			if(composeMap.empty())
 			{
 				//We have a multiple, but no way of composing it!
-				// we will need ot build our own table entry.
+				// we will need to build our own table entry.
 				// For now, just store the freq tableentry
 				unassignedMultiples.push_back(make_pair(ui,freqEntries));
 				ionIDs.push_back(-2);

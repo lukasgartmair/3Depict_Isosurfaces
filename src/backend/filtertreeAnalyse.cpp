@@ -237,7 +237,7 @@ void FilterTreeAnalyse::blockingPairError(const FilterTree &f)
 			
 				analysisResults.push_back(treeErr);
 			}
-			//If the parent does not emit a useable objects 
+			//If the parent does not emit a usable objects 
 			//for the child filter, this is bad too.
 			// - else if, so we don't double up on warnings
 			else if( !(parentEmit & curUse) && !childFilter->isUsefulAsAppend())
@@ -380,7 +380,7 @@ void FilterTreeAnalyse::checkRequiredParent(const FilterTree &f)
 			}
 		}
 
-		//If we couldnt find a parent, then this is an error.
+		//If we couldn't find a parent, then this is an error.
 		// let the user know
 		if(!foundParent)
 		{
@@ -421,7 +421,7 @@ void FilterTreeAnalyse::checkUnrangedData(const FilterTree &f)
 
 			for(tree<Filter*>::pre_order_iterator itJ(it); itJ!=treeFilt.end();++itJ)
 			{
-				//we need rnaged data, but don't have it. Warn 
+				//we need ranged data, but don't have it. Warn 
 				if(needsUnrangedData(*itJ))
 				{
 					FILTERTREE_ERR treeErr;

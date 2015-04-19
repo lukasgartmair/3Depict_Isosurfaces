@@ -112,7 +112,7 @@ Filter *IonClipFilter::cloneUncached() const
 
 	p->lockAxisMag = lockAxisMag;
 
-	//We are copying wether to cache or not,
+	//We are copying whether to cache or not,
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
@@ -879,7 +879,7 @@ bool IonClipFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileD
 		return false;
 	//====
 	
-	//Retrieve primitive visiblity 
+	//Retrieve primitive visibility 
 	//====
 	if(!XMLGetNextElemAttrib(nodePtr,tmpStr,"showprimitive","value"))
 		return false;

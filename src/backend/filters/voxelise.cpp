@@ -785,7 +785,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 	}
 	else
 	{
-		//prevent the case where we usd to have an incoing range stream, but now we dont.
+		//prevent the case where we used to have an incoming range stream, but now we don't.
 		// selected item within choice string must still be valid
 		if(normaliseType > VOXELISE_NORMALISETYPE_VOLUME)
 			defaultChoice= VOXELISE_NORMALISETYPE_NONE;

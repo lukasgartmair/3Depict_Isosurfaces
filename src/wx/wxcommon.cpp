@@ -126,7 +126,7 @@ std::string locateDataFile(const char *name)
 			return s;
 	}
 
-	//Return empty string, as we cna't find it
+	//Return empty string, as we can't find it
 	return std::string("");
 #elif defined (__APPLE__)
     CFBundleRef mainBundle = CFBundleGetMainBundle();

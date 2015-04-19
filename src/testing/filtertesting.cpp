@@ -481,7 +481,7 @@ bool filterRefreshNoOut()
 		return true;
 	}
 
-	//Write out some useable data
+	//Write out some usable data
 	f << "1 2 3 4" << std::endl;
 	f << "2 1 3 5" << std::endl;
 	f << "3 2 1 6" << std::endl;

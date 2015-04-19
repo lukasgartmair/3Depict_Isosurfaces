@@ -241,7 +241,7 @@ void Scene::draw(bool noUpdateCam)
 		camToUse=activeCam;
 
 	//Inform text about current camera, 
-	// so it can eg billboard if needed
+	// so it can e.g. billboard if needed
 	DrawableObj::setCurCamera(camToUse);
 	DrawableObj::setWindowSize(winX,winY);
 	DrawableObj::setBackgroundColour(rBack,gBack,bBack);
@@ -421,7 +421,7 @@ void Scene::drawOverlays(bool noUpdateCam) const
 	//Set the opengl camera state back into modelview mode
 	if(!noUpdateCam)
 	{
-		//clear projection and o modle matricies
+		//clear projection and modelview matrices
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
 		glLoadIdentity();
@@ -933,7 +933,7 @@ void Scene::applyDevice(float startX, float startY, float curX, float curY,
 	ASSERT(lastSelected < objects.size())
 	ASSERT(objects[lastSelected]->canSelect);
 
-	//Grab basis vectors. (up, fowards and 
+	//Grab basis vectors. (up, forwards and 
 	//across from camera view.)
 	//---
 	Point3D forwardsDir,upDir;

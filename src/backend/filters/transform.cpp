@@ -132,7 +132,7 @@ Filter *TransformFilter::cloneUncached() const
 	p->transformMode=transformMode;
 	p->showOrigin=showOrigin;
 	p->noiseType=noiseType;
-	//We are copying wether to cache or not,
+	//We are copying whether to cache or not,
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
@@ -304,8 +304,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 
 	if( transformMode != MODE_VALUE_SHUFFLE)
 	{
-		//Dont cross the streams. Why? It would be bad.
-		//  - Im fuzzy on the whole good-bad thing, what do you mean bad?"
+		//Don't cross the streams. Why? It would be bad.
+		//  - I'm fuzzy on the whole good-bad thing, what do you mean bad?"
 		//  - Every ion in the data body can be operated on independently.
 		//
 		//  OK, important safety tip.
@@ -1382,7 +1382,7 @@ bool TransformFilter::setProperty(  unsigned int key,
 			break;
 		}
 		//The rotation angle, and the scale factor are both stored
-		//in scalaraparams[0]. All we need ot do is set that,
+		//in scalaraparams[0]. All we need to do is set that,
 		//as either can take any valid floating pt value
 		case KEY_ROTATE_ANGLE:
 		case KEY_SCALEFACTOR:

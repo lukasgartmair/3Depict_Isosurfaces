@@ -1569,7 +1569,7 @@ bool SpatialAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsi
 				<< "\" tolerance=\"" << replaceTolerance <<  "\" replacemass=\"" << boolStrEnc(replaceMass) << "\" />"  << endl;
 
 
-			//-- Binomial paramters ---
+			//-- Binomial parameters ---
 			f << tabs(depth+1) << "<binomial numions=\""<<numIonsSegment<< "\" maxblockaspect=\"" 
 						<< maxBlockAspect << "\" extrusiondirection=\"" 
 						<< extrusionDirection << "\"/>"  << endl;
@@ -1882,7 +1882,7 @@ void SpatialAnalysisFilter::resetParamsAsNeeded()
 		;
 	}
 }
-//Scan input datstreams to build two point vectors,
+//Scan input datastreams to build two point vectors,
 // one of those with points specified as "target" 
 // which is a copy of the input points
 //Returns 0 on no error, otherwise nonzero
@@ -1912,7 +1912,7 @@ size_t SpatialAnalysisFilter::buildSplitPoints(const vector<const FilterStreamDa
 				{
 					//FIXME: Fallback handling  to re-range data
 					// - this can technically fail for inputs that are
-					// not homogenously ranged!
+					// not homogeneously ranged!
 					break;
 				}
 
@@ -2797,7 +2797,7 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 	p.clear(); //We don't need pts any more, as tree *is* a copy.
 
 
-	//Its algorithim time!
+	//Its algorithm time!
 	//----
 	//Update progress stuff
 	size_t n=0;
@@ -2845,7 +2845,7 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 						{	
 							float maxSqrRad;
 
-							//Get the radius as the furtherst object
+							//Get the radius as the furthest object
 							maxSqrRad= (res[res.size()-1]->sqrDist(r));
 
 
@@ -3905,7 +3905,7 @@ bool axialDistTest()
 	vector<const FilterStreamData*> streamIn,streamOut;
 
 
-	//Create some inptu data
+	//Create some input data
 	//--
 	IonStreamData*d = new IonStreamData;
 	IonHit h;

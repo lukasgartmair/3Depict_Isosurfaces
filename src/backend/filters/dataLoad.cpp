@@ -107,7 +107,7 @@ Filter *DataLoadFilter::cloneUncached() const
 	for(size_t ui=0;ui<INDEX_LENGTH;ui++)
 		p->index[ui]=index[ui];
 
-	//We are copying wether to cache or not,
+	//We are copying whether to cache or not,
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
@@ -1340,7 +1340,7 @@ bool textFileTest()
 	//TODO: do better than this
 	const char *FILENAME="test-3mdfuneaascn.txt";
 	//see if we can open the file for input. If so, it must exist,
-	//and thus we don't want to overwite it, as it may contain useful data.
+	//and thus we don't want to overwrite it, as it may contain useful data.
 	std::ifstream inFile(FILENAME);
 	if(inFile)
 	{
@@ -1403,7 +1403,7 @@ bool textFileTest()
 	TEST(streamOut[0]->getNumBasicObjects() == NUM_PTS,"Stream count");
 
 #if defined(__LINUX__) || defined(__APPLE__)
-	//Hackish mathod to delete file
+	//Hackish method to delete file
 	std::string s;
 	s=string("rm -f ") + string(FILENAME);
 	system(s.c_str());

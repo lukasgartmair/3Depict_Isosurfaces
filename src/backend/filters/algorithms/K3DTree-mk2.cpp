@@ -582,8 +582,8 @@ size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
 			case NODE_THIRD_VISIT:
 			{
 				//Decide if we should promote the current node
-				//to "best" (ie nearest untagged) node.
-				//To promote, it musnt be tagged, and it must
+				//to "best" (i.e. nearest untagged) node.
+				//To promote, it mustn't be tagged, and it must
 				//be closer than cur best estimate.
 				if(!nodes[curNode].tagged)
 				{
@@ -626,7 +626,7 @@ size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
 		}
 		
 
-	//Keep going until we meet the root nde for the third time (one left, one right, one finish)	
+	//Keep going until we meet the root node for the third time (one left, one right, one finish)	
 	}while(!(curNode== startNode &&  visit== NODE_THIRD_VISIT));
 
 	if(bestPoint != (size_t) -1)

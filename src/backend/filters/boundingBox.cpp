@@ -98,7 +98,7 @@ Filter *BoundingBoxFilter::cloneUncached() const
 	p->lineWidth=lineWidth;
 	p->fontSize=fontSize;
 
-	//We are copying wether to cache or not,
+	//We are copying whether to cache or not,
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
@@ -250,7 +250,7 @@ void BoundingBoxFilter::drawDimension(const BoundCube &bTotal, DrawStreamData *d
 
 
 
-	//Add the arrows from the start ot the end
+	//Add the arrows from the start to the end
 	//Create the position from which to draw the tick origins
 	Point3D tickOrigin,tickEnd;
 	bTotal.getBounds(tickOrigin,tickEnd);

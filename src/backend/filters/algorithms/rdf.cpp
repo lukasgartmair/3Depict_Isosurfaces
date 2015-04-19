@@ -204,7 +204,7 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 	//Now we will find the mass/volume centroid of the hull
 	//by constructing sets of pyramids.
 	//We cannot use the simple midpoint, as point distribution
-	//around the hull sruface may be uneven
+	//around the hull surface may be uneven
 	
 	//Here the faces of the hull are the bases of 
 	//pyramids, and the midpoint is the apex
@@ -1025,7 +1025,7 @@ void generateKnnTheoreticalDist(const std::vector<float> &radii, float density, 
 
 	double pBase,lambda;
 
-	//radius independant ocmponent
+	//radius independent component
 	lambda = density*LAMBDA_FACTOR;
 	pBase = 3.0/gsl_sf_fact(nn-1);
 	pBase*= pow(lambda,nn);

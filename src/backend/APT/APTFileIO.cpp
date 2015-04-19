@@ -86,7 +86,7 @@ const char *ION_TEXT_ERR_STRINGS[] = { "",
 					};
 //---------
 
-//ATO formatted files error codes and asscoiated strings
+//ATO formatted files error codes and associated strings
 //---------
 enum
 {
@@ -769,8 +769,8 @@ unsigned int LoadATOFile(const char *fileName, vector<IonHit> &ions, unsigned in
 	}
 
 
-	//Heuristic fo detect endianness.
-	// - Randomly sample 100 pts from file, and check to see if, when interpreted either wa
+	//Heuristic to detect endianness.
+	// - Randomly sample 100 pts from file, and check to see if, when interpreted either way,
 	// there are any NaN
 	//   
 
@@ -799,7 +799,7 @@ unsigned int LoadATOFile(const char *fileName, vector<IonHit> &ions, unsigned in
 		randomDigitSelection(randomNumbers,pointCount,rng, 
 					numToCheck,dummy,wantAbort);
 
-		//Make the travese in ascending order
+		//Make the traverse in ascending order
 		std::sort(randomNumbers.begin(),randomNumbers.end());
 
 		//One for no endian-flip, one for flip
@@ -890,7 +890,7 @@ unsigned int LoadATOFile(const char *fileName, vector<IonHit> &ions, unsigned in
 
 	//File records consist of 14 fields, some of which may not be initialised.
 	// each being 4-byte IEEE little-endian float
-	// It is unknown how to detect initalisated state.
+	// It is unknown how to detect initialised state.
 	// Field 	Data	
 	// 0-3		x,y,z,m/c in Angstrom (x,yz) or Da (m/c)
 	// 4		clusterID, if set
@@ -903,7 +903,7 @@ unsigned int LoadATOFile(const char *fileName, vector<IonHit> &ions, unsigned in
 	// 11		"Virtual voltage" for reconstruction.
 	//			- Ignore this field, as this information is redundant
 	// 12,13	Fourier intensity
-	//			- Ignore theese fields, as this information is redundant
+	//			- Ignore these fields, as this information is redundant
 	//Attempt to detect
 	CFile.seekg(8);
 
@@ -927,7 +927,7 @@ unsigned int LoadATOFile(const char *fileName, vector<IonHit> &ions, unsigned in
 	}
 	else
 	{
-		//read wthout swapping
+		//read without swapping
 		while((size_t)CFile.tellg() < fileSize)
 		{	
 			CFile.read((char*)buffer,LAWATAP_ATO_RECORD_SIZE);

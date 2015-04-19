@@ -307,7 +307,7 @@ Filter *ClusterAnalysisFilter::cloneUncached() const
 	p->ionBulkEnabled.resize(ionBulkEnabled.size());
 	std::copy(ionBulkEnabled.begin(),ionBulkEnabled.end(),p->ionBulkEnabled.begin());
 	
-	//We are copying wether to cache or not,
+	//We are copying whether to cache or not,
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
@@ -1423,7 +1423,7 @@ bool ClusterAnalysisFilter::setProperty(unsigned int key,
 			}
 
 			//composition analysis is mutually
-			// exclsive with ID
+			// exclusive with ID
 			wantClusterID=false;
 			
 			break;
@@ -2742,7 +2742,7 @@ bool ClusterAnalysisFilter::stripClusterBySize(vector<vector<IonHit> > &clustere
 	}
 	else
 	{
-		//OK, we haven't any bulkbut we just want to count core;
+		//OK, we haven't any bulk, but we just want to count core;
 		//but operate on both
 		for(size_t ui=clusteredCore.size();ui;)
 		{

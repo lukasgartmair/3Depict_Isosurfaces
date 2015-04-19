@@ -628,7 +628,7 @@ void quat_rot(Point3f *point, const Point3f *rotVec, float angle)
 	rotQuat.c=sinCoeff*rotVec->fy;
 	rotQuat.d=sinCoeff*rotVec->fz;
 
-//	pointQuat.a =0.0f; This is implied in the pointQuat multiplcation function
+//	pointQuat.a =0.0f; This is implied in the pointQuat multiplication function
 	pointQuat.b = point->fx;
 	pointQuat.c = point->fy;
 	pointQuat.d = point->fz;
@@ -696,7 +696,7 @@ void quat_rot_array(Point3f *pointArr, unsigned int n,
 
 		for(unsigned int ui=0;ui<n; ui++)
 		{
-		//	pointQuat.a =0.0f; This is implied in the pointQuat multiplcation function
+		//	pointQuat.a =0.0f; This is implied in the pointQuat multiplication function
 			pointQuat.b = pointArr[ui].fx;
 			pointQuat.c = pointArr[ui].fy;
 			pointQuat.d = pointArr[ui].fz;

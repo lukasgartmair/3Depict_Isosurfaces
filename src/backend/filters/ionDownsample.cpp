@@ -150,7 +150,7 @@ Filter *IonDownsampleFilter::cloneUncached() const
 	std::copy(ionLimits.begin(),ionLimits.end(),p->ionLimits.begin());
 
 
-	//We are copying wether to cache or not,
+	//We are copying whether to cache or not,
 	//not the cache itself
 	p->cache=cache;
 	p->cacheOK=false;
@@ -757,7 +757,7 @@ unsigned int IonDownsampleFilter::getRefreshUseMask() const
 
 //Create a synthetic dataset of points
 // returned pointer *must* be deleted. Span must have 3 elements, 
-// and for best results could be co-prime with one another; eg all prime numbers
+// and for best results could be co-prime with one another; e.g. all prime numbers
 IonStreamData *synthDataPts(unsigned int span[],unsigned int numPts);
 
 //Test for fixed number of output ions
