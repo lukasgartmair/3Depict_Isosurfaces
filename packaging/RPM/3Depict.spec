@@ -27,7 +27,7 @@ BuildRequires: desktop-file-utils
 #WX widgets
 BuildRequires: wxGTK-devel
 #Vigra, for voxelisation
-BuildRequires: libvigra-devel
+BuildRequires: vigra-devel
 
 #PDF latex build
 #BuildRequires: tex(latex)

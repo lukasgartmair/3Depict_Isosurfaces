@@ -45,14 +45,8 @@ function setFullDeps {
 }
 
 function setMacDeps {
+	# All deps are available via macports
 	OS_VERSION=`sw_vers -productVersion |sed 's/\.[0-9]*$//'`
-	#Dependency ID, URL and name
-	DEPIDS=( 0)
-	DEPNAMES=( mathgl)
-	DEPURLS=( http://sourceforge.net/projects/mathgl/files/mathgl/mathgl%202.2.2/mathgl-2.2.2.1.tar.gz/download)
-	DEPFILENAMES=( mathgl-2.2.2.1.tar.gz)
-	DEPMDSUM=( cdee2784ce2f18ab9014bbd204b8589f)
-	
 }
 
 function installMacPorts {
@@ -71,7 +65,7 @@ function installMacPorts {
 			curl -O https://distfiles.macports.org/MacPorts/MacPorts-2.0.3-10.7-Lion.dmg
 			hdiutil attach MacPorts-2.0.3-10.7-Lion.dmg
 		else
-			echo "Mac OS X $OS_VERSION  not supported."
+			echo "Mac OS X $OS_VERSION  not supported  by this script. You'll need to install dependencies manually."
 			exit 1
 		fi
 		if [ $? -ne 0 ] ; then
@@ -197,7 +191,7 @@ function handleMacDistro()
 
 	# install deps except mathgl
 	echo "installing some 3Depict dependencies..."
-	sudo port install wget libpng freetype ftgl wxWidgets-3.0 dylibbundler qhull gsl  cmake libtool pkgconfig
+	sudo port install wget libpng freetype ftgl wxWidgets-3.0 dylibbundler qhull gsl  cmake libtool pkgconfig vigra mathgl
 	if [ $? -ne 0 ] ; then
 		echo "macports was not successful in getting the dependencies"
 		exit 1
