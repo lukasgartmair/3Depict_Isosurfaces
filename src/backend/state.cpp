@@ -1201,7 +1201,6 @@ void TreeState::operator=(const TreeState &oth)
 	fta=oth.fta;
 	selectionDevices=oth.selectionDevices;
 	pendingUpdates=oth.pendingUpdates;
-	wantAbort=oth.wantAbort;
 	
 }
 

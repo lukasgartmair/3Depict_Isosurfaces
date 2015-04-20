@@ -1,7 +1,14 @@
 #!/bin/bash
 MSG_FILE=tmp-messages
 
-NUM_PROCS=4
+if [ x`uname | grep Linux` != x"" ] ; then
+	NUM_PROCS=`cat /proc/cpuinfo | grep cores | uniq | sed 's/.*:\s*//'`
+else
+	#For other platforms, guess!
+	NUM_PROCS=4
+fi
+
+
 
 
 if [ ! -f configure ] ; then
@@ -19,25 +26,32 @@ done
 #	- enable/disable parallel 
 #	- debug checking
 #	- C++11
+#	- ubsan
 #-------
-CONF_ARGS=" --enable-openmp-parallel | --disable-debug-checks | --enable-debug-checks | --enable-openmp-parallel --disable-debug-checks | --enable-c++11 --enable-openmp-parallel | --enable-c++11 --disable-debug-checks"
+CONF_ARGS=("--enable-openmp-parallel" "--disable-debug-checks " " --enable-debug-checks " " --enable-openmp-parallel --disable-debug-checks " " --enable-experimental-cpp11 --enable-openmp-parallel" " --enable-experimental-cpp11 --disable-debug-checks "" --enable-ubsan --enable-openmp-parallel " " --enable-ubsan " " --enable-ubsan --enable-experimental-cpp11" )
 
-OLD_IFS=$IFS
-IFS="|"
 for i in ${CONF_ARGS[*]}
 do
-	echo "$i"
+	if [ -f Makefile ] ; then
+		make distclean
+	fi
 
-	make distclean
+	./configure "$i"
 
-	./configure
 	if [ $? -ne 0 ] ; then
 		echo "test-configuration failed to configure: arguments are $i"
+		exit 1
+	fi
+
+	if [ ! -f Makefile ] ; then
+		echo "Configure claimed everything was OK, but did not create a Makefile"
+		exit 1
 	fi
 
 	make -j $NUM_PROCS
 	if [ $? -ne 0 ] ; then
-		echo "failed to build: argumens are $i"
+		echo "failed to build: arguments are $i"
+		exit 1
 	fi
 
 	#Check for unit test availability, and run them
