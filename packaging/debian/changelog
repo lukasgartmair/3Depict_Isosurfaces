@@ -1,14 +1,22 @@
-3depict (0.0.18-1) UNRELEASED; urgency=medium
-
-  * Update to upstream 0.0.18
-
- -- D Haley <mycae@gmx.com>  Sun, 26 Apr 2015 23:11:45 +0100
-
-3depict (0.0.17-1) UNRELEASED; urgency=medium
+3depict (0.0.18-1) unstable; urgency=medium
 
   * Update to upstream 0.0.17
 
- -- D Haley <mycae@gmx.com>  Sun, 03 Aug 2014 23:11:45 +0100
+ -- D Haley <mycae@gmx.com>  Sun, 26 Apr 2014 12:00:00 +0100
+
+3depict (0.0.17-1) unstable; urgency=medium
+
+  * Update to upstream 0.0.17
+
+ -- D Haley <mycae@gmx.com>  Sun, 28 Sep 2014 16:07:00 +0100
+
+3depict (0.0.16-2.1) unstable; urgency=medium
+
+  * Non-maintainer upload at maintainer's request.
+  * Update BD on libwxgtk2.8-dev to libwxgtk3.0-dev | libwxgtk2.8-dev.
+    (Really Closes: #746609)
+
+ -- Olly Betts <olly@survex.com>  Fri, 25 Jul 2014 10:55:36 +1200
 
 3depict (0.0.16-2) unstable; urgency=medium
 

@@ -147,16 +147,17 @@ unsigned int CropHelper::runFilter(const vector<IonHit> &dataIn,
 				vector<IonHit> &dataOut, float progressStart,
 				float progressEnd, unsigned int &progress ) 
 {
+	//FIXME!: Shouldn't be using this here - should be obeying
+	// system-wide rng preferences
+	RandNumGen rng;
+	rng.initTimer();
+
 	float allocHint=0;
 	//If we have enough input data, try sampling
 	// the input randomly to test if we can 
 	// pre-allocate enough space for output data
 	if(dataIn.size() > MIN_SAMPLE_TEST)
 	{
-		//FIXME!: Shouldn't be using this here - should be obeying
-		// system-wide rng preferences
-		RandNumGen rng;
-		rng.initTimer();
 
 		const size_t SAMPLE_SIZE=30;
 
@@ -180,7 +181,7 @@ unsigned int CropHelper::runFilter(const vector<IonHit> &dataIn,
 	return runFilterLinear(dataIn,dataOut,allocHint,progressStart,progressEnd,progress);
 #else
 	if(dataIn.size() < MIN_PARALLELISE  || rng.genUniformDev() < 0.5f)
-		return runFilterLinear(dataIn,dataOut,allocHint);
+		return runFilterLinear(dataIn,dataOut,allocHint,progressStart,progressEnd,progress);
 	else
 	{
 		return runFilterParallel(dataIn,dataOut,allocHint,progressStart,progressEnd,progress);

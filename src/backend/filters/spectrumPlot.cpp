@@ -521,18 +521,12 @@ void SpectrumPlotFilter::normalise(vector<pair<float,float> > &xyData) const
 		case NORMALISE_NONE:
 			return;
 		case NORMALISE_MAX:
-			#if defined(_OPENMP) && _OPENMP > 200805 //OPENMP 3.0
-			#pragma omp parallel for reduction(max:maxV)
-			#endif
 			for(size_t ui=0;ui<xyData.size();ui++)
 			{
 				scaleFact=std::max(xyData[ui].second,scaleFact);
 			}
 			break;
 		case NORMALISE_MAX_IN_BOUND:
-			#if defined(_OPENMP) && _OPENMP > 200805 //OPENMP 3.0
-			#pragma omp parallel for reduction(max:scaleFact)
-			#endif
 			for(size_t ui=0;ui<xyData.size();ui++)
 			{
 				if(xyData[ui].first < normaliseBounds.second &&
