@@ -1,6 +1,6 @@
 /*
  *	threeDepict.cpp - main program implementation
- *	Copyright (C) 2013, D Haley 
+ *	Copyright (C) 2015, D Haley 
 
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -279,7 +279,7 @@ void threeDepictApp::OnInitCmdLine(wxCmdLineParser& parser)
 	version=(PROGRAM_VERSION);
 	version+=wxT("\n");
 
-	preamble=wxT("Copyright (C) 2013  3Depict team\n");
+	preamble=wxT("Copyright (C) 2015  3Depict team\n");
 	preamble+=wxT("This program comes with ABSOLUTELY NO WARRANTY; for details see LICENCE file.\n");
 	preamble+=wxT("This is free software, and you are welcome to redistribute it under certain conditions.\n");
 	preamble+=wxT("Source code is available under the terms of the GNU GPL v3.0 or any later version (http://www.gnu.org/licenses/gpl.txt)\n");

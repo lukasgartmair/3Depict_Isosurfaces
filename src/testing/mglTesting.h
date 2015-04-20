@@ -1,6 +1,6 @@
 /*
  *	mglTesting.h - unit testing implementation for mgl code
- *	Copyright (C) 2014, D Haley 
+ *	Copyright (C) 2015, D Haley 
 
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by

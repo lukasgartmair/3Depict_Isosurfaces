@@ -1,6 +1,6 @@
 /*
  *	ionColour.h - Filter to create coloured batches of ions based upon value
- *	Copyright (C) 2013, D Haley 
+ *	Copyright (C) 2015, D Haley 
 
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by

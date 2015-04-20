@@ -196,7 +196,7 @@ function handleMacDistro()
 
 
 	# install deps except mathgl
-	echo "installing 3Depict dependencies..."
+	echo "installing some 3Depict dependencies..."
 	sudo port install wget libpng freetype ftgl wxWidgets-3.0 dylibbundler qhull gsl  cmake libtool pkgconfig
 	if [ $? -ne 0 ] ; then
 		echo "macports was not successful in getting the dependencies"
@@ -257,7 +257,9 @@ function handleLinuxDistro()
 			echo "System appears to be Debian-esque (debian/ubuntu/mint...)."
 			echo "Running apt-get:"
 
-			sudo apt-get build-dep 3depict && sudo apt-get install make g++
+
+			#TODO: Remove libvigra dep. This will eventually roll into build-dep for 3depict
+			sudo apt-get build-dep 3depict && sudo apt-get install make g++ && sudo apt-get install libvigraimpex-dev
 			if [ $? -ne 0 ] ; then
 				echo "Failed to install build-dependencies"
 				exit 1
@@ -371,6 +373,8 @@ function handleLinuxDistro()
 			echo " An RPM \"Spec\" file has been left in ~/rpmbuild/SPECS/"
 			echo " go there, tweak that file and use \"rpmbuild -ba mathgl.spec\" to build it."
 			echo " This is not straightforwards - work is needed to make centos and mathgl play nice"
+
+			echo " libvigra has not been intalled on your system. Please install it before compiling 3depict"
 			exit 0;
 		;;
 		SuseLike)
@@ -389,7 +393,7 @@ function handleLinuxDistro()
 			echo "Are you sure you need to run this?? "
 			echo "You are running some unrecognised version of linux "
 			echo "you should use your package manager to install these "
-			echo "libraries : ${dep_names[*]}"
+			echo "libraries : ${DEPNAMES[*]}"
 			echo
 			echo "Refusing to continue, otherwise script could break your system..."
 			echo "--------"

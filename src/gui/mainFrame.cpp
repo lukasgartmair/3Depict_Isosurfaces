@@ -1,6 +1,6 @@
 /*
  *	mainFrame.cpp - Main 3Depict window
- *	Copyright (C) 2014, D Haley 
+ *	Copyright (C) 2015, D Haley 
 
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -2904,7 +2904,7 @@ void MainWindowFrame::OnHelpAbout(wxCommandEvent &event)
 	info.AddDeveloper(wxT("D. Haley"));	
 	info.AddDeveloper(wxT("A. Ceguerra"));	
 	//GNU GPL v3
-	info.SetCopyright(_T("Copyright (C) 2013 3Depict team\n This software is licenced under the GPL Version 3.0 or later\n This program comes with ABSOLUTELY NO WARRANTY.\nThis is free software, and you are welcome to redistribute it\nunder certain conditions; Please see the file COPYING in the program directory for details"));	
+	info.SetCopyright(_T("Copyright (C) 2015 3Depict team\n This software is licenced under the GPL Version 3.0 or later\n This program comes with ABSOLUTELY NO WARRANTY.\nThis is free software, and you are welcome to redistribute it\nunder certain conditions; Please see the file COPYING in the program directory for details"));	
 
 	info.AddArtist(_T("Thanks go to all who have developed the libraries that I use, which make this program possible.\n This includes the wxWidgets team, Alexy Balakin (MathGL), the FTGL and freetype people, the GNU Scientific Library contributors, the tree.h guy (Kasper Peeters)  and more."));
 

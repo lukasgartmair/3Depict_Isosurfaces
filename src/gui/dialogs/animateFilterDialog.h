@@ -1,6 +1,6 @@
 /*
  *	animateFilterDialog - GUI for animate filter
- *	Copyright (C) 2013, D. Haley, A Ceguerra 
+ *	Copyright (C) 2015, D. Haley, A Ceguerra 
  
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by

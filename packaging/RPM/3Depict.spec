@@ -1,5 +1,5 @@
 Name:		3Depict
-Version:	0.0.17
+Version:	0.0.18
 Release:	1%{?dist}
 Summary:	Valued 3D point cloud visualization and analysis
 Group:		Applications/Engineering
@@ -26,6 +26,9 @@ BuildRequires: libpng-devel
 BuildRequires: desktop-file-utils
 #WX widgets
 BuildRequires: wxGTK-devel
+#Vigra, for voxelisation
+BuildRequires: libvigra-devel
+
 #PDF latex build
 #BuildRequires: tex(latex)
 
@@ -110,6 +113,9 @@ rm -rf %{buildroot}
 
 
 %changelog
+* Sat Aug 02 2014 D Haley <mycae(a!t)gmx.com> - 0.0.18-1
+- Update to 0.0.18
+
 * Sat Aug 02 2014 D Haley <mycae(a!t)gmx.com> - 0.0.17-1
 - Update to 0.0.17
 

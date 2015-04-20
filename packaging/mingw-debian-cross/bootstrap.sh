@@ -1012,6 +1012,33 @@ function build_ftgl()
 	echo ${NAME} >> $BUILD_STATUS_FILE
 }
 
+function build_libvigra()
+{
+	NAME="libvigra"
+	ISBUILT_ARG=${NAME}
+	isBuilt
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
+	pushd deps >/dev/null
+	pushd *vigra* >/dev/null
+
+
+	echo "libvigra compilation has not been implemented, implement me. Aborting"
+	return 1
+
+	popd >/dev/null
+	popd >/dev/null
+	
+	FIX_LA_FILE_ARG=libintl
+	fix_la_file
+	FIX_LA_FILE_ARG=libcharset
+	fix_la_file
+	
+	echo ${NAME} >> $BUILD_STATUS_FILE
+
+}
+
 function createDirLayout()
 {
 	NEEDED_DIRS="bin lib include deps/packages"
@@ -1399,6 +1426,7 @@ build_libiconv
 build_gettext 
 build_ftgl 
 build_glew
+build_libvigra
 
 build_mathgl 
 build_wx	
