@@ -195,7 +195,7 @@ fi
 
 #Run licensecheck over files, if available
 if [ x`which licensecheck` != x"" ] ; then
-	LIC_CHECK_OUT=`licensecheck -r  --ignore=".*\.(sh|sci|py|tex)$" . | grep -v "GPL (v[23] or later)" | grep -v "GENERATED FILE" | grep -v "MPL"  | grep -v "tarball/"`
+	LIC_CHECK_OUT=`licensecheck -r  --ignore=".*\.(sh|sci|py|tex|js)$" . | grep -v "GPL (v[23] or later)" | grep -v "GENERATED FILE" | grep -v "MPL"  | grep -v "tarball/"`
 
 	if [ x"$LIC_CHECK_OUT" != x"" ] ; then
 		echo "WARNING:" $LIC_CHECK_OUT >> $MSG_FILE
