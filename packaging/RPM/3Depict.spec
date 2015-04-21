@@ -113,10 +113,13 @@ rm -rf %{buildroot}
 
 
 %changelog
-* Sat Aug 02 2014 D Haley <mycae(a!t)gmx.com> - 0.0.18-1
+* Tue Apr 21 2015 D Haley <mycae(a!t)gmx.com> - 0.0.18-1
 - Update to 0.0.18
 
-* Sat Aug 02 2014 D Haley <mycae(a!t)gmx.com> - 0.0.17-1
+* Sat Oct 11 2014 D Haley <mycae(a!t)gmx.com> - 0.0.17-2
+- Rebuild for mathgl 2.3
+
+* Sun Sep 28 2014 D Haley <mycae(a!t)gmx.com> - 0.0.17-1
 - Update to 0.0.17
 
 * Fri Jun 06 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.16-2
