@@ -483,9 +483,13 @@ void TextTreeCtrl::OnTreePaint(wxPaintEvent &event)
 		int startX;
 		startX=w/2 - textSize.GetWidth()/2; 
 
+#if !(defined(_WIN32) || defined(_WIN64) ) 
 		dc->DrawText((messageStrs[ui]),
 					startX,startY);	
-		
+#else
+		dc->DrawTextW((messageStrs[ui]),
+					startX,startY);
+#endif
 		startY+=HEIGHT_SPACING*textSize.GetHeight();
 	}
 

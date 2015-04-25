@@ -64,7 +64,7 @@ BASE=`pwd`
 PREFIX=/
 NUM_PROCS=4
 
-IS_RELEASE=1
+IS_RELEASE=0
 
 if [ `id -u` -eq 0 ]; then
 	echo "This script should not be run as root."
@@ -72,7 +72,7 @@ if [ `id -u` -eq 0 ]; then
 	exit 1;
 fi
 #2) own patch for fixing wx-config's lack of sysroot support
-PATCHES_WXWIDGETS_PRE=""
+PATCHES_WXWIDGETS_PRE="wx_changeset_76890.diff"
 PATCHES_WXWIDGETS_POST="wx-config-sysroot.patch"
 #1) Zlib no longer needs to explicitly link libc, and will fail if it tries
 PATCHES_ZLIB="zlib-no-lc.patch"
@@ -83,12 +83,11 @@ PATCHES_FTGL_POSTCONF="ftgl-override-configure-2"
 #2) gettext fails to correctly determine windows function call prefix.
 #   should be fixed for gettext > 0.18.1.1 ?
 #   https://lists.gnu.org/archive/html/bug-gettext/2012-12/msg00071.html
-PATCHES_GETTEXT="gettext-disable-tools"    #gettext-win32-prefix
+PATCHES_GETTEXT="gettext-disable-tools gettext-fix-configure-versions"    #gettext-win32-prefix
 
 PATCHES_GLEW="glew-makefile.base"
 
-PATCHES_MATHGL=""
-
+PATCHES_MATHGL="mathgl-openmp-linker-flag"
 PATCH_LIST="$PATCHES_WXWIDGETS_PRE $PATCHES_WXWIDGETS_POST $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL $PATCHES_GLEW $PATCHES_MATHGL $PATCHES_FTGL_POSTCONF"
 
 BUILD_STATUS_FILE="$BASE/build-status"
@@ -150,12 +149,13 @@ function grabDeps()
 {
 	pushd deps 2>/dev/null
 
-	DEB_PACKAGES="expat freetype ftgl gettext gsl libpng libxml2 mathgl qhull tiff wxwidgets3.0 zlib glew"
-	if [ x$DIST_NAME == x"Ubuntu" ] || [ x$DIST_NAME == x"LinuxMint" ] ; then 
-		LIBJPEGNAME="libjpeg6b"
+	DEB_PACKAGES="expat freetype ftgl gettext gsl libpng libxml2 mathgl qhull tiff wxwidgets3.0 zlib glew libvigraimpex"
+	if [ x$DIST_NAME == x"Ubuntu" ] || [ x$DIST_NAME == x"LinuxMint" ]  ; then 
+       		LIBJPEGNAME="libjpeg6b"
 	else
-		LIBJPEGNAME="libjpeg8"
-	
+		#Libjpeg seems to be forked/renamed very frequently in debian
+		# Likely a new libjpeg will need to be picked each time this script is run
+		LIBJPEGNAME="libjpeg-turbo"
 	fi
 	DEB_PACKAGES="$DEB_PACKAGES $LIBJPEGNAME"
 
@@ -181,6 +181,8 @@ function grabDeps()
 			exit 1
 		fi
 
+		#Strip patches from the build and patch status files, 
+		# if we are retriving new packages
 		for i in $GET_PACKAGES
 		do
 			grep -v $i ../build-status > tmp
@@ -648,11 +650,12 @@ function build_expat()
 		echo "expat dir missing, or duplicated?"
 		exit 1
 	fi
-	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "Libtiff configure failed"; exit 1; } 
 
-	make -j $NUM_PROCS || { echo "expat build failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "$NAME configure failed"; exit 1; } 
+
+	make -j $NUM_PROCS || { echo "$NAME build failed"; exit 1; } 
 	
-	make install DESTDIR="$BASE"|| { echo "expat install failed"; exit 1; } 
+	make install DESTDIR="$BASE"|| { echo "$NAME install failed"; exit 1; } 
 
 	#DLL needs to be copied into lib manually
 	cp -p .libs/${NAME}-[0-9]*.dll $BASE/lib/ 
@@ -731,7 +734,7 @@ function build_wx()
 
 	APPLY_PATCH_ARG=$PATCHES_WXWIDGETS_PRE
 	applyPatches
-#WX_DISABLE="--disable-compat26 --disable-ole --disable-dataobj --disable-ipc --disable-apple_ieee --disable-zipstream --disable-protocol_ftp --disable-mshtmlhelp --disable-aui --disable-mdi --disable-postscript --disable-datepick --disable-splash --disable-wizarddlg --disable-joystick --disable-loggui --disable-debug --disable-logwin --disable-logdlg --disable-tarstream --disable-fs_archive --disable-fs_inet --disable-fs_zip --disable-snglinst --disable-sound --disable-variant --without-regex"
+	WX_DISABLE="--disable-compat26 --disable-compat28 --disable-ole --disable-dataobj --disable-ipc --disable-apple_ieee --disable-zipstream --disable-protocol_ftp --disable-mshtmlhelp --disable-aui --disable-mdi --disable-postscript --disable-datepick --disable-splash --disable-wizarddlg --disable-joystick --disable-loggui --disable-debug --disable-logwin --disable-logdlg --disable-tarstream --disable-fs_archive --disable-fs_inet --disable-fs_zip --disable-snglinst --disable-sound --disable-variant --without-regex"
 
 	./configure --host=$HOST_VAL --enable-shared --disable-static --with-opengl --enable-unicode --without-regex --prefix=/ || { echo "wxwidgets configure failed"; exit 1; } 
 
@@ -871,7 +874,7 @@ function build_gettext()
 	pushd gettext-* >/dev/null
 		
 	if [ $? -ne 0 ] ; then
-		echo "gettext dir missing, or duplicated?"
+		echo "$NAME dir missing, or duplicated?"
 		exit 1
 	fi
 
@@ -881,11 +884,11 @@ function build_gettext()
 	applyPatches
 	automake
 
-	./configure --host=$HOST_VAL --disable-threads --enable-shared --disable-static --prefix=/ || { echo "gettext configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --disable-threads --enable-shared --disable-static --prefix=/ || { echo "$NAME configure failed"; exit 1; } 
 
-	make -j $NUM_PROCS || { echo "gettext build failed"; exit 1; } 
+	make -j $NUM_PROCS || { echo "$NAME build failed"; exit 1; } 
 	
-	make install DESTDIR="$BASE"|| { echo "gettext install failed"; exit 1; } 
+	make install DESTDIR="$BASE"|| { echo "$NAME install failed"; exit 1; } 
 
 	popd >/dev/null
 	popd >/dev/null
@@ -918,16 +921,12 @@ function build_mathgl()
 	APPLY_PATCH_ARG=$PATCHES_MATHGL
 	applyPatches
 
-	#Strip invalid linker flags from cmake's link instructions
-	rm CMakeCache.txt
-	#Strip invalid linker flags from cmake's link instructions
-	find ./ -name link.txt -exec sed -i 's/-Wl,-z,relro//'  {} \;
-	cmake -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain$BITS_VAL
-	#Strip invalid linker flags from cmake's link instructions
-	find ./ -name link.txt -exec sed -i 's/-Wl,-z,relro//'  {} \;
+	if [ -d $BASEDIR/include/mgl2 ] ; then
+		echo "there are mgl2 headers already installed. Abort abort!"\
+		exit 1
+	fi
 
-
-	cmake -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain$BITS_VAL
+	LIBS=-lpng cmake -Denable-gsl="yes" -Denable-mpi="no"  -DCMAKE_INSTALL_PREFIX="$BASE" -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain$BITS_VAL -DPNG_PNG_INCLUDE_DIR=${BASEDIR}/include/
 
 	make -j $NUM_PROCS
 
@@ -936,10 +935,44 @@ function build_mathgl()
 		exit 1
 	fi
 		
-	cp -p .libs/${NAME}-[0-9]*.dll $BASE/lib/ 
+	make install
 	
-	cp -R include/mgl2 ${BASE}/include
 	ln -s ${BASE}/include/mgl2 ${BASE}/include/mgl
+
+	popd >/dev/null
+	popd >/dev/null
+	FIX_LA_FILE_ARG=libmgl
+	fix_la_file
+	
+	echo ${NAME} >> $BUILD_STATUS_FILE
+}
+
+function build_libvigra()
+{
+	NAME="libvigra"
+	ISBUILT_ARG=${NAME}
+	isBuilt
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
+	pushd deps >/dev/null
+	pushd libvigraimpex-* >/dev/null
+	
+	if [ $? -ne 0 ] ; then
+		echo "$NAME dir missing, or duplicated?"
+		exit 1
+	fi
+	make clean
+
+	APPLY_PATCH_ARG=$PATCHES_MATHGL
+	applyPatches
+
+	cmake -DCMAKE_INSTALL_PREFIX="$BASE" -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain$BITS_VAL -DPNG_PNG_INCLUDE_DIR=${BASEDIR}/include/
+
+	make -j $NUM_PROCS
+	
+	make install || { echo "$NAME install failed"; exit 1; } 
+
 
 	popd >/dev/null
 	popd >/dev/null
@@ -1002,7 +1035,7 @@ function build_ftgl()
 
 	make -j $NUM_PROCS || { echo "ftgl build failed"; exit 1; } 
 	
-	make install DESTDIR="$BASE"|| { echo "ftgl install failed"; exit 1; } 
+	DESTDIR="$BASE" make install | { echo "ftgl install failed"; exit 1; } 
 
 	popd >/dev/null
 	popd >/dev/null
@@ -1010,33 +1043,6 @@ function build_ftgl()
 	fix_la_file
 	
 	echo ${NAME} >> $BUILD_STATUS_FILE
-}
-
-function build_libvigra()
-{
-	NAME="libvigra"
-	ISBUILT_ARG=${NAME}
-	isBuilt
-	if [ $ISBUILT -eq 1 ] ; then
-		return;
-	fi
-	pushd deps >/dev/null
-	pushd *vigra* >/dev/null
-
-
-	echo "libvigra compilation has not been implemented, implement me. Aborting"
-	return 1
-
-	popd >/dev/null
-	popd >/dev/null
-	
-	FIX_LA_FILE_ARG=libintl
-	fix_la_file
-	FIX_LA_FILE_ARG=libcharset
-	fix_la_file
-	
-	echo ${NAME} >> $BUILD_STATUS_FILE
-
 }
 
 function createDirLayout()
@@ -1126,7 +1132,7 @@ function build_3Depict()
 	make distclean
 
 
-	CONF_FLAG="--host=$HOST_VAL"
+	CONF_FLAG="--host=$HOST_VAL --with-libqhull-link=-lqhull_p"
 	if [ $IS_RELEASE -ne 0 ] ; then
 		CONF_FLAG="$CONF_FLAG --disable-debug-checks --enable-openmp-parallel"
 	fi
@@ -1187,8 +1193,6 @@ function build_3Depict()
 		echo "Failed 3Depict build"
 		exit 1
 	fi
-
-
 
 	#if the locales are missing, try to rebuild them
 	if [ x`find locales/ -name \*.mo` = x""  ] ; then
@@ -1429,7 +1433,7 @@ build_glew
 build_libvigra
 
 build_mathgl 
-build_wx	
+build_wx
 
 build_3Depict
 
