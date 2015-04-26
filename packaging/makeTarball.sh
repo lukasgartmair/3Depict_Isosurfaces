@@ -28,48 +28,47 @@ done
 #	- C++11
 #	- ubsan
 #-------
-CONF_ARGS=("--enable-openmp-parallel" "--disable-debug-checks " " --enable-debug-checks " " --enable-openmp-parallel --disable-debug-checks " " --enable-experimental-cpp11 --enable-openmp-parallel" " --enable-experimental-cpp11 --disable-debug-checks "" --enable-ubsan --enable-openmp-parallel " " --enable-ubsan " " --enable-ubsan --enable-experimental-cpp11" )
-
-for i in ${CONF_ARGS[*]}
-do
-	if [ -f Makefile ] ; then
-		make distclean
-	fi
-
-	./configure "$i"
-
-	if [ $? -ne 0 ] ; then
-		echo "test-configuration failed to configure: arguments are $i"
-		exit 1
-	fi
-
-	if [ ! -f Makefile ] ; then
-		echo "Configure claimed everything was OK, but did not create a Makefile"
-		exit 1
-	fi
-
-	make -j $NUM_PROCS
-	if [ $? -ne 0 ] ; then
-		echo "failed to build: arguments are $i"
-		exit 1
-	fi
-
-	#Check for unit test availability, and run them
-	# where possible
-	pushd src
-	TEST_FLAG=`./3Depict --help  2>&1 | grep "\-\-test"`
-	if [ x"$TEST_FLAG" != x"" ] ; then
-		./3Depict -t
-		if [ $? -ne 0 ] ; then
-			echo "Unit tests failed for configure flag : $i" 
-			exit 1
-		fi
-	fi
-	popd	
-      
-	make distclean
-done
-IFS=$OLD_IFS
+#CONF_ARGS=("--enable-openmp-parallel" "--disable-debug-checks " " --enable-debug-checks " " --enable-openmp-parallel --disable-debug-checks " " --enable-ubsan --enable-openmp-parallel " " --enable-ubsan "  )
+#
+#for i in ${CONF_ARGS[*]}
+#do
+#	if [ -f Makefile ] ; then
+#		make distclean
+#	fi
+#
+#	./configure "$i"
+#
+#	if [ $? -ne 0 ] ; then
+#		echo "test-configuration failed to configure: arguments are $i"
+#		exit 1
+#	fi
+#
+#	if [ ! -f Makefile ] ; then
+#		echo "Configure claimed everything was OK, but did not create a Makefile"
+#		exit 1
+#	fi
+#
+#	make -j $NUM_PROCS
+#	if [ $? -ne 0 ] ; then
+#		echo "failed to build: arguments are $i"
+#		exit 1
+#	fi
+#
+#	#Check for unit test availability, and run them
+#	# where possible
+#	pushd src
+#	TEST_FLAG=`./3Depict --help  2>&1 | grep "\-\-test"`
+#	if [ x"$TEST_FLAG" != x"" ] ; then
+#		./3Depict -t
+##		if [ $? -ne 0 ] ; then
+##			echo "Unit tests failed for configure flag : $i" 
+###			exit 1
+##		fi
+#	fi
+#	popd	
+#      
+#	make distclean
+#done
 #-------
 
 ./configure
