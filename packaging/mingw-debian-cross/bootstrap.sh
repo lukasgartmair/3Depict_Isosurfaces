@@ -890,6 +890,10 @@ function build_gettext()
 	
 	make install DESTDIR="$BASE"|| { echo "$NAME install failed"; exit 1; } 
 
+	#FIXME: I had to copy the .lib, .la and .a files manually
+	# I don't know why the makefile does not do this.
+	cp gettext-runtime/intl/.libs/libintl.{la,lib,a} ${BASE}/lib/ || {  echo "semi-manual copy of libintl failed"; exit 1; } 
+	
 	popd >/dev/null
 	popd >/dev/null
 	
@@ -1221,6 +1225,20 @@ function build_3Depict()
 function make_package()
 {
 	pushd ./code/3Depict 2> /dev/null
+
+	#Check that the PDF manual has been built
+	if [ ! -f docs/manual-latex/manual.pdf ] ; then
+		echo "PDF Manual not built. Building"
+	
+		pushd docs/manual-latex
+		pdflatex manual.tex && bibtex manual && pdflatex manual.tex  || { echo " Manual not pre-built, and failed to build. Aborting" ; exit 1; }
+		popd
+		if [ ! -f docs/manual-latex/manual.pdf ] ; then 
+			echo "Failed to build manual, even though latex completed with no errors. Aborting " 
+			exit 1;
+		fi
+	fi
+
 
 	NSI_FILE=./windows-installer.nsi
 
