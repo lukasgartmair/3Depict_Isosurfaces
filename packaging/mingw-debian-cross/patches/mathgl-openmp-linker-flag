@@ -1,0 +1,13 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b369da1..0bc7547 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -219,6 +219,8 @@ if(enable-openmp)
+ 		set(MGL_HAVE_OMP 1)
+ 		set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+ 		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
++		set( CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fopenmp ")
++
+ 	else(OPENMP_FOUND)
+ 		message(SEND_ERROR "Couldn't find OpenMP. You can enable POSIX threads instead.")
+ 		set(MGL_HAVE_OMP 0)

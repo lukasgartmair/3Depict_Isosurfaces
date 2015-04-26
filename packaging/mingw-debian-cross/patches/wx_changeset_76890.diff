@@ -1,0 +1,46 @@
+--- a/src/propgrid/propgridpagestate.cpp	(revision 76889)
++++ b/src/propgrid/propgridpagestate.cpp	(revision 76890)
+@@ -287,16 +287,31 @@
+     }
+ 
+-    m_regularArray.Empty();
+-    if ( m_abcArray )
+-        m_abcArray->Empty();
+-
+-    m_dictName.clear();
+-
+-    m_currentCategory = NULL;
+-    m_lastCaptionBottomnest = 1;
+-    m_itemsAdded = 0;
+-
+-    m_virtualHeight = 0;
+-    m_vhCalcPending = 0;
++    // If handling wxPG event then every property item must be
++    // deleted individually (and with deferral).
++    if ( m_pPropGrid && m_pPropGrid->m_processedEvent )
++    {
++        wxPropertyGridIterator it;
++        for ( it = m_pPropGrid->GetIterator(wxPG_ITERATE_ALL);
++              !it.AtEnd();
++              it++ )
++        {
++            DoDelete(*it, true);
++        }
++    }
++    else
++    {
++        m_regularArray.Empty();
++        if ( m_abcArray )
++            m_abcArray->Empty();
++
++        m_dictName.clear();
++
++        m_currentCategory = NULL;
++        m_lastCaptionBottomnest = 1;
++        m_itemsAdded = 0;
++
++        m_virtualHeight = 0;
++        m_vhCalcPending = 0;
++    }
+ }
+ 
