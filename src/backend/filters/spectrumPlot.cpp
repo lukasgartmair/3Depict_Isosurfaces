@@ -674,6 +674,7 @@ void SpectrumPlotFilter::getProperties(FilterPropGroup &propertyList) const
 
 	propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
 
+	/* FIXME: This has been removed owing to broken unit test. 
 	curGroup++;
 
 	choices.clear();
@@ -727,7 +728,7 @@ void SpectrumPlotFilter::getProperties(FilterPropGroup &propertyList) const
 
 	}
 
-	propertyList.setGroupTitle(curGroup,TRANS("Background Mode"));	
+	propertyList.setGroupTitle(curGroup,TRANS("Background Mode"));*/	
 	
 }
 

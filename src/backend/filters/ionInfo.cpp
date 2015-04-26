@@ -467,7 +467,7 @@ void IonInfoFilter::getProperties(FilterPropGroup &propertyList) const
 
 		propertyList.addProperty(p,curGroup);
 
-
+		/*
 		p.name=TRANS("Back. Correct");
 		choices.clear();
 		for(unsigned int ui=0;ui<FIT_MODE_ENUM_END; ui++)
@@ -519,6 +519,8 @@ void IonInfoFilter::getProperties(FilterPropGroup &propertyList) const
 				ASSERT(false);
 	
 		}
+		*/
+		
 	}
 
 	curGroup++;
