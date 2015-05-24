@@ -1051,10 +1051,11 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 		free(imageBuffer);
 
 		combineWxImage(*image,imageOverlay);
+
+		//Free the tile buffer
+		trDelete(tr);
 	}
 
-	//Free the tile buffer
-	trDelete(tr);
 	
 	//--------------	
 	bool isOK=image->SaveFile(filename,wxBITMAP_TYPE_PNG);
