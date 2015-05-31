@@ -31,6 +31,9 @@ const unsigned int MAX_CALLBACK=500;
 #undef I 
 #undef Complex
 #include <typeinfo>
+#if defined(WIN32) || defined(WIN64)
+#include <vigra/windows.h>
+#endif
 #include <vigra/multi_array.hxx>
 #include <vigra/multi_convolution.hxx>
 

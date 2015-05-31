@@ -67,7 +67,7 @@ const char *AVAILABLE_FILEDATA_TYPES[] = { 	NTRANS("POS Data"),
 					NTRANS("Text Data"),
 					NTRANS("ATO Data"),
 					};
-const char *DEFAULT_LABEL="Mass-to-Charge (amu/e)";
+const char *DEFAULT_LABEL="Mass-to-Charge (Da/e)";
 
 
 
