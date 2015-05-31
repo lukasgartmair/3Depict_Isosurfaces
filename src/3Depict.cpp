@@ -21,6 +21,9 @@
 #include <wx/cmdline.h>
 #include <wx/filename.h>
 #include <wx/stdpaths.h>
+#ifndef DEBUG
+#include <wx/log.h>
+#endif
 
 #ifdef __APPLE__
 #include "CoreFoundation/CoreFoundation.h"
@@ -39,11 +42,12 @@ enum
 
 class threeDepictApp: public wxApp {
 private:
-#ifndef DEBUG
-	//instance of this class suppresses internal wx error dialogs.
-	// these are a nuisance in release code, as recovered errors often annoy the user
-	wxLogNull nullifyLogs;
-#endif
+
+
+	void redirectWxLogging();
+
+	std::ofstream debugLogStream;
+
 
 	MainWindowFrame* MainFrame ;
 	wxArrayString commandLineFiles;
@@ -101,11 +105,29 @@ threeDepictApp::threeDepictApp()
 {
        	MainFrame=0;usrLocale=0;
 	dontLoad=false;
-#ifndef DEBUG
+	
 	//Wx 2.9 and up now has assertions auto-enabled. 
 	//Disable for release builds
+#ifndef DEBUG
 	wxSetAssertHandler(NULL);
 #endif
+	redirectWxLogging();
+}
+
+void threeDepictApp::redirectWxLogging()
+{
+	//Disable user visible logging on the main thread, this can throw up "error dialogs"
+	// to the user that seem to be false positives, such as "Error: Sucess" type messages
+	// ihstead try first to log to file. If that fails, just disable it
+        wxStandardPaths &paths = wxStandardPaths::Get();
+	wxString filePath = paths.GetDocumentsDir();
+	filePath+=("/.")+string(PROGRAM_NAME) + string("log.txt");
+	debugLogStream.open(filePath.c_str());
+
+	if(!debugLogStream)
+		wxLog::EnableLogging(false);	
+	else
+		wxLog::SetActiveTarget(new wxLogStream(&debugLogStream));
 }
 
 int threeDepictApp::OnExit()

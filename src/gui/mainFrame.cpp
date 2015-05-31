@@ -2988,7 +2988,7 @@ void MainWindowFrame::OnComboStashEnter(wxCommandEvent &event)
 void MainWindowFrame::OnComboFilterText(wxCommandEvent &event)
 {
 	//prevent user from modifying text
-	comboFilters->ChangeValue(TRANS(ADD_FILTER_TEXT));
+	//comboFilters->ChangeValue(TRANS(ADD_FILTER_TEXT));
 }
 
 void MainWindowFrame::OnComboStash(wxCommandEvent &event)
@@ -3942,6 +3942,9 @@ void MainWindowFrame::OnFinishRefreshThread(wxCommandEvent &event)
 		MainFrame_statusbar->SetStatusText(TRANS("Complete"),1);
 		MainFrame_statusbar->SetStatusText("",2);
 	}
+
+
+
 	//restart the update timer, to check for updates from the backend
 	updateTimer->Start(UPDATE_TIMER_DELAY);
 }
@@ -4175,6 +4178,7 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 	}
 
 
+	
 	programmaticEvent=false;	
 }
 
@@ -4578,6 +4582,7 @@ void MainWindowFrame::updateFxUI(const vector<const Effect*> &effs)
 
 	Thaw();
 }
+
 
 //This routine is used by other UI processes to trigger an abort
 void MainWindowFrame::OnProgressAbort(wxCommandEvent &event)

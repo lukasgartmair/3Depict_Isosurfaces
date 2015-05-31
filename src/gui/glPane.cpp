@@ -210,6 +210,13 @@ void BasicGLPane::forceRedraw()
 	wxPaintEvent ptEvent;
 	wxPostEvent(this,ptEvent);
 
+#ifdef WIN32
+	//Hack for windows. Does not redraw otherwise.
+	// Refresh and Update in tandom dont work.
+	Show(false);
+	Show(true);
+#endif
+
 }
 
 // some useful events to use
