@@ -1234,9 +1234,6 @@ void MainWindowFrame::OnDropFiles(const wxArrayString &files, int x, int y)
 #endif
 	}
 
-	if(loaded || rangeLoaded)
-		doSceneUpdate();
-
 	if(files.Count())
 	{
 		//If we are using the default camera,
