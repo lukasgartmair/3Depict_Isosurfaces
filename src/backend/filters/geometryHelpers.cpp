@@ -455,18 +455,21 @@ unsigned int CropHelper::mapCylinderInsideRadial( const Point3D &testPt) const
 		//rotate ion position into cylindrical coordinates
 		quat_rot_apply_quat(&p,&qA);
 
+		fSqrRad=p.fx*p.fx + p.fy*p.fy;
 		//Check inside upper and lower bound of cylinder
 		// and check inside cylinder radius
-		if(!(p.fz < fA && p.fz > -fA && 
-				p.fx*p.fx+p.fy*p.fy < fB))
+		if(!( (p.fz < fA && p.fz > -fA ) &&  
+					fSqrRad < fB))
 			return (unsigned int)-1;
 
-		fSqrRad=ptmp[0]*ptmp[0] + ptmp[1]*ptmp[1];
-		
 	}
 
+	unsigned int mapPos;
+	mapPos=(unsigned int)(fSqrRad/fB*(float)mapMax);
+	ASSERT(mapPos < mapMax);
+
 	//Area is constant in square space
-	return (unsigned int)(fSqrRad/fB*(float)mapMax);
+	return mapPos;
 
 }
 
@@ -523,8 +526,11 @@ unsigned int CropHelper::mapIon1D(const IonHit &ionIn) const
 	ASSERT(!invertedClip);
 	ASSERT(mapFunc);
 	ASSERT(mapMax);
-	//return the 1D mapping for the ion
-	return (this->*mapFunc)(ionIn.getPosRef());
+	//return the 1D mapping for the ion, or -1 for not mappable
+	unsigned int mappingPos;
+	mappingPos=(this->*mapFunc)(ionIn.getPosRef());
+	ASSERT(mappingPos < mapMax || mappingPos == (unsigned int) -1);
+	return mappingPos; 
 }
 
 void CropHelper::setFilterMode(size_t filterMode)
