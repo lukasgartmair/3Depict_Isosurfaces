@@ -1858,6 +1858,8 @@ void DrawProgressCircleOverlay::draw( )const
 	}
 
 
+	float visGrey=getHighContrastValue();
+
 	//Draw the completed Steps
 	float thetaPerStep =  thetaPerFilter/maxStep;
 	for(size_t ui=1;ui<step;ui++)
@@ -1871,7 +1873,7 @@ void DrawProgressCircleOverlay::draw( )const
 		if(ui < step-1)
 		{
 			//Draw a line to mark the step
-			glColor4f(1.0f,0.0f,0.0f,1.0f);
+			glColor4f(visGrey,0.0f,0.0f,1.0f);
 			glBegin(GL_LINES);
 				glVertex3f(radiusIn*sin(curTheta),radiusIn*cos(curTheta),0);
 				glVertex3f(radiusOut*sin(curTheta),radiusOut*cos(curTheta),0);
@@ -1961,14 +1963,15 @@ void DrawProgressCircleOverlay::drawSection(unsigned int degreeStep,
 		return;
 
 
+	float visGrey= getHighContrastValue();
 
 
 	const float ALPHA_COMPLETE=0.5*alphaBase;
 	const float ALPHA_INCOMPLETE=0.15*alphaBase;
 	if(complete)	
-		glColor4f(1.0f,1.0f,1.0f,ALPHA_COMPLETE);
+		glColor4f(visGrey,visGrey,visGrey,ALPHA_COMPLETE);
 	else
-		glColor4f(1.0f,1.0f,1.0f,ALPHA_INCOMPLETE);
+		glColor4f(visGrey,visGrey,visGrey,ALPHA_INCOMPLETE);
 
 	//Draw arc
 	glBegin(GL_TRIANGLE_STRIP);
@@ -2212,6 +2215,12 @@ void DrawColourBarOverlay::draw() const
 	glPopMatrix();
 	glEnable(GL_CULL_FACE);
 
+}
+
+DrawableObj *DrawColourBarOverlay::clone() const
+{
+	DrawColourBarOverlay *newBar = new DrawColourBarOverlay(*this);
+	return newBar;
 }
 
 void DrawColourBarOverlay::setColourVec(const vector<float> &r,

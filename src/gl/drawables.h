@@ -899,6 +899,7 @@ class DrawColourBarOverlay : public DrawableOverlay
 		DrawColourBarOverlay(const DrawColourBarOverlay &o);
 		~DrawColourBarOverlay(){delete font;};
 		
+		virtual DrawableObj *clone() const; 
 
 		virtual unsigned int getType() const {return DRAW_TYPE_COLOURBAR;}
 

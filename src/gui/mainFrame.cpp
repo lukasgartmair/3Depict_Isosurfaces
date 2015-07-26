@@ -662,7 +662,6 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
     checkWeakRandom = new wxCheckBox(noteTools, ID_CHECK_WEAKRANDOM, TRANS("Fast and weak randomisation."));
     checkWeakRandom->SetValue(true);
     checkLimitOutput = new wxCheckBox(noteTools, ID_CHECK_LIMIT_POINT_OUT, TRANS("Limit Output Pts"));
- //   checkLimitOutput->SetValue((visControl.getIonDisplayLimit() !=0));
     std::string tmpStr;
 //    stream_cast(tmpStr,visControl.getIonDisplayLimit());
     textLimitOutput = new wxTextCtrl(noteTools, ID_TEXT_LIMIT_POINT_OUT, (tmpStr),
@@ -754,7 +753,16 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
 	initedOK=true;   
 
 
-
+	// Set the limit value checkbox and text field with the
+	// value obtained from the configuration file
+	unsigned int ionLimit=visControl.getIonDisplayLimit(); 
+	checkLimitOutput->SetValue((ionLimit!=0));
+	if(ionLimit)
+	{
+		std::string sValue;
+		stream_cast(sValue,visControl.getIonDisplayLimit());
+		textLimitOutput->SetValue(sValue);
+	}	
 
 
 

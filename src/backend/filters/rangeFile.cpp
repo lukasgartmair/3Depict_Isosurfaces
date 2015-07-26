@@ -116,6 +116,11 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 		return 0;
 	}
 
+	progress.filterProgress=0;
+	progress.stepName=TRANS("Ranging");
+	progress.step=1;
+	progress.maxStep=1;	
+
 
 	ASSERT(enabledRanges.size() == rng.getNumRanges());
 	ASSERT(enabledIons.size() == rng.getNumIons());
@@ -147,11 +152,6 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 		haveIonSize=false;
 		sameSize=true;
 
-
-		progress.step=1;
-		progress.filterProgress=0;
-		progress.stepName=TRANS("Pre-Allocate");
-		progress.maxStep=2;	
 
 		vector<size_t> dSizes;
 		dSizes.resize(d.size(),0);
@@ -270,7 +270,7 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 		{
 			//slightly over-allocate to allow for any variance
 			for(size_t ui=0;ui<d.size();ui++)
-				d[ui]->data.reserve(dSizes[ui]*1.f*RANGE_ALLOC_STEP+10);
+				d[ui]->data.reserve(dSizes[ui]*1.05f*RANGE_ALLOC_STEP+10);
 		}
 		catch(std::bad_alloc)
 		{
@@ -281,12 +281,6 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 
 		dSizes.clear();
 		//===================================
-
-		//Update progress info
-		progress.step=2;
-		progress.filterProgress=0;
-		progress.stepName=TRANS("Range");
-
 
 		
 
