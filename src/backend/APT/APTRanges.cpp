@@ -1505,6 +1505,7 @@ unsigned int RangeFile::openENV(FILE *fpRange)
 	bool beyondRanges=false;
 	bool haveNumRanges=false;	
 	bool haveNameBlock=false;	
+	bool haveSeenRevHeader=false;	
 	vector<string> strVec;
 
 	//Read file until we get beyond the range length
@@ -1526,6 +1527,13 @@ unsigned int RangeFile::openENV(FILE *fpRange)
 
 		if(!s.size())
 			continue;
+
+		//If we have
+		if(!haveSeenRevHeader && (s== "Rev_2.0"))
+		{
+			haveSeenRevHeader=true;
+			continue;
+		}
 
 		//Try different delimiters to split string
 		splitStrsRef(s.c_str(),"\t ",strVec);

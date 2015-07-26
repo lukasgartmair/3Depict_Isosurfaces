@@ -236,7 +236,7 @@ msgstr ""
 #: ../src/gui/glPane.cpp:628
 msgid "Use shift/ctrl-space or double tap to alter reset axis"
 msgstr ""
-"Verwenden Sie Shift / ⌘-Leertaste oder doppeltippen, um Achsen "
+"Verwenden Sie Shift / Strng-Leertaste oder doppeltippen, um Achsen "
 "zurückzusetzen oder zu verändern"
 
 #: ../src/gui/glPane.cpp:901
