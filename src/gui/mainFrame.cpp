@@ -3588,7 +3588,7 @@ void MainWindowFrame::OnComboCameraEnter(wxCommandEvent &event)
 	}
 	else
 	{
-
+		ASSERT(camName.size());
 		//Create a new camera for the scene.
 		visControl.state.addCam(camName,true);
 		
@@ -4827,6 +4827,16 @@ void MainWindowFrame::OnButtonRemoveCam(wxCommandEvent &event)
 		programmaticEvent=false;
 
 		setSaveStatus();
+
+		// There is one camera that we cannot access
+		// TODO: This logic should not be here, but in the widget update
+		if(visControl.state.getNumCams() > 1)
+		{
+			visControl.updateCameraComboBox(comboCamera);
+			visControl.updateCameraPropGrid(gridCameraProperties,visControl.state.getActiveCam());
+		}
+		else
+			gridCameraProperties->Clear();
 	}
 	
 }

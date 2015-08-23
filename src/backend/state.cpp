@@ -979,7 +979,10 @@ void AnalysisState::removeCam(size_t offset)
 	ASSERT(offset < savedCameras.size());
 	savedCameras.erase(savedCameras.begin()+offset);
 	if(activeCamera >=savedCameras.size())
-		activeCamera=0;
+	{
+		ASSERT(savedCameras.size())
+		activeCamera=savedCameras.size()-1;
+	}
 }
 
 void AnalysisState::addCamByClone(const Camera *c)
@@ -990,6 +993,8 @@ void AnalysisState::addCamByClone(const Camera *c)
 
 void AnalysisState::addCam(const std::string &camName, bool makeActive)
 {
+	//Disallow unnamed cameras
+	ASSERT(camName.size());
 	//Duplicate the current camera, and give it a new name
 	Camera *c=getCam(getActiveCam())->clone();
 	c->setUserString(camName);

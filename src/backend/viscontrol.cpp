@@ -698,8 +698,7 @@ void VisController::updateCameraComboBox(wxComboBox *comboCamera) const
 		//Do not delete as this will be deleted by wx
 		comboCamera->Append(camName,
 				(wxClientData *)new wxListUint(ui));	
-		//If this is the active cam (1) set the selection and (2) remember
-		//the ID
+		//If this is the active cam (1) set the selection 
 		if(ui == state.getActiveCam())
 			comboCamera->SetSelection(ui-1);
 	}
