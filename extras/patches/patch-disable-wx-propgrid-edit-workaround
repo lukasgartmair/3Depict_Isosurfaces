@@ -1,0 +1,119 @@
+diff -r 9a191be30ab4 src/gui/mainFrame.cpp
+--- a/src/gui/mainFrame.cpp	Sun Aug 23 22:02:40 2015 +0100
++++ b/src/gui/mainFrame.cpp	Sun Aug 23 22:24:52 2015 +0100
+@@ -685,8 +685,6 @@
+     set_properties();
+     do_layout();
+ 
+-    backCameraPropGrid=0;
+-    backFilterPropGrid=0;
+     //Disable post-processing
+ #ifndef APPLE_EFFECTS_WORKAROUND
+     checkPostProcessing->SetValue(false); 
+@@ -956,20 +954,6 @@
+ 	return 0;
+ }
+ 
+-void MainWindowFrame::OnIdle(wxIdleEvent &evt)
+-{
+-	if(backFilterPropGrid)
+-	{
+-		delete backFilterPropGrid;
+-		backFilterPropGrid=0;
+-	}
+-
+-	if(backCameraPropGrid)
+-	{
+-		delete backCameraPropGrid;
+-		backCameraPropGrid=0;
+-	}
+-}
+ 
+ unsigned int MainWindowFrame::guessFileType(const std::string &dataFile)
+ {
+@@ -3419,27 +3403,13 @@
+ 	else 
+ 		clearWxTreeImages(treeFilters);
+ 
+-	//See wx bug #16222 - cannot modify a property grid's contents
+-	// from a change event. Must work in a side-object then swap
+-	//--
+-	backFilterPropGrid= new wxPropertyGrid(filterPropertyPane,ID_GRID_FILTER_PROPERTY,
+-					wxDefaultPosition,wxDefaultSize,PROPERTY_GRID_STYLE);
+-	backFilterPropGrid->SetExtraStyle(PROPERTY_GRID_EXTRA_STYLE);
+-
+-
+-	visControl.updateFilterPropGrid(backFilterPropGrid,filterId,
++
++	visControl.updateFilterPropGrid(gridFilterPropGroup,filterId,
+ 			stlStr(gridFilterPropGroup->SaveEditableState()));
+ 
+ 
+ 	int columnPos = gridFilterPropGroup->GetSplitterPosition();
+ 	
+-
+-	std::swap(backFilterPropGrid,gridFilterPropGroup);
+-	do_filtergrid_prop_layout();
+-	//Restore the original splitter position
+-	gridFilterPropGroup->SetSplitterPosition(columnPos);
+-	//--
+-
+ 	programmaticEvent=false;
+ 	
+ }
+@@ -3518,19 +3488,8 @@
+ 	//Set property
+ 	visControl.setCamProperty(cameraId,key,newValue);
+ 
+-	//FIXME :Need to send the new grid, not the old, due to wx bug
+-	//See wx bug #16222 - cannot modify a property grid's contents
+-	// from a change event. Must work in a side-objectm then swap
+-	//--
+-	backCameraPropGrid= new wxPropertyGrid(noteCamera,ID_GRID_CAMERA_PROPERTY,
+-					wxDefaultPosition,wxDefaultSize,PROPERTY_GRID_STYLE);
+-	backCameraPropGrid->SetExtraStyle(PROPERTY_GRID_EXTRA_STYLE);
++	visControl.updateCameraPropGrid(gridCameraProperties,cameraId);
+ 	
+-	visControl.updateCameraPropGrid(backCameraPropGrid,cameraId);
+-	
+-	std::swap(backCameraPropGrid,gridCameraProperties);
+-	do_cameragrid_prop_layout();
+-
+ 	//Ensure that the GL panel shows latest cam orientation 
+ 	panelTop->forceRedraw();
+ 	programmaticEvent=false;
+@@ -3773,7 +3732,6 @@
+ 	comboFilters->ChangeValue(TRANS(ADD_FILTER_TEXT));
+ 
+ 	//update prop grid
+-	ASSERT(!backFilterPropGrid);
+ 	updateFilterPropertyGrid(gridFilterPropGroup,f);
+ 	
+ }
+diff -r 9a191be30ab4 src/gui/mainFrame.h
+--- a/src/gui/mainFrame.h	Sun Aug 23 22:02:40 2015 +0100
++++ b/src/gui/mainFrame.h	Sun Aug 23 22:24:52 2015 +0100
+@@ -228,7 +228,6 @@
+     wxPanel* filterTreePane;
+     wxStaticText* propGridLabel;
+     wxPropertyGrid* gridFilterPropGroup;
+-    wxPropertyGrid *backFilterPropGrid;
+     wxPanel* filterPropertyPane;
+     wxSplitterWindow* filterSplitter;
+     wxPanel* noteData;
+@@ -237,7 +236,6 @@
+     wxButton* buttonRemoveCam;
+     wxStaticLine* cameraNamePropertySepStaticLine;
+     wxPropertyGrid* gridCameraProperties;
+-    wxPropertyGrid* backCameraPropGrid;
+     wxScrolledWindow* noteCamera;
+     wxCheckBox* checkPostProcessing;
+     wxCheckBox* checkFxCrop;
+@@ -405,7 +403,6 @@
+ 
+     virtual void OnCheckUpdatesThread(wxCommandEvent &evt);
+     virtual void OnFinishRefreshThread(wxCommandEvent &evt);
+-    virtual void OnIdle(wxIdleEvent &evt);
+ 
+     virtual void SetCommandLineFiles(wxArrayString &files);
+ 
