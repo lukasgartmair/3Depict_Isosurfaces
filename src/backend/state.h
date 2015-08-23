@@ -417,8 +417,11 @@ class AnalysisState
 
 		//!Insert  the given stash into the tree as a child of the given parent filter
 		void addStashedToFilters(const Filter *parentFilter, unsigned int stashOffset);
-		//Remove the stash at the specified offset
+		//Remove the stash at the specified offset. Numbers will
+		// be reset, so previous offsets will no longer be valid
 		void eraseStash(size_t offset);
+		//Remove the given stashew at the specified offsets
+		void eraseStashes(std::vector<size_t> &offset);
 
 		//Return the number of stash elements
 		size_t getStashCount()  const { return stashedTrees.size();}

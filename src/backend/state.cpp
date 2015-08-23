@@ -1174,7 +1174,22 @@ void AnalysisState::eraseStash(size_t offset)
 	setStateModifyLevel(STATE_MODIFIED_ANCILLARY);
 	stashedTrees.erase(stashedTrees.begin() + offset);
 }
+		
+void AnalysisState::eraseStashes(std::vector<size_t> &offsets)
+{
+	std::sort(offsets.begin(),offsets.end());
+	ASSERT(std::unique(offsets.begin(),offsets.end()) == offsets.end());
 
+
+
+	setStateModifyLevel(STATE_MODIFIED_ANCILLARY);
+	for(unsigned int ui=offsets.size();ui>0;)
+	{
+		ui--;
+		
+		stashedTrees.erase(stashedTrees.begin() + offsets[ui]);
+	}
+}
 bool AnalysisState::hasStateOverrides() const
 {
 	if(treeState.hasStateOverrides())

@@ -164,12 +164,11 @@ void StashDialog::updateList()
 		string strTmp;
 		pair<std::string,FilterTree> stash;
 		long itemIdx;
-		
+		visControl->state.copyStashedTree(ui,stash);
 		//First item is the stash name
 		itemIdx = listStashes->InsertItem(ui,stash.first);
 
 		//Second column is num filters
-		visControl->state.copyStashedTree(ui,stash);
 		stream_cast(strTmp,stash.second.size());
 		listStashes->SetItem(itemIdx,1,(strTmp));
 
@@ -329,6 +328,7 @@ void StashDialog::updateTree()
 void StashDialog::OnBtnRemove(wxCommandEvent &event)
 {
 	//Spin through the list, to find the selected items
+	vector<size_t> itemsToRemove;
 	int item=-1;
 	for ( ;; )
 	{
@@ -337,15 +337,12 @@ void StashDialog::OnBtnRemove(wxCommandEvent &event)
 					     wxLIST_STATE_SELECTED);
 		if ( item == -1 )
 			break;
-
-		visControl->state.eraseStash(listStashes->GetItemData(item));
-		updateList();
-		updateTree();
-		updateGrid();
-		
+		itemsToRemove.push_back(listStashes->GetItemData(item));
 	}
 	
+	visControl->state.eraseStashes(itemsToRemove);
 
+	ready();
 }
 
 void StashDialog::do_layout()
