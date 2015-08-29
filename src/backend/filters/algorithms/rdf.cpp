@@ -193,7 +193,7 @@ unsigned int GetReducedHullPts(const vector<Point3D> &points, float reductionDim
 
 	unsigned int dummyProg;
 	vector<Point3D> theHull;
-	if(computeConvexHull(points,progress,wantAbort,theHull,false))
+	if(computeConvexHull(points,progress,wantAbort,theHull,false,false))
 		return 2;
 
 	Point3D midPoint(0,0,0);
