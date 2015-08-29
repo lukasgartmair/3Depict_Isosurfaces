@@ -408,7 +408,6 @@ void ExportAnimationDialog::updateFilterViewGrid()
 	animationGrid->BeginBatch();
 	if(animationGrid->GetNumberRows())
 		animationGrid->DeleteRows(0,animationGrid->GetNumberRows());
-	animationGrid->EndBatch();
 
 
 	animationGrid->AppendRows(propertyAnimator.getNumProps());
@@ -440,6 +439,8 @@ void ExportAnimationDialog::updateFilterViewGrid()
 		stream_cast(str,frameProps.getMaxFrame());
 		animationGrid->SetCellValue(ui,CELL_ENDFRAME, (str));
 	}
+
+	animationGrid->EndBatch();
 
 	//Check for conflicting rows in the animation dialog,
 	// and highlight them in colour
@@ -641,12 +642,14 @@ void ExportAnimationDialog::OnFilterGridCellChanging(wxPropertyGridEvent &event)
 
 void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 {
-	event.Veto();
 
 	wxTreeItemId tId=filterTreeCtrl->GetSelection();;
 
 	if(tId ==filterTreeCtrl->GetRootItem() || !tId.IsOk())
+	{
+		event.Veto();
 		return;
+	}
 
 	//Get the filter ID value 
 	size_t filterId;
@@ -858,6 +861,8 @@ void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 		default:
 			ASSERT(false); // that should cover all data types...
 	}
+
+	event.Veto();
 
 	//Add property to animator
 	propertyAnimator.addProp(frameProp);
