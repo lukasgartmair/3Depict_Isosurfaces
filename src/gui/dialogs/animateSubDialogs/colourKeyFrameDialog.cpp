@@ -25,6 +25,10 @@
 #include <wx/colordlg.h>
 
 
+//TODO: Currently we change the foreground text in a button to set colour.
+// better would be to use a "swatch"
+
+
 using std::string;
 
 // begin wxGlade: ::extracode
@@ -195,16 +199,26 @@ void ColourKeyFrameDialog::updateOKButton()
 {
 	bool isOK=true;
 	isOK&=startFrameOK;
-	isOK&=endFrameOK;
+	isOK&= (endFrameOK || transitionMode == TRANSITION_STEP) ;
 
-	//Ensure start frame is > end frame
 	if(isOK)
 	{
-		isOK&=(startFrame<endFrame);
+		if(transitionMode == TRANSITION_INTERP) 
+		{
+			//Ensure start frame is > end frame, 
+			// if we are using interp mode
+			isOK&=(startFrame<endFrame);
+		}
+
 		if(!isOK)
 		{
+			//If there is a problem, mark the problem with a colour background
 			textFrameStart->SetBackgroundColour(*wxCYAN);
-			textFrameEnd->SetBackgroundColour(*wxCYAN);
+			if(transitionMode == TRANSITION_INTERP)
+				textFrameEnd->SetBackgroundColour(*wxCYAN);
+			else
+				textFrameEnd->SetBackgroundColour(wxNullColour);
+				
 		}
 		else
 		{
@@ -212,7 +226,8 @@ void ColourKeyFrameDialog::updateOKButton()
 			textFrameEnd->SetBackgroundColour(wxNullColour);
 		}
 	}
-	
+
+	//Enable the OK button if all properties are set appropriately
 	buttonOK->Enable(isOK);
 }
 
