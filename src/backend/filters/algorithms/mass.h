@@ -194,7 +194,7 @@ bool testAnderson();
 
 //Check that the background fitting routine can fit
 // a random TOF data histogram
-bool testBackgroundFit();
+bool testBackgroundFitMaths();
 
 #endif
 #endif

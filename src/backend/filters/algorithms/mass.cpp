@@ -87,19 +87,18 @@ unsigned int doFitBackground(const vector<const FilterStreamData*> &dataIn,
 	const unsigned int MIN_REQUIRED_AVG_COUNTS=10;
 	const unsigned int MIN_REQUIRED_BINS=10;
 
-	//CHECKME : The number of bins is the same in TOF as well as in 
-	// m/c space. 	
-	size_t nBins = (backParams.massEnd - backParams.massStart) / backParams.binWidth;
-	float filterStep = (sqrt(backParams.massEnd) - sqrt(backParams.massStart) )/ nBins; 
+	size_t nBinsTof = (sqrt(backParams.massEnd) - sqrt(backParams.massStart)) / backParams.binWidth;
+	float filterStep = (sqrt(backParams.massEnd) - sqrt(backParams.massStart) )/ nBinsTof; 
 
 	//we cannot perform a test with fewer than this number of bins
-	if ( nBins < MIN_REQUIRED_BINS)
+	if ( nBinsTof < MIN_REQUIRED_BINS)
 		return BACKGROUND_PARAMS::FIT_FAIL_MIN_REQ_BINS;
 
-	float averageCounts = sqrtFiltMass.size()/ (float)nBins; 
+	float averageCounts = sqrtFiltMass.size()/ (float)nBinsTof; 
 	if( averageCounts < MIN_REQUIRED_AVG_COUNTS)
 		return BACKGROUND_PARAMS::FIT_FAIL_AVG_COUNTS; 
 
+	//Check that the TOF-space histogram is gaussian
 	vector<float> histogram;
 	makeHistogram(sqrtFiltMass,sqrt(backParams.massStart),
 			sqrt(backParams.massEnd), filterStep,histogram);	
@@ -120,12 +119,32 @@ unsigned int doFitBackground(const vector<const FilterStreamData*> &dataIn,
 	if(andersonStat > STATISTIC_THRESHOLD || undefCount == histogram.size())
 		return BACKGROUND_PARAMS::FIT_FAIL_DATA_NON_GAUSSIAN;
 
-	//Intensity PER AMU
-	//backgroundIntensity= meanVal/filterStep;
 	//Intensity PER BIN in TOF space
 	backParams.intensity= meanVal;
 
 	return 0;
+}
+
+
+//Start and end mass, and step size (to get bin count).
+// tofBackIntensity is the intensity level per unit time in the background, as obtained by doFitBackground
+// the histogram is 
+void createMassBackground(float massStart, float massEnd, unsigned int nBinsMass,
+			float tofBackIntensity, vector<float> &histogram)
+{
+	const float MC_BIN_STEP = (massEnd-massStart)/nBinsMass;
+
+	//compute fitted value analytically
+	histogram.resize(nBinsMass);
+	for(size_t ui=0;ui<histogram.size();ui++)
+	{
+		float mcX;
+		mcX=(float)ui*MC_BIN_STEP+ massStart;
+		if ( mcX <=0)
+			histogram[ui]=0;
+		else
+			histogram[ui]= tofBackIntensity/(2.0*sqrt(mcX))*MC_BIN_STEP;
+	}
 }
 
 #ifdef DEBUG
@@ -163,7 +182,7 @@ bool testAnderson()
 	return true;
 }
 
-bool testBackgroundFit()
+bool testBackgroundFitMaths()
 {
 	RandNumGen rng;
 	rng.initTimer();
@@ -173,15 +192,14 @@ bool testBackgroundFit()
 	
 	ionData = new IonStreamData;
 
-	const unsigned int NUM_IONS =10000;
-	const float SIMULATED_INTENSITY= 100.0f;
+	const unsigned int NUM_IONS =100000;
 	
 	//Simulate a histogram of NUM_IONS
 	// between a lower and upper limit. 
 	// This is flat in TOF space, with mean intensity
 	// given by NUM_IONS/NUM_BINS
 	//---
-	const float TOF_LIMIT[2] = { 1.0,10};	
+	const float TOF_LIMIT[2] = { 0.0,100};	
 	
 	vector<float> rawData;
 	ionData->data.resize(NUM_IONS);
@@ -194,20 +212,7 @@ bool testBackgroundFit()
 		rawData[ui] = simTof;	
 	}
 
-	const float BIN_STEP=0.1f;
-	vector<float> histogramRes;
-	makeHistogram(rawData,TOF_LIMIT[0],TOF_LIMIT[1],
-		BIN_STEP,histogramRes);
-	//---
 
-	//Find the mean and std. deviation for the tof  histogram
-	float meanV,stdV;
-	meanAndStdev(histogramRes,meanV,stdV);
-
-	//check that the TOF histogram's mean matches the expected value 	
-	const float EXPECTED_MEAN = NUM_IONS*BIN_STEP/(TOF_LIMIT[1] - TOF_LIMIT[0]);
-	TEST(meanV > 0.95*EXPECTED_MEAN &&
-		meanV < EXPECTED_MEAN*1.15,"expected mean should fall (well) within anticipated bounds, but does not"); 
 
 
 	//Now perform the fit in m/c space, and after, check that it matches the anticipated m/c histogram.
@@ -217,41 +222,39 @@ bool testBackgroundFit()
 	vector<float> massData;
 	massData.resize(NUM_IONS);
 	for(size_t ui=0;ui<NUM_IONS;ui++)
-		massData[ui] = sqrt(rawData[ui]);
+		massData[ui] = rawData[ui]*rawData[ui];
 	vector<float> massHist;
 	
 	//Recompute the bin step parameter, as the stepping in m/c space to yield 
 	// the same number of bins will e radially different
-	const float NBINS = ( TOF_LIMIT[1] - TOF_LIMIT[0] )/BIN_STEP;
-	const float MC_BIN_STEP = (sqrt(TOF_LIMIT[1])-sqrt(TOF_LIMIT[0]))/NBINS;
-	makeHistogram(massData,sqrt(TOF_LIMIT[0]),sqrt(TOF_LIMIT[1]),MC_BIN_STEP,massHist);	
+	const float NBINS_TOF = 20;
+	const float NBINS_MASS= NBINS_TOF; 
+	const float MASS_LIMIT[2] =  {TOF_LIMIT[0]*TOF_LIMIT[0], TOF_LIMIT[1]*TOF_LIMIT[1]};
+	
+
+	//time-space intensity per unit time
+	const float TOF_MEAN_INT= NUM_IONS/(TOF_LIMIT[1] - TOF_LIMIT[0]);
+
+	const float MC_BIN_STEP = (MASS_LIMIT[1]-MASS_LIMIT[0])/NBINS_MASS;
+	makeHistogram(massData,MASS_LIMIT[0],MASS_LIMIT[1],MC_BIN_STEP,massHist);	
 
 	//compute fitted value analytically
 	vector<float > fittedMassHist;
-	fittedMassHist.resize(NBINS);
-	for(size_t ui=0;ui<histogramRes.size();ui++)
-	{
-		float mcX;
-		mcX=(float)ui*MC_BIN_STEP + sqrtf(TOF_LIMIT[0]);
-		fittedMassHist[ui]= meanV/(2*mcX);
-	}
-	ASSERT(massHist.size() == histogramRes.size());
+	createMassBackground(MASS_LIMIT[0],MASS_LIMIT[1],NBINS_MASS,TOF_MEAN_INT,fittedMassHist);	
 
-	//FIXME: Test appears to be broken
-	WARN(false,"Test non-functional, and algorithm broken. Fixme.");
-	//check that the numerical and analytical results match
-	for(size_t ui=0;ui<massHist.size();ui++)
+	//check that the numerical and analytical results match.
+	// notably, skip the first one as the fit is unstable
+	for(size_t ui=1;ui<massHist.size();ui++)
 	{
 		float midV;
-		midV = massHist[ui] + histogramRes[ui];
+		midV = massHist[ui] + fittedMassHist[ui];
 		midV*=0.5f;
 		float errorFraction;
-		errorFraction= fabs((massHist[ui] - histogramRes[ui])/midV);
-		//ASSERT(errorFraction < 0.5f);
+		errorFraction= fabs((massHist[ui] - fittedMassHist[ui])/midV);
+		ASSERT(errorFraction < 0.5f);
 	}	
 	//---
 
 	return true;	
  }
-
 #endif

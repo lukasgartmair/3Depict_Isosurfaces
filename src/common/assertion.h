@@ -66,6 +66,8 @@
 	#define TEST(f,g) if(!(f)) { std::cerr << "Test fail :" << __FILE__ << ":" << __LINE__ << "\t"<< (g) << std::endl;return false;}
 	#endif
 
+	#define TRACE(f) { timespec timeval; clock_gettime(CLOCK_MONOTONIC, &timeval); std::cerr  << "<" << f <<">" __FILE__ << ":" << __LINE__ << " t: " << timeval.tv_sec << "." << timeval.tv_nsec/1000 << endl;} 
+
 	//A hack to generate compile time asserts (thanks Internet).
 	//This causes gcc to give "duplicate case value", if the predicate is false
 	#ifndef  HAVE_CPP_1X
@@ -79,6 +81,7 @@
 	#define COMPILE_ASSERT(f)
 	#define WARN(f,g) 
 	#define TEST(f,g)
+	#define TRACE(f)
 	//Do we want to trap floating point exceptions 
 	void trapfpe (bool doTrap=true);
 		
