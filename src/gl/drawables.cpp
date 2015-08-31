@@ -182,8 +182,8 @@ void drawBox(Point3D pMin, Point3D pMax, float r,float g, float b, float a)
 {
 	//TODO: Could speedup with LINE_STRIP/LOOP. This is 
 	//not a bottleneck atm though.
+	glColor4f(r,g,b,a);
 	glBegin(GL_LINES);
-		glColor4f(r,g,b,a);
 		//Bottom corner out (three lines from corner)
 		glVertex3f(pMin[0],pMin[1],pMin[2]);
 		glVertex3f(pMax[0],pMin[1],pMin[2]);

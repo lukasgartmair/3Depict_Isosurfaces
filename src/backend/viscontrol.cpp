@@ -670,7 +670,9 @@ void VisController::updateWxTreeCtrl(wxTreeCtrl *t, const Filter *visibleFilt)
 
 void VisController::updateStashComboBox(wxComboBox *comboStash) const
 {
-	comboStash->Clear();
+	//HACK: Calling ->Clear() under MSW causes a crash
+	while(comboStash->GetCount())
+		comboStash->Delete(0);
 
 	unsigned int nStashes = state.getStashCount();	
 	for(unsigned int ui=0;ui<nStashes; ui++)
@@ -687,7 +689,10 @@ void VisController::updateStashComboBox(wxComboBox *comboStash) const
 void VisController::updateCameraComboBox(wxComboBox *comboCamera) const
 {
 	//Update the camera dropdown
-	comboCamera->Clear();
+	//HACK: Calling ->Clear() under MSW causes a crash
+	while(comboCamera->GetCount())
+		comboCamera->Delete(0);
+	
 	size_t nCams = state.getNumCams();
 	//The start from 1 is a hack to avoid the unnamed camera
 	for(unsigned int ui=1;ui<nCams;ui++)
