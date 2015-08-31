@@ -93,6 +93,7 @@ enum
 	DRAW_TYPE_CYLINDER,
 	DRAW_TYPE_DISPLAYLIST,
 	DRAW_TYPE_GLTEXT,
+	DRAW_TYPE_2D_CIRCLE,
 	DRAW_TYPE_RECTPRISM,
 	DRAW_TYPE_COLOURBAR,
 	DRAW_TYPE_TEXTUREDOVERLAY,
@@ -1031,7 +1032,6 @@ class DrawProgressCircleOverlay : public DrawAnimatedOverlay
 class DrawPointLegendOverlay : public DrawableOverlay
 {
 	private:
-	static DrawTexturedQuad dQuad;
 	static bool quadSet;
 
 	FTFont *font;
@@ -1195,6 +1195,7 @@ class DrawAxis : public DrawableObj
 		Point3D position;
 		//!size
 		float size;
+
 	public:
 		DrawAxis();
 		~DrawAxis();
@@ -1212,5 +1213,41 @@ class DrawAxis : public DrawableObj
 		void setPosition(const Point3D &p);
 
 		void getBoundingBox(BoundCube &b) const;
+
 };
+
+
+//Draw a 2D filled circle
+class Draw2DCircle : public DrawableObj
+{
+	private:
+		float centre[2];
+		float angularStep;
+		float radius; 
+
+		//Circle colour
+		float r,g,b;
+
+		//Should the circle be drawn as an outline, or as a filled object
+		bool filled;
+	public:
+		Draw2DCircle();
+		
+		void result() const; 
+		//Obtain the type mask for this drawable
+		virtual unsigned int getType() const;	
+		virtual DrawableObj *clone() const; 
+		virtual void getBoundingBox(BoundCube &b) const;
+
+		virtual void draw() const;
+
+		void setCentre(float fx,float fy) { centre[0] = fx; centre[1]= fy;};
+		void setRadius(float r) { radius=r;}
+		//Angular step in radiians
+		void setAngularStep(float da) { angularStep = da;};
+	
+		void setColour(float rP, float gP, float bP) { r=rP;g=gP;b=bP;} ;
+			
+};
+
 #endif

@@ -45,7 +45,6 @@ TexturePool *DrawableObj::texPool=0;
 unsigned int DrawableObj::winX;
 unsigned int DrawableObj::winY;
 
-DrawTexturedQuad DrawPointLegendOverlay::dQuad;
 bool DrawPointLegendOverlay::quadSet=false;
 //==
 
@@ -2246,45 +2245,6 @@ DrawPointLegendOverlay::DrawPointLegendOverlay() : enabled(true)
 
 	std::string tmpStr =getDefaultFontFile();
 	font = new FTGLPolygonFont(tmpStr.c_str());
-
-	//check to see if we need to init the texture quad
-	if(!quadSet &&  texPool)
-	{
-
-		dQuad.setUseColouring(false);
-
-		//Create a circular texture
-		const unsigned int N_CHANNELS=4;
-		unsigned int LEG_TEX_SIZE = 256; 
-		unsigned char colourWhite[N_CHANNELS]= { 255,255,255,255 };
-		unsigned char colourBlack[N_CHANNELS]= { 0,0,0,0 };
-
-		//TODO: Convert to single channel texture, to save space?
-		// DrawQuad does not support single channel at this time
-		dQuad.resize(LEG_TEX_SIZE,LEG_TEX_SIZE,N_CHANNELS);
-		const float HALF_CIRCLE_R2 = 0.25; 
-		#pragma omp parallel for
-		for(unsigned int nX=0;nX<LEG_TEX_SIZE;nX++)
-		{
-			float fx;
-			fx= (float) nX/(float)LEG_TEX_SIZE - 0.5;
-			for(unsigned int nY=0;nY<LEG_TEX_SIZE;nY++)
-			{
-				float fy;
-				fy = (float) nY/(float)LEG_TEX_SIZE -0.5;
-				if( fx*fx + fy*fy < HALF_CIRCLE_R2) 
-					dQuad.setData(nX,nY,colourWhite);
-				else
-					dQuad.setData(nX,nY,colourBlack);
-			}
-
-		}
-
-		dQuad.rebindTexture(GL_RGBA);
-
-		quadSet=true;
-
-	}
 }
 
 DrawPointLegendOverlay::~DrawPointLegendOverlay()
@@ -2327,7 +2287,6 @@ void DrawPointLegendOverlay::draw() const
 
 	float delta = std::max(std::min(1.0f/legendItems.size(),0.02f),0.05f);
 	float size = delta*0.9f; 
-	glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
 	float maxTextWidth=0;
 
@@ -2338,18 +2297,17 @@ void DrawPointLegendOverlay::draw() const
 	{
 		for(;ui<legendItems.size();ui++)
 		{
+			Draw2DCircle dCirc;
 
-			//Draw textured quad (circle)
+			//Draw circle
 			//--
-			dQuad.setVertex(0,Point3D(curX,curY,0));
-			dQuad.setVertex(1,Point3D(curX+size,curY,0));
-			dQuad.setVertex(2,Point3D(curX+size,curY+size,0));
-			dQuad.setVertex(3,Point3D(curX,curY+size,0));
+			dCirc.setCentre(curX+size/2.0f,curY+size/2.0f);
+			dCirc.setRadius(size/2.0f);
 
 			const RGBFloat *f;
 			f = &legendItems[ui].second;
-			glColor3f(f->v[0],f->v[1],f->v[2]);
-			dQuad.draw();
+			dCirc.setColour(f->v[0],f->v[1],f->v[2]);
+			dCirc.draw();
 
 
 			//--
@@ -2378,7 +2336,6 @@ void DrawPointLegendOverlay::draw() const
 		curX+=maxTextWidth + size;
 		curY=position[1] + 0.5*delta;
 	}
-	glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 }
 
 void DrawPointLegendOverlay::addItem(const std::string &s, float r, float g, float b)
@@ -2870,5 +2827,78 @@ void DrawAxis::draw() const
 void DrawAxis::getBoundingBox(BoundCube &b) const
 {
 	b.setInvalid();
+}
+
+Draw2DCircle::Draw2DCircle()
+{
+	angularStep = 2.0f*M_PI/180.0f;
+	filled=true;
+}
+
+void Draw2DCircle::draw() const
+{
+
+	float nSteps = 2.0* M_PI/angularStep;
+	WARN(nSteps > 1,"Draw2D Circle, too few steps");
+	glColor4f(r,g,b,1.0f);
+
+	if(filled)
+	{
+		glBegin(GL_TRIANGLE_FAN);
+			//Central vertex
+			glVertex2fv(centre);
+
+			//vertices from [0,2PI)
+			for(unsigned int ui=0;ui<nSteps;ui++)
+			{
+				float fx,fy,theta;
+				theta = angularStep*ui;	
+				fx = centre[0]+cos(-theta)*radius;
+				fy = centre[1]+sin(-theta)*radius;
+
+				glVertex2f(fx,fy);
+			}
+
+			//2PI vertex
+			glVertex2f(centre[0]+radius,centre[1]);
+		glEnd();
+	}
+	else
+	{
+		glBegin(GL_LINE_LOOP);
+		//Central vertex
+		for(unsigned int ui=0;ui<nSteps;ui++)
+		{
+			float fx,fy,theta;
+			theta = angularStep*ui;	
+			fx = centre[0]+cos(theta)*radius;
+			fy = centre[1]+sin(theta)*radius;
+
+			glVertex2f(fx,fy);
+		}
+		glEnd();
+	}
+}
+
+void Draw2DCircle::getBoundingBox(BoundCube &b) const
+{
+
+	b.setBounds(centre[0]-radius, centre[1]-radius,
+			centre[0]+radius, centre[1]+radius,
+			0,0);
+}
+
+unsigned int Draw2DCircle::getType() const
+{
+	return DRAW_TYPE_2D_CIRCLE; 	
+}
+
+
+DrawableObj *Draw2DCircle::clone() const
+{
+	Draw2DCircle *p = new Draw2DCircle;
+	*p = *this;	
+
+	return p;	
 }
 
