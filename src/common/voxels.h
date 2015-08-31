@@ -1509,6 +1509,8 @@ void Voxels<T>::getInterpSlice(size_t normal, float offset,
 		{
 			size_t slicePos;
 			slicePos=roundf(offset*binCount[normal]);
+			if(slicePos == binCount[normal])
+				slicePos--;
 			getSlice(normal,slicePos,p);
 			break;
 		}
