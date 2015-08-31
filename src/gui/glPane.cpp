@@ -642,7 +642,7 @@ void BasicGLPane::keyPressed(wxKeyEvent& event)
 		}
 		break;
 		default:
-			event.Skip();
+			event.Skip(true);
 	}
 }
 
@@ -665,6 +665,7 @@ void BasicGLPane::keyReleased(wxKeyEvent& event)
 	if(event.ShiftDown())
 		cameraMoveRate*=5;
 
+	bool update=true;
 	switch(event.GetKeyCode())
 	{
 		case '-':
@@ -694,10 +695,12 @@ void BasicGLPane::keyReleased(wxKeyEvent& event)
 			break;
 		}
 		default:
-			event.Skip();
+			event.Skip(true);
+			update=false;
 	}
 
-	Refresh();
+	if(update)
+		Refresh();
 }
 
  

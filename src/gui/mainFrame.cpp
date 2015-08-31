@@ -1730,7 +1730,12 @@ void MainWindowFrame::setLockUI(bool locking=true,
 			unsigned int nFilters;
 			nFilters = visControl.state.treeState.size();
 			comboFilters->Enable(!locking && nFilters);
-			refreshButton->Enable(!locking && nFilters);
+			if(locking)
+				refreshButton->SetLabel("Abort");
+			else
+				refreshButton->SetLabel("Refresh");
+			refreshButton->Enable(nFilters);
+			
 			btnFilterTreeErrs->Enable(!locking);
 			treeFilters->Enable(!locking);	
 
@@ -3527,10 +3532,17 @@ void MainWindowFrame::OnGridCameraPropertyChange(wxPropertyGridEvent &event)
 	backCameraPropGrid->SetExtraStyle(PROPERTY_GRID_EXTRA_STYLE);
 	
 	visControl.updateCameraPropGrid(backCameraPropGrid,cameraId);
+	int columnPos =gridCameraProperties->GetSplitterPosition();
 	
 	std::swap(backCameraPropGrid,gridCameraProperties);
 	do_cameragrid_prop_layout();
+	gridCameraProperties->SetSplitterPosition(columnPos);
 
+#ifdef __WIN32
+	//Move the splitter panel
+	splitLeftRight->SetSashPosition(splitLeftRight->GetSashPosition()+1);
+	splitLeftRight->SetSashPosition(splitLeftRight->GetSashPosition()-1);
+#endif
 	//Ensure that the GL panel shows latest cam orientation 
 	panelTop->forceRedraw();
 	programmaticEvent=false;
@@ -4619,8 +4631,12 @@ void MainWindowFrame::OnButtonRefresh(wxCommandEvent &event)
 	if(!gridCameraProperties || !gridFilterPropGroup)
 		return;
 
+	//Run abort code as needed
 	if(currentlyUpdatingScene || refreshThreadActive())
+	{
+		OnProgressAbort(event);
 		return;
+	}
 
 	//dirty hack to get keyboard state.
 	wxMouseState wxm = wxGetMouseState();
