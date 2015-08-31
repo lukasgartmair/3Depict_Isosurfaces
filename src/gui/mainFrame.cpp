@@ -2888,7 +2888,7 @@ void MainWindowFrame::OnHelpAbout(wxCommandEvent &event)
 	info.SetName((PROGRAM_NAME));
 	info.SetVersion((PROGRAM_VERSION));
 	info.SetDescription(TRANS("Quick and dirty analysis for point data.")); 
-	info.SetWebSite(wxT("https://sourceforge.net/apps/phpbb/threedepict/"));
+	info.SetWebSite(wxT("https://threedepict.sourceforge.net/"));
 
 	info.AddDeveloper(wxT("D. Haley"));	
 	info.AddDeveloper(wxT("A. Ceguerra"));	
