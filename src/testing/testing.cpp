@@ -553,7 +553,7 @@ bool algorithmTests()
 {
 	if(!testAnderson())
 		return false;
-	if(!testBackgroundFit())
+	if(!testBackgroundFitMaths())
 		return false;
 
 	if(!K3DMk2Tests())

@@ -368,6 +368,9 @@ class AnalysisState
 
 		//!Add a new camera to the scene
 		void addCam(const std::string &camName, bool makeActive=false);
+	
+		bool defaultCamActive() const { return activeCamera == 0;}
+
 		//=====
 
 		//Effect functions

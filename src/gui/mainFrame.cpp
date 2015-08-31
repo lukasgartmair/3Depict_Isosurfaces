@@ -390,6 +390,7 @@ MainWindowFrame::MainWindowFrame(wxWindow* parent, int id, const wxString& title
 	verCheckThread=0;
 	refreshThread=0;
 	refreshControl=0;
+	ensureResultVisible=false;
 	lastProgressData.reset();
 
 	//Set up the program icon handler
@@ -1091,6 +1092,8 @@ void MainWindowFrame::OnFileOpen(wxCommandEvent &event)
 	//Load the file
 	if(!loadFile(wxF.GetPath()))
 	{
+		//If the load failed, do not try to set the 
+		// selection & visibility
 		visControl.clearTreeFilterViewPersistence();
 		return;
 	}
@@ -1101,15 +1104,6 @@ void MainWindowFrame::OnFileOpen(wxCommandEvent &event)
 	configFile.addRecentFile(tmp);
 	//Update the "recent files" menu
 	recentHistory->AddFileToHistory(wxF.GetPath());
-
-	//If we are using the default camera,
-	//move it to make sure that it is visible
-	if(visControl.state.getNumCams() == 1)
-	{
-		visControl.scene.ensureVisible(3);
-	}
-
-	panelTop->forceRedraw();
 }
 
 void MainWindowFrame::OnFileMerge(wxCommandEvent &event)
@@ -1131,7 +1125,6 @@ void MainWindowFrame::OnFileMerge(wxCommandEvent &event)
 
 	statusMessage(TRANS("Merged file."),MESSAGE_INFO);
 
-	panelTop->forceRedraw();
 
 	setSaveStatus();
 }
@@ -1240,16 +1233,6 @@ void MainWindowFrame::OnDropFiles(const wxArrayString &files, int x, int y)
 #else
 		statusMessage(TRANS("Tip: You can use ctrl to merge"),MESSAGE_HINT);
 #endif
-	}
-
-	if(files.Count())
-	{
-		//If we are using the default camera,
-		//move it to make sure that it is visible
-		if(visControl.state.getNumCams() == 1)
-		{
-			visControl.scene.ensureVisible(3);
-		}
 	}
 }
 
@@ -1377,7 +1360,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge,bool noUpdate
 	updateWxTreeCtrl(treeFilters);
 
 	if(!noUpdate)
-		return doSceneUpdate();
+		return doSceneUpdate(true);
 
 	return true;
 }	
@@ -1425,10 +1408,6 @@ void MainWindowFrame::OnRecentFile(wxCommandEvent &event)
 		}
 		
 		setSaveStatus();
-
-		//make sure camera is properly centred
-		if(visControl.state.getNumCams() == 1)
-			visControl.scene.ensureVisible(3);
 	}
 
 }
@@ -1733,7 +1712,7 @@ void MainWindowFrame::setLockUI(bool locking=true,
 			if(locking)
 				refreshButton->SetLabel("Abort");
 			else
-				refreshButton->SetLabel("Refresh");
+				refreshButton->SetLabel(TRANS("&Refresh"));
 			refreshButton->Enable(nFilters);
 			
 			btnFilterTreeErrs->Enable(!locking);
@@ -3790,7 +3769,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 	
 }
 
-bool MainWindowFrame::doSceneUpdate()
+bool MainWindowFrame::doSceneUpdate(bool ensureVisible)
 {
 	//Update scene
 	ASSERT(!currentlyUpdatingScene);
@@ -3816,6 +3795,8 @@ bool MainWindowFrame::doSceneUpdate()
 	wxBusyCursor busyCursor;
 	//reset the progress timer animation
 	visControl.scene.resetProgressAnim();
+
+	ensureResultVisible=ensureVisible;
 
 	ASSERT(!refreshControl);
 	refreshControl = new RefreshController(visControl.state.treeState);
@@ -3888,7 +3869,6 @@ void MainWindowFrame::finishSceneUpdate(unsigned int errCode)
 	//Restore the UI elements to their interactive state
 	setLockUI(false);
 
-	panelTop->forceRedraw();
 	panelSpectra->Refresh(false);	
 
 	updateEditRangeMenu();
@@ -3963,6 +3943,16 @@ void MainWindowFrame::OnFinishRefreshThread(wxCommandEvent &event)
 		MainFrame_statusbar->SetStatusText("",2);
 	}
 
+
+	if(ensureResultVisible)
+	{
+		//If we are using the default camera,
+		//move it to make sure that it is visible
+		if(visControl.state.getNumCams() == 1)
+			visControl.scene.ensureVisible(3);
+
+		ensureResultVisible=false;
+	}
 
 
 	//restart the update timer, to check for updates from the backend
@@ -4111,12 +4101,6 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 
 	if(requireFirstUpdate && !refreshThreadActive())
 	{
-		//If we are using the default camera,
-		//move it to make sure that it is visible
-		if(visControl.state.getNumCams() == 1)
-			visControl.scene.ensureVisible(3);
-
-
 		doSceneUpdate();
 
 		requireFirstUpdate=false;

@@ -117,7 +117,7 @@ private:
 	//!Update the progress information in the status bar
 	void updateProgressStatus();
 	//!Perform an update to the 3D Scene. Returns false if refresh failed
-	bool doSceneUpdate();
+	bool doSceneUpdate(bool ensureResultVisible=false);
 	
 	//!Complete the scene update. Returns false if failed
 	void finishSceneUpdate(unsigned int errCode);
@@ -162,6 +162,8 @@ private:
 	bool currentlyUpdatingScene;
 	//!Have we aborted an update
 	bool haveAborted;
+	//!Should the gui ensure that the refresh result is visible at the next update?
+	bool ensureResultVisible;
 
 	//!source item when dragging a filter in the tree control
 	wxTreeItemId *filterTreeDragSource;
