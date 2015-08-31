@@ -1710,7 +1710,7 @@ void MainWindowFrame::setLockUI(bool locking=true,
 			nFilters = visControl.state.treeState.size();
 			comboFilters->Enable(!locking && nFilters);
 			if(locking)
-				refreshButton->SetLabel("Abort");
+				refreshButton->SetLabel(TRANS("Abo&rt"));
 			else
 				refreshButton->SetLabel(TRANS("&Refresh"));
 			refreshButton->Enable(nFilters);
