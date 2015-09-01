@@ -277,9 +277,10 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		DrawStreamData *d=makeMarkerSphere(s);
 		if(s)
 			devices.push_back(s);
-
-		cacheAsNeeded(d);
-		
+		else
+		{
+			cacheAsNeeded(d);
+		}	
 		getOut.push_back(d);
 	}
 			

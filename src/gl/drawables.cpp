@@ -724,6 +724,21 @@ DrawSphere::~DrawSphere()
 		gluDeleteQuadric(q);
 }
 
+DrawableObj *DrawSphere::clone() const
+{
+	DrawSphere *d = new DrawSphere();
+	d->r=r;
+	d->g=g;
+	d->b=b;
+	d->a=a;
+	d->origin=origin;
+	d->radius=radius;
+	d->latSegments=latSegments;
+	d->longSegments=longSegments;
+
+	d->q=gluNewQuadric();
+	return d;
+}
 
 void DrawSphere::getBoundingBox(BoundCube &b) const
 {

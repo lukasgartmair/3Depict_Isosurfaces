@@ -532,6 +532,8 @@ class DrawSphere : public DrawableObj
 		//! Destructor
 		virtual ~DrawSphere();
 
+		virtual DrawableObj *clone() const;
+
 		virtual unsigned int getType() const {return DRAW_TYPE_SPHERE;};	
 		//!Sets the location of the sphere's origin
 		void setOrigin(const Point3D &p);
