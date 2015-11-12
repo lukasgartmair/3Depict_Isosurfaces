@@ -1135,10 +1135,8 @@ unsigned int RangeFile::detectFileType(const char *rangeFile)
 
 		//Now, spin forwards until we either hit EOF or our double-dash marker
 
-		while(!f.eof())
+		while(!getline(f,tmpStr))
 		{
-			getline(f,tmpStr);
-
 			if(tmpStr.size() > 2 &&
 				tmpStr[0] == '-' && tmpStr[1] == '-')
 			{
@@ -1149,7 +1147,7 @@ unsigned int RangeFile::detectFileType(const char *rangeFile)
 			}
 		}
 
-		if(f.eof())
+		if(!f.good())
 		{
 			//we did not see a double-dash, must be a vanilla ORNL file
 			typeStatus[RANGE_FORMAT_DBL_ORNL]=STATUS_IS_NOT;

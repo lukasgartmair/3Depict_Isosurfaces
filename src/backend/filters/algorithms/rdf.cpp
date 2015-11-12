@@ -1044,5 +1044,14 @@ void generateKnnTheoreticalDist(const std::vector<float> &radii, float density, 
 
 }
 
+bool qhullTest()
+{
+#if defined(__WIN64)
+	//If using a cross-compile (at least)
+	// qhull under win64 must use long long, or we get random crashes
+	// The definition is set in qhull/mem.h
+	COMPILE_ASSERT(sizeof(ptr_intT) == sizeof(long long))
+#endif
+}
 
 

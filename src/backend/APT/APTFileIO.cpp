@@ -473,7 +473,7 @@ unsigned int limitLoadTextFile(unsigned int maxCols,
 	//we define this as the split value being able to generate 
 	//1) Enough data to make interpretable columns
 	//2) Enough columns that can be interpreted.
-	while(!CFile.eof() && curPos < maxPos)
+	while(CFile.good() && !CFile.eof() && curPos < maxPos)
 	{
 		string s;
 		curPos = CFile.tellg();
@@ -505,7 +505,7 @@ unsigned int limitLoadTextFile(unsigned int maxCols,
 	}	
 
 	//could not find any data.. only header.
-	if(CFile.eof() || curPos >=maxPos)
+	if(!CFile.good() || CFile.eof() || curPos >=maxPos)
 		return TEXT_ERR_ONLY_HEADER;
 
 
@@ -526,7 +526,7 @@ unsigned int limitLoadTextFile(unsigned int maxCols,
 	newLinePositions.push_back(curPos);
 	bool seenNumeric=false;
 	buffer = new char[BUFFER_SIZE];
-	while(!CFile.eof() && curPos < maxPos)
+	while(CFile.good() !CFile.eof() && curPos < maxPos)
 	{
 		size_t bytesToRead;
 
