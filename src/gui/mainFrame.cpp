@@ -3436,7 +3436,9 @@ void MainWindowFrame::OnGridFilterDClick(wxPropertyGridEvent &event)
 void MainWindowFrame::OnGridCameraPropertyChange(wxPropertyGridEvent &event)
 {
 
-	if(programmaticEvent)
+	//Check for inited OK. Seem to be getting called before 
+	//do_layout is complete.
+	if(programmaticEvent || !initedOK)
 	{
 		event.Veto();
 		return;

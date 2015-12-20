@@ -526,7 +526,7 @@ unsigned int limitLoadTextFile(unsigned int maxCols,
 	newLinePositions.push_back(curPos);
 	bool seenNumeric=false;
 	buffer = new char[BUFFER_SIZE];
-	while(CFile.good() !CFile.eof() && curPos < maxPos)
+	while(CFile.good() && !CFile.eof() && curPos < maxPos)
 	{
 		size_t bytesToRead;
 
