@@ -12,16 +12,17 @@ make install
 
 to build the default-mode (single-threaded, debug on ) program. 
 
-Interesting configure flags (see ./configure --help):
+Interesting configure flags (see "./configure --help" for more options):
 
 --enable-openmp-parallel : Enable multi-CPU mode (for multi-CPU sections
  				of the program) via the "openMP" framework
 --disable-debug-checks : Disable debug checks. This makes the program
 				much faster, but less likely to catch
 				program bugs
---enable-mgl2 : Enable mathgl 2.x mode. By default, mathgl 1.x is assumed
-			to be installed
-
+--disable-ubsan : Disable undefined behaviour santiser. Makes the program
+			go faster, but undefined program behaviour (bugs)
+			will not be as readily detected
+--enable-experimental-cpp11 : Enables experimental C++11 support.
 
 Some Dependencies:
 	libxml2
@@ -32,7 +33,8 @@ Some Dependencies:
 	libpng
 	wxwidgets
 	gettext
-
+	vigra
+	
 
 	Remember, for dependencies under linux platforms you must install
 	the -dev, or -devel packages, in order to allow compilation

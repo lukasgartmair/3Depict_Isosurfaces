@@ -20,7 +20,7 @@ fi
 
 HG_ROOT=`hg root`
 
-cppcheck -q -j $NUM_PROCS --enable=all --inconclusive ${HG_ROOT}/src/. 2> ${HG_ROOT}/cpp-res
+cppcheck --platform=native -q -j $NUM_PROCS --enable=all --inconclusive ${HG_ROOT}/src/. 2> ${HG_ROOT}/cpp-res
 cat ${HG_ROOT}/cpp-res | sort -n > tmp;
 
 CPPCHECK_IGNORE=cppcheck-ignore

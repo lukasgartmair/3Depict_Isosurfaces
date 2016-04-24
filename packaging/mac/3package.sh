@@ -5,10 +5,16 @@ PROGRAM_NAME=3Depict
 cp makeMacOSXApp ../..
 cp -R ${PROGRAM_NAME}.app ../..
 cd ../..
+echo "" > compile
+echo "" > install-sh
+
+make clean > out.txt 2>&1
 make distclean > out.txt 2>&1
 
+autoreconf >> out.txt 2>&1
+
 #Pull version number out of configure
-VERSION=`cat ./configure.ac | grep '^\s*AC_INIT(' | awk -F, '{ print $2 } ' | sed 's/\s*\[//' | sed 's/\]\s*//' | sed 's/\ //g'`
+VERSION=`cat ./configure.ac | grep '^\s*AC_INIT(' | awk -F, '{ print $2 } ' | sed 's/\s*\[//' | sed 's/\]\s*//' | sed 's/\ //g' | sed 's/)//g'`
 BUILT_PROGRAMS_DIR=.
 MAC_OS_VER=`sw_vers | grep ProductVersion | awk '{print $2}'`
 YEAR=`date | awk '{print $NF}'`
@@ -53,14 +59,14 @@ fi
 
 #ensure that we have some .pdf files in here
 if [ x`find ./ -name \*.pdf` == x"" ] ; then
-	echo "No PDF files (manual) found!"
-	exit 1 
+	echo "WARNING: No PDF files (manual) found!"
+	sleep 1
 fi
 
 #ensure that some .mo (translation files) are here
 if [ x`find ./ -name \*.mo` == x"" ] ; then
-	echo "No mo files (translations) found!"
-	exit 1 
+	echo "WARNING : No mo files (translations) found!"
+	sleep 1
 fi
 
 #--

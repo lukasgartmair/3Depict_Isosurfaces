@@ -1,5 +1,8 @@
 #!/bin/bash
 #
+#This is configured to be specific to the mac build machine. 
+# Do not assume that this will work on any given mac system
+
 export PATH=/opt/local/bin:$PATH:/opt//local/Library/Frameworks/wxWidgets.framework/Versions/wxWidgets/3.0/bin
 #This will make the mac .app bundle
 
@@ -16,15 +19,10 @@ if [ $1 = '--update-config=yes' ]; then
 		DISABLE_DEBUG="--disable-debug-checks"
 	fi
 
-#	CFLAGS="$CFLAGS -std=c++11"
-
-	CXX=g++ #"`wx-config --cxx` " \
-	CFLAGS="$CFLAGS -I/opt/local/include -I/usr/local/include " \
-	CXXFLAGS="$CXXFLAGS -I/opt/local/include -I/usr/local/include " \
-	LDFLAGS="$LDFLAGS -L/opt/local/lib -L/usr/local/lib" \
-	./configure $SHOULD_PARALLEL $DISABLE_DEBUG --enable-mgl2=yes \
-		--with-libpng-flag="-I/opt/local/include/libpng16" \
-		--with-libpng-link="-L/opt/local/lib/ -lpng16"
+	CFLAGS="$CFLAGS -I/opt/local/include " \
+	LDFLAGS="$LDFLAGS -L/opt/local/lib " \
+	CXXFLAGS="$CXXFLAGS -std=c++11 -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_ -I/opt/local/include " \
+	./configure $SHOULD_PARALLEL $DISABLE_DEBUG
 
 	if [ $? -ne 0 ]; then
 		echo "Configure unsuccessful - exiting"
@@ -36,11 +34,16 @@ if [ $1 = '--update-config=yes' ]; then
 fi
 read -p "have you changed the makefile?" yn
 
-make -j8
+	CFLAGS="$CFLAGS -I/opt/local/include " \
+	LDFLAGS="$LDFLAGS -L/opt/local/lib " \
+	CXXFLAGS="$CXXFLAGS -std=c++11 -D_WCHAR_H_CPLUSPLUS_98_CONFORMANCE_ -I/opt/local/include " \
+	make -j8
 
-if [ $? -ne 0 ]; then
-	echo "Make unsuccessful - exiting"
-	exit 1
+	if [ $? -ne 0 ]; then
+		echo "Make unsuccessful - exiting"
+		exit 1
+	fi
+
 fi
 
 echo "Updating .app bundle..."
@@ -50,16 +53,15 @@ mkdir -p ./3Depict.app/Contents/libs/
 cp ./src/3Depict ./3Depict.app/Contents/MacOS/3Depict
 cp data/textures/tex-source/3Depict-icon.icns ./3Depict.app/Contents/Resources/3Depict-icon.icns
 touch ./3Depict.app/Contents/PkgInfo
-touch ./3Depict.app/Contents/info.plist
-#copy textures
+touch ./3Depict.app/Contents/Info.plist
+#copy all information from data folder
 cp ./data/* ./3Depict.app/Contents/Resources/
-cp ./data/textures/* ./3Depict.app/Contents/Resources/textures/
-cp ./data/textures/tex-source/3Depict-icon.icns ./3Depict.app/Contents/Resources
 
 
 #Update gettext translation
 #----
 echo "Updating translation files..."
+cd ./translations;./makeTranslations;cd ..
 for i in `ls ./translations/3Depict_*.mo`
 do
 	j=`echo $i | sed 's/.\/translations\/3Depict_//' | sed 's/.mo//'`

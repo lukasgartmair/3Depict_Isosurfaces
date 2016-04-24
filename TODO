@@ -6,12 +6,18 @@ TODO List - worlds simplest bugtracking system
 	To Implement:
 		== Next version ==
 		* Voxelisation filter should not show ions disabled in upstream range
+		* VTK voxel data export UI
+		* Bounding box tick values could be improved - scientific
+		  notation, better font size control, absol. coords, etc
+		* Mesh generation/operation?
+			- This is tricky. I don't have a good mesh library
+		* Proxigram?
+		* Theoretical distributions are missing from the binomial algorithm
 	
 		== Eventually == 
 		* Update to qhull 2015's qhull_r (reentrant qhull). 
 			- This requires some refactoring of the doHull wrapper for convex hull computation
 		* Voxel export dialog 
-		* VTK voxel data export
 		* OPS and other 3DAP formats reader?
 		* Polynomial error estimator in graph
 		* Shear-warp volume render mode for voxels
@@ -27,14 +33,15 @@ TODO List - worlds simplest bugtracking system
 		* Better progress during cluster ranging
 		* Billboard text
 		* Camera animation control (slerp?)
-		* Bounding box tick values could be improved - scientific
-		  notation, better font size control, absol. coords, etc
 		* Range file drag/drop ignores drop coordinates; this could be useful
 		  in trying to interpret where the user wants to drop the object
 		* Plots cannot currently be updated on name change. Need to add "needUpdate" to setUserString
-
+		* Isotope overlay in normal spectra
+			- Include full atomic species eg 57^Fe18^O in label
+	
 	Outstanding bugs:
 		== Next release==
+		* Composition profile progress bad 
 	
 		== Eventually==
 		* Cluster filter wont save state correctly if parent
@@ -50,7 +57,6 @@ TODO List - worlds simplest bugtracking system
 		
 		OSX:
 			* drag drop not working?
-			* icon on dock bounces very fast during some refreshes
 
 		== Needs reproducing ==
 

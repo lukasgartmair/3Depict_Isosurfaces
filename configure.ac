@@ -5,6 +5,8 @@ AC_PROG_CC
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile src/Makefile])
 
+m4_include([m4/ax_compare_version.m4])
+
 #Ok, lets try using gcc style precompiled headers.
 AM_CONDITIONAL(USE_PRECOMPILED_HEADERS, 1)
 
@@ -28,7 +30,7 @@ AC_MSG_ERROR([
 		Please check that wx-config is in path, the directory
 		where wxWidgets libraries are installed (returned by
 		'wx-config --libs' command) is in LD_LIBRARY_PATH or
-		equivalent variable and wxWidgets version is 2.6.0 or above.
+		equivalent variable and wxWidgets version is above the minimum specified above.
 ])
 fi
 
@@ -177,9 +179,6 @@ AC_ARG_WITH(libqhull-flags,
 AC_ARG_WITH(libqhull-link,
   [  --with-libqhull-link=PATH : specify linker flag (library) for libqhull])
 
-AC_ARG_WITH(libqhull-reentrant,
-  [  --with-libqhull-reentrant true if we want to compile against libqhull_r (new (2015) rentrant version of qhull library) ])
-
 if test x"$with_libqhull_flags" != x"" ; then
     QHULL_CFLAGS="$with_libqhull_flags"
 fi
@@ -188,27 +187,18 @@ AC_SUBST([QHULL_CFLAGS])
 #Attempt to compile a test program
 CFLAGS_ORIG="$CFLAGS"
 CFLAGS="$CFLAGS $QHULL_CFLAGS"
-
-#Qhull has a few different versions. Its hard to get a grip on the right qhull
-#AC_CHECK_HEADER([qhull/qhull_r.h],[AC_DEFINE(HAVE_QHULL,[],[Have got libqhull headers])],
-#	[AC_MSG_ERROR([Required libqhull headers not found (looking for qhull/qhull_a.h])])
+AC_CHECK_HEADER([qhull/qhull_a.h],[AC_DEFINE(HAVE_QHULL,[],[Have got libqhull headers])],
+	[AC_MSG_ERROR([Required libqhull headers not found (looking for qhull/qhull_a.h)])])
 
 if test x"$with_libqhull_link" != x"" ;
 then
 	QHULL_LIBS="$with_libqhull_link"
-	LIBS_ORIG="$LIBS"
-	LIBS="$LIBS $QHULL_LIBS $LDFLAGS"
 else
-	if text x"$with_libqhull_reentrant" != x"yes" ; then
-		QHULL_LIBS="-lqhull"
-	else
-		QHULL_LIBS="-lqhull_r"
-	fi	
-	LIBS_ORIG="$LIBS"
-	LIBS="$LIBS $QHULL_LIBS $LDFLAGS"
-	AC_CHECK_LIB(qhull, qh_qhull, [AC_DEFINE(HAVE_QHULL,[],[qhull compilation OK])] , AC_MSG_ERROR([You must have libqhull installed and be able to compile a sample program. compiler flags can be set using the with-libqhull-flags and with-libqhull-link parameters ]))
+	QHULL_LIBS="-lqhull"
 fi
-
+LIBS_ORIG="$LIBS"
+LIBS="$LIBS $QHULL_LIBS $LDFLAGS"
+AC_CHECK_LIB(qhull, qh_qhull, [AC_DEFINE(HAVE_QHULL,[],[qhull compilation OK])] , AC_MSG_ERROR([You must have libqhull installed and be able to compile a sample program. compiler flags can be set using the with-libqhull-flags and with-libqhull-link parameters ]))
 CFLAGS="$CFLAGS_ORIG"
 LIBS="$LIBS_ORIG"
 AC_SUBST([QHULL_LIBS])	
@@ -384,6 +374,15 @@ fi
 dnl -----------------
 
 
+dnl -----------------
+AC_LANG_PUSH([C++])
+AC_CHECK_HEADER([vigra/multi_array.hxx],[AC_DEFINE(HAVE_VIGRA,[],[Have got vigra headers])],
+	[AC_MSG_ERROR([Required vigra headers not found (looking for vigra/multi_array.hxx)])])
+
+AC_LANG_POP([C++])
+dnl -----------------
+
+
 #Should we compile with openMP?
 AC_ARG_ENABLE(openmp-parallel,
   [  --enable-openmp-parallel  Enable OpenMP multi-CPU usage; requires GCC > 4.2 for parallel STL support ])
@@ -439,11 +438,8 @@ then
 			case "${host_os}" in
 				*inux*)
 					GCC_VER=`gcc --version | head -n 1 | awk '{ print $(NF)}'`
-					case "${GCC_VER}" in
-						4.9*)
-							USE_UBSAN="yes"
-						;;
-					esac
+					AX_COMPARE_VERSION( [ $GCC_VER ], ge, 4.9,
+							[ USE_UBSAN="yes" ] , [ USE_UBSAN="no" ])
 				;;
 			esac
 
@@ -483,8 +479,6 @@ fi
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
 AC_C_CONST
-AC_FUNC_MALLOC 
-AC_FUNC_REALLOC 
 AC_TYPE_SIZE_T 
 AC_TYPE_UINT64_T 
 
