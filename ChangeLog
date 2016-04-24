@@ -1,4 +1,37 @@
-* 05 Apr 2014 : 0.0.18
+* ?? ??? 2016 : 0.0.19
+	Features:
+	- New "Local concentration" algorithm in spatial analysis filter 
+	- Add text and VTK export to Export Pos dialog
+	- Experimental Background fitting in spectra 
+	 
+	User Visible Changes:
+	- Camera re-orientation buttons have been added. Previously you
+	  could get a similar effect using keyboard shortcuts, eg Ctrl+Space
+	- Fixed breakage to monitor mode
+	- Only show erosion clustering parameter if bulk linking is enabled
+	- Fixes for hanging when loading some files under windows
+	- Fix broken point em/replacement (set operation) mode in spatial analysis
+	- Fix missing and incorrectly labelled denominator property in voxelisation
+	- Refresh button now changes to "Abort" during calculations for
+	  all platforms (Previously windows only)
+	- Fix loading of rangefile data in filter tree, broken in 0.0.18
+	- Improve progress reporting for some filters
+	- Fix opengl rendering on OSX (Previously resizes would cause
+	  scene to be distorted or clipped)
+	- Minor improvements to point colour and size tracking
+	- Fix bug in point replace mode where square distance was used instead of regular distance.
+
+	Technical Bugfixes/changes:
+	- Many minor memory leaks fixed
+	- Fixes for C++11 compilation
+	- Many small crash bugs fixed
+	- Fix analysis state lost if loading state failed
+	- Fix name collision detection in package export
+		- will now check for origin of file, not just name
+	- Fix race bug in voxel summation, caught by unit tests.
+	- Various fixes for state file loading 
+
+* 05 Apr 2015 : 0.0.18
 	Features:
 	- User interface now uses its own CPU. Should be much more
 	  responsive during refreshes
