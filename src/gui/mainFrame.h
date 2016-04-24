@@ -233,7 +233,6 @@ protected:
     wxPanel* filterTreePane;
     wxStaticText* propGridLabel;
     wxPropertyGrid* gridFilterPropGroup;
-    wxPropertyGrid *backFilterPropGrid;
     wxPanel* filterPropertyPane;
     wxSplitterWindow* filterSplitter;
     wxPanel* noteData;
@@ -242,7 +241,6 @@ protected:
     wxButton* buttonRemoveCam;
     wxStaticLine* cameraNamePropertySepStaticLine;
     wxPropertyGrid* gridCameraProperties;
-    wxPropertyGrid* backCameraPropGrid;
     wxButton* buttonAlignCamXPlus;
     wxButton* buttonAlignCamYPlus;
     wxButton* buttonAlignCamZPlus;
@@ -425,7 +423,6 @@ public:
 
     void OnCheckUpdatesThread(wxCommandEvent &evt);
     void OnFinishRefreshThread(wxCommandEvent &evt);
-    void OnIdle(wxIdleEvent &evt);
 
     void SetCommandLineFiles(wxArrayString &files);
 
