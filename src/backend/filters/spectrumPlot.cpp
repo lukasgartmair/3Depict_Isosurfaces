@@ -435,6 +435,10 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 		{
 			if (!showOnlyCorrected)
 			{
+				vector<float> backgroundHist;
+				createMassBackground(backParams.massStart,backParams.massEnd,
+					nBins,backParams.intensity,backgroundHist);
+
 				//Create a new plot which shows the spectrum's background
 				PlotStreamData *plotBack = new PlotStreamData;
 				plotBack->parent = this;
@@ -444,14 +448,18 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 				plotBack->index=d->index+1;	
 				plotBack->yLabel=d->yLabel;
 				plotBack->xyData.reserve(d->xyData.size());
+
+
+				float intensityPerBin = backParams.intensity;
 				for(size_t ui=0;ui<d->xyData.size(); ui++)
+
 				{
 					//negative sqrt cannot does not work. Equation only valid for positive masses
 					if(d->xyData[ui].first <=0)
 						continue;
 		
 					plotBack->xyData.push_back( std::make_pair(d->xyData[ui].first,
-							backParams.intensity/(sqrtf(d->xyData[ui].first))));
+							intensityPerBin/(2.0*sqrtf(d->xyData[ui].first))));
 			
 				}
 
@@ -674,7 +682,6 @@ void SpectrumPlotFilter::getProperties(FilterPropGroup &propertyList) const
 
 	propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
 
-	/* FIXME: This has been removed owing to broken unit test. 
 	curGroup++;
 
 	choices.clear();
@@ -728,7 +735,7 @@ void SpectrumPlotFilter::getProperties(FilterPropGroup &propertyList) const
 
 	}
 
-	propertyList.setGroupTitle(curGroup,TRANS("Background Mode"));*/	
+	propertyList.setGroupTitle(curGroup,TRANS("Background Mode"));
 	
 }
 

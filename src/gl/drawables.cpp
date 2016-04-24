@@ -45,7 +45,6 @@ TexturePool *DrawableObj::texPool=0;
 unsigned int DrawableObj::winX;
 unsigned int DrawableObj::winY;
 
-bool DrawPointLegendOverlay::quadSet=false;
 //==
 
 
@@ -609,6 +608,9 @@ DrawTexturedQuad::~DrawTexturedQuad()
 		texPool->closeTexture(textureId);
 		textureId=-1;
 	}
+
+	if(textureData)
+		delete[] textureData;
 }
 
 void DrawTexturedQuad::draw() const

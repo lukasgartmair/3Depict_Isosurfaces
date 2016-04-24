@@ -19,6 +19,7 @@
 #ifndef K3DTREEMK2_H
 #define K3DTREEMK2_H
 
+#include <set>
 #include <vector>
 #include <utility>
 
@@ -52,9 +53,9 @@ class AxisCompareMk2
 class K3DNodeMk2
 {
 	public:
-		//Index of left child in parent tree array
+		//Index of left child in parent tree array. -1 if no child
 		size_t childLeft;
-		//Index of right child in parent tree array
+		//Index of right child in parent tree array. -1 if no child
 		size_t childRight;
 
 		//Has this point been marked by an external algorithm?
@@ -108,7 +109,7 @@ class K3DTreeMk2
 		
 
 		/*! Builds a balanced KD tree from a list of points
-		 *  previously set by "resetPts". returns false if abort checks return
+		 *  previously set by "resetPts". returns false if callback returns
 		 *  false;
 		 */	
 		bool build();
@@ -128,6 +129,17 @@ class K3DTreeMk2
 		size_t findNearestUntagged(const Point3D &queryPt,
 						const BoundCube &b, bool tag=true,size_t pseudoRoot=(size_t)-1);
 
+		//Find the nearest "untagged" point's internal index.
+		// Skip any of the listed points.
+		size_t findNearestWithSkip(const Point3D &queryPt,
+				const BoundCube &b,const std::set<size_t> &skipPts,
+					size_t pseudoRoot=(size_t)-1) const;
+
+		//Find the indicies of all points that lie within  the
+		// sphere (pts < radius) of given radius, centered upon
+		// this origin
+		void ptsInSphere(const Point3D &origin, float radius,
+			std::vector<size_t> &pts) const;
 	
 		//!Get the contigous node IDs for a subset of points in the tree that are contained
 		// within a sphere positioned about pt, with a sqr radius of sqrDist.
@@ -145,25 +157,35 @@ class K3DTreeMk2
 
 		//Obtain a point from its internal index
 		const Point3D *getPt(size_t index) const ;
+		//Obtain a point from its internal index
+		const Point3D &getPtRef(size_t index) const ;
 
 		//reset the specified "tags" in the tree
 		void clearTags(std::vector<size_t> &tagsToClear);
 
+		//Convert the "tree index" (the position in the tree) into the original point offset in the input array
 		size_t getOrigIndex(size_t treeIndex) const ;
 		
 
 		//Erase tree contents
 		void clear() { nodes.clear(); indexedPoints.clear();};
+
+		//mark a point as "tagged" (or untagged,if tagVal=false) via its tree index.
 		void tag(size_t tagID,bool tagVal=true) ;
 
-		bool getTag(size_t tagID) const ;
+		//obtain the tag status for a given point, using the tree index
+		bool getTag(size_t treeIndex) const ;
 
-		size_t size() const ;
+		//obtain the number of points in the tree
+		size_t size() const; 
 		
+		//Find the position of the root node in the tree
 		size_t rootIdx() const { return treeRoot;}
 
+		//Find the number of tagged items in the tree
 		size_t tagCount() const;
 
+		//reset all tagged points to untagged
 		void clearAllTags();
 };
 

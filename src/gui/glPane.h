@@ -36,7 +36,12 @@ private:
 
 	wxStatusBar *parentStatusBar;
 	wxTimer *parentStatusTimer;
-	unsigned int statusDelay;	
+	unsigned int statusDelay;
+
+#ifdef __APPLE__ 
+	bool requireContextUpdate;
+#endif
+	
 	//In some implementation of openGL in wx. 
 	//calling GL funcs before Paint() will crash program
 	bool paneInitialised;

@@ -264,8 +264,6 @@ ClusterAnalysisFilter::ClusterAnalysisFilter() : algorithm(CLUSTER_LINK_ERODE),
 	wantClusterMorphology(false), haveRangeParent(false)
 
 {
-	//haveRangeParent=false; //Initialiser sets this to false, as required by ::initFilter
-
 	cacheOK=false;
 
 	//By default, we should cache, but final decision is made higher up
@@ -985,23 +983,23 @@ void ClusterAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			p.helpText=TRANS("Distance from core points that form cluster that is used to grab surrounding bulk points");
 			p.key=KEY_BULKLINK;
 			propertyList.addProperty(p,curGroup);
-		}
 		
-		p.name=TRANS("Erosion");
-		p.data=boolStrEnc(enableErosion);
-		p.type=PROPERTY_TYPE_BOOL;
-		p.helpText=TRANS("Enable  linking of non-cluster species - eg for composition analysis ");
-		p.key=KEY_ERODE_ENABLE;
-		propertyList.addProperty(p,curGroup);
-		if(enableErosion)
-		{
-			stream_cast(tmpStr,dErosion);
-			p.name=TRANS("Erode Dist");
-			p.data=tmpStr;
-			p.type=PROPERTY_TYPE_REAL;
-			p.helpText=TRANS("Distance from unclustered material in which bulk points are eroded from cluster");
-			p.key=KEY_ERODEDIST;
+			p.name=TRANS("Erosion");
+			p.data=boolStrEnc(enableErosion);
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Enable  linking of non-cluster species - eg for composition analysis ");
+			p.key=KEY_ERODE_ENABLE;
 			propertyList.addProperty(p,curGroup);
+			if(enableErosion)
+			{
+				stream_cast(tmpStr,dErosion);
+				p.name=TRANS("Erode Dist");
+				p.data=tmpStr;
+				p.type=PROPERTY_TYPE_REAL;
+				p.helpText=TRANS("Distance from unclustered material in which bulk points are eroded from cluster");
+				p.key=KEY_ERODEDIST;
+				propertyList.addProperty(p,curGroup);
+			}
 		}
 	}
 	
@@ -1869,7 +1867,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	unsigned int numClusterSteps=4;
 	if(enableBulkLink)
 		numClusterSteps+=2;
-	if(needErosion)
+	if(needErosion && enableBulkLink)
 		numClusterSteps++;
 	if(enableCoreClassify)
 		numClusterSteps++;
@@ -1961,13 +1959,10 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		
 
 	vector<vector<size_t> > allCoreClusters,allBulkClusters;
-	const float linkDistSqr=linkDist*linkDist;
-	
 	//When this queue is exhausted, move to the next cluster
 	for(size_t ui=0;ui<coreTree.size();ui++)
 	{
 		size_t curPt;
-		float curDistSqr;
 		//Indicies of each cluster
 		vector<size_t> soluteCluster,dummy;
 		//Queue for atoms in this cluster waiting to be checked
@@ -1981,66 +1976,51 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		coreTree.tag(ui);
 
 	
-	
-		size_t clustIdx;
+		//If the atom is not clustered, use it as a point from 
+		//which we start a search	
 		thisClusterQueue.push(ui);
 		soluteCluster.push_back(ui);
+	
+		//Keep looping throughe queue until it is exhausted
 		do
 		{
+			//search atom's position
 			curPt=thisClusterQueue.front();
-			const Point3D *thisPt;
-			thisPt=coreTree.getPt(curPt);
-			curDistSqr=0;
 
+			//Find all the points in a sphere around this one
+			vector<size_t> nnIdxs;
+			coreTree.ptsInSphere(*(coreTree.getPt(curPt)),linkDist,nnIdxs);
 
-
-			//Now loop over this solute's NNs not found by prev. method
-			while(true)
+			//Loop over this solute's NNs
+			for(size_t uj=0;uj<nnIdxs.size();uj++)
 			{
+				size_t clustIdx;
 				ASSERT(curPt < coreTree.size());
-				//Find the next point that we have not yet retrieved
+				//Find the next point that we have not yet retreived
 				//the find will tag the point, so we won't see it again
 				ASSERT(bCore.isValid());
-				clustIdx=coreTree.findNearestUntagged(
-						*thisPt,bCore, true);
+				clustIdx=nnIdxs[uj];
 
+				//Record it as part of the cluster	
 
-				ASSERT(clustIdx == (size_t)-1 || coreTree.getTag(clustIdx));
-				if(clustIdx != (size_t)-1)
+				if(!coreTree.getTag(clustIdx))
 				{
-					curDistSqr=coreTree.getPt(clustIdx)->sqrDist(
-							*(coreTree.getPt(curPt)) );
-
-				}
-
-				//Point out of clustering range, or no more points
-				if(clustIdx == (size_t)-1 || curDistSqr > linkDistSqr)
-				{
-					//If the point was not tagged,
-					//Un-tag the point; as it was too far away
-					if(clustIdx !=(size_t)-1)
-						coreTree.tag(clustIdx,false);
-					
-					thisClusterQueue.pop();
-					break;
-				}
-				else
-				{
-					//Record it as part of the cluster	
 					thisClusterQueue.push(clustIdx);
 					soluteCluster.push_back(clustIdx);
+					//tag point as visited
+					coreTree.tag(clustIdx);
 				}
-			
-
-				//Progress may be a little non-linear if cluster sizes are not random
-				progress.filterProgress= (unsigned int)(((float)ui/(float)coreTree.size())*100.0f);
-				if(*Filter::wantAbort)
-					return FILTER_ERR_ABORT;
 			}
 
 
-		} // Keep looping whilst we have coreTree to cluster.
-		while(!thisClusterQueue.empty() && clustIdx !=(size_t)-1);
+			//Progress may be a little non-linear if cluster sizes are not random
+			progress.filterProgress= (unsigned int)(((float)ui/(float)coreTree.size())*100.0f);
+			if(*Filter::wantAbort)
+				return FILTER_ERR_ABORT;
+
+			thisClusterQueue.pop();
+
+		}while(thisClusterQueue.size());
 			
 
 		if(soluteCluster.size())
@@ -2102,19 +2082,13 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		{
 			bulkTree.getBoundCube(bBulk);
 
-			//Compute the expected number of points that we would encapsulate
-			//if we were to place  a sphere of size bulkLink in the KD domain.
-			// This allows us to choose whether to use a bulk "grab" approach, or not.
-			bool expectedPtsInSearchEnough;
-			expectedPtsInSearchEnough=((float)bulkTree.size())/bBulk.volume()*4.0/3.0*M_PI*pow(bulkLink,3.0f)> SPHERE_PRESEARCH_CUTOFF;
-
 			//So-called "envelope" step.
-			float bulkLinkSqr=bulkLink*bulkLink;
 			size_t prog=PROGRESS_REDUCE;
 			//Now do the same thing with the matrix, but use the clusters as the "seed"
 			//positions
 			for(size_t ui=0;ui<allCoreClusters.size();ui++)
 			{
+
 				//The bulkTree component of the cluster
 				vector<size_t> thisBulkCluster,dummy;
 				for(size_t uj=0;uj<allCoreClusters[ui].size();uj++)
@@ -2122,84 +2096,35 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 					size_t curIdx;
 					curIdx=allCoreClusters[ui][uj];
 
-					const Point3D *curPt;
-					curPt=(coreTree.getPt(curIdx));
+					//Scan for bulkTree NNs.
+					vector<size_t> nnIdxs;
+					bulkTree.ptsInSphere(*(coreTree.getPt(curIdx)),bulkLink,nnIdxs);
 
-
-					//First do a grab of any sub-regions for cur pt
-					// based upon intersecting KD regions
-					// For readability, I have not factored this
-					// out of the loop; it should not have  a giant performance
-					// cost.
-					//---
-					if(expectedPtsInSearchEnough)
-					{
-						vector<pair<size_t,size_t> > blocks;
-						bulkTree.getTreesInSphere(*curPt,bulkLinkSqr,bBulk,blocks);
-
-						for(size_t uj=0; uj<blocks.size();uj++)
-						{
-							for(size_t uk=blocks[uj].first; uk<=blocks[uj].second;uk++)
-							{
-								if(!bulkTree.getTag(uk))
-								{
-									//Tag, then record it as part of the cluster	
-									bulkTree.tag(uk);
-									thisBulkCluster.push_back(uk);
-								}
-							}
-
-						}
-					}
-
-					//--
-
-
-
-					//Scan for bulkTree NN.
-					while(true)
+					//loop over the points we found
+					for(unsigned int uj=0;uj<nnIdxs.size();uj++)
 					{
 						size_t bulkTreeIdx;
-						float curDistSqr;
-						//Find the next point that we have not yet retrieved
-						//the find will tag the point, so we won't see it again
-						bulkTreeIdx=bulkTree.findNearestUntagged(
-								*curPt,bBulk, true);
-			
-
-						if(bulkTreeIdx !=(size_t)-1)
-						{
-							curDistSqr=bulkTree.getPt(
-								bulkTreeIdx)->sqrDist(*curPt);
-						}
-
-						//Point out of clustering range, or no more points
-						if(bulkTreeIdx == (size_t)-1 || curDistSqr > bulkLinkSqr )
-						{
-							//Un-tag the point; as it was too far away
-							if(bulkTreeIdx !=(size_t)-1)
-								bulkTree.tag(bulkTreeIdx,false);
-							break;
-						}
-						else
-						{
-							//Record it as part of the cluster	
-							thisBulkCluster.push_back(bulkTreeIdx);
-						}
-					
-						prog--;	
-						if(!prog)
-						{
-							prog=PROGRESS_REDUCE;
-							//Progress may be a little non-linear if cluster sizes are not random
-							progress.filterProgress= (unsigned int)(((float)ui/(float)allCoreClusters.size())*100.0f);
-							if(*Filter::wantAbort)
-								return FILTER_ERR_ABORT;
-
-						}
+						bulkTreeIdx=nnIdxs[uj];
+				
+						ASSERT(bulkTree.getPt(nnIdxs[uj])->sqrDist(
+						*(coreTree.getPt(curIdx)))< bulkLink*bulkLink);
+						//Record as part of the cluster	
+						thisBulkCluster.push_back(bulkTreeIdx);
+						bulkTree.tag(bulkTreeIdx);
 					}
 
-					
+						
+					//Update progress data as needed	
+					if(prog <=nnIdxs.size())
+					{
+						prog=PROGRESS_REDUCE;
+						//Progress may be a little non-linear if cluster sizes are not random
+						progress.filterProgress= (unsigned int)(((float)ui/(float)allCoreClusters.size())*100.0f);
+						if(*Filter::wantAbort)
+							return FILTER_ERR_ABORT;
+					}
+					else
+						prog-=nnIdxs.size();	
 
 				}
 
@@ -2219,7 +2144,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	//Step 4 in the  Process : Bulk erosion 
 	//====
 	//Check if we need the erosion step
-	if(needErosion)
+	if(needErosion && enableBulkLink)
 	{
 		//Update progress stuff
 		progress.step++;
@@ -2574,9 +2499,10 @@ void ClusterAnalysisFilter::createRangedIons(const std::vector<const FilterStrea
 	buildRangeEnabledMap(r,rangeEnabledMap);
 	ASSERT(rangeEnabledMap.size() == ionCoreEnabled.size());
 
-	bool needBulk = bulkLink > std::numeric_limits<float>::epsilon();
 
-	if(needBulk)
+	unsigned int numIonsRanged=0;
+
+	if(enableBulkLink)
 	{
 		for(size_t ui=0;ui<dataIn.size();ui++)
 		{
@@ -2602,7 +2528,12 @@ void ClusterAnalysisFilter::createRangedIons(const std::vector<const FilterStrea
 							bulk.push_back(d->data[ui]);
 						}
 					}
+					#ifdef OPENMP
+					if(!omp_get_thread_num()) 
+					#endif
+					p.filterProgress=(float)numIonsRanged/dataIn.size()*100.0f;
 				}
+				numIonsRanged++;
 			}
 		
 		
@@ -2625,7 +2556,14 @@ void ClusterAnalysisFilter::createRangedIons(const std::vector<const FilterStrea
 					{
 						#pragma omp critical 
 						core.push_back(d->data[ui]);
+
+						#ifdef OPENMP
+						if(!omp_get_thread_num()) 
+						#endif
+							p.filterProgress=(float)numIonsRanged/dataIn.size()*100.0f;
+
 					}
+					numIonsRanged++;
 				}
 			}
 		}

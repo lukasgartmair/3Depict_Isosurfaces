@@ -38,7 +38,11 @@ enum
 	KEY_SPACING_X,
 	KEY_SPACING_Y,
 	KEY_SPACING_Z,
-	KEY_STYLE
+	KEY_SHOW_TICKS_X,
+	KEY_SHOW_TICKS_Y,
+	KEY_SHOW_TICKS_Z,
+	KEY_STYLE,
+	KEY_ABSCOORDS
 };
 
 enum
@@ -67,12 +71,14 @@ const char *BOUND_STYLE[] =
 
 
 BoundingBoxFilter::BoundingBoxFilter() : isVisible(true), boundStyle(BOUND_STYLE_TICKS),
-	fixedNumTicks(true), fontSize(5), lineColour(0,0,1.0f), lineWidth(2.0f), threeDText(true)
+	fixedNumTicks(true), fontSize(5), absoluteCoords(false),
+	lineColour(0,0,1.0f), lineWidth(2.0f), threeDText(true)
 {
 	for(unsigned int ui=0;ui<3;ui++)
 	{
 		numTicks[ui]=12;
 		tickSpacing[ui]=5.0f;
+		enableTicks[ui]=true;
 	}
 
 	cacheOK=false;
@@ -87,11 +93,12 @@ Filter *BoundingBoxFilter::cloneUncached() const
 	{
 		p->numTicks[ui]=numTicks[ui];
 		p->tickSpacing[ui]=tickSpacing[ui];
+		p->enableTicks[ui]=enableTicks[ui];
 	}
 
 	p->isVisible=isVisible;
 	p->boundStyle=boundStyle;
-
+	p->absoluteCoords = absoluteCoords;
 
 	p->threeDText=threeDText;	
 
@@ -108,8 +115,8 @@ Filter *BoundingBoxFilter::cloneUncached() const
 
 size_t BoundingBoxFilter::numBytesForCache(size_t nObjects) const
 {
-	//Say we don't know, we are not going to cache anyway.
-	return (size_t)-1;
+	//we don't really know without examining full data. but guess
+	return (size_t)10000;
 }
 
 void BoundingBoxFilter::drawTicks(const BoundCube &bTotal, DrawStreamData *d) const
@@ -147,9 +154,16 @@ void BoundingBoxFilter::drawTicks(const BoundCube &bTotal, DrawStreamData *d) co
 		}
 	}
 
+	//flag to see if we have to draw the 0 corner later on
+	bool tickSet=false;
 	//Draw the ticks on the box perimeter.
 	for(unsigned int ui=0;ui<3;ui++)
 	{
+		if(!enableTicks[ui])
+			continue;
+
+		tickSet=true;
+
 		Point3D tickVector;
 		Point3D tickPosition;
 		Point3D textVector;
@@ -201,7 +215,12 @@ void BoundingBoxFilter::drawTicks(const BoundCube &bTotal, DrawStreamData *d) co
 				else
 					dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_BITMAP);
 				float f;
-				f = tmpTickSpacing[ui]*uj;
+				if(absoluteCoords)
+				{
+					f = tmpTickSpacing[ui]*uj + tickOrigin[ui];
+				}
+				else
+					f = tmpTickSpacing[ui]*uj;
 				snprintf(buffer,127,"%2.0f",f);
 				dT->setString(buffer);
 				dT->setSize(fontSize);
@@ -224,17 +243,21 @@ void BoundingBoxFilter::drawTicks(const BoundCube &bTotal, DrawStreamData *d) co
 		dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_POLYGON);
 	else
 		dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_BITMAP);
-	//Handle "0" text value
-	dT->setString("0");
-	
-	dT->setColour(lineColour.r(),lineColour.g(),
-		lineColour.b(),lineColour.a());
-	dT->setSize(fontSize);
-	dT->setOrigin(tickOrigin+ Point3D(-1,-1,-1));
-	dT->setAlignment(DRAWTEXT_ALIGN_RIGHT);
-	dT->setUp(Point3D(0,0,1));	
-	dT->setTextDir(Point3D(-1,-1,0));
-	d->drawables.push_back(dT);
+
+	if(!absoluteCoords && tickSet)
+	{
+		//Handle "0" text value
+		dT->setString("0");
+		
+		dT->setColour(lineColour.r(),lineColour.g(),
+			lineColour.b(),lineColour.a());
+		dT->setSize(fontSize);
+		dT->setOrigin(tickOrigin+ Point3D(-1,-1,-1));
+		dT->setAlignment(DRAWTEXT_ALIGN_RIGHT);
+		dT->setUp(Point3D(0,0,1));	
+		dT->setTextDir(Point3D(-1,-1,0));
+		d->drawables.push_back(dT);
+	}
 
 }
 
@@ -284,6 +307,9 @@ void BoundingBoxFilter::drawDimension(const BoundCube &bTotal, DrawStreamData *d
 	//Draw the arrows around the edge of the box
 	for(size_t ui=0;ui<3;ui++)
 	{
+		if(!enableTicks[ui])
+			continue;
+
 		float len;
 		len=(tickEnd[ui]-tickOrigin[ui])*0.5f;
 	
@@ -318,20 +344,34 @@ void BoundingBoxFilter::drawDimension(const BoundCube &bTotal, DrawStreamData *d
 	char *buffer=new char[128];
 	for(size_t ui=0;ui<3;ui++)
 	{
+		if(!enableTicks[ui])
+			continue;
+
 		BoundCube textCube;
 		DrawGLText *dT;
 		dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_POLYGON);
 
-		float len;
-		len=(tickEnd[ui]-tickOrigin[ui]);
+		if(!absoluteCoords)
+		{
+			float len;
+			len=(tickEnd[ui]-tickOrigin[ui]);
 
-		snprintf(buffer,127,"%5.1f",len);
+			snprintf(buffer,127,"%5.1f",len);
+		}
+		else
+		{
+			snprintf(buffer,127,"%5.1f , %5.1f",
+				tickOrigin[ui], tickEnd[ui]);
+
+		}
 		dT->setString(buffer);
 		dT->setSize(fontSize);
 
 		dT->setColour(lineColour.r(),lineColour.g(),
 				lineColour.b(),lineColour.a());
 		dT->setOrigin(centrePt[ui]);	
+		dT->setAlignment(DRAWTEXT_ALIGN_CENTRE);
+		
 		switch(ui)
 		{
 			case 0:
@@ -349,7 +389,6 @@ void BoundingBoxFilter::drawDimension(const BoundCube &bTotal, DrawStreamData *d
 				break;
 		}
 
-		dT->setAlignment(DRAWTEXT_ALIGN_CENTRE);
 
 		d->drawables.push_back(dT);
 	}
@@ -616,6 +655,34 @@ void BoundingBoxFilter::getProperties(FilterPropGroup &propertyList) const
 				p.helpText=TRANS("Distance between ticks on Z axis");
 				propertyList.addProperty(p,curGroup);
 			}
+		}
+
+		if(boundStyle!=BOUND_STYLE_BOX_ONLY)
+		{	
+			tmpStr=boolStrEnc(enableTicks[0]);	
+			p.name=TRANS("Ticks X");
+			p.data= tmpStr;
+			p.key=KEY_SHOW_TICKS_X;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Display tick marks on X axis");
+			propertyList.addProperty(p,curGroup);
+
+			tmpStr=boolStrEnc(enableTicks[1]);	
+			p.name=TRANS("Ticks Y");
+			p.data= tmpStr;
+			p.key=KEY_SHOW_TICKS_Y;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Display tick marks on Y axis");
+			propertyList.addProperty(p,curGroup);
+			
+			tmpStr=boolStrEnc(enableTicks[2]);	
+			p.name=TRANS("Ticks Z");
+			p.data= tmpStr;
+			p.key=KEY_SHOW_TICKS_Z;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Display tick marks on Z axis");
+			propertyList.addProperty(p,curGroup);
+
 			propertyList.setGroupTitle(curGroup,TRANS("Tick marks"));
 
 		}
@@ -648,6 +715,15 @@ void BoundingBoxFilter::getProperties(FilterPropGroup &propertyList) const
 			p.data= tmpStr;
 			p.type=PROPERTY_TYPE_INTEGER;
 			p.helpText=TRANS("Relative size for text");
+			propertyList.addProperty(p,curGroup);
+
+			
+			p.key=KEY_ABSCOORDS;
+			p.name=TRANS("Abs. Coords");
+			p.data = boolStrEnc(absoluteCoords);
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Show labels using aboslute coo-ordinates");
+	
 			propertyList.addProperty(p,curGroup);
 		}
 	}
@@ -759,9 +835,27 @@ bool BoundingBoxFilter::setProperty(  unsigned int key,
 			needUpdate=true;
 			break;
 		}
+		case KEY_SHOW_TICKS_X:
+		case KEY_SHOW_TICKS_Y:
+		case KEY_SHOW_TICKS_Z:
+		{
+			bool enabled;
+			if(stream_cast(enabled,value))
+				return false;
+
+			enableTicks[key-KEY_SHOW_TICKS_X]=enabled;
+			needUpdate=true;
+			break;
+		}
 		case KEY_FONTSIZE:
 		{
 			if(!applyPropertyNow(fontSize,value,needUpdate))
+				return false;
+			break;
+		}
+		case KEY_ABSCOORDS:
+		{
+			if(!applyPropertyNow(absoluteCoords,value,needUpdate))
 				return false;
 			break;
 		}
@@ -800,10 +894,13 @@ bool BoundingBoxFilter::writeState(std::ostream &f,unsigned int format, unsigned
 				<< numTicks[1] << "\" z=\""<< numTicks[2] <<"\"/>"  << endl;
 			f << tabs(depth+1) << "<tickspacing x=\""<<tickSpacing[0]<< "\" y=\"" 
 				<< tickSpacing[1] << "\" z=\""<< tickSpacing[2] <<"\"/>"  << endl;
+			f << tabs(depth+1) << "<ticksenabled x=\""<<enableTicks[0]<< "\" y=\"" 
+				<< enableTicks[1] << "\" z=\""<< enableTicks[2] <<"\"/>"  << endl;
 			f << tabs(depth+1) << "<linewidth value=\"" << lineWidth << "\"/>"<<endl;
 			f << tabs(depth+1) << "<fontsize value=\"" << fontSize << "\"/>"<<endl;
 			f << tabs(depth+1) << "<colour r=\"" <<  lineColour.r()<< "\" g=\"" << lineColour.g() << "\" b=\"" <<lineColour.b()  
 								<< "\" a=\"" << lineColour.a() << "\"/>" <<endl;
+			f << tabs(depth+1) << "<absolutecoords value=\"" << boolStrEnc(absoluteCoords) << "\"/>" << endl;
 			f << tabs(depth) << "</" <<trueName()<< ">" << endl;
 			break;
 		}
@@ -957,6 +1054,36 @@ bool BoundingBoxFilter::readState(xmlNodePtr &nodePtr, const std::string &stateF
 		return false;
 	xmlFree(xmlString);
 	//====
+
+	//Retrieve ticks enabled (3Depict > 0.0.18)
+	//===
+	xmlNodePtr tmpNode=nodePtr;
+	if(XMLHelpFwdToElem(nodePtr,"ticksenabled"))
+	{
+		//loading failed, use default (enabled)
+		for(unsigned int ui=0; ui<3; ui++)
+			enableTicks[ui] =true;
+
+		nodePtr=tmpNode;
+	}
+	else
+	{
+		const char *XYZ[]={"x","y","z"};
+		for(unsigned int ui=0;ui<3;ui++)
+		{
+			xmlString=xmlGetProp(nodePtr,(const xmlChar *)XYZ[ui]);
+			if(!xmlString)
+				return false;
+			tmpStr=(char *)xmlString;
+
+			if(!boolStrDec(tmpStr,enableTicks[ui]))
+				return false;
+
+			xmlFree(xmlString);
+		}
+	}
+
+	//===
 	
 	//Retrieve line width 
 	//====
@@ -1003,6 +1130,20 @@ bool BoundingBoxFilter::readState(xmlNodePtr &nodePtr, const std::string &stateF
 	if(!parseXMLColour(nodePtr,tmpCol))
 		return false;
 	lineColour=tmpCol;
+	//====
+
+	//Retrieve absolute coordinates (only for 3Depict > 0.0.18) 
+	//====
+	if(XMLHelpFwdToElem(nodePtr,"absolutecoords"))
+		absoluteCoords=false;
+	else
+	{
+		std::string s;
+		if(XMLHelpGetProp(s,nodePtr,"value"))
+			return false;
+		if(!boolStrDec(s,absoluteCoords))
+			return false;
+	}
 	//====
 
 	return true;	

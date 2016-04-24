@@ -326,11 +326,11 @@ void CopyGrid::copyData()
 		//Copy title from header
 		if(cols.size())
 		{
-			for(int ui=0;ui<cols.size();ui++)
+			for(int ui=0;ui<(int)cols.size();ui++)
 			{
 				data+=stlStr(GetColLabelValue(ui));
 
-				if(ui<cols.size()-1)
+				if(ui<(int)cols.size()-1)
 					data+="\t";
 			}
 			data+=endline;
@@ -360,7 +360,7 @@ void CopyGrid::copyData()
 			}
 			data+=endline;
 
-			for(int r=0;r<rows.size(); r++)
+			for(int r=0;r<(int)rows.size(); r++)
 			{
 			    for(int  c=0; c<GetNumberCols(); c++)
 			    {

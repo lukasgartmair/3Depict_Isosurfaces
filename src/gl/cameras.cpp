@@ -437,42 +437,42 @@ void CameraLookAt::ensureVisible(const BoundCube &boundCube, unsigned int face)
 	float boxToFrontDist,faceSize[2];
 	switch(face)
 	{
-		case 0:
+		case CAMERA_DIR_ZPLUS:
 			faceOutVector = Point3D(0,0,1); 
 			boxToFrontDist=boundCube.getSize(2);
 			tmpUpVec = Point3D(0,1,0);
 			faceSize[0]=boundCube.getSize(0);
 			faceSize[1]=boundCube.getSize(1);
 			break;
-		case 1:
+		case CAMERA_DIR_YMINUS:
 			faceOutVector = Point3D(0,-1,0); 
 			boxToFrontDist=boundCube.getSize(1);
 			tmpUpVec = Point3D(1,0,0);
 			faceSize[0]=boundCube.getSize(1);
 			faceSize[1]=boundCube.getSize(0);
 			break;
-		case 2:
-			faceOutVector = Point3D(0,1,0); 
-			boxToFrontDist=boundCube.getSize(1);
-			tmpUpVec =Point3D(1,0,0);
-			faceSize[0]=boundCube.getSize(0);
-			faceSize[1]=boundCube.getSize(2);
-			break;
-		case 3:
+		case CAMERA_DIR_XPLUS:
 			faceOutVector = Point3D(1,0,0); 
 			boxToFrontDist=boundCube.getSize(0);
 			tmpUpVec = Point3D(0,0,1);
 			faceSize[0]=boundCube.getSize(1);
 			faceSize[1]=boundCube.getSize(2);
 			break;
-		case 4:
+		case CAMERA_DIR_YPLUS:
+			faceOutVector = Point3D(0,1,0); 
+			boxToFrontDist=boundCube.getSize(1);
+			tmpUpVec =Point3D(1,0,0);
+			faceSize[0]=boundCube.getSize(0);
+			faceSize[1]=boundCube.getSize(2);
+			break;
+		case CAMERA_DIR_ZMINUS:
 			faceOutVector = Point3D(0,0,-1); 
 			boxToFrontDist=boundCube.getSize(2);
 			tmpUpVec = Point3D(0,1,0);
 			faceSize[0]=boundCube.getSize(0);
 			faceSize[1]=boundCube.getSize(1);
 			break;
-		case 5:
+		case CAMERA_DIR_XMINUS:
 			faceOutVector = Point3D(-1,0,0); 
 			boxToFrontDist=boundCube.getSize(0);
 			tmpUpVec = Point3D(0,0,1);
@@ -848,6 +848,7 @@ bool CameraLookAt::readState(xmlNodePtr nodePtr)
 		lock=false;
 	else
 		return false;
+	xmlFree(xmlString);
 
 	//Retrieve origin
 	//====
@@ -994,6 +995,45 @@ float CameraLookAt::getViewWidth(float depth) const
 		return -orthoScale*2.0f; //FIXME: Why is this negative??!
 
 	ASSERT(false);
+}
+
+
+void CameraLookAt::repositionAroundTarget(unsigned int direction)
+{
+	//Try to reposition the camera around the target
+	float distance = sqrt(origin.sqrDist(target));
+	Point3D faceOutVector;	
+	switch(direction)
+	{
+		case CAMERA_DIR_ZPLUS:
+			faceOutVector = Point3D(0,0,1); 
+			faceOutVector*=distance;
+			break;
+		case CAMERA_DIR_YMINUS:
+			faceOutVector = Point3D(0,-1,0); 
+			faceOutVector*=distance;
+			break;
+		case CAMERA_DIR_XPLUS:
+			faceOutVector = Point3D(0,1,0); 
+			faceOutVector*=distance;
+			break;
+		case CAMERA_DIR_YPLUS:
+			faceOutVector = Point3D(1,0,0); 
+			faceOutVector*=distance;
+			break;
+		case CAMERA_DIR_ZMINUS:
+			faceOutVector = Point3D(0,0,-1); 
+			faceOutVector*=distance;
+			break;
+		case CAMERA_DIR_XMINUS:
+			faceOutVector = Point3D(-1,0,0); 
+			faceOutVector*=distance;
+			break;
+		default:
+			ASSERT(false);
+	}	
+
+	setOrigin(target+faceOutVector);
 }
 
 std::ostream& operator<<(std::ostream &strm, const Camera &c)

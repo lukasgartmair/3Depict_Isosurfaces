@@ -208,7 +208,7 @@ VoxeliseFilter::VoxeliseFilter()
 	numeratorAll = false;
 	denominatorAll = true;
 
-	sliceInterpolate=SLICE_INTERP_NONE;
+	sliceInterpolate=VOX_INTERP_NONE;
 	sliceAxis=0;
 	sliceOffset=0.5;
 	showColourBar=false;
@@ -827,7 +827,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			p.data=str;
 			p.type=PROPERTY_TYPE_BOOL;
 			p.helpText=TRANS("Enable this ion for numerator");
-			p.key=KEY_ENABLE_NUMERATOR*1000+ui;
+			p.key=muxKey(KEY_ENABLE_NUMERATOR,ui);
 			propertyList.addProperty(p,curGroup);
 		}
 	
@@ -843,6 +843,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 		p.type=PROPERTY_TYPE_BOOL;
 		p.helpText=TRANS("Parameter \"b\" used in fraction (a/b) to get voxel value");
 		p.key=KEY_ENABLE_DENOMINATOR;
+		propertyList.addProperty(p,curGroup);
 
 		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
 		{			
@@ -850,7 +851,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			str=boolStrEnc(enabledIons[1][ui]);
 
 			//Append the ion name with a checkbox
-			p.key=KEY_ENABLE_DENOMINATOR*1000 + ui;
+			p.key=muxKey(KEY_ENABLE_DENOMINATOR,ui);
 			p.data=str;
 			p.name=rsdIncoming->rangeFile->getName(ui);
 			p.type=PROPERTY_TYPE_BOOL;
@@ -858,7 +859,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 
 			propertyList.addProperty(p,curGroup);
 		}
-		propertyList.setGroupTitle(curGroup,TRANS("Mode"));
+		propertyList.setGroupTitle(curGroup,TRANS("Denominator"));
 		curGroup++;
 	}
 
@@ -1021,7 +1022,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 		
 			
 			p.name=TRANS("Interp. Mode");
-			for(unsigned int ui=0;ui<SLICE_INTERP_ENUM_END;ui++)
+			for(unsigned int ui=0;ui<VOX_INTERP_ENUM_END;ui++)
 			{
 				choices.push_back(make_pair(ui,
 					TRANS(VOXELISE_SLICE_INTERP_STRING[ui])));
@@ -1408,10 +1409,10 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 		case KEY_VOXEL_SLICE_INTERP:
 		{
 			unsigned int i;
-			for (i = 0; i < SLICE_INTERP_ENUM_END; i++)
+			for (i = 0; i < VOX_INTERP_ENUM_END; i++)
 				if( value == TRANS(VOXELISE_SLICE_INTERP_STRING[i])) break;
 				
-			if( i >= SLICE_INTERP_ENUM_END)
+			if( i >= VOX_INTERP_ENUM_END)
 				return false;
 
 			if(i != sliceInterpolate)
@@ -1525,25 +1526,28 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 		}
 		default:
 		{
+			unsigned int subKeyType,offset;
+			demuxKey(key,subKeyType,offset);
+			
 			//Check for jump to denominator or numerator section
 			// TODO: This is a bit of a hack.
-			if (key >= KEY_ENABLE_DENOMINATOR*1000) {
+			if (subKeyType==KEY_ENABLE_DENOMINATOR) {
 				bool b;
 				if(!boolStrDec(value,b))
 					return false;
 
-				enabledIons[1][key - KEY_ENABLE_DENOMINATOR*1000]=b;
+				enabledIons[1][offset]=b;
 				if (!b) {
 					denominatorAll = false;
 				}
 				needUpdate=true;			
 				clearCache();
-			} else if (key >= KEY_ENABLE_NUMERATOR*1000) {
+			} else if (subKeyType == KEY_ENABLE_NUMERATOR) {
 				bool b;
 				if(!boolStrDec(value,b))
 					return false;
 				
-				enabledIons[0][key - KEY_ENABLE_NUMERATOR*1000]=b;
+				enabledIons[0][offset]=b;
 				if (!b) {
 					numeratorAll = false;
 				}
@@ -1818,7 +1822,7 @@ bool VoxeliseFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 		if(!XMLGetNextElemAttrib(sliceNodes,sliceInterpolate,"interpolate","value"))
 			return false;
 
-		if(sliceInterpolate >=SLICE_INTERP_ENUM_END)
+		if(sliceInterpolate >=VOX_INTERP_ENUM_END)
 			return false;
 
 		if(!XMLGetNextElemAttrib(sliceNodes,sliceAxis,"axis","value"))

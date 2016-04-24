@@ -642,14 +642,12 @@ void ExportAnimationDialog::OnFilterGridCellChanging(wxPropertyGridEvent &event)
 
 void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 {
+	event.Veto();
 
 	wxTreeItemId tId=filterTreeCtrl->GetSelection();;
 
 	if(tId ==filterTreeCtrl->GetRootItem() || !tId.IsOk())
-	{
-		event.Veto();
 		return;
-	}
 
 	//Get the filter ID value 
 	size_t filterId;
@@ -861,8 +859,6 @@ void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 		default:
 			ASSERT(false); // that should cover all data types...
 	}
-
-	event.Veto();
 
 	//Add property to animator
 	propertyAnimator.addProp(frameProp);

@@ -609,7 +609,7 @@ void FilterTree::getConsoleMessagesToNodes(std::vector<tree<Filter *>::iterator 
 
 
 	//now loop through the filters and obtain the console messages
-	for(set<Filter *>::iterator it=filterSet.begin();it!=filterSet.end();it++)
+	for(set<Filter *>::iterator it=filterSet.begin();it!=filterSet.end();++it)
 	{
 		vector<string> tmpMsgs;
 		(*it)->getConsoleStrings(tmpMsgs);
@@ -663,6 +663,8 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 		}
 	}
 
+
+	initFilterTree();
 
 	// -- Build data streams --	
 	vector< const FilterStreamData *> curData;
@@ -900,9 +902,9 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 	//Construct a single list of all pointers in output,
 	//checking for uniqueness. Delete duplicates
 	
+	std::set<const FilterStreamData *> uniqueSet;
 	for(list<FILTER_OUTPUT_DATA>::iterator it=outData.begin();it!=outData.end(); )
 	{
-		std::set<const FilterStreamData *> uniqueSet;
 
 		vector<const FilterStreamData *>::iterator itJ;
 		itJ=it->second.begin();
@@ -926,8 +928,6 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			++it;
 	}
 	//======
-
-
 
 	return 0;
 }
@@ -1193,6 +1193,8 @@ unsigned int FilterTree::loadXML(const xmlNodePtr &treeParent, std::ostream &err
 bool FilterTree::saveXML(std::ofstream &f,std::map<string,string> &fileMapping, 
 					bool writePackage, bool useRelativePaths, unsigned int minTabDepth) const
 {
+	set<string> existingFiles;
+
 	f << tabs(minTabDepth+1) << "<filtertree>" << endl;
 	//Depth-first search, enumerate all filters in depth-first fashion
 	unsigned int depthLast=0;
@@ -1234,6 +1236,24 @@ bool FilterTree::saveXML(std::ofstream &f,std::map<string,string> &fileMapping,
 				string newFilename;
 				newFilename=string("./") + onlyFilename(valueOverrides[ui]);
 
+				//resolve naming clashes (eg if we had /path1/file.pos and /path2/file.pos, we need to ensure
+				// these are named such that we dont collide
+				//--
+				unsigned int offset=0;
+				string a,b,c;
+				splitFileData(newFilename,a,b,c);
+				while(existingFiles.find(newFilename) != existingFiles.end())
+				{
+					std::string s;
+					stream_cast(s,offset);
+					newFilename = a + b + "-" + s+ "." + c;
+					offset++;	
+				}
+
+				//record the new choice for filename, so we can check for future collisions
+				existingFiles.insert(newFilename);
+				//--
+				
 				map<string,string>::const_iterator it;
 				it =fileMapping.find(valueOverrides[ui]);
 				

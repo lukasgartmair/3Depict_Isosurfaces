@@ -59,7 +59,8 @@ struct BACKGROUND_PARAMS
 
 	//result parameters
 	// for FIT_MODE_CONST_TOF, this uses 
-	float intensity,stdev;
+	float intensity,stdev; //FIXME: the units of this are not fully coherent. Should be in units of (counts/sqrt(amu))
+
 };
 
 template<typename T>
@@ -98,6 +99,13 @@ void meanAndStdev(const std::vector<T > &f,float &meanVal,
 //	- dataIn requires ion data for a successful fit
 //	- returns zero on success, nonzero on error`
 unsigned int doFitBackground(const std::vector<const FilterStreamData*> &dataIn, BACKGROUND_PARAMS &params) ;
+
+// Build a histogram of the background
+// - Start and end mass, and step size (to get bin count).
+// tofBackIntensity is the intensity level per unit time in the background, as obtained by doFitBackground
+// the histogram is 
+void createMassBackground(float massStart, float massEnd, unsigned int nBinsMass,
+			float tofBackIntensity, vector<float> &histogram);
 
 
 //Anderson. test statistic for gaussian-ness. Returns false if input has insufficient points for test (2 items)

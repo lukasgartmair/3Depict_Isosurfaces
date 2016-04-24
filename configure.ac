@@ -177,6 +177,9 @@ AC_ARG_WITH(libqhull-flags,
 AC_ARG_WITH(libqhull-link,
   [  --with-libqhull-link=PATH : specify linker flag (library) for libqhull])
 
+AC_ARG_WITH(libqhull-reentrant,
+  [  --with-libqhull-reentrant true if we want to compile against libqhull_r (new (2015) rentrant version of qhull library) ])
+
 if test x"$with_libqhull_flags" != x"" ; then
     QHULL_CFLAGS="$with_libqhull_flags"
 fi
@@ -185,18 +188,27 @@ AC_SUBST([QHULL_CFLAGS])
 #Attempt to compile a test program
 CFLAGS_ORIG="$CFLAGS"
 CFLAGS="$CFLAGS $QHULL_CFLAGS"
-AC_CHECK_HEADER([qhull/qhull_a.h],[AC_DEFINE(HAVE_QHULL,[],[Have got libqhull headers])],
-	[AC_MSG_ERROR([Required libqhull headers not found (looking for qhull/qhull_a.h])])
+
+#Qhull has a few different versions. Its hard to get a grip on the right qhull
+#AC_CHECK_HEADER([qhull/qhull_r.h],[AC_DEFINE(HAVE_QHULL,[],[Have got libqhull headers])],
+#	[AC_MSG_ERROR([Required libqhull headers not found (looking for qhull/qhull_a.h])])
 
 if test x"$with_libqhull_link" != x"" ;
 then
 	QHULL_LIBS="$with_libqhull_link"
+	LIBS_ORIG="$LIBS"
+	LIBS="$LIBS $QHULL_LIBS $LDFLAGS"
 else
-	QHULL_LIBS="-lqhull"
+	if text x"$with_libqhull_reentrant" != x"yes" ; then
+		QHULL_LIBS="-lqhull"
+	else
+		QHULL_LIBS="-lqhull_r"
+	fi	
+	LIBS_ORIG="$LIBS"
+	LIBS="$LIBS $QHULL_LIBS $LDFLAGS"
+	AC_CHECK_LIB(qhull, qh_qhull, [AC_DEFINE(HAVE_QHULL,[],[qhull compilation OK])] , AC_MSG_ERROR([You must have libqhull installed and be able to compile a sample program. compiler flags can be set using the with-libqhull-flags and with-libqhull-link parameters ]))
 fi
-LIBS_ORIG="$LIBS"
-LIBS="$LIBS $QHULL_LIBS $LDFLAGS"
-AC_CHECK_LIB(qhull, qh_qhull, [AC_DEFINE(HAVE_QHULL,[],[qhull compilation OK])] , AC_MSG_ERROR([You must have libqhull installed and be able to compile a sample program. compiler flags can be set using the with-libqhull-flags and with-libqhull-link parameters ]))
+
 CFLAGS="$CFLAGS_ORIG"
 LIBS="$LIBS_ORIG"
 AC_SUBST([QHULL_LIBS])	

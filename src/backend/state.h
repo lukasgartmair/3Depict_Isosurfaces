@@ -97,6 +97,9 @@ class TreeState
 
 		//!Returns true if the filter tree has updates that need to be processed
 		bool hasUpdates() const; 
+		
+		//!Returns true if the filter tree has updates via a filter monitor 
+		bool hasMonitorUpdates() const; 
 
 		//Obtain a clone of the active filter tree
 		void cloneFilterTree(FilterTree &f) const {f=filterTree;};
@@ -276,6 +279,11 @@ class AnalysisState
 		//Clear the camera data vector
 		void clearCams();
 
+		//Actual load function for loading internal state
+		// this is used by ::load to mitigate actual "state" 
+		// class instance modifications on failure
+		bool loadInternal(const char *cpFilename,  bool merge,
+				std::ostream &errStream);
 	public:
 
 		TreeState treeState;
@@ -301,7 +309,9 @@ class AnalysisState
 				std::ostream &errStream);
 
 		//save an XML-ised representation of the analysis sate
-		//	- mapping provides the on-disk to local name mapping to use when saving
+		//	- Provides the on-disk to local name
+		//      mapping to use when saving. This needs to be copied by
+		//     the caller into the same dir as the XML file to be usable
 		// 	- write package says if state should attempt to ensure that output
 		// 		state is fully self-contained, and locally referenced
 		bool save(const char *cpFilename, std::map<std::string,std::string> &fileMapping,
@@ -368,9 +378,6 @@ class AnalysisState
 
 		//!Add a new camera to the scene
 		void addCam(const std::string &camName, bool makeActive=false);
-	
-		bool defaultCamActive() const { return activeCamera == 0;}
-
 		//=====
 
 		//Effect functions

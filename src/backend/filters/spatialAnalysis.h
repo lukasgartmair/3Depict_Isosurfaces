@@ -46,6 +46,9 @@ class SpatialAnalysisFilter : public Filter
 		//!Are the sources/targets enabled for a  particular incoming range?
 		std::vector<bool> ionSourceEnabled,ionTargetEnabled;
 
+		//!work out which ions to count in the numerator vs denominator
+		std::vector<bool> ionNumeratorEnabled,ionDenominatorEnabled;
+
 		//RDF specific params
 		//--------
 		//RDF bin count
@@ -156,6 +159,12 @@ class SpatialAnalysisFilter : public Filter
 			const std::vector<const FilterStreamData *>  &dataIn, 
 			std::vector<const FilterStreamData * > &getOut);
 
+		//Local concentration algorithm, as described by 10.1016/j.jnucmat.2014.03.034
+		// TODO: Better reference?
+		// - I think implementations pre-date this paper, as I know of this algorithm from much earlier than 2014
+		size_t algorithmLocalConcentration(ProgressData &progress, size_t totalDataSize, 
+			const std::vector<const FilterStreamData *>  &dataIn, 
+			std::vector<const FilterStreamData * > &getOut, const RangeFile *rngF);
 		//Create a 3D manipulable cylinder as an output drawable
 		// using the parameters stored inside the vector/scalar params
 		// both parameters are outputs from this function
@@ -166,15 +175,6 @@ class SpatialAnalysisFilter : public Filter
 		// device for whatever algorithm is in use; device list will be appended to
 		// and if needed, output object will be generated 
 		void createDevice(std::vector<const FilterStreamData *> &getOut);
-
-		//Scan input datstreams to build a two point vectors,
-		// one of those with points specified as "target" 
-		// which is a copy of the input points
-		//Returns 0 on no error, otherwise nonzero
-		size_t buildSplitPoints(const std::vector<const FilterStreamData *> &dataIn,
-					ProgressData &progress, size_t totalDataSize,
-					const RangeFile *rngF,
-					std::vector<Point3D> &pSource, std::vector<Point3D> &pTarget) const;
 
 
 		//From the given input ions, filter them down using the user
@@ -213,6 +213,13 @@ class SpatialAnalysisFilter : public Filter
 		//!Dump state to output stream, using specified format
 		bool writeState(std::ostream &f,unsigned int format,
 						unsigned int depth=0) const;
+		
+		//!write an overridden filename version of the state
+		virtual bool writePackageState(std::ostream &f, unsigned int format,
+				const std::vector<std::string> &valueOverrides,unsigned int depth=0) const;
+		//Obtain the state file override 
+		void getStateOverrides(std::vector<string> &externalAttribs) const; 
+
 		//!Read the state of the filter from XML file. If this
 		//fails, filter will be in an undefined state.
 		bool readState(xmlNodePtr &node, const std::string &packDir);

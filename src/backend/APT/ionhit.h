@@ -22,6 +22,17 @@
 #include "common/basics.h"
 class Point3D;
 
+
+//TODO: Move to member of ionHit itself
+//!Allowable export ion formats
+enum
+{
+	IONFORMAT_POS=1,
+	IONFORMAT_TEXT,
+	IONFORMAT_VTK,
+	IONFORMAT_ENUM_END
+};
+
 //!This is a data holding class for POS file ions, from
 /* Pos ions are typically obtained via reconstructed apt detector hits
  * and are of form (x,y,z mass/charge)
@@ -73,8 +84,8 @@ class IonHit
 		//Get the centroid from a vector of ion hits
 		static void getCentroid(const std::vector<IonHit> &points, Point3D &centroid);
 		
-		//Add these points to a pos file
-		static unsigned int appendPos(const std::vector<IonHit> &points, const char *name);
+		//Add these points to a formatted file
+		static unsigned int appendFile(const std::vector<IonHit> &points, const char *name, const unsigned int format=IONFORMAT_POS);
 
 		//Save a pos file, overwriting any previous data at this location
 		static unsigned int makePos(const std::vector<IonHit> &points, const char *name);

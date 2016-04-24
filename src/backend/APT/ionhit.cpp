@@ -92,12 +92,15 @@ const IonHit &IonHit::operator=(const IonHit &obj)
 	return *this;
 }
 
-IonHit IonHit::operator+(const Point3D &obj)
+
+float IonHit::operator[](unsigned int idx) const
 {
-	//FIXME: I think this is wrong???
-	ASSERT(false);
-	pos.add(obj);	
-	return *this;
+	ASSERT(idx <4);
+		
+	if(idx < 3)
+		return pos[idx];
+	else
+		return massToCharge; 
 }
 
 //!Create an pos file from a vector of IonHits
@@ -117,27 +120,50 @@ unsigned int IonHit::makePos(const vector<IonHit> &ionVec, const char *filename)
 	return 0;
 }
 
-unsigned int IonHit::appendPos(const vector<IonHit> &points, const char *name)
+unsigned int IonHit::appendFile(const vector<IonHit> &points, const char *name, unsigned int format)
 {
-	std::ofstream posFile(name,std::ios::binary|std::ios::app);	
-
-
-	if(!posFile)
-		return 1;
-
-	float data[4];	
-	
-	for(unsigned int ui=0; ui< points.size(); ui++)
+	switch(format)
 	{
-		points[ui].makePosData(data);
-		posFile.write((char *)data, 4*sizeof(float));
+		case IONFORMAT_POS:
+		{
+			//Write a "pos" formatted file
+			std::ofstream posFile(name,std::ios::binary|std::ios::app);	
+
+
+			if(!posFile)
+				return 1;
+
+			float data[4];	
+			
+			for(unsigned int ui=0; ui< points.size(); ui++)
+			{
+				points[ui].makePosData(data);
+				posFile.write((char *)data, 4*sizeof(float));
+			}
+
+
+			if(posFile.good())
+				return 0;
+			else
+				return 1;
+		}
+		case IONFORMAT_TEXT:
+		{
+			std::ofstream textFile(name,std::ios::app);
+			if(!textFile)
+				return 1;
+
+			for(unsigned int ui=0;ui<points.size();ui++)
+				textFile << points[ui][0] << " " << points[ui][1] << " " << points[ui][2]  << " " << points[ui][3] << std::endl;
+
+			if(textFile.good())
+				return 0;
+			else
+				return 1;
+		}
+		default:
+			ASSERT(false);
 	}
-
-
-	if(posFile.good())
-		return 0;
-	else
-		return 1;
 }
 
 void IonHit::getPoints(const vector<IonHit> &ions, vector<Point3D> &p)

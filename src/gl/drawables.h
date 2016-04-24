@@ -197,7 +197,7 @@ class DrawableObj
 
 		//!Set the active state of the object
 		void setActive(bool active);
-		//!Pure virtual funciton - draw the object
+		//!Pure virtual function - draw the object
 		virtual void draw() const =0;
 
 		//!Set if user can interact with object, needed for opengl hit testing

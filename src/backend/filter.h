@@ -66,7 +66,7 @@ enum
 	FILTER_TYPE_SPECTRUMPLOT, 
 	FILTER_TYPE_IONCLIP,
 	FILTER_TYPE_IONCOLOURFILTER,
-	FILTER_TYPE_COMPOSITION,
+	FILTER_TYPE_PROFILE,
 	FILTER_TYPE_BOUNDBOX,
 	FILTER_TYPE_TRANSFORM,
 	FILTER_TYPE_EXTERNALPROC,
@@ -116,13 +116,6 @@ enum
 
 extern const char *STREAM_NAMES[];
 
-//Representations
-enum 
-{
-	//IonStreamData
-	ION_REPRESENT_POINTS
-	
-};
 
 //Representations
 enum 
@@ -281,9 +274,11 @@ public:
 	IonStreamData *cloneSampled(float fraction) const;
 
 	size_t getNumBasicObjects() const;
-	
-	unsigned int representationType;
+
+	//Ion colour + transparancy in [0,1] colour space. 
 	float r,g,b,a;
+
+	//Ion Size in 2D opengl units
 	float ionSize;
 	
 	//!The name for the type of data -- nominally "mass-to-charge"
@@ -295,6 +290,10 @@ public:
 	//!export given filterstream data pointers as ion data
 	static unsigned int exportStreams(const std::vector<const FilterStreamData *> &selected, 
 							const std::string &outFile, unsigned int format=IONFORMAT_POS);
+
+	//!Use heuristics to guess best display parameters for this ionstream. May attempt to leave them alone 
+	void estimateIonParameters(const std::vector<const FilterStreamData *> &inputData);
+	void estimateIonParameters(const IonStreamData *inputFilter);
 };
 
 //!Point with m-t-c value data
@@ -616,8 +615,7 @@ class Filter
 				std::vector<const FilterStreamData *> &dataOut);
 
 
-		//!Return the XML elements that refer to external entities (i.e. files) which do not move with the XML file
-		//Each element is to be referred to using "/" as entity separator, for the first pair element, and the attribute name for the second.
+		//!Return the XML elements that refer to external entities (i.e. files) which do not move with the XML files. At this time, only files are supported. These will be looked for on the filesystem and moved as needed 
 		virtual void getStateOverrides(std::vector<std::string> &overrides) const {}; 
 
 		//!Enable/disable caching for this filter
@@ -681,6 +679,10 @@ class Filter
 	
 		template<typename T>	
 		static void getStreamsOfType(const std::vector<const FilterStreamData *> &vec, std::vector<const T *> &dataOut);
+
+
+
+
 #ifdef DEBUG
 		//!Run all the registered unit tests for this filter
 		virtual bool runUnitTests() { std::cerr << "No test for " << typeString() << std::endl; return true;} ;
@@ -691,6 +693,16 @@ class Filter
 		
 		static bool helpStringTests() ;
 #endif
+		
+
+//These functions are private for non-debug builds, to allow unit tests to access these
+#ifndef DEBUG
+	protected:
+#endif
+		//!Hack to merge/extract two bits of information into a single property key.
+		//It does this by abusing some bitshifting, to make use of usually unused key range
+		static void demuxKey(unsigned int key, unsigned int &keyType, unsigned int &ionOffset);
+		static unsigned int muxKey(unsigned int keyType, unsigned int ionOffset);
 
 };
 
@@ -745,7 +757,7 @@ bool Filter::applyPropertyNow(T &prop, const std::string &val, bool &needUp)
 class ProgressData
 {
 	public:
-		//!Progress of filter (out of 100) for current filter
+		//!Progress of filter (out of 100, or -1 for no progress information) for current filter
 		unsigned int filterProgress;
 		//!Number of filters (n) that we have processed (n out of m filters)
 		unsigned int totalProgress;
@@ -769,8 +781,8 @@ class ProgressData
 		bool operator==(const ProgressData &o) const;
 		const ProgressData &operator=(const ProgressData &o);
 
-		void reset() { filterProgress=totalProgress=step=maxStep=0;curFilter=0; totalNumFilters=1; stepName.clear();};
-		void clock() { filterProgress=step=maxStep=0;curFilter=0;totalProgress++; stepName.clear();};
+		void reset() { filterProgress=(unsigned int) -1; totalProgress=step=maxStep=0;curFilter=0; totalNumFilters=1; stepName.clear();};
+		void clock() { filterProgress=(unsigned int)-1; step=maxStep=0;curFilter=0;totalProgress++; stepName.clear();};
 };
 
 

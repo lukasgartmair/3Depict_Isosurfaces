@@ -249,7 +249,12 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 						}
 
 						if(spin)
+						{
+#ifdef _OPENMP
+							delete[] dSizeArr;
+#endif
 							return RANGEFILE_ABORT_FAIL;
+						}
 #ifdef _OPENMP
 						//Merge the arrays back together
 						for(unsigned int uk=0;uk<nT;uk++)
@@ -501,6 +506,9 @@ unsigned int RangeFileFilter::refresh(const std::vector<const FilterStreamData *
 	getOut.push_back(rngData);
 		
 	cacheOK=cache;
+
+	progress.filterProgress=100;
+
 	return 0;
 }
 

@@ -23,11 +23,6 @@
 
 class IonHit;
 
-//!Allowable export ion formats
-enum
-{
-	IONFORMAT_POS=1
-};
 
 using std::vector;
 

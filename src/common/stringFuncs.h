@@ -88,6 +88,12 @@ void splitStrsRef(const char *cpStr, const char delim,std::vector<std::string> &
 //!Split string references using any of a given string of delimiters
 void splitStrsRef(const char *cpStr, const char *delim,std::vector<std::string> &v );
 
+//!Split the file into three parts, base path, base name and file extension
+// this splits using "/" and "." under unix, and "\" and "." under windows.
+// the "." between the basename and the extension is omitted. Trailing slashes in pathname are kept
+void splitFileData(const std::string &filenameWithPath , 
+		std::string &path, std::string &basename, std::string &extension);
+
 //!Return only the filename component
 std::string onlyFilename( const std::string& path );
 //!Return only  the directory name component of the full path 

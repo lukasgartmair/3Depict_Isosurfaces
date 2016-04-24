@@ -102,6 +102,7 @@ void VisController::updateFilterPropGrid(wxPropertyGrid *g,size_t filterId, cons
 
 void VisController::updateScene(RefreshController *r)
 {
+	//Strip data out of the refresh controller (drop the parent filter data)
 	list<FILTER_OUTPUT_DATA> &sceneData = r->getRefreshData();
 	list< vector<const FilterStreamData *> > dataOnly;
 
@@ -151,6 +152,11 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 			//Filter must specify whether it is cached or not. Other values
 			//are inadmissible, but useful to catch uninitialised values
 			ASSERT((*it)[ui]->cached == 0 || (*it)[ui]->cached == 1);
+			
+			//set to true if we need to free up ram pointed to by 
+			// scene object iterator
+			bool deleteIt;
+			deleteIt=false;
 
 			switch((*it)[ui]->getStreamType())
 			{
@@ -346,6 +352,7 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 						//prevent vector destructor from deleting pointers
 						//we have transferred ownership of to scene
 						drawData->drawables.clear();
+						deleteIt=true;
 					}
 					break;
 				}
@@ -406,8 +413,10 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 			}
 			
 			//delete drawables as needed
-			if(!(*it)[ui]->cached && releaseData)
+			if( (!(*it)[ui]->cached && releaseData) || deleteIt)
 			{
+				//Ensure that we didnt force deletion of a cached obejct
+				ASSERT(deleteIt != (*it)[ui]->cached);
 				delete (*it)[ui];
 				(*it)[ui]=0;	
 			}
@@ -700,10 +709,12 @@ void VisController::updateCameraComboBox(wxComboBox *comboCamera) const
 		std::string camName;
 		camName = state.getCamName(ui);
 		ASSERT(camName.size());
-		//Do not delete as this will be deleted by wx
+		//Do not delete as this will be deleted by wx?
+		//FIXME: ListUInt is leaking... Is this a wx bug, or a usage bug?
 		comboCamera->Append(camName,
 				(wxClientData *)new wxListUint(ui));	
-		//If this is the active cam (1) set the selection 
+		//If this is the active cam (1) set the selection and (2) remember
+		//the ID
 		if(ui == state.getActiveCam())
 			comboCamera->SetSelection(ui-1);
 	}

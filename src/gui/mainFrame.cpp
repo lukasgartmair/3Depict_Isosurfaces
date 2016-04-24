@@ -161,7 +161,7 @@ const unsigned int comboFiltersTypeMapping[FILTER_DROP_COUNT] = {
 	FILTER_TYPE_BOUNDBOX,
 	FILTER_TYPE_IONCLIP,
 	FILTER_TYPE_CLUSTER_ANALYSIS,
-	FILTER_TYPE_COMPOSITION,
+	FILTER_TYPE_PROFILE,
 	FILTER_TYPE_IONDOWNSAMPLE,
 	FILTER_TYPE_EXTERNALPROC,
 	FILTER_TYPE_IONCOLOURFILTER,
@@ -177,115 +177,123 @@ const unsigned int comboFiltersTypeMapping[FILTER_DROP_COUNT] = {
 
 //Constant identifiers for binding events in wxwidgets "event table"
 enum {
-    
-    //File menu
-    ID_MAIN_WINDOW= wxID_ANY+1,
 
-    ID_FILE_EXIT,
-    ID_FILE_OPEN,
-    ID_FILE_MERGE,
-    ID_FILE_SAVE,
-    ID_FILE_SAVEAS,
-    ID_FILE_EXPORT_PLOT,
-    ID_FILE_EXPORT_IMAGE,
-    ID_FILE_EXPORT_IONS,
-    ID_FILE_EXPORT_RANGE,
-    ID_FILE_EXPORT_ANIMATION,
-    ID_FILE_EXPORT_FILTER_ANIMATION,
-    ID_FILE_EXPORT_PACKAGE,
+	//File menu
+	ID_MAIN_WINDOW= wxID_ANY+1,
 
-    //Edit menu
-    ID_EDIT_UNDO,
-    ID_EDIT_REDO,
-    ID_EDIT_RANGE,
-    ID_EDIT_PREFERENCES,
+	ID_FILE_EXIT,
+	ID_FILE_OPEN,
+	ID_FILE_MERGE,
+	ID_FILE_SAVE,
+	ID_FILE_SAVEAS,
+	ID_FILE_EXPORT_PLOT,
+	ID_FILE_EXPORT_IMAGE,
+	ID_FILE_EXPORT_IONS,
+	ID_FILE_EXPORT_RANGE,
+	ID_FILE_EXPORT_ANIMATION,
+	ID_FILE_EXPORT_FILTER_ANIMATION,
+	ID_FILE_EXPORT_PACKAGE,
 
-    //Help menu
-    ID_HELP_ABOUT,
-    ID_HELP_HELP,
-    ID_HELP_CONTACT,
+	//Edit menu
+	ID_EDIT_UNDO,
+	ID_EDIT_REDO,
+	ID_EDIT_RANGE,
+	ID_EDIT_PREFERENCES,
 
-    //View menu
-    ID_VIEW_BACKGROUND,
-    ID_VIEW_CONTROL_PANE,
-    ID_VIEW_RAW_DATA_PANE,
-    ID_VIEW_SPECTRA,
-    ID_VIEW_PLOT_LEGEND,
-    ID_VIEW_WORLDAXIS,
-    ID_VIEW_FULLSCREEN,
-    //Left hand note pane
-    ID_NOTEBOOK_CONTROL,
-    ID_NOTE_CAMERA,
-    ID_NOTE_DATA,
-    ID_NOTE_PERFORMANCE,
-    ID_NOTE_TOOLS,
-    ID_NOTE_VISUALISATION,
-    //Lower pane
-    ID_PANEL_DATA,
-    ID_PANEL_VIEW,
-    ID_NOTE_SPECTRA,
-    ID_NOTE_RAW,
-    ID_GRID_RAW_DATA,
-    ID_BUTTON_GRIDCOPY,
-    ID_LIST_PLOTS,
+	//Help menu
+	ID_HELP_ABOUT,
+	ID_HELP_HELP,
+	ID_HELP_CONTACT,
 
-    //Splitter IDs
-    ID_SPLIT_LEFTRIGHT,
-    ID_SPLIT_FILTERPROP,
-    ID_SPLIT_TOP_BOTTOM,
-    ID_SPLIT_SPECTRA,
-    ID_RAWDATAPANE_SPLIT,
-    ID_CONTROLPANE_SPLIT,
-   
-    //Camera panel 
-    ID_COMBO_CAMERA,
-    ID_GRID_CAMERA_PROPERTY,
-   
-    //Filter panel 
-    ID_COMBO_FILTER,
-    ID_COMBO_STASH,
-    ID_BTN_STASH_MANAGE,
-    ID_CHECK_AUTOUPDATE,
-    ID_FILTER_NAMES,
-    ID_GRID_FILTER_PROPERTY,
-    ID_LIST_FILTER,
-    ID_TREE_FILTERS,
-    ID_BUTTON_REFRESH,
-    ID_BTN_EXPAND,
-    ID_BTN_COLLAPSE,
-    ID_BTN_FILTERTREE_ERRS,
+	//View menu
+	ID_VIEW_BACKGROUND,
+	ID_VIEW_CONTROL_PANE,
+	ID_VIEW_RAW_DATA_PANE,
+	ID_VIEW_SPECTRA,
+	ID_VIEW_PLOT_LEGEND,
+	ID_VIEW_WORLDAXIS,
+	ID_VIEW_FULLSCREEN,
+	//Left hand note pane
+	ID_NOTEBOOK_CONTROL,
+	ID_NOTE_CAMERA,
+	ID_NOTE_DATA,
+	ID_NOTE_PERFORMANCE,
+	ID_NOTE_TOOLS,
+	ID_NOTE_VISUALISATION,
+	//Lower pane
+	ID_PANEL_DATA,
+	ID_PANEL_VIEW,
+	ID_NOTE_SPECTRA,
+	ID_NOTE_RAW,
+	ID_GRID_RAW_DATA,
+	ID_BUTTON_GRIDCOPY,
+	ID_LIST_PLOTS,
 
-    //Effects panel
-    ID_EFFECT_ENABLE,
-    ID_EFFECT_CROP_ENABLE,
-    ID_EFFECT_CROP_AXISONE_COMBO,
-    ID_EFFECT_CROP_PANELONE,
-    ID_EFFECT_CROP_PANELTWO,
-    ID_EFFECT_CROP_AXISTWO_COMBO,
-    ID_EFFECT_CROP_CHECK_COORDS,
-    ID_EFFECT_CROP_TEXT_DX,
-    ID_EFFECT_CROP_TEXT_DY,
-    ID_EFFECT_CROP_TEXT_DZ,
-    ID_EFFECT_STEREO_ENABLE,
-    ID_EFFECT_STEREO_COMBO,
-    ID_EFFECT_STEREO_BASELINE_SLIDER,
-    ID_EFFECT_STEREO_LENSFLIP,
+	//Splitter IDs
+	ID_SPLIT_LEFTRIGHT,
+	ID_SPLIT_FILTERPROP,
+	ID_SPLIT_TOP_BOTTOM,
+	ID_SPLIT_SPECTRA,
+	ID_RAWDATAPANE_SPLIT,
+	ID_CONTROLPANE_SPLIT,
 
-    //Options panel
-    ID_CHECK_ALPHA,
-    ID_CHECK_LIGHTING,
-    ID_CHECK_LIMIT_POINT_OUT,
-    ID_TEXT_LIMIT_POINT_OUT,
-    ID_CHECK_CACHING,
-    ID_CHECK_WEAKRANDOM,
-    ID_SPIN_CACHEPERCENT,
-    	
-    //Misc
-    ID_PROGRESS_ABORT,
-    ID_STATUS_TIMER,
-    ID_PROGRESS_TIMER,
-    ID_UPDATE_TIMER,
-    ID_AUTOSAVE_TIMER,
+	//Camera panel 
+	ID_COMBO_CAMERA,
+	ID_GRID_CAMERA_PROPERTY,
+	ID_BUTTON_ALIGNCAM_XMINUS,
+	ID_BUTTON_ALIGNCAM_XPLUS,
+	ID_BUTTON_ALIGNCAM_YMINUS,
+	ID_BUTTON_ALIGNCAM_YPLUS,
+	ID_BUTTON_ALIGNCAM_ZMINUS,
+	ID_BUTTON_ALIGNCAM_ZPLUS,
+
+
+
+	//Filter panel 
+	ID_COMBO_FILTER,
+	ID_COMBO_STASH,
+	ID_BTN_STASH_MANAGE,
+	ID_CHECK_AUTOUPDATE,
+	ID_FILTER_NAMES,
+	ID_GRID_FILTER_PROPERTY,
+	ID_LIST_FILTER,
+	ID_TREE_FILTERS,
+	ID_BUTTON_REFRESH,
+	ID_BTN_EXPAND,
+	ID_BTN_COLLAPSE,
+	ID_BTN_FILTERTREE_ERRS,
+
+	//Effects panel
+	ID_EFFECT_ENABLE,
+	ID_EFFECT_CROP_ENABLE,
+	ID_EFFECT_CROP_AXISONE_COMBO,
+	ID_EFFECT_CROP_PANELONE,
+	ID_EFFECT_CROP_PANELTWO,
+	ID_EFFECT_CROP_AXISTWO_COMBO,
+	ID_EFFECT_CROP_CHECK_COORDS,
+	ID_EFFECT_CROP_TEXT_DX,
+	ID_EFFECT_CROP_TEXT_DY,
+	ID_EFFECT_CROP_TEXT_DZ,
+	ID_EFFECT_STEREO_ENABLE,
+	ID_EFFECT_STEREO_COMBO,
+	ID_EFFECT_STEREO_BASELINE_SLIDER,
+	ID_EFFECT_STEREO_LENSFLIP,
+
+	//Options panel
+	ID_CHECK_ALPHA,
+	ID_CHECK_LIGHTING,
+	ID_CHECK_LIMIT_POINT_OUT,
+	ID_TEXT_LIMIT_POINT_OUT,
+	ID_CHECK_CACHING,
+	ID_CHECK_WEAKRANDOM,
+	ID_SPIN_CACHEPERCENT,
+
+	//Misc
+	ID_PROGRESS_ABORT,
+	ID_STATUS_TIMER,
+	ID_PROGRESS_TIMER,
+	ID_UPDATE_TIMER,
+	ID_AUTOSAVE_TIMER,
 
 
 };
@@ -608,6 +616,13 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
     cameraNamePropertySepStaticLine = new wxStaticLine(noteCamera, wxID_ANY);
     gridCameraProperties = new wxPropertyGrid(noteCamera,ID_GRID_CAMERA_PROPERTY,
 					wxDefaultPosition,wxDefaultSize,PROPERTY_GRID_STYLE);
+    buttonAlignCamXPlus = new wxButton(noteCamera, ID_BUTTON_ALIGNCAM_XPLUS, "X+");
+    buttonAlignCamYPlus = new wxButton(noteCamera, ID_BUTTON_ALIGNCAM_YPLUS, "Y+");
+    buttonAlignCamZPlus = new wxButton(noteCamera, ID_BUTTON_ALIGNCAM_ZPLUS, "Z+");
+    buttonAlignCamXMinus = new wxButton(noteCamera, ID_BUTTON_ALIGNCAM_XMINUS, "X-");
+    buttonAlignCamYMinus = new wxButton(noteCamera, ID_BUTTON_ALIGNCAM_YMINUS, "Y-");
+    buttonAlignCamZMinus = new wxButton(noteCamera, ID_BUTTON_ALIGNCAM_ZMINUS, "Z-");
+    checkAlignCamResize = new wxCheckBox(noteCamera, wxID_ANY, _("Resize to Fit"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
 #ifndef APPLE_EFFECTS_WORKAROUND
     checkPostProcessing = new wxCheckBox(notePost, ID_EFFECT_ENABLE, TRANS("3D Post-processing"));
 #endif
@@ -805,6 +820,7 @@ MainWindowFrame::~MainWindowFrame()
 	delete statusTimer;
 	delete updateTimer;
 	delete autoSaveTimer;
+	delete progressTimer;
 
 	//delete the file history  pointer
 	delete recentHistory;
@@ -816,10 +832,11 @@ MainWindowFrame::~MainWindowFrame()
 
 	//wxwidgets can crash if objects are ->Connect-ed  in 
 	// wxWindowBase::DestroyChildren(), so Disconnect before destructing
-    comboCamera->Unbind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboCameraSetFocus, this);
-    comboStash->Unbind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboStashSetFocus, this);
-    noteDataView->Unbind(wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED, &MainWindowFrame::OnNoteDataView, this);
-    treeFilters->Unbind(wxEVT_KEY_DOWN,&MainWindowFrame::OnTreeKeyDown,this);
+	comboCamera->Unbind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboCameraSetFocus, this);
+	comboStash->Unbind(wxEVT_SET_FOCUS, &MainWindowFrame::OnComboStashSetFocus, this);
+	noteDataView->Unbind(wxEVT_COMMAND_NOTEBOOK_PAGE_CHANGED, &MainWindowFrame::OnNoteDataView, this);
+	treeFilters->Unbind(wxEVT_KEY_DOWN,&MainWindowFrame::OnTreeKeyDown,this);
+	
 }
 
 
@@ -895,6 +912,13 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_PG_DOUBLE_CLICK(ID_GRID_FILTER_PROPERTY, MainWindowFrame::OnGridFilterDClick)
     EVT_TEXT(ID_COMBO_CAMERA, MainWindowFrame::OnComboCameraText)
     EVT_TEXT_ENTER(ID_COMBO_CAMERA, MainWindowFrame::OnComboCameraEnter)
+    EVT_BUTTON(wxID_REMOVE, MainWindowFrame::OnButtonRemoveCam)
+    EVT_BUTTON(ID_BUTTON_ALIGNCAM_XPLUS, MainWindowFrame::OnButtonAlignCameraXPlus)
+    EVT_BUTTON(ID_BUTTON_ALIGNCAM_YPLUS, MainWindowFrame::OnButtonAlignCameraYPlus)
+    EVT_BUTTON(ID_BUTTON_ALIGNCAM_ZPLUS, MainWindowFrame::OnButtonAlignCameraZPlus)
+    EVT_BUTTON(ID_BUTTON_ALIGNCAM_XMINUS, MainWindowFrame::OnButtonAlignCameraXMinus)
+    EVT_BUTTON(ID_BUTTON_ALIGNCAM_YMINUS, MainWindowFrame::OnButtonAlignCameraYMinus)
+    EVT_BUTTON(ID_BUTTON_ALIGNCAM_ZMINUS, MainWindowFrame::OnButtonAlignCameraZMinus)
     EVT_CHECKBOX(ID_CHECK_ALPHA, MainWindowFrame::OnCheckAlpha)
     EVT_CHECKBOX(ID_CHECK_LIGHTING, MainWindowFrame::OnCheckLighting)
     EVT_CHECKBOX(ID_CHECK_CACHING, MainWindowFrame::OnCheckCacheEnable)
@@ -904,7 +928,6 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_COMBOBOX(ID_COMBO_FILTER, MainWindowFrame::OnComboFilter)
     EVT_TEXT(ID_COMBO_FILTER, MainWindowFrame::OnComboFilterText)
     EVT_BUTTON(ID_BTN_STASH_MANAGE, MainWindowFrame::OnButtonStashDialog)
-    EVT_BUTTON(wxID_REMOVE, MainWindowFrame::OnButtonRemoveCam)
     EVT_LISTBOX(ID_LIST_PLOTS, MainWindowFrame::OnSpectraListbox)
     EVT_CLOSE(MainWindowFrame::OnClose)
     EVT_TREE_END_LABEL_EDIT(ID_TREE_FILTERS,MainWindowFrame::OnTreeEndLabelEdit)
@@ -1234,6 +1257,10 @@ void MainWindowFrame::OnDropFiles(const wxArrayString &files, int x, int y)
 		statusMessage(TRANS("Tip: You can use ctrl to merge"),MESSAGE_HINT);
 #endif
 	}
+
+	if(loaded || rangeLoaded)
+		doSceneUpdate();
+
 }
 
 bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge,bool noUpdate)
@@ -1285,12 +1312,17 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge,bool noUpdate
 		if(panelTop->isInited())
 			panelTop->updateClearColour();
 
-		checkViewWorldAxis->Check(visControl.scene.getWorldAxisVisible());
+		checkViewWorldAxis->Check(visControl.state.getWorldAxisMode());
+		visControl.scene.setWorldAxisVisible(visControl.state.getWorldAxisMode());
 
 		visControl.updateCameraComboBox(comboCamera);
 		//Only update the camera grid if we have a valid uniqueID
 		if(visControl.state.getNumCams() > 1)
 		{
+			//set the active camera
+
+			const Camera *c = visControl.state.getCam(visControl.state.getActiveCam());
+			visControl.setActiveCam(visControl.state.getActiveCam());	
 			//Use the active cam to update the grid.
 			visControl.updateCameraPropGrid(gridCameraProperties,
 						visControl.state.getActiveCam());
@@ -2264,7 +2296,8 @@ void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
 			filesize=0;
 			if(wantDebugPack && isPosFile)
 				getFilesize(it->second.c_str(),filesize);
-			
+		
+			//If we want a debugging package, then only copy the first part of the file	
 			if(wantDebugPack && isPosFile && filesize > CHUNKSIZE)
 			{
 				std::ifstream inputF(it->second.c_str(),std::ios::binary);
@@ -2292,7 +2325,13 @@ void MainWindowFrame::OnFileExportPackage(wxCommandEvent &event)
 			}
 			else
 			{
-				copyError=!wxCopyFile((it->second),folder+(it->first));
+				//if the file exists, then try to copy it to the local folder.
+				// The file might be optional, and therefore blank, so it is not an error
+				// to not have the file existing
+				if(wxFileExists(it->second))
+					copyError=!wxCopyFile((it->second),folder+(it->first));
+				else
+					copyError=false;
 			}
 
 			if(copyError)
@@ -2333,9 +2372,10 @@ void MainWindowFrame::OnFileExportIons(wxCommandEvent &event)
 	ExportPosDialog *exportDialog=new ExportPosDialog(this,wxID_ANY,TRANS("Export"));
 	exportDialog->initialiseData(f);
 	
-	//create a file chooser for later.
+	//create a file chooser for later. The format string is special as we use it to demux the 
+	// format later
 	wxFileDialog wxF(this,TRANS("Save pos..."), wxT(""),
-		wxT(""),TRANS("POS Data (*.pos)|*.pos|All Files (*)|*"),wxFD_SAVE);
+		wxT(""),TRANS("POS Data (*.pos)|*.pos|Text File (*.txt)|*.txt|VTK Legacy (*.vtk)|*.vtk|All Files (*)|*"),wxFD_SAVE);
 	
 	//If the user cancels the file chooser, 
 	//drop them back into the export dialog.
@@ -2385,10 +2425,19 @@ void MainWindowFrame::OnFileExportIons(wxCommandEvent &event)
 	//Retrieve the ion streams that we need to save
 	vector<const FilterStreamData *> exportVec;
 	exportDialog->getExportVec(exportVec);
-	
+
+
+	//Using the wildcard constant selected, set if we want text or pos
+	unsigned int format;
+	if(wxF.GetFilterIndex() == 0)
+		format = IONFORMAT_POS;
+	else if(wxF.GetFilterIndex() == 1)
+		format = IONFORMAT_TEXT;
+	else
+		format = IONFORMAT_VTK; 
 
 	//write the ion streams to disk
-	if(IonStreamData::exportStreams(exportVec,dataFile))
+	if(IonStreamData::exportStreams(exportVec,dataFile,format))
 	{
 		wxErrMsg(this,TRANS("Save error"),
 			TRANS("Unable to save. Check output destination can be written to."));
@@ -2980,7 +3029,9 @@ void MainWindowFrame::OnComboStashEnter(wxCommandEvent &event)
 void MainWindowFrame::OnComboFilterText(wxCommandEvent &event)
 {
 	//prevent user from modifying text
-	//comboFilters->ChangeValue(TRANS(ADD_FILTER_TEXT));
+#ifndef __APPLE__
+	comboFilters->ChangeValue(TRANS(ADD_FILTER_TEXT));
+#endif
 }
 
 void MainWindowFrame::OnComboStash(wxCommandEvent &event)
@@ -3951,7 +4002,7 @@ void MainWindowFrame::OnFinishRefreshThread(wxCommandEvent &event)
 		//If we are using the default camera,
 		//move it to make sure that it is visible
 		if(visControl.state.getNumCams() == 1)
-			visControl.scene.ensureVisible(3);
+			visControl.scene.ensureVisible(CAMERA_DIR_YPLUS);
 
 		ensureResultVisible=false;
 	}
@@ -4124,9 +4175,9 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 	//Don't attempt to update if already updating, or last
 	//update aborted
 	bool visUpdates=visControl.state.treeState.hasUpdates();
-
+	bool monitorUpdates=visControl.state.treeState.hasMonitorUpdates();
 	//I can has updates?
-	if((visUpdates || plotUpdates) && !refreshThreadActive())
+	if((visUpdates || plotUpdates|| monitorUpdates ) && !refreshThreadActive())
 	{
 		if(visUpdates)
 			visControl.state.treeState.applyBindingsToTree();	
@@ -4184,7 +4235,6 @@ void MainWindowFrame::OnUpdateTimer(wxTimerEvent &event)
 	}
 
 
-	
 	programmaticEvent=false;	
 }
 
@@ -4293,7 +4343,7 @@ void MainWindowFrame::updateProgressStatus()
 	{
 		//Check for new progress data
 		const ProgressData &p=refreshControl->curProg;
-		ASSERT(refreshControl->curProg.filterProgress <=100);
+		ASSERT(p.filterProgress <=100 || p.filterProgress==(unsigned int) -1);
 
 		if(p == lastProgressData
 
@@ -4302,8 +4352,11 @@ void MainWindowFrame::updateProgressStatus()
 
 		//This shouldn't happen, but prevent >100% progress from being reported
 		unsigned int cappedProgress;
-		cappedProgress = std::min(p.filterProgress,(unsigned int)100);
-
+		if (p.filterProgress!=(unsigned int)-1)
+			cappedProgress = std::min(p.filterProgress,(unsigned int)100);
+		else
+			cappedProgress = 0;
+			
 		//Inform progress circle in scene about current progress
 		visControl.scene.progressCircle.setCurFilter(p.totalProgress);
 		visControl.scene.progressCircle.setMaxStep(p.maxStep);
@@ -4355,7 +4408,11 @@ void MainWindowFrame::updateProgressStatus()
 
 
 			//Show the abort notice if we have hit 100%
-			if( p.filterProgress != 100 && p.filterProgress < p.totalNumFilters)
+			if( p.filterProgress == (unsigned int) -1)
+			{
+				filterProg=TRANS("Calculating...");
+			}
+			else if(p.filterProgress != 100 && p.filterProgress < p.totalNumFilters)
 				filterProg+=TRANS("\% Done (Esc aborts)");
 			else
 				filterProg+=TRANS("\% Done");
@@ -4588,7 +4645,6 @@ void MainWindowFrame::updateFxUI(const vector<const Effect*> &effs)
 
 	Thaw();
 }
-
 
 //This routine is used by other UI processes to trigger an abort
 void MainWindowFrame::OnProgressAbort(wxCommandEvent &event)
@@ -4981,6 +5037,78 @@ void MainWindowFrame::OnClose(wxCloseEvent &event)
  	 Destroy();
 }
 
+void MainWindowFrame::realignCameraButton(unsigned int direction)
+{
+	if(checkAlignCamResize->IsChecked())
+		visControl.scene.ensureVisible(direction);
+	else
+	{
+		//move the camera from its current position to the target direction
+		Camera *cam=visControl.scene.getActiveCam();
+		if(cam->type() == CAM_LOOKAT)
+		{
+			CameraLookAt *cLook=(CameraLookAt*)cam;
+			cLook->repositionAroundTarget(direction);
+
+			//set the "up" direction that we use by default
+			Point3D p;
+			switch(direction)
+			{
+				case CAMERA_DIR_XPLUS:
+					p=Point3D(0,0,1);
+					break;
+				case CAMERA_DIR_YPLUS:
+					p=Point3D(0,0,1);
+					break;
+				case CAMERA_DIR_ZPLUS:
+					p=Point3D(0,1,0);
+					break;
+				case CAMERA_DIR_XMINUS:
+					p=Point3D(0,0,-1);
+					break;
+				case CAMERA_DIR_YMINUS:
+					p=Point3D(0,0,-1);
+					break;
+				case CAMERA_DIR_ZMINUS:
+					p=Point3D(0,-1,0);
+					break;
+			}
+			cLook->setUpDirection(p);
+		}
+	}	
+
+	panelTop->forceRedraw();
+}
+
+void MainWindowFrame::OnButtonAlignCameraXPlus(wxCommandEvent &event)
+{
+	realignCameraButton(CAMERA_DIR_XPLUS);
+}	
+
+void MainWindowFrame::OnButtonAlignCameraYPlus(wxCommandEvent &event)
+{
+	realignCameraButton(CAMERA_DIR_YPLUS);
+}
+
+void MainWindowFrame::OnButtonAlignCameraZPlus(wxCommandEvent &event)
+{
+	realignCameraButton(CAMERA_DIR_ZPLUS);
+}
+
+void MainWindowFrame::OnButtonAlignCameraXMinus(wxCommandEvent &event)
+{
+	realignCameraButton(CAMERA_DIR_XMINUS);
+}
+
+void MainWindowFrame::OnButtonAlignCameraYMinus(wxCommandEvent &event)
+{
+	realignCameraButton(CAMERA_DIR_YMINUS);
+}
+
+void MainWindowFrame::OnButtonAlignCameraZMinus(wxCommandEvent &event)
+{
+	realignCameraButton(CAMERA_DIR_ZMINUS);
+}
 
 
 void MainWindowFrame::OnCheckPostProcess(wxCommandEvent &event)
@@ -5292,7 +5420,7 @@ void MainWindowFrame::SetCommandLineFiles(wxArrayString &files)
 	//Load them up as data.
 	for(unsigned int ui=0;ui<files.size();ui++)
 	{
-		loadedOK|=loadFile(files[ui],true);
+		loadedOK|=loadFile(files[ui],true,true);
 	}
 
 	requireFirstUpdate=loadedOK;
@@ -5864,8 +5992,14 @@ void MainWindowFrame::do_filtergrid_prop_layout()
 
 void MainWindowFrame::do_cameragrid_prop_layout()
 {
+    sizerAlignCam_staticbox = new wxStaticBox(noteCamera, wxID_ANY, _("Align Camera"));
+
     wxBoxSizer* camPaneSizer = new wxBoxSizer(wxVERTICAL);
     wxBoxSizer* camTopRowSizer = new wxBoxSizer(wxHORIZONTAL);
+    sizerAlignCam_staticbox->Lower();
+    wxStaticBoxSizer* sizerAlignCam = new wxStaticBoxSizer(sizerAlignCam_staticbox, wxVERTICAL);
+    wxBoxSizer* sizerCamAlignMinus = new wxBoxSizer(wxHORIZONTAL);
+    wxBoxSizer* sizerCamAlignPlus = new wxBoxSizer(wxHORIZONTAL);
     
     camPaneSizer->Add(labelCameraName, 0, 0, 0);
     camTopRowSizer->Add(comboCamera, 3, 0, 0);
@@ -5873,6 +6007,16 @@ void MainWindowFrame::do_cameragrid_prop_layout()
     camPaneSizer->Add(camTopRowSizer, 0, wxTOP|wxBOTTOM|wxEXPAND, 4);
     camPaneSizer->Add(cameraNamePropertySepStaticLine, 0, wxEXPAND, 0);
     camPaneSizer->Add(gridCameraProperties, 1, wxEXPAND, 0);
+    sizerCamAlignPlus->Add(buttonAlignCamXPlus, 0, wxALIGN_CENTER|wxALL, 5);
+    sizerCamAlignPlus->Add(buttonAlignCamYPlus, 0, wxALIGN_CENTER|wxALL, 5);
+    sizerCamAlignPlus->Add(buttonAlignCamZPlus, 0, wxALIGN_CENTER|wxALL, 5);
+    sizerAlignCam->Add(sizerCamAlignPlus, 0, 0, 0);
+    sizerCamAlignMinus->Add(buttonAlignCamXMinus, 0, wxALIGN_CENTER|wxALL, 5);
+    sizerCamAlignMinus->Add(buttonAlignCamYMinus, 0, wxALIGN_CENTER|wxALL, 5);
+    sizerCamAlignMinus->Add(buttonAlignCamZMinus, 0, wxALIGN_CENTER|wxALL, 5);
+    sizerAlignCam->Add(sizerCamAlignMinus, 0, wxALIGN_CENTER, 0);
+    sizerAlignCam->Add(checkAlignCamResize, 0, wxALIGN_CENTER|wxALL, 4);
+    camPaneSizer->Add(sizerAlignCam, 1, 0, 0);
 
     noteCamera->SetSizer(camPaneSizer);
     noteCamera->Fit();

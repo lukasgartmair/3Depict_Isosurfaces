@@ -92,16 +92,6 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 
 		propagateCache(getOut);
 
-		if(filterOutputs.size() && showColourBar)
-		{
-			//TODO:  Can I remove this? Caching for drawables now should work, right?
-			DrawStreamData *d = new DrawStreamData;
-			d->parent=this;
-			d->drawables.push_back(makeColourBar(mapBounds[0],
-					mapBounds[1],nColours,colourMap,alpha));
-			d->cached=0;
-			getOut.push_back(d);
-		}
 		return 0;
 	}
 
@@ -160,6 +150,8 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 				for(vector<IonHit>::const_iterator it=((const IonStreamData *)dataIn[ui])->data.begin();
 					       it!=((const IonStreamData *)dataIn[ui])->data.end(); ++it)
 				{
+					//Work out the colour map assignment from the mass to charge.
+					// linear assignment in range
 					unsigned int colour;
 
 					float tmp;	
@@ -200,7 +192,7 @@ unsigned int IonColourFilter::refresh(const std::vector<const FilterStreamData *
 		DrawStreamData *d = new DrawStreamData;
 		d->drawables.push_back(makeColourBar(mapBounds[0],mapBounds[1],nColours,colourMap,reverseMap,alpha));
 		d->parent=this;
-		d->cached=0;
+		cacheAsNeeded(d);
 		getOut.push_back(d);
 	}
 

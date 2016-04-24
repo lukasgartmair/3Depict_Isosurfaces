@@ -29,6 +29,7 @@
 
 
 #include "backend/filters/allFilter.h"
+#include "backend/APT/vtk.h"
 #include "backend/state.h"
 #include "backend/configFile.h"
 #include "backend/filters/algorithms/binomial.h"
@@ -74,9 +75,12 @@ bool abundanceTests();
 //run the tests for algorithms/ 
 bool algorithmTests();
 
+//Check some external file formats that we can write to
+bool fileFormatTests();
+
 bool basicFunctionTests()
 {
-	testStringFuncs();
+	TEST(testStringFuncs(),"String function test");
 
 	//Test point parsing routines
 	{
@@ -178,6 +182,10 @@ bool runUnitTests()
 		return false;
 
 	if(!testIsoSurface())
+		return false;
+
+
+	if(!fileFormatTests())
 		return false;
 	cerr << " OK" << endl << endl;
 
@@ -427,7 +435,7 @@ bool locateDataTests()
 		if(str.size())
 		{
 			manifest.open(str.c_str());
-			manifestOK=manifest;
+			manifestOK=manifest.good();
 		}
 	}
 
@@ -563,5 +571,11 @@ bool algorithmTests()
 		return false;
 	return true;
 }
+
+bool fileFormatTests()
+{
+	return testVTKExport();
+}
+
 
 #endif

@@ -48,16 +48,22 @@ enum
 	HULL_ERR_ENUM_END
 };
 
+//TODO: Namespace this into the filter base class?
+
 const size_t PROGRESS_REDUCE=5000;
 
 //serialise 3D std::vectors to specified output stream in XML format
 void writeVectorsXML(std::ostream &f, const char *containerName,
 		const std::vector<Point3D> &vectorParams, unsigned int depth);
 
-//Serialise out "enabled" ions as XML
+//Serialise out "enabled" ions as XML. If the iput vectors are not of equal length,
+// no data will be written
 void writeIonsEnabledXML(std::ostream &f, const char *containerName, 
 		const std::vector<bool> &enabledState, const std::vector<std::string> &names, 
 			unsigned int depth);
+
+//Read an enabled ions file as XML
+void readIonsEnabledXML(xmlNodePtr nodePtr, vector<bool> &enabledStatus, vector<string> &names);
 
 //serialise 3D scalars to specified output stream in XML format
 // - depth is tab indentation depth
@@ -113,9 +119,77 @@ bool parseXMLColour(xmlNodePtr &nodePtr, ColourRGBAf &rgbaf);
 // is ranged tht way. Otherwise returns -1.
 unsigned int getIonstreamIonID(const IonStreamData *d, const RangeFile *r);
 
-//!Extend a point data vector using some ion data
-unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<IonHit> &vIonData,
-				unsigned int &progress, size_t offset);
+inline 
+void assignIonData(Point3D &p, const IonHit &h)
+{
+	p = h.getPosRef();
+}
+
+inline
+void assignIonData(IonHit &p, const IonHit &h)
+{
+	p = h;
+}
+
+//!Extend a point data vector using some ion data. 
+// Offset is the position to start inserting in the destination array.
+// Will fail if user abort is detected 
+template<class T>
+unsigned int extendDataVector(std::vector<T> &dest, const std::vector<IonHit> &vIonData,
+				unsigned int &progress, size_t offset)
+{
+	unsigned int curProg=NUM_CALLBACK;
+	unsigned int n =offset;
+#ifdef _OPENMP
+	//Parallel version
+	bool spin=false;
+	#pragma omp parallel for shared(spin)
+	for(size_t ui=0;ui<vIonData.size();ui++)
+	{
+		if(spin)
+			continue;
+		assignIonData(dest[offset+ ui],vIonData[ui]);
+		
+		//update progress every CALLBACK entries
+		if(!curProg--)
+		{
+			#pragma omp critical
+			{
+			n+=NUM_CALLBACK;
+			progress= (unsigned int)(((float)n/(float)dest.size())*100.0f);
+			if(!omp_get_thread_num())
+			{
+				if(*Filter::wantAbort)
+					spin=true;
+			}
+			}
+		}
+
+	}
+
+	if(spin)
+		return 1;
+#else
+
+	for(size_t ui=0;ui<vIonData.size();ui++)
+	{
+		assignIonData(dest[offset+ ui],vIonData[ui]);
+		
+		//update progress every CALLBACK ions
+		if(!curProg--)
+		{
+			n+=NUM_CALLBACK;
+			progress= (unsigned int)(((float)n/(float)dest.size())*100.0f);
+			if(*(Filter::wantAbort))
+				return 1;
+		}
+
+	}
+#endif
+
+
+	return 0;
+}
 
 const RangeFile *getRangeFile(const std::vector<const FilterStreamData*> &dataIn);
 

@@ -43,9 +43,9 @@ PropertyAnimator::PropertyAnimator()
 {
 }
 
-PropertyAnimator::PropertyAnimator(const PropertyAnimator &p)
+PropertyAnimator::PropertyAnimator(const PropertyAnimator &p) : keyFrames(p.keyFrames)
 {
-	keyFrames=p.keyFrames;
+
 }
 
 void PropertyAnimator::getNthKeyFrame(size_t frameNum,FrameProperties &f) const 

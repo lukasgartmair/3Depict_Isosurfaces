@@ -792,6 +792,7 @@ bool testIsoSurface()
 	//Convert the triangle soup into a mesh
 	Mesh debugMesh;
 	TRIANGLE t;
+	t.physGroup=0;
 	for(size_t ui=0;ui<tVec.size();ui++)
 	{
 

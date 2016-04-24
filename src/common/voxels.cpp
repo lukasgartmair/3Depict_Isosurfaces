@@ -17,12 +17,220 @@
  */
 #include "voxels.h"
 
-using std::numeric_limits;
-const float FLOAT_SMALL=
-	sqrt(numeric_limits<float>::epsilon());
+#include <utility>
 
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_blas.h>
+
+using std::vector;
+using std::pair;
+using std::numeric_limits;
+
+
+
+
+//Helper function to test if a point lies in a convex polygon. The input points MUST be convex
+//	- by default this will re-sort the polygon. This is needed to
+//		ensure convex ordering. If data is already ordered, you can
+//		safely disable this (angularSort=false).;
+bool pointIn2DConvexPoly(float px,float py,
+	vector<pair<float,float> > &planarPts2D, bool angularSort=true)
+{
+
+	ASSERT(planarPts2D.size() >=3);
+
+	if(angularSort)
+	{
+		//TODO : Optimise me. Probably not required to calculate angles explicitly
+
+		//Find the centre x,y value
+		float midPx =0;
+		float midPy =0;
+		for(size_t ui=1;ui<planarPts2D.size();ui++)
+		{
+			midPx +=planarPts2D[ui].first;
+			midPy +=planarPts2D[ui].second;
+		}
+		midPx/=planarPts2D.size();
+		midPy/=planarPts2D.size();
+	
+		//sort points by angle between vector p-p_0 and [1,0]	
+
+		vector<pair<unsigned int, float> > angles;
+		angles.resize(planarPts2D.size());
+		for(unsigned int ui=0;ui<planarPts2D.size();ui++)
+		{
+			float dx,dy;	
+			dx = planarPts2D[ui].first - midPx;
+			dy = planarPts2D[ui].second - midPy;
+	
+			angles[ui] = make_pair(ui,atan2(dy,dx));
+		}
+
+		//--
+		//First, sort by angle
+		ComparePairSecond cmp;
+		std::sort(angles.begin(),angles.end(),cmp); //Sort angle mapping
+
+		//then re-map the original points to the sorted angle
+		vector<pair<float,float>  > tmp;
+		tmp.resize(planarPts2D.size());
+		for(size_t ui=0;ui<planarPts2D.size();ui++)
+			tmp[ui] = planarPts2D[angles[ui].first];
+		//--
+		
+
+		planarPts2D.swap(tmp);
+	}
+
+	//find the normal vector. This is achieved by flipping the X/Y values
+	float nx =-(planarPts2D[1].second -planarPts2D[0].second);
+	float ny =(planarPts2D[1].first -planarPts2D[0].first);
+
+	float dx = (px-planarPts2D[0].first);
+	float dy = (py-planarPts2D[0].second);
+
+	//dot-product the result. If positive, is on RHS of line
+	bool positive = (nx*dx + ny*dy)>0;
+
+
+	//repeat, aborting if any half-plane  intersects
+	size_t nP = planarPts2D.size();
+	for(size_t ui=1;ui<nP;ui++)
+	{
+		unsigned int next;
+		next = 	(ui+1)%nP;
+
+		nx =-( planarPts2D[next].second -planarPts2D[ui].second);
+		ny =( planarPts2D[next].first -planarPts2D[ui].first);
+		
+		dx = (px-planarPts2D[ui].first);
+		dy = (py-planarPts2D[ui].second);
+
+		if((nx*dx + ny*dy > 0) != positive)
+			return false;
+	}
+
+	return true;
+}
+
+template<class T>
+vector<Point3D> getVoxelIntersectionPoints(const BoundCube &b, const Point3D &p, const Point3D &normal, 
+						const Voxels<T> &vox, unsigned int numRequiredSamples, 
+							vector<Point3D> &samples, vector<T> &interpVal)
+{
+	vector<Point3D> pts;
+	b.getPlaneIntersectVertices(p,normal,pts);
+
+	//Dont do anything if there is no intersection 
+	//(should have at least 3 pts to form a plane
+	if(pts.size() < 3)
+		return pts;
+		
+
+	//Now, using the plane points, rotate these into the Z=0 plane
+	gsl_matrix *m = gsl_matrix_alloc(3,3); 
+	computeRotationMatrix(Point3D(0,0,1),
+		Point3D(1,0,0),normal,Point3D(1,0,0),m);
+
+	//Now rotate them into the Z=0 plane	
+	vector<Point3D> planarPts;
+	rotateByMatrix(pts,m,planarPts);
+
+	//Find the 2D bounding box, then generate uniform deviate
+	// random numbers. Scale these ot fit inside the bbox.
+
+	vector<pair<float,float> > planarPts2D;
+	float bounds[2][2];
+	bounds[0][0] = std::numeric_limits<float>::max(); //minX
+	bounds[0][1] = std::numeric_limits<float>::max(); //minY
+	bounds[1][0] = -std::numeric_limits<float>::max(); //maxX
+	bounds[1][1] = -std::numeric_limits<float>::max(); //maxY
+		
+	for(unsigned  int ui=0; ui<planarPts.size();ui++)
+	{
+		//Should lie pretty close to z=0
+		ASSERT(planarPts[ui][2] < sqrt(std::numeric_limits<float>::epsilon()));
+
+		planarPts2D[ui].first = planarPts[ui][0];	
+		planarPts2D[ui].second = planarPts[ui][1];	
+
+		bounds[0][0] = std::min(bounds[0][0],planarPts2D[ui].first);
+		bounds[0][1] = std::min(bounds[0][1],planarPts2D[ui].second);
+
+		bounds[1][0] = std::max(bounds[1][0],planarPts2D[ui].first);
+		bounds[1][1] = std::max(bounds[1][1],planarPts2D[ui].second);
+	}
+
+	//Init the random number generator	
+	RandNumGen rng;
+	rng.initTimer();
+
+	//compute scaling factors
+	float ax,ay;
+	ax = bounds[1][0] - bounds[0][0];
+	ay = bounds[1][1] - bounds[0][1];
+
+	//generate the randomly sampled points
+	size_t nSample=0;
+	samples.resize(numRequiredSamples);
+	while(nSample< numRequiredSamples)
+	{
+		float px,py;
+		px = ax*rng.genUniformDev() + bounds[0][0];
+		py = ay*rng.genUniformDev() + bounds[0][0];
+		
+		if(pointIn2DConvexPoly(px,py,planarPts2D))
+		{
+			samples[nSample] = Point3D(px,py,0);
+			nSample++;
+		}
+	}
+
+
+	//Transpose the matrix to obtain the inverse transform 
+	// originally rotate from frame to z=0. After transpose, 
+	// will rotate from z=0 to frame 
+	gsl_matrix_transpose(m);
+	gsl_vector *vRot = gsl_vector_alloc(3);
+	gsl_vector *vOrig = gsl_vector_alloc(3);
+
+	gsl_vector_set(vOrig,3,0);
+	for(size_t ui=0;ui<samples.size(); ui++)
+	{
+		gsl_vector_set(vOrig,0,samples[ui][0]);
+		gsl_vector_set(vOrig,1,samples[ui][1]);
+		//compute v = m * pY;
+		gsl_blas_dgemv(CblasNoTrans,1.0, m, vOrig,0,vRot);
+
+		samples[ui] = Point3D(vRot->data);
+	}	
+
+	gsl_vector_free(vRot);
+	gsl_vector_free(vOrig);
+	gsl_matrix_free(m);
+
+	
+	//Find the interpolated value for each point in the voxel set
+	interpVal.resize(samples.size());
+	for(size_t ui=0;ui<samples.size();ui++)
+	{
+		const size_t INTERP_MODE=VOX_INTERP_LINEAR;
+		vox.getInterpolatedData(samples[ui],interpVal[ui]);
+	}
+
+
+	//Now delanuay tessalate the random points, with the surrounding polygon
+
+		
+}
 
 #ifdef DEBUG
+#include <algorithm>
+
+const float FLOAT_SMALL=
+	sqrt(numeric_limits<float>::epsilon());
 
 bool simpleMath()
 {
@@ -153,6 +361,27 @@ bool edgeCountTests()
 }
 */
 
+bool pointInPoly()
+{
+	vector<pair<float,float> > pts;
+	//make a square
+	pts.push_back(make_pair(0,0));	
+//	pts.push_back(make_pair(0,0.5));	
+	pts.push_back(make_pair(0,1));	
+	pts.push_back(make_pair(1,0));	
+	pts.push_back(make_pair(1,1));	
+
+	//shuffle vertex positions
+	std::random_shuffle(pts.begin(),pts.end());
+
+	//Run test
+	TEST(pointIn2DConvexPoly(0.5,0.5,pts),"Point-in-poly test");	// Inside
+	TEST(!pointIn2DConvexPoly(1.5,0.5,pts),"Point-in-poly test");	//Outside
+	TEST(!pointIn2DConvexPoly(1.5,1.5,pts),"Point-in-poly test");	//Diagonal
+
+	return true;
+}
+
 
 bool runVoxelTests()
 {
@@ -161,6 +390,8 @@ bool runVoxelTests()
 
 	TEST(basicTests(),"basic voxel tests");
 	TEST(simpleMath(), "voxel simple maths");	
+
+	TEST(pointInPoly(),"point-in-poly tests");
 //	TEST(edgeCountTests(), "voxel edge tests");	
 	return true;	
 }

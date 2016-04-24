@@ -56,8 +56,8 @@
 
 	//Debug timing routines
 	#define DEBUG_TIME_START() timeval TIME_DEBUG_t; gettimeofday(&TIME_DEBUG_t,NULL);
-	#define DEBUG_TIME_END() timeval TIME_DEBUG_tend; gettimeofday(&TIME_DEBUG_tend,NULL); \
-	std::cerr << (TIME_DEBUG_tend.tv_sec - TIME_DEBUG_t.tv_sec) + ((float)TIME_DEBUG_tend.tv_usec-(float)TIME_DEBUG_t.tv_usec)/1.0e6 << std::endl;
+	#define DEBUG_TIME_END()  { timeval TIME_DEBUG_tend; gettimeofday(&TIME_DEBUG_tend,NULL); \
+	std::cerr << (TIME_DEBUG_tend.tv_sec - TIME_DEBUG_t.tv_sec) + ((float)TIME_DEBUG_tend.tv_usec-(float)TIME_DEBUG_t.tv_usec)/1.0e6 << std::endl; }
 
 	#ifndef TEST
 	#define EQ_TOL(f,g) (fabs( (f) - (g)) < 0.001)

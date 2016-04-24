@@ -8,6 +8,8 @@ TODO List - worlds simplest bugtracking system
 		* Voxelisation filter should not show ions disabled in upstream range
 	
 		== Eventually == 
+		* Update to qhull 2015's qhull_r (reentrant qhull). 
+			- This requires some refactoring of the doHull wrapper for convex hull computation
 		* Voxel export dialog 
 		* VTK voxel data export
 		* OPS and other 3DAP formats reader?

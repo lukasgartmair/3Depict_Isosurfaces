@@ -36,7 +36,7 @@ FILTER_FILES = backend/filters/allFilter.cpp backend/filters/filterCommon.cpp \
 		backend/filters/spectrumPlot.cpp backend/filters/transform.cpp \
 		backend/filters/externalProgram.cpp backend/filters/ionClip.cpp \
 		backend/filters/ionColour.cpp backend/filters/boundingBox.cpp  \
-		backend/filters/compositionProfile.cpp backend/filters/spatialAnalysis.cpp \
+		backend/filters/profile.cpp backend/filters/spatialAnalysis.cpp \
 		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
 		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp \
 		backend/filters/algorithms/binomial.cpp  backend/filters/algorithms/mass.cpp  
@@ -46,13 +46,14 @@ FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h
 		backend/filters/rangeFile.h backend/filters/voxelise.h backend/filters/spectrumPlot.h \
 	       	backend/filters/transform.h backend/filters/externalProgram.h backend/filters/ionClip.h \
 		backend/filters/ionColour.h backend/filters/boundingBox.h  \
-		backend/filters/compositionProfile.h backend/filters/spatialAnalysis.h \
+		backend/filters/profile.h backend/filters/spatialAnalysis.h \
 		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
 		backend/filters/annotation.h backend/filters/geometryHelpers.h \
 		backend/filters/algorithms/binomial.h backend/filters/algorithms/mass.h
 
 BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backend/filtertree.cpp \
 		     	backend/APT/ionhit.cpp backend/APT/APTFileIO.cpp backend/APT/APTRanges.cpp backend/APT/abundanceParser.cpp \
+			backend/APT/vtk.cpp \
 			backend/filters/algorithms/K3DTree.cpp backend/filters/algorithms/K3DTree-mk2.cpp\
 			backend/filter.cpp backend/filters/algorithms/rdf.cpp \
 		       backend/viscontrol.cpp backend/state.cpp backend/plot.cpp  backend/configFile.cpp 

@@ -2428,6 +2428,24 @@ void RangeFile::rangeByRangeID(vector<IonHit> &ions, unsigned int rangeID)
 	ions.swap(rangedVec);
 }
 
+void RangeFile::rangeByIon(const std::vector<IonHit> & ions,
+			const vector<bool> &selectedIons, vector<IonHit> &output) const
+{
+	output.clear();
+
+	//TODO: Play with openmp, to see if this is faster.
+	// There will be problems with synchronising writes to the output.
+	// Could try a sampling algorithm to estimate output size
+	for(size_t ui=0;ui<ions.size();ui++)
+	{
+		unsigned int id;
+		id=getIonID(ions[ui].getMassToCharge());
+		if(id == (unsigned int)-1)
+			continue;
+		if(selectedIons[id])
+			output.push_back(ions[ui]);
+	}
+}
 
 void RangeFile::printErr(std::ostream &strm) const
 {

@@ -23,6 +23,8 @@
 #include <iostream>
 #include <vector>
 
+#include <gsl/gsl_matrix.h>
+
 
 #include "endianTest.h"
 
@@ -43,6 +45,10 @@ class Point3D
 		//!Constructor with initialising values
                 inline Point3D(float x,float y,float z) 
 					{ value[0] = x, value[1] = y, value[2] = z;}
+                inline Point3D(float *v)
+					{ value[0] = v[0], value[1] = v[1], value[2] = v[2];}
+                inline Point3D(double *v)
+					{ value[0] = v[0], value[1] = v[1], value[2] = v[2];}
                 //!Set by value (ith dim 0, 1 2)
                 inline void setValue(unsigned int ui, float val){value[ui]=val;};
 				//!Set all values
@@ -92,6 +98,8 @@ class Point3D
 		const Point3D operator*(const Point3D &pt) const;
 		//!Division. 
                 const Point3D operator/(float scale) const;
+
+                const Point3D operator/(const Point3D &p) const;
 		//!Subtraction
                 const Point3D operator-(const Point3D &pt) const;
 		//!returns a negative of the existing value
@@ -282,4 +290,16 @@ inline unsigned int ilog2(unsigned int value)
 		++l;
 	return l;
 }
+
+
+//!Use the TRIAD algorithm to compute the matrix that transforms orthogonal unit vectors
+// ur1,ur2 to rotated orthogonal unit vectors r1,r2. MUST be orthogonal and unit. 
+// matrix m must be pre-allocated 3x3 matrix
+void computeRotationMatrix(const Point3D &ur1, const Point3D &ur2,
+	const Point3D &r1, const Point3D &r2, gsl_matrix *m);
+
+//Rotate a set of points by the given 3x3 matrix
+void rotateByMatrix(const std::vector<Point3D> &vpts, 
+		const gsl_matrix *m, std::vector<Point3D> &r);
+
 #endif

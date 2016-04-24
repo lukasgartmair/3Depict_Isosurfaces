@@ -25,6 +25,8 @@
 #include "wx/wxcomponents.h"
 
 #include "common/voxels.h"
+#include "backend/APT/vtk.h"
+
 
 #include <set>
 #include <deque>
@@ -152,6 +154,23 @@ void Filter::cacheAsNeeded(FilterStreamData *stream)
 	{
 		stream->cached=0;
 	}
+}
+
+//Used by the setProperties to demultiplex "mux" one values into two separate data points
+// this is a bit of a hack, and decreases the available range to each type to 16 bits 
+void Filter::demuxKey(unsigned int key, unsigned int &keyType, unsigned int &ionOffset)
+{
+	keyType = key >> 16;
+	ionOffset = key & 0xFFFF;
+}
+
+unsigned int Filter::muxKey(unsigned int keyType, unsigned int ionOffset)
+{
+	unsigned int key;
+	key = keyType << 16;
+	key|=ionOffset;
+
+	return key;
 }
 
 std::string Filter::getErrString(unsigned int errCode) const
@@ -561,6 +580,8 @@ unsigned int IonStreamData::exportStreams(const std::vector<const FilterStreamDa
 		const std::string &outFile, unsigned int format)
 {
 
+	ASSERT(format < IONFORMAT_ENUM_END);
+
 	//test file open, and truncate file to zero bytes
 	std::ofstream f(outFile.c_str(),std::ios::trunc);
 	
@@ -569,48 +590,175 @@ unsigned int IonStreamData::exportStreams(const std::vector<const FilterStreamDa
 
 	f.close();
 
-	for(unsigned int ui=0; ui<selectedStreams.size(); ui++)
+	if(format != IONFORMAT_VTK)
 	{
-		switch(selectedStreams[ui]->getStreamType())
+		for(unsigned int ui=0; ui<selectedStreams.size(); ui++)
 		{
-			case STREAM_TYPE_IONS:
+			switch(selectedStreams[ui]->getStreamType())
 			{
-				const IonStreamData *ionData;
-				ionData=((const IonStreamData *)(selectedStreams[ui]));
-				switch(format)
+				case STREAM_TYPE_IONS:
 				{
-					case IONFORMAT_POS:
-					{
-						//Append this ion stream to the posfile
-						IonHit::appendPos(ionData->data,outFile.c_str());
+					const IonStreamData *ionData;
+					ionData=((const IonStreamData *)(selectedStreams[ui]));
 
-						break;
-					}
-					default:
-						ASSERT(false);
-						break;
+						//Append this ion stream to the posfile
+						IonHit::appendFile(ionData->data,outFile.c_str(),format);
 				}
 			}
 		}
 	}
+	else
+	{
+		//we don't have an append function, as VTK's legacy
+		// format does not really support this AFAIK.
+		//so we accumulate first.
+		vector<IonHit> ionvec;
+		//--
+		unsigned int numIons=0;
+		for(unsigned int ui=0; ui<selectedStreams.size(); ui++)
+		{
+			switch(selectedStreams[ui]->getStreamType())
+			{
+				case STREAM_TYPE_IONS:
+				{
+					numIons+=selectedStreams[ui]->getNumBasicObjects();
+					break;
+				}
+			}
+		}
+		
+		ionvec.reserve(numIons);
+		for(unsigned int ui=0;ui<selectedStreams.size();ui++)
+		{
+			switch(selectedStreams[ui]->getStreamType())
+			{
+				case STREAM_TYPE_IONS:
+				{
+					const IonStreamData *ionData;
+					ionData=((const IonStreamData *)(selectedStreams[ui]));
+					for(unsigned int uj=0;uj<ionData->data.size();uj++)
+						ionvec.push_back(ionData->data[uj]);
+					break;
+				}
+			}
+		}
 
+		if(vtk_write_legacy(outFile,VTK_ASCII,ionvec))
+			return 1;
+		//--
+	}
 	return 0;
 }
 
-IonStreamData::IonStreamData() : representationType(ION_REPRESENT_POINTS), 
+
+IonStreamData::IonStreamData() : 
 	r(1.0f), g(0.0f), b(0.0f), a(1.0f), 
 	ionSize(2.0f), valueType("Mass-to-Charge (amu/e)")
 {
 	streamType=STREAM_TYPE_IONS;
 }
 
-IonStreamData::IonStreamData(const Filter *f) : FilterStreamData(f), representationType(ION_REPRESENT_POINTS), 
+IonStreamData::IonStreamData(const Filter *f) : FilterStreamData(f), 
 	r(1.0f), g(0.0f), b(0.0f), a(1.0f), 
 	ionSize(2.0f), valueType("Mass-to-Charge (amu/e)")
 {
 	streamType=STREAM_TYPE_IONS;
 }
 
+void IonStreamData::estimateIonParameters(const std::vector<const FilterStreamData *> &inData)
+{
+
+	map<float,unsigned int> ionSizeMap;
+	map<vector<float>, unsigned int> ionColourMap;
+	std::string lastStr;
+
+	//Sum up the relative frequencies
+	for(unsigned int ui=0; ui<inData.size(); ui++)
+	{
+		if(inData[ui]->getStreamType() != STREAM_TYPE_IONS)
+			continue;	
+
+		//Keep a count of the number of times we see a particlar
+		// size/colour combination	
+		map<float,unsigned int>::iterator itSize;
+		map<vector<float> ,unsigned int>::iterator itData;
+	
+		const IonStreamData* p;	
+		p= ((const IonStreamData*)inData[ui]);
+
+		itSize=ionSizeMap.find(p->ionSize);
+		if(itSize == ionSizeMap.end())
+			ionSizeMap[p->ionSize]=1;	
+		else
+			ionSizeMap[p->ionSize]++;
+
+		vector<float> tmpRgba;
+		tmpRgba.push_back(p->r); tmpRgba.push_back(p->g);
+		tmpRgba.push_back(p->b); tmpRgba.push_back(p->a);
+		
+		itData = ionColourMap.find(tmpRgba);
+		if(itData == ionColourMap.end())
+			ionColourMap[tmpRgba]=1;	
+		else
+			ionColourMap[tmpRgba]++;
+			
+		if(lastStr.empty())
+			lastStr=p->valueType ;
+		else
+			lastStr = "Mixed types";	
+		 
+	}
+	
+	const vector<float> *tmp=0;
+	float size;
+	size_t min=0;
+	//find the most frequent ion colour	
+	for(map<vector<float>, unsigned int>::iterator it=ionColourMap.begin();
+		it!=ionColourMap.end(); ++it)
+	{
+		if(it->second > min)
+		{
+			tmp = &(it->first);
+			min=it->second;
+		}
+	}
+
+	//Find the most frequent ion size
+	float tmpSize=1.0;
+	min=0;
+	for(map<float, unsigned int>::iterator it=ionSizeMap.begin();
+		it!=ionSizeMap.end(); ++it)
+	{
+		if(it->second > min)
+		{
+			tmpSize = it->first;
+			min=it->second;
+		}
+	}
+
+	ionSize=tmpSize;
+	if(tmp && tmp->size() == 4)
+	{
+		r=(*tmp)[0];
+		g=(*tmp)[1];
+		b=(*tmp)[2];
+		a=(*tmp)[3];
+	}
+
+
+	if(lastStr.size())
+		valueType=lastStr;
+	else
+		valueType.clear();
+}
+
+void IonStreamData::estimateIonParameters(const IonStreamData *i)
+{
+	vector<const FilterStreamData *> v;
+	v.push_back(i);
+	
+	estimateIonParameters(v);
+}
 
 void IonStreamData::clear()
 {
@@ -622,7 +770,6 @@ IonStreamData *IonStreamData::cloneSampled(float fraction) const
 {
 	IonStreamData *out = new IonStreamData;
 
-	out->representationType=representationType;
 	out->r=r;
 	out->g=g;
 	out->b=b;

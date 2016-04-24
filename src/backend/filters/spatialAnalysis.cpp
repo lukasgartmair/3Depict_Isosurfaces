@@ -30,6 +30,7 @@
 #include "../APT/APTFileIO.h"
 
 using std::vector;
+using std::set;
 using std::string;
 using std::pair;
 using std::make_pair;
@@ -50,8 +51,10 @@ enum
 	KEY_RETAIN_UPPER,
 	KEY_CUTOFF,
 	KEY_COLOUR,
-	KEY_ENABLE_SOURCE,
-	KEY_ENABLE_TARGET,
+	KEY_ENABLE_SOURCE_ALL,
+	KEY_ENABLE_TARGET_ALL,
+	KEY_ENABLE_NUMERATOR_ALL,
+	KEY_ENABLE_DENOMINATOR_ALL,
 	KEY_ORIGIN,
 	KEY_NORMAL,
 	KEY_RADIUS,
@@ -68,6 +71,14 @@ enum
 	KEY_REPLACE_VALUE,
 };
 
+enum 
+{ 
+	KEYTYPE_ENABLE_SOURCE=1,
+	KEYTYPE_ENABLE_TARGET,
+	KEYTYPE_ENABLE_NUMERATOR,
+	KEYTYPE_ENABLE_DENOMINATOR,
+};
+
 enum {
 	ALGORITHM_DENSITY, //Local density analysis
 	ALGORITHM_DENSITY_FILTER, //Local density filtering
@@ -75,6 +86,7 @@ enum {
 	ALGORITHM_AXIAL_DF, //Axial Distribution Function (aka atomvicinity, sdm, 1D rdf)
 	ALGORITHM_BINOMIAL, //Binomial block method for statistical randomness testing
 	ALGORITHM_REPLACE, //Remove, set or modify points using an external file
+	ALGORITHM_LOCAL_CONCENTRATION, //Obtain a local concentration plot, as described by Hyde and Marquis (TODO : REF)
 	ALGORITHM_ENUM_END,
 };
 
@@ -97,7 +109,7 @@ enum
 {
 	ERR_ABORT_FAIL=1,
 	ERR_BINOMIAL_NO_MEM,
-	ERR_BINOMIAL_NO_RANGE,
+	ERR_NO_RANGE,
 	ERR_BINOMIAL_BIN_FAIL,
 	INSUFFICIENT_SIZE_ERR,
 	ERR_FILE_READ_FAIL,
@@ -113,7 +125,8 @@ const char *SPATIAL_ALGORITHMS[] = {
 	NTRANS("Radial Distribution"),
 	NTRANS("Axial Distribution"),
 	NTRANS("Binomial Distribution"),
-	NTRANS("Point Em/Replacement")
+	NTRANS("Point Em/Replacement"),
+	NTRANS("Local Concentration"),
 	};
 
 const char *STOP_MODES[] = {
@@ -135,11 +148,14 @@ const bool WANT_RANGE_PROPAGATION[] = { false,
 					false,
 					false,
 					true,
+					false,
 					};
 
 
 //Default distance to use when performing axial distance computations
 const float DEFAULT_AXIAL_DISTANCE = 1.0f;
+
+const float DISTANCE_EPSILON=sqrt(std::numeric_limits<float>::epsilon());
 
 
 //Helper function for computing a weighted mean
@@ -162,6 +178,140 @@ float weightedMean(const vector<float> &x, const vector<float> &y,bool zeroOutSi
 
 	ASSERT(denom);
 	return num/denom;
+}
+
+//Scan input datastreams to build two point vectors,
+// one of those with points specified as "target" 
+// which is a copy of the input points
+//Returns 0 on no error, otherwise nonzero
+template<class T>
+size_t buildSplitPoints(const vector<const FilterStreamData *> &dataIn,
+				ProgressData &progress, size_t totalDataSize,
+				const RangeFile *rngF, const vector<bool> &pSourceEnabled, const vector<bool> &pTargetEnabled,
+				vector<T> &pSource, vector<T> &pTarget
+				)
+{
+	size_t sizeNeeded[2];
+	sizeNeeded[0]=sizeNeeded[1]=0;
+
+	//Presize arrays
+	for(unsigned int ui=0; ui<dataIn.size() ; ui++)
+	{
+		switch(dataIn[ui]->getStreamType())
+		{
+			case STREAM_TYPE_IONS:
+			{
+				unsigned int ionID;
+
+				const IonStreamData *d;
+				d=((const IonStreamData *)dataIn[ui]);
+				ionID=getIonstreamIonID(d,rngF);
+
+				if(ionID == (unsigned int)-1)
+				{
+
+					//we have ungrouped ions, so work out size individually
+					for(unsigned int uj=0;uj<d->data.size();uj++)
+					{
+						ionID = rngF->getIonID(d->data[uj].getMassToCharge());
+
+						if(ionID == (unsigned int)-1)
+							continue;
+
+						if(pSourceEnabled[ionID])
+							sizeNeeded[0]++;
+						if(pTargetEnabled[ionID])
+							sizeNeeded[1]++;
+					}
+					
+					break;
+				}
+
+				if(pSourceEnabled[ionID])
+					sizeNeeded[0]+=d->data.size();
+
+				if(pTargetEnabled[ionID])
+					sizeNeeded[1]+=d->data.size();
+
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
+	pSource.resize(sizeNeeded[0]);
+	pTarget.resize(sizeNeeded[1]);
+
+	//Fill arrays
+	size_t curPos[2];
+	curPos[0]=curPos[1]=0;
+
+	for(unsigned int ui=0; ui<dataIn.size() ; ui++)
+	{
+		switch(dataIn[ui]->getStreamType())
+		{
+			case STREAM_TYPE_IONS:
+			{
+				unsigned int ionID;
+				const IonStreamData *d;
+				d=((const IonStreamData *)dataIn[ui]);
+				ionID=getIonstreamIonID(d,rngF);
+
+				if(ionID==(unsigned int)(-1))
+				{
+					//we have ungrouped ions, so work out size individually
+					for(unsigned int uj=0;uj<d->data.size();uj++)
+					{
+						ionID = rngF->getIonID(d->data[uj].getMassToCharge());
+
+						if(ionID == (unsigned int)-1)
+							continue;
+
+						if(pSourceEnabled[ionID])
+						{
+							assignIonData(pSource[curPos[0]],d->data[uj]);
+							curPos[0]++;
+						}
+
+						if(pTargetEnabled[ionID])
+						{
+							assignIonData(pTarget[curPos[1]],d->data[uj]);
+							curPos[1]++;
+						}
+					}
+					
+					break;
+				}
+
+				unsigned int dummyProgress=0;
+				if(pSourceEnabled[ionID])
+				{
+					if(extendDataVector(pSource,d->data,
+					                     dummyProgress,curPos[0]))
+						return ERR_ABORT_FAIL;
+
+					curPos[0]+=d->data.size();
+				}
+
+				if(pTargetEnabled[ionID])
+				{
+					if(extendDataVector(pTarget,d->data,
+					                     dummyProgress,curPos[1]))
+						return ERR_ABORT_FAIL;
+
+					curPos[1]+=d->data.size();
+				}
+
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
+
+	return 0;
 }
 
 SpatialAnalysisFilter::SpatialAnalysisFilter()
@@ -256,6 +406,11 @@ Filter *SpatialAnalysisFilter::cloneUncached() const
 	p->vectorParams=vectorParams;
 	p->scalarParams=scalarParams;
 
+	p->ionSourceEnabled=ionSourceEnabled;
+	p->ionTargetEnabled=ionTargetEnabled;
+	p->ionNumeratorEnabled=ionNumeratorEnabled;
+	p->ionDenominatorEnabled=ionDenominatorEnabled;
+	
 	return p;
 }
 
@@ -306,9 +461,12 @@ void SpatialAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 								break;
 							}
 							pos++;
+			
 						}
 					}
 				}
+				else
+					different=true;
 			}
 			haveRangeParent=true;
 
@@ -327,6 +485,9 @@ void SpatialAnalysisFilter::initFilter(const std::vector<const FilterStreamData 
 
 				ionSourceEnabled.resize(ionNames.size(),true);
 				ionTargetEnabled.resize(ionNames.size(),true);
+				
+				ionNumeratorEnabled.resize(ionNames.size(),true);
+				ionDenominatorEnabled.resize(ionNames.size(),true);
 			}
 
 			return;
@@ -441,9 +602,8 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		case ALGORITHM_BINOMIAL:
 		{
 			if(!rngF)
-			{
-				return ERR_BINOMIAL_NO_RANGE;
-			}
+				return ERR_NO_RANGE;
+			
 			result=algorithmBinomial(progress,totalDataSize,
 						dataIn,getOut,rngF);
 			break;
@@ -451,6 +611,12 @@ unsigned int SpatialAnalysisFilter::refresh(const std::vector<const FilterStream
 		case ALGORITHM_REPLACE:
 			result=algorithmReplace(progress,totalDataSize,
 						dataIn,getOut);
+			break;
+		case ALGORITHM_LOCAL_CONCENTRATION:
+			if(!rngF)
+				return ERR_NO_RANGE;
+			result=algorithmLocalConcentration(progress,totalDataSize,
+						dataIn,getOut,rngF);
 			break;
 		default:
 			ASSERT(false);
@@ -463,13 +629,25 @@ size_t SpatialAnalysisFilter::algorithmReplace(ProgressData &progress, size_t to
 			const vector<const FilterStreamData *>  &dataIn, 
 			vector<const FilterStreamData * > &getOut)
 {
+	progress.maxStep=4;
+
+	progress.step=1;
+	progress.stepName=TRANS("Collate");
+	progress.filterProgress=0;
+
 	//Merge the ions form the incoming streams
 	vector<IonHit> inIons;
 	Filter::collateIons(dataIn,inIons,progress,totalDataSize);
 	
+	progress.step=2;
+	progress.stepName=TRANS("Load");
+	progress.filterProgress=0;
+
 	vector<IonHit> fileIons;
 	const unsigned int loadPositions[] = {
 						0,1,2,3};
+
+	//Load the other dataset
 	unsigned int errCode=GenericLoadFloatFile(4,4,loadPositions,
 			fileIons,replaceFile.c_str(),progress.filterProgress,*Filter::wantAbort);
 
@@ -477,9 +655,16 @@ size_t SpatialAnalysisFilter::algorithmReplace(ProgressData &progress, size_t to
 		return ERR_FILE_READ_FAIL;
 
 
+
+	progress.step=3;
+	progress.stepName=TRANS("Build");
+	progress.filterProgress=0;
+
+	//Build the search tree we will use to perform replacement
 	K3DTreeMk2 tree;
 	tree.resetPts(fileIons,false);
-	tree.build();
+	if(!tree.build())
+		return ERR_ABORT_FAIL;
 	BoundCube b;
 	tree.getBoundCube(b);
 
@@ -492,31 +677,40 @@ size_t SpatialAnalysisFilter::algorithmReplace(ProgressData &progress, size_t to
 	// as we can use it in sequence, and can use openmp
 	map<size_t,size_t> matchedMap;
 
-	#pragma omp parallel
-	{
 	//Find the nearest point for all points in the dataset
 
-	#pragma omp for 
+	#pragma omp parallel for 
 	for(size_t ui=0;ui<inIons.size();ui++)
 	{
 		nearestVec[ui]=tree.findNearestUntagged(inIons[ui].getPos(),b,false);
 	}
 
+	float sqrReplaceTol=replaceTolerance*replaceTolerance;
+
 	//Filter this to only points that had an NN within range
+	#pragma omp parallel for 
 	for(size_t ui=0;ui<inIons.size();ui++)
 	{
-		if(nearestVec[ui]!=(size_t)-1 && inIons[ui].getPos().sqrDist(*tree.getPt(nearestVec[ui])) <=replaceTolerance)
+		if(nearestVec[ui]!=(size_t)-1 && inIons[ui].getPos().sqrDist(*tree.getPt(nearestVec[ui])) <=sqrReplaceTol)
 		{
 			#pragma omp critical
-			matchedMap[ui]=nearestVec[ui];
+			matchedMap[ui]=tree.getOrigIndex(nearestVec[ui]);
 		}
-	}
 	}
 
 	nearestVec.clear();
 
+
+	progress.step=4;
+	progress.stepName=TRANS("Compute");
+	progress.filterProgress=0;
+
+	//Finish if no matches
 	if(matchedMap.empty())
-		return 1;
+	{
+		progress.filterProgress=100;
+		return 0;
+	}
 
 	vector<IonHit> outIons;
 	switch(replaceMode)
@@ -551,6 +745,7 @@ size_t SpatialAnalysisFilter::algorithmReplace(ProgressData &progress, size_t to
 				for(map<size_t,size_t>::const_iterator it=matchedMap.begin();it!=matchedMap.end();++it)
 				{
 					outIons.push_back(fileIons[it->second]);
+					ASSERT(fileIons[it->second].getPosRef().sqrDist(inIons[it->first].getPosRef()) < sqrReplaceTol);
 				}
 			}
 			else
@@ -620,7 +815,8 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	if(algorithm ==  ALGORITHM_RDF
 		||  algorithm == ALGORITHM_DENSITY 
 		|| algorithm == ALGORITHM_DENSITY_FILTER 
-		|| algorithm == ALGORITHM_AXIAL_DF)
+		|| algorithm == ALGORITHM_AXIAL_DF
+		|| algorithm == ALGORITHM_LOCAL_CONCENTRATION)
 	{
 		tmpStr=TRANS(STOP_MODES[STOP_MODE_NEIGHBOUR]);
 
@@ -679,6 +875,7 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			propertyList.addProperty(p,curGroup);
 		}
 
+		propertyList.setGroupTitle(curGroup,TRANS("Stop Mode"));
 	}
 	
 	//Extra options for specific algorithms 
@@ -741,7 +938,7 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 				p.data=sTmp;
 				p.type=PROPERTY_TYPE_BOOL;
 				p.helpText=TRANS("Ions to use for initiating RDF search");
-				p.key=KEY_ENABLE_SOURCE;
+				p.key=KEY_ENABLE_SOURCE_ALL;
 				propertyList.addProperty(p,curGroup);
 
 					
@@ -754,8 +951,7 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 					p.data=sTmp;
 					p.type=PROPERTY_TYPE_BOOL;
 					p.helpText=TRANS("Enable/disable ion as source");
-					//FIXME: This is a hack...
-					p.key=KEY_ENABLE_SOURCE*1000+ui;
+					p.key=muxKey(KEYTYPE_ENABLE_SOURCE,ui);
 					propertyList.addProperty(p,curGroup);
 				}
 				
@@ -770,7 +966,7 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 				p.data=sTmp;
 				p.type=PROPERTY_TYPE_BOOL;
 				p.helpText=TRANS("Enable/disable all ions as target");
-				p.key=KEY_ENABLE_TARGET;
+				p.key=KEY_ENABLE_TARGET_ALL;
 				propertyList.addProperty(p,curGroup);
 				
 				//Loop over the possible incoming ranges,
@@ -782,8 +978,7 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 					p.data=sTmp;
 					p.type=PROPERTY_TYPE_BOOL;
 					p.helpText=TRANS("Enable/disable this ion as target");
-					//FIXME: This is a hack...
-					p.key=KEY_ENABLE_TARGET*1000+ui;
+					p.key=muxKey(KEYTYPE_ENABLE_TARGET,ui);
 					propertyList.addProperty(p,curGroup);
 				}
 				propertyList.setGroupTitle(curGroup,TRANS("Target Ion"));
@@ -995,6 +1190,98 @@ void SpatialAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			propertyList.setGroupTitle(curGroup,TRANS("Replacement"));
 			break;
 		}
+		case ALGORITHM_LOCAL_CONCENTRATION:
+		{
+			if(haveRangeParent)
+			{
+				ASSERT(ionSourceEnabled.size() == ionNames.size());
+				ASSERT(ionNames.size() == ionTargetEnabled.size());
+				curGroup++;
+
+				
+				string sTmp;
+
+				sTmp = boolStrEnc((size_t)std::count(ionSourceEnabled.begin(),
+					ionSourceEnabled.end(),true) == ionSourceEnabled.size());
+
+				p.name=TRANS("Source");
+				p.data=sTmp;
+				p.type=PROPERTY_TYPE_BOOL;
+				p.helpText=TRANS("Enable/disable all ions as source");
+				p.key=KEY_ENABLE_SOURCE_ALL;
+				propertyList.addProperty(p,curGroup);
+
+					
+				//Loop over the possible incoming ranges,
+				//once to set sources, once to set targets
+				for(unsigned int ui=0;ui<ionSourceEnabled.size();ui++)
+				{
+					sTmp=boolStrEnc(ionSourceEnabled[ui]);
+					p.name=ionNames[ui];
+					p.data=sTmp;
+					p.type=PROPERTY_TYPE_BOOL;
+					p.helpText=TRANS("Enable/disable ion as source");
+					p.key=muxKey(KEYTYPE_ENABLE_SOURCE,ui);
+					propertyList.addProperty(p,curGroup);
+				}
+				
+				propertyList.setGroupTitle(curGroup,TRANS("Source Ion"));
+				curGroup++;
+
+				sTmp = boolStrEnc((size_t)std::count(ionNumeratorEnabled.begin(),
+					ionNumeratorEnabled.end(),true) == ionNumeratorEnabled.size());
+				p.name=TRANS("Numerator");
+				p.data=sTmp;
+				p.type=PROPERTY_TYPE_BOOL;
+				p.helpText=TRANS("Ions to use as Numerator for conc. calculation");
+				p.key=KEY_ENABLE_NUMERATOR_ALL;
+				propertyList.addProperty(p,curGroup);
+
+					
+				//Loop over the possible incoming ranges,
+				//once to set sources, once to set targets
+				for(unsigned int ui=0;ui<ionNumeratorEnabled.size();ui++)
+				{
+					sTmp=boolStrEnc(ionNumeratorEnabled[ui]);
+					p.name=ionNames[ui];
+					p.data=sTmp;
+					p.type=PROPERTY_TYPE_BOOL;
+					p.helpText=TRANS("Enable/disable ion as source");
+					p.key=muxKey(KEYTYPE_ENABLE_NUMERATOR,ui);
+					propertyList.addProperty(p,curGroup);
+				}
+				
+				propertyList.setGroupTitle(curGroup,TRANS("Numerator"));
+				curGroup++;
+
+				
+				sTmp = boolStrEnc((size_t)std::count(ionTargetEnabled.begin(),
+					ionTargetEnabled.end(),true) == ionTargetEnabled.size());
+				
+				p.name=TRANS("Denominator");
+				p.data=sTmp;
+				p.type=PROPERTY_TYPE_BOOL;
+				p.helpText=TRANS("Enable/disable all ions as target");
+				p.key=KEY_ENABLE_TARGET_ALL;
+				propertyList.addProperty(p,curGroup);
+				
+				//Loop over the possible incoming ranges,
+				//once to set sources, once to set targets
+				for(unsigned int ui=0;ui<ionTargetEnabled.size();ui++)
+				{
+					sTmp=boolStrEnc(ionTargetEnabled[ui]);
+					p.name=ionNames[ui];
+					p.data=sTmp;
+					p.type=PROPERTY_TYPE_BOOL;
+					p.helpText=TRANS("Enable/disable this ion as target");
+					p.key=muxKey(KEYTYPE_ENABLE_TARGET,ui);
+					propertyList.addProperty(p,curGroup);
+				}
+				propertyList.setGroupTitle(curGroup,TRANS("Denominator")); 
+			}
+	
+			break;
+		}	
 		default:
 			ASSERT(false);
 	}
@@ -1025,7 +1312,13 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 			
 			if(ltmp>=ALGORITHM_ENUM_END)
 				return false;
-			
+		
+			if(ltmp == ALGORITHM_LOCAL_CONCENTRATION &&
+				nnMax < 2)
+			{
+				nnMax=2;
+			}
+	
 			algorithm=ltmp;
 			resetParamsAsNeeded();
 			needUpdate=true;
@@ -1041,6 +1334,7 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 				case ALGORITHM_DENSITY_FILTER:
 				case ALGORITHM_RDF:
 				case ALGORITHM_AXIAL_DF:
+				case ALGORITHM_LOCAL_CONCENTRATION:
 				{
 					size_t ltmp=STOP_MODE_ENUM_END;
 
@@ -1088,8 +1382,10 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 			unsigned int ltmp;
 			if(stream_cast(ltmp,value))
 				return false;
-			
-			if(ltmp==0)
+		
+			//NNmax should be nonzero at all times. For local concentration
+			// should be at least 2 (as 1 == 100% all the time)	
+			if(ltmp==0 || (algorithm == ALGORITHM_LOCAL_CONCENTRATION  && ltmp < 2))
 				return false;
 			
 			nnMax=ltmp;
@@ -1181,7 +1477,7 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 
 			break;
 		}
-		case KEY_ENABLE_SOURCE:
+		case KEY_ENABLE_SOURCE_ALL:
 		{
 			ASSERT(haveRangeParent);
 			bool allEnabled=true;
@@ -1203,7 +1499,7 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 			clearCache();
 			break;
 		}
-		case KEY_ENABLE_TARGET:
+		case KEY_ENABLE_TARGET_ALL:
 		{
 			ASSERT(haveRangeParent);
 			bool allEnabled=true;
@@ -1220,6 +1516,28 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 			allEnabled=!allEnabled;
 			for(unsigned int ui=0;ui<ionNames.size();ui++)
 				ionTargetEnabled[ui]=allEnabled;
+
+			needUpdate=true;
+			clearCache();
+			break;
+		}
+		case KEY_ENABLE_NUMERATOR_ALL:
+		{
+			ASSERT(haveRangeParent);
+			bool allEnabled=true;
+			for(unsigned int ui=0;ui<ionNumeratorEnabled.size();ui++)
+			{
+				if(!ionNumeratorEnabled[ui])
+				{
+					allEnabled=false;
+					break;
+				}
+			}
+
+			//Invert the result and assign
+			allEnabled=!allEnabled;
+			for(unsigned int ui=0;ui<ionNumeratorEnabled.size();ui++)
+				ionNumeratorEnabled[ui]=allEnabled;
 
 			needUpdate=true;
 			clearCache();
@@ -1412,65 +1730,49 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 			//The incoming range keys are dynamically allocated to a 
 			//position beyond any reasonable key. Its a hack,
 			//but it works, and is entirely contained within the filter code.
-			if(key >=KEY_ENABLE_SOURCE*1000 &&
-				key < KEY_ENABLE_TARGET*1000)
+			unsigned int ionOffset,keyType;
+			demuxKey(key,keyType,ionOffset);
+
+			bool doEnable;
+			if(!boolStrDec(value,doEnable))
+				return false;
+
+			vector<bool> *vBool=0;
+				
+			switch(keyType)
 			{
-				size_t offset;
-				offset = key-KEY_ENABLE_SOURCE*1000;
-				
-				string stripped=stripWhite(value);
-
-				if(!(stripped == "1"|| stripped == "0"))
-					return false;
-				bool lastVal = ionSourceEnabled[offset]; 
-				
-
-				if(stripped=="1")
-					ionSourceEnabled[offset]=true;
-				else
-					ionSourceEnabled[offset]=false;
-
-				//if the result is different, the
-				//cache should be invalidated
-				if(lastVal!=ionSourceEnabled[offset])
-				{
-					needUpdate=true;
-					clearCache();
-				}
-
-				
-
-			}	
-			else if ( key >=KEY_ENABLE_TARGET*1000)
-			{
-				size_t offset;
-				offset = key-KEY_ENABLE_TARGET*1000;
-				
-				string stripped=stripWhite(value);
-
-				if(!(stripped == "1"|| stripped == "0"))
-					return false;
-				bool lastVal = ionTargetEnabled[offset]; 
-				
-
-				if(stripped=="1")
-					ionTargetEnabled[offset]=true;
-				else
-					ionTargetEnabled[offset]=false;
-
-				//if the result is different, the
-				//cache should be invalidated
-				if(lastVal!=ionTargetEnabled[offset])
-				{
-					needUpdate=true;
-					clearCache();
-				}
-			}	
-			else
-			{
-				ASSERT(false);
+				case KEYTYPE_ENABLE_SOURCE:
+					vBool=&ionSourceEnabled;
+					break;
+				case KEYTYPE_ENABLE_TARGET:
+					vBool=&ionTargetEnabled;
+					break;
+				case KEYTYPE_ENABLE_NUMERATOR:
+					vBool=&ionNumeratorEnabled;
+					break;
+				case KEYTYPE_ENABLE_DENOMINATOR:
+					vBool=&ionDenominatorEnabled;
+					break;
+				default:	
+					ASSERT(false);
 			}
-
+				
+			if(vBool)
+			{
+				bool lastVal = (*vBool)[ionOffset]; 
+				if(doEnable)
+					(*vBool)[ionOffset]=true;
+				else
+					(*vBool)[ionOffset]=false;
+				
+				//if the result is different, the
+				//cache should be invalidated
+				if(lastVal!=(*vBool)[ionOffset])
+				{
+					needUpdate=true;
+					clearCache();
+				}
+			}
 		}
 
 	}	
@@ -1480,12 +1782,12 @@ bool SpatialAnalysisFilter::setProperty(  unsigned int key,
 std::string  SpatialAnalysisFilter::getSpecificErrString(unsigned int code) const
 {
 	const char *errStrings[] = {"",
-				"Spatial analysis aborted by user",
-				"Insufficient memory to complete analysis",
-				"Insufficient bins in histogram for analysis",
-				"Insufficient memory for binomial. Reduce input size?",
-				"Binomial requires a parent range file",
-				"File read failed",
+				TRANS("Spatial analysis aborted by user"),
+				TRANS("Insufficient memory to complete analysis"),
+				TRANS("Required range data not present"), 
+				TRANS("Insufficient memory for binomial. Reduce input size?"),
+				TRANS("Insufficient points to continue"),
+				TRANS("Unable to load file")
 				};
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(errStrings) == SPAT_ERR_END_OF_ENUM);
 	
@@ -1498,7 +1800,7 @@ std::string  SpatialAnalysisFilter::getSpecificErrString(unsigned int code) cons
 void SpatialAnalysisFilter::setUserString(const std::string &str)
 {
 	//Which algorithms have plot outputs?
-	const bool ALGORITHM_HAS_PLOTS[] = { false,false,true,true,true,false};
+	const bool ALGORITHM_HAS_PLOTS[] = { false,false,true,true,true,false,false};
 
 	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(ALGORITHM_HAS_PLOTS) == ALGORITHM_ENUM_END);
 
@@ -1565,7 +1867,7 @@ bool SpatialAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsi
 			f << tabs(depth+1) << "<densitycutoff value=\""<<densityCutoff<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<keepdensityupper value=\""<<(int)keepDensityUpper<< "\"/>"  << endl;
 			
-			f << tabs(depth+1) << "<replace file=\""<<replaceFile << "\" mode=\"" << replaceMode 
+			f << tabs(depth+1) << "<replace file=\""<<escapeXML(convertFileStringToCanonical(replaceFile)) << "\" mode=\"" << replaceMode 
 				<< "\" tolerance=\"" << replaceTolerance <<  "\" replacemass=\"" << boolStrEnc(replaceMass) << "\" />"  << endl;
 
 
@@ -1584,9 +1886,14 @@ bool SpatialAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsi
 			
 			writeVectorsXML(f,"vectorparams",vectorParams,depth+1);
 			writeScalarsXML(f,"scalarparams",scalarParams,depth+1);
-			
-			writeIonsEnabledXML(f,"source",ionSourceEnabled,ionNames,depth+1);
-			writeIonsEnabledXML(f,"target",ionTargetEnabled,ionNames,depth+1);
+		
+			if(ionNames.size())	
+			{
+				writeIonsEnabledXML(f,"source",ionSourceEnabled,ionNames,depth+1);
+				writeIonsEnabledXML(f,"target",ionTargetEnabled,ionNames,depth+1);
+				writeIonsEnabledXML(f,"numerator",ionNumeratorEnabled,ionNames,depth+1);
+				writeIonsEnabledXML(f,"denominator",ionDenominatorEnabled,ionNames,depth+1);
+			}
 
 			f << tabs(depth) << "</" << trueName() << ">" << endl;
 			break;
@@ -1597,6 +1904,34 @@ bool SpatialAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsi
 	}
 
 	return true;
+}
+
+
+void SpatialAnalysisFilter::getStateOverrides(std::vector<string> &externalAttribs) const 
+{
+	externalAttribs.push_back(replaceFile);
+
+}
+
+bool SpatialAnalysisFilter::writePackageState(std::ostream &f, unsigned int format,
+			const std::vector<std::string> &valueOverrides, unsigned int depth) const
+{
+	ASSERT(valueOverrides.size() == 1);
+
+	//Temporarily modify the state of the filter, then call writestate
+	string tmpReplaceFile=replaceFile;
+
+
+	//override const and self-modify
+	// this is quite naughty, but we know what we are doing...
+	const_cast<SpatialAnalysisFilter *>(this)->replaceFile=valueOverrides[0];
+	bool result;
+	result=writeState(f,format,depth);
+
+	//restore the filter state, such that the caller doesn't notice that this has been modified
+	const_cast<SpatialAnalysisFilter *>(this)->replaceFile=tmpReplaceFile;
+
+	return result;
 }
 
 bool SpatialAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileDir)
@@ -1817,6 +2152,26 @@ bool SpatialAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &st
 
 	if(!XMLHelpFwdToElem(nodePtr,"vectorparams"))
 		readVectorsXML(nodePtr,vectorParams);
+	else
+		nodePtr=tmpNode;
+
+	//FIXME: Remap the ion names  we load from the file to the ion names that we 
+	// see in the rangefile
+
+	vector<string> ionNames;
+	if(!XMLHelpFwdToElem(nodePtr,"source"))
+		readIonsEnabledXML(nodePtr,ionSourceEnabled,ionNames);
+	nodePtr=tmpNode;
+	if(!XMLHelpFwdToElem(nodePtr,"target"))
+		readIonsEnabledXML(nodePtr,ionTargetEnabled,ionNames);
+
+	nodePtr=tmpNode;
+	if(!XMLHelpFwdToElem(nodePtr,"numerator"))
+		readIonsEnabledXML(nodePtr,ionNumeratorEnabled,ionNames);
+	
+	nodePtr=tmpNode;
+	if(!XMLHelpFwdToElem(nodePtr,"denominator"))
+		readIonsEnabledXML(nodePtr,ionDenominatorEnabled,ionNames);
 
 	resetParamsAsNeeded();
 	
@@ -1882,134 +2237,17 @@ void SpatialAnalysisFilter::resetParamsAsNeeded()
 		;
 	}
 }
-//Scan input datastreams to build two point vectors,
-// one of those with points specified as "target" 
-// which is a copy of the input points
-//Returns 0 on no error, otherwise nonzero
-size_t SpatialAnalysisFilter::buildSplitPoints(const vector<const FilterStreamData *> &dataIn,
-				ProgressData &progress, size_t totalDataSize,
-				const RangeFile *rngF,
-				vector<Point3D> &pSource, vector<Point3D> &pTarget
-				) const
-{
-	size_t sizeNeeded[2];
-	sizeNeeded[0]=sizeNeeded[1]=0;
-
-	//Presize arrays
-	for(unsigned int ui=0; ui<dataIn.size() ; ui++)
-	{
-		switch(dataIn[ui]->getStreamType())
-		{
-			case STREAM_TYPE_IONS:
-			{
-				unsigned int ionID;
-
-				const IonStreamData *d;
-				d=((const IonStreamData *)dataIn[ui]);
-				ionID=getIonstreamIonID(d,rngF);
-
-				if(ionID == (unsigned int)-1)
-				{
-					//FIXME: Fallback handling  to re-range data
-					// - this can technically fail for inputs that are
-					// not homogeneously ranged!
-					break;
-				}
-
-				if(ionSourceEnabled[ionID])
-					sizeNeeded[0]+=d->data.size();
-
-				if(ionTargetEnabled[ionID])
-					sizeNeeded[1]+=d->data.size();
-
-				break;
-			}
-			default:
-				break;
-		}
-	}
-
-	pSource.resize(sizeNeeded[0]);
-	pTarget.resize(sizeNeeded[1]);
-
-	//Fill arrays
-	size_t curPos[2];
-	curPos[0]=curPos[1]=0;
-
-	for(unsigned int ui=0; ui<dataIn.size() ; ui++)
-	{
-		switch(dataIn[ui]->getStreamType())
-		{
-			case STREAM_TYPE_IONS:
-			{
-				unsigned int ionID;
-				const IonStreamData *d;
-				d=((const IonStreamData *)dataIn[ui]);
-				ionID=getIonstreamIonID(d,rngF);
-
-				if(ionID==(unsigned int)(-1))
-					break;
-
-				if(ionSourceEnabled[ionID])
-				{
-					if(extendPointVector(pSource,d->data,
-					                     progress.filterProgress,curPos[0]))
-						return ERR_ABORT_FAIL;
-
-					curPos[0]+=d->data.size();
-				}
-
-				if(ionTargetEnabled[ionID])
-				{
-					if(extendPointVector(pTarget,d->data,
-					                     progress.filterProgress,curPos[1]))
-						return ERR_ABORT_FAIL;
-
-					curPos[1]+=d->data.size();
-				}
-
-				break;
-			}
-			default:
-				break;
-		}
-	}
-
-
-	return 0;
-}
 
 void SpatialAnalysisFilter::filterSelectedRanges(const vector<IonHit> &ions, bool sourceFilter, const RangeFile *rngF,
 			vector<IonHit> &output) const
 {
-	ASSERT(rngF);
-
 	if(sourceFilter)
-	{
-		for(size_t ui=0;ui<ions.size();ui++)
-		{
-			unsigned int id;
-			id=rngF->getIonID(ions[ui].getMassToCharge());
-			if(id == (unsigned int )-1)
-				continue;
-			if(ionSourceEnabled[id])
-				output.push_back(ions[ui]);
-		}
-	}
+		rngF->rangeByIon(ions,ionSourceEnabled,output);
 	else
-	{
-		for(size_t ui=0;ui<ions.size();ui++)
-		{
-			unsigned int id;
-			id=rngF->getIonID(ions[ui].getMassToCharge());
-			if(id == (unsigned int)-1)
-				continue;
-			if(ionTargetEnabled[id])
-				output.push_back(ions[ui]);
-		}
-	}
+		rngF->rangeByIon(ions,ionTargetEnabled,output);
 }
 
+//FIXME: Move to filter common
 //Scan input datastreams to build a single point vector,
 // which is a copy of the input points
 //Returns 0 on no error, otherwise nonzero
@@ -2036,7 +2274,7 @@ size_t buildMonolithicPoints(const vector<const FilterStreamData *> &dataIn,
 				const IonStreamData *d;
 				d=((const IonStreamData *)dataIn[ui]);
 
-				if(extendPointVector(p,d->data,	progress.filterProgress,
+				if(extendDataVector(p,d->data,	progress.filterProgress,
 						dataSize))
 					return ERR_ABORT_FAIL;
 
@@ -2085,7 +2323,7 @@ size_t SpatialAnalysisFilter::algorithmRDF(ProgressData &progress, size_t totalD
 		ASSERT(ionNames.size());
 		size_t errCode;
 		if((errCode=buildSplitPoints(dataIn,progress,totalDataSize,
-				rngF,pts[0],pts[1])))
+				rngF,ionSourceEnabled, ionTargetEnabled,pts[0],pts[1])))
 			return errCode;
 
 		progress.step=2;
@@ -2619,6 +2857,7 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 						deadDistSqr=0;
 
 						//Assign the mass to charge using nn density estimates
+						//TODO: Use multi-neareast search algorithm?
 						do
 						{
 							res=kdTree.findNearest(r,treeDomain,deadDistSqr);
@@ -2710,7 +2949,6 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 					newD->b=d->b;
 					newD->a=d->a;
 					newD->ionSize=d->ionSize;
-					newD->representationType=d->representationType;
 					newD->valueType=TRANS("Number Density (\\#/Vol^3)");
 
 					//Cache result as neede
@@ -3007,7 +3245,6 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 					newD->b=d->b;
 					newD->a=d->a;
 					newD->ionSize=d->ionSize;
-					newD->representationType=d->representationType;
 					newD->valueType=TRANS("Number Density (\\#/Vol^3)");
 
 					//Cache result as needed
@@ -3692,6 +3929,394 @@ size_t SpatialAnalysisFilter::algorithmBinomial(ProgressData &progress,
 	return 0;
 }
 
+
+size_t SpatialAnalysisFilter::algorithmLocalConcentration(ProgressData &progress, 
+		size_t totalDataSize, const vector<const FilterStreamData *>  &dataIn, 
+		vector<const FilterStreamData * > &getOut,const RangeFile *rngF)
+{
+
+
+	vector<IonHit> pSource;
+
+#ifdef _OPENMP
+	bool spin=false;	
+#endif
+	if(stopMode == STOP_MODE_RADIUS)
+	{
+		vector<Point3D> numeratorPts,denominatorPts;
+
+		progress.step=1;
+		progress.stepName=TRANS("Collate");
+		progress.filterProgress=0;
+		progress.maxStep=4;
+
+		//Build the numerator and denominator points
+		unsigned int errCode;
+		errCode = buildSplitPoints(dataIn, progress, totalDataSize, rngF, 
+				ionNumeratorEnabled,ionDenominatorEnabled,numeratorPts,denominatorPts);
+		if(errCode)
+			return errCode;	
+
+		if(*Filter::wantAbort)
+			return ERR_ABORT_FAIL;
+		progress.step=2;
+		progress.stepName = TRANS("Build Numerator");
+		progress.filterProgress=0;
+
+
+		//Build the tree (its roughly nlogn timing, but worst case n^2)
+		K3DTreeMk2 treeNumerator,treeDenominator;
+		treeNumerator.resetPts(numeratorPts);
+		if(*Filter::wantAbort)
+			return ERR_ABORT_FAIL;
+		treeNumerator.build();
+		if(*Filter::wantAbort)
+			return ERR_ABORT_FAIL;
+
+		progress.step=3;
+		progress.stepName = TRANS("Build Denominator");
+		progress.filterProgress=0;
+
+		treeDenominator.resetPts(denominatorPts);
+		treeDenominator.build();
+		if(*Filter::wantAbort)
+			return ERR_ABORT_FAIL;
+
+		unsigned int sizeNeeded=0;
+		//Count the array size that we need to store the points 
+		for(unsigned int ui=0; ui<dataIn.size() ; ui++)
+		{
+			switch(dataIn[ui]->getStreamType())
+			{
+				case STREAM_TYPE_IONS:
+				{
+					const IonStreamData *d;
+					d=((const IonStreamData *)dataIn[ui]);
+					unsigned int ionID;
+					ionID=getIonstreamIonID(d,rngF);
+
+					//Check to see if we have a grouped set of ions
+					if(ionID == (unsigned int)-1)
+					{
+						//we have ungrouped ions, so work out size individually
+						for(unsigned int uj=0;uj<d->data.size();uj++)
+						{
+							ionID = rngF->getIonID(d->data[uj].getMassToCharge());
+							if(ionID != (unsigned int)-1 && ionSourceEnabled[ionID])
+								sizeNeeded++;
+						}
+						break;
+					}
+					
+					if(ionSourceEnabled[ionID])
+						sizeNeeded+=d->data.size();
+				}
+			}
+
+		}
+
+		pSource.resize(sizeNeeded);
+		
+
+		//Build the array of output points
+		//--
+		size_t curOffset=0;	
+		for(unsigned int ui=0; ui<dataIn.size() ; ui++)
+		{
+			switch(dataIn[ui]->getStreamType())
+			{
+				case STREAM_TYPE_IONS:
+				{
+					unsigned int ionID;
+					const IonStreamData *d;
+					d=((const IonStreamData *)dataIn[ui]);
+					ionID=getIonstreamIonID(d,rngF);
+
+					if(ionID==(unsigned int)(-1))
+					{
+						//we have ungrouped ions, so work out size individually
+						for(unsigned int uj=0;uj<d->data.size();uj++)
+						{
+							ionID = rngF->getIonID(d->data[uj].getMassToCharge());
+							if(ionID != (unsigned int)-1 && ionSourceEnabled[ionID])
+							{
+								pSource[curOffset] = d->data[uj];
+								curOffset++;
+							}
+						}
+						break;
+					}
+
+					if(ionSourceEnabled[ionID])
+					{
+						std::copy(d->data.begin(),d->data.end(),pSource.begin()+curOffset);
+						curOffset+=d->data.size();
+					}
+
+					break;
+				}
+				default:
+					break;
+			}
+
+			if(*Filter::wantAbort)
+				return false;
+		}
+
+		ASSERT(curOffset == pSource.size());
+		//--
+
+		progress.step=4;
+		progress.stepName = TRANS("Compute");
+		progress.filterProgress=0;
+
+		//Loop through the array, and perform local search on each tree
+#pragma omp parallel for schedule(dynamic)
+		for(unsigned int ui=0;ui<pSource.size(); ui++)
+		{
+#ifdef _OPENMP
+			if(spin)
+				continue;
+#endif
+
+			vector<size_t> ptsNum,ptsDenom;
+			//Find the points that are within the search radius
+			treeNumerator.ptsInSphere(pSource[ui].getPosRef(),distMax,ptsNum);
+			treeDenominator.ptsInSphere(pSource[ui].getPosRef(),distMax,ptsDenom);
+
+			//Check to see if there is any self-matching going on. Don't allow zero-distance matches
+			// as this biases the composition towards the chosen source points
+			//TODO: Is there a faster way to do this? We might be able to track the original index of the point
+			// that we built, and map it back to the input?
+			//--
+			unsigned int nCount,dCount;
+			nCount=0;
+			for(unsigned int uj=0;uj<ptsNum.size(); uj++)
+			{
+				size_t ptIdx;
+				ptIdx=ptsNum[uj];
+				float dist;
+				dist = treeNumerator.getPtRef(ptIdx).sqrDist(pSource[ui].getPosRef());
+				if(dist > DISTANCE_EPSILON)
+					nCount++;
+			}
+
+			dCount=0;
+			for(unsigned int uj=0;uj<ptsDenom.size(); uj++)
+			{
+				size_t ptIdx;
+				ptIdx=ptsDenom[uj];
+				float dist;
+				dist = treeDenominator.getPtRef(ptIdx).sqrDist(pSource[ui].getPosRef());
+				if(dist> DISTANCE_EPSILON)
+					dCount++;
+			}
+			//--
+			
+			//compute concentration
+			if( nCount + dCount )
+				pSource[ui].setMassToCharge((float)nCount/(float)(nCount + dCount)*100.0f);
+			else
+				pSource[ui].setMassToCharge(-1.0f);
+			
+
+#ifdef _OPENMP 
+			#pragma omp critical
+			if(!omp_get_thread_num())
+			{
+#endif
+				//let master thread do update	
+				progress.filterProgress= (unsigned int)((float)ui/(float)pSource.size()*100.0f);
+
+				if(*Filter::wantAbort)
+				{
+#ifndef _OPENMP
+					return ERR_ABORT_FAIL;
+#else
+					#pragma atomic
+					spin=true;
+#endif			
+				}
+#ifdef _OPENMP
+			}
+#endif
+
+			
+		}
+	}
+	else if(stopMode == STOP_MODE_NEIGHBOUR)
+	{
+
+		//Merge the numerator and denominator ions into a single search tree
+		vector<bool> enabledSearchIons;
+		enabledSearchIons.resize(rngF->getNumIons());
+		
+		for(unsigned int ui=0;ui<enabledSearchIons.size(); ui++)	
+		{
+			enabledSearchIons[ui] = (ionNumeratorEnabled[ui] 
+						|| ionDenominatorEnabled[ui]); 
+		}	
+
+		
+		progress.step=1;
+		progress.stepName=TRANS("Collate");
+		progress.filterProgress=0;
+		progress.maxStep=3;
+	
+		vector<IonHit> pTarget;
+
+		//FIXME: This is highly memory inefficient - 
+		//	we build points, then throw them awaway.
+		// We should build and range at the same time
+		buildSplitPoints(dataIn,progress,totalDataSize,rngF,
+					ionSourceEnabled,enabledSearchIons,
+						pSource, pTarget);
+		if(*Filter::wantAbort)
+			return ERR_ABORT_FAIL;
+
+		if(pTarget.size() < nnMax)
+			return INSUFFICIENT_SIZE_ERR;
+
+		progress.step=2;
+		progress.stepName=TRANS("Build");
+		progress.filterProgress=0;
+
+		//Keep a copy of the mass to charge data
+		vector<float> dataMasses;
+		dataMasses.resize(pTarget.size());
+		#pragma omp parallel for
+		for(unsigned int ui=0;ui<pTarget.size();ui++)
+			dataMasses[ui]=pTarget[ui].getMassToCharge();
+
+		K3DTreeMk2 searchTree;
+		searchTree.resetPts(pTarget);
+		searchTree.build();
+		if(*Filter::wantAbort)
+			return ERR_ABORT_FAIL;
+
+		progress.step=3;
+		progress.stepName=TRANS("Compute");
+		progress.filterProgress=0;
+
+
+		//Loop through the array, and perform local search on each tree
+		BoundCube bc;
+		searchTree.getBoundCube(bc);
+
+#pragma omp parallel for schedule(dynamic) 
+		for(unsigned int ui=0;ui<pSource.size(); ui++)
+		{
+#ifdef _OPENMP
+			//If user requests abort, then do not process any more
+			if(spin)
+				continue;
+#endif
+			set<size_t> ptsFound;
+
+			//Points from the tree we have already found. Abort if we cannot find enough NNs to satisfy search
+			while(ptsFound.size()<nnMax)
+			{
+				size_t ptIdx;
+				ptIdx=searchTree.findNearestWithSkip(pSource[ui].getPosRef(),bc,ptsFound);
+
+				//Check that we have a valid NN
+				if(ptIdx == (size_t)-1)
+				{
+					ptsFound.clear();
+					break;
+				}
+
+				//distance between search pt and found pt
+				float sqrDistance;
+				sqrDistance = searchTree.getPtRef(ptIdx).sqrDist(pSource[ui].getPosRef());
+
+				if(sqrDistance > DISTANCE_EPSILON)
+					ptsFound.insert(ptIdx);
+			}
+
+
+			unsigned int nCount;
+			unsigned int dCount;
+			nCount=dCount=0;	
+			//Count the number of numerator and denominator ions, using the masses we set aside earlier
+			for(set<size_t>::iterator it=ptsFound.begin(); it!=ptsFound.end(); ++it)
+			{
+				float ionMass;
+				//check that the distance is non-zero, to force no self-matching
+				ionMass = dataMasses[searchTree.getOrigIndex(*it)];
+
+				unsigned int ionID;
+				ionID = rngF->getIonID(ionMass);
+
+
+				//Ion can be either numerator or denominator OR BOTH.
+				if(ionNumeratorEnabled[ionID])
+					nCount++;
+				if(ionDenominatorEnabled[ionID])
+					dCount++;
+			}
+
+			//compute concentration
+			pSource[ui].setMassToCharge((float)nCount/(float)(nCount + dCount)*100.0f);
+
+#ifdef _OPENMP 
+			if(!omp_get_thread_num())
+			{
+#endif
+				//let master thread do update	
+				progress.filterProgress= (unsigned int)((float)ui/(float)pSource.size()*100.0f);
+				if(*Filter::wantAbort)
+				{
+#ifndef _OPENMP
+					return ERR_ABORT_FAIL;
+#else
+					#pragma atomic
+					spin=true;
+#endif			
+				}
+
+#ifdef _OPENMP
+			}
+#endif
+
+			
+		}
+	
+	}
+	else
+	{
+		//Should not get here...
+		ASSERT(false);
+		return ERR_ABORT_FAIL;
+	}
+
+
+#ifdef _OPENMP
+	if(spin)
+	{
+		ASSERT(*Filter::wantAbort);
+		return ERR_ABORT_FAIL;
+	}
+#endif
+	progress.filterProgress=100;
+
+	if(pSource.size())
+	{
+		IonStreamData *outData = new IonStreamData(this);
+		//make a guess as to desired size/colour
+		outData->estimateIonParameters(dataIn);
+		//override colour to grey
+		outData->g = outData->b = outData->r = 0.5;
+		outData->valueType = "Relative Conc. (%)";
+		outData->data.swap(pSource);
+		cacheAsNeeded(outData);
+
+		getOut.push_back(outData);
+	}
+
+	return 0;
+}
+
 #ifdef DEBUG
 
 bool densityPairTest();
@@ -3699,6 +4324,8 @@ bool nnHistogramTest();
 bool rdfPlotTest();
 bool axialDistTest();
 bool replaceTest();
+bool localConcTestRadius();
+bool localConcTestNN();
 
 bool SpatialAnalysisFilter::runUnitTests()
 {
@@ -3714,6 +4341,11 @@ bool SpatialAnalysisFilter::runUnitTests()
 	if(!axialDistTest())
 		return false;
 	if(!replaceTest())
+		return false;
+	if(!localConcTestRadius())
+		return false;
+
+	if(!localConcTestNN())
 		return false;
 	return true;
 }
@@ -4042,6 +4674,212 @@ bool replaceTest()
 	
 	return true;
 }
+
+
+//--- Local concentration tests --
+const IonStreamData *createLCIonStream()
+{
+	IonStreamData*d = new IonStreamData;
+	IonHit h;
+
+	//create some points, of differing mass-to-charge 
+
+	//1 "A" ion, mass 1
+	//1 "B" ion, mass 2
+	//2 "C" ions,mass 3
+	h.setPos(Point3D(0,0,0));
+	h.setMassToCharge(1);
+	d->data.push_back(h);
+
+	h.setPos(Point3D(0.49,0.0,0.0));
+	h.setMassToCharge(2);
+	d->data.push_back(h);
+
+	h.setPos(Point3D(0.0,0.5,0.0));
+	h.setMassToCharge(3);
+	d->data.push_back(h);
+	
+	h.setPos(Point3D(0.0,0.0,0.51));
+	h.setMassToCharge(3);
+	d->data.push_back(h);
+	
+	return d;
+}
+
+RangeStreamData *createLCRangeStream()
+{
+	//Create a fake rangefile
+	RangeStreamData *r= new RangeStreamData;
+	RangeFile *rng = new RangeFile;
+
+	RGBf colour;
+	colour.red=colour.blue=colour.green=0.5;
+	unsigned int iid[3], rid[3]; 
+	iid[0] = rng->addIon("A","A",colour);
+	iid[1] = rng->addIon("B","B",colour);
+	iid[2] = rng->addIon("C","C",colour);
+
+	rid[0]=rng->addRange(0.5,1.5,iid[0]);
+	rid[1]=rng->addRange(1.51,2.5,iid[1]);
+	rid[2]=rng->addRange(2.51,3.5,iid[2]);
+
+	r->rangeFile=rng;
+	r->enabledRanges.resize(3,1);
+	r->enabledIons.resize(3,1);
+	return r;
+}
+
+SpatialAnalysisFilter *createLCTestSpatialFilter(const vector<const FilterStreamData *>  &in)
+{
+	//Create a spatial analysis filter
+	SpatialAnalysisFilter *f=new SpatialAnalysisFilter;
+	f->setCaching(false);
+	//inform it about the rangefile	
+	vector< const FilterStreamData *> out;
+	f->initFilter(in,out);
+	//Set Filter to perform local concentration analysis 
+	// - dist termination,
+	//---
+	bool needUp;
+	string s;
+	s=TRANS(SPATIAL_ALGORITHMS[ALGORITHM_LOCAL_CONCENTRATION]);
+	if(!(f->setProperty(KEY_ALGORITHM,s,needUp)) )
+	{
+		cerr << "Failed Set prop (algorithm)";
+		return 0;
+	}
+	
+	
+	//Set enable/disable status (one for each)
+	// A ions - source. B ions - numerator, C ions - denominator
+	for(unsigned int ui=0; ui<3; ui++)
+	{
+		if(ui!=0)
+		{
+			if(!(f->setProperty(Filter::muxKey(KEYTYPE_ENABLE_SOURCE,ui),"0",needUp)) )
+				return 0;
+		}
+		if(ui!=1)
+		{
+			if(!(f->setProperty(Filter::muxKey(KEYTYPE_ENABLE_NUMERATOR,ui),"0",needUp)) )
+				return 0;
+		}
+		if(ui!=2)
+		{
+			if(!(f->setProperty(Filter::muxKey(KEYTYPE_ENABLE_DENOMINATOR,ui),"0",needUp)))
+				return 0;
+		}
+	}
+	//---
+
+	return f;
+}
+
+bool localConcTestRadius()
+{
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	
+	//Create some input data
+	//--
+	RangeStreamData *rngStream=createLCRangeStream();
+	streamIn.push_back(rngStream);
+	streamIn.push_back(createLCIonStream());
+
+	//--
+	
+	SpatialAnalysisFilter *f=createLCTestSpatialFilter(streamIn);
+	f->initFilter(streamIn,streamOut);
+
+	bool needUp;	
+	string s;
+	s=TRANS(STOP_MODES[STOP_MODE_RADIUS]);
+	TEST(f->setProperty(KEY_STOPMODE,s,needUp),"Failed Set prop (stop mode)");
+	s="1.0";
+	TEST(f->setProperty(KEY_DISTMAX,s,needUp),"Failed Set prop (maxDist)");
+	
+	//Do the refresh
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p),"Checking refresh code");
+	delete f;
+
+	//FIXME: Check the data coming out
+	TEST(streamOut.size() == 1,"stream size");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+	TEST(streamOut[0]->getNumBasicObjects() == 1,"output ion count");
+
+	IonStreamData *ionD = (IonStreamData *)streamOut[0];
+
+	float localConc = ionD->data[0].getMassToCharge(); 
+	TEST(EQ_TOL(localConc,1.0/3.0*100.0),"Local Concentration check");
+
+	delete rngStream->rangeFile;
+
+	for(unsigned int ui=0;ui<streamIn.size(); ui++)
+		delete streamIn[ui];
+	streamIn.clear();
+
+	//kill the output ion stream
+	for(unsigned int ui=0;ui<streamOut.size(); ui++)
+		delete streamOut[ui];
+	streamOut.clear();
+
+	return true;
+}
+
+bool localConcTestNN()
+{
+	//Build some points to pass to the filter
+	vector<const FilterStreamData*> streamIn,streamOut;
+	
+	//Create some input data
+	//--
+
+	RangeStreamData *rngStream=createLCRangeStream();
+	streamIn.push_back(rngStream);
+	streamIn.push_back(createLCIonStream());
+
+	//--
+	
+	SpatialAnalysisFilter *f=createLCTestSpatialFilter(streamIn);
+	f->initFilter(streamIn,streamOut);
+	
+	bool needUp;	
+	string s;
+	s=TRANS(STOP_MODES[STOP_MODE_NEIGHBOUR]);
+	TEST(f->setProperty(KEY_STOPMODE,s,needUp),"Failed Set prop (stop mode)");
+	s="3";
+	TEST(f->setProperty(KEY_NNMAX,s,needUp),"Failed Set prop (nnMax)");
+	
+	//Do the refresh
+	ProgressData p;
+	TEST(!f->refresh(streamIn,streamOut,p),"Checking refresh code");
+	delete f;
+
+	//FIXME: Check the data coming out
+	TEST(streamOut.size() == 1,"stream size");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+	TEST(streamOut[0]->getNumBasicObjects() == 1,"output ion count");
+
+	IonStreamData *ionD = (IonStreamData *)streamOut[0];
+
+	float localConc = ionD->data[0].getMassToCharge(); 
+	TEST(EQ_TOL(localConc,1.0/3.0*100.0),"Local Concentration check");
+
+
+	delete rngStream->rangeFile;
+	for(unsigned int ui=0;ui<streamIn.size(); ui++)
+		delete streamIn[ui];
+	streamIn.clear();
+
+	//kill the output ion stream
+	for(unsigned int ui=0;ui<streamOut.size(); ui++)
+		delete streamOut[ui];
+	streamOut.clear();
+
+	return true;
+}
+//--------------------------------
 
 #endif
 

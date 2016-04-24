@@ -80,8 +80,8 @@ Filter *makeFilter(unsigned int ui)
 		case FILTER_TYPE_IONINFO:
 			f=new IonInfoFilter;
 			break;
-		case FILTER_TYPE_COMPOSITION:
-			f=new CompositionProfileFilter;
+		case FILTER_TYPE_PROFILE:
+			f=new ProfileFilter;
 			break;
 		case FILTER_TYPE_BOUNDBOX:
 			f = new BoundingBoxFilter;

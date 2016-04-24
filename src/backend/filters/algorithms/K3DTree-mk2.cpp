@@ -31,6 +31,16 @@ unsigned int *K3DTreeMk2::progress=0;
 //Pointer for aborting during build process
 ATOMIC_BOOL *K3DTreeMk2::abort=0;
 
+class NodeWalk
+{
+	public:
+		size_t index;
+		BoundCube cube;
+		unsigned int depth;
+		NodeWalk(unsigned int idx, BoundCube bc, unsigned int dpth) : 
+			index(idx), cube(bc), depth(dpth) {};
+};
+
 void K3DTreeMk2::resetPts(std::vector<Point3D> &p, bool clear)
 {
 	//Compute bounding box for indexedPoints
@@ -86,6 +96,11 @@ const Point3D *K3DTreeMk2::getPt(size_t index) const
 	return &(indexedPoints[index].first);
 }
 
+const Point3D &K3DTreeMk2::getPtRef(size_t index) const
+{
+	ASSERT(index < indexedPoints.size());
+	return (indexedPoints[index].first);
+}
 size_t K3DTreeMk2::getOrigIndex(size_t treeIndex) const 
 {
 	ASSERT(treeIndex <indexedPoints.size());
@@ -285,103 +300,98 @@ bool K3DTreeMk2::build()
 	return true;
 }
 
-/*
-void K3DTreeMk2::dump(std::ostream &strm) const
+void K3DTreeMk2::ptsInSphere(const Point3D &origin, float radius,
+		vector<size_t> &pts) const
 {
-	enum
-	{
-		PRINT_NONE,
-		PRINT_LEFT,
-		PRINT_BOTH
-	};
-
-	if(!indexedPoints.size())
+	if(!treeBounds.intersects(origin,radius))
 		return;
 
-	stack<char> status;
-	stack<size_t> nodeStack;
-	status.push(PRINT_NONE);
-	nodeStack.push(indexedPoints.size()/2);
+	//parent walking queue. This contains initial parent indices that
+	// lie within the sphere.
+	const float sqrRadius=radius*radius;
+	//contains all completely contained points (these points and children are in sphere)
+	std::queue<size_t> idxQueue;
+	//queue of points whose children are partly in the sphere
+	std::queue<NodeWalk> nodeQueue;
+	nodeQueue.push(NodeWalk(treeRoot,treeBounds,0));
 
-	do
+	while(!nodeQueue.empty())
 	{
-		for(size_t ui=0;ui<status.size(); ui++)
-			strm << "\t";
+		size_t nodeIdx;
+		BoundCube curCube;
+		unsigned int depth,axis;
+
+		nodeIdx = nodeQueue.front().index;
+		curCube=nodeQueue.front().cube;
+		depth = nodeQueue.front().depth;
+		axis=depth %3;	
+		nodeQueue.pop()	;
 	
-		strm << "(" << indexedPoints[nodeStack.top()].getValue(0) 
-			<< "," << indexedPoints[nodeStack.top()].getValue(1) 
-			<< "," << indexedPoints[nodeStack.top()].getValue(2) << ")" << std::endl;
-		switch(status.top())
-		{	
-			case PRINT_NONE:
-				status.top()++;
-				if(nodes[nodeStack.top()].childLeft != -1)
-				{
-					nodeStack.push(nodes[nodeStack.top()].childLeft);
-					status.push(PRINT_NONE);
-				}
-				break;
-			case PRINT_LEFT:
-				status.top()++;
-				if(nodes[nodeStack.top()].childRight != -1)
-				{
-					nodeStack.push(nodes[nodeStack.top()].childRight);
-					status.push(PRINT_NONE);
-				}
-				break;
-			case PRINT_BOTH:
-				status.pop();
-				nodeStack.pop();
-		}
-		
-	}while(status.size());
-}
-*/
 
-void K3DTreeMk2::dump(std::ostream &strm,  size_t depth, size_t offset) const
-{
-	if(offset==(size_t)-1)
-	{
-		for(unsigned int ui=0;ui<indexedPoints.size();ui++)
+		//obtain the left and right cubes, and see if they
+		// -exist
+		// -intersect the spehre
+		// - if intersects, are they contained entirely by the sphere 
+		BoundCube leftCube,rightCube;
+		if(nodes[nodeIdx].childLeft != (size_t) -1)
 		{
-			strm << ui << " "<< indexedPoints[ui].first << std::endl;
-		}
+			leftCube=curCube;
+			leftCube.bounds[axis][1]=indexedPoints[nodeIdx].first[axis];
+			if(leftCube.intersects(origin,sqrRadius) )
+			{
+				if(leftCube.containedInSphere(origin,sqrRadius))
+				{
+					ASSERT(indexedPoints[nodeIdx].first.sqrDist(origin) < radius*radius);
+					idxQueue.push(nodes[nodeIdx].childLeft);
+				}
+				else
+					nodeQueue.push(NodeWalk(nodes[nodeIdx].childLeft,leftCube,depth+1));
+			}
+		}	
 
-		strm << "----------------" << std::endl;
-		offset=treeRoot;
-	}
+		if(nodes[nodeIdx].childRight != (size_t) -1)
+		{
+			rightCube=curCube;
+			rightCube.bounds[axis][0]=indexedPoints[nodeIdx].first[axis];
+			if(rightCube.intersects(origin,sqrRadius) )
+			{
+				if(rightCube.containedInSphere(origin,sqrRadius))
+				{
+					//If the right-hand cube is contained within (origin,radius) sphere, then so are all its chilren
 
-	for(size_t ui=0;ui<depth; ui++)
-		strm << "\t";
+					ASSERT(indexedPoints[nodeIdx].first.sqrDist(origin) < sqrRadius);
+					idxQueue.push(nodes[nodeIdx].childRight);
+				}
+				else
+					nodeQueue.push(NodeWalk(nodes[nodeIdx].childRight,rightCube,depth+1));
+			}
+		}	
 
-	strm << offset << " : (" << indexedPoints[offset].first[0] 
-		<< "," << indexedPoints[offset].first[1] << "," << indexedPoints[offset].first[2]
-		<< ")" << std::endl;
+		if(indexedPoints[nodeIdx].first.sqrDist(origin) < sqrRadius)
+			pts.push_back(nodeIdx);
+
+	}	
 
 
-
-	for(size_t ui=0;ui<depth; ui++)
-		strm << "\t";
-	strm << "<l>" <<std::endl;
-
-	if(nodes[offset].childLeft!=(size_t)-1)
+	pts.reserve(idxQueue.size());
+	//Walk the idx queue to enumerate all children that are in the sphere
+	while(!idxQueue.empty())
 	{
-		dump(strm,depth+1,nodes[offset].childLeft);
+		size_t curIdx;
+		curIdx=idxQueue.front();
+		ASSERT(indexedPoints[curIdx].first.sqrDist(origin) < sqrRadius);
+		if(nodes[curIdx].childLeft != (size_t)-1)
+			idxQueue.push(nodes[curIdx].childLeft);
+		
+		if(nodes[curIdx].childRight !=(size_t) -1)
+			idxQueue.push(nodes[curIdx].childRight);
+
+
+		ASSERT(curIdx < nodes.size());
+		pts.push_back(curIdx);
+		idxQueue.pop();
 	}
-	for(size_t ui=0;ui<depth; ui++)
-		strm << "\t";
-	strm << "</l>" <<std::endl;
-
-	for(size_t ui=0;ui<depth; ui++)
-		strm << "\t";
-	strm << "<r>" <<std::endl;
-
-	if(nodes[offset].childRight!=(size_t)-1)
-		dump(strm,depth+1,nodes[offset].childRight);
 	
-	for(size_t ui=0;ui<depth; ui++)
-		strm << "\t";
-	strm << "</r>" <<std::endl;
 }
 
 size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
@@ -635,6 +645,254 @@ size_t K3DTreeMk2::findNearestUntagged(const Point3D &searchPt,
 
 }
 
+size_t K3DTreeMk2::findNearestWithSkip(const Point3D &searchPt,
+				const BoundCube &domainCube, const std::set<size_t> &skipPts, size_t pseudoRoot) const
+{
+	//Tree must be built!
+	ASSERT(treeRoot < nodes.size() && maxDepth <=nodes.size())
+	enum { NODE_FIRST_VISIT, //First visit is when you descend the tree
+		NODE_SECOND_VISIT, //Second visit is when you come back from ->Left()
+		NODE_THIRD_VISIT // Third visit is when you come back from ->Right()
+		};
+	
+	size_t nodeStack[maxDepth+1];
+	float domainStack[maxDepth+1][2];
+	unsigned int visitStack[maxDepth+1];
+
+	size_t bestPoint;
+	size_t curNode;
+
+	BoundCube curDomain;
+	unsigned int visit;
+	unsigned int stackTop;
+	unsigned int curAxis;
+	
+	float bestDistSqr;
+	float tmpEdge;
+
+	if(nodes.empty())
+		return -1;
+
+	bestPoint=(size_t)-1; 
+	bestDistSqr =std::numeric_limits<float>::max();
+	curDomain=domainCube;
+	visit=NODE_FIRST_VISIT;
+	curAxis=0;
+	stackTop=0;
+
+	//Start at median of array, which is top of tree,
+	//by definition, unless an alternative entry point is given
+	size_t startNode;
+	if(pseudoRoot==(size_t) -1)
+		startNode=treeRoot;
+	else
+		startNode=pseudoRoot;
+
+	curNode=startNode;
+
+	//check start node and that we have not seen this already	
+	if(!(nodes[curNode].tagged  || (skipPts.find(curNode) !=skipPts.end() )) )
+	{
+		float tmpDistSqr;
+		tmpDistSqr = indexedPoints[curNode].first.sqrDist(searchPt); 
+		if(tmpDistSqr < bestDistSqr)
+		{
+			bestDistSqr  = tmpDistSqr;
+			bestPoint=curNode;
+		}
+	}
+
+	do
+	{
+		switch(visit)
+		{
+			//Examine left branch
+			case NODE_FIRST_VISIT:
+			{
+				if(searchPt[curAxis] < indexedPoints[curNode].first[curAxis])
+				{
+					if(nodes[curNode].childLeft!=(size_t)-1)
+					{
+						//Check bounding box when shrunk overlaps best
+						//estimate sphere
+						tmpEdge= curDomain.bounds[curAxis][1];
+						curDomain.bounds[curAxis][1] = indexedPoints[curNode].first[curAxis];
+						if(!curDomain.intersects(searchPt,bestDistSqr))
+						{
+							curDomain.bounds[curAxis][1] = tmpEdge; 
+							visit++;
+							continue;		
+						}	
+						//Preserve our current state.
+						nodeStack[stackTop]=curNode;
+						visitStack[stackTop] = NODE_SECOND_VISIT; //Oh, It will be. It will be.
+						domainStack[stackTop][1] = tmpEdge;
+						domainStack[stackTop][0]= curDomain.bounds[curAxis][0];
+						stackTop++;
+
+						//Update the current information
+						curNode=nodes[curNode].childLeft;
+						visit=NODE_FIRST_VISIT;
+						curAxis++;
+						curAxis%=3;
+						continue;
+					}
+				}	
+				else
+				{
+					if(nodes[curNode].childRight!=(size_t)-1)
+					{
+						//Check bounding box when shrunk overlaps best
+						//estimate sphere
+						tmpEdge= curDomain.bounds[curAxis][0];
+						curDomain.bounds[curAxis][0] = indexedPoints[curNode].first[curAxis];
+						
+						if(!curDomain.intersects(searchPt,bestDistSqr))
+						{
+							curDomain.bounds[curAxis][0] =tmpEdge; 
+							visit++;
+							continue;		
+						}	
+
+						//Preserve our current state.
+						nodeStack[stackTop]=curNode;
+						visitStack[stackTop] = NODE_SECOND_VISIT; //Oh, It will be. It will be.
+						domainStack[stackTop][0] = tmpEdge;
+						domainStack[stackTop][1]= curDomain.bounds[curAxis][1];
+						stackTop++;
+
+						//Update the information
+						curNode=nodes[curNode].childRight;
+						visit=NODE_FIRST_VISIT;
+						curAxis++;
+						curAxis%=3;
+						continue;	
+					}
+				}
+				visit++;
+				//Fall through
+			}
+			//Examine right branch
+			case NODE_SECOND_VISIT:
+			{
+				if(searchPt[curAxis]< indexedPoints[curNode].first[curAxis])
+				{
+					if(nodes[curNode].childRight!=(size_t)-1)
+					{
+						//Check bounding box when shrunk overlaps best
+						//estimate sphere
+						tmpEdge= curDomain.bounds[curAxis][0];
+						curDomain.bounds[curAxis][0] = indexedPoints[curNode].first[curAxis];
+						
+						if(!curDomain.intersects(searchPt,bestDistSqr))
+						{
+							curDomain.bounds[curAxis][0] = tmpEdge; 
+							visit++;
+							continue;		
+						}
+	
+						nodeStack[stackTop]=curNode;
+						visitStack[stackTop] = NODE_THIRD_VISIT; 
+						domainStack[stackTop][0] = tmpEdge;
+						domainStack[stackTop][1]= curDomain.bounds[curAxis][1];
+						stackTop++;
+						
+						//Update the information
+						curNode=nodes[curNode].childRight;
+						visit=NODE_FIRST_VISIT;
+						curAxis++;
+						curAxis%=3;
+						continue;	
+
+					}
+				}
+				else
+				{
+					if(nodes[curNode].childLeft!=(size_t)-1)
+					{
+						//Check bounding box when shrunk overlaps best
+						//estimate sphere
+						tmpEdge= curDomain.bounds[curAxis][1];
+						curDomain.bounds[curAxis][1] = indexedPoints[curNode].first[curAxis];
+						
+						if(!curDomain.intersects(searchPt,bestDistSqr))
+						{
+							curDomain.bounds[curAxis][1] = tmpEdge; 
+							visit++;
+							continue;		
+						}	
+						//Preserve our current state.
+						nodeStack[stackTop]=curNode;
+						visitStack[stackTop] = NODE_THIRD_VISIT; 
+						domainStack[stackTop][1] = tmpEdge;
+						domainStack[stackTop][0]= curDomain.bounds[curAxis][0];
+						stackTop++;
+						
+						//Update the information
+						curNode=nodes[curNode].childLeft;
+						visit=NODE_FIRST_VISIT;
+						curAxis++;
+						curAxis%=3;
+						continue;	
+
+					}
+				}
+				visit++;
+				//Fall through
+			}
+			case NODE_THIRD_VISIT:
+			{
+				//Decide if we should promote the current node
+				//to "best" (i.e. nearest untagged) node.
+				//To promote, it mustn't be tagged, and it must
+				//be closer than cur best estimate.
+				if(!(nodes[curNode].tagged || (skipPts.find(curNode) !=skipPts.end()) ) )
+				{
+					float tmpDistSqr;
+					tmpDistSqr = indexedPoints[curNode].first.sqrDist(searchPt); 
+					if(tmpDistSqr < bestDistSqr)
+					{
+						bestDistSqr  = tmpDistSqr;
+						bestPoint=curNode;
+					}
+				}
+
+				//DEBUG
+				ASSERT(stackTop%3 == curAxis)
+				//
+				if(curAxis)
+					curAxis--;
+				else
+					curAxis=2;
+
+
+				
+				ASSERT(stackTop < maxDepth+1);	
+				if(stackTop)
+				{
+					stackTop--;
+					visit=visitStack[stackTop];
+					curNode=nodeStack[stackTop];
+					curDomain.bounds[curAxis][0]=domainStack[stackTop][0];
+					curDomain.bounds[curAxis][1]=domainStack[stackTop][1];
+					ASSERT((stackTop)%3 == curAxis);
+				}
+			
+				break;
+			}
+			default:
+				ASSERT(false);
+
+
+		}
+		
+
+	//Keep going until we meet the root node for the third time (one left, one right, one finish)	
+	}while(!(curNode== startNode &&  visit== NODE_THIRD_VISIT));
+
+	return bestPoint;	
+
+}
 
 void K3DTreeMk2::getTreesInSphere(const Point3D &pt, float sqrDist, const BoundCube &domainCube,
 					vector<pair<size_t,size_t> > &contiguousBlocks ) const

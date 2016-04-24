@@ -39,6 +39,7 @@ using std::pair;
 using std::string;
 using std::vector;
 
+
 enum
 {
 	ID_BTN_ADDDATA=wxID_ANY+1,

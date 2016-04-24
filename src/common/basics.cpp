@@ -568,7 +568,7 @@ ColourRGBAf ColourRGBAf::interpolate(float delta, const ColourRGBAf &other)
 {
 	ColourRGBAf result;
 
-	for(unsigned int ui=0;ui<3;ui++)
+	for(unsigned int ui=0;ui<4;ui++)
 		result[ui] = data[ui] + (other.data[ui] - data[ui])*delta;
 	return result;
 }
@@ -696,11 +696,7 @@ void BoundCube::getVertices(std::vector<Point3D> &points, bool centre) const
 	points.resize(8);
 
 	for(size_t ui=0;ui<8;ui++)
-	{
-		points[ui][0]=bounds[0][ ui & 1]; 
-		points[ui][1]=bounds[1][ (ui & 2) >> 1]; 
-		points[ui][2]=bounds[2][ (ui & 4) >> 2]; 
-	}
+		points[ui]=getVertex(ui);
 
 	if(centre)
 	{
@@ -708,6 +704,60 @@ void BoundCube::getVertices(std::vector<Point3D> &points, bool centre) const
 		for(size_t ui=0;ui<8;ui++)
 			points[ui]-=centroid;
 	}
+}
+
+void BoundCube::getPlaneIntersectVertices(const Point3D &planeOrigin, const Point3D &normal, vector<Point3D> &intersectPts) const
+{
+	//To visualise the connections, draw a cube, then label
+	// each coordinate using a binary table like so:
+	// idx  x y z
+	// 0    0 0 0
+	// 1    1 0 0 
+	// etc ..
+
+	//Now flatten the cube into a graph like so :
+	//	0_________ 2
+	//	| \4___6/ |	^	y+ ->
+	//	|  |   |  |	| x-
+	//	|  5---7  |
+	//	| /     \ |
+	//	1---------- 3
+
+	//Edges are between  (idx  - idx + 4) (idx <4)		: 4 edges (diag) 
+	// 		and  (idx, idx +2) (idx in 0,1,4,5)	: 4 edges (across)
+	//		and  (idx,idx+1) (idx in 0,2,4,6)	: 4 edges (vertical)
+
+	//Adjacency graph for cube edges
+	const unsigned int eStartIdx[12] = {0,1,2,3, 0,1,4,5, 0,2,4,6};
+	const unsigned int eEndIdx[12] = {4,5,6,7, 2,3,6,7, 1,3,5,7};
+	
+
+	for(unsigned int ui=0;ui<12;ui++)
+	{
+		Point3D eStart,eEnd;
+		eStart = getVertex(eStartIdx[ui]);
+		eEnd = getVertex(eEndIdx[ui]);
+
+		float denom = (eEnd-eStart).dotProd(normal);
+
+		//check for intersection. If line vector is perp to
+		// plane normal, either is in plane, or no intersection
+		// for our purpose, do not report intersections that are in-the-plane
+		if(fabs(denom) < sqrtf(std::numeric_limits<float>::epsilon()))
+			continue;
+
+		float numerator = (planeOrigin - eStart).dotProd(normal);
+		float v;
+		v= numerator/denom;	
+		intersectPts.push_back((eEnd-eStart)*v+ eStart);
+	}
+}
+
+Point3D BoundCube::getVertex(unsigned int idx) const
+{
+	ASSERT(idx < 8);
+	
+	return Point3D(bounds[0][(idx&1)],bounds[1][(idx&2) >> 1],bounds[2][(idx&4)>>2]);
 }
 
 void BoundCube::setInverseLimits(bool setValid)
@@ -907,7 +957,7 @@ float BoundCube::getSize(unsigned int dim) const
 }
 
 //checks intersection with sphere [centre,centre+radius)
-bool BoundCube::intersects(const Point3D &pt, float sqrRad)
+bool BoundCube::intersects(const Point3D &pt, float sqrRad) const
 {
 	Point3D nearPt;
 	
@@ -1015,16 +1065,10 @@ bool BoundCube::containedInSphere(const Point3D &queryPt,float sqrDist) const
 	}
 #endif
 
-
-	//Set lower and upper corners on the bounding rectangle
-	Point3D p[2];
-	p[0].setValue(bounds[0][0],bounds[1][0],bounds[2][0]);
-	p[1].setValue(bounds[0][1],bounds[1][1],bounds[2][1]);
-
-	//Count binary-wise selecting upper and lower limits, to enumerate all 8 verticies.
-	for(unsigned int ui=0;ui<9; ui++)
+	//Check all vertices
+	for(unsigned int ui=0;ui<8; ui++)
 	{
-		if(queryPt.sqrDist(Point3D(p[ui&1][0],p[(ui&2) >> 1][1],p[(ui&4) >> 2][2])) > sqrDist)
+		if(queryPt.sqrDist(getVertex(ui)) > sqrDist)
 			return false;
 	}
 
@@ -1300,7 +1344,7 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 	bool atHeader=true;
 
 	vector<string> prevStrs;
-	while(!CFile.eof() && atHeader)
+	while(CFile.good() && !CFile.eof() && atHeader)
 	{
 		//Grab a line from the file
 		CFile.getline(inBuffer,BUFFER_SIZE);
@@ -1385,7 +1429,7 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 
 	float f;
 	std::stringstream ss;
-	while(!CFile.eof())
+	while(CFile.good() && !CFile.eof())
 	{
 		if(strhas(inBuffer,"0123456789"))
 		{

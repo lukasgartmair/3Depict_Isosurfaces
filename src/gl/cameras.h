@@ -56,6 +56,17 @@ enum
 	CAMERA_KEY_LOOKAT_ORTHOSCALE
 };
 
+//visible direction enum
+enum
+{
+	CAMERA_DIR_ZPLUS, //0
+	CAMERA_DIR_YMINUS, //1
+	CAMERA_DIR_YPLUS, //2
+	CAMERA_DIR_XPLUS, //3
+	CAMERA_DIR_ZMINUS, //4
+	CAMERA_DIR_XMINUS, //5
+};
+
 class CameraProperty
 {
 	public:
@@ -240,6 +251,8 @@ class CameraLookAt : public Camera
 		//!Ensure that up direction is perpendicular to view direction
 		void recomputeUpDirection();
 		
+		void repositionAroundTarget(unsigned int direction);
+
 		//!Ensure that the box is visible
 		/*! Face is set by cube net
 					0

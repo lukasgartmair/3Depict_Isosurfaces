@@ -99,10 +99,10 @@ bool affectedBySampling(const Filter *f, bool haveRngParent)
 			affected=haveRngParent;
 			break;
 		}
-		case FILTER_TYPE_COMPOSITION:
+		case FILTER_TYPE_PROFILE:
 		{
 			FilterProperty p;
-			p=props.getPropValue(COMPOSITION_KEY_NORMALISE);
+			p=props.getPropValue(PROFILE_KEY_NORMALISE);
 
 			//If using normalise mode, and we do not have a range parent
 			//then filter is in "density" plotting mode, which is affected by
@@ -270,7 +270,7 @@ void FilterTreeAnalyse::spatialSampling(const FilterTree &f)
 	//filter. 
 	vector<int> affectedFilters;
 	affectedFilters.push_back(FILTER_TYPE_CLUSTER_ANALYSIS); //If have range parent
-	affectedFilters.push_back(FILTER_TYPE_COMPOSITION); //If using density
+	affectedFilters.push_back(FILTER_TYPE_PROFILE); //If using density
 	affectedFilters.push_back(FILTER_TYPE_SPATIAL_ANALYSIS); 
 	affectedFilters.push_back(FILTER_TYPE_IONINFO); 
 
@@ -529,10 +529,10 @@ bool filterAffectedByComposition(const Filter *f, bool haveRngParent)
 			affected=haveRngParent;
 			break;
 		}
-		case FILTER_TYPE_COMPOSITION:
+		case FILTER_TYPE_PROFILE:
 		{
 			FilterProperty p;
-			p=props.getPropValue(COMPOSITION_KEY_NORMALISE);
+			p=props.getPropValue(PROFILE_KEY_NORMALISE);
 
 			//Affected if using normalise mode, and we do have a range parent
 			affected= (p.data== "1" && haveRngParent);
@@ -556,7 +556,7 @@ void FilterTreeAnalyse::compositionAltered(const FilterTree &f)
 	//filter. 
 	vector<int> affectedFilters;
 	affectedFilters.push_back(FILTER_TYPE_CLUSTER_ANALYSIS); //If have range parent
-	affectedFilters.push_back(FILTER_TYPE_COMPOSITION); //By definition
+	affectedFilters.push_back(FILTER_TYPE_PROFILE); //By definition
 	affectedFilters.push_back(FILTER_TYPE_IONINFO); //If using composition 
 
 	const tree<Filter *> &treeFilt=f.getTree();

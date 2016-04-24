@@ -31,6 +31,10 @@
 	#define NO_GSL
 #endif
 
+#ifdef __APPLE__
+	#define typeof __typeof__
+#endif
+
 //Use config header to determine if we need to enable mgl2 support
 #include "../config.h"
 #include <mgl2/mgl.h>

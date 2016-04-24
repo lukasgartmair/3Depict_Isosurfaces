@@ -23,6 +23,8 @@
 
 #include <sys/time.h>
 
+#include <gsl/gsl_blas.h>
+
 using std::string;
 using std::vector;
 
@@ -161,6 +163,15 @@ const Point3D Point3D::operator/(float scale) const
 	return tmpPt;
 }
 
+const Point3D Point3D::operator/(const Point3D &pt) const
+{
+	Point3D tmpPt;
+	for(unsigned int ui=0;ui<3;ui++)
+		tmpPt.value[ui] = value[ui]/pt[ui];
+
+	return tmpPt;
+}
+
 float Point3D::sqrDist(const Point3D &pt) const
 {
 	return (pt.value[0]-value[0])*(pt.value[0]-value[0])+
@@ -244,7 +255,21 @@ void Point3D::negate()
 
 float Point3D::angle(const Point3D &pt) const
 {
-	return acos(dotProd(pt)/(sqrtf(sqrMag()*pt.sqrMag())));
+#ifndef EQ_TOL
+	#define EQ_TOL(f,g) (fabs( (f) - (g)) < sqrtf(std::numeric_limits<float>::epsilon()))
+#endif
+	//Check for near degenerate case. Acos does not appreciate small arguments in the dot product.
+	if( EQ_TOL(pt.value[0] , value[0]) &&  
+		 EQ_TOL(pt.value[1] , value[1]) &&  
+		 EQ_TOL(pt.value[2] , value[2]) )  
+		return 0;
+	double param = dotProd(pt)/sqrtf(sqrMag()*pt.sqrMag());
+
+	//trap the domain - on some systems, there are tolerance problems here
+	if(param > 1.0f || param < -1.0f)
+		return M_PI;
+	else
+		return acos(param); 
 }
 
 
@@ -922,4 +947,82 @@ double pyramidVol(const Point3D *planarPts, const Point3D &apex)
 	return 1.0/6.0 * (fabs(det3by3(simplexA)));	
 }
 
+void computeRotationMatrix(const Point3D &ur1, const Point3D &ur2,
+	const Point3D &r1, const Point3D &r2, gsl_matrix *m)
+{
+	//TRIAD algorithm, for determining rotation matrix from two
+	// linearly independant vector pairs.
+	// This is a specific case of "Wahba's Problem", where no noise is present
+
+	//unrotated and rotated vectors should be linearly independant
+	ASSERT(ur1.crossProd(ur2).sqrMag() < 0.001);
+	ASSERT(r1.crossProd(r2).sqrMag() < 0.001);
+
+	//vectors should be pre-normalised
+//	ASSERT(TOL_EQ(ur1.sqrMag(),1) && TOL_EQ(ur2.sqrMag(),1));
+//	ASSERT(TOL_EQ(r1.sqrMag(),1) && TOL_EQ(r2.sqrMag(),1));
+
+//	ASSERT(gsl_matrix_num_rows(m) == 3);
+//	ASSERT(gsl_matrix_num_cols(m) == 3);
+
+	Point3D rCross,urCross;
+	rCross = r1.crossProd(r2);
+	urCross = ur1.crossProd(r2);
+
+	gsl_matrix *a,*b;
+	a = gsl_matrix_alloc(3,3);
+	b = gsl_matrix_alloc(3,3);
+
+	for(unsigned int ui=0;ui<3;ui++)
+	{
+		//build A matrix, row by row
+		gsl_matrix_set(a,ui,0,ur1[ui]);
+		gsl_matrix_set(a,ui,1,ur2[ui]);
+		gsl_matrix_set(a,ui,2,urCross[ui]);
+
+		//build B^T matrix, row by row
+		gsl_matrix_set(b,0,ui,r1[ui]);
+		gsl_matrix_set(b,1,ui,r2[ui]);
+		gsl_matrix_set(b,2,ui,rCross[ui]);
+
+	}
+
+	//Compute m = a*b;
+	gsl_blas_dgemm (CblasNoTrans, CblasNoTrans,
+			    1.0, a, b,
+			    0.0, m);
+
+	gsl_matrix_free(a);
+	gsl_matrix_free(b);
+
+}
+
+void rotateByMatrix(const vector<Point3D> &vpts, const gsl_matrix *m, vector<Point3D> &r)
+{
+	r.resize(vpts.size());
+
+	gsl_vector *v = gsl_vector_alloc(3);
+	gsl_vector *rv = gsl_vector_alloc(3);
+
+
+	for(unsigned int ui=0;ui<vpts.size();ui++)
+	{
+		gsl_vector_set(v,0,vpts[ui][0]);
+		gsl_vector_set(v,1,vpts[ui][1]);
+		gsl_vector_set(v,2,vpts[ui][2]);
+
+		//compute v = m * pY;
+		gsl_blas_dgemv(CblasNoTrans,1.0, m, v,0,rv);
+
+		r[ui][0] = gsl_vector_get(rv,0);
+		r[ui][1] = gsl_vector_get(rv,1);
+		r[ui][2] = gsl_vector_get(rv,2);
+	}
+
+
+	gsl_vector_free(v);
+	gsl_vector_free(rv);
+}
+
+	
 

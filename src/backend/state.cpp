@@ -285,7 +285,8 @@ bool AnalysisState::save(const char *cpFilename, std::map<string,string> &fileMa
 	return true;
 }
 
-bool AnalysisState::load(const char *cpFilename, bool doMerge,std::ostream &errStream ) 
+
+bool AnalysisState::loadInternal(const char *cpFilename, bool doMerge, std::ostream &errStream)
 {
 	if(doMerge)
 	{
@@ -561,6 +562,7 @@ bool AnalysisState::load(const char *cpFilename, bool doMerge,std::ostream &errS
 				errStream<< TRANS("Unable to interpret property \"value\"  for \"cameras->active\" node.") << endl;
 				throw 1;
 			}
+			xmlFree(xmlString);
 
 		
 			//Spin through the list of each camera	
@@ -590,7 +592,29 @@ bool AnalysisState::load(const char *cpFilename, bool doMerge,std::ostream &errS
 				}
 
 				ASSERT(thisCam);
-				newCameraVec.push_back(thisCam);	
+
+				//Discard any cameras that are non-unique There is a bug in some of the writer functions,
+				// so we can receive invalid data. We have to enforce validity
+				bool haveCameraAlready;
+				haveCameraAlready=false;
+				for(unsigned int ui=0; ui<newCameraVec.size() ; ui++)
+				{
+					if(thisCam->getUserString() == newCameraVec[ui]->getUserString())
+					{
+						haveCameraAlready=true;
+#ifdef DEBUG
+						cerr << "Found duplicate camera, ignoring" << endl;
+	#endif
+						break;
+					} 
+				}
+				if(!haveCameraAlready)
+					newCameraVec.push_back(thisCam);
+				else
+				{
+					delete thisCam;
+					thisCam=0;
+				}	
 			}
 
 
@@ -603,6 +627,8 @@ bool AnalysisState::load(const char *cpFilename, bool doMerge,std::ostream &errS
 
 		if(newCameraVec.size() < activeCamera)
 			activeCamera=0;
+		
+
 
 		//Now the cameras are loaded into a temporary vector. We will 
 		// copy them into the scene soon
@@ -816,7 +842,6 @@ bool AnalysisState::load(const char *cpFilename, bool doMerge,std::ostream &errS
 	//"invisible" to the UI
 	Camera *c=new CameraLookAt();
 	savedCameras.push_back(c);
-	activeCamera=0;
 	bool defaultSet = false;
 	//spin through
 	for(unsigned int ui=0;ui<newCameraVec.size();ui++)
@@ -875,6 +900,17 @@ bool AnalysisState::load(const char *cpFilename, bool doMerge,std::ostream &errS
 	setStateModifyLevel(STATE_MODIFIED_NONE);
 
 	//Perform sanitisation on results
+	return true;
+}
+
+bool AnalysisState::load(const char *cpFilename, bool doMerge,std::ostream &errStream ) 
+{
+	AnalysisState otherState;
+	if(!otherState.loadInternal(cpFilename,doMerge,errStream))
+		return false;
+
+	*this=otherState;
+
 	return true;
 }
 
@@ -977,12 +1013,10 @@ void AnalysisState::removeCam(size_t offset)
 	setStateModifyLevel(STATE_MODIFIED_ANCILLARY);
 
 	ASSERT(offset < savedCameras.size());
+	delete savedCameras[offset];
 	savedCameras.erase(savedCameras.begin()+offset);
 	if(activeCamera >=savedCameras.size())
-	{
-		ASSERT(savedCameras.size())
-		activeCamera=savedCameras.size()-1;
-	}
+		activeCamera=0;
 }
 
 void AnalysisState::addCamByClone(const Camera *c)
@@ -1174,7 +1208,7 @@ void AnalysisState::eraseStash(size_t offset)
 	setStateModifyLevel(STATE_MODIFIED_ANCILLARY);
 	stashedTrees.erase(stashedTrees.begin() + offset);
 }
-		
+
 void AnalysisState::eraseStashes(std::vector<size_t> &offsets)
 {
 	std::sort(offsets.begin(),offsets.end());
@@ -1190,6 +1224,7 @@ void AnalysisState::eraseStashes(std::vector<size_t> &offsets)
 		stashedTrees.erase(stashedTrees.begin() + offsets[ui]);
 	}
 }
+		
 bool AnalysisState::hasStateOverrides() const
 {
 	if(treeState.hasStateOverrides())
@@ -1209,7 +1244,7 @@ void TreeState::operator=(const TreeState &oth)
 #ifdef DEBUG
 	//Should not be refreshing
 	wxMutexLocker lock(amRefreshing);
-	ASSERT(!lock.IsOk());
+	ASSERT(lock.IsOk());
 #endif
 	filterTree=oth.filterTree;	
 	
@@ -1218,7 +1253,6 @@ void TreeState::operator=(const TreeState &oth)
 	redoFilterStack=oth.redoFilterStack;
 	undoFilterStack=oth.undoFilterStack;
 	
-	fta=oth.fta;
 	selectionDevices=oth.selectionDevices;
 	pendingUpdates=oth.pendingUpdates;
 	
@@ -1568,6 +1602,17 @@ void TreeState::applyBindingsToTree()
 bool TreeState::hasUpdates() const
 {
 	return pendingUpdates;
+}
+bool TreeState::hasMonitorUpdates() const
+{
+	for(tree<Filter *>::iterator it=filterTree.depthBegin(); 
+			it!=filterTree.depthEnd();++it)
+	{
+		if((*it)->monitorNeedsRefresh())
+			return true;
+	}
+
+	return false;
 }
 
 

@@ -68,9 +68,9 @@ enum{
 //Interpolation mode for slice 
 enum
 {
-	SLICE_INTERP_NONE,
-	SLICE_INTERP_LINEAR,
-	SLICE_INTERP_ENUM_END
+	VOX_INTERP_NONE,
+	VOX_INTERP_LINEAR,
+	VOX_INTERP_ENUM_END
 };
 
 enum{
@@ -113,6 +113,8 @@ static const bool *voxelsWantAbort;
 /*! To instantiate this class, objects must have
  * basic mathematical operators, such as * + - and =
  */
+//FIXME: Cross check all algorithsm agree that the centre of the voxel is 
+// where the data value is located
 template<class T> class Voxels
 {
 	private:
@@ -146,7 +148,7 @@ template<class T> class Voxels
 
 		//!Set the value of a point in the dataset
 		void setPoint(const Point3D &pt, const T &val);
-		//!Retrieve the value of a datapoint
+		//!Retrieve the value of a datapoint, this is rounded to the nearest voxel
 		T getPointData(const Point3D &pt) const;
 
 
@@ -164,6 +166,7 @@ template<class T> class Voxels
 				size_t y, size_t z) const;
 		//!Retrieve the value of a specific voxel
 		inline T getData(size_t x, size_t y, size_t z) const;
+		inline T getData(size_t *array) const;
 		//!Retrieve value of the nth voxel
 		inline T getData(size_t i) const { return voxels[i];}
 
@@ -175,6 +178,9 @@ template<class T> class Voxels
 		//!Set the value of nth point in the dataset
 		void setData(size_t n, const T &val);
 
+		//Obtain an interpolated entry. The interpolated values are obtained by padding
+		void getInterpolatedData(const Point3D &pt, T &v) const;
+
 		//Perform in-place gaussian smoothing
 		void isotropicGaussianSmooth(float stdev,float windowRatio);
 
@@ -183,7 +189,7 @@ template<class T> class Voxels
 
 		//get an interpolated slice from a section of the data
 		void getInterpSlice(size_t normal, float offset, T *p, 
-			size_t interpMode=SLICE_INTERP_NONE) const;
+			size_t interpMode=VOX_INTERP_NONE) const;
 
 		//Get a specific slice, from an integral offset in the data, no interp
 		void getSlice(size_t normal, size_t offset, T *p) const;
@@ -260,7 +266,7 @@ template<class T> class Voxels
 
 		//!Fill all voxels with a given value
 		void fill(const T &val);
-		//!Get the bounding size
+		//!Get the bounding box vertex (min/max) 
 		Point3D getMinBounds() const;
 		Point3D getMaxBounds() const;
 		//Obtain the ounds for a specified axis
@@ -1143,7 +1149,7 @@ T Voxels<T>::getSum(const T &initialValue) const
 
 	T tmp(initialValue);
 	size_t n=voxels.size();
-#pragma omp parallel for
+#pragma omp parallel for reduction(+:tmp)
 	for(size_t ui=0;ui<n;ui++)
 		tmp+=voxels[ui];
 
@@ -1505,16 +1511,14 @@ void Voxels<T>::getInterpSlice(size_t normal, float offset,
 	//Obtain the appropriately interpolated slice
 	switch(interpMode)
 	{
-		case SLICE_INTERP_NONE:
+		case VOX_INTERP_NONE:
 		{
 			size_t slicePos;
 			slicePos=roundf(offset*binCount[normal]);
-			if(slicePos == binCount[normal])
-				slicePos--;
 			getSlice(normal,slicePos,p);
 			break;
 		}
-		case SLICE_INTERP_LINEAR:
+		case VOX_INTERP_LINEAR:
 		{
 			//Find the upper and lower bounds
 			size_t sliceUpper,sliceLower;;
@@ -1546,6 +1550,59 @@ void Voxels<T>::getInterpSlice(size_t normal, float offset,
 	}
 
 }
+
+//FIXME: I think this has a slight shift as we are moving the data voxels
+// definition of the voxel centre by 1/2 a pitch, I think
+template<class T>
+void Voxels<T>::getInterpolatedData(const Point3D &p, T &v) const
+
+{
+#ifdef DEBUG
+	BoundCube bc(minBound,maxBound);
+	ASSERT(bc.containsPt(p));
+#endif
+
+	size_t index[3];
+	getIndex(index[0],index[1],index[2],p);
+
+	Point3D pitch =getPitch();
+	
+	//Find the offset to the voxel that we are in.
+	//fraction should be in range [0,1)
+	Point3D fraction = p - (minBound + Point3D(index[0],index[1],index[2])*pitch);
+	fraction =fraction/pitch;
+
+
+	size_t iPlus[3];
+	//0.5 corresponds to voxel centre.
+	for(unsigned int ui=0;ui<3;ui++)
+	{
+		if(index[ui] == (binCount[ui]-1))
+			iPlus[ui]=0;
+		else
+			iPlus[ui]=1;
+	}	
+	
+
+	float c[2][2];
+	//Tri-linear interpolation
+
+	//interpolate data values at cube vertices that surround point. We are coming from below the point
+	// so we are simply extending the field on the upper edge by duplicating values as needed
+	for(unsigned int ui=0;ui<4;ui++)
+	{
+		c[(ui&1)][(ui&2)>>1] = getData( index[0],index[1]+ iPlus[1]*(ui&1),index[2] + iPlus[2]*(ui&2) )*(1-fraction[0]) 
+				+  getData(index[0]+iPlus[0],index[1]+ iPlus[1]*(ui&1),index[2] + iPlus[2]*(ui&2));
+	}
+
+
+	float c0,c1;
+	c0 = c[0][0]*(1-fraction[1]) + c[1][0]*fraction[1];
+	c1 = c[0][1]*(1-fraction[1]) + c[1][1]*fraction[1];
+
+	v= c0*(1-fraction[2])*c1;	
+	
+}	
 
 template<class T>
 void Voxels<T>::isotropicGaussianSmooth(float stdev,float windowRatio)

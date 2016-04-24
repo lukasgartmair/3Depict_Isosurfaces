@@ -103,12 +103,19 @@ BasicGLPane::BasicGLPane(wxWindow* parent) : wxGLCanvas(parent, wxID_ANY,  attri
 	lastMoveShiftDown=false;
 	selectionMode=false;
 	lastKeyFlags=lastMouseFlags=0;
+
+#ifdef __APPLE__
+	requireContextUpdate=false;
+#endif
+
 }
 
 BasicGLPane::~BasicGLPane()
 {
 	keyDoubleTapTimer->Stop();
 	delete keyDoubleTapTimer;
+	if(context)
+		delete context;
 }
 
 bool BasicGLPane::displaySupported() const
@@ -709,6 +716,10 @@ void BasicGLPane::resized(wxSizeEvent& evt)
 	prepare3DViewport(0,0,getWidth(),getHeight()); 
 	wxClientDC *dc=new wxClientDC(this);
 	Refresh();
+
+#ifdef __APPLE__
+	requireContextUpdate=true;
+#endif
 	delete dc;
 }
  
@@ -774,6 +785,9 @@ void BasicGLPane::render( wxPaintEvent& evt )
 	{
 		context = new wxGLContext(this);
 		SetCurrent(*context);
+#ifdef __APPLE__
+		requireContextUpdate=false;
+#endif	
 	}
 
 	if(!paneInitialised)
@@ -781,6 +795,19 @@ void BasicGLPane::render( wxPaintEvent& evt )
 		paneInitialised=true;
 		prepare3DViewport(0,0,getWidth(),getHeight()); 
 	}
+
+//Apple requires a context update on each resize, for some reason
+// https://developer.apple.com/library/mac/documentation/GraphicsImaging/Conceptual/OpenGL-MacProgGuide/opengl_contexts/opengl_contexts.html
+//and
+// https://forums.wxwidgets.org/viewtopic.php?f=23&t=41592&p=168346
+#ifdef __APPLE__
+	if(requireContextUpdate)
+	{
+		SetCurrent(*context);
+		prepare3DViewport(0,0,getWidth(),getHeight()); 
+		requireContextUpdate=false;
+	}
+#endif
 
 	wxPaintDC(this); 
 	currentScene->draw();
@@ -1054,8 +1081,11 @@ bool BasicGLPane::saveImage(unsigned int width, unsigned int height,
 		//FIXME: HACK - using "blue screen" effect
 		//don't use background as mask colour.
 		// use depth buffer or gl alpha
-		const unsigned char mask[3] = {(unsigned char)rClear*255.0f,
-				(unsigned char)gClear*255.0f,(unsigned char)bClear*255.0f};
+		unsigned char clear[3];
+		clear[0] = (unsigned char)rClear*255.0f;
+		clear[1] = (unsigned char)gClear*255.0f;
+		clear[2] = (unsigned char)bClear*255.0f;
+		const unsigned char *mask = clear;
 		copyRGBAtoWXImage(width,height,imageBuffer,imageOverlay,mask);
 
 		free(imageBuffer);

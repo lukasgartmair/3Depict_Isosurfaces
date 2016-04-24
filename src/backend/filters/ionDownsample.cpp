@@ -268,7 +268,6 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 					d->b =((IonStreamData *)dataIn[ui])->b;
 					d->a =((IonStreamData *)dataIn[ui])->a;
 					d->ionSize =((IonStreamData *)dataIn[ui])->ionSize;
-					d->representationType=((IonStreamData *)dataIn[ui])->representationType;
 					d->valueType=((IonStreamData *)dataIn[ui])->valueType;
 
 					//getOut is const, so shouldn't be modified
@@ -403,7 +402,6 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 						d->b =input->b;
 						d->a =input->a;
 						d->ionSize =input->ionSize;
-						d->representationType=input->representationType;
 						d->valueType=input->valueType;
 
 

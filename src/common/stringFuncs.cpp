@@ -140,6 +140,34 @@ bool boolStrDec(const std::string &s, bool &b)
 	return true;
 }
 
+
+void splitFileData(const std::string &fileWithPath, std::string &path, std::string &basename, std::string &extension)
+{
+	path.clear(); basename.clear(); extension.clear();
+
+	if(fileWithPath.empty())
+		return;
+
+	basename= onlyFilename(fileWithPath);
+	path = onlyDir(fileWithPath);
+
+	unsigned int extPosition=-1;
+	for(unsigned int ui=basename.size();ui--;)
+	{
+		if(basename[ui] =='.')
+		{
+			extPosition=ui;
+			break;
+		}
+		
+	} 
+
+	if(extPosition != (size_t)-1)
+	{
+		extension = basename.substr(extPosition+1,basename.size()-(extPosition+1));
+		basename = basename.substr(0,extPosition);
+	}
+}
 std::string onlyFilename( const std::string& path) 
 {
 #if defined(_WIN32) || defined(_WIN64)
@@ -229,7 +257,8 @@ bool genRandomFilename(std::string &s,bool seedRand)
 		retry++;
 	}
 	while(!f && (retry < MAX_RETRY) );
-	return f;
+
+	return f.good();
 
 }
 
@@ -588,6 +617,21 @@ bool testStringFuncs()
 	verStrs.push_back("0.0.blah");
 	TEST(getMaxVerStr(verStrs) == "0.0.9","version string maximum testing");
 	}
+
+#if !(defined(__WIN32) || defined(__WIN64))
+	{
+	string filename;
+	filename="/path/blah.dir/basefile.test.ext";
+	string a,b,c;
+	splitFileData(filename, a,b,c);
+
+	TEST(a == "/path/blah.dir/","path split");	
+	TEST(b == "basefile.test","basename split");	
+	TEST(c == "ext","extension split");	
+	}
+
+#endif
+
 
 	return true;
 }

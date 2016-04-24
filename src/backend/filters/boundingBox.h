@@ -36,9 +36,13 @@ class BoundingBoxFilter : public Filter
 		unsigned int numTicks[3];
 		//!Spacing of ticks (XYZ) if using fixed spacing ticks
 		float tickSpacing[3];
+
+		//!Enable/disable ticks on a given axis
+		bool enableTicks[3];
 		//!Font size
 		unsigned int fontSize;
-
+		//!Should we use absolute coordinate values in box labels?
+		bool absoluteCoords;
 		//!Line colour
 		ColourRGBAf lineColour;
 		//!Line width 

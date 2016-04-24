@@ -54,6 +54,9 @@ void writeIonsEnabledXML(ostream &f, const char *containerName,
 		const vector<bool> &enabledState, const vector<string> &names, 
 			unsigned int depth)
 {
+	if(enabledState.size()!=names.size())
+		return;
+
 	f << tabs(depth) << "<" << containerName << ">"  << endl;
 	for(size_t ui=0;ui<enabledState.size();ui++)
 	{
@@ -63,6 +66,31 @@ void writeIonsEnabledXML(ostream &f, const char *containerName,
 	f << tabs(depth) << "</" << containerName << ">"  << endl;
 }
 
+void readIonsEnabledXML(xmlNodePtr nodePtr,  vector<bool> &enabledStatus,vector<string> &ionNames)
+{
+	//skip conatainer name
+	nodePtr=nodePtr->xmlChildrenNode;
+
+	if(!nodePtr)
+		return;
+
+	enabledStatus.clear();
+	while(!XMLHelpFwdToElem(nodePtr,"ion"))
+	{
+		int enabled;
+		if(!XMLGetAttrib(nodePtr,enabled,"enabled"))
+			return ;
+
+		std::string tmpName;
+		if(!XMLGetAttrib(nodePtr,tmpName,"name"))
+			return;
+	
+		enabledStatus.push_back(enabled);
+		
+		ionNames.push_back(tmpName);
+	}
+	
+}
 bool readVectorsXML(xmlNodePtr nodePtr,	std::vector<Point3D> &vectorParams) 
 {
 	nodePtr=nodePtr->xmlChildrenNode;
@@ -244,63 +272,6 @@ unsigned int getIonstreamIonID(const IonStreamData *d, const RangeFile *r)
 #endif
 
 	return tentativeRange;	
-}
-
-//!Extend a point data vector using some ion data
-unsigned int extendPointVector(std::vector<Point3D> &dest, const std::vector<IonHit> &vIonData,
-				unsigned int &progress, size_t offset)
-{
-	unsigned int curProg=NUM_CALLBACK;
-	unsigned int n =offset;
-#ifdef _OPENMP
-	//Parallel version
-	bool spin=false;
-	#pragma omp parallel for shared(spin)
-	for(size_t ui=0;ui<vIonData.size();ui++)
-	{
-		if(spin)
-			continue;
-		dest[offset+ ui] = vIonData[ui].getPosRef();
-		
-		//update progress every CALLBACK entries
-		if(!curProg--)
-		{
-			#pragma omp critical
-			{
-			n+=NUM_CALLBACK;
-			progress= (unsigned int)(((float)n/(float)dest.size())*100.0f);
-			if(!omp_get_thread_num())
-			{
-				if(*Filter::wantAbort)
-					spin=true;
-			}
-			}
-		}
-
-	}
-
-	if(spin)
-		return 1;
-#else
-
-	for(size_t ui=0;ui<vIonData.size();ui++)
-	{
-		dest[offset+ ui] = vIonData[ui].getPosRef();
-		
-		//update progress every CALLBACK ions
-		if(!curProg--)
-		{
-			n+=NUM_CALLBACK;
-			progress= (unsigned int)(((float)n/(float)dest.size())*100.0f);
-			if(*(Filter::wantAbort))
-				return 1;
-		}
-
-	}
-#endif
-
-
-	return 0;
 }
 
 

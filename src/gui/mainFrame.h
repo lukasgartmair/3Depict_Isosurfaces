@@ -185,13 +185,14 @@ private:
 	std::map<std::string,size_t> filterMap;
    
 	//TODO: Refactor -  remove me.
-	// True if there are pending updates for the mahthgl window
+	// True if there are pending updates for the mathgl window
 	bool plotUpdates;
 
 	//List of pending messages to show in status bar
 	// first int is priority (eg MESSAGE_ERROR), string is message
 	std::list<std::pair<unsigned int, std::string > > statusQueue;
 protected:
+
     wxTimer *statusTimer; //One-shot timer that is used to clear the status bar
     wxTimer *updateTimer; //Periodically calls itself to check for updates from user interaction
     wxTimer *progressTimer; //Periodically calls itself to refresh progress status
@@ -214,7 +215,9 @@ protected:
 
 
     // begin wxGlade: MainWindowFrame::attributes
+    wxStaticBox* sizerAlignCam_staticbox;
     wxMenuBar* MainFrame_Menu;
+    wxStatusBar* MainFrame_statusbar;
     wxStaticText* lblSettings;
     wxComboBox* comboStash;
     wxButton* btnStashManage;
@@ -240,6 +243,13 @@ protected:
     wxStaticLine* cameraNamePropertySepStaticLine;
     wxPropertyGrid* gridCameraProperties;
     wxPropertyGrid* backCameraPropGrid;
+    wxButton* buttonAlignCamXPlus;
+    wxButton* buttonAlignCamYPlus;
+    wxButton* buttonAlignCamZPlus;
+    wxButton* buttonAlignCamXMinus;
+    wxButton* buttonAlignCamYMinus;
+    wxButton* buttonAlignCamZMinus;
+    wxCheckBox* checkAlignCamResize;
     wxScrolledWindow* noteCamera;
     wxCheckBox* checkPostProcessing;
     wxCheckBox* checkFxCrop;
@@ -297,119 +307,127 @@ protected:
     wxSplitterWindow* splitTopBottom;
     wxPanel* panelRight;
     wxSplitterWindow* splitLeftRight;
-    wxStatusBar* MainFrame_statusbar;
     // end wxGlade
 
     //Set the state for the state menu
     void setSaveStatus();
+    //Perform camera realignment
+    void realignCameraButton(unsigned int direction);
+
 
     DECLARE_EVENT_TABLE();
 
 public:
-    virtual void OnFileOpen(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFileMerge(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFileSave(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFileSaveAs(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFileExportPlot(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFileExportImage(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFileExportIons(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFileExportRange(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFileExit(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnViewControlPane(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnViewRawDataPane(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnHelpHelp(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnHelpContact(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnHelpAbout(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnComboStashText(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnComboStashEnter(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnComboStash(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnTreeEndDrag(wxTreeEvent &event); // wxGlade: <event_handler>
-    virtual void OnTreeKeyDown(wxKeyEvent &event); // wxGlade: <event_handler>
-    virtual void OnTreeSelectionPreChange(wxTreeEvent &event); // wxGlade: <event_handler>
-    virtual void OnTreeSelectionChange(wxTreeEvent &event); // wxGlade: <event_handler>
-    virtual void OnTreeDeleteItem(wxTreeEvent &event); // wxGlade: <event_handler>
-    virtual void OnTreeBeginDrag(wxTreeEvent &event); // wxGlade: <event_handler>
-    virtual void OnBtnExpandTree(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnBtnCollapseTree(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnBtnFilterTreeErrs(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnComboCameraText(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFileOpen(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFileMerge(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFileSave(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFileSaveAs(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFileExportPlot(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFileExportImage(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFileExportIons(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFileExportRange(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnViewBackground(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFileExit(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnEditUndo(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnEditRedo(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnEditRange(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnEditPreferences(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnViewControlPane(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnViewRawDataPane(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnHelpHelp(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnHelpContact(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnHelpAbout(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnComboStashText(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnComboStashEnter(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnComboStash(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnButtonStashDialog(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnTreeEndDrag(wxTreeEvent &event); // wxGlade: <event_handler>
+    void OnTreeKeyDown(wxKeyEvent &event); // wxGlade: <event_handler>
+    void OnTreeDeleteItem(wxTreeEvent &event); // wxGlade: <event_handler>
+    void OnTreeSelectionChange(wxTreeEvent &event); // wxGlade: <event_handler>
+    void OnTreeBeginDrag(wxTreeEvent &event); // wxGlade: <event_handler>
+    void OnTreeSelectionPreChange(wxTreeEvent &event); // wxGlade: <event_handler>
+    void OnBtnExpandTree(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnBtnCollapseTree(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnBtnFilterTreeErrs(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnComboCameraText(wxCommandEvent &event); // wxGlade: <event_handler>
 
-    virtual void OnGridFilterPropertyChange(wxPropertyGridEvent &event); // wxGlade: <event_handler>
-    virtual void OnGridFilterDClick(wxPropertyGridEvent &event); // wxGlade: <event_handler>
-    virtual void OnComboCameraEnter(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnComboCamera(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnGridFilterPropertyChange(wxPropertyGridEvent &event); // wxGlade: <event_handler>
+    void OnGridFilterDClick(wxPropertyGridEvent &event); // wxGlade: <event_handler>
+    void OnComboCameraEnter(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnComboCamera(wxCommandEvent &event); // wxGlade: <event_handler>
     
 
-    virtual void OnEditUndo(wxCommandEvent &event);    
-    virtual void OnEditRedo(wxCommandEvent &event);    
-    virtual void OnEditRange(wxCommandEvent &event);    
-    virtual void OnEditPreferences(wxCommandEvent &event);    
    
-    virtual void OnButtonRemoveCam(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnCheckPostProcess(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFxCropCheck(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFxCropCamFrameCheck(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFxCropAxisOne(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFxCropAxisTwo(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFxStereoEnable(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFxStereoCombo(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnFxStereoBaseline(wxScrollEvent &event); // wxGlade: <event_handler>
-    virtual void OnFxStereoLensFlip(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnButtonStashDialog(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnCheckAlpha(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnCheckLighting(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnCheckCacheEnable(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnCheckWeakRandom(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnCacheRamUsageSpin(wxSpinEvent &event); // wxGlade: <event_handler>
-    virtual void OnSpectraListbox(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnCheckLimitOutput(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnTextLimitOutput(wxCommandEvent &event); // wxGlade: <event_handler>
-    virtual void OnTextLimitOutputEnter(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnButtonRemoveCam(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnButtonAlignCameraXPlus(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnButtonAlignCameraYPlus(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnButtonAlignCameraZPlus(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnButtonAlignCameraXMinus(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnButtonAlignCameraYMinus(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnButtonAlignCameraZMinus(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnCheckPostProcess(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFxCropCheck(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFxCropCamFrameCheck(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFxCropAxisOne(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFxCropAxisTwo(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFxStereoEnable(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFxStereoCombo(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFxStereoBaseline(wxScrollEvent &event); // wxGlade: <event_handler>
+    void OnFxStereoLensFlip(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnCheckAlpha(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnCheckLighting(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnCheckWeakRandom(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnSpectraListbox(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnCheckLimitOutput(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnTextLimitOutput(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnTextLimitOutputEnter(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnCheckCacheEnable(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnCacheRamUsageSpin(wxSpinEvent &event); // wxGlade: <event_handler>
 
-    virtual void OnComboFilterEnter(wxCommandEvent &event); // 
-    virtual void OnComboFilter(wxCommandEvent &event); // 
-    virtual void OnComboFilterText(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnComboFilterEnter(wxCommandEvent &event); // 
+    void OnComboFilter(wxCommandEvent &event); // 
+    void OnComboFilterText(wxCommandEvent &event); // wxGlade: <event_handler>
     
-    virtual void OnStatusBarTimer(wxTimerEvent &event); // 
-    virtual void OnProgressTimer(wxTimerEvent &event);
-    virtual void OnProgressAbort(wxCommandEvent &event);
-    virtual void OnViewFullscreen(wxCommandEvent &event);
-    virtual void OnButtonRefresh(wxCommandEvent &event);
-    virtual void OnButtonGridCopy(wxCommandEvent &event);
-    virtual void OnButtonGridSave(wxCommandEvent &event);
-    virtual void OnRawDataUnsplit(wxSplitterEvent &event);
-    virtual void OnFilterPropDoubleClick(wxSplitterEvent &event);
-    virtual void OnControlUnsplit(wxSplitterEvent &event);
-    virtual void OnControlSplitMove(wxSplitterEvent &event);
-    virtual void OnFilterSplitMove(wxSplitterEvent &event);
-    virtual void OnTopBottomSplitMove(wxSplitterEvent &event);
-    virtual void OnSpectraUnsplit(wxSplitterEvent &event);
-    virtual void OnViewSpectraList(wxCommandEvent &event); 
-    virtual void OnViewPlotLegend(wxCommandEvent &event); 
-    virtual void OnViewWorldAxis(wxCommandEvent &event); 
-    virtual void OnViewBackground(wxCommandEvent &event);
-    virtual void OnClose(wxCloseEvent &evt);
-    virtual void OnComboCameraSetFocus(wxFocusEvent &evt);
-    virtual void OnComboStashSetFocus(wxFocusEvent &evt);
-    virtual void OnNoteDataView(wxNotebookEvent &evt);
-    virtual void OnGridCameraPropertyChange(wxPropertyGridEvent &event); // wxGlade: <event_handler>
+    void OnStatusBarTimer(wxTimerEvent &event); // 
+    void OnProgressTimer(wxTimerEvent &event);
+    void OnProgressAbort(wxCommandEvent &event);
+    void OnViewFullscreen(wxCommandEvent &event);
+    void OnButtonRefresh(wxCommandEvent &event);
+    void OnButtonGridCopy(wxCommandEvent &event);
+    void OnButtonGridSave(wxCommandEvent &event);
+    void OnRawDataUnsplit(wxSplitterEvent &event);
+    void OnFilterPropDoubleClick(wxSplitterEvent &event);
+    void OnControlUnsplit(wxSplitterEvent &event);
+    void OnControlSplitMove(wxSplitterEvent &event);
+    void OnFilterSplitMove(wxSplitterEvent &event);
+    void OnTopBottomSplitMove(wxSplitterEvent &event);
+    void OnSpectraUnsplit(wxSplitterEvent &event);
+    void OnViewSpectraList(wxCommandEvent &event); 
+    void OnViewPlotLegend(wxCommandEvent &event); 
+    void OnViewWorldAxis(wxCommandEvent &event); 
+    void OnClose(wxCloseEvent &evt);
+    void OnComboCameraSetFocus(wxFocusEvent &evt);
+    void OnComboStashSetFocus(wxFocusEvent &evt);
+    void OnNoteDataView(wxNotebookEvent &evt);
+    void OnGridCameraPropertyChange(wxPropertyGridEvent &event); // wxGlade: <event_handler>
 
-    virtual void OnFileExportVideo(wxCommandEvent &event);
-    virtual void OnFileExportFilterVideo(wxCommandEvent &event);
-    virtual void OnFileExportPackage(wxCommandEvent &event);
-    virtual void OnRecentFile(wxCommandEvent &event); // wxGlade: <event_handler>
+    void OnFileExportVideo(wxCommandEvent &event);
+    void OnFileExportFilterVideo(wxCommandEvent &event);
+    void OnFileExportPackage(wxCommandEvent &event);
+    void OnRecentFile(wxCommandEvent &event); // wxGlade: <event_handler>
 
-    virtual void OnTreeBeginLabelEdit(wxTreeEvent &evt);
-    virtual void OnTreeEndLabelEdit(wxTreeEvent &evt);
+    void OnTreeBeginLabelEdit(wxTreeEvent &evt);
+    void OnTreeEndLabelEdit(wxTreeEvent &evt);
     
-    virtual void OnUpdateTimer(wxTimerEvent &evt);
-    virtual void OnAutosaveTimer(wxTimerEvent &evt);
+    void OnUpdateTimer(wxTimerEvent &evt);
+    void OnAutosaveTimer(wxTimerEvent &evt);
 
-    virtual void OnCheckUpdatesThread(wxCommandEvent &evt);
-    virtual void OnFinishRefreshThread(wxCommandEvent &evt);
-    virtual void OnIdle(wxIdleEvent &evt);
+    void OnCheckUpdatesThread(wxCommandEvent &evt);
+    void OnFinishRefreshThread(wxCommandEvent &evt);
+    void OnIdle(wxIdleEvent &evt);
 
-    virtual void SetCommandLineFiles(wxArrayString &files);
+    void SetCommandLineFiles(wxArrayString &files);
 
     //return type of file, based upon heuristic check
     static unsigned int guessFileType(const std::string &file);

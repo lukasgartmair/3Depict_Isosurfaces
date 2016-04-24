@@ -37,7 +37,9 @@ enum
 	KEY_NOISETYPE,
 	KEY_ROTATE_ANGLE,
 	KEY_ROTATE_AXIS,
-	KEY_ORIGIN_VALUE
+	KEY_ORIGIN_VALUE,
+	KEY_CROP_MINIMUM,
+	KEY_CROP_MAXIMUM,
 };
 
 //Possible transform modes (scaling, rotation etc)
@@ -50,6 +52,7 @@ enum
 	MODE_VALUE_SHUFFLE,
 	MODE_SPATIAL_NOISE,
 	MODE_TRANSLATE_VALUE,
+	MODE_CROP_VALUE,
 	MODE_ENUM_END
 };
 
@@ -84,7 +87,8 @@ const char *TRANSFORM_MODE_STRING[] = { NTRANS("Translate"),
 					NTRANS("Rotate"),
 					NTRANS("Value Shuffle"),
 					NTRANS("Spatial Noise"),
-					NTRANS("Translate Value")
+					NTRANS("Translate Value"),
+					NTRANS("Crop Value")
 					};
 
 const char *TRANSFORM_ORIGIN_STRING[]={ 
@@ -277,10 +281,9 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		DrawStreamData *d=makeMarkerSphere(s);
 		if(s)
 			devices.push_back(s);
-		else
-		{
-			cacheAsNeeded(d);
-		}	
+
+		cacheAsNeeded(d);
+		
 		getOut.push_back(d);
 	}
 			
@@ -306,9 +309,10 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 	if( transformMode != MODE_VALUE_SHUFFLE)
 	{
 		//Don't cross the streams. Why? It would be bad.
-		//  - I'm fuzzy on the whole good-bad thing, what do you mean bad?"
+		//  - I'm fuzzy on the whole good-bad thing, what do you mean bad?
 		//  - Every ion in the data body can be operated on independently.
-		//
+		//		FIXME: I'm still not clear why that is bad. Might have something to do with tracking range parent IDs, or somesuch
+		//			may or may not be relevant today 
 		//  OK, important safety tip.
 		size_t n=0;
 		for(unsigned int ui=0;ui<dataIn.size() ;ui++)
@@ -752,6 +756,35 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 					}
 					break;
 				}
+				case MODE_CROP_VALUE:
+				{
+					ASSERT(scalarParams.size() == 2);
+
+					switch(dataIn[ui]->getStreamType())
+					{
+						case STREAM_TYPE_IONS:
+						{
+							//Set up scaling output ion stream 
+							IonStreamData *d=new IonStreamData;
+							d->parent=this;
+							
+							const IonStreamData *src = (const IonStreamData *)dataIn[ui];
+							for(unsigned int uj=0;uj<src->data.size();uj++)
+							{
+								float v;
+								v=src->data[uj].getMassToCharge();
+								if(v >=scalarParams[0] && v < scalarParams[1])
+									d->data.push_back(src->data[uj]);
+							}
+
+							d->estimateIonParameters(src);
+							cacheAsNeeded(d);
+							
+							getOut.push_back(d);
+						}
+					}
+				}
+				break;
 				case MODE_ROTATE:
 				{
 					Point3D origin=vectorParams[0];
@@ -773,12 +806,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 								delete d;
 								return ERR_NOMEM;
 							}
-							d->r = src->r;
-							d->g = src->g;
-							d->b = src->b;
-							d->a = src->a;
-							d->ionSize = src->ionSize;
-							d->valueType=src->valueType;
+
+							d->estimateIonParameters(src);
 
 							//We are going to rotate the incoming point data
 							//around the specified origin.
@@ -968,7 +997,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 					}
 					break;
 				}
-			}
+			
+		}
 		}
 	}
 	else
@@ -994,7 +1024,7 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 		d->b = 0.5;
 		d->a = 0.5;
 		d->ionSize = 2.0;
-		d->valueType=TRANS("Mass-to-Charge (amu/e)");
+		d->valueType=TRANS("Mass-to-Charge (Da/e)");
 
 		size_t curPos=0;
 		
@@ -1316,6 +1346,29 @@ void TransformFilter::getProperties(FilterPropGroup &propertyList) const
 
 			break;	
 		}
+		case MODE_CROP_VALUE:
+		{
+			ASSERT(vectorParams.size() == 0);
+			ASSERT(scalarParams.size() == 2);
+			
+			
+			stream_cast(tmpStr,scalarParams[0]);
+			p.name=TRANS("Min Value");
+			p.data=tmpStr;
+			p.key=KEY_CROP_MINIMUM;
+			p.type=PROPERTY_TYPE_REAL;
+			p.helpText=TRANS("Minimum value to use for crop");
+			propertyList.addProperty(p,curGroup);
+			
+			stream_cast(tmpStr,scalarParams[1]);
+			p.name=TRANS("Max Value");
+			p.data=tmpStr;
+			p.key=KEY_CROP_MAXIMUM;
+			p.type=PROPERTY_TYPE_REAL;
+			p.helpText=TRANS("Maximum value to use for crop");
+			propertyList.addProperty(p,curGroup);
+			break;
+		}
 		default:
 			ASSERT(false);
 	}
@@ -1374,6 +1427,10 @@ bool TransformFilter::setProperty(  unsigned int key,
 					break;
 				case MODE_SPATIAL_NOISE:
 					scalarParams.push_back(0.1f);
+					break;
+				case MODE_CROP_VALUE:
+					scalarParams.push_back(1.0f);
+					scalarParams.push_back(100.0f);
 					break;
 				default:
 					ASSERT(false);
@@ -1464,6 +1521,20 @@ bool TransformFilter::setProperty(  unsigned int key,
 				needUpdate=true;
 				clearCache();
 			}
+			break;
+		}
+		case KEY_CROP_MINIMUM:
+		{
+			ASSERT(scalarParams.size() ==2);
+			if(!applyPropertyNow(scalarParams[0],value,needUpdate))
+				return false;
+			break;
+		}
+		case KEY_CROP_MAXIMUM:
+		{
+			ASSERT(scalarParams.size() ==2);
+			if(!applyPropertyNow(scalarParams[1],value,needUpdate))
+				return false;
 			break;
 		}
 		default:
@@ -1607,6 +1678,11 @@ bool TransformFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 		case MODE_VALUE_SHUFFLE:
 		case MODE_SPATIAL_NOISE:
 			break;
+		case MODE_CROP_VALUE:
+		{
+			if(vectorParams.size() != 0 || scalarParams.size() !=2)
+				return false;
+		}
 		default:
 			ASSERT(false);
 			return false;

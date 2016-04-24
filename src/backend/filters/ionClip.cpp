@@ -442,7 +442,6 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 						d->b =((IonStreamData *)dataIn[ui])->b;
 						d->a =((IonStreamData *)dataIn[ui])->a;
 						d->ionSize =((IonStreamData *)dataIn[ui])->ionSize;
-						d->representationType=((IonStreamData *)dataIn[ui])->representationType;
 
 						//getOut is const, so shouldn't be modified
 						cacheAsNeeded(d);
@@ -467,6 +466,8 @@ unsigned int IonClipFilter::refresh(const std::vector<const FilterStreamData *> 
 			delete d;
 		return BAD_ALLOC;
 	}
+
+	progress.filterProgress=100;
 	return 0;
 
 }

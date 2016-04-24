@@ -370,7 +370,7 @@ public:
     //!Get the bounds
     void getBounds(Point3D &low, Point3D &high) const ;
 
-    //!Return the size
+    //!Return the size of the cube along the specified dimension
     float getSize(unsigned int dim) const;
 
     //! Returns true if all bounds are valid
@@ -395,7 +395,7 @@ public:
 
     //Set & set-like operations
     //!Checks if a point intersects a sphere of centre Pt, radius^2 sqrRad
-    bool intersects(const Point3D &pt, float sqrRad);
+    bool intersects(const Point3D &pt, float sqrRad) const;
    
     //Create a union of two bounding cubes, which is itself a cube 
     BoundCube makeUnion(const BoundCube &b) const;
@@ -428,8 +428,15 @@ public:
     void expand(const Point3D &p);
     //!Expand by a specified thickness 
     void expand(float v);
+    //!Obtain a corner point of the cube
+    Point3D getVertex(unsigned int idx) const;
     //!Obtain the corner points of the cube
     void getVertices(std::vector<Point3D> &p,bool centre=false) const;
+	
+    //!Obtain the vertices that arise from the intersection of a plane with the cube
+    void getPlaneIntersectVertices(const Point3D &planeOrigin, 
+	const Point3D &normal, std::vector<Point3D> &intersectPts) const;
+
     friend  std::ostream &operator<<(std::ostream &stream, const BoundCube& b);
 
     //FIXME: Hack!

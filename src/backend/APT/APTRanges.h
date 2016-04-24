@@ -204,6 +204,11 @@ class RangeFile
 		bool range(std::vector<IonHit> &ionHits,
 				std::string shortIonName);
 
+		//!Clip out only a specific subset of ions
+		// Selected ions *MUST* be of the same size as getNumIons()
+		void rangeByIon(const std::vector<IonHit> & ions,
+			const std::vector<bool> &selectedIons, std::vector<IonHit> &output) const;
+
 		//!Clips out ions that dont lie in the specified range number 
 		/*! Returns false if the range does not exist 
 		 *  any in the rangefile (case sensitive) 
