@@ -1161,7 +1161,8 @@ bool AnnotateFilter::setProperty(  unsigned int key,
 		case KEY_LINESIZE:
 		{
 			float tmp;
-			stream_cast(tmp,value);
+			if(stream_cast(tmp,value))
+				return false;
 
 			if(tmp == lineSize || tmp <0)
 				return false;

@@ -1052,6 +1052,8 @@ bool qhullTest()
 	// The definition is set in qhull/mem.h
 	COMPILE_ASSERT(sizeof(ptr_intT) == sizeof(long long))
 #endif
+
+	return true;
 }
 
 

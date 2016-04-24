@@ -347,7 +347,9 @@ bool IonColourFilter::setProperty(  unsigned int key,
 		case KEY_IONCOLOURFILTER_MAPSTART:
 		{
 			float tmpBound;
-			stream_cast(tmpBound,value);
+			if(stream_cast(tmpBound,value))
+				return false;
+
 			if(tmpBound >=mapBounds[1])
 				return false;
 

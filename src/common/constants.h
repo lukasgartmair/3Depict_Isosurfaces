@@ -71,8 +71,6 @@ struct PLOT_ERROR
 	unsigned int mode;
 	//!Number of data points for moving average
 	unsigned int movingAverageNum;
-	//!Edge mode
-	unsigned int edgeMode;
 };
 
 extern const char *RANGEFILE_WX_CONSTANT;

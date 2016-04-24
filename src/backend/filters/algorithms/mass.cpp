@@ -255,6 +255,7 @@ bool testBackgroundFitMaths()
 	}	
 	//---
 
+	delete ionData;
 	return true;	
  }
 #endif

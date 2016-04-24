@@ -1239,12 +1239,9 @@ void MainWindowFrame::OnDropFiles(const wxArrayString &files, int x, int y)
 			//If command down, load first file using this,
 			//then merge the rest
 			if(!loaded)
-			{
-				if(loadFile(files[ui],!wxm.CmdDown()))
-					loaded=true;
-			}
+				loaded=loadFile(files[ui],!wxm.CmdDown());
 			else
-				loadFile(files[ui],true);
+				loaded=loadFile(files[ui],true);
 		}
 	}
 

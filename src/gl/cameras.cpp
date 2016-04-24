@@ -745,8 +745,6 @@ bool CameraLookAt::setProperty(unsigned int key, const string &value)
 				return false;
 			}
 			
-			if(ltmp>=PROJECTION_MODE_ENUM_END)
-				return false;
 			
 			projectionMode=ltmp;
 			

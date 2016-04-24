@@ -1682,6 +1682,7 @@ bool TransformFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 		{
 			if(vectorParams.size() != 0 || scalarParams.size() !=2)
 				return false;
+			break;
 		}
 		default:
 			ASSERT(false);

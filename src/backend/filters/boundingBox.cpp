@@ -238,14 +238,15 @@ void BoundingBoxFilter::drawTicks(const BoundCube &bTotal, DrawStreamData *d) co
 
 	}
 
-	DrawGLText *dT; 
-	if(threeDText)
-		dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_POLYGON);
-	else
-		dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_BITMAP);
 
 	if(!absoluteCoords && tickSet)
 	{
+		DrawGLText *dT; 
+		if(threeDText)
+			dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_POLYGON);
+		else
+			dT = new DrawGLText(getDefaultFontFile().c_str(),FTGL_BITMAP);
+
 		//Handle "0" text value
 		dT->setString("0");
 		
