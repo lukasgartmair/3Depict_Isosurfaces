@@ -1,4 +1,4 @@
-* ?? ??? 2016 : 0.0.19
+* ?? Jun 2016 : 0.0.19
 	Features:
 	- New "Local concentration" algorithm in spatial analysis filter 
 	- Add text and VTK export to Export Pos dialog
@@ -29,8 +29,8 @@
 	- Fix name collision detection in package export
 		- will now check for origin of file, not just name
 	- Fix race bug in voxel summation, caught by unit tests.
-	- Various fixes for state file loading 
 
+* 05 Apr 2015 : 0.0.18
 * 05 Apr 2015 : 0.0.18
 	Features:
 	- User interface now uses its own CPU. Should be much more
