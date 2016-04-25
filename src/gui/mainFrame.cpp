@@ -5829,12 +5829,12 @@ void MainWindowFrame::do_layout()
 #endif
     cropFxSizer->Add(checkFxCrop, 0, wxALL, 6);
     cropFxSizer->Add(checkFxCropCameraFrame, 0, wxLEFT, 15);
-    sizerFxCropLHS->Add(comboFxCropAxisOne, 0, wxRIGHT|wxBOTTOM|wxEXPAND|wxALIGN_CENTER_HORIZONTAL, 5);
-    sizerFxCropLHS->Add(panelFxCropOne, 1, wxRIGHT|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
-    cropFxBodyCentreSizer->Add(sizerFxCropLHS, 1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 0);
+    sizerFxCropLHS->Add(comboFxCropAxisOne, 0, wxRIGHT|wxBOTTOM|wxEXPAND, 5);
+    sizerFxCropLHS->Add(panelFxCropOne, 1, wxRIGHT|wxEXPAND| 5);
+    cropFxBodyCentreSizer->Add(sizerFxCropLHS, 1, wxEXPAND, 0);
     sizerFxCropRHS->Add(comboFxCropAxisTwo, 0, wxLEFT|wxBOTTOM|wxEXPAND, 5);
-    sizerFxCropRHS->Add(panelFxCropTwo, 1, wxLEFT|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
-    cropFxBodyCentreSizer->Add(sizerFxCropRHS, 1, wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 0);
+    sizerFxCropRHS->Add(panelFxCropTwo, 1, wxLEFT|wxEXPAND, 5);
+    cropFxBodyCentreSizer->Add(sizerFxCropRHS, 1, wxEXPAND, 0);
     cropFxSizer->Add(cropFxBodyCentreSizer, 1, wxLEFT|wxRIGHT|wxTOP|wxEXPAND, 5);
     sizerFxCropGridLow->Add(labelFxCropDx, 0, wxALIGN_RIGHT|wxALIGN_CENTER_VERTICAL, 0);
     sizerFxCropGridLow->Add(textFxCropDx, 0, 0, 0);
@@ -5847,7 +5847,7 @@ void MainWindowFrame::do_layout()
     sizerFxCropGridLow->AddGrowableRow(2);
     sizerFxCropGridLow->AddGrowableCol(0);
     sizerFxCropGridLow->AddGrowableCol(1);
-    cropFxSizer->Add(sizerFxCropGridLow, 0, wxBOTTOM|wxEXPAND|wxALIGN_CENTER_HORIZONTAL|wxALIGN_CENTER_VERTICAL, 5);
+    cropFxSizer->Add(sizerFxCropGridLow, 0, wxBOTTOM|wxEXPAND, 5);
     noteFxPanelCrop->SetSizer(cropFxSizer);
     sizerFxStereo->Add(checkFxEnableStereo, 0, wxLEFT|wxTOP, 6);
     sizerFxStereo->Add(20, 20, 0, 0, 0);
@@ -5874,7 +5874,7 @@ void MainWindowFrame::do_layout()
     sizer_1->Add(textLimitOutput, 0, wxLEFT, 4);
     sizerTools->Add(sizer_1, 0, wxLEFT|wxEXPAND, 5);
     sizerTools->Add(checkCaching, 0, wxLEFT|wxTOP|wxBOTTOM, 5);
-    sizerToolsRamUsage->Add(labelMaxRamUsage, 0, wxRIGHT|wxALIGN_RIGHT, 5);
+    sizerToolsRamUsage->Add(labelMaxRamUsage, 0, wxRIGHT|wxALIGN_VERTICAL, 5);
     sizerToolsRamUsage->Add(spinCachePercent, 0, 0, 5);
     sizerTools->Add(sizerToolsRamUsage, 1, wxTOP|wxEXPAND, 5);
     noteTools->SetSizer(sizerTools);

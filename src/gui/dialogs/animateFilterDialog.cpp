@@ -168,7 +168,7 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
     outputDataSepLine = new wxStaticLine(frameViewPane, wxID_ANY);
     labelDataType = new wxStaticText(frameViewPane, wxID_ANY, TRANS("Data Types:"));
     checkImageOutput = new wxCheckBox(frameViewPane, ID_CHECK_IMAGE_OUT, TRANS("3D Images"));
-    lblImageName = new wxStaticText(frameViewPane, wxID_ANY, TRANS("File Suffix: "));
+    lblImageName = new wxStaticText(frameViewPane, wxID_ANY, TRANS("File Prefix: "));
     textImageName = new wxTextCtrl(frameViewPane, ID_TEXTBOX_IMAGEPREFIX, wxEmptyString);
     labelImageSize = new wxStaticText(frameViewPane, wxID_ANY, TRANS("Size : "));
     textImageSize = new wxTextCtrl(frameViewPane, ID_TEXTBOX_IMAGESIZE, wxEmptyString, wxDefaultPosition,wxDefaultSize, wxTE_READONLY );

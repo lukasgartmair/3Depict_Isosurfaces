@@ -515,7 +515,6 @@ void combineWxImage(wxImage &base, const wxImage &overlay)
 	unsigned int height=base.GetHeight();
 
 
-	wxImage debugIm(width,height);
 	//Now loop through each pixel and perform
 	// combine operation
 	#pragma omp parallel for
@@ -526,7 +525,6 @@ void combineWxImage(wxImage &base, const wxImage &overlay)
 		{
 			rgbaOv[3] = overlay.GetAlpha(ui,uj);
 
-			debugIm.SetRGB(ui,uj,rgbaOv[3], rgbaOv[3],rgbaOv[3]);
 			if(rgbaOv[3])
 			{
 				//obtain src rgb
@@ -540,16 +538,13 @@ void combineWxImage(wxImage &base, const wxImage &overlay)
 		
 		
 				for(unsigned int chan=0;chan<3;chan++)
-				{
 					rgbIm[chan] = (unsigned char) (float(255-rgbaOv[3])/255.0f*rgbIm[chan] + float(rgbaOv[3]/255.0f)*rgbaOv[chan]);
-				}
 				
 				base.SetRGB(ui,uj,rgbIm[0],rgbIm[1],rgbIm[2]);	
 			}
 		}
 	}	
 
-	debugIm.SaveFile("debug.png",wxBITMAP_TYPE_PNG);
 }
 
 	

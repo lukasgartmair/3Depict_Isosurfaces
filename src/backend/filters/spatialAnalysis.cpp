@@ -2966,6 +2966,9 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 				break;
 		}
 	}
+
+	progress.filterProgress=100;
+
 	//If we have bad points, let the user know.
 	if(!badPts.empty())
 	{
