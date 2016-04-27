@@ -1135,8 +1135,10 @@ unsigned int RangeFile::detectFileType(const char *rangeFile)
 
 		//Now, spin forwards until we either hit EOF or our double-dash marker
 
-		while(!getline(f,tmpStr))
+		while(!f.eof() || f.good())
 		{
+			getline(f,tmpStr);
+
 			if(tmpStr.size() > 2 &&
 				tmpStr[0] == '-' && tmpStr[1] == '-')
 			{
