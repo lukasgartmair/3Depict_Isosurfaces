@@ -5874,7 +5874,7 @@ void MainWindowFrame::do_layout()
     sizer_1->Add(textLimitOutput, 0, wxLEFT, 4);
     sizerTools->Add(sizer_1, 0, wxLEFT|wxEXPAND, 5);
     sizerTools->Add(checkCaching, 0, wxLEFT|wxTOP|wxBOTTOM, 5);
-    sizerToolsRamUsage->Add(labelMaxRamUsage, 0, wxRIGHT|wxALIGN_VERTICAL, 5);
+    sizerToolsRamUsage->Add(labelMaxRamUsage, 0, wxRIGHT, 5);
     sizerToolsRamUsage->Add(spinCachePercent, 0, 0, 5);
     sizerTools->Add(sizerToolsRamUsage, 1, wxTOP|wxEXPAND, 5);
     noteTools->SetSizer(sizerTools);
