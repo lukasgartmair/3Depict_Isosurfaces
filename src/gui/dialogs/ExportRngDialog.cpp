@@ -149,7 +149,8 @@ void ExportRngDialog::OnSave(wxCommandEvent &event)
 
 	//create a file chooser for later.
 	wxFileDialog *wxF = new wxFileDialog(this,TRANS("Save pos..."), wxT(""),
-		wxT(""),TRANS("ORNL format RNG (*.rng)|*.rng|All Files (*)|*"),wxFD_SAVE);
+		wxT(""),TRANS("Cameca/Ametek RRNG (*.rrng)|*.rrng|ORNL format RNG (*.rng)|*.rng|Cameca ENV (*.env)|*.env|All Files (*)|*"),wxFD_SAVE);
+	
 	//Show, then check for user cancelling export dialog
 	if(wxF->ShowModal() == wxID_CANCEL)
 	{
@@ -159,9 +160,25 @@ void ExportRngDialog::OnSave(wxCommandEvent &event)
 	
 	std::string dataFile = stlStr(wxF->GetPath());
 
+	unsigned int selectedFormat= wxF->GetFilterIndex();
+	unsigned int rngFormat=RANGE_FORMAT_RRNG;
+	switch(selectedFormat)
+	{
+		case 0:
+			rngFormat=RANGE_FORMAT_RRNG;
+			break;
+		case 1:
+			rngFormat=RANGE_FORMAT_ORNL;
+			break;
+		case 2:
+			rngFormat=RANGE_FORMAT_ENV;
+			break;
+		default:
+			ASSERT(false);
+	}
 
 	if(((RangeFileFilter *)(rngFilters[selectedRange]))->
-				getRange().write(dataFile.c_str()))
+				getRange().write(dataFile.c_str(),rngFormat))
 	{
 		std::string errString;
 		errString=TRANS("Unable to save. Check output destination can be written to.");

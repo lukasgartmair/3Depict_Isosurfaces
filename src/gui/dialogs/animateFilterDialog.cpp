@@ -82,15 +82,15 @@ const size_t RANGE_FORMAT_NUM_OPTIONS=3;
 //TODO: This should be merged into aptclasses?
 const char *extension[RANGE_FORMAT_NUM_OPTIONS] =
 {
-	"rng",
 	"rrng",
+	"rng",
 	"env"
 };
 
 const char * comboRange_choices[RANGE_FORMAT_NUM_OPTIONS] =
 {
-	NTRANS("Oak-Ridge RNG"),
 	NTRANS("Cameca/Ametek RRNG"),
+	NTRANS("Oak-Ridge RNG"),
 	NTRANS("Cameca/Ametek ENV")
 };
 
@@ -192,6 +192,7 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
 	rangeNames.Add(wxStrTrans);
     }
     comboRangeFormat = new wxChoice(frameViewPane, ID_COMBO_RANGE_TYPE, wxDefaultPosition, wxDefaultSize, rangeNames);
+    comboRangeFormat->SetSelection(0);
     static_line_1 = new wxStaticLine(frameViewPane, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_VERTICAL);
     labelFrame = new wxStaticText(frameViewPane, wxID_ANY, TRANS("Frame"));
     frameSlider = new wxSlider(frameViewPane, ID_FRAME_SLIDER, 0, 0, 1);
@@ -229,6 +230,7 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
 
 
     comboRangeFormat->Enable(checkRangeData->IsChecked());
+    rangeExportMode=RANGE_FORMAT_RRNG;
 
     currentFrame=0;
     existsConflicts=false;
@@ -400,6 +402,7 @@ void ExportAnimationDialog::prepare()
 	upWxTreeCtrl(*filterTree,filterTreeCtrl,filterMap,
 			dummyVec,NULL);
 
+	updateOKButton();	
 }
 
 void ExportAnimationDialog::updateFilterViewGrid()
@@ -1165,7 +1168,6 @@ void ExportAnimationDialog::set_properties()
     checkImageOutput->SetValue(1);
     textImageName->SetToolTip(TRANS("Title for files, result will be saved as #-name.png, where # is image number."));
     textImageSize->SetToolTip(TRANS("Target resolution (image size)"));
-    comboRangeFormat->SetSelection(-1);
     frameSlider->SetToolTip(TRANS("Select frame for property display"));
     textFrame->SetToolTip(TRANS("Enter frame number to change frame (eg 1/20)"));
     checkPoints->SetToolTip(TRANS("Save point data (POS files) in output folder?"));

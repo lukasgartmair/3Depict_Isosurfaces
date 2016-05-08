@@ -498,7 +498,7 @@ unsigned int RangeFile::write(std::ostream &f, size_t format) const
 					
 					f << "Range" << ui+1 <<"=" 
 					<< ranges[ui].first << " " << ranges[ui].second <<
-					" " << "Name:" << strName << ":1" << 
+					" " << "Name:" << strName << " " << strName << ":1" << 
 					" Color:" << colString << endl;
 
 				}
