@@ -19,8 +19,11 @@ SetCompressorDictSize 64
 
 ; MUI Settings
 !define MUI_ABORTWARNING
-!define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
-!define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
+!define MUI_ICON "src/myAppIcon.ico"
+!define MUI_UNICON "src/myAppIcon.ico"
+!define MUI_HEADERIMAGE
+!define MUI_HEADERIMAGE_BITMAP "data/textures/tex-source/3Depict-icon-hires.png"
+!define MUI_HEADERIMAGE_RIGHT
 
 ; Welcome page
 !insertmacro MUI_PAGE_WELCOME
@@ -43,7 +46,7 @@ SetCompressorDictSize 64
 ; MUI end ------
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "Setup.exe"
+OutFile "3Depict-setup.exe"
 InstallDir "$PROGRAMFILES64\3Depict"
 InstallDirRegKey HKLM "${PRODUCT_DIR_REGKEY}" ""
 ShowInstDetails show
