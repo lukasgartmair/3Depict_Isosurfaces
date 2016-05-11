@@ -20,8 +20,18 @@ dnl Test for wx-widgets
 dnl ----------
 AM_OPTIONS_WXCONFIG
 
-AM_PATH_WXCONFIG(2.9.0, wxWin=1)
-
+case "${host_os}" in
+	*mingw*)
+		#Windows requires 3.1, as there is a bug with wxPropertyGrid modification during events
+		# under GTK we use a hack to workaround, by keeping two grids, and flipping them in and out. 
+		#This doesn't work properly under windows. wx3.1 is not available under linux  
+		# (using repositories) at this time.
+		AM_PATH_WXCONFIG(3.1.0, wxWin=1)
+		;;	
+	*)
+		AM_PATH_WXCONFIG(3.0.0, wxWin=1)
+esac
+		
 if test "$wxWin" != 1; then
 AC_MSG_ERROR([
 		wxWidgets must be installed on your system
