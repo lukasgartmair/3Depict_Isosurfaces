@@ -153,7 +153,11 @@ void ExportPosDialog::initialiseData(FilterTree &f)
 
 void ExportPosDialog::OnVisibleRadio(wxCommandEvent &event)
 {
-	ASSERT(haveRefreshed);
+	//This event can fire BEFORE the dialog is shown (after initing)
+	// under MSW/wx3.1
+	if(!haveRefreshed)
+		return;
+
 	exportVisible=true;
 	listAvailable->DeleteAllItems();
 	enableSelectionControls(false);
@@ -513,8 +517,8 @@ void ExportPosDialog::do_layout()
     sizer_12->Add(listSelected, 1, wxEXPAND, 0);
     sizer_12->Add(20, 20, 0, 0, 0);
     sizer_13->Add(20, 20, 1, 0, 0);
-    sizer_13->Add(btnSave, 0, wxLEFT|wxRIGHT|wxBOTTOM|wxALIGN_RIGHT|wxALIGN_BOTTOM, 6);
-    sizer_13->Add(btnCancel, 0, wxBOTTOM|wxALIGN_RIGHT|wxALIGN_BOTTOM, 6);
+    sizer_13->Add(btnSave, 0, wxLEFT|wxRIGHT|wxBOTTOM|wxALIGN_BOTTOM, 6);
+    sizer_13->Add(btnCancel, 0, wxBOTTOM|wxALIGN_BOTTOM, 6);
     sizer_12->Add(sizer_13, 0, wxEXPAND, 0);
     sizer_4->Add(sizer_12, 1, wxALL|wxEXPAND, 5);
     SetSizer(sizer_4);
