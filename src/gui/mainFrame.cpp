@@ -5248,6 +5248,7 @@ void MainWindowFrame::restoreConfigDefaults()
 	{
 		visControl.state.setCamProperty(visControl.state.getActiveCam(), 
 					CAMERA_KEY_LOOKAT_PROJECTIONMODE,TRANS("Orthogonal"));
+		visControl.setActiveCam(visControl.state.getActiveCam());	
 	}
 }
 
