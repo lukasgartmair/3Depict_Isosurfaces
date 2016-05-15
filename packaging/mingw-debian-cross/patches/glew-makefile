@@ -1,26 +1,29 @@
-diff -r 9bbbd8b43e5b Makefile
---- a/Makefile	Sun Jun 29 17:24:13 2014 +0100
-+++ b/Makefile	Sun Jun 29 17:25:52 2014 +0100
-@@ -28,19 +28,13 @@
+diff -r ec3d3c4b0904 Makefile
+--- a/Makefile	Sat Apr 23 00:47:08 2016 +0100
++++ b/Makefile	Sat Apr 23 00:48:25 2016 +0100
+@@ -28,20 +28,14 @@
  ## ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  ## THE POSSIBILITY OF SUCH DAMAGE.
  
 -include config/version
 +include config/Makefile.mingw
++
  
  SHELL = /bin/sh
 -SYSTEM ?= $(shell config/config.guess | cut -d - -f 3 | sed -e 's/[0-9\.]//g;')
 -SYSTEM.SUPPORTED = $(shell test -f config/Makefile.$(SYSTEM) && echo 1)
-+SYSTEM = i686-w64-mingw32
  
 -ifeq ($(SYSTEM.SUPPORTED), 1)
 -include config/Makefile.$(SYSTEM)
 -else
 -$(error "Platform '$(SYSTEM)' not supported")
 -endif
- 
+-
+-GLEW_PREFIX ?= /usr
 -GLEW_DEST ?= /usr
-+GLEW_DEST ?= /home/pcuser/mingw32
++SYSTEM = x86_64-w64-mingw32
++GLEW_PREFIX ?= /home/pcuser/mingw64
++GLEW_DEST ?= /home/pcuser/mingw64
  BINDIR    ?= $(GLEW_DEST)/bin
  LIBDIR    ?= $(GLEW_DEST)/lib
  INCDIR    ?= $(GLEW_DEST)/include/GL

@@ -4,6 +4,9 @@
 # and debian-like systems	
 # Note that building wx requires ~8GB of ram (or swap)
 
+# Its unlikely that this script will work first-time, or even second-time
+# you will need to do quite some work to be able to make this run
+
 #--- Determine which system we wish to build for
 #HOST_VAL=x86_64-w64-mingw32 #For mingw64 (windows 64 bit)
 #HOST_VAL=i686-w64-mingw32 #For mingw32 (Windows 32 bit)
@@ -72,23 +75,30 @@ if [ `id -u` -eq 0 ]; then
 	exit 1;
 fi
 #2) own patch for fixing wx-config's lack of sysroot support
-PATCHES_WXWIDGETS_PRE="wx_changeset_76890.diff"
+#PATCHES_WXWIDGETS_PRE="wx_changeset_76890.diff"
 PATCHES_WXWIDGETS_POST="wx-config-sysroot.patch"
 #1) Zlib no longer needs to explicitly link libc, and will fail if it tries
 PATCHES_ZLIB="zlib-no-lc.patch"
 #1) Override some configure patches to bypass false positive failures
 PATCHES_FTGL="ftgl-disable-doc"
 PATCHES_FTGL_POSTCONF="ftgl-override-configure-2"
+
+#Fix compilation error with iconv, where alias2_lookup function
+# is incorrectly declared as inline on non GNUC builds
+PATCHES_ICONV="iconv-fix-alias2.patch"
+
 #1) gettext-tools fails in various places, but we don't actually need it, so turn it off
 #2) gettext fails to correctly determine windows function call prefix.
 #   should be fixed for gettext > 0.18.1.1 ?
 #   https://lists.gnu.org/archive/html/bug-gettext/2012-12/msg00071.html
-PATCHES_GETTEXT="gettext-disable-tools gettext-fix-configure-versions"    #gettext-win32-prefix
+PATCHES_GETTEXT="gettext-fix-configure-versions"    #gettext-win32-prefix
 
 PATCHES_GLEW="glew-makefile.base"
 
-PATCHES_MATHGL="mathgl-openmp-linker-flag"
-PATCH_LIST="$PATCHES_WXWIDGETS_PRE $PATCHES_WXWIDGETS_POST $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL $PATCHES_GLEW $PATCHES_MATHGL $PATCHES_FTGL_POSTCONF"
+PATCHES_MATHGL="mathgl-openmp-linker-flag mathgl-disable-things"
+PATCHES_QHULL="qhull-ptr.patch"
+PATCH_LIST="$PATCHES_WXWIDGETS_POST $PATCHES_GSL $PATCHES_ZLIB $PATCHES_LIBPNG $PATCHES_GETTEXT $PATCHES_FTGL $PATCHES_GLEW $PATCHES_MATHGL $PATCHES_FTGL_POSTCONF $PATCHES_ICONV $PATCHES_QHULL"
+
 
 BUILD_STATUS_FILE="$BASE/build-status"
 PATCH_STATUS_FILE="$BASE/patch-status"
@@ -149,13 +159,13 @@ function grabDeps()
 {
 	pushd deps 2>/dev/null
 
-	DEB_PACKAGES="expat freetype ftgl gettext gsl libpng libxml2 mathgl qhull tiff wxwidgets3.0 zlib glew libvigraimpex"
+	DEB_PACKAGES="qhull expat freetype ftgl gettext gsl libpng libxml2 mathgl tiff zlib glew libvigraimpex"
 	if [ x$DIST_NAME == x"Ubuntu" ] || [ x$DIST_NAME == x"LinuxMint" ]  ; then 
        		LIBJPEGNAME="libjpeg6b"
 	else
 		#Libjpeg seems to be forked/renamed very frequently in debian
 		# Likely a new libjpeg will need to be picked each time this script is run
-		LIBJPEGNAME="libjpeg-turbo"
+		LIBJPEGNAME="libjpeg9"
 	fi
 	DEB_PACKAGES="$DEB_PACKAGES $LIBJPEGNAME"
 
@@ -503,7 +513,7 @@ function build_libxml2()
 
 	#Modifications
 	#	Disable python, because sys/select.h is not in mingw
-	./configure --host=$HOST_VAL --without-python --without-html --without-http --without-ftp --without-push --without-writer --without-push --without-legacy --without-xpath --without-iconv  --enable-shared=yes --enable-static=no --prefix=/ || { echo "Libxml2 configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --without-lzma --without-python --without-html --without-http --without-ftp --without-push --without-writer --without-push --without-legacy --without-xpath --without-iconv  --enable-shared=yes --enable-static=no --prefix=/ || { echo "Libxml2 configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "libxml2 build failed"; exit 1; } 
 	
@@ -547,6 +557,8 @@ function build_libjpeg()
 	fi
 
 	make clean
+
+	autoconf
 
 	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "$NAME configure failed"; exit 1; } 
 
@@ -597,7 +609,7 @@ function build_libtiff()
 	echo ${NAME} >> $BUILD_STATUS_FILE
 }
 
-function build_qhull()
+function build_qhull2012()
 {
 	NAME="libqhull"
 	ISBUILT_ARG=${NAME}
@@ -615,6 +627,116 @@ function build_qhull()
 	fi
 
 	make clean
+
+	# We have an internal COMPILE_ASSERT test for ptr_intT length
+	#if using win64, then ensure that there is only the correct long long version
+	# of the pointer
+	#if [ `egrep "typedef .* ptr_intT" src/libqhull/mem.h | wc -l` -ne 1 ] ; then
+	#	echo "There appears to be multiple ptr_intT types in qhull's mem.h. Qhull normally picks the wrong one. Aborting- please fix"
+	#	exit 1
+	#fi
+
+	sed -i "s/ gcc$/${HOST_VAL}-gcc/" Makefile
+	sed -i "s/ g++$/${HOST_VAL}-g++/" Makefile
+
+	make SO="dll" -j $NUM_PROCS 
+	find ./ -name \*dll -exec cp {} ${BASE}/bin/	
+	make SO="dll" -j $NUM_PROCS || { echo "qhull build failed"; exit 1; } 
+	make install DESTDIR="$BASE"|| { echo "qhull install failed"; exit 1; } 
+
+	popd >/dev/null
+	popd >/dev/null
+
+	ln -s ${BASE}/include/libqhull ${BASE}/include/qhull
+
+
+
+	FIX_LA_FILE_ARG=libqhull
+	fix_la_file
+	echo ${NAME} >> $BUILD_STATUS_FILE
+}
+
+function build_qhull2015()
+{
+	NAME="libqhull"
+	ISBUILT_ARG=${NAME}
+	isBuilt
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
+	
+	pushd deps >/dev/null
+	pushd qhull-* >/dev/null
+	
+	if [ $? -ne 0 ] ; then
+		echo "qhull dir missing, or duplicated?"
+		exit 1
+	fi
+
+	#delete the qhull directories that do NOT correspond to the version of qhull we want to build
+	rm -rf src/libqhull src/libqhullcpp src/libqhullstatic*
+
+	APPLY_PATCH_ARG="$PATCHES_QHULL"
+	applyPatches
+	make clean
+
+	cp ../../patches/qhull2015-cmakefile-replacement CMakeLists.txt
+
+	# TODO: Technically, deleting CMakeCache doesn't solve all caching problems. Cached data can remain elsewhere
+	# This seems to stem from cmakes stubborn approach of "we only allow out-of-source-tree builds".
+	# This is annoying, as in-tree building is very common, and natural for small projects. It also allows incremental building.
+	#  IMHO, once I manually alter a cmakefile, the cache should fucking well work out that it is out-of-date, as I keep getting nasty suprises.
+	# https://cmake.org/Bug/view.php?id=14820 .
+	rm -f CMakeCache.txt
+	cmake -DCMAKE_INSTALL_PREFIX="$BASE" -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain$BITS_VAL 
+
+
+	#TODO: Better test (using c)
+	#if using win64, then ensure that there is only the correct long long version
+	# of the pointer
+	if [ `egrep "typedef .* ptr_intT" src/libqhull_r/mem_r.h | wc -l` -ne 1 ] ; then
+		echo "There appears to be multiple ptr_intT types in qhull's mem.h. Qhull normally picks the wrong one. Aborting- please fix"
+		exit 1
+	fi
+
+	sed -i "s/ gcc$/${HOST_VAL}-gcc/" Makefile
+	sed -i "s/ g++$/${HOST_VAL}-g++/" Makefile
+
+	make SO="dll" -j $NUM_PROCS 
+	find ./ -name \*dll -exec cp {} ${BASE}/bin/	
+	make SO="dll" -j $NUM_PROCS || { echo "qhull build failed"; exit 1; } 
+	make install DESTDIR="$BASE"|| { echo "qhull install failed"; exit 1; } 
+
+	popd >/dev/null
+	popd >/dev/null
+
+	ln -s ${BASE}/include/libqhull ${BASE}/include/qhull
+
+
+
+	FIX_LA_FILE_ARG=libqhull
+	fix_la_file
+	echo ${NAME} >> $BUILD_STATUS_FILE
+}
+
+function build_qhull2009()
+{
+	NAME="libqhull"
+	ISBUILT_ARG=${NAME}
+	isBuilt
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
+	
+	pushd deps >/dev/null
+	pushd qhull-* >/dev/null
+	
+	if [ $? -ne 0 ] ; then
+		echo "qhull dir missing, or duplicated?"
+		exit 1
+	fi
+
+	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "$NAME configure failed"; exit 1; } 
 
 	sed -i "s/ gcc$/${HOST_VAL}-gcc/" Makefile
 	sed -i "s/ g++$/${HOST_VAL}-g++/" Makefile
@@ -634,6 +756,38 @@ function build_qhull()
 	echo ${NAME} >> $BUILD_STATUS_FILE
 }
 
+#FIXME: This does not work. Qhull uses a strange combination of cmake
+# and hand makefiles, so propagating correct cross-compiling 
+# parameters is quite tricky
+function build_qhull2015()
+{
+	NAME="libqhull"
+	ISBUILT_ARG=${NAME}
+	isBuilt
+	if [ $ISBUILT -eq 1 ] ; then
+		return;
+	fi
+	
+	pushd deps >/dev/null
+	pushd qhull-* >/dev/null
+	
+	if [ $? -ne 0 ] ; then
+		echo "qhull dir missing, or duplicated?"
+		exit 1
+	fi
+
+	rm -f CMakeCache.txt
+	cmake -DCMAKE_INSTALL_PREFIX="$BASE" -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain$BITS_VAL 
+
+	make -j $NUM_PROCS || exit 1
+
+	make install	
+
+	popd >/dev/null
+	popd >/dev/null
+
+	echo ${NAME} >> $BUILD_STATUS_FILE
+}
 
 function build_expat()
 {
@@ -697,6 +851,7 @@ function build_gsl()
 	APPLY_PATCH_ARG=$PATCHES_GSL
 	applyPatches
 
+
 	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "gsl configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "gsl build failed"; exit 1; } 
@@ -723,27 +878,31 @@ function build_wx()
 	fi
 	
 	pushd deps >/dev/null
-	pushd wxwidgets[23].[0-9]-* >/dev/null
+	pushd wx[Ww]idgets* >/dev/null
        	
 	if [ $? -ne 0 ] ; then
 		echo "wxwidgets dir missing, or duplicated?"
 		exit 1
 	fi
+	WX_VER=`grep "WX_RELEASE =" Makefile`
+
+	if [ x"${WX_VER}" == x"3.0" ] ; then
+		echo "WX needs to be at least 3.1, but is 3.0..."
+		exit 1
+	fi
 
 	make clean
 
-	APPLY_PATCH_ARG=$PATCHES_WXWIDGETS_PRE
-	applyPatches
 	WX_DISABLE="--disable-compat26 --disable-compat28 --disable-ole --disable-dataobj --disable-ipc --disable-apple_ieee --disable-zipstream --disable-protocol_ftp --disable-mshtmlhelp --disable-aui --disable-mdi --disable-postscript --disable-datepick --disable-splash --disable-wizarddlg --disable-joystick --disable-loggui --disable-debug --disable-logwin --disable-logdlg --disable-tarstream --disable-fs_archive --disable-fs_inet --disable-fs_zip --disable-snglinst --disable-sound --disable-variant --without-regex"
 
 	./configure --host=$HOST_VAL --enable-shared --disable-static --with-opengl --enable-unicode --without-regex --prefix=/ || { echo "wxwidgets configure failed"; exit 1; } 
 
-	#TODO: Where is this coming from ???
+       #TODO: Where is this coming from ???
 	for i in `find ./ -name Makefile | grep -v samples | grep -v wxPython`
 	do
 		sed -i "s@-luuid-L@ -luuid -L@" $i
 	done	
-	
+       
 	make -j $NUM_PROCS || { echo "wxwidgets build failed"; exit 1; } 
 	make install DESTDIR="$BASE"|| { echo "wxwidgets install failed"; exit 1; } 
 
@@ -753,17 +912,24 @@ function build_wx()
 	popd >/dev/null
 
 	pushd ./bin/
-	unlink wx-config
+
+	if [ -l wx-config ] ; then
+		unlink wx-config
+	fi
 
 
 	#Search for the wx-config file. It get installed into /lib/wx, but has
 	# unusual naming conventions
 	WX_CONFIG_FILE=`find ${BASE}/lib/wx/config/ -type f -executable -name \*release-\*`
-	if [ x$WX_CONFIG_FILE == x"" ] ; then
-		WX_CONFIG_FILE=`find ${BASE}/lib/wx/config/ -type f  -executable -name \*-unicode-\*`
+	if [ x"$WX_CONFIG_FILE" == x"" ] ; then
+		WX_CONFIG_FILE=`find ${BASE}/lib/wx/config/ -type f  -executable -name \*-unicode-\*3.1`
 	fi
 
-	if [ x$WX_CONFIG_FILE == x"" ] ; then
+	if [ x"$WX_CONFIG_FILE" == x"" ] ; then
+		WX_CONFIG_FILE=`find ${BASE}/lib/wx/config/ -type f  -executable -name x\*mingw32-msw-unicode-\*`
+	fi	
+
+	if [ x"$WX_CONFIG_FILE" == x"" ] ; then
 		echo "Couldn't find the wx-config script."
 		exit 1
 	fi
@@ -777,8 +943,14 @@ function build_wx()
 	popd
 
 	pushd ./lib/
-	ln -s wx-3.0/wx/ wx
+	ln -s wx-${WX_VER}/wx/ wx
 	popd
+
+	pushd ./include/wx-${WX_VER}/wx/msw/
+	if [ x$BITS_VAL == 64 ] ; then
+		cp amd64.manifest wx.manifest
+	fi
+	popd	
 
 
 	echo ${NAME} >> $BUILD_STATUS_FILE
@@ -805,7 +977,7 @@ function build_freetype()
 
 	pushd freetype-[0-9]*
 	make clean
-	./configure --host=$HOST_VAL --enable-shared --disable-static --without-png --prefix=/ || { echo "freetype configure failed"; exit 1; } 
+	./configure --host=$HOST_VAL --enable-shared --disable-static --without-png --with-harfbuzz=no --prefix=/ || { echo "freetype configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "freetype build failed"; exit 1; } 
 	
@@ -847,7 +1019,12 @@ function build_libiconv()
 		exit 1
 	fi
 
+	APPLY_PATCH_ARG=$PATCHES_ICONV
+	applyPatches
+
 	make clean
+
+
 	./configure --host=$HOST_VAL --enable-shared --disable-static --prefix=/ || { echo "libiconv configure failed"; exit 1; } 
 
 	make -j $NUM_PROCS || { echo "libiconv build failed"; exit 1; } 
@@ -892,8 +1069,17 @@ function build_gettext()
 
 	#FIXME: I had to copy the .lib, .la and .a files manually
 	# I don't know why the makefile does not do this.
-	cp gettext-runtime/intl/.libs/libintl.{la,lib,a} ${BASE}/lib/ || {  echo "semi-manual copy of libintl failed"; exit 1; } 
-	
+	CPSUCCESS=0
+	for i in `ls gettext-runtime/intl/.libs/libintl*.{la,lib,a,dll}`
+	do
+		cp $i ${BASE}/lib/ 
+		if [ $? -eq 0 ] ; then
+			CPSUCCESS=1;
+		fi
+	done
+	if [ $CPSUCCESS -eq 0 ] ; then	
+		{  echo "semi-manual copy of libintl failed"; exit 1; } 
+	fi
 	popd >/dev/null
 	popd >/dev/null
 	
@@ -930,6 +1116,7 @@ function build_mathgl()
 		exit 1
 	fi
 
+	rm -f CMakeCache.txt
 	LIBS=-lpng cmake -Denable-gsl="yes" -Denable-mpi="no"  -DCMAKE_INSTALL_PREFIX="$BASE" -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain$BITS_VAL -DPNG_PNG_INCLUDE_DIR=${BASEDIR}/include/
 
 	make -j $NUM_PROCS
@@ -968,7 +1155,7 @@ function build_libvigra()
 	fi
 	make clean
 
-	APPLY_PATCH_ARG=$PATCHES_MATHGL
+	APPLY_PATCH_ARG=$PATCHES_LIBVIGRA
 	applyPatches
 
 	cmake -DCMAKE_INSTALL_PREFIX="$BASE" -DCMAKE_TOOLCHAIN_FILE=../../patches/cmake-toolchain$BITS_VAL -DPNG_PNG_INCLUDE_DIR=${BASEDIR}/include/
@@ -1037,9 +1224,16 @@ function build_ftgl()
 	find ./ -name Makefile -exec sed -i "s@-I//@-I${BASE}/@" {} \;
 	find ./ -name Makefile -exec sed -i "s@-L//@-L${BASE}/@" {} \;
 
-	make -j $NUM_PROCS || { echo "ftgl build failed"; exit 1; } 
+	LIBS="-lfreetype -lz" make -j $NUM_PROCS || { echo "ftgl build failed"; exit 1; } 
 	
-	DESTDIR="$BASE" make install | { echo "ftgl install failed"; exit 1; } 
+	DESTDIR="$BASE" make install || { echo "ftgl install failed"; exit 1; } 
+
+
+	#HACK: Ftgl doesn't install the dll correctly. Just do it by hand
+	cp src/.libs/libftgl-*dll ${BASE}/lib/ || { echo "FTGL dll could not be installed." ; exit 1; }
+	pushd $BASE/lib/
+	ln -s libftgl-*dll libftgl.dll
+	popd > /dev/null
 
 	popd >/dev/null
 	popd >/dev/null
@@ -1136,17 +1330,25 @@ function build_3Depict()
 	make distclean
 
 
-	CONF_FLAG="--host=$HOST_VAL --with-libqhull-link=-lqhull_p"
+	autoreconf
+	automake --add-missing
+
+	CONF_FLAG="--host=$HOST_VAL --with-libqhull-link=-lqhull"
 	if [ $IS_RELEASE -ne 0 ] ; then
 		CONF_FLAG="$CONF_FLAG --disable-debug-checks --enable-openmp-parallel"
 	fi
 
-	FTGL_CFLAGS="-I${BASE}/include/freetype/" CFLAGS="$CFLAGS -DUNICODE" CPPFLAGS="${CPPFLAGS} -DUNICODE" ./configure  $CONF_FLAG
+
+	FTGL_CFLAGS="-I${BASE}/include/freetype2/" CFLAGS="$CFLAGS -DUNICODE -Dqh_QHpointer" CPPFLAGS="${CPPFLAGS} -DUNICODE -Dqh_QHpointer" ./configure  $CONF_FLAG 
 
 	if [ $? -ne 0 ] ; then
 		echo "Failed 3Depict configure"
 		exit 1
 	fi
+
+	#comment out the rpl_malloc and rpl_realloc calls
+	sed -i 's@^#define \([a-z]*\) rpl_@//#define \1 rpl_@' config.h
+
 
 	#sanity check that windres is activated
 	if [ x`grep HAVE_WINDRES_TRUE config.log | grep '#' ` != x"" ] ; then
@@ -1191,7 +1393,8 @@ function build_3Depict()
 	#HACK - find all -I// and -L// and replace them with something sane
 	find ./ -name Makefile -exec sed -i "s@-I//@-I${BASE}/@" {} \;
 	find ./ -name Makefile -exec sed -i "s@-L//@-L${BASE}/@" {} \;
-	
+
+	#Actually perform build	
 	make -j$NUM_PROCS
 	if [ $? -ne 0 ] ; then
 		echo "Failed 3Depict build"
@@ -1224,6 +1427,11 @@ function build_3Depict()
 #Build the nsis package
 function make_package()
 {
+	if [ x"$HOST_EXT" != x"win64" ] ; then
+		echo "WRONG HOST EXT!"
+		exit 1
+	fi
+
 	pushd ./code/3Depict 2> /dev/null
 
 	#Check that the PDF manual has been built
@@ -1270,7 +1478,7 @@ function make_package()
 	 
 
 	echo -n " Copying dll files... "
-	SYSTEM_DLLS="(ADVAPI32.dll|COMCTL32.DLL|COMDLG32.DLL|GDI32.dll|KERNEL32.dll|ole32.dll|OLEAUT32.dll|RPCRT4.dll|SHELL32.DLL|USER32.dll|WINMM.DLL|WINSPOOL.DRV|WSOCK32.DLL|GLU32.dll|OPENGL32.dll|msvcrt.dll|WS2_32.dll)"
+	SYSTEM_DLLS="(ADVAPI32.dll|COMCTL32.DLL|COMDLG32.DLL|GDI32.dll|KERNEL32.dll|ole32.dll|OLEAUT32.dll|RPCRT4.dll|SHELL32.DLL|USER32.dll|WINMM.DLL|WINSPOOL.DRV|WSOCK32.DLL|GLU32.dll|OPENGL32.dll|msvcrt.dll|WS2_32.dll|SHLWAPI.dll|VERSION.dll)"
 
 	DLL_FILES=`${HOST_VAL}-objdump -x src/3Depict.exe | grep 'DLL Name:' | awk '{print $3}' | egrep -i -v ${SYSTEM_DLLS}`
 	FOUND_DLLS=""
@@ -1372,7 +1580,7 @@ function make_package()
 		TARGET_FILE=3Depict-${VERSION}-${HOST_EXT}-debug.exe
 	fi
 	
-	mv Setup.exe  $TARGET_FILE
+	mv 3Depict-setup.exe  $TARGET_FILE
 	echo "File written to : `pwd`/$TARGET_FILE"
 	echo "-------------------"
 	
@@ -1410,6 +1618,7 @@ case ${HOST_VAL}  in
 	;;
 esac
 
+
 #install the compiler
 install_mingw
 #---
@@ -1441,7 +1650,8 @@ build_libpng
 build_libjpeg
 build_libxml2
 build_gsl
-build_qhull
+build_qhull2012
+#build_qhull2015
 build_expat
 build_freetype
 build_libiconv

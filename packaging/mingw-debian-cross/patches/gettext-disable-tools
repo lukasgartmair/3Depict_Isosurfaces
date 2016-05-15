@@ -1,6 +1,6 @@
-diff -r decc1317356a Makefile.am
---- a/Makefile.am	Sun Nov 17 14:47:59 2013 +0100
-+++ b/Makefile.am	Sun Nov 17 14:50:27 2013 +0100
+diff -r fc8ef26fbd29 Makefile.am
+--- a/Makefile.am	Fri Apr 22 23:17:46 2016 +0100
++++ b/Makefile.am	Fri Apr 22 23:20:55 2016 +0100
 @@ -19,7 +19,7 @@
  AUTOMAKE_OPTIONS = 1.5 gnu no-dependencies
  ACLOCAL_AMFLAGS = -I m4
@@ -8,9 +8,9 @@ diff -r decc1317356a Makefile.am
 -SUBDIRS = gnulib-local gettext-runtime gettext-tools
 +SUBDIRS = gnulib-local gettext-runtime
  
- EXTRA_DIST = \
-   version.sh DEPENDENCIES PACKAGING HACKING ChangeLog.0 autogen.sh \
-@@ -28,10 +28,12 @@
+ changelog_etc = \
+   gettext-runtime/ChangeLog.0 \
+@@ -57,10 +57,12 @@
    m4/libtool.m4
  
  # Additional dependencies for configure, due to the use of autoconf --trace.
@@ -24,19 +24,19 @@ diff -r decc1317356a Makefile.am
  	cmp -s gettext-runtime/po/Makefile.in.in gettext-tools/po/Makefile.in.in
  	cmp -s gettext-runtime/po/Rules-quot gettext-tools/po/Rules-quot
  	cmp -s gettext-runtime/po/boldquot.sed gettext-tools/po/boldquot.sed
-diff -r decc1317356a Makefile.in
---- a/Makefile.in	Sun Nov 17 14:47:59 2013 +0100
-+++ b/Makefile.in	Sun Nov 17 14:50:27 2013 +0100
-@@ -298,7 +298,7 @@
+diff -r fc8ef26fbd29 Makefile.in
+--- a/Makefile.in	Fri Apr 22 23:17:46 2016 +0100
++++ b/Makefile.in	Fri Apr 22 23:20:55 2016 +0100
+@@ -312,7 +312,7 @@
  top_srcdir = @top_srcdir@
  AUTOMAKE_OPTIONS = 1.5 gnu no-dependencies
  ACLOCAL_AMFLAGS = -I m4
 -SUBDIRS = gnulib-local gettext-runtime gettext-tools
-+SUBDIRS = gnulib-local gettext-runtime 
- 
- # DJGPP port.
- 
-@@ -769,6 +769,8 @@
++SUBDIRS = gnulib-local gettext-runtime
+ changelog_etc = \
+   gettext-runtime/ChangeLog.0 \
+   gettext-runtime/doc/ChangeLog.0 \
+@@ -839,6 +839,8 @@
  
  # Verify that some files are the same.
  distcheck-hook:

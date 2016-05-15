@@ -1,0 +1,17 @@
+diff -r ec21eff71acf src/libqhull_r/mem_r.h
+--- a/src/libqhull_r/mem_r.h	Sun Apr 24 16:13:34 2016 +0100
++++ b/src/libqhull_r/mem_r.h	Sun Apr 24 16:15:10 2016 +0100
+@@ -88,13 +88,7 @@
+     Qhull uses int instead of size_t except for system calls such as malloc, qsort, qh_malloc, etc.
+     This matches Qt convention and is easier to work with.
+ */
+-#if (defined(__MINGW64__)) && defined(_WIN64)
+ typedef long long ptr_intT;
+-#elif (_MSC_VER) && defined(_WIN64)
+-typedef long long ptr_intT;
+-#else
+-typedef long ptr_intT;
+-#endif
+ 
+ /*-<a                             href="qh-mem_r.htm#TOC"
+   >--------------------------------</a><a name="qhmemT">-</a>
