@@ -1118,7 +1118,7 @@ unsigned int RangeFile::detectFileType(const char *rangeFile)
 			getline(f,tmpStr);
 
 			//shouldn't hit eof
-			if(f.eof())
+			if(f.eof() || (!f.good()) )
 			{
 				tmpStr.clear();
 				break;
@@ -1134,8 +1134,7 @@ unsigned int RangeFile::detectFileType(const char *rangeFile)
 		}
 
 		//Now, spin forwards until we either hit EOF or our double-dash marker
-
-		while(!f.eof() || f.good())
+		while( (!f.eof()) && f.good())
 		{
 			getline(f,tmpStr);
 
@@ -1179,7 +1178,7 @@ skipoutRNGChecks:
 		bool foundAllSections=false;
 
 		//Scan through each line, looking for a matching section header
-		while(!f.eof())
+		while((!f.eof()) &&f.good())
 		{
 
 			//Get line, stripped of whitespace
