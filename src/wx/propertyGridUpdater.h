@@ -24,7 +24,7 @@
 
 #include <map>
 
-const long PROPERTY_GRID_STYLE= 0;
+const long PROPERTY_GRID_STYLE= wxPG_SPLITTER_AUTO_CENTER;
 const long PROPERTY_GRID_EXTRA_STYLE= wxPG_EX_HELP_AS_TOOLTIPS;
 
 //Build a property grid for the 
