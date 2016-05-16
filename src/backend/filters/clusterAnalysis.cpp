@@ -54,6 +54,7 @@ enum
 	KEY_SIZE_COUNT_BULK,
 	KEY_CROP_NMIN,
 	KEY_CROP_NMAX,
+	KEY_BULK_ALL,
 	KEY_CORE_OFFSET=100000,
 	KEY_BULK_OFFSET=200000
 };
@@ -1121,6 +1122,16 @@ void ClusterAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 
 		if(enableBulkLink)
 		{
+			
+			p.name=TRANS("Enable/Disable All");
+			bool allEnabled=false;
+			allEnabled=(std::find(ionBulkEnabled.begin(),ionBulkEnabled.end(),false) == ionBulkEnabled.end());
+			p.data=boolStrEnc(allEnabled);
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Enable/disable all ions");
+			p.key=KEY_BULK_ALL;
+			propertyList.addProperty(p,curGroup);
+
 			for(size_t ui=0;ui<ionNames.size();ui++)
 			{
 				if(ionBulkEnabled[ui])
@@ -1479,6 +1490,20 @@ bool ClusterAnalysisFilter::setProperty(unsigned int key,
 			//composition & id are mutually exclusive
 			wantClusterComposition=false;
 			
+			break;
+		}
+		case KEY_BULK_ALL:
+		{
+			ASSERT(enableBulkLink);
+			bool bVal;
+			boolStrDec(value,bVal);
+			std::fill(ionBulkEnabled.begin(),ionBulkEnabled.end(),bVal);
+		
+			//we have to maintain the core selection, so that
+			//both core and bulk are not set at the same time
+			if(bVal)
+				std::fill(ionCoreEnabled.begin(),ionCoreEnabled.end(),!bVal);
+
 			break;
 		}
 		default:
