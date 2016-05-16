@@ -15,8 +15,15 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <wx/version.h> 
 
-
+#if !(wxCHECK_VERSION(3,1,0))
+	#if ( defined(__WIN32__) || defined(__WIN64__) )
+		#error "Your wx version is too low for windows. You need wx 3.1 or greater, due to wx bug 16222."
+	#else
+		#define FIX_WXPROPGRID_16222
+	#endif
+#endif
 // begin wxGlade: ::dependencies
 #include <wx/splitter.h>
 #include <wx/filename.h>
@@ -233,6 +240,9 @@ protected:
     wxPanel* filterTreePane;
     wxStaticText* propGridLabel;
     wxPropertyGrid* gridFilterPropGroup;
+#ifdef FIX_WXPROPGRID_16222
+    wxPropertyGrid *backFilterPropGrid;
+#endif
     wxPanel* filterPropertyPane;
     wxSplitterWindow* filterSplitter;
     wxPanel* noteData;
@@ -241,6 +251,9 @@ protected:
     wxButton* buttonRemoveCam;
     wxStaticLine* cameraNamePropertySepStaticLine;
     wxPropertyGrid* gridCameraProperties;
+#ifdef FIX_WXPROPGRID_16222
+    wxPropertyGrid* backCameraPropGrid;
+#endif
     wxButton* buttonAlignCamXPlus;
     wxButton* buttonAlignCamYPlus;
     wxButton* buttonAlignCamZPlus;
@@ -424,6 +437,9 @@ public:
     void OnCheckUpdatesThread(wxCommandEvent &evt);
     void OnFinishRefreshThread(wxCommandEvent &evt);
 
+#ifdef FIX_WXPROPGRID_16222
+    void OnIdle(wxIdleEvent &evt);
+#endif
     void SetCommandLineFiles(wxArrayString &files);
 
     //return type of file, based upon heuristic check

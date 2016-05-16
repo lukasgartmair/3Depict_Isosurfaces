@@ -700,7 +700,10 @@ TRANS("Unable to initialise the openGL (3D) panel. Program cannot start. Please 
 
     set_properties();
     do_layout();
-
+#ifdef FIX_WXPROPGRID_16222
+    backCameraPropGrid=0;
+    backFilterPropGrid=0;
+#endif
     //Disable post-processing
 #ifndef APPLE_EFFECTS_WORKAROUND
     checkPostProcessing->SetValue(false); 
@@ -849,7 +852,9 @@ BEGIN_EVENT_TABLE(MainWindowFrame, wxFrame)
     EVT_TIMER(ID_PROGRESS_TIMER,MainWindowFrame::OnProgressTimer)
     EVT_TIMER(ID_UPDATE_TIMER,MainWindowFrame::OnUpdateTimer)
     EVT_TIMER(ID_AUTOSAVE_TIMER,MainWindowFrame::OnAutosaveTimer)
-   
+#ifdef FIX_WXPROPGRID_16222
+    EVT_IDLE(MainWindowFrame::OnIdle)
+#endif   
     EVT_SPLITTER_UNSPLIT(ID_SPLIT_TOP_BOTTOM, MainWindowFrame::OnRawDataUnsplit) 
     EVT_SPLITTER_UNSPLIT(ID_SPLIT_LEFTRIGHT, MainWindowFrame::OnControlUnsplit) 
     EVT_SPLITTER_UNSPLIT(ID_SPLIT_SPECTRA, MainWindowFrame::OnSpectraUnsplit) 
@@ -976,6 +981,23 @@ void *RefreshThread::Entry()
 
 	return 0;
 }
+
+#ifdef FIX_WXPROPGRID_16222
+void MainWindowFrame::OnIdle(wxIdleEvent &evt)
+{
+	if(backFilterPropGrid)
+	{
+		delete backFilterPropGrid;
+		backFilterPropGrid=0;
+	}
+
+	if(backCameraPropGrid)
+	{
+		delete backCameraPropGrid;
+		backCameraPropGrid=0;
+	}
+}
+#endif
 
 unsigned int MainWindowFrame::guessFileType(const std::string &dataFile)
 {
@@ -1299,8 +1321,6 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge,bool noUpdate
 		if(visControl.state.getNumCams() > 1)
 		{
 			//set the active camera
-
-			const Camera *c = visControl.state.getCam(visControl.state.getActiveCam());
 			visControl.setActiveCam(visControl.state.getActiveCam());	
 			//Use the active cam to update the grid.
 			visControl.updateCameraPropGrid(gridCameraProperties,
@@ -2360,6 +2380,7 @@ void MainWindowFrame::OnFileExportIons(wxCommandEvent &event)
 	//drop them back into the export dialog.
 	do
 	{
+		cerr << "Show dialog" << __FILE__ << " :" << __LINE__ << endl;
 		//Show, then check for user cancelling export dialog
 		if(exportDialog->ShowModal() == wxID_CANCEL)
 		{
@@ -3433,10 +3454,31 @@ void MainWindowFrame::OnGridFilterPropertyChange(wxPropertyGridEvent &event)
 	else 
 		clearWxTreeImages(treeFilters);
 
-	//Update filter property grid
-	visControl.updateFilterPropGrid(gridFilterPropGroup,filterId,
+#ifdef FIX_WXPROPGRID_16222
+	//See wx bug #16222 - cannot modify a property grid's contents
+	// from a change event. Must work in a side-object then swap
+	//--
+	backFilterPropGrid= new wxPropertyGrid(filterPropertyPane,ID_GRID_FILTER_PROPERTY,
+					wxDefaultPosition,wxDefaultSize,PROPERTY_GRID_STYLE);
+	backFilterPropGrid->SetExtraStyle(PROPERTY_GRID_EXTRA_STYLE);
+
+
+	visControl.updateFilterPropGrid(backFilterPropGrid,filterId,
 			stlStr(gridFilterPropGroup->SaveEditableState()));
 
+
+	int columnPos = gridFilterPropGroup->GetSplitterPosition();
+	
+
+	std::swap(backFilterPropGrid,gridFilterPropGroup);
+	do_filtergrid_prop_layout();
+	//Restore the original splitter position
+	gridFilterPropGroup->SetSplitterPosition(columnPos);
+	//--
+#else
+	visControl.updateFilterPropGrid(gridFilterPropGroup,filterId,
+		stlStr(gridFilterPropGroup->SaveEditableState()));
+#endif
 
 	programmaticEvent=false;
 	
@@ -3518,8 +3560,25 @@ void MainWindowFrame::OnGridCameraPropertyChange(wxPropertyGridEvent &event)
 	//Set property
 	visControl.setCamProperty(cameraId,key,newValue);
 
-	//Update property grid	
+#ifdef FIX_WXPROPGRID_16222
+	//FIXME :Need to send the new grid, not the old, due to wx bug
+	//See wx bug #16222 - cannot modify a property grid's contents
+	// from a change event. Must work in a side-objectm then swap
+	//--
+	backCameraPropGrid= new wxPropertyGrid(noteCamera,ID_GRID_CAMERA_PROPERTY,
+					wxDefaultPosition,wxDefaultSize,PROPERTY_GRID_STYLE);
+	backCameraPropGrid->SetExtraStyle(PROPERTY_GRID_EXTRA_STYLE);
+	
+	visControl.updateCameraPropGrid(backCameraPropGrid,cameraId);
+	int columnPos =gridCameraProperties->GetSplitterPosition();
+	
+	std::swap(backCameraPropGrid,gridCameraProperties);
+	do_cameragrid_prop_layout();
+	gridCameraProperties->SetSplitterPosition(columnPos);
+#else
 	visControl.updateCameraPropGrid(gridCameraProperties,cameraId);
+#endif
+
 
 #ifdef __WIN32
 	//Move the splitter panel
@@ -3768,6 +3827,9 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 	comboFilters->ChangeValue(TRANS(ADD_FILTER_TEXT));
 
 	//update prop grid
+#ifdef FIX_WXPROPGRID_16222
+	ASSERT(!backFilterPropGrid);
+#endif
 	updateFilterPropertyGrid(gridFilterPropGroup,f);
 	
 }
