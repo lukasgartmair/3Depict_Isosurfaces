@@ -2569,10 +2569,6 @@ void ClusterAnalysisFilter::createRangedIons(const std::vector<const FilterStrea
 							bulk.push_back(d->data[ui]);
 						}
 					}
-					#ifdef OPENMP
-					if(!omp_get_thread_num()) 
-					#endif
-					p.filterProgress=(float)numIonsRanged/dataIn.size()*100.0f;
 				}
 				numIonsRanged++;
 			}
@@ -2597,12 +2593,6 @@ void ClusterAnalysisFilter::createRangedIons(const std::vector<const FilterStrea
 					{
 						#pragma omp critical 
 						core.push_back(d->data[ui]);
-
-						#ifdef OPENMP
-						if(!omp_get_thread_num()) 
-						#endif
-							p.filterProgress=(float)numIonsRanged/dataIn.size()*100.0f;
-
 					}
 					numIonsRanged++;
 				}
