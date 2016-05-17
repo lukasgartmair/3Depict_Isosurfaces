@@ -2262,13 +2262,14 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	}
 	//===
 
+	if(*Filter::wantAbort)
+		return FILTER_ERR_ABORT;
+
+	//update progress
 	progress.step++;
 	progress.filterProgress=0;
 	progress.stepName=TRANS("Re-Collate");
 
-	//update progress
-	if(*Filter::wantAbort)
-		return FILTER_ERR_ABORT;
 	clusteredCore.resize(allCoreClusters.size());
 	clusteredBulk.resize(allBulkClusters.size());
 
@@ -2298,6 +2299,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		}
 	}
 
+	progress.filterProgress=100;
 
 	return 0;	
 }

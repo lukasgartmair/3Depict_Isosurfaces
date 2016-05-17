@@ -354,9 +354,12 @@ void MathGLPane::render(wxPaintEvent &event)
 				tlY=draggingCurrent.y;
 				hRect = draggingStart.y - tlY;
 			}
-		
-			dc->SetBrush(wxBrush(*wxBLUE,wxTRANSPARENT));	
 
+#if wxCHECK_VERSION(3,1,0)
+			dc->SetBrush(wxBrush(*wxBLUE,wxBRUSHSTYLE_TRANSPARENT));	
+#else
+			dc->SetBrush(wxBrush(*wxBLUE,wxTRANSPARENT));	
+#endif
 			const int END_MARKER_SIZE=5;
 
 			//If the cursor is wholly below
@@ -1255,9 +1258,23 @@ void MathGLPane::drawInteractOverlay(wxDC *dc) const
 			//Select pen colour depending upon whether interaction
 			// is allowed
 			if(limitInteract)
-				drawPen= new wxPen(*wxLIGHT_GREY,2,wxSOLID);
+{
+
+				#if wxCHECK_VERSION(3,1,0)
+					drawPen = new wxPen(*wxLIGHT_GREY,2,wxPENSTYLE_SOLID);
+				#else
+					drawPen= new wxPen(*wxLIGHT_GREY,2,wxSOLID);
+				#endif
+}
+
 			else
-				drawPen= new wxPen(*wxBLACK,2,wxSOLID);
+{
+				#if wxCHECK_VERSION(3,1,0)
+					drawPen = new wxPen(*wxBLACK,2,wxPENSTYLE_SOLID);
+				#else
+					drawPen= new wxPen(*wxBLACK,2,wxSOLID);
+				#endif
+}
 			
 			dc->SetPen(*drawPen);
 			//Draw two arrows < > over the centre of the plot
@@ -1480,8 +1497,12 @@ void MathGLPane::drawRegionDraggingOverlay(wxDC *dc) const
 		dc->SetFont(font);
 	
 	wxPen *arrowPen;
-	arrowPen=  new wxPen(*wxBLACK,2,wxSOLID);
 
+#if wxCHECK_VERSION(3,1,0)
+	arrowPen=  new wxPen(*wxBLACK,2,wxPENSTYLE_SOLID);
+#else
+	arrowPen=  new wxPen(*wxBLACK,2,wxSOLID);
+#endif
 	dc->SetPen(*arrowPen);
 	const int ARROW_SIZE=8;
 	

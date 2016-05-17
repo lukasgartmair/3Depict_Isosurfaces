@@ -501,7 +501,12 @@ void CropPanel::draw()
 	//Draw greyed out section
 	//--
 	wxPen *noPen;
+#if wxCHECK_VERSION(3,1,0)
+	noPen = new wxPen(*wxBLACK,1,wxPENSTYLE_TRANSPARENT);
+#else
 	noPen = new wxPen(*wxBLACK,1,wxTRANSPARENT);
+#endif
+
 	b->SetColour(wxSystemSettings::GetColour(wxSYS_COLOUR_BACKGROUND));
 	dc->SetBrush(*b);
 	dc->SetPen(*noPen);
