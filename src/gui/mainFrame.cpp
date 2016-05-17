@@ -179,7 +179,7 @@ const unsigned int comboFiltersTypeMapping[FILTER_DROP_COUNT] = {
 enum {
 
 	//File menu
-	ID_MAIN_WINDOW= wxID_ANY+1,
+	ID_MAIN_WINDOW= wxID_ANY+1000, // There is a bug under MSW where wxID_ANY+1 causes collisions with some controls with implicit IDs...
 
 	ID_FILE_EXIT,
 	ID_FILE_OPEN,
