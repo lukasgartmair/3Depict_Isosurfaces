@@ -158,7 +158,7 @@ ExportAnimationDialog::ExportAnimationDialog(wxWindow* parent, int id, const wxS
     filterPropertySizer_staticbox = new wxStaticBox(filterLeftPane, -1, TRANS("Filters and properties"));
     filterTreeCtrl =new wxTreeCtrl(filterLeftPane,ID_FILTER_TREE_CTRL , wxDefaultPosition, wxDefaultSize, wxTR_HAS_BUTTONS|wxTR_NO_LINES|wxTR_HIDE_ROOT|wxTR_DEFAULT_STYLE|wxSUNKEN_BORDER|wxTR_EDIT_LABELS);
 
-    propertyGrid = new wxPropertyGrid(filterLeftPane, ID_PROPERTY_GRID);
+    propertyGrid = new wxPropertyGrid(filterLeftPane, ID_PROPERTY_GRID,wxDefaultPosition,wxDefaultSize,PROPERTY_GRID_STYLE);
     animationGrid = new wxGrid(filterRightPane, ID_ANIMATION_GRID_CTRL);
     keyFrameRemoveButton = new wxButton(filterRightPane, wxID_REMOVE, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
     labelWorkDir = new wxStaticText(frameViewPane, wxID_ANY, TRANS("Dir : "));
@@ -1210,7 +1210,7 @@ void ExportAnimationDialog::do_layout()
     filterLeftPane->SetSizer(filterPropertySizer);
     animationGridSizer->Add(animationGrid, 1, wxALL|wxEXPAND, 3);
     keyFramesSizer->Add(animationGridSizer, 1, wxEXPAND, 0);
-    keyFrameButtonSizer->Add(keyFrameRemoveButton, 0, wxALIGN_CENTER_HORIZONTAL, 0);
+    keyFrameButtonSizer->Add(keyFrameRemoveButton, 0, 0, 0);
     keyFramesSizer->Add(keyFrameButtonSizer, 0, wxALL|wxEXPAND, 3);
     filterRightPane->SetSizer(keyFramesSizer);
     splitPaneFilter->SplitVertically(filterLeftPane, filterRightPane);
