@@ -150,7 +150,7 @@ bool mglTest()
 		if(f)
 		{
 			float answer=std::numeric_limits<float>::max();
-			stream_cast(answer,f);
+			f >> answer;
 
 			//As an example, an "OK" image gave 177, a broken image 13000
 			const float THRESHOLD=2000;

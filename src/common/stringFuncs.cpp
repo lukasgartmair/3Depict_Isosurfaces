@@ -151,7 +151,7 @@ void splitFileData(const std::string &fileWithPath, std::string &path, std::stri
 	basename= onlyFilename(fileWithPath);
 	path = onlyDir(fileWithPath);
 
-	unsigned int extPosition=(size_t)-1;
+	unsigned int extPosition=(unsigned int)-1;
 	for(unsigned int ui=basename.size();ui--;)
 	{
 		if(basename[ui] =='.')
@@ -162,7 +162,7 @@ void splitFileData(const std::string &fileWithPath, std::string &path, std::stri
 		
 	} 
 
-	if(extPosition != (size_t)-1)
+	if(extPosition != (unsigned int)-1)
 	{
 		extension = basename.substr(extPosition+1,basename.size()-(extPosition+1));
 		basename = basename.substr(0,extPosition);

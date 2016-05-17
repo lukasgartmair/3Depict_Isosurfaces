@@ -780,6 +780,9 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			if(!currentFilter->haveCache())
 				currentFilter->clearConsole();
 
+			curProg.maxStep=curProg.step=1;
+			curProg.filterProgress=0;
+
 			//Take the stack top, filter it and generate "curData"
 			try
 			{

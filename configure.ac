@@ -450,6 +450,8 @@ then
 					GCC_VER=`gcc --version | head -n 1 | awk '{ print $(NF)}'`
 					AX_COMPARE_VERSION( [ $GCC_VER ], ge, 4.9,
 							[ USE_UBSAN="yes" ] , [ USE_UBSAN="no" ])
+					AX_COMPARE_VERSION( [ $GCC_VER ], ge, 6.0,
+							[ USE_UBSAN_GCC6="yes" ] , [ USE_UBSAN_GCC6="no" ])
 				;;
 			esac
 
@@ -458,6 +460,13 @@ then
 				CXXFLAGS="$CXXFLAGS  -fsanitize=address -fsanitize=undefined -fsanitize=return -fsanitize=integer-divide-by-zero -fsanitize=vla-bound -fsanitize=null -fsanitize=signed-integer-overflow"
 				LDFLAGS="$LDFLAGS  -fsanitize=address -fsanitize=undefined -fsanitize=return "
 				AC_MSG_RESULT(["Enabling Gcc-UbSan"]);
+			fi
+			
+			if test x"$USE_UBSAN_GCC6" == x"yes" ; then
+				CFLAGS="$CFLAGS -fsanitize=bounds-strict" 
+				CXXFLAGS="$CXXFLAGS  -fsanitize=bounds-strict"
+				LDFLAGS="$LDFLAGS  -fsanitize=bounds-strict"
+				AC_MSG_RESULT(["Enabling More Gcc-UbSan (gcc6)"]);
 			fi
 		fi
 		#--

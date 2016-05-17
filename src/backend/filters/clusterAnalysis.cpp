@@ -104,6 +104,9 @@ void makeFrequencyTable(const IonStreamData *i ,const RangeFile *r,
 #else
 	numThreads=1;
 #endif
+
+	//Create a series of independent vectors,that we can sum into seperately,
+	// based upon the number of threads
 	vector<size_t *> ionHist;
 	ionHist.resize(numThreads);
 
@@ -149,6 +152,8 @@ void makeFrequencyTable(const IonStreamData *i ,const RangeFile *r,
 	for(size_t uj=0;uj<r->getNumIons();uj++)
 		freqTable.push_back(make_pair(r->getName(uj),ionHist[0][uj]));
 
+	for(size_t ui=0;ui<numThreads;ui++)
+		delete[] ionHist[ui];
 }
 
 void makeCompositionTable(const IonStreamData *i ,const RangeFile *r, 
