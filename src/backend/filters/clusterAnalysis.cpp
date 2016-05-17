@@ -19,6 +19,7 @@
 #include "filterCommon.h"
 
 #include <queue>
+#include <algorithm>
 
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_eigen.h>
@@ -799,20 +800,30 @@ ASSERT(!(haveBulk && !haveCore));
 	if(wantClusterID)
 	{
 
+		//To prevent clusters ID from correlatiing with their position
+		// which results in odd visual effects, randomise the ID a litlle;
+		vector<size_t> idShuffle;
+		idShuffle.resize(clusteredCore.size());
+
+		for(unsigned int ui=0;ui<idShuffle.size();ui++)
+			idShuffle[ui]=ui;
+
+		std::random_shuffle(idShuffle.begin(),idShuffle.end());
+
 		#pragma omp parallel
 		{
 		#pragma omp for
 		for(size_t ui=0;ui<clusteredCore.size();ui++)
 		{
 			for(size_t uj=0;uj<clusteredCore[ui].size();uj++)
-				clusteredCore[ui][uj].setMassToCharge(ui);
+				clusteredCore[ui][uj].setMassToCharge(idShuffle[ui]);
 		}
 	
 		#pragma omp for
 		for(size_t ui=0;ui<clusteredBulk.size();ui++)
 		{
 			for(size_t uj=0;uj<clusteredBulk[ui].size();uj++)
-				clusteredBulk[ui][uj].setMassToCharge(ui);
+				clusteredBulk[ui][uj].setMassToCharge(idShuffle[ui]);
 		}
 		}
 	}
