@@ -1634,10 +1634,13 @@ void FilterTree::addFilterTree(FilterTree &f, const Filter *parent)
 	}
 	else
 	{
-		if(filters.empty())
-			filters.insert_subtree(filters.begin(),f.filters.begin());
-		else
-			filters.insert_subtree_after(filters.begin(),f.filters.begin());
+		if(f.size())
+		{
+			if(filters.empty())
+				filters.insert_subtree(filters.begin(),f.filters.begin());
+			else
+				filters.insert_subtree_after(filters.begin(),f.filters.begin());
+		}
 	}
 
 	f.filters.clear();

@@ -946,7 +946,8 @@ void AnalysisState::merge(const AnalysisState &otherState)
 	//wipe treestate's undo/redo trees, as we can no longer rely on them
 	treeState.clearUndoRedoStacks();	
 
-	treeState.addFilterTree(f,0);
+	if(f.size())
+		treeState.addFilterTree(f,0);
 	
 
 	const vector<Camera *> &newCameraVec = otherState.savedCameras;	
@@ -1291,12 +1292,15 @@ void TreeState::addFilter(Filter *f, bool isBase,size_t parentId)
 
 void TreeState::addFilterTree(FilterTree &f, bool isBase,size_t parentId)
 { 
-	ASSERT(!(isBase && parentId==(unsigned int)-1));
+	ASSERT(!(isBase && parentId==(size_t)-1));
 
 	if(isBase)
 		filterTree.addFilterTree(f,0);
 	else
+	{
+		ASSERT(filterMap.size());
 		filterTree.addFilterTree(f,filterMap[parentId]);
+	}
 
 	//FIXME: This technically does not need to be cleared. We can
 	// tweak the filter map to remain valid. It is the caller's problem
