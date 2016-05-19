@@ -780,6 +780,8 @@ unsigned int FilterTree::refreshFilterTree(list<FILTER_OUTPUT_DATA > &outData,
 			if(!currentFilter->haveCache())
 				currentFilter->clearConsole();
 
+			currentFilter->clearDevices();
+
 			curProg.maxStep=curProg.step=1;
 			curProg.filterProgress=0;
 
