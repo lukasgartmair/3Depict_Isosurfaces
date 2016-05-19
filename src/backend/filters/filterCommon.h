@@ -74,7 +74,7 @@ void writeScalarsXML(std::ostream &f, const char *containerName,
 {
 	f << tabs(depth) << "<"  << containerName << ">" << std::endl;
 	for(unsigned int ui=0; ui<scalarParams.size(); ui++)
-		f << tabs(depth+1) << "<scalar value=\"" << scalarParams[0] << "\"/>" << std::endl; 
+		f << tabs(depth+1) << "<scalar value=\"" << scalarParams[ui] << "\"/>" << std::endl; 
 	
 	f << tabs(depth) << "</" << containerName << ">" << std::endl;
 }
