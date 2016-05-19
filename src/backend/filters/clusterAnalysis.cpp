@@ -1118,7 +1118,7 @@ void ClusterAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	
 	curGroup++;
 
-	if(haveRangeParent)
+	if(haveRangeParent && ionNames.size())
 	{	
 		//Offset markers are used elsewhere. Must be in sync with
 		//this code	
