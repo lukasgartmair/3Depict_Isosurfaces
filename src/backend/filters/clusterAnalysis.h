@@ -105,6 +105,7 @@ class ClusterAnalysisFilter : public Filter
 		//Strip out clusters with a given number of elements
 		bool stripClusterBySize(std::vector<std::vector<IonHit> > &clusteredCore,
 						std::vector<std::vector<IonHit> > &clusteredBulk,
+							bool countBulk,
 							ProgressData &p) const;
 		//Build a plot that is the cluster size distribution as a function of cluster size
 		PlotStreamData *clusterSizeDistribution(const std::vector<std::vector<IonHit> > &solutes, 

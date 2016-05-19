@@ -92,6 +92,11 @@ using std::vector;
 const float SPHERE_PRESEARCH_CUTOFF = 75;
 
 
+//In link clustering, when we preform size cropping, do we awant to count bulk ions in our analysis?
+const bool WANT_COUNT_BULK_FORCROP=false;
+
+
+
 void makeFrequencyTable(const IonStreamData *i ,const RangeFile *r, 
 				std::vector<std::pair<string,size_t> > &freqTable) 
 {
@@ -562,7 +567,7 @@ unsigned int ClusterAnalysisFilter::refresh(const std::vector<const FilterStream
 		paranoidDebugAssert(clusteredCore,clusteredBulk);
 #endif
 	if(wantCropSize)
-		stripClusterBySize(clusteredCore,clusteredBulk,progress);
+		stripClusterBySize(clusteredCore,clusteredBulk,WANT_COUNT_BULK_FORCROP,progress);
 
 	bool haveBulk,haveCore;
 	haveBulk=clusteredBulk.size();
@@ -1903,6 +1908,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 	//
 	// In the implementation, there are more steps, due to data structure construction
 	// and other computational concerns
+
 	
 	bool needErosion=enableErosion && enableBulkLink;
 	unsigned int numClusterSteps=4;
@@ -2080,7 +2086,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		return FILTER_ERR_ABORT;
 
 	//NOTE : Speedup trick. If we know the cluster size at this point
-	// and we know we don't want to count the bulk, we can strip out clusters
+	// we can strip out clusters
 	// now, as we are going to do that anyway as soon as we return from our cluster
 	// computation.
 	// The advantage to doing it now is that we can (potentially) drop lots of clusters
@@ -2091,7 +2097,9 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 		{
 			size_t count;
 			count =allCoreClusters[ui].size();
-			if(count < nMin || count > nMax)
+			//If we are not counting the bulk, then we can check nMin,
+			// as we know the cluster wont get any larger
+			if( (!WANT_COUNT_BULK_FORCROP && count < nMin ) || count > nMax)
 			{
 				allCoreClusters.back().swap(allCoreClusters[ui]);
 				allCoreClusters.pop_back();
@@ -2679,6 +2687,7 @@ PlotStreamData* ClusterAnalysisFilter::clusterSizeDistribution(const vector<vect
 
 bool ClusterAnalysisFilter::stripClusterBySize(vector<vector<IonHit> > &clusteredCore,
 						vector<vector<IonHit> > &clusteredBulk,
+							bool countBulk,
 							ProgressData &progress) const
 
 {
@@ -2696,7 +2705,10 @@ bool ClusterAnalysisFilter::stripClusterBySize(vector<vector<IonHit> > &clustere
 			ui--;
 			//Count both bulk and core, and operate on both.
 			size_t count;
-			count =clusteredCore[ui].size() + clusteredBulk[ui].size() ;
+			if(countBulk)
+				count =clusteredCore[ui].size() + clusteredBulk[ui].size() ;
+			else
+				count =clusteredCore[ui].size();
 
 			if(count < nMin || count > nMax)
 			{
