@@ -91,8 +91,8 @@ void IonDownsampleFilter::initFilter(const std::vector<const FilterStreamData *>
 			if(ionFractions.size() != c->rangeFile->getNumIons())
 			{
 				//set up some defaults; seeded from normal
-				ionFractions.resize(c->rangeFile->getNumIons(),fraction);
-				ionLimits.resize(c->rangeFile->getNumIons(),maxAfterFilter);
+				ionFractions.resize(c->rangeFile->getNumIons()+1,fraction);
+				ionLimits.resize(c->rangeFile->getNumIons()+1,maxAfterFilter);
 			}
 		}
 		else
@@ -110,15 +110,15 @@ void IonDownsampleFilter::initFilter(const std::vector<const FilterStreamData *>
 				rsdIncoming = new RangeStreamData;
 				*rsdIncoming=*c;
 
-				ionFractions.resize(c->rangeFile->getNumIons(),fraction);
-				ionLimits.resize(c->rangeFile->getNumIons(),maxAfterFilter);
+				ionFractions.resize(c->rangeFile->getNumIons()+1,fraction);
+				ionLimits.resize(c->rangeFile->getNumIons()+1,maxAfterFilter);
 			}
 			else if(ionFractions.size() !=c->rangeFile->getNumIons())
 			{
 				//well its the same range, but somehow the number of ions 
 				//have changed. Could be range was reloaded.
-				ionFractions.resize(rsdIncoming->rangeFile->getNumIons(),fraction);
-				ionLimits.resize(rsdIncoming->rangeFile->getNumIons(),maxAfterFilter);
+				ionFractions.resize(rsdIncoming->rangeFile->getNumIons()+1,fraction);
+				ionLimits.resize(rsdIncoming->rangeFile->getNumIons()+1,maxAfterFilter);
 			}
 
 			//Ensure what is enabled and is disabled is up-to-date	
@@ -144,9 +144,9 @@ Filter *IonDownsampleFilter::cloneUncached() const
 	p->perSpecies=perSpecies;
 	p->rsdIncoming=rsdIncoming;
 
-	p->ionFractions.resize(ionFractions.size());
+	p->ionFractions.resize(ionFractions.size()+1);
 	std::copy(ionFractions.begin(),ionFractions.end(),p->ionFractions.begin());
-	p->ionLimits.resize(ionLimits.size());
+	p->ionLimits.resize(ionLimits.size()+1);
 	std::copy(ionLimits.begin(),ionLimits.end(),p->ionLimits.begin());
 
 
@@ -291,9 +291,9 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 
 		//Construct two vectors. One with the ion IDs for each input
 		//ion stream. the other with the total number of ions in the input
-		//for each ion type 
+		//for each ion type. There is an extra slot for unranged data
 		vector<size_t> numIons,ionIDVec;
-		numIons.resize(rsdIncoming->rangeFile->getNumIons(),0);
+		numIons.resize(rsdIncoming->rangeFile->getNumIons()+1,0);
 
 		for(unsigned int uj=0;uj<dataIn.size() ;uj++)
 		{
@@ -302,14 +302,22 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 				input=(const IonStreamData*)dataIn[uj];
 				if(input->data.size())
 				{
+					//Use the first ion to guess the identity of the entire stream
 					unsigned int ionID;
 					ionID=rsdIncoming->rangeFile->getIonID(
 						input->data[0].getMassToCharge()); 
-
 					if(ionID != (unsigned int)-1)
+					{
 						numIons[ionID]+=input->data.size();
-					
-					ionIDVec.push_back(ionID);
+						ionIDVec.push_back(ionID);
+					}
+					else
+					{
+						numIons[numIons.size()-1]+=input->data.size();
+						ionIDVec.push_back(numIons.size()-1);
+					}
+
+
 				}
 			}
 		}
@@ -326,12 +334,6 @@ unsigned int IonDownsampleFilter::refresh(const std::vector<const FilterStreamDa
 			
 					//Don't process ionstreams that are empty	
 					if(input->data.empty())
-						continue;
-
-					//FIXME: Allow processing of unranged data
-					//Don't process streams that are not ranged, as we cannot get their desired fractions
-					//at this time
-					if(ionIDVec[idPos]==(unsigned int)-1)
 						continue;
 
 					IonStreamData *d;
@@ -470,9 +472,9 @@ void IonDownsampleFilter::getProperties(FilterPropGroup &propertyList) const
 		else
 			typeVal=PROPERTY_TYPE_REAL;
 
-		bool haveProp=false;
+		unsigned int numIons=rsdIncoming->enabledIons.size();
 		//create a  single line for each
-		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
+		for(unsigned  int ui=0; ui<numIons; ui++)
 		{
 			if(rsdIncoming->enabledIons[ui])
 			{
@@ -488,11 +490,19 @@ void IonDownsampleFilter::getProperties(FilterPropGroup &propertyList) const
 				p.key=KEY_IONDOWNSAMPLE_DYNAMIC+ui;
 				propertyList.addProperty(p,curGroup);
 				
-				haveProp=true;
 			}
 		}
-		if(haveProp)
-			propertyList.setGroupTitle(curGroup,TRANS("Sampling rates"));
+
+		p.name=TRANS("Unranged");
+		if(fixedNumOut)
+			stream_cast(tmpStr,ionLimits[numIons]);
+		else
+			stream_cast(tmpStr,ionFractions[numIons]);
+		p.data=tmpStr;
+		p.key=KEY_IONDOWNSAMPLE_DYNAMIC+numIons;
+		propertyList.addProperty(p,curGroup);
+
+		propertyList.setGroupTitle(curGroup,TRANS("Sampling rates"));
 	}
 	else
 	{
