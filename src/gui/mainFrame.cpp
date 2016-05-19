@@ -5059,7 +5059,9 @@ void MainWindowFrame::realignCameraButton(unsigned int direction)
 		Camera *cam=visControl.scene.getActiveCam();
 		if(cam->type() == CAM_LOOKAT)
 		{
+			BoundCube bc = visControl.scene.getBound();
 			CameraLookAt *cLook=(CameraLookAt*)cam;
+			cLook->setTarget(bc.getCentroid());
 			cLook->repositionAroundTarget(direction);
 
 			//set the "up" direction that we use by default
