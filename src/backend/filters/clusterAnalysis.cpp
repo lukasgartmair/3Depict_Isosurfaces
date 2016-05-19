@@ -2157,6 +2157,9 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 				
 						ASSERT(bulkTree.getPt(nnIdxs[uj])->sqrDist(
 						*(coreTree.getPt(curIdx)))< bulkLink*bulkLink);
+						if(bulkTree.getTag(bulkTreeIdx))
+							continue;
+
 						//Record as part of the cluster	
 						thisBulkCluster.push_back(bulkTreeIdx);
 						bulkTree.tag(bulkTreeIdx);
