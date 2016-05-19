@@ -620,16 +620,6 @@ bool AnalysisState::loadInternal(const char *cpFilename, bool doMerge, std::ostr
 
 		}
 
-		
-		//Enforce active cam value validity.
-		if(newCameraVec.empty())	
-			newCameraVec.push_back(new CameraLookAt);
-
-		if(newCameraVec.size() < activeCamera)
-			activeCamera=0;
-		
-
-
 		//Now the cameras are loaded into a temporary vector. We will 
 		// copy them into the scene soon
 
@@ -838,10 +828,10 @@ bool AnalysisState::loadInternal(const char *cpFilename, bool doMerge, std::ostr
 	//Wipe the existing cameras, and then put the new cameras in place
 	savedCameras.clear();
 	
-	//Set a default camera as needed. We don't need to track its unique ID, as this is
-	//"invisible" to the UI
+	//Set a default camera as needed. 
 	Camera *c=new CameraLookAt();
 	savedCameras.push_back(c);
+	
 	bool defaultSet = false;
 	//spin through
 	for(unsigned int ui=0;ui<newCameraVec.size();ui++)
@@ -852,11 +842,11 @@ bool AnalysisState::loadInternal(const char *cpFilename, bool doMerge, std::ostr
 		// set it directly. Otherwise, its a user camera.
 
 		//if there are multiple without a string, only use the first
-		if(newCameraVec[ui]->getUserString().size() && !defaultSet)
+		if(newCameraVec[ui]->getUserString().size())
 		{
 			savedCameras.push_back(newCameraVec[ui]);
 		}
-		else
+		else if (!defaultSet)
 		{
 			ASSERT(savedCameras.size());
 			delete savedCameras[0];
@@ -899,6 +889,9 @@ bool AnalysisState::loadInternal(const char *cpFilename, bool doMerge, std::ostr
 	// state is overwritten
 	setStateModifyLevel(STATE_MODIFIED_NONE);
 
+#ifdef DEBUG
+	checkSane();
+#endif
 	//Perform sanitisation on results
 	return true;
 }
@@ -947,7 +940,7 @@ void AnalysisState::merge(const AnalysisState &otherState)
 	treeState.clearUndoRedoStacks();	
 
 	if(f.size())
-		treeState.addFilterTree(f,0);
+		treeState.addFilterTree(f,true);
 	
 
 	const vector<Camera *> &newCameraVec = otherState.savedCameras;	
@@ -1201,6 +1194,16 @@ std::string AnalysisState::getStashName(size_t offset) const
 	return  stashedTrees[offset].first;
 }
 
+void AnalysisState::checkSane() const
+{
+	ASSERT(activeCamera < savedCameras.size());
+
+	ASSERT(rBack >=0.0f && rBack <=1.0f 
+		&& gBack <= 1.0f && gBack >=0.0f &&
+		bBack >=0.0f && bBack <=1.0f);
+
+	
+}
 
 
 void AnalysisState::eraseStash(size_t offset)

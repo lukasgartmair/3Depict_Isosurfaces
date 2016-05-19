@@ -284,6 +284,9 @@ class AnalysisState
 		// class instance modifications on failure
 		bool loadInternal(const char *cpFilename,  bool merge,
 				std::ostream &errStream);
+#ifdef DEBUG
+		void checkSane() const;
+#endif
 	public:
 
 		TreeState treeState;
@@ -349,7 +352,7 @@ class AnalysisState
 		void setCameraByClone(const Camera *c, unsigned int offset) ;
 
 		//Obtain the ID of the active camera
-		size_t getActiveCam() const  { return activeCamera;};
+		size_t getActiveCam() const  { ASSERT(activeCamera < savedCameras.size()) ; return activeCamera;};
 
 		//Set
 		void setActiveCam(size_t offset) {ASSERT(offset < savedCameras.size()); activeCamera=offset; };
