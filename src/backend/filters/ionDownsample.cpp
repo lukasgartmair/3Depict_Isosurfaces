@@ -144,9 +144,9 @@ Filter *IonDownsampleFilter::cloneUncached() const
 	p->perSpecies=perSpecies;
 	p->rsdIncoming=rsdIncoming;
 
-	p->ionFractions.resize(ionFractions.size()+1);
+	p->ionFractions.resize(ionFractions.size());
 	std::copy(ionFractions.begin(),ionFractions.end(),p->ionFractions.begin());
-	p->ionLimits.resize(ionLimits.size()+1);
+	p->ionLimits.resize(ionLimits.size());
 	std::copy(ionLimits.begin(),ionLimits.end(),p->ionLimits.begin());
 
 
