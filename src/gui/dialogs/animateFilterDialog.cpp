@@ -639,6 +639,9 @@ void ExportAnimationDialog::OnFilterTreeCtrlSelChanged(wxTreeEvent &event)
 
 void ExportAnimationDialog::OnFilterGridCellChanging(wxPropertyGridEvent &event)
 {
+	//very odd behaviour. Bool options trigger the first time,  but
+	// not on the second time. Perhaps we can veto the event
+	// dynamically to catch this case?
 	event.SetValidationFailureBehavior(0);
 	event.Veto();
 }
@@ -660,8 +663,22 @@ void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 	//grab the key from the property grid
 	size_t key;
 	std::string keyStr;
+
+	wxPGProperty *pgp;
+	pgp= event.GetProperty();
+	if(!pgp)
+	{
+		cerr << "wxBUG: wx returned a null item for the event's property. THat makes no sense." << endl;	
+		event.Veto(); 
+		return;
+	}	
 	keyStr=event.GetProperty()->GetName();
-	stream_cast(key,keyStr);
+	if(stream_cast(key,keyStr))
+	{
+		cerr << "Wx bug? Should not be firing on a column that has no key" << endl; 
+		return;
+	}
+	cerr << "Keystr was :" << keyStr << endl;
 
 
 	const Filter *f;
@@ -861,6 +878,8 @@ void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 		}
 		default:
 			ASSERT(false); // that should cover all data types...
+			propertyGrid->ClearSelection();
+			return;
 	}
 
 	//Add property to animator
@@ -869,6 +888,7 @@ void ExportAnimationDialog::OnFilterGridCellSelected(wxPropertyGridEvent &event)
 	//update the user interface controls
 	update();
 
+	propertyGrid->ClearSelection();
 }
 
 void ExportAnimationDialog::OnFrameGridCellEditorShow(wxGridEvent &event)
