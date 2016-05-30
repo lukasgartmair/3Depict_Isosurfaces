@@ -1515,15 +1515,28 @@ void Voxels<T>::getInterpSlice(size_t normal, float offset,
 		{
 			size_t slicePos;
 			slicePos=roundf(offset*binCount[normal]);
+			slicePos=std::min(slicePos,binCount[normal]-1);
 			getSlice(normal,slicePos,p);
 			break;
 		}
 		case VOX_INTERP_LINEAR:
 		{
-			//Find the upper and lower bounds
-			size_t sliceUpper,sliceLower;;
-			sliceUpper=ceilf(offset*binCount[normal]);
-			sliceLower=offset*binCount[normal];
+			//Find the upper and lower bounds, then
+			// limit them so we don't fall off the end of the dataset
+			size_t sliceUpper,sliceLower;
+			if(binCount[0] == 1)
+				sliceUpper=sliceLower=0;
+			else
+			{
+				sliceUpper=ceilf(offset*binCount[normal]);
+
+				if(sliceUpper >=binCount[normal])
+					sliceUpper=binCount[normal]-1;
+				else if(sliceUpper==0)
+					sliceUpper=1;
+				
+				sliceLower=sliceUpper-1;
+			}
 
 			{
 				T *pLower;
