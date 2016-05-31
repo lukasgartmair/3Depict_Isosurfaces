@@ -115,6 +115,7 @@ bool pointIn2DConvexPoly(float px,float py,
 	return true;
 }
 
+//FIXME: This code is unfinished.
 template<class T>
 vector<Point3D> getVoxelIntersectionPoints(const BoundCube &b, const Point3D &p, const Point3D &normal, 
 						const Voxels<T> &vox, unsigned int numRequiredSamples, 

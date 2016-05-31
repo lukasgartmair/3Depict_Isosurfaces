@@ -419,7 +419,6 @@ unsigned int ProfileFilter::refresh(const std::vector<const FilterStreamData *> 
 					vectorParams,scalarParams  );
 	dataMapping.setMapMaxima(numBins);
 
-	unsigned int curProg=NUM_CALLBACK;
 	for(unsigned int ui=0;ui<dataIn.size() ;ui++)
 	{
 		//Loop through each element data set

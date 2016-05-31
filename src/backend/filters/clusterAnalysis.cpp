@@ -2067,7 +2067,7 @@ unsigned int ClusterAnalysisFilter::refreshLinkClustering(const std::vector<cons
 
 			thisClusterQueue.pop();
 
-		}while(thisClusterQueue.size());
+		}while(!thisClusterQueue.empty());
 			
 
 		if(soluteCluster.size())

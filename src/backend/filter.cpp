@@ -710,7 +710,6 @@ void IonStreamData::estimateIonParameters(const std::vector<const FilterStreamDa
 	}
 	
 	const vector<float> *tmp=0;
-	float size;
 	size_t min=0;
 	//find the most frequent ion colour	
 	for(map<vector<float>, unsigned int>::iterator it=ionColourMap.begin();
