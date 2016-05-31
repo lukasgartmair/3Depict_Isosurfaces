@@ -1,5 +1,5 @@
 Name:		3Depict
-Version:	0.0.18
+Version:	0.0.19
 Release:	1%{?dist}
 Summary:	Valued 3D point cloud visualization and analysis
 Group:		Applications/Engineering
@@ -9,8 +9,6 @@ License:	GPLv3+
 URL:		http://threedepict.sourceforge.net
 Source0:	http://downloads.sourceforge.net/threedepict/%{name}-%{version}.tar.gz
 
-
-BuildRoot:	%{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 #Mathgl for plotting
 BuildRequires:	mathgl-devel 
@@ -25,7 +23,7 @@ BuildRequires: libpng-devel
 #Desktop file utils for installing desktop file
 BuildRequires: desktop-file-utils
 #WX widgets
-BuildRequires: wxGTK-devel
+BuildRequires: wxGTK3-devel
 #Vigra, for voxelisation
 BuildRequires: vigra-devel
 
@@ -54,12 +52,23 @@ useful for general scalar valued point data purposes.
 %patch0
 %patch1
 
+%if 0%{?fedora} > 24
+# Installation directory has changed
+sed -i -e 's,qhull/qhull_a.h,libqhull/qhull_a.h,' \
+  src/backend/filters/filterCommon.h \
+  src/backend/filters/algorithms/rdf.cpp \
+  configure configure.ac
+# Avoid rerunning the autotools
+touch -r aclocal.m4 configure configure.ac
+%endif
+
 %build
-%configure --disable-debug-checks --enable-openmp-parallel --enable-mgl2
+#Due to bug 1077718, wx-config cannot be specified, due to
+# wx2/wx3 conflict.
+%configure --disable-debug-checks --enable-openmp-parallel --with-wx-config=wx-config-3.0
 make %{?_smp_mflags}
 
 %install
-rm -rf %{buildroot}
 make install DESTDIR=%{buildroot}
 
 # Install the textures
@@ -96,13 +105,9 @@ mv docs/manual-latex/manual.pdf %{name}-%{version}-manual.pdf
 %find_lang %{name}
 
 
-%clean
-rm -rf %{buildroot}
-
-
 %files -f %{name}.lang
-%defattr(-,root,root,-)
-%doc COPYING AUTHORS ChangeLog README TODO %{name}-%{version}-manual.pdf
+%license COPYING
+%doc AUTHORS ChangeLog README TODO %{name}-%{version}-manual.pdf
 %{_bindir}/%{name}
 %dir %{_datadir}/%{name}/
 %dir %{_datadir}/%{name}/textures
@@ -113,7 +118,31 @@ rm -rf %{buildroot}
 
 
 %changelog
-* Tue Apr 21 2015 D Haley <mycae(a!t)gmx.com> - 0.0.18-1
+* Wed Jun 01 2016 D Haley <mycae(a!t)gmx.com> - 0.0.19-1
+- Update to 0.0.19
+- Remove gcc patch, fixed upstream
+
+* Fri Apr 29 2016 Ralf Corsépius <corsepiu@fedoraproject.org> - 0.0.18-7
+- Rebuild for qhull-2015.2-1.
+- Reflect qhull_a.h's location having changed.
+
+* Tue Mar 8 2016 Orion Poplawski <orion@cora.nwra.com> - 0.0.18-6
+- Add patch for fix compilation with gcc 6
+
+* Mon Feb 22 2016 Orion Poplawski <orion@cora.nwra.com> - 0.0.18-5
+- Rebuild for gsl 2.1
+- Cleanup spec
+
+* Wed Feb 03 2016 Fedora Release Engineering <releng@fedoraproject.org> - 0.0.18-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_24_Mass_Rebuild
+
+* Sun Nov 29 2015 Kalev Lember <klember@redhat.com> - 0.0.18-3
+- Rebuilt for libmgl soname bump
+
+* Tue Jun 16 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.0.18-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_23_Mass_Rebuild
+
+* Fri May 01 2015 D Haley <mycae(a!t)gmx.com> - 0.0.18-1
 - Update to 0.0.18
 
 * Sat Oct 11 2014 D Haley <mycae(a!t)gmx.com> - 0.0.17-2
@@ -222,3 +251,4 @@ rm -rf %{buildroot}
 
 * Sun Aug 08 2010 D Haley <mycae(a!t)yahoo.com> - 0.0.1-1
 - Initial package
+
