@@ -1143,9 +1143,6 @@ template<class T>
 T Voxels<T>::getSum(const T &initialValue) const
 {
 	ASSERT(voxels.size());
-	using namespace vigra::acc;
-	AccumulatorChain<T,Sum> s();
-
 
 	T tmp(initialValue);
 	size_t n=voxels.size();

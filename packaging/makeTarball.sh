@@ -1,5 +1,7 @@
 #!/bin/bash
 MSG_FILE=tmp-messages
+#Should we use clang if available?
+USE_CLANG=0 
 
 if [ x`uname | grep Linux` != x"" ] ; then
 	NUM_PROCS=`cat /proc/cpuinfo | grep cores | uniq | sed 's/.*:\s*//'`
@@ -9,10 +11,12 @@ else
 fi
 
 
+HG_ROOT=`hg root`
 
+pushd $HG_ROOT
 
 if [ ! -f configure ] ; then
-	echo "Configure not found -- are you running this script from the top dir? " 
+	echo "Configure not found in root (hg root). Are you runing this from inside the repository?" 
 	exit 1
 fi
 
@@ -29,47 +33,84 @@ done
 #	- ubsan
 #-------
 #CONF_ARGS=("--enable-openmp-parallel" "--disable-debug-checks " " --enable-debug-checks " " --enable-openmp-parallel --disable-debug-checks " " --enable-ubsan --enable-openmp-parallel " " --enable-ubsan "  )
-#
-#for i in ${CONF_ARGS[*]}
-#do
-#	if [ -f Makefile ] ; then
-#		make distclean
-#	fi
-#
-#	./configure "$i"
-#
-#	if [ $? -ne 0 ] ; then
-#		echo "test-configuration failed to configure: arguments are $i"
-#		exit 1
-#	fi
-#
-#	if [ ! -f Makefile ] ; then
-#		echo "Configure claimed everything was OK, but did not create a Makefile"
-#		exit 1
-#	fi
-#
-#	make -j $NUM_PROCS
-#	if [ $? -ne 0 ] ; then
-#		echo "failed to build: arguments are $i"
-#		exit 1
-#	fi
-#
-#	#Check for unit test availability, and run them
-#	# where possible
-#	pushd src
-#	TEST_FLAG=`./3Depict --help  2>&1 | grep "\-\-test"`
-#	if [ x"$TEST_FLAG" != x"" ] ; then
-#		./3Depict -t
-##		if [ $? -ne 0 ] ; then
-##			echo "Unit tests failed for configure flag : $i" 
-###			exit 1
-##		fi
-#	fi
-#	popd	
-#      
-#	make distclean
-#done
-#-------
+
+for i in ${CONF_ARGS[*]}
+do
+	if [ -f Makefile ] ; then
+		make distclean
+	fi
+
+	./configure "$i"
+
+	if [ $? -ne 0 ] ; then
+		echo "test-configuration failed to configure: arguments are $i"
+		exit 1
+	fi
+
+	if [ ! -f Makefile ] ; then
+		echo "Configure claimed everything was OK, but did not create a Makefile"
+		exit 1
+	fi
+
+	make -j $NUM_PROCS
+	if [ $? -ne 0 ] ; then
+		echo "failed to build: arguments are $i"
+		exit 1
+	fi
+
+	#Check for unit test availability, and run them
+	# where possible
+	pushd src
+	TEST_FLAG=`./3Depict --help  2>&1 | grep "\-\-test"`
+	if [ x"$TEST_FLAG" != x"" ] ; then
+		./3Depict -t
+		if [ $? -ne 0 ] ; then
+			echo "Unit tests failed for configure flag : $i" 
+			exit 1
+		fi
+	fi
+	popd	
+      
+	make distclean
+done
+
+if  [ x"`which clang`" != x"" ]  && [ $USE_CLANG -ne 0 ] ; then
+	#OK, we have clang
+	CXX=clang++ C=clang CFLAGS=-std=c++11 CXXFLAGS=-std=c++11 ./configure 
+	if [ $? -ne 0 ] ; then
+		echo "configuration failed to configure with clang"
+		exit 1
+	fi
+	
+	if [ ! -f Makefile ] ; then
+		echo "Configure claimed everything was OK, but did not create a Makefile"
+		exit 1
+	fi
+
+	make -j $NUM_PROCS
+	if [ $? -ne 0 ] ; then
+		#If we fail to build with clang, we don't care. We just want to see how far we can get. 
+		# Clang seems to have a lot of problems at link time, 
+		# which we don't see with gcc.
+		echo "Failed to build with clang. Ignoring"
+	else	
+		pushd src/
+		./3Depict -t
+		if [ $? -ne 0 ] ; then
+			echo "Unit tests failed for configure flag : $i" 
+			exit 1
+		fi
+
+		popd
+		make distclean
+	fi	
+fi
+
+
+
+if [ ! -f compile ] ; then
+	touch compile
+fi
 
 ./configure
 if [ $? -ne 0 ] ; then
@@ -78,7 +119,14 @@ if [ $? -ne 0 ] ; then
 fi
 rm -rf autom4te.cache
 
-#Build tarball
+#Build program 
+make -j $NUM_PROCS
+if [ $? -ne 0 ] ; then
+	echo "make failed";
+	exit 1;
+fi
+
+#Build distributable tarball
 make dist -j $NUM_PROCS
 
 if [ $? -ne 0 ] ; then
@@ -312,3 +360,5 @@ if [ -f $MSG_FILE ] ; then
 
 	rm $MSG_FILE
 fi
+
+popd

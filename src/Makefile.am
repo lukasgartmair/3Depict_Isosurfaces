@@ -60,7 +60,7 @@ BACKEND_SOURCE_FILES = backend/animator.cpp backend/filtertreeAnalyse.cpp backen
 
 BACKEND_HEADER_FILES =  backend/animator.h backend/filtertreeAnalyse.h backend/filtertree.h\
 			backend/APT/ionhit.h backend/APT/APTFileIO.h backend/APT/APTRanges.h backend/APT/abundanceParser.h \
-			backend/filters/algorithms/K3DTree.h backend/filters/algorithms/K3DTree-mk2.h \
+			backend/filters/vtk.h backend/filters/algorithms/K3DTree.h backend/filters/algorithms/K3DTree-mk2.h \
 			backend/filter.h backend/filters/algorithms/rdf.h \
 			backend/viscontrol.h backend/state.h backend/plot.h backend/configFile.h \
 		        backend/tree.hh

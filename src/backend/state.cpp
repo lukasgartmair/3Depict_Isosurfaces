@@ -1194,6 +1194,7 @@ std::string AnalysisState::getStashName(size_t offset) const
 	return  stashedTrees[offset].first;
 }
 
+#ifdef DEBUG
 void AnalysisState::checkSane() const
 {
 	ASSERT(activeCamera < savedCameras.size());
@@ -1204,7 +1205,7 @@ void AnalysisState::checkSane() const
 
 	
 }
-
+#endif
 
 void AnalysisState::eraseStash(size_t offset)
 {

@@ -1,5 +1,5 @@
 #This is the startup tips file that is passed to wxTipProvider, to generate the startup tips dialog
-# each tip must be of the form _("some tip"), the leading _(" must be the same for each tip.
+# each tip must be of the form _("some tip")
 # wx docs say : blank lines, and lines starting with # are skipped
 
 _("You can reset the main view by tapping the space bar. Hold down modifier keys like shift,ctrl to change the axis. Double tap to switch which axis to look down")
