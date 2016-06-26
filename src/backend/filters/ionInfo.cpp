@@ -398,7 +398,7 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 
 
 	//"Pairwise events" - where we perform an action if both 
-	//These
+	//these are set
 	if(wantIonCounts && wantVolume)
 	{
 		if(computedVol > sqrtf(std::numeric_limits<float>::epsilon()))
@@ -420,6 +420,9 @@ unsigned int IonInfoFilter::refresh(const std::vector<const FilterStreamData *> 
 		}
 	}
 
+
+	progress.filterProgress=100;
+	
 	return 0;
 }
 

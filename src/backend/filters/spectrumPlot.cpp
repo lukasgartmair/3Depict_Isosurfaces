@@ -517,6 +517,8 @@ unsigned int SpectrumPlotFilter::refresh(const std::vector<const FilterStreamDat
 	
 	getOut.push_back(d);
 
+	progress.filterProgress=100;
+
 	return 0;
 }
 

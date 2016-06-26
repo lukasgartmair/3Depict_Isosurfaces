@@ -167,8 +167,15 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 
 	//If we are not enabled, do not draw anything into the output
 	if(!active)
+	{
+		progress.filterProgress=100;
 		return 0;
+	}
 
+	progress.step=1;
+	progress.maxStep=1;
+	progress.stepName=TRANS("Draw");
+	
 	DrawStreamData *d; 
 	d = new DrawStreamData;
 	d->parent=this;
@@ -505,6 +512,7 @@ unsigned int AnnotateFilter::refresh(const std::vector<const FilterStreamData *>
 	d->cached=0;
 	getOut.push_back(d);
 
+	progress.filterProgress=100;
 	return 0;
 }
 

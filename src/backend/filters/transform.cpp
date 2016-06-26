@@ -998,8 +998,10 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 					break;
 				}
 			
+			}
 		}
-		}
+
+		progress.filterProgress=100;
 	}
 	else
 	{

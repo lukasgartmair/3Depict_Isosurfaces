@@ -2820,6 +2820,8 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 				newD->data.resize(d->data.size());
 				if(stopMode == STOP_MODE_NEIGHBOUR)
 				{
+					unsigned int nProg=0;
+
 					bool spin=false;
 					#pragma omp parallel for shared(spin)
 					for(size_t uj=0;uj<d->data.size();uj++)
@@ -2852,14 +2854,15 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 						}
 
 						res.clear();
+						#pragma atomic
+						nProg++;
 						
 						//Update progress as needed
 						if(!curProg--)
 						{
 							#pragma omp critical 
 							{
-							n+=NUM_CALLBACK/(nnMax);
-							progress.filterProgress= (unsigned int)(((float)n/(float)totalDataSize)*100.0f);
+							progress.filterProgress= (unsigned int)(((float)nProg/(float)totalDataSize)*100.0f);
 							if(*Filter::wantAbort)
 								spin=true;
 							curProg=NUM_CALLBACK/(nnMax);
@@ -3104,9 +3107,10 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 				IonStreamData *newD = new IonStreamData;
 				newD->parent=this;
 
-				//Adjust this number to provide more update thanusual, because we
+				//Adjust this number to provide more update than usual, because we
 				//are not doing an o(1) task between updates; yes, it is a hack
-				unsigned int curProg=NUM_CALLBACK/(10*nnMax);
+				const unsigned int PROG_PER_PASS=NUM_CALLBACK/(10*nnMax);
+				unsigned int curProg=PROG_PER_PASS;
 				newD->data.reserve(d->data.size());
 				if(stopMode == STOP_MODE_NEIGHBOUR)
 				{
@@ -3154,11 +3158,11 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 						{
 							#pragma omp critical 
 							{
-							n+=NUM_CALLBACK/(nnMax);
+							n+=PROG_PER_PASS;
 							progress.filterProgress= (unsigned int)(((float)n/(float)totalDataSize)*100.0f);
 							if(*Filter::wantAbort)
 								spin=true;
-							curProg=NUM_CALLBACK/(nnMax);
+							curProg=PROG_PER_PASS;
 							}
 						}
 					}
@@ -3304,6 +3308,8 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 				break;
 		}
 	}
+	progress.filterProgress=100;
+
 	//If we have bad points, let the user know.
 	if(!badPts.empty())
 	{
