@@ -719,7 +719,7 @@ size_t SpatialAnalysisFilter::algorithmReplace(ProgressData &progress, size_t to
 		map<size_t,size_t> matchedMap;
 
 		//Find the nearest point for all points in the dataset
-
+		// maps the ith ion in "inions" to the tree value
 		#pragma omp parallel for 
 		for(size_t ui=0;ui<inIons.size();ui++)
 		{
@@ -746,17 +746,20 @@ size_t SpatialAnalysisFilter::algorithmReplace(ProgressData &progress, size_t to
 		progress.stepName=TRANS("Compute");
 		progress.filterProgress=0;
 
-		//Finish if no matches
-		if(matchedMap.empty())
-		{
-			progress.filterProgress=100;
-			return 0;
-		}
 
+		//now we have  amap that matches as so:
+		// map ( "inIon" ID -> "fileIon" ID)
+		// inIon should be our "A" in "A operator B"
 		switch(replaceMode)
 		{
 			case REPLACE_MODE_SUBTRACT:
 			{
+				//If no matches, A-0 = A. Just return input
+				if(matchedMap.empty())
+				{
+					outIons.swap(inIons);
+					break;
+				}
 				//In subtraction mode, we should have
 				// at least this many ions
 				if(inIons.size() > matchedMap.size())
@@ -778,6 +781,10 @@ size_t SpatialAnalysisFilter::algorithmReplace(ProgressData &progress, size_t to
 			}
 			case REPLACE_MODE_INTERSECT:
 			{
+				//Finish if no matches
+				if(matchedMap.empty())
+					break;
+				
 				outIons.reserve(matchedMap.size());
 
 				if(replaceMass)
@@ -4376,10 +4383,11 @@ bool densityPairTest();
 bool nnHistogramTest();
 bool rdfPlotTest();
 bool axialDistTest();
-bool replaceTest();
+bool replaceIntersectAndUnionTest();
 bool localConcTestRadius();
 bool localConcTestNN();
-bool replaceTest2();
+bool replaceSubtractTest();
+bool replaceUnionTest();
 
 bool SpatialAnalysisFilter::runUnitTests()
 {
@@ -4394,10 +4402,13 @@ bool SpatialAnalysisFilter::runUnitTests()
 
 	if(!axialDistTest())
 		return false;
-	if(!replaceTest())
+	if(!replaceIntersectAndUnionTest())
 		return false;
 
-	if(!replaceTest2())
+	if(!replaceSubtractTest())
+		return false;
+
+	if(!replaceUnionTest())
 		return false;
 
 	if(!localConcTestRadius())
@@ -4672,7 +4683,7 @@ bool axialDistTest()
 	return true;
 }
 
-bool replaceTest()
+bool replaceIntersectAndUnionTest()
 {
 	std::string ionFile=createTmpFilename(NULL,".pos");
 		
@@ -4692,48 +4703,53 @@ bool replaceTest()
 	//Create a spatial analysis filter
 	SpatialAnalysisFilter *f=new SpatialAnalysisFilter;
 	f->setCaching(false);	
-	
 	//Set it to do a union calculation 
 	bool needUp;
 	string s;
 	s=TRANS(SPATIAL_ALGORITHMS[ALGORITHM_REPLACE]);
 	TEST(f->setProperty(KEY_ALGORITHM,s,needUp),"Set prop");
 	TEST(f->setProperty(KEY_REPLACE_FILE,ionFile,needUp),"Set prop");
-	s=TRANS(REPLACE_ALGORITHMS[REPLACE_MODE_INTERSECT]);
-	TEST(f->setProperty(KEY_REPLACE_ALGORITHM,s,needUp),"Set prop");
-	
 	s="1";
 	TEST(f->setProperty(KEY_REPLACE_VALUE,s,needUp),"Set prop");
 
-
-	//Do the refresh
+	vector<unsigned int> opVec;
+	opVec.push_back(REPLACE_MODE_INTERSECT);
+	opVec.push_back(REPLACE_MODE_UNION);
+	
 	ProgressData p;
 	vector<const FilterStreamData*> streamIn,streamOut;
 	streamIn.push_back(d);
-	TEST(!f->refresh(streamIn,streamOut,p),"refresh OK");
+	for(unsigned int opId=0;opId<opVec.size();opId++)
+	{
+		s=TRANS(REPLACE_ALGORITHMS[opVec[opId]]);
+		TEST(f->setProperty(KEY_REPLACE_ALGORITHM,s,needUp),"Set prop");
+
+		//Do the refresh
+		TEST(!f->refresh(streamIn,streamOut,p),"refresh OK");
+
+		TEST(streamOut.size() == 1,"stream count");
+		TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+		TEST(streamOut[0]->getNumBasicObjects() == NIONS,"Number objects");
+
+		//we should have taken the mass-to-charge from the file
+		const IonStreamData *outIons = (const IonStreamData*)streamOut[0];
+		for(unsigned int ui=0;ui<NIONS; ui++)
+		{
+			ASSERT(outIons->data[ui].getMassToCharge() == 1); 
+		}
+		delete streamOut[0];
+		streamOut.clear();
+	}
 	delete f;
 	delete d;
-	streamIn.clear();
-
-	TEST(streamOut.size() == 1,"stream count");
-	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
-	TEST(streamOut[0]->getNumBasicObjects() == NIONS,"Number objects");
-
-	//we should have taken the mass-to-charge from the file
-	const IonStreamData *outIons = (const IonStreamData*)streamOut[0];
-	for(unsigned int ui=0;ui<NIONS; ui++)
-	{
-		ASSERT(outIons->data[ui].getMassToCharge() == 1); 
-	}
-
+	
 	wxRemoveFile(ionFile);
 
-	delete streamOut[0];
 	
 	return true;
 }
 
-bool replaceTest2()
+bool replaceSubtractTest()
 {
 	std::string ionFile=createTmpFilename(NULL,".pos");
 		
@@ -4805,6 +4821,72 @@ bool replaceTest2()
 		ASSERT(outIons->data[ui].getMassToCharge() == 1); 
 		ASSERT(outIons->data[ui].getPos()[2] >= 0); 
 	}
+
+	wxRemoveFile(ionFile);
+
+	delete streamOut[0];
+	
+	return true;
+}
+
+bool replaceUnionTest()
+{
+	std::string ionFile=createTmpFilename(NULL,".pos");
+	
+	//"B" dataset	
+	vector<IonHit> ions;
+	ions.push_back(IonHit(Point3D(0,0,0),1));
+	ions.push_back(IonHit(Point3D(1,0,1),1));
+	ions.push_back(IonHit(Point3D(0,1,1),1));
+
+	IonHit::makePos(ions,ionFile.c_str());
+	ions.clear();
+
+	//"A" dataset	
+	ions.push_back(IonHit(Point3D(0,0,0),2));
+	ions.push_back(IonHit(Point3D(1,0,-1),2));
+	ions.push_back(IonHit(Point3D(0,1,-1),2));
+
+
+	IonStreamData *d = new IonStreamData;
+	d->data.swap(ions);
+
+	//Create a spatial analysis filter
+	SpatialAnalysisFilter *f=new SpatialAnalysisFilter;
+	f->setCaching(false);	
+	
+	//Set it to do a union calculation 
+	bool needUp;
+	string s;
+	s=TRANS(SPATIAL_ALGORITHMS[ALGORITHM_REPLACE]);
+	TEST(f->setProperty(KEY_ALGORITHM,s,needUp),"Set prop");
+	TEST(f->setProperty(KEY_REPLACE_FILE,ionFile,needUp),"Set prop");
+	s=TRANS(REPLACE_ALGORITHMS[REPLACE_MODE_UNION]);
+	TEST(f->setProperty(KEY_REPLACE_ALGORITHM,s,needUp),"Set prop");
+	s="1";
+	TEST(f->setProperty(KEY_REPLACE_VALUE,s,needUp),"Set prop");
+
+	//Do the refresh
+	ProgressData p;
+	vector<const FilterStreamData*> streamIn,streamOut;
+	streamIn.push_back(d);
+	TEST(!f->refresh(streamIn,streamOut,p),"refresh OK");
+	delete f;
+	delete d;
+	streamIn.clear();
+
+	TEST(streamOut.size() == 1,"stream count");
+	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
+	TEST(streamOut[0]->getNumBasicObjects() == 5,"Number objects");
+
+	//There should be
+	const IonStreamData *outIons = (const IonStreamData*)streamOut[0];
+	float sumV=0;
+	for(unsigned int ui=0;ui<outIons->getNumBasicObjects(); ui++)
+	{
+		sumV+=outIons->data[ui].getMassToCharge();
+	}
+	TEST( EQ_TOL(sumV,7.0f),"mass-to-charge check");
 
 	wxRemoveFile(ionFile);
 
