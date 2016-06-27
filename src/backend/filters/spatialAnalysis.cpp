@@ -4230,11 +4230,8 @@ size_t SpatialAnalysisFilter::algorithmLocalConcentration(ProgressData &progress
 				}
 
 				//distance between search pt and found pt
-				float sqrDistance;
-				sqrDistance = searchTree.getPtRef(ptIdx).sqrDist(pSource[ui].getPosRef());
 
-				if(sqrDistance > DISTANCE_EPSILON)
-					ptsFound.insert(ptIdx);
+				ptsFound.insert(ptIdx);
 			}
 
 
@@ -4244,8 +4241,14 @@ size_t SpatialAnalysisFilter::algorithmLocalConcentration(ProgressData &progress
 			//Count the number of numerator and denominator ions, using the masses we set aside earlier
 			for(set<size_t>::iterator it=ptsFound.begin(); it!=ptsFound.end(); ++it)
 			{
-				float ionMass;
+
 				//check that the distance is non-zero, to force no self-matching
+				float sqrDistance;
+				sqrDistance = searchTree.getPtRef(*it).sqrDist(pSource[ui].getPosRef());
+				if(sqrDistance < DISTANCE_EPSILON)
+					continue;
+
+				float ionMass;
 				ionMass = dataMasses[searchTree.getOrigIndex(*it)];
 
 				unsigned int ionID;
