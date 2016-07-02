@@ -88,7 +88,7 @@ void IonDownsampleFilter::initFilter(const std::vector<const FilterStreamData *>
 			rsdIncoming = new RangeStreamData;
 			*rsdIncoming=*c;
 
-			if(ionFractions.size() != c->rangeFile->getNumIons())
+			if(ionFractions.size() != c->rangeFile->getNumIons()+1)
 			{
 				//set up some defaults; seeded from normal
 				ionFractions.resize(c->rangeFile->getNumIons()+1,fraction);
@@ -464,7 +464,8 @@ void IonDownsampleFilter::getProperties(FilterPropGroup &propertyList) const
 
 	propertyList.setGroupTitle(curGroup,TRANS("Mode"));
 	curGroup++;
-	if(rsdIncoming && perSpecies)
+
+	if(rsdIncoming && perSpecies && rsdIncoming->enabledIons.size())
 	{
 		unsigned int typeVal;
 		if(fixedNumOut)
