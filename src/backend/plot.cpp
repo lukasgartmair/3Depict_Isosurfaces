@@ -791,7 +791,7 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 				if(!plottingData[ui]->visible)
 					continue;
 
-				if(plottingData[ui]->getType()!= PLOT_MODE_1D)
+				if(plottingData[ui]->getMode()!= PLOT_MODE_1D)
 					continue;
 			
 				if(((Plot1D*)plottingData[ui])->wantLogPlot()) 
@@ -809,7 +809,7 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 				float minYVal=0.1;
 				for(size_t ui=0;ui<plottingData.size();ui++)
 				{
-					if(!plottingData[ui]->visible || plottingData[ui]->getType() !=PLOT_MODE_1D)
+					if(!plottingData[ui]->visible || plottingData[ui]->getMode() !=PLOT_MODE_1D)
 						continue;
 
 					float tmp ;
@@ -929,7 +929,7 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 				Plot2DFunc *curPlot;
 				curPlot=(Plot2DFunc*)plottingData[ui];
 
-				if(curPlot->getType() == PLOT_2D_DENS)
+				if(curPlot->getMode() == PLOT_2D_DENS)
 				{
 					wantColourbar=true;
 				}
@@ -1489,7 +1489,7 @@ void Plot1D::drawPlot(mglGraph *gr) const
 
 
 	//Plot the appropriate form	
-	switch(plotMode)
+	switch(plotType)
 	{
 		case PLOT_LINE_LINES:
 			//Unfortunately, when using line plots, mathgl moves the data points to the plot boundary,

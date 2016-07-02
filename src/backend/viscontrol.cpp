@@ -249,7 +249,7 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 						plotData->yLabel,plotData->dataLabel);
 					
 					//set the appearance of the plot
-					//plotNew->setTraceStyle(plotStyle);
+					plotNew->setPlotType(plotData->plotStyle);
 					plotNew->setColour(plotData->r,plotData->g,plotData->b);
 					
 					

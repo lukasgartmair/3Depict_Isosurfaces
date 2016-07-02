@@ -217,7 +217,7 @@ class PlotOverlays
 class PlotBase
 {
 	protected:
-		//!Sub type of plot (eg lines, bars for 1D)
+		//!Type of plot 
 		unsigned int plotMode;
 		//!xaxis label
 		std::string xLabel;
@@ -229,7 +229,8 @@ class PlotBase
 		//plot colour (for single coloured plots)
 		float r,g,b;
 		
-		//The type of plot (ie what class is it?)	
+		//The sub-style of the plot trace (eg lines, points, bars, etc)
+		// FIXME: This is badly named, change to traceStyle, or dataStyle, or something
 		unsigned int plotType;
 		
 		void copyBase(PlotBase *target) const;
@@ -298,6 +299,8 @@ class PlotBase
 			const std::string &y,const std::string &t);
 
 		void setColour(float rNew, float gNew, float bNew);
+
+		void setPlotType(unsigned int newStyle) { plotType=newStyle;}
 
 		std::string getXLabel() const { return xLabel;}
 		std::string getTitle() const { return title;}
