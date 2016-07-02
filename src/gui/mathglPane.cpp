@@ -627,7 +627,7 @@ void MathGLPane::oneDMouseDownAction(bool leftDown,bool middleDown,
 			thePlot->getRegion(plotId,regionId,r);
 
 			//TODO: Implement a more generic region handler?
-			ASSERT(thePlot->plotType(plotId) == PLOT_MODE_1D);
+			ASSERT(thePlot->getPlotMode(plotId) == PLOT_MODE_1D);
 
 			float mglStartX,mglStartY;
 			toPlotCoords(draggingStart.x, draggingStart.y,mglStartX,mglStartY);
@@ -1471,7 +1471,7 @@ void MathGLPane::drawRegionDraggingOverlay(wxDC *dc) const
 		return;
 
 
-	ASSERT(thePlot->plotType(startMousePlot) == PLOT_MODE_1D);
+	ASSERT(thePlot->getPlotMode(startMousePlot) == PLOT_MODE_1D);
 
 	//See where extending the region is allowed up to.
 	thePlot->findRegionLimit(startMousePlot,startMouseRegion,
@@ -1550,7 +1550,7 @@ void MathGLPane::drawRegionDraggingOverlay(wxDC *dc) const
 		{
 			//This needs to be extended to support more
 			//plot types.
-			ASSERT(thePlot->plotType(startMousePlot) == PLOT_MODE_1D);
+			ASSERT(thePlot->getPlotMode(startMousePlot) == PLOT_MODE_1D);
 			
 			//Draw "ghost" limits markers for move,
 			//these appear as moving vertical bars to outline

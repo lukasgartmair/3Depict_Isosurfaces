@@ -395,7 +395,7 @@ class Plot2DStreamData : public FilterStreamData
 		//Label for X, Y axes
 		std::string xLabel,yLabel;
 
-		unsigned int plotType;
+		unsigned int plotStyle;
 
 		//!Structured XY data pairs for plotting curve
 		Array2D<float> xyData;

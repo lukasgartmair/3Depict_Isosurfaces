@@ -29,7 +29,7 @@ const char *errModeStrings[] = {
 				NTRANS("Moving avg.")
 				};
 
-const char *plotTypeStrings[]= {
+const char *traceStyleStrings[]= {
 	NTRANS("Lines"),
 	NTRANS("Bars"),
 	NTRANS("Steps"),
@@ -119,15 +119,15 @@ std::string mglColourCode(float r, float g, float b)
 string plotString(unsigned int plotMode)
 {
 	ASSERT(plotMode< PLOT_TYPE_ENUM_END);
-	return TRANS(plotTypeStrings[plotMode]); 
+	return TRANS(traceStyleStrings[plotMode]); 
 }
 
 unsigned int plotID(const std::string &plotString)
 {
-	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(plotTypeStrings) == PLOT_TYPE_ENUM_END);
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(traceStyleStrings) == PLOT_TYPE_ENUM_END);
 	for(unsigned int ui=0;ui<PLOT_TYPE_ENUM_END; ui++)
 	{
-		if(plotString==TRANS(plotTypeStrings[ui]))
+		if(plotString==TRANS(traceStyleStrings[ui]))
 			return ui;
 	}
 
@@ -298,7 +298,7 @@ std::string PlotRegion::getName() const
 
 PlotWrapper::PlotWrapper()
 {
-	//COMPILE_ASSERT(THREEDEP_ARRAYSIZE(plotTypeStrings) == PLOT_TYPE_ENUM_END);
+	//COMPILE_ASSERT(THREEDEP_ARRAYSIZE(traceStyleStrings) == PLOT_TYPE_ENUM_END);
 
 	applyUserBounds=false;
 	plotChanged=true;
@@ -684,6 +684,12 @@ unsigned int PlotWrapper::getVisibleMode() const
 	return visibleMode;
 }
 
+unsigned int PlotWrapper::getPlotMode(unsigned int plotId) const
+{
+	ASSERT(plotId < plottingData.size());
+	return plottingData[plotId]->getPlotMode();
+}
+
 void PlotWrapper::getVisibleIDs(vector<unsigned int> &visiblePlotIDs ) const
 {
 
@@ -1047,11 +1053,6 @@ void PlotWrapper::getRegion(unsigned int plotId, unsigned int regionId, PlotRegi
 	plottingData[plotIDHandler.getPos(plotId)]->regionGroup.getRegion(regionId,region);
 }
 
-unsigned int PlotWrapper::plotType(unsigned int plotId) const
-{
-	return plottingData[plotIDHandler.getPos(plotId)]->getPlotMode();
-}
-
 
 void PlotWrapper::moveRegion(unsigned int plotID, unsigned int regionId, bool regionSelfUpdate,
 		unsigned int movementType, float newX, float newY) const
@@ -1135,7 +1136,7 @@ void PlotBase::setStrings(const std::string &x, const std::string &y, const std:
 
 void PlotBase::copyBase(PlotBase *target) const
 {
-	target->plotType=plotType;
+	target->traceStyle=traceStyle;
 	target->minX=minX;
 	target->maxX=maxX;
 	target->minY=minY;
@@ -1157,12 +1158,12 @@ void PlotBase::copyBase(PlotBase *target) const
 
 unsigned int PlotBase::getType() const
 {
-	return plotType;
+	return traceStyle;
 }
 
 unsigned int PlotBase::getMode() const
 {
-	switch(plotType)
+	switch(traceStyle)
 	{
 		case PLOT_LINE_LINES:
 		case PLOT_LINE_BARS:
@@ -1181,7 +1182,7 @@ unsigned int PlotBase::getMode() const
 Plot1D::Plot1D()
 {
 	//Set the default plot properties
-	plotType=PLOT_LINE_LINES;
+	traceStyle=PLOT_LINE_LINES;
 	plotMode=PLOT_MODE_1D;
 	xLabel="";
 	yLabel="";
@@ -1489,7 +1490,7 @@ void Plot1D::drawPlot(mglGraph *gr) const
 
 
 	//Plot the appropriate form	
-	switch(plotType)
+	switch(traceStyle)
 	{
 		case PLOT_LINE_LINES:
 			//Unfortunately, when using line plots, mathgl moves the data points to the plot boundary,
@@ -1632,7 +1633,7 @@ float Plot1D::getSmallestNonzero() const
 Plot2DFunc::Plot2DFunc()
 {
 	plotMode = PLOT_MODE_2D;
-	plotType=PLOT_2D_DENS;
+	traceStyle=PLOT_2D_DENS;
 }
 
 void Plot2DFunc::setData(const Array2D<float> &a,
@@ -1705,7 +1706,8 @@ void Plot2DFunc::getRawData(std::vector<std::vector<float> >  &rawData,
 
 Plot2DScatter::Plot2DScatter()
 {
-	plotType=PLOT_2D_SCATTER;
+	plotMode=PLOT_2D_SCATTER;
+	traceStyle=PLOT_LINE_POINTS;
 	scatterIntensityLog=false;
 }
 

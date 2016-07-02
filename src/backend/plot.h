@@ -231,7 +231,7 @@ class PlotBase
 		
 		//The sub-style of the plot trace (eg lines, points, bars, etc)
 		// FIXME: This is badly named, change to traceStyle, or dataStyle, or something
-		unsigned int plotType;
+		unsigned int traceStyle;
 		
 		void copyBase(PlotBase *target) const;
 
@@ -298,9 +298,11 @@ class PlotBase
 		void setStrings(const std::string &x, 
 			const std::string &y,const std::string &t);
 
+		//Set the colour of the plot trace
 		void setColour(float rNew, float gNew, float bNew);
 
-		void setPlotType(unsigned int newStyle) { plotType=newStyle;}
+		//set the visual style for the trace (dots, lines, etc)
+		void setTraceStyle(unsigned int newStyle) { traceStyle=newStyle;}
 
 		std::string getXLabel() const { return xLabel;}
 		std::string getTitle() const { return title;}
@@ -312,6 +314,7 @@ class PlotBase
 		void setPlotMode(unsigned int newMode) { plotMode= newMode;}
 
 
+		//get the  colour of the trace
 		void getColour(float &r, float &g, float &b) const ;
 
 #ifdef DEBUG
@@ -616,7 +619,7 @@ class PlotWrapper
 	
 
 		//!obtain the type of a plot, given the plot's uniqueID
-		unsigned int plotType(unsigned int plotId) const;
+		unsigned int getPlotMode(unsigned int plotId) const;
 
 		//Retrieve the types of visible plots
 		unsigned int getVisibleMode() const;

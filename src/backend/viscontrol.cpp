@@ -249,7 +249,7 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 						plotData->yLabel,plotData->dataLabel);
 					
 					//set the appearance of the plot
-					plotNew->setPlotType(plotData->plotStyle);
+					plotNew->setTraceStyle(plotData->plotStyle);
 					plotNew->setColour(plotData->r,plotData->g,plotData->b);
 					
 					
@@ -275,7 +275,7 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 					unsigned int plotID;
 		
 					PlotBase *plotNew;
-					switch(plotData->plotType) 
+					switch(plotData->plotStyle) 
 					{
 						case PLOT_2D_DENS:
 						{

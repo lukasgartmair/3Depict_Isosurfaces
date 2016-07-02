@@ -553,7 +553,7 @@ void Plot2DStreamData::checkSelfConsistent() const
 		ASSERT(scatterIntensity.empty());
 
 
-	ASSERT(plotType < PLOT_TYPE_ENUM_END);
+	ASSERT(plotStyle < PLOT_TYPE_ENUM_END);
 }
 void RangeStreamData::checkSelfConsistent() const
 {
