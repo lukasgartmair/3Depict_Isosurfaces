@@ -747,7 +747,7 @@ size_t SpatialAnalysisFilter::algorithmReplace(ProgressData &progress, size_t to
 		progress.filterProgress=0;
 
 
-		//now we have  amap that matches as so:
+		//now we have a map that matches as so:
 		// map ( "inIon" ID -> "fileIon" ID)
 		// inIon should be our "A" in "A operator B"
 		switch(replaceMode)
@@ -806,7 +806,24 @@ size_t SpatialAnalysisFilter::algorithmReplace(ProgressData &progress, size_t to
 			}
 			case REPLACE_MODE_UNION:
 			{
-				ASSERT(false);
+				outIons.swap(fileIons);
+				outIons.reserve(outIons.size() + fileIons.size() - matchedMap.size());
+				map<size_t,size_t>::const_iterator it=matchedMap.begin();
+				
+
+				for(unsigned int ui=0;ui<inIons.size();ui++)
+				{
+					if(it !=matchedMap.end() && (it->first == ui) )
+					{
+						it++;
+						continue;
+					}
+
+
+					outIons.push_back(inIons[ui]);
+				}
+
+
 				break;
 			}
 			default:
