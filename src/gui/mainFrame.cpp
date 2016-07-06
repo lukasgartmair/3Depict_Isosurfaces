@@ -1391,7 +1391,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge,bool noUpdate
 	updateWxTreeCtrl(treeFilters);
 
 	if(!noUpdate)
-		return doSceneUpdate(true);
+		doSceneUpdate(true);
 
 	return true;
 }	
@@ -3834,7 +3834,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 	
 }
 
-bool MainWindowFrame::doSceneUpdate(bool ensureVisible)
+void MainWindowFrame::doSceneUpdate(bool ensureVisible)
 {
 	//Update scene
 	ASSERT(!currentlyUpdatingScene);
@@ -3864,6 +3864,11 @@ bool MainWindowFrame::doSceneUpdate(bool ensureVisible)
 	ensureResultVisible=ensureVisible;
 
 	ASSERT(!refreshControl);
+
+	//Hack to prevent crash on double-refresh
+	if(refreshControl)
+		return;
+
 	refreshControl = new RefreshController(visControl.state.treeState);
 	refreshThread=new RefreshThread(this,refreshControl);
 	progressTimer->Start(PROGRESS_TIMER_DELAY);
@@ -3871,7 +3876,8 @@ bool MainWindowFrame::doSceneUpdate(bool ensureVisible)
 	refreshThread->Create();
 	refreshThread->Run();
 
-	return true;
+	cerr << "Updating scene complete"<< endl;
+	return;
 }
 
 void MainWindowFrame::updateWxTreeCtrl( wxTreeCtrl *t, const Filter *f)
@@ -3970,6 +3976,11 @@ void MainWindowFrame::OnFinishRefreshThread(wxCommandEvent &event)
 	//The tree itself should not be refreshing once the thread has completed.
 	ASSERT(!visControl.state.treeState.isRefreshing());
 	progressTimer->Stop();
+
+	//Hack to prevent crash on re-entry during refresh. Should never trigger.
+	if(!refreshControl)
+		return;
+
 
 	vector<std::pair<const Filter*, std::string> > consoleMessages;
 	consoleMessages=refreshControl->getConsoleMessages();
