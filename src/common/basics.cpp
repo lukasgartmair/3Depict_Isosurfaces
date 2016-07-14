@@ -1347,7 +1347,8 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 	while(CFile.good() && !CFile.eof() && atHeader)
 	{
 		//Grab a line from the file
-		CFile.getline(inBuffer,BUFFER_SIZE);
+		if(!CFile.getline(inBuffer,BUFFER_SIZE))
+			break;
 
 		if(!CFile.good())
 			return ERR_FILE_FORMAT;
@@ -1457,10 +1458,8 @@ unsigned int loadTextData(const char *cpFilename, vector<vector<float> > &dataVe
 			
 		}
 		//Grab a line from the file
-		CFile.getline(inBuffer,BUFFER_SIZE);
-		
-		if(!CFile.good() && !CFile.eof())
-			return ERR_FILE_FORMAT;
+		if(!CFile.getline(inBuffer,BUFFER_SIZE))
+			break;
 	}
 
 	return 0;
