@@ -249,7 +249,7 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 						plotData->yLabel,plotData->dataLabel);
 					
 					//set the appearance of the plot
-					plotNew->setTraceStyle(plotData->plotStyle);
+					//plotNew->setTraceStyle(plotStyle);
 					plotNew->setColour(plotData->r,plotData->g,plotData->b);
 					
 					
@@ -275,7 +275,7 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 					unsigned int plotID;
 		
 					PlotBase *plotNew;
-					switch(plotData->plotStyle) 
+					switch(plotData->plotType) 
 					{
 						case PLOT_2D_DENS:
 						{
@@ -359,6 +359,30 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 				case STREAM_TYPE_RANGE:
 					//silently drop rangestreams
 					break;
+
+
+				case STREAM_TYPE_OPENVDBGRID:
+				{
+					OpenVDBGridStreamData *vdbSrc = (OpenVDBGridStreamData *)((*it)[ui]);
+
+					openvdb::initialize();
+					
+					openvdb::FloatGrid::Ptr vis_grid = openvdb::FloatGrid::create();
+
+					vis_grid = vdbSrc->grid->deepCopy();
+					
+					LukasDrawIsoSurface *ld = new LukasDrawIsoSurface;
+					ld->setGrid(vis_grid);
+					ld->setColour(vdbSrc->r,vdbSrc->g,
+							vdbSrc->b,vdbSrc->a);
+					ld->setIsovalue(vdbSrc->isovalue);
+					ld->setAdaptivity(vdbSrc->adaptivity);
+
+					ld->wantsLight=true;
+
+					sceneDrawables.push_back(ld);
+					break;
+				}
 				case STREAM_TYPE_VOXEL:
 				{
 					//Technically, we are violating const-ness

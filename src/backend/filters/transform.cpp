@@ -998,10 +998,8 @@ unsigned int TransformFilter::refresh(const std::vector<const FilterStreamData *
 					break;
 				}
 			
-			}
 		}
-
-		progress.filterProgress=100;
+		}
 	}
 	else
 	{
@@ -1528,11 +1526,6 @@ bool TransformFilter::setProperty(  unsigned int key,
 		case KEY_CROP_MINIMUM:
 		{
 			ASSERT(scalarParams.size() ==2);
-			float tmp;
-			if(stream_cast(tmp,value) || tmp >=scalarParams[1])
-				return false;
-
-
 			if(!applyPropertyNow(scalarParams[0],value,needUpdate))
 				return false;
 			break;
@@ -1540,9 +1533,6 @@ bool TransformFilter::setProperty(  unsigned int key,
 		case KEY_CROP_MAXIMUM:
 		{
 			ASSERT(scalarParams.size() ==2);
-			float tmp;
-			if(stream_cast(tmp,value) || tmp <=scalarParams[0])
-				return false;
 			if(!applyPropertyNow(scalarParams[1],value,needUpdate))
 				return false;
 			break;

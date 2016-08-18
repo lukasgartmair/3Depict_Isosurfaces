@@ -188,14 +188,14 @@ void CopyGrid::selectData()
 
 void CopyGrid::saveData()
 {
-	wxFileDialog wxF(this,TRANS("Save Data..."), wxT(""),
+	wxFileDialog *wxF = new wxFileDialog(this,TRANS("Save Data..."), wxT(""),
 		wxT(""),TRANS("Text File (*.txt)|*.txt|All Files (*)|*"),wxFD_SAVE);
 
-	if( (wxF.ShowModal() == wxID_CANCEL))
+	if( (wxF->ShowModal() == wxID_CANCEL))
 		return;
 	
 
-	std::string dataFile = stlStr(wxF.GetPath());
+	std::string dataFile = stlStr(wxF->GetPath());
 	ofstream f(dataFile.c_str());
 
 	if(!f)

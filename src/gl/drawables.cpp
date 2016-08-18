@@ -28,6 +28,11 @@
 
 #include "glDebug.h"
 
+#include "../backend/filters/openvdb_includes.h"
+
+#include <math.h> // for sqrt
+
+
 
 const float DEPTH_SORT_REORDER_EPSILON = 1e-2;
 
@@ -2691,6 +2696,181 @@ void DrawIsoSurface::draw() const
 }
 
 
+////////////////////////////////  OPENVDB  /////////////////////////////////////////////
+
+LukasDrawIsoSurface::LukasDrawIsoSurface() : cacheOK(false),
+	 r(0.5f), g(0.5f), b(0.5f), a(0.5f), isovalue(0.05), adaptivity(0.0)
+{
+#ifdef DEBUG
+	voxels=0;
+#endif
+}
+
+LukasDrawIsoSurface::~LukasDrawIsoSurface()
+{
+
+}
+
+unsigned int LukasDrawIsoSurface::getType() const
+{
+	return DRAW_TYPE_LUKAS_ISOSURFACE; 	
+}
+
+void LukasDrawIsoSurface::getBoundingBox(BoundCube &b) const
+{
+};
+
+void LukasDrawIsoSurface::updateMesh() const
+{
+
+/*
+	std::vector<openvdb::Vec3s> points;
+  	std::vector<openvdb::Vec3I> triangles;
+  	std::vector<openvdb::Vec4I> quads;
+
+	openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*grid, points, triangles, quads, isovalue, adaptivity);
+	
+	cacheOK=true;
+
+	std::cout << "points size" << " = " << points.size() << std::endl;
+	std::cout << " active voxel count subgrid div" << " = " << grid->activeVoxelCount() << std::endl;
+
+*/	
+
+}
+
+void LukasDrawIsoSurface::draw() const
+{
+/*
+	if(!cacheOK)
+	{
+		//Hmm, we don't have a cached copy of the isosurface mesh.
+		//we will need to compute one, it would seem.
+		updateMesh();
+	}
+*/
+
+	// why is the output of update mesh not visible in this scope? 
+	// the same thing is visible in the voxelize filter
+
+	std::vector<openvdb::Vec3s> points;
+  	std::vector<openvdb::Vec3I> triangles;
+  	std::vector<openvdb::Vec4I> quads;
+
+	openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*grid, points, triangles, quads, isovalue, adaptivity);
+
+	std::vector<openvdb::Vec3s> rdt_vertices;
+  	std::vector<openvdb::Vec3I> rdt_faces;
+	
+	cacheOK=true;
+
+	std::cout << "points size" << " = " << points.size() << std::endl;
+	std::cout << "triangles size" << " = " << triangles.size() << std::endl;
+	std::cout << " active voxel count subgrid div" << " = " << grid->activeVoxelCount() << std::endl;
+
+/////////// drawing of the triangles
+
+	glColor4f(r,g,b,a);
+	glPushAttrib(GL_CULL_FACE);
+	glDisable(GL_CULL_FACE);	
+	glBegin(GL_TRIANGLES);	
+	for(unsigned int ui=0;ui<triangles.size();ui++)
+	{
+
+	openvdb::Vec3s v1 = points[triangles[ui][0]];
+	openvdb::Vec3s v2 = points[triangles[ui][1]];
+	openvdb::Vec3s v3 = points[triangles[ui][2]];
+	
+	// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
+	GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
+	GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
+	GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
+
+
+	glVertex3fv(vertex1);
+	glVertex3fv(vertex2);
+	glVertex3fv(vertex3);
+	}
+	
+	glEnd();
+	
+////////// for first check split the quads into triangles
+// http://stackoverflow.com/questions/12239876/fastest-way-of-converting-a-quad-to-a-triangle-strip
+//Given a quad A B C D we can split it into A B C, A C D or A B D, D B C.
+//Compare the length of A-C and B-D and use the shorter for the splitting edge. In other words use A B C, A C D if A-C is shorter and A B D, D B C otherwise.
+
+	glBegin(GL_TRIANGLES);	
+	for(unsigned int ui=0;ui<quads.size();ui++)
+	{
+	
+	openvdb::Vec3s v1;
+	openvdb::Vec3s v2;
+	openvdb::Vec3s v3;
+	openvdb::Vec3s v4;
+	openvdb::Vec3s v5;
+	openvdb::Vec3s v6;
+	
+	openvdb::Vec3s A = points[quads[ui][0]];
+	openvdb::Vec3s B = points[quads[ui][1]];
+	openvdb::Vec3s C = points[quads[ui][2]];
+	openvdb::Vec3s D = points[quads[ui][3]];
+	
+	float distanceAC = 0;
+	float distanceBD = 0;
+	distanceAC = sqrt((A.x()-C.x())*(A.x()-C.x()) + (A.y()-C.y())*(A.y()-C.y()) +  (A.z()-C.z())*(A.z()-C.z()));
+	distanceBD = sqrt((B.x()-D.x())*(B.x()-D.x()) + (B.y()-D.y())*(B.y()-D.y()) +  (B.z()-D.z())*(B.z()-D.z()));
+	
+	if (distanceAC < distanceBD)
+	{	
+		//tri 1 ABC
+		v1 = A;
+		v2 = B;
+		v3 = C;
+		//tri2 ACD
+		v4 = A;
+		v5 = C;
+		v6 = D;
+		
+	}
+	if (distanceAC > distanceBD)
+	{
+		//tri 1 ABD
+		v1 = A;
+		v2 = B;
+		v3 = D;
+		//tri2 DBC
+		v4 = D;
+		v5 = B;
+		v6 = C;
+	
+	}
+		
+	// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
+	GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
+	GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
+	GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
+	GLfloat vertex4[] = {v4.x(),v4.y(),v4.z()};
+	GLfloat vertex5[] = {v5.x(),v5.y(),v5.z()};
+	GLfloat vertex6[] = {v6.x(),v6.y(),v6.z()};
+
+
+	glVertex3fv(vertex1);
+	glVertex3fv(vertex2);
+	glVertex3fv(vertex3);
+	glVertex3fv(vertex4);
+	glVertex3fv(vertex5);
+	glVertex3fv(vertex6);
+		
+	}
+	
+
+	glEnd();
+	glPopAttrib();
+	
+}
+		
+
+///////////////////////////////////////////////////////////////////////////////////////////////
 
 DrawAxis::DrawAxis()
 {

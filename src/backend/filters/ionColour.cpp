@@ -271,14 +271,12 @@ void IonColourFilter::getProperties(FilterPropGroup &propertyList) const
 	
 
 	p.name=TRANS("Show Bar");
-	p.helpText=TRANS("Display the colour legend in the 3D view");
 	p.key=KEY_IONCOLOURFILTER_SHOWBAR;
 	p.data=boolStrEnc(showColourBar);
 	p.type=PROPERTY_TYPE_BOOL;
 	propertyList.addProperty(p,curGroup);
 	
 	p.name=TRANS("Opacity");
-	p.helpText=TRANS("How see-through to make the legend (0- transparent, 1- solid)");
 	p.key=KEY_IONCOLOURFILTER_ALPHA;
 	stream_cast(p.data,alpha);
 	p.type=PROPERTY_TYPE_REAL;

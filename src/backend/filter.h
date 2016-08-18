@@ -36,6 +36,9 @@ class RangeFileFilter;
 #include "common/stringFuncs.h"
 #include "common/array2D.h"
 
+#include "filters/openvdb_includes.h"
+
+
 template<typename T>
 class Voxels;
 
@@ -75,6 +78,7 @@ enum
 	FILTER_TYPE_VOXELS,
 	FILTER_TYPE_IONINFO,
 	FILTER_TYPE_ANNOTATION,
+	FILTER_TYPE_LUKAS_ANALYSIS,
 	FILTER_TYPE_ENUM_END // not a filter. just end of enum
 };
 
@@ -96,7 +100,8 @@ enum
 	STREAM_TYPE_PLOT2D=4,
 	STREAM_TYPE_DRAW=8,
 	STREAM_TYPE_RANGE=16,
-	STREAM_TYPE_VOXEL=32
+	STREAM_TYPE_VOXEL=32,
+	STREAM_TYPE_OPENVDBGRID = 64
 };
 
 
@@ -315,6 +320,31 @@ public:
 		
 };
 
+//////////// OPENVDB ////////////////////////////
+
+
+// OpenVDB Grid object data
+class OpenVDBGridStreamData : public FilterStreamData
+{
+public:
+	OpenVDBGridStreamData();
+	~OpenVDBGridStreamData();
+	OpenVDBGridStreamData( const Filter *f);
+	size_t getNumBasicObjects() const ;
+	void clear();
+
+	float r,g,b,a;
+	double isovalue;
+	double adaptivity;
+	//!Apply filter to input data stream	
+	// what is XY in my case?! 
+	//XY<float> *data;
+	//openvdb::GridPtrVecPtr grids;
+	openvdb::FloatGrid::Ptr grid;	
+};
+
+///////////////////////////////////////
+
 //!Plotting data
 class PlotStreamData : public FilterStreamData
 {
@@ -395,7 +425,7 @@ class Plot2DStreamData : public FilterStreamData
 		//Label for X, Y axes
 		std::string xLabel,yLabel;
 
-		unsigned int plotStyle;
+		unsigned int plotType;
 
 		//!Structured XY data pairs for plotting curve
 		Array2D<float> xyData;

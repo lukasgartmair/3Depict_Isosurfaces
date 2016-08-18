@@ -655,180 +655,115 @@ size_t SpatialAnalysisFilter::algorithmReplace(ProgressData &progress, size_t to
 		return ERR_FILE_READ_FAIL;
 
 
-	vector<IonHit> outIons;
-	if(inIons.empty() || fileIons.empty())
-	{
-		//Performance increase if we have an empty item.
-		// - in this case we can swap sets around
-		switch(replaceMode)
-		{
-			case REPLACE_MODE_UNION:
-			{
-				//If the local data is empty, then the union is just the "b" data (swap).
-				// if nonempty, then it is simply the "a" data 
-				if(inIons.empty())
-					outIons.swap(fileIons);
-				else
-					outIons.swap(inIons);
-				break;
-			}
-			case REPLACE_MODE_SUBTRACT:
-			{
-				//if either localdata OR bdata is empty, then we don't need to do anything.
-				// either way, input stays as it is
-				outIons.swap(inIons);
-				break;
-			}
-			case REPLACE_MODE_INTERSECT:
-			{
-				//intersection with empty set is empty set.
-				// might as well clear the ions incoming
-				inIons.clear();
-				break;
-			}
-			default:
-				ASSERT(false);
 
+	progress.step=3;
+	progress.stepName=TRANS("Build");
+	progress.filterProgress=0;
+
+	//Build the search tree we will use to perform replacement
+	K3DTreeMk2 tree;
+	tree.resetPts(fileIons,false);
+	if(!tree.build())
+		return ERR_ABORT_FAIL;
+	BoundCube b;
+	tree.getBoundCube(b);
+
+	//map the offset of the nearest to
+	//the tree ID 
+	vector<size_t > nearestVec;
+	nearestVec.resize(inIons.size());
+
+	//TODO: pair vector might be faster
+	// as we can use it in sequence, and can use openmp
+	map<size_t,size_t> matchedMap;
+
+	//Find the nearest point for all points in the dataset
+
+	#pragma omp parallel for 
+	for(size_t ui=0;ui<inIons.size();ui++)
+	{
+		nearestVec[ui]=tree.findNearestUntagged(inIons[ui].getPos(),b,false);
+	}
+
+	float sqrReplaceTol=replaceTolerance*replaceTolerance;
+
+	//Filter this to only points that had an NN within range
+	#pragma omp parallel for 
+	for(size_t ui=0;ui<inIons.size();ui++)
+	{
+		if(nearestVec[ui]!=(size_t)-1 && inIons[ui].getPos().sqrDist(*tree.getPt(nearestVec[ui])) <=sqrReplaceTol)
+		{
+			#pragma omp critical
+			matchedMap[ui]=tree.getOrigIndex(nearestVec[ui]);
 		}
 	}
-	else
+
+	nearestVec.clear();
+
+
+	progress.step=4;
+	progress.stepName=TRANS("Compute");
+	progress.filterProgress=0;
+
+	//Finish if no matches
+	if(matchedMap.empty())
 	{
+		progress.filterProgress=100;
+		return 0;
+	}
 
-		progress.step=3;
-		progress.stepName=TRANS("Build");
-		progress.filterProgress=0;
-
-		//TODO: Possible speed increase by finding the smaller of
-		// the two inputs, and using that to build the tree
-
-		//Build the search tree we will use to perform replacement
-		K3DTreeMk2 tree;
-		tree.resetPts(fileIons,false);
-		if(!tree.build())
-			return ERR_ABORT_FAIL;
-		BoundCube b;
-		tree.getBoundCube(b);
-
-		//map the offset of the nearest to
-		//the tree ID 
-		vector<size_t > nearestVec;
-		nearestVec.resize(inIons.size());
-
-		//TODO: pair vector might be faster
-		// as we can use it in sequence, and can use openmp
-		map<size_t,size_t> matchedMap;
-
-		//Find the nearest point for all points in the dataset
-		// maps the ith ion in "inions" to the tree value
-		#pragma omp parallel for 
-		for(size_t ui=0;ui<inIons.size();ui++)
+	vector<IonHit> outIons;
+	switch(replaceMode)
+	{
+		case REPLACE_MODE_SUBTRACT:
 		{
-			nearestVec[ui]=tree.findNearestUntagged(inIons[ui].getPos(),b,false);
-		}
-
-		float sqrReplaceTol=replaceTolerance*replaceTolerance;
-
-		//Filter this to only points that had an NN within range
-		#pragma omp parallel for 
-		for(size_t ui=0;ui<inIons.size();ui++)
-		{
-			if(nearestVec[ui]!=(size_t)-1 && inIons[ui].getPos().sqrDist(*tree.getPt(nearestVec[ui])) <=sqrReplaceTol)
+			//In subtraction mode, we should have
+			// at least this many ions
+			if(inIons.size() > matchedMap.size())
+				outIons.reserve(inIons.size()-matchedMap.size());
+			
+			//
+			#pragma omp parallel for
+			for(unsigned int ui=0;ui<inIons.size();ui++)
 			{
+				map<size_t,size_t>::iterator it;
+				it=matchedMap.find(ui);
+				if(it != matchedMap.end())
+					continue;
+
 				#pragma omp critical
-				matchedMap[ui]=tree.getOrigIndex(nearestVec[ui]);
+				outIons.push_back(inIons[ui]);
 			}
+			break;
 		}
-
-		nearestVec.clear();
-
-
-		progress.step=4;
-		progress.stepName=TRANS("Compute");
-		progress.filterProgress=0;
-
-
-		//now we have a map that matches as so:
-		// map ( "inIon" ID -> "fileIon" ID)
-		// inIon should be our "A" in "A operator B"
-		switch(replaceMode)
+		case REPLACE_MODE_INTERSECT:
 		{
-			case REPLACE_MODE_SUBTRACT:
+			outIons.reserve(matchedMap.size());
+
+			if(replaceMass)
 			{
-				//If no matches, A-0 = A. Just return input
-				if(matchedMap.empty())
+				for(map<size_t,size_t>::const_iterator it=matchedMap.begin();it!=matchedMap.end();++it)
 				{
-					outIons.swap(inIons);
-					break;
+					outIons.push_back(fileIons[it->second]);
+					ASSERT(fileIons[it->second].getPosRef().sqrDist(inIons[it->first].getPosRef()) < sqrReplaceTol);
 				}
-				//In subtraction mode, we should have
-				// at least this many ions
-				if(inIons.size() > matchedMap.size())
-					outIons.reserve(inIons.size()-matchedMap.size());
-				
-				//
-				#pragma omp parallel for
-				for(unsigned int ui=0;ui<inIons.size();ui++)
-				{
-					map<size_t,size_t>::iterator it;
-					it=matchedMap.find(ui);
-					if(it != matchedMap.end())
-						continue;
-
-					#pragma omp critical
-					outIons.push_back(inIons[ui]);
-				}
-				break;
 			}
-			case REPLACE_MODE_INTERSECT:
+			else
 			{
-				//Finish if no matches
-				if(matchedMap.empty())
-					break;
-				
-				outIons.reserve(matchedMap.size());
-
-				if(replaceMass)
+				for(map<size_t,size_t>::const_iterator it=matchedMap.begin();it!=matchedMap.end();++it)
 				{
-					for(map<size_t,size_t>::const_iterator it=matchedMap.begin();it!=matchedMap.end();++it)
-					{
-						outIons.push_back(fileIons[it->second]);
-						ASSERT(fileIons[it->second].getPosRef().sqrDist(inIons[it->first].getPosRef()) < sqrReplaceTol);
-					}
+					outIons.push_back(inIons[it->first]);
 				}
-				else
-				{
-					for(map<size_t,size_t>::const_iterator it=matchedMap.begin();it!=matchedMap.end();++it)
-					{
-						outIons.push_back(inIons[it->first]);
-					}
-				}
-				break;
 			}
-			case REPLACE_MODE_UNION:
-			{
-				outIons.swap(fileIons);
-				outIons.reserve(outIons.size() + fileIons.size() - matchedMap.size());
-				map<size_t,size_t>::const_iterator it=matchedMap.begin();
-				
-
-				for(unsigned int ui=0;ui<inIons.size();ui++)
-				{
-					if(it !=matchedMap.end() && (it->first == ui) )
-					{
-						it++;
-						continue;
-					}
-
-
-					outIons.push_back(inIons[ui]);
-				}
-
-
-				break;
-			}
-			default:
-				ASSERT(false);
+			break;
 		}
+		case REPLACE_MODE_UNION:
+		{
+			ASSERT(false);
+			break;
+		}
+		default:
+			ASSERT(false);
 	}
 
 	//Only output ions if any were found
@@ -2844,8 +2779,6 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 				newD->data.resize(d->data.size());
 				if(stopMode == STOP_MODE_NEIGHBOUR)
 				{
-					unsigned int nProg=0;
-
 					bool spin=false;
 					#pragma omp parallel for shared(spin)
 					for(size_t uj=0;uj<d->data.size();uj++)
@@ -2878,15 +2811,14 @@ size_t SpatialAnalysisFilter::algorithmDensity(ProgressData &progress,
 						}
 
 						res.clear();
-						#pragma atomic
-						nProg++;
 						
 						//Update progress as needed
 						if(!curProg--)
 						{
 							#pragma omp critical 
 							{
-							progress.filterProgress= (unsigned int)(((float)nProg/(float)totalDataSize)*100.0f);
+							n+=NUM_CALLBACK/(nnMax);
+							progress.filterProgress= (unsigned int)(((float)n/(float)totalDataSize)*100.0f);
 							if(*Filter::wantAbort)
 								spin=true;
 							curProg=NUM_CALLBACK/(nnMax);
@@ -3131,10 +3063,9 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 				IonStreamData *newD = new IonStreamData;
 				newD->parent=this;
 
-				//Adjust this number to provide more update than usual, because we
+				//Adjust this number to provide more update thanusual, because we
 				//are not doing an o(1) task between updates; yes, it is a hack
-				const unsigned int PROG_PER_PASS=NUM_CALLBACK/(10*nnMax);
-				unsigned int curProg=PROG_PER_PASS;
+				unsigned int curProg=NUM_CALLBACK/(10*nnMax);
 				newD->data.reserve(d->data.size());
 				if(stopMode == STOP_MODE_NEIGHBOUR)
 				{
@@ -3182,11 +3113,11 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 						{
 							#pragma omp critical 
 							{
-							n+=PROG_PER_PASS;
+							n+=NUM_CALLBACK/(nnMax);
 							progress.filterProgress= (unsigned int)(((float)n/(float)totalDataSize)*100.0f);
 							if(*Filter::wantAbort)
 								spin=true;
-							curProg=PROG_PER_PASS;
+							curProg=NUM_CALLBACK/(nnMax);
 							}
 						}
 					}
@@ -3332,8 +3263,6 @@ size_t SpatialAnalysisFilter::algorithmDensityFilter(ProgressData &progress,
 				break;
 		}
 	}
-	progress.filterProgress=100;
-
 	//If we have bad points, let the user know.
 	if(!badPts.empty())
 	{
@@ -4301,8 +4230,11 @@ size_t SpatialAnalysisFilter::algorithmLocalConcentration(ProgressData &progress
 				}
 
 				//distance between search pt and found pt
+				float sqrDistance;
+				sqrDistance = searchTree.getPtRef(ptIdx).sqrDist(pSource[ui].getPosRef());
 
-				ptsFound.insert(ptIdx);
+				if(sqrDistance > DISTANCE_EPSILON)
+					ptsFound.insert(ptIdx);
 			}
 
 
@@ -4312,14 +4244,8 @@ size_t SpatialAnalysisFilter::algorithmLocalConcentration(ProgressData &progress
 			//Count the number of numerator and denominator ions, using the masses we set aside earlier
 			for(set<size_t>::iterator it=ptsFound.begin(); it!=ptsFound.end(); ++it)
 			{
-
-				//check that the distance is non-zero, to force no self-matching
-				float sqrDistance;
-				sqrDistance = searchTree.getPtRef(*it).sqrDist(pSource[ui].getPosRef());
-				if(sqrDistance < DISTANCE_EPSILON)
-					continue;
-
 				float ionMass;
+				//check that the distance is non-zero, to force no self-matching
 				ionMass = dataMasses[searchTree.getOrigIndex(*it)];
 
 				unsigned int ionID;
@@ -4400,11 +4326,9 @@ bool densityPairTest();
 bool nnHistogramTest();
 bool rdfPlotTest();
 bool axialDistTest();
-bool replaceIntersectAndUnionTest();
+bool replaceTest();
 bool localConcTestRadius();
 bool localConcTestNN();
-bool replaceSubtractTest();
-bool replaceUnionTest();
 
 bool SpatialAnalysisFilter::runUnitTests()
 {
@@ -4419,15 +4343,8 @@ bool SpatialAnalysisFilter::runUnitTests()
 
 	if(!axialDistTest())
 		return false;
-	if(!replaceIntersectAndUnionTest())
+	if(!replaceTest())
 		return false;
-
-	if(!replaceSubtractTest())
-		return false;
-
-	if(!replaceUnionTest())
-		return false;
-
 	if(!localConcTestRadius())
 		return false;
 
@@ -4700,7 +4617,7 @@ bool axialDistTest()
 	return true;
 }
 
-bool replaceIntersectAndUnionTest()
+bool replaceTest()
 {
 	std::string ionFile=createTmpFilename(NULL,".pos");
 		
@@ -4720,102 +4637,19 @@ bool replaceIntersectAndUnionTest()
 	//Create a spatial analysis filter
 	SpatialAnalysisFilter *f=new SpatialAnalysisFilter;
 	f->setCaching(false);	
+	
 	//Set it to do a union calculation 
 	bool needUp;
 	string s;
 	s=TRANS(SPATIAL_ALGORITHMS[ALGORITHM_REPLACE]);
 	TEST(f->setProperty(KEY_ALGORITHM,s,needUp),"Set prop");
 	TEST(f->setProperty(KEY_REPLACE_FILE,ionFile,needUp),"Set prop");
+	s=TRANS(REPLACE_ALGORITHMS[REPLACE_MODE_INTERSECT]);
+	TEST(f->setProperty(KEY_REPLACE_ALGORITHM,s,needUp),"Set prop");
+	
 	s="1";
 	TEST(f->setProperty(KEY_REPLACE_VALUE,s,needUp),"Set prop");
 
-	vector<unsigned int> opVec;
-	opVec.push_back(REPLACE_MODE_INTERSECT);
-	opVec.push_back(REPLACE_MODE_UNION);
-	
-	ProgressData p;
-	vector<const FilterStreamData*> streamIn,streamOut;
-	streamIn.push_back(d);
-	for(unsigned int opId=0;opId<opVec.size();opId++)
-	{
-		s=TRANS(REPLACE_ALGORITHMS[opVec[opId]]);
-		TEST(f->setProperty(KEY_REPLACE_ALGORITHM,s,needUp),"Set prop");
-
-		//Do the refresh
-		TEST(!f->refresh(streamIn,streamOut,p),"refresh OK");
-
-		TEST(streamOut.size() == 1,"stream count");
-		TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
-		TEST(streamOut[0]->getNumBasicObjects() == NIONS,"Number objects");
-
-		//we should have taken the mass-to-charge from the file
-		const IonStreamData *outIons = (const IonStreamData*)streamOut[0];
-		for(unsigned int ui=0;ui<NIONS; ui++)
-		{
-			ASSERT(outIons->data[ui].getMassToCharge() == 1); 
-		}
-		delete streamOut[0];
-		streamOut.clear();
-	}
-	delete f;
-	delete d;
-	
-	wxRemoveFile(ionFile);
-
-	
-	return true;
-}
-
-bool replaceSubtractTest()
-{
-	std::string ionFile=createTmpFilename(NULL,".pos");
-		
-	vector<IonHit> ions;
-	const unsigned int NIONS=10;
-	const unsigned int DIFF_COUNT=5;	
-	for(unsigned int ui=0;ui<NIONS;ui++)
-	{
-		IonHit h;
-		h = IonHit(Point3D(ui,ui,ui),1);
-
-		//make some ions different to the (x,x,x) pattern
-		if(ui < DIFF_COUNT)
-		{
-			h.setPos(h.getPos() - Point3D(0,0,100));
-			ions.push_back(h);
-		}
-		else
-			ions.push_back(h);
-	}
-
-	vector<IonHit> tmpI;
-	for(unsigned int ui=0;ui<NIONS;ui++)
-	{
-		if(ions[ui][2] < 0 )
-		{
-			tmpI.push_back(ions[ui]);
-			tmpI.back().setMassToCharge(2);
-		}
-	}
-
-	IonHit::makePos(tmpI,ionFile.c_str());
-	tmpI.clear();
-
-	IonStreamData *d = new IonStreamData;
-	d->data.swap(ions);
-
-	//Create a spatial analysis filter
-	SpatialAnalysisFilter *f=new SpatialAnalysisFilter;
-	f->setCaching(false);	
-	
-	//Set it to do a subtraction calculation 
-	bool needUp;
-	string s;
-	s=TRANS(SPATIAL_ALGORITHMS[ALGORITHM_REPLACE]);
-	TEST(f->setProperty(KEY_ALGORITHM,s,needUp),"Set prop");
-	TEST(f->setProperty(KEY_REPLACE_FILE,ionFile,needUp),"Set prop");
-	s=TRANS(REPLACE_ALGORITHMS[REPLACE_MODE_SUBTRACT]);
-	TEST(f->setProperty(KEY_REPLACE_ALGORITHM,s,needUp),"Set prop");
 
 	//Do the refresh
 	ProgressData p;
@@ -4828,15 +4662,13 @@ bool replaceSubtractTest()
 
 	TEST(streamOut.size() == 1,"stream count");
 	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
-	TEST(streamOut[0]->getNumBasicObjects() == DIFF_COUNT,"Number objects");
+	TEST(streamOut[0]->getNumBasicObjects() == NIONS,"Number objects");
 
-	//we should have taken the mass-to-charge from the original data,
-	// not the file
+	//we should have taken the mass-to-charge from the file
 	const IonStreamData *outIons = (const IonStreamData*)streamOut[0];
-	for(unsigned int ui=0;ui<outIons->getNumBasicObjects(); ui++)
+	for(unsigned int ui=0;ui<NIONS; ui++)
 	{
 		ASSERT(outIons->data[ui].getMassToCharge() == 1); 
-		ASSERT(outIons->data[ui].getPos()[2] >= 0); 
 	}
 
 	wxRemoveFile(ionFile);
@@ -4846,71 +4678,6 @@ bool replaceSubtractTest()
 	return true;
 }
 
-bool replaceUnionTest()
-{
-	std::string ionFile=createTmpFilename(NULL,".pos");
-	
-	//"B" dataset	
-	vector<IonHit> ions;
-	ions.push_back(IonHit(Point3D(0,0,0),1));
-	ions.push_back(IonHit(Point3D(1,0,1),1));
-	ions.push_back(IonHit(Point3D(0,1,1),1));
-
-	IonHit::makePos(ions,ionFile.c_str());
-	ions.clear();
-
-	//"A" dataset	
-	ions.push_back(IonHit(Point3D(0,0,0),2));
-	ions.push_back(IonHit(Point3D(1,0,-1),2));
-	ions.push_back(IonHit(Point3D(0,1,-1),2));
-
-
-	IonStreamData *d = new IonStreamData;
-	d->data.swap(ions);
-
-	//Create a spatial analysis filter
-	SpatialAnalysisFilter *f=new SpatialAnalysisFilter;
-	f->setCaching(false);	
-	
-	//Set it to do a union calculation 
-	bool needUp;
-	string s;
-	s=TRANS(SPATIAL_ALGORITHMS[ALGORITHM_REPLACE]);
-	TEST(f->setProperty(KEY_ALGORITHM,s,needUp),"Set prop");
-	TEST(f->setProperty(KEY_REPLACE_FILE,ionFile,needUp),"Set prop");
-	s=TRANS(REPLACE_ALGORITHMS[REPLACE_MODE_UNION]);
-	TEST(f->setProperty(KEY_REPLACE_ALGORITHM,s,needUp),"Set prop");
-	s="1";
-	TEST(f->setProperty(KEY_REPLACE_VALUE,s,needUp),"Set prop");
-
-	//Do the refresh
-	ProgressData p;
-	vector<const FilterStreamData*> streamIn,streamOut;
-	streamIn.push_back(d);
-	TEST(!f->refresh(streamIn,streamOut,p),"refresh OK");
-	delete f;
-	delete d;
-	streamIn.clear();
-
-	TEST(streamOut.size() == 1,"stream count");
-	TEST(streamOut[0]->getStreamType() == STREAM_TYPE_IONS,"stream type");
-	TEST(streamOut[0]->getNumBasicObjects() == 5,"Number objects");
-
-	//There should be
-	const IonStreamData *outIons = (const IonStreamData*)streamOut[0];
-	float sumV=0;
-	for(unsigned int ui=0;ui<outIons->getNumBasicObjects(); ui++)
-	{
-		sumV+=outIons->data[ui].getMassToCharge();
-	}
-	TEST( EQ_TOL(sumV,7.0f),"mass-to-charge check");
-
-	wxRemoveFile(ionFile);
-
-	delete streamOut[0];
-	
-	return true;
-}
 
 //--- Local concentration tests --
 const IonStreamData *createLCIonStream()

@@ -124,7 +124,7 @@ private:
 	//!Update the progress information in the status bar
 	void updateProgressStatus();
 	//!Perform an update to the 3D Scene. Returns false if refresh failed
-	void doSceneUpdate(bool ensureResultVisible=false);
+	bool doSceneUpdate(bool ensureResultVisible=false);
 	
 	//!Complete the scene update. Returns false if failed
 	void finishSceneUpdate(unsigned int errCode);

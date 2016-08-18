@@ -135,7 +135,7 @@ const char *AUTOSAVE_SUFFIX=".xml";
 //MainFrame's constructor
 
 //--- These settings must be modified concomitantly.
-const unsigned int FILTER_DROP_COUNT=14;
+const unsigned int FILTER_DROP_COUNT=15;
 
 const char * comboFilters_choices[FILTER_DROP_COUNT] =
 {
@@ -153,6 +153,7 @@ const char * comboFilters_choices[FILTER_DROP_COUNT] =
 	NTRANS("Range File"),
 	NTRANS("Spat. Analysis"),
 	NTRANS("Voxelisation"),
+	NTRANS("Lukas Analysis"),
 };
 
 //Mapping between filter ID and combo position
@@ -171,6 +172,7 @@ const unsigned int comboFiltersTypeMapping[FILTER_DROP_COUNT] = {
 	FILTER_TYPE_RANGEFILE,
 	FILTER_TYPE_SPATIAL_ANALYSIS,
 	FILTER_TYPE_VOXELS,
+	FILTER_TYPE_LUKAS_ANALYSIS,
  };
 //----
 
@@ -1391,7 +1393,7 @@ bool MainWindowFrame::loadFile(const wxString &fileStr, bool merge,bool noUpdate
 	updateWxTreeCtrl(treeFilters);
 
 	if(!noUpdate)
-		doSceneUpdate(true);
+		return doSceneUpdate(true);
 
 	return true;
 }	
@@ -3834,7 +3836,7 @@ void MainWindowFrame::OnComboFilter(wxCommandEvent &event)
 	
 }
 
-void MainWindowFrame::doSceneUpdate(bool ensureVisible)
+bool MainWindowFrame::doSceneUpdate(bool ensureVisible)
 {
 	//Update scene
 	ASSERT(!currentlyUpdatingScene);
@@ -3864,11 +3866,6 @@ void MainWindowFrame::doSceneUpdate(bool ensureVisible)
 	ensureResultVisible=ensureVisible;
 
 	ASSERT(!refreshControl);
-
-	//Hack to prevent crash on double-refresh
-	if(refreshControl)
-		return;
-
 	refreshControl = new RefreshController(visControl.state.treeState);
 	refreshThread=new RefreshThread(this,refreshControl);
 	progressTimer->Start(PROGRESS_TIMER_DELAY);
@@ -3876,8 +3873,7 @@ void MainWindowFrame::doSceneUpdate(bool ensureVisible)
 	refreshThread->Create();
 	refreshThread->Run();
 
-	cerr << "Updating scene complete"<< endl;
-	return;
+	return true;
 }
 
 void MainWindowFrame::updateWxTreeCtrl( wxTreeCtrl *t, const Filter *f)
@@ -3976,11 +3972,6 @@ void MainWindowFrame::OnFinishRefreshThread(wxCommandEvent &event)
 	//The tree itself should not be refreshing once the thread has completed.
 	ASSERT(!visControl.state.treeState.isRefreshing());
 	progressTimer->Stop();
-
-	//Hack to prevent crash on re-entry during refresh. Should never trigger.
-	if(!refreshControl)
-		return;
-
 
 	vector<std::pair<const Filter*, std::string> > consoleMessages;
 	consoleMessages=refreshControl->getConsoleMessages();

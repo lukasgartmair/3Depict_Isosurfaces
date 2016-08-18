@@ -31,6 +31,7 @@
 #include "textures.h"
 #include "cameras.h"
 #include "isoSurface.h"
+#include "../backend/filters/openvdb_includes.h"
 
 template<class T>
 class Voxels;
@@ -100,6 +101,7 @@ enum
 	DRAW_TYPE_ANIMATEDOVERLAY,
 	DRAW_TYPE_FIELD3D,
 	DRAW_TYPE_ISOSURFACE,
+	DRAW_TYPE_LUKAS_ISOSURFACE,
 	DRAW_TYPE_AXIS,
 	DRAW_TYPE_LEGENDOVERLAY,
 	DRAW_TYPE_PROGRESSCIRCLE_OVERLAY,
@@ -1188,6 +1190,51 @@ public:
 	bool needsDepthSorting() const;
 };
 
+/////////////// OPENVDB ///////////////////////////////////////////////////////////////////////////
+
+class LukasDrawIsoSurface: public DrawableObj
+{
+private:
+
+	mutable bool cacheOK;
+	openvdb::FloatGrid::Ptr grid;
+
+	//!Warning. Although I declare this as const, I do some naughty mutating to the cache.
+	void updateMesh() const;	
+	
+	double isovalue;
+	double adaptivity;
+
+	//!Point colour (r,g,b,a) range: [0.0f,1.0f]
+	float r,g,b,a;
+public:
+
+	LukasDrawIsoSurface();
+	~LukasDrawIsoSurface();
+
+	virtual unsigned int getType() const;
+	//!Get the bouding box (of the entire scalar field)	
+	void getBoundingBox(BoundCube &b) const ;
+
+
+	//Draw
+	void draw() const;
+	
+	// Set the grid
+	void setGrid(openvdb::FloatGrid::Ptr g) {grid=g->deepCopy();cacheOK=false;};
+
+	//!Set the isosurface value
+	void setIsovalue(float iso) {isovalue=iso;cacheOK=false;};
+
+	//!Set the adaptivity of isosurface
+	void setAdaptivity(float adapt) {adaptivity=adapt;cacheOK=false;};
+
+	//!Sets the color of the point to be drawn
+	void setColour(float rP, float gP, float bP, float alpha) { r=rP;g=gP;b=bP;a=alpha;} ;
+
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class DrawAxis : public DrawableObj
 {

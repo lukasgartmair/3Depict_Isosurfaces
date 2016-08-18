@@ -862,8 +862,6 @@ unsigned int generate1DAxialNNHist(const vector<Point3D> &pointList, const K3DTr
 		return RDF_ABORT_FAIL;
 #endif
 
-	*progressPtr=100;
-
 	return 0;
 }
 
@@ -1005,8 +1003,6 @@ unsigned int generateDistHist(const vector<Point3D> &pointList, const K3DTree &t
 #endif
 
 	//Calculations complete!
-	*progressPtr=100;
-
 	return 0;
 }
 

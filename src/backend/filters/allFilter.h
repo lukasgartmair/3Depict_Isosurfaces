@@ -17,6 +17,7 @@
 */
 #ifndef ALLFILTER_H
 #define ALLFILTER_H
+#include "lukasAnalysis.h"
 #include "boundingBox.h"
 #include "ionDownsample.h"
 #include "dataLoad.h"
@@ -32,6 +33,7 @@
 #include "voxelise.h"
 #include "ionInfo.h"
 #include "annotation.h"
+
 
 //!Returns true if the string is a valid filter name
 bool isValidFilterName(const std::string &s);

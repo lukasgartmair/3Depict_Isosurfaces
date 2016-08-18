@@ -29,7 +29,7 @@ const char *errModeStrings[] = {
 				NTRANS("Moving avg.")
 				};
 
-const char *traceStyleStrings[]= {
+const char *plotTypeStrings[]= {
 	NTRANS("Lines"),
 	NTRANS("Bars"),
 	NTRANS("Steps"),
@@ -119,15 +119,15 @@ std::string mglColourCode(float r, float g, float b)
 string plotString(unsigned int plotMode)
 {
 	ASSERT(plotMode< PLOT_TYPE_ENUM_END);
-	return TRANS(traceStyleStrings[plotMode]); 
+	return TRANS(plotTypeStrings[plotMode]); 
 }
 
 unsigned int plotID(const std::string &plotString)
 {
-	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(traceStyleStrings) == PLOT_TYPE_ENUM_END);
+	COMPILE_ASSERT(THREEDEP_ARRAYSIZE(plotTypeStrings) == PLOT_TYPE_ENUM_END);
 	for(unsigned int ui=0;ui<PLOT_TYPE_ENUM_END; ui++)
 	{
-		if(plotString==TRANS(traceStyleStrings[ui]))
+		if(plotString==TRANS(plotTypeStrings[ui]))
 			return ui;
 	}
 
@@ -298,7 +298,7 @@ std::string PlotRegion::getName() const
 
 PlotWrapper::PlotWrapper()
 {
-	//COMPILE_ASSERT(THREEDEP_ARRAYSIZE(traceStyleStrings) == PLOT_TYPE_ENUM_END);
+	//COMPILE_ASSERT(THREEDEP_ARRAYSIZE(plotTypeStrings) == PLOT_TYPE_ENUM_END);
 
 	applyUserBounds=false;
 	plotChanged=true;
@@ -684,12 +684,6 @@ unsigned int PlotWrapper::getVisibleMode() const
 	return visibleMode;
 }
 
-unsigned int PlotWrapper::getPlotMode(unsigned int plotId) const
-{
-	ASSERT(plotId < plottingData.size());
-	return plottingData[plotId]->getPlotMode();
-}
-
 void PlotWrapper::getVisibleIDs(vector<unsigned int> &visiblePlotIDs ) const
 {
 
@@ -797,7 +791,7 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 				if(!plottingData[ui]->visible)
 					continue;
 
-				if(plottingData[ui]->getMode()!= PLOT_MODE_1D)
+				if(plottingData[ui]->getType()!= PLOT_MODE_1D)
 					continue;
 			
 				if(((Plot1D*)plottingData[ui])->wantLogPlot()) 
@@ -815,7 +809,7 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 				float minYVal=0.1;
 				for(size_t ui=0;ui<plottingData.size();ui++)
 				{
-					if(!plottingData[ui]->visible || plottingData[ui]->getMode() !=PLOT_MODE_1D)
+					if(!plottingData[ui]->visible || plottingData[ui]->getType() !=PLOT_MODE_1D)
 						continue;
 
 					float tmp ;
@@ -935,7 +929,7 @@ void PlotWrapper::drawPlot(mglGraph *gr, bool &haveUsedLog) const
 				Plot2DFunc *curPlot;
 				curPlot=(Plot2DFunc*)plottingData[ui];
 
-				if(curPlot->getMode() == PLOT_2D_DENS)
+				if(curPlot->getType() == PLOT_2D_DENS)
 				{
 					wantColourbar=true;
 				}
@@ -1053,6 +1047,11 @@ void PlotWrapper::getRegion(unsigned int plotId, unsigned int regionId, PlotRegi
 	plottingData[plotIDHandler.getPos(plotId)]->regionGroup.getRegion(regionId,region);
 }
 
+unsigned int PlotWrapper::plotType(unsigned int plotId) const
+{
+	return plottingData[plotIDHandler.getPos(plotId)]->getPlotMode();
+}
+
 
 void PlotWrapper::moveRegion(unsigned int plotID, unsigned int regionId, bool regionSelfUpdate,
 		unsigned int movementType, float newX, float newY) const
@@ -1136,7 +1135,7 @@ void PlotBase::setStrings(const std::string &x, const std::string &y, const std:
 
 void PlotBase::copyBase(PlotBase *target) const
 {
-	target->traceStyle=traceStyle;
+	target->plotType=plotType;
 	target->minX=minX;
 	target->maxX=maxX;
 	target->minY=minY;
@@ -1158,12 +1157,12 @@ void PlotBase::copyBase(PlotBase *target) const
 
 unsigned int PlotBase::getType() const
 {
-	return traceStyle;
+	return plotType;
 }
 
 unsigned int PlotBase::getMode() const
 {
-	switch(traceStyle)
+	switch(plotType)
 	{
 		case PLOT_LINE_LINES:
 		case PLOT_LINE_BARS:
@@ -1182,7 +1181,7 @@ unsigned int PlotBase::getMode() const
 Plot1D::Plot1D()
 {
 	//Set the default plot properties
-	traceStyle=PLOT_LINE_LINES;
+	plotType=PLOT_LINE_LINES;
 	plotMode=PLOT_MODE_1D;
 	xLabel="";
 	yLabel="";
@@ -1490,7 +1489,7 @@ void Plot1D::drawPlot(mglGraph *gr) const
 
 
 	//Plot the appropriate form	
-	switch(traceStyle)
+	switch(plotMode)
 	{
 		case PLOT_LINE_LINES:
 			//Unfortunately, when using line plots, mathgl moves the data points to the plot boundary,
@@ -1633,7 +1632,7 @@ float Plot1D::getSmallestNonzero() const
 Plot2DFunc::Plot2DFunc()
 {
 	plotMode = PLOT_MODE_2D;
-	traceStyle=PLOT_2D_DENS;
+	plotType=PLOT_2D_DENS;
 }
 
 void Plot2DFunc::setData(const Array2D<float> &a,
@@ -1706,8 +1705,7 @@ void Plot2DFunc::getRawData(std::vector<std::vector<float> >  &rawData,
 
 Plot2DScatter::Plot2DScatter()
 {
-	plotMode=PLOT_2D_SCATTER;
-	traceStyle=PLOT_LINE_POINTS;
+	plotType=PLOT_2D_SCATTER;
 	scatterIntensityLog=false;
 }
 

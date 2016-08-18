@@ -27,6 +27,7 @@
 #include "common/voxels.h"
 #include "backend/APT/vtk.h"
 
+#include "filters/openvdb_includes.h"
 
 #include <set>
 #include <deque>
@@ -71,7 +72,8 @@ const char *FILTER_NAMES[] = { "posload",
 				"clusteranalysis",
 				"voxelise",
 				"ioninfo",
-				"annotation"
+				"annotation",
+				"lukasanalysis"
 				};
 
 size_t numElements(const vector<const FilterStreamData *> &v, unsigned int mask)
@@ -553,7 +555,7 @@ void Plot2DStreamData::checkSelfConsistent() const
 		ASSERT(scatterIntensity.empty());
 
 
-	ASSERT(plotStyle < PLOT_TYPE_ENUM_END);
+	ASSERT(plotType < PLOT_TYPE_ENUM_END);
 }
 void RangeStreamData::checkSelfConsistent() const
 {
@@ -801,14 +803,14 @@ size_t IonStreamData::getNumBasicObjects() const
 
 
 VoxelStreamData::VoxelStreamData() : representationType(VOXEL_REPRESENT_POINTCLOUD),
-	r(1.0f),g(0.0f),b(0.0f),a(0.3f), splatSize(2.0f),isoLevel(0.5f)
+	r(1.0f),g(0.0f),b(0.0f),a(0.3f), splatSize(2.0f),isoLevel(0.05f)
 {
 	streamType=STREAM_TYPE_VOXEL;
 	data = new Voxels<float>;
 }
 
 VoxelStreamData::VoxelStreamData(const Filter *f) : FilterStreamData(f), representationType(VOXEL_REPRESENT_POINTCLOUD),
-	r(1.0f),g(0.0f),b(0.0f),a(0.3f), splatSize(2.0f),isoLevel(0.5f)
+	r(1.0f),g(0.0f),b(0.0f),a(0.3f), splatSize(2.0f),isoLevel(0.05f)
 {
 	streamType=STREAM_TYPE_VOXEL;
 	data = new Voxels<float>;
@@ -829,6 +831,50 @@ void VoxelStreamData::clear()
 {
 	data->clear();
 }
+
+////////////// openvdb ////////////////////////////////////////////////////////////
+
+OpenVDBGridStreamData::OpenVDBGridStreamData() :
+	r(1.0f),g(0.0f),b(0.0f),a(0.3f) ,isovalue(0.7) , adaptivity(0.5)
+{
+
+	streamType=STREAM_TYPE_OPENVDBGRID;
+
+	//openvdb::GridPtrVecPtr grids(new openvdb::GridPtrVec);
+	openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create();
+	
+}
+
+OpenVDBGridStreamData::OpenVDBGridStreamData(const Filter *f) : FilterStreamData(f),
+	r(1.0f),g(0.0f),b(0.0f),a(0.3f) ,isovalue(0.7) , adaptivity(0.5)
+{
+
+	streamType=STREAM_TYPE_OPENVDBGRID;
+	
+	//openvdb::GridPtrVecPtr grids(new openvdb::GridPtrVec);
+	openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create();
+
+}
+
+OpenVDBGridStreamData::~OpenVDBGridStreamData()
+{
+	//if(grids)
+	//	delete grids;
+}
+
+size_t OpenVDBGridStreamData::getNumBasicObjects() const 
+{
+};
+
+void OpenVDBGridStreamData::clear()
+{
+	// this clear is an openvdb method of float grid
+	//virtual void clear 	( Empty this grid, so that all voxels become inactive background voxels. 	) 
+	//grid->clear();
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////
 
 RangeStreamData::RangeStreamData() : rangeFile(0)
 {

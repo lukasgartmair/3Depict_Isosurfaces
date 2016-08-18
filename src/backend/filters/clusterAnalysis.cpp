@@ -685,7 +685,7 @@ ASSERT(!(haveBulk && !haveCore));
 		Plot2DStreamData *p = new Plot2DStreamData;
 		p->parent=this;
 
-		p->plotStyle=PLOT_2D_SCATTER;
+		p->plotType=PLOT_2D_SCATTER;
 		p->dataLabel=TRANS("Morphology Plot");
 		p->xLabel=TRANS("\\lambda_1:\\lambda_2 ratio");
 		p->yLabel=TRANS("\\lambda_2:\\lambda_3 ratio");

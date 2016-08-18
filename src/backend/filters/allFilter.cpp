@@ -104,6 +104,9 @@ Filter *makeFilter(unsigned int ui)
 		case FILTER_TYPE_ANNOTATION:
 			f = new AnnotateFilter;
 			break;	
+		case FILTER_TYPE_LUKAS_ANALYSIS:
+			f = new LukasAnalysisFilter;
+			break;	
 		default:
 			ASSERT(false);
 	}

@@ -510,6 +510,7 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 				}
 #endif
 				bTotal.expand(bThis);
+				progress.filterProgress=100;
 				break;
 			}
 			default:
@@ -520,7 +521,6 @@ unsigned int BoundingBoxFilter::refresh(const std::vector<const FilterStreamData
 		getOut.push_back(dataIn[ui]);	
 	}
 
-	progress.filterProgress=100;
 	//Append the bounding box if it is valid
 	if(bTotal.isValid())
 	{
