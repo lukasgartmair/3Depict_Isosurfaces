@@ -2699,7 +2699,7 @@ void DrawIsoSurface::draw() const
 ////////////////////////////////  OPENVDB  /////////////////////////////////////////////
 
 LukasDrawIsoSurface::LukasDrawIsoSurface() : cacheOK(false),
-	 r(0.5f), g(0.5f), b(0.5f), a(0.5f), isovalue(0.05), adaptivity(0.0)
+	 r(0.5f), g(0.5f), b(0.5f), a(0.5f), isovalue(0.07), adaptivity(0.1)
 {
 #ifdef DEBUG
 	voxels=0;
@@ -2722,21 +2722,6 @@ void LukasDrawIsoSurface::getBoundingBox(BoundCube &b) const
 
 void LukasDrawIsoSurface::updateMesh() const
 {
-
-/*
-	std::vector<openvdb::Vec3s> points;
-  	std::vector<openvdb::Vec3I> triangles;
-  	std::vector<openvdb::Vec4I> quads;
-
-	openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*grid, points, triangles, quads, isovalue, adaptivity);
-	
-	cacheOK=true;
-
-	std::cout << "points size" << " = " << points.size() << std::endl;
-	std::cout << " active voxel count subgrid div" << " = " << grid->activeVoxelCount() << std::endl;
-
-*/	
-
 }
 
 void LukasDrawIsoSurface::draw() const

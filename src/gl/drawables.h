@@ -1204,6 +1204,7 @@ private:
 	
 	double isovalue;
 	double adaptivity;
+	float voxelsize;
 
 	//!Point colour (r,g,b,a) range: [0.0f,1.0f]
 	float r,g,b,a;
@@ -1228,6 +1229,9 @@ public:
 
 	//!Set the adaptivity of isosurface
 	void setAdaptivity(float adapt) {adaptivity=adapt;cacheOK=false;};
+	
+	//!Set the voxelsize of the isosurface
+	void setVoxelsize(float voxel_size) {voxelsize=voxel_size;cacheOK=false;};
 
 	//!Sets the color of the point to be drawn
 	void setColour(float rP, float gP, float bP, float alpha) { r=rP;g=gP;b=bP;a=alpha;} ;

@@ -336,10 +336,9 @@ public:
 	float r,g,b,a;
 	double isovalue;
 	double adaptivity;
+	float voxelsize;
 	//!Apply filter to input data stream	
 	// what is XY in my case?! 
-	//XY<float> *data;
-	//openvdb::GridPtrVecPtr grids;
 	openvdb::FloatGrid::Ptr grid;	
 };
 

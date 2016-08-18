@@ -137,11 +137,14 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 /// here the actual filter work is done 
 unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
-{
+{	
+	// Initialize the OpenVDB library.  This must be called at least
+    	// once per program and may safely be called multiple times.
 	openvdb::initialize();
 
-	float voxel_size = 3.0f; // definition here, declaration in the header file
-
+	
+	float voxel_size = 2.0f; // definition here, declaration in the header file
+	
 	const float background = 1.0f;	
 
 	// initialize the main grid for aluminum and copper
@@ -205,7 +208,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 		}
 
 	std::cout << "ions number" << counter << std::endl;
-	std::cout << "ions copper number" << counter_cu << std::endl;
+	std::cout << "ions copper number" << counter_cu << std::endl;	
 
 	// correct all values greater than background minus the initial background
 
@@ -224,7 +227,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	    iter.setValue(iter.getValue() - background);
 	}
 	}
-
 
 	float minVal = 0.0;
 	float maxVal = 0.0;
@@ -258,21 +260,12 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 ////////////////////////
 
-//subgrid1->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
+subgrid1->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
 
-// volume to mesh
+// volume to mesh conversion is done in Drawables.cpp where the mesh is updated
 
     double isoval = 0.07;
-    double adapt = 0.5;
-
-  //std::vector<openvdb::Vec3s> points;
-  //std::vector<openvdb::Vec3I> triangles;
-  //std::vector<openvdb::Vec4I> quads;
-    // change the grid here to be extracted
-//openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*subgrid1, points, triangles, quads, isovalue, adaptivity);
-
-//std::cout << "points size" << " = " << points.size() << std::endl;
-
+    double adapt = 0.1;
 
 // manage the filter output
 
@@ -284,6 +277,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	
 	gs->isovalue=isoval;
 	gs->adaptivity=adapt;
+	gs->voxelsize = voxel_size;
 	
 	gs->r=1.0;
 	gs->g=0;
@@ -295,9 +289,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	filterOutputs.push_back(gs);
 
 
-	//Store the voxels on the output
+	//Store the vdbgrid on the output
 	getOut.push_back(gs);
-
 
 	return 0;
 }
