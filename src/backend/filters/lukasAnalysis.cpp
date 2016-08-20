@@ -143,15 +143,15 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	openvdb::initialize();
 
 	
-	float voxel_size = 2.0f; // definition here, declaration in the header file
+	float voxel_size = 2.0f; 
 	
-	const float background = 1.0f;	
+	const float background = 0.0f;	
 
-	// initialize the main grid for aluminum and copper
+	// initialize the main grid containing all ions
 	openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create(background);
 	openvdb::FloatGrid::Accessor accessor = grid->getAccessor();
 
-	// 1st subgrid for copper
+	// initialize subgrid for one chosen ion
 	openvdb::FloatGrid::Ptr subgrid1 = openvdb::FloatGrid::create(background);
 	openvdb::FloatGrid::Accessor subaccessor1 = subgrid1->getAccessor();
 
@@ -210,24 +210,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	std::cout << "ions number" << counter << std::endl;
 	std::cout << "ions copper number" << counter_cu << std::endl;	
 
-	// correct all values greater than background minus the initial background
-
-	for (openvdb::FloatGrid::ValueAllIter iter = grid->beginValueAll(); iter; ++iter)
-	{
-	    if (iter.getValue() > background)
-	{
-	    iter.setValue(iter.getValue() - background);
-	}
-	}
-
-	for (openvdb::FloatGrid::ValueAllIter iter = subgrid1->beginValueAll(); iter; ++iter)
-	{
-	    if (iter.getValue() > background)
-	{
-	    iter.setValue(iter.getValue() - background);
-	}
-	}
-
 	float minVal = 0.0;
 	float maxVal = 0.0;
 	grid->evalMinMax(minVal,maxVal);
@@ -242,21 +224,16 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	// compute a = a / b
 	openvdb::tools::compDiv(*subgrid1, *grid);
 
-	// set all inactive / background voxels back to zero before isosurface extraction
-	// case 1 a value was initially set to 1.0 as background
-
+	//check for negative nans and infs introduced by the division
+	//set them to zero in order not to obtain nan mesh coordinates
 
 	for (openvdb::FloatGrid::ValueAllIter iter = subgrid1->beginValueAll(); iter; ++iter)
-	{       // that means a voxel value has not changed
-	    if (iter.getValue() == (background))
+	{   
+	    if (std::isfinite(iter.getValue()) == false)
 	{
 	    iter.setValue(0.0);
 	}
 	}
-
-	subgrid1->evalMinMax(minVal,maxVal);
-	std::cout << " eval min max subgrid div" << " = " << minVal << " , " << maxVal << std::endl;
-	std::cout << " active voxel count subgrid div" << " = " << subgrid1->activeVoxelCount() << std::endl;
 
 ////////////////////////
 
@@ -279,9 +256,9 @@ subgrid1->setTransform(openvdb::math::Transform::createLinearTransform(voxel_siz
 	gs->adaptivity=adapt;
 	gs->voxelsize = voxel_size;
 	
-	gs->r=1.0;
-	gs->g=0;
-	gs->b=0;
+	gs->r=1;
+	gs->g=1;
+	gs->b=1;
 	gs->a=0.3;
 	
 	gs->cached=1;
