@@ -321,8 +321,10 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	// in my case i only choose the numerator because the denominator is the grid with all ions
 	// rsdIncoming has to be true to start Lukas Analysis
 	// numerator
+	
 	if (rsdIncoming) 
 	{
+	
 		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[0].size());	
 		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[1].size());	
 
@@ -343,20 +345,109 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 		propertyList.setGroupTitle(curGroup,TRANS("Ranges"));
 		curGroup++;
 	}
+	
+	p.name=TRANS("Representation");
 
+	//-- Isosurface parameters --
 
+	stream_cast(tmpStr,iso_level);
+	p.name=TRANS("Isovalue");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_REAL;
+	p.helpText=TRANS("Scalar value to show as isosurface");
+	p.key=KEY_ISOLEVEL;
+	propertyList.addProperty(p,curGroup);
+
+	//-- 
+	propertyList.setGroupTitle(curGroup,TRANS("Isosurface"));	
+	curGroup++;
+
+	//-- Isosurface appearance --
+	p.name=TRANS("Colour");
+	p.data=rgba.toColourRGBA().rgbString();
+	p.type=PROPERTY_TYPE_COLOUR;
+	p.helpText=TRANS("Colour of isosurface");
+	p.key=KEY_COLOUR;
+	propertyList.addProperty(p,curGroup);
 
 }
 
 bool LukasAnalysisFilter::setProperty(  unsigned int key,
 					const std::string &value, bool &needUpdate)
 {
+	needUpdate=false;
+	switch(key)
+	{
+		case KEY_VOXELSIZE: 
+		{
+			if(!applyPropertyNow(voxel_size,value,needUpdate))
+				return false;
+			break;
+		}	
 
+		case KEY_ISOLEVEL:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			if(f <= 0.0f)
+				return false;
+			needUpdate=true;
+			iso_level=f;
+			//Go in and manually adjust the cached
+			//entries to have the new value, rather
+			//than doing a full recomputation
+			if(cacheOK)
+			{
+				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
+				{	
+					OpenVDBGridStreamData *vdbgs;
+					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
+					vdbgs->isovalue = iso_level;
 
+				}
+			}
+			break;
+		}
+		case KEY_COLOUR:
+		{
+			ColourRGBA tmpRGBA;
+
+			if(!tmpRGBA.parse(value))
+				return false;
+
+			if(tmpRGBA.toRGBAf() != rgba)
+			{
+				rgba=tmpRGBA.toRGBAf();
+				needUpdate=true;
+			}
+
+			//Go in and manually adjust the cached
+			//entries to have the new value, rather
+			//than doing a full recomputation
+			if(cacheOK)
+			{
+				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
+				{
+					OpenVDBGridStreamData *vdbgs;
+					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
+					vdbgs->r=rgba.r();
+					vdbgs->g=rgba.g();
+					vdbgs->b=rgba.b();
+				}
+			}
+			break;
+		}
+		default:
+		{
+		}
+	}	
 
 
 	return true;
+	
 }
+
 
 std::string  LukasAnalysisFilter::getSpecificErrString(unsigned int code) const
 {
