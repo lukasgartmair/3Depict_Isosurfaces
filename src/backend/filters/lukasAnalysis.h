@@ -20,6 +20,7 @@
 
 #include "../filter.h"
 #include "../../common/translation.h"
+#include "openvdb_includes.h"
 
 
 
@@ -34,7 +35,12 @@ class LukasAnalysisFilter : public Filter
 		float voxel_size; // declaration here, definition in the source file
 	
 		float iso_level;  // declaration here, definition in the source file
-
+		
+		float adaptivity;
+		
+		openvdb::FloatGrid::Ptr grid;
+		openvdb::FloatGrid::Ptr subgrid1;
+		
 		//This is the filters enabled ranges
 		RangeStreamData *rsdIncoming;
 			

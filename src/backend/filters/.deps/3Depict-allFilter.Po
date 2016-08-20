@@ -1243,7 +1243,8 @@ backend/filters/3Depict-allFilter.o: backend/filters/allFilter.cpp \
  /usr/include/wx-3.0/wx/gtk/button.h /usr/include/wx-3.0/wx/listbox.h \
  /usr/include/wx-3.0/wx/ctrlsub.h /usr/include/wx-3.0/wx/gtk/listbox.h \
  /usr/include/wx-3.0/wx/valtext.h \
- backend/filters/../../common/translation.h backend/filters/boundingBox.h \
+ backend/filters/../../common/translation.h \
+ backend/filters/openvdb_includes.h backend/filters/boundingBox.h \
  backend/filters/ionDownsample.h backend/filters/dataLoad.h \
  backend/filters/../../common/basics.h backend/filters/profile.h \
  backend/filters/externalProgram.h backend/filters/ionClip.h \
@@ -4337,6 +4338,8 @@ backend/filters/../filters/openvdb_includes.h:
 /usr/include/wx-3.0/wx/valtext.h:
 
 backend/filters/../../common/translation.h:
+
+backend/filters/openvdb_includes.h:
 
 backend/filters/boundingBox.h:
 

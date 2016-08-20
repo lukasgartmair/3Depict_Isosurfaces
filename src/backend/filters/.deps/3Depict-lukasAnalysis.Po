@@ -1244,8 +1244,8 @@ backend/filters/3Depict-lukasAnalysis.o: \
  /usr/include/wx-3.0/wx/ctrlsub.h /usr/include/wx-3.0/wx/gtk/listbox.h \
  /usr/include/wx-3.0/wx/valtext.h \
  backend/filters/../../common/translation.h \
- backend/filters/filterCommon.h common/xmlHelper.h \
- backend/APT/APTRanges.h /usr/include/qhull/qhull_a.h \
+ backend/filters/openvdb_includes.h backend/filters/filterCommon.h \
+ common/xmlHelper.h backend/APT/APTRanges.h /usr/include/qhull/qhull_a.h \
  /usr/include/qhull/libqhull.h /usr/include/qhull/user.h \
  /usr/include/qhull/mem.h /usr/include/qhull/qset.h \
  /usr/include/qhull/stat.h /usr/include/qhull/random.h \
@@ -1253,8 +1253,7 @@ backend/filters/3Depict-lukasAnalysis.o: \
  /usr/include/qhull/poly.h /usr/include/qhull/io.h \
  backend/filters/algorithms/mass.h /usr/include/gsl/gsl_sf_erf.h \
  /usr/include/gsl/gsl_sf_result.h /usr/include/gsl/gsl_histogram.h \
- backend/filters/algorithms/../../filter.h common/colourmap.h \
- backend/filters/openvdb_includes.h
+ backend/filters/algorithms/../../filter.h common/colourmap.h
 
 /usr/include/stdc-predef.h:
 
@@ -4338,6 +4337,8 @@ backend/filters/../filters/openvdb_includes.h:
 
 backend/filters/../../common/translation.h:
 
+backend/filters/openvdb_includes.h:
+
 backend/filters/filterCommon.h:
 
 common/xmlHelper.h:
@@ -4377,5 +4378,3 @@ backend/filters/algorithms/mass.h:
 backend/filters/algorithms/../../filter.h:
 
 common/colourmap.h:
-
-backend/filters/openvdb_includes.h:

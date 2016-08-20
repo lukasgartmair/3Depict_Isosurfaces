@@ -36,7 +36,8 @@ enum
 {
 	KEY_VOXELSIZE,
 	KEY_COLOUR,
-	KEY_ISOLEVEL
+	KEY_ISOLEVEL,
+	KEY_ADAPTIVITY
 };
 
 typedef struct coords_struct {
@@ -81,6 +82,8 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
 
 	rgba=ColourRGBAf(0.5,0.5,0.5,0.9f);
 	iso_level=0.07;
+	voxel_size = 2.0; 
+	adaptivity = 0.1;
 	colourMap=0;
 	autoColourMap=true;
 	colourMapBounds[0]=0;
@@ -93,6 +96,11 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
 void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &dataOut)
 {
+
+	// Initialize the OpenVDB library.  This must be called at least
+    	// once per program and may safely be called multiple times.
+	openvdb::initialize();
+
 	const RangeStreamData *c=0;
 	//Determine if we have an incoming range
 	for (size_t i = 0; i < dataIn.size(); i++) 
@@ -164,21 +172,16 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {	
 
-	// Initialize the OpenVDB library.  This must be called at least
-    	// once per program and may safely be called multiple times.
-	openvdb::initialize();
 
-	
-	float voxel_size = 2.0f; 
 	
 	const float background = 0.0f;	
 
 	// initialize the main grid containing all ions
-	openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create(background);
+	grid = openvdb::FloatGrid::create(background);
 	openvdb::FloatGrid::Accessor accessor = grid->getAccessor();
 
 	// initialize subgrid for one chosen ion species
-	openvdb::FloatGrid::Ptr subgrid1 = openvdb::FloatGrid::create(background);
+	subgrid1 = openvdb::FloatGrid::create(background);
 	openvdb::FloatGrid::Accessor subaccessor1 = subgrid1->getAccessor();
 
 	const RangeFile *r = rsdIncoming->rangeFile;
@@ -257,9 +260,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 	// volume to mesh conversion is done in Drawables.cpp where the mesh is updated
 
-        double isoval = 0.07;
-        double adapt = 0.1;
-
 	// manage the filter output
 
 	OpenVDBGridStreamData *gs = new OpenVDBGridStreamData();
@@ -268,14 +268,14 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	gs->grid = subgrid1->deepCopy();
 	std::cout << " active voxel count gs grid" << " = " << gs->grid->activeVoxelCount() << std::endl;
 	
-	gs->isovalue=isoval;
-	gs->adaptivity=adapt;
+	gs->isovalue=iso_level;
+	gs->adaptivity=adaptivity;
 	gs->voxelsize = voxel_size;
 	
-	gs->r=1;
-	gs->g=1;
-	gs->b=1;
-	gs->a=0.3;
+	gs->r=rgba.r();
+	gs->g=rgba.g();
+	gs->b=rgba.b();
+	gs->a=rgba.a();
 	
 	gs->cached=1;
 	cacheOK=true;
@@ -303,8 +303,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	FilterProperty p;
 	size_t curGroup=0;
 
-	string tmpStr;
-	
+	string tmpStr = "";
 	stream_cast(tmpStr,voxel_size);
 	p.name=TRANS("Voxelsize");
 	p.data=tmpStr;
@@ -326,7 +325,6 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	{
 	
 		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[0].size());	
-		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[1].size());	
 
 		//Look at the numerator	
 		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
@@ -378,10 +376,54 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
+		case KEY_ADAPTIVITY: 
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			if(f <= 0.0f)
+				return false;
+			needUpdate=true;
+			adaptivity=f;
+			//Go in and manually adjust the cached
+			//entries to have the new value, rather
+			//than doing a full recomputation
+			if(cacheOK)
+			{
+				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
+				{	
+					OpenVDBGridStreamData *vdbgs;
+					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
+					vdbgs->adaptivity = adaptivity;
+
+				}
+			}
+			break;
+		}	
+	
+	
 		case KEY_VOXELSIZE: 
 		{
-			if(!applyPropertyNow(voxel_size,value,needUpdate))
+			float f;
+			if(stream_cast(f,value))
 				return false;
+			if(f <= 0.0f)
+				return false;
+			needUpdate=true;
+			voxel_size=f;
+			//Go in and manually adjust the cached
+			//entries to have the new value, rather
+			//than doing a full recomputation
+			if(cacheOK)
+			{
+				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
+				{	
+					OpenVDBGridStreamData *vdbgs;
+					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
+					vdbgs->voxelsize = voxel_size;
+
+				}
+			}
 			break;
 		}	
 
@@ -462,22 +504,7 @@ void LukasAnalysisFilter::setPropFromBinding(const SelectionBinding &b)
 
 bool LukasAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
-	using std::endl;
-	switch(format)
-	{
-		case STATE_FORMAT_XML:
-		{	
-			f << tabs(depth) <<  "<" << trueName() << ">" << endl;
 
-			f << tabs(depth) << "</" <<trueName()<< ">" << endl;
-			break;
-		}
-		default:
-			ASSERT(false);
-			return false;
-	}
-
-	return true;
 }
 
 bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileDir)

@@ -1246,7 +1246,8 @@ backend/3Depict-filtertree.o: backend/filtertree.cpp \
  /usr/include/wx-3.0/wx/ctrlsub.h /usr/include/wx-3.0/wx/gtk/listbox.h \
  /usr/include/wx-3.0/wx/valtext.h backend/filters/allFilter.h \
  backend/filters/lukasAnalysis.h backend/filters/../filter.h \
- backend/filters/../../common/translation.h backend/filters/boundingBox.h \
+ backend/filters/../../common/translation.h \
+ backend/filters/openvdb_includes.h backend/filters/boundingBox.h \
  backend/filters/ionDownsample.h backend/filters/dataLoad.h \
  backend/filters/../../common/basics.h backend/filters/profile.h \
  backend/filters/externalProgram.h backend/filters/ionClip.h \
@@ -4351,6 +4352,8 @@ backend/filters/lukasAnalysis.h:
 backend/filters/../filter.h:
 
 backend/filters/../../common/translation.h:
+
+backend/filters/openvdb_includes.h:
 
 backend/filters/boundingBox.h:
 

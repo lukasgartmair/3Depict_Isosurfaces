@@ -835,7 +835,7 @@ void VoxelStreamData::clear()
 ////////////// openvdb ////////////////////////////////////////////////////////////
 
 OpenVDBGridStreamData::OpenVDBGridStreamData() :
-	r(1.0f),g(0.0f),b(0.0f),a(0.3f), isovalue(0.07), adaptivity(0.1), voxelsize(2.0f)
+	r(1.0f),g(0.0f),b(0.0f),a(0.3f), isovalue(0.07f), adaptivity(0.1f), voxelsize(2.0f)
 {
 
 	streamType=STREAM_TYPE_OPENVDBGRID;
@@ -846,7 +846,7 @@ OpenVDBGridStreamData::OpenVDBGridStreamData() :
 }
 
 OpenVDBGridStreamData::OpenVDBGridStreamData(const Filter *f) : FilterStreamData(f),
-	r(1.0f),g(0.0f),b(0.0f),a(0.3f), isovalue(0.07), adaptivity(0.1), voxelsize(2.0f)
+	r(1.0f),g(0.0f),b(0.0f),a(0.3f), isovalue(0.07f), adaptivity(0.1f), voxelsize(2.0f)
 {
 
 	streamType=STREAM_TYPE_OPENVDBGRID;
@@ -868,9 +868,6 @@ size_t OpenVDBGridStreamData::getNumBasicObjects() const
 
 void OpenVDBGridStreamData::clear()
 {
-	// this clear is an openvdb method of float grid
-	//virtual void clear 	( Empty this grid, so that all voxels become inactive background voxels. 	) 
-	//grid->clear();
 }
 
 

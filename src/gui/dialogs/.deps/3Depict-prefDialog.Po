@@ -1308,7 +1308,8 @@ gui/dialogs/3Depict-prefDialog.o: gui/dialogs/prefDialog.cpp \
  /usr/include/wx-3.0/wx/filename.h /usr/include/wx-3.0/wx/file.h \
  /usr/include/wx-3.0/wx/convauto.h backend/filters/allFilter.h \
  backend/filters/lukasAnalysis.h backend/filters/../filter.h \
- backend/filters/../../common/translation.h backend/filters/boundingBox.h \
+ backend/filters/../../common/translation.h \
+ backend/filters/openvdb_includes.h backend/filters/boundingBox.h \
  backend/filters/ionDownsample.h backend/filters/dataLoad.h \
  backend/filters/../../common/basics.h backend/filters/profile.h \
  backend/filters/externalProgram.h backend/filters/ionClip.h \
@@ -4649,6 +4650,8 @@ backend/filters/lukasAnalysis.h:
 backend/filters/../filter.h:
 
 backend/filters/../../common/translation.h:
+
+backend/filters/openvdb_includes.h:
 
 backend/filters/boundingBox.h:
 
