@@ -1253,7 +1253,7 @@ backend/filters/3Depict-lukasAnalysis.o: \
  /usr/include/qhull/poly.h /usr/include/qhull/io.h \
  backend/filters/algorithms/mass.h /usr/include/gsl/gsl_sf_erf.h \
  /usr/include/gsl/gsl_sf_result.h /usr/include/gsl/gsl_histogram.h \
- backend/filters/algorithms/../../filter.h \
+ backend/filters/algorithms/../../filter.h common/colourmap.h \
  backend/filters/openvdb_includes.h
 
 /usr/include/stdc-predef.h:
@@ -4375,5 +4375,7 @@ backend/filters/algorithms/mass.h:
 /usr/include/gsl/gsl_histogram.h:
 
 backend/filters/algorithms/../../filter.h:
+
+common/colourmap.h:
 
 backend/filters/openvdb_includes.h:

@@ -27,6 +27,9 @@
 class LukasAnalysisFilter : public Filter
 {
 	private:
+	
+		//Enabled ions to choose for numerator
+		std::vector<char> enabledIons[1];
 
 		float voxel_size; // declaration here, definition in the source file
 	
@@ -34,6 +37,20 @@ class LukasAnalysisFilter : public Filter
 
 		//This is the filters enabled ranges
 		RangeStreamData *rsdIncoming;
+			
+		ColourRGBAf rgba;
+
+		//!Colour map to use when using axial slices
+		unsigned int colourMap;
+
+		//Number of colour levels for colour map
+		size_t nColours;
+		//Whether to show the colour map bar or not
+		bool showColourBar;
+		//Whether to use an automatic colour bound, or to use user spec
+		bool autoColourMap;
+		//Colour map start/end
+		float colourMapBounds[2];
 
 		// Initialize the OpenVDB Grid Stream
 		OpenVDBGridStreamData *open_vdb_grid_stream;

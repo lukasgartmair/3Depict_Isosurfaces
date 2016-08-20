@@ -20,12 +20,24 @@
 #include "filterCommon.h"
 #include "algorithms/mass.h"
 
+#include "common/colourmap.h"
+
+#include <map>
+
 #include "openvdb_includes.h"
 
 using std::vector;
 using std::string;
 using std::pair;
 using std::make_pair;
+
+
+enum
+{
+	KEY_VOXELSIZE,
+	KEY_COLOUR,
+	KEY_ISOLEVEL
+};
 
 typedef struct coords_struct {
 float x;
@@ -66,8 +78,16 @@ coord GetVoxelIndex(coord *vec, float voxsize)
 LukasAnalysisFilter::LukasAnalysisFilter() : 
 	rsdIncoming(0)
 {
+
+	rgba=ColourRGBAf(0.5,0.5,0.5,0.9f);
+	iso_level=0.07;
+	colourMap=0;
+	autoColourMap=true;
+	colourMapBounds[0]=0;
+	colourMapBounds[1]=1;
 	cacheOK=false;
 	cache=true; //By default, we should cache, but decision is made higher up
+	rsdIncoming=0;
 }
 
 void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
@@ -92,6 +112,7 @@ void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *>
 		if(rsdIncoming)
 			delete rsdIncoming;
 		rsdIncoming=0;
+		enabledIons[0].clear(); //clear numerator options
 	}
 	else
 	{
@@ -100,6 +121,8 @@ void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *>
 		{
 			rsdIncoming= new RangeStreamData;
 			*rsdIncoming=*c;
+			//set the numerator to all disabled
+			enabledIons[0].resize(rsdIncoming->rangeFile->getNumIons(),0);
 		}
 		else
 		{
@@ -114,6 +137,8 @@ void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *>
 
 				rsdIncoming = new RangeStreamData;
 				*rsdIncoming=*c;
+				//set the numerator to all disabled
+				enabledIons[0].resize(rsdIncoming->rangeFile->getNumIons(),0);
 			}
 
 		}
@@ -138,6 +163,7 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {	
+
 	// Initialize the OpenVDB library.  This must be called at least
     	// once per program and may safely be called multiple times.
 	openvdb::initialize();
@@ -271,6 +297,54 @@ size_t LukasAnalysisFilter::numBytesForCache(size_t nObjects) const
 
 void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 {
+
+	// 1st group computation
+
+	FilterProperty p;
+	size_t curGroup=0;
+
+	string tmpStr;
+	
+	stream_cast(tmpStr,voxel_size);
+	p.name=TRANS("Voxelsize");
+	p.data=tmpStr;
+	p.key=KEY_VOXELSIZE;
+	p.type=PROPERTY_TYPE_REAL;
+	p.helpText=TRANS("Voxel size in x,y,z direction");
+	propertyList.addProperty(p,curGroup);
+	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
+	
+	curGroup++;
+	// 2nd group ranges
+	
+	
+	// in my case i only choose the numerator because the denominator is the grid with all ions
+	// rsdIncoming has to be true to start Lukas Analysis
+	// numerator
+	if (rsdIncoming) 
+	{
+		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[0].size());	
+		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[1].size());	
+
+		//Look at the numerator	
+		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
+		{
+			string str;
+			str=boolStrEnc(enabledIons[0][ui]);
+
+			//Append the ion name with a checkbox
+			p.name=rsdIncoming->rangeFile->getName(ui);
+			p.data=str;
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Get the concentration of THIS ion species");
+			propertyList.addProperty(p,curGroup);
+		}
+	
+		propertyList.setGroupTitle(curGroup,TRANS("Ranges"));
+		curGroup++;
+	}
+
+
 
 }
 
