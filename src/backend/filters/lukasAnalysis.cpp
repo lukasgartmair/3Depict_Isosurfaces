@@ -151,13 +151,9 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create(background);
 	openvdb::FloatGrid::Accessor accessor = grid->getAccessor();
 
-	// initialize subgrid for one chosen ion
+	// initialize subgrid for one chosen ion species
 	openvdb::FloatGrid::Ptr subgrid1 = openvdb::FloatGrid::create(background);
 	openvdb::FloatGrid::Accessor subaccessor1 = subgrid1->getAccessor();
-
-
-	int counter = 0;
-	int counter_cu = 0;
 
 	const RangeFile *r = rsdIncoming->rangeFile;
 
@@ -174,41 +170,36 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 		for(size_t uj=0;uj<ions->data.size(); uj++)
 		{
-		    coord curr = {ions->data[uj].getPos()[0], ions->data[uj].getPos()[1], ions->data[uj].getPos()[2]};
-		
-		    if (uj < 10)
+			coord curr = {ions->data[uj].getPos()[0], ions->data[uj].getPos()[1], ions->data[uj].getPos()[2]};
+
+			if (uj < 10)
 			{
-		    std::cout << "coord curr = " << ions->data[uj].getPos()[0] << ions->data[uj].getPos()[1] << ions->data[uj].getPos()[2] << std::endl;
+			std::cout << "coord curr = " << ions->data[uj].getPos()[0] << ions->data[uj].getPos()[1] << ions->data[uj].getPos()[2] << std::endl;
 			}
-		    voxel_index = GetVoxelIndex(&curr, voxel_size);
+			voxel_index = GetVoxelIndex(&curr, voxel_size);
 
-		    // normalized voxel indices based on 00, 01, 02 etc. // very important otherwise there will be spacings
-		    openvdb::Coord ijk(voxel_index.x, voxel_index.y, voxel_index.z);
+			// normalized voxel indices based on 00, 01, 02 etc. // very important otherwise there will be spacings
+			openvdb::Coord ijk(voxel_index.x, voxel_index.y, voxel_index.z);
 
-		    accessor.setValue(ijk, 1.0 + accessor.getValue(ijk));
-
-			counter += 1;
+			accessor.setValue(ijk, 1.0 + accessor.getValue(ijk));
 
 			unsigned int idIon;
 			idIon = r->getIonID(ions->data[uj].getMassToCharge());
 			
+			// in this place the ion id has to be assigned to the chosen ion species
 			// ionIDs i think are aluminum 0 and copper 1
 			// is it the order in the range file?
 			if (idIon == 1)
 			{
 			    subaccessor1.setValue(ijk, 1.0 + subaccessor1.getValue(ijk));
-				counter_cu += 1;
 			}
-			    else
+			else
 			{
 			    subaccessor1.setValue(ijk, 0.0 + subaccessor1.getValue(ijk));
 			}
 			}
 
 		}
-
-	std::cout << "ions number" << counter << std::endl;
-	std::cout << "ions copper number" << counter_cu << std::endl;	
 
 	float minVal = 0.0;
 	float maxVal = 0.0;
@@ -235,16 +226,15 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	}
 	}
 
-////////////////////////
 
-subgrid1->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
+	subgrid1->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
 
-// volume to mesh conversion is done in Drawables.cpp where the mesh is updated
+	// volume to mesh conversion is done in Drawables.cpp where the mesh is updated
 
-    double isoval = 0.07;
-    double adapt = 0.1;
+        double isoval = 0.07;
+        double adapt = 0.1;
 
-// manage the filter output
+	// manage the filter output
 
 	OpenVDBGridStreamData *gs = new OpenVDBGridStreamData();
 	gs->parent=this;
