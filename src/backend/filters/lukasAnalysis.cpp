@@ -81,8 +81,6 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
 	rsdIncoming(0)
 {
 
-	ionspecies_enabled = false;
-
 	rgba=ColourRGBAf(0.5,0.5,0.5,0.9f);
 	iso_level=0.07;
 	voxel_size = 2.0; 
@@ -165,10 +163,6 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 	p->cacheOK=false;
 	p->userString=userString;
 	return p;
-	
-	
-	p->ionspecies_enabled = ionspecies_enabled;
-	
 
 	p->rgba=rgba;
 
@@ -270,14 +264,17 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// in this place the ion id has to be assigned to the chosen ion species
 			// ionIDs i think are aluminum 0 and copper 1
 			// is it the order in the range file?
-			if (idIon == 1)
+
+			if (enabledIons[0][ui] == true)
 			{
-			    subaccessor1.setValue(ijk, 1.0 + subaccessor1.getValue(ijk));
-			}
-			else
-			{
-			    subaccessor1.setValue(ijk, 0.0 + subaccessor1.getValue(ijk));
-			}
+				//if (idIon == 1) // test case choose only the copper ions with id 1
+				
+				    subaccessor1.setValue(ijk, 1.0 + subaccessor1.getValue(ijk));
+				}
+				else
+				{
+				    subaccessor1.setValue(ijk, 0.0 + subaccessor1.getValue(ijk));
+				}
 			}
 
 		}
@@ -462,10 +459,9 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			bool b;
 			if(stream_cast(b,value))
 				return false;
-			//Set them all to enabled or disabled as a group	
+			//Set them all to enabled or disabled as a group
 			for (size_t i = 0; i < enabledIons[0].size(); i++) 
 				enabledIons[0][i] = b;
-			ionspecies_enabled = b;
 			needUpdate=true;
 			clearCache();
 			break;
