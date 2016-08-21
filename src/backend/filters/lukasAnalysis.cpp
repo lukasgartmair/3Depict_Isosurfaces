@@ -38,7 +38,7 @@ enum
 	KEY_COLOUR,
 	KEY_ISOLEVEL,
 	KEY_ADAPTIVITY,
-	KEY_IONSPECIES
+	KEY_ENABLED_IONSPECIES
 };
 
 typedef struct coords_struct {
@@ -366,6 +366,8 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	
 	// 2nd group ranges
 	
+	// note of course i can just use the ranges checked in the range filter which is in any case set before!
+
 	
 	// in my case i only choose the numerator because the denominator is the grid with all ions
 	// rsdIncoming has to be true to start Lukas Analysis
@@ -385,7 +387,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			//Append the ion name with a checkbox
 			p.name=rsdIncoming->rangeFile->getName(ui);
 			p.data=str;
-			p.key = KEY_IONSPECIES;
+			p.key = KEY_ENABLED_IONSPECIES;
 			p.type=PROPERTY_TYPE_BOOL;
 			p.helpText=TRANS("Get the concentration of THIS ion species");
 			propertyList.addProperty(p,curGroup);
@@ -394,7 +396,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 		propertyList.setGroupTitle(curGroup,TRANS("Ranges"));
 		curGroup++;
 	}
-	
+
 	// 3rd group representation
 	
 	p.name=TRANS("Representation");
@@ -453,8 +455,9 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			}
 			break;
 		}	
-		
-		case KEY_IONSPECIES:
+	
+
+		case KEY_ENABLED_IONSPECIES:
 		{
 			bool b;
 			if(stream_cast(b,value))
@@ -466,7 +469,7 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			clearCache();
 			break;
 		}
-	
+
 	
 		case KEY_VOXELSIZE: 
 		{
