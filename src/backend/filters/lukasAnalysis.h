@@ -31,6 +31,8 @@ class LukasAnalysisFilter : public Filter
 	
 		//Enabled ions to choose for numerator
 		std::vector<char> enabledIons[1];
+		
+		bool ionspecies_enabled;
 
 		float voxel_size; // declaration here, definition in the source file
 	

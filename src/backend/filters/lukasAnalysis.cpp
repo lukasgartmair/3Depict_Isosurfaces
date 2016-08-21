@@ -37,7 +37,8 @@ enum
 	KEY_VOXELSIZE,
 	KEY_COLOUR,
 	KEY_ISOLEVEL,
-	KEY_ADAPTIVITY
+	KEY_ADAPTIVITY,
+	KEY_IONSPECIES
 };
 
 typedef struct coords_struct {
@@ -79,6 +80,8 @@ coord GetVoxelIndex(coord *vec, float voxsize)
 LukasAnalysisFilter::LukasAnalysisFilter() : 
 	rsdIncoming(0)
 {
+
+	ionspecies_enabled = false;
 
 	rgba=ColourRGBAf(0.5,0.5,0.5,0.9f);
 	iso_level=0.07;
@@ -162,6 +165,9 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 	p->cacheOK=false;
 	p->userString=userString;
 	return p;
+	
+	
+	p->ionspecies_enabled = ionspecies_enabled;
 	
 
 	p->rgba=rgba;
@@ -360,6 +366,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
 	
 	curGroup++;
+	
 	// 2nd group ranges
 	
 	
@@ -375,12 +382,13 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 		//Look at the numerator	
 		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
 		{
-			string str;
+			string str = "";
 			str=boolStrEnc(enabledIons[0][ui]);
 
 			//Append the ion name with a checkbox
 			p.name=rsdIncoming->rangeFile->getName(ui);
 			p.data=str;
+			p.key = KEY_IONSPECIES;
 			p.type=PROPERTY_TYPE_BOOL;
 			p.helpText=TRANS("Get the concentration of THIS ion species");
 			propertyList.addProperty(p,curGroup);
@@ -389,6 +397,8 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 		propertyList.setGroupTitle(curGroup,TRANS("Ranges"));
 		curGroup++;
 	}
+	
+	// 3rd group representation
 	
 	p.name=TRANS("Representation");
 
@@ -446,6 +456,20 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			}
 			break;
 		}	
+		
+		case KEY_IONSPECIES:
+		{
+			bool b;
+			if(stream_cast(b,value))
+				return false;
+			//Set them all to enabled or disabled as a group	
+			for (size_t i = 0; i < enabledIons[0].size(); i++) 
+				enabledIons[0][i] = b;
+			ionspecies_enabled = b;
+			needUpdate=true;
+			clearCache();
+			break;
+		}
 	
 	
 		case KEY_VOXELSIZE: 
@@ -561,7 +585,10 @@ bool LukasAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsign
 			f << tabs(depth+1) << "<voxel_size value=\""<<voxel_size<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<iso_level value=\""<<iso_level<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<adaptivity value=\""<<adaptivity<< "\"/>"  << endl;
-
+			
+			for(unsigned int ui=0;ui<enabledIons[0].size(); ui++)
+				f << tabs(depth+3) << "<enabled value=\"" << boolStrEnc(enabledIons[0][ui]) << "\"/>" << endl;
+				
 			f << tabs(depth) << "</" <<trueName()<< ">" << endl;
 			break;
 		}
@@ -578,7 +605,9 @@ bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	using std::string;
 	string tmpStr;
 
+	stack<xmlNodePtr> nodeStack;
 	xmlChar *xmlString;
+	
 	//Retrieve user string
 	if(XMLHelpFwdToElem(nodePtr,"userstring"))
 		return false;
@@ -616,6 +645,36 @@ bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	adaptivity=tmpFloat;
 	//--=
 
+	if(!XMLHelpFwdToElem(nodePtr,"enabledions"))
+	{
+
+		nodeStack.push(nodePtr);
+		if(!nodePtr->xmlChildrenNode)
+			return false;
+		nodePtr=nodePtr->xmlChildrenNode;
+
+		while(nodePtr)
+		{
+			char c;
+			//Retrieve representation
+			if(!XMLGetNextElemAttrib(nodePtr,c,"enabled","value"))
+				break;
+
+			if(c == '1')
+				enabledIons[0].push_back(true);
+			else
+				enabledIons[0].push_back(false);
+
+
+			nodePtr=nodePtr->next;
+		}
+
+		nodePtr=nodeStack.top();
+		nodeStack.pop();
+
+
+	}
+
 	return true;
 }
 
@@ -627,12 +686,14 @@ unsigned int LukasAnalysisFilter::getRefreshBlockMask() const
 
 unsigned int LukasAnalysisFilter::getRefreshEmitMask() const
 {
-	return  STREAM_TYPE_OPENVDBGRID | STREAM_TYPE_DRAW | STREAM_TYPE_RANGE;
+	//return  STREAM_TYPE_OPENVDBGRID | STREAM_TYPE_DRAW | STREAM_TYPE_RANGE;
+	return 0;
 }
 
 unsigned int LukasAnalysisFilter::getRefreshUseMask() const
 {
 	return  STREAM_TYPE_RANGE |  STREAM_TYPE_OPENVDBGRID ;
+	//return 0;
 }
 
 
