@@ -97,9 +97,6 @@ void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *>
 				std::vector<const FilterStreamData *> &dataOut)
 {
 
-	// Initialize the OpenVDB library.  This must be called at least
-    	// once per program and may safely be called multiple times.
-	openvdb::initialize();
 
 	const RangeStreamData *c=0;
 	//Determine if we have an incoming range
@@ -165,13 +162,62 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 	p->cacheOK=false;
 	p->userString=userString;
 	return p;
+	
+
+	p->rgba=rgba;
+
+	p->iso_level=iso_level;
+	p->voxel_size=voxel_size;
+	p->adaptivity=adaptivity;
+
+	p->enabledIons[0].resize(enabledIons[0].size());
+	std::copy(enabledIons[0].begin(),enabledIons[0].end(),p->enabledIons[0].begin());
+
+	if(rsdIncoming)
+	{
+		p->rsdIncoming=new RangeStreamData();
+		*(p->rsdIncoming) = *rsdIncoming;
+	}
+	else
+		p->rsdIncoming=0;
+
+	p->colourMap = colourMap;
+
+	p->nColours = nColours;
+	p->showColourBar = showColourBar;
+	p->autoColourMap = autoColourMap;
+	p->colourMapBounds[0] = colourMapBounds[0];
+	p->colourMapBounds[1] = colourMapBounds[1];
+
+	p->cache=cache;
+	p->cacheOK=false;
+	p->userString=userString;
+	return p;
 }
 
 /// here the actual filter work is done 
 unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {	
+	
+	// check whether easy ion count works with refreshing
+	
+	//Count the number of ions input
+	std::string str;
+	size_t numTotalPoints = numElements(dataIn,STREAM_TYPE_IONS);
+			stream_cast(str,numTotalPoints);
+			str=std::string(TRANS("--Counts--") );
+			consoleOutput.push_back(str);
 
+			stream_cast(str,numTotalPoints);
+
+			consoleOutput.push_back(str);
+			consoleOutput.push_back("");
+
+
+	// Initialize the OpenVDB library.  This must be called at least
+    	// once per program and may safely be called multiple times.
+	openvdb::initialize();
 
 	
 	const float background = 0.0f;	
@@ -504,7 +550,27 @@ void LukasAnalysisFilter::setPropFromBinding(const SelectionBinding &b)
 
 bool LukasAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
+	using std::endl;
+	switch(format)
+	{
+		case STATE_FORMAT_XML:
+		{	
+			f << tabs(depth) <<  "<" << trueName() << ">" << endl;
+			f << tabs(depth+1) << "<userstring value=\""<< escapeXML(userString) << "\"/>"  << endl;
 
+			f << tabs(depth+1) << "<voxel_size value=\""<<voxel_size<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<iso_level value=\""<<iso_level<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<adaptivity value=\""<<adaptivity<< "\"/>"  << endl;
+
+			f << tabs(depth) << "</" <<trueName()<< ">" << endl;
+			break;
+		}
+		default:
+			ASSERT(false);
+			return false;
+	}
+
+	return true;
 }
 
 bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileDir)
@@ -523,23 +589,50 @@ bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	userString=(char *)xmlString;
 	xmlFree(xmlString);
 
+	//--=
+	float tmpFloat = 0;
+	if(!XMLGetNextElemAttrib(nodePtr,tmpFloat,"voxel_size","value"))
+		return false;
+	if(tmpFloat <= 0.0f)
+		return false;
+	voxel_size=tmpFloat;
+	//--=
+
+	//--
+	tmpFloat = 0;
+	if(!XMLGetNextElemAttrib(nodePtr,tmpFloat,"iso_level","value"))
+		return false;
+	if(tmpFloat <= 0.0f)
+		return false;
+	iso_level=tmpFloat;
+	//--=
+	
+	//--
+	tmpFloat = 0;
+	if(!XMLGetNextElemAttrib(nodePtr,tmpFloat,"adaptivity","value"))
+		return false;
+	if(tmpFloat <= 0.0f)
+		return false;
+	adaptivity=tmpFloat;
+	//--=
 
 	return true;
 }
 
 unsigned int LukasAnalysisFilter::getRefreshBlockMask() const
 {
-	return STREAMTYPE_MASK_ALL;
+	return 0;
+	//return STREAMTYPE_MASK_ALL;
 }
 
 unsigned int LukasAnalysisFilter::getRefreshEmitMask() const
 {
-	return  STREAM_TYPE_OPENVDBGRID | STREAM_TYPE_DRAW;
+	return  STREAM_TYPE_OPENVDBGRID | STREAM_TYPE_DRAW | STREAM_TYPE_RANGE;
 }
 
 unsigned int LukasAnalysisFilter::getRefreshUseMask() const
 {
-	return  STREAM_TYPE_RANGE;
+	return  STREAM_TYPE_RANGE |  STREAM_TYPE_OPENVDBGRID ;
 }
 
 
