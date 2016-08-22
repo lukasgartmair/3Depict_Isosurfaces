@@ -265,15 +265,15 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// ionIDs i think are aluminum 0 and copper 1
 			// is it the order in the range file?
 
-			if (enabledIons[0][ui] == true)
-			{
-				//if (idIon == 1) // test case choose only the copper ions with id 1
+				if (enabledIons[0][ui] == true)
+				{
+					//if (idIon == 1) // test case choose only the copper ions with id 1
 				
-				    subaccessor1.setValue(ijk, 1.0 + subaccessor1.getValue(ijk));
+					    subaccessor1.setValue(ijk, 1.0 + subaccessor1.getValue(ijk));
 				}
 				else
 				{
-				    subaccessor1.setValue(ijk, 0.0 + subaccessor1.getValue(ijk));
+					subaccessor1.setValue(ijk, 0.0 + subaccessor1.getValue(ijk));
 				}
 			}
 
@@ -376,6 +376,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	if (rsdIncoming) 
 	{
 	
+		/*
 		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[0].size());	
 
 		//Look at the numerator	
@@ -392,7 +393,20 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 			p.helpText=TRANS("Get the concentration of THIS ion species");
 			propertyList.addProperty(p,curGroup);
 		}
-	
+		*/
+		string str = "";
+		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
+		{
+			
+			str=boolStrEnc(enabledIons[0][ui]);
+		}
+		//Append the ion name with a checkbox
+		p.name=TRANS("Apply Range Filter");
+		p.data=str;
+		p.key = KEY_ENABLED_IONSPECIES;
+		p.type=PROPERTY_TYPE_BOOL;
+		p.helpText=TRANS("Get the concentration of the ONE ion species assigned in the Range Filter");
+		propertyList.addProperty(p,curGroup);
 		propertyList.setGroupTitle(curGroup,TRANS("Ranges"));
 		curGroup++;
 	}
