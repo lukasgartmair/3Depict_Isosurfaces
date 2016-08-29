@@ -246,12 +246,31 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 		for(size_t uj=0;uj<ions->data.size(); uj++)
 		{
 			coord curr = {ions->data[uj].getPos()[0], ions->data[uj].getPos()[1], ions->data[uj].getPos()[2]};
-
-			if (uj < 10)
-			{
-			std::cout << "coord curr = " << ions->data[uj].getPos()[0] << ions->data[uj].getPos()[1] << ions->data[uj].getPos()[2] << std::endl;
-			}
+	
+	
+	
+			// this is the place to put the contribution transfer function
+			
 			voxel_index = GetVoxelIndex(&curr, voxel_size);
+
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 			// normalized voxel indices based on 00, 01, 02 etc. // very important otherwise there will be spacings
 			openvdb::Coord ijk(voxel_index.x, voxel_index.y, voxel_index.z);
