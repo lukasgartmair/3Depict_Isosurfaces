@@ -21,6 +21,7 @@
 #include "../filter.h"
 #include "../../common/translation.h"
 #include "openvdb_includes.h"
+#include "contribution_transfer_function/CTF_functions.h"
 
 
 
@@ -39,7 +40,7 @@ class LukasAnalysisFilter : public Filter
 		float adaptivity;
 		
 		openvdb::FloatGrid::Ptr grid;
-		openvdb::FloatGrid::Ptr subgrid1;
+		openvdb::FloatGrid::Ptr subgrid;
 		
 		//This is the filters enabled ranges
 		RangeStreamData *rsdIncoming;

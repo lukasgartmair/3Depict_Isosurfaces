@@ -25,6 +25,7 @@
 #include <map>
 
 #include "openvdb_includes.h"
+#include "contribution_transfer_function/CTF_functions.h"
 
 using std::vector;
 using std::string;
@@ -227,8 +228,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	openvdb::FloatGrid::Accessor accessor = grid->getAccessor();
 
 	// initialize subgrid for one chosen ion species
-	subgrid1 = openvdb::FloatGrid::create(background);
-	openvdb::FloatGrid::Accessor subaccessor1 = subgrid1->getAccessor();
+	subgrid = openvdb::FloatGrid::create(background);
+	openvdb::FloatGrid::Accessor subaccessor = subgrid->getAccessor();
 
 	const RangeFile *r = rsdIncoming->rangeFile;
 
@@ -240,63 +241,82 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 		const IonStreamData  *ions; 
 		ions = (const IonStreamData *)dataIn[ui];
 
-		coord voxel_index = {0,0,0};
-		coord curr = {0,0,0};
-
 		for(size_t uj=0;uj<ions->data.size(); uj++)
 		{
-			coord curr = {ions->data[uj].getPos()[0], ions->data[uj].getPos()[1], ions->data[uj].getPos()[2]};
+			const int xyzs = 3;
+			std::vector<float> atom_position(3); 
+			for (int i=0;i<xyzs;i++)
+			{
+				atom_position[i] = ions->data[uj].getPos()[i];
+			}
 	
-	
-	
-			// this is the place to put the contribution transfer function
+			// 1st step - project the current atom position to unit voxel i.e. from 0 to 1
+			std::vector<float> position_in_unit_voxel;
+			position_in_unit_voxel = projectAtompositionToUnitvoxel(atom_position, voxel_size);
+
+			// 2nd step - determine each contribution to the adjecent 8 voxels outgoining from the position in the unit voxel
+			std::vector<float> volumes_of_subcuboids;
+			std::vector<float> contributions_to_adjacent_voxels;
+			bool vertex_corner_coincidence = false;
 			
-			voxel_index = GetVoxelIndex(&curr, voxel_size);
-
+			vertex_corner_coincidence = checkVertexCornerCoincidence(position_in_unit_voxel , voxel_size);
 			
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-			// normalized voxel indices based on 00, 01, 02 etc. // very important otherwise there will be spacings
-			openvdb::Coord ijk(voxel_index.x, voxel_index.y, voxel_index.z);
-
-			accessor.setValue(ijk, 1.0 + accessor.getValue(ijk));
-
-			unsigned int idIon;
-			idIon = r->getIonID(ions->data[uj].getMassToCharge());
+			// in case of coincidence of atom and voxel the contribution becomes 100 percent
+			if (vertex_corner_coincidence == false)
+			{
+				volumes_of_subcuboids = calcSubvolumes(position_in_unit_voxel, voxel_size);
+				contributions_to_adjacent_voxels = calcVoxelContributions(volumes_of_subcuboids);
+			}
+			else
+			{
+				contributions_to_adjacent_voxels = handleVertexCornerCoincidence(position_in_unit_voxel, voxel_size);
+			}
 			
-			// in this place the ion id has to be assigned to the chosen ion species
-			// ionIDs i think are aluminum 0 and copper 1
-			// is it the order in the range file?
+			// 3rd step - determine the surrounding voxel indices in the actual grid
+			std::vector<std::vector<float> > adjacent_voxel_vertices;
+			adjacent_voxel_vertices = determineSurroundingVoxelVertices(atom_position, voxel_size);
+			
+			// 4th step - assign each of the 8 adjacent voxels the corresponding contribution that results from the atom position in the unit voxel
+			const int number_of_adjacent_voxels = 8;
+			std::vector<float> current_voxel_index;
+			for (int i=0;i<number_of_adjacent_voxels;i++)
+			{
+				current_voxel_index = adjacent_voxel_vertices[i];
+				// normalized voxel indices based on 00, 01, 02 etc. // very important otherwise there will be spacings
+				openvdb::Coord ijk(current_voxel_index[0], current_voxel_index[1], current_voxel_index[2]);
+				
+				if (uj < 5)
+				{
+					//std::cout <<  " current contribution"  << " = " << contributions_to_adjacent_voxels[i] << std::endl;
+				}
+				
+				if (uj < 5)
+				{
+					std::cout <<  " current voxel x"  << " = " << current_voxel_index[0] << std::endl;
+					std::cout <<  " current voxel y"  << " = " << current_voxel_index[1] << std::endl;
+					std::cout <<  " current voxel z"  << " = " << current_voxel_index[2] << std::endl;
+				}
+				
+				// write to main grid
+				accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + accessor.getValue(ijk));
+
+				// write to sub grid
+				unsigned int idIon;
+				idIon = r->getIonID(ions->data[uj].getMassToCharge());
 
 				if (enabledIons[0][ui] == true)
 				{
-					//if (idIon == 1) // test case choose only the copper ions with id 1
-				
-					    subaccessor1.setValue(ijk, 1.0 + subaccessor1.getValue(ijk));
+					
+					subaccessor.setValue(ijk, contributions_to_adjacent_voxels[i] + subaccessor.getValue(ijk));
 				}
 				else
 				{
-					subaccessor1.setValue(ijk, 0.0 + subaccessor1.getValue(ijk));
+					subaccessor.setValue(ijk, 0.0 + subaccessor.getValue(ijk));
 				}
 			}
-
 		}
+
+	}
 
 	float minVal = 0.0;
 	float maxVal = 0.0;
@@ -304,18 +324,18 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	std::cout << " eval min max grid" << " = " << minVal << " , " << maxVal << std::endl;
 	std::cout << " active voxel count grid" << " = " << grid->activeVoxelCount() << std::endl;
 
-	subgrid1->evalMinMax(minVal,maxVal);
+	subgrid->evalMinMax(minVal,maxVal);
 	std::cout << " eval min max subgrid" << " = " << minVal << " , " << maxVal << std::endl;
-	std::cout << " active voxel count subgrid" << " = " << subgrid1->activeVoxelCount() << std::endl;
+	std::cout << " active voxel count subgrid" << " = " << subgrid->activeVoxelCount() << std::endl;
 
 	// composite.h operations modify the first grid and leave the second grid emtpy
 	// compute a = a / b
-	openvdb::tools::compDiv(*subgrid1, *grid);
+	openvdb::tools::compDiv(*subgrid, *grid);
 
 	//check for negative nans and infs introduced by the division
 	//set them to zero in order not to obtain nan mesh coordinates
 
-	for (openvdb::FloatGrid::ValueAllIter iter = subgrid1->beginValueAll(); iter; ++iter)
+	for (openvdb::FloatGrid::ValueAllIter iter = subgrid->beginValueAll(); iter; ++iter)
 	{   
 	    if (std::isfinite(iter.getValue()) == false)
 	{
@@ -324,7 +344,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	}
 
 
-	subgrid1->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
+	subgrid->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
 
 	// volume to mesh conversion is done in Drawables.cpp where the mesh is updated
 
@@ -333,7 +353,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	OpenVDBGridStreamData *gs = new OpenVDBGridStreamData();
 	gs->parent=this;
 	// just like the swap function of the voxelization does pass the grids here to gs->grids
-	gs->grid = subgrid1->deepCopy();
+	gs->grid = subgrid->deepCopy();
 	std::cout << " active voxel count gs grid" << " = " << gs->grid->activeVoxelCount() << std::endl;
 	
 	gs->isovalue=iso_level;
@@ -394,25 +414,6 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	
 	if (rsdIncoming) 
 	{
-	
-		/*
-		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[0].size());	
-
-		//Look at the numerator	
-		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
-		{
-			string str = "";
-			str=boolStrEnc(enabledIons[0][ui]);
-
-			//Append the ion name with a checkbox
-			p.name=rsdIncoming->rangeFile->getName(ui);
-			p.data=str;
-			p.key = KEY_ENABLED_IONSPECIES;
-			p.type=PROPERTY_TYPE_BOOL;
-			p.helpText=TRANS("Get the concentration of THIS ion species");
-			propertyList.addProperty(p,curGroup);
-		}
-		*/
 		string str = "";
 		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
 		{
