@@ -285,18 +285,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				// normalized voxel indices based on 00, 01, 02 etc. // very important otherwise there will be spacings
 				openvdb::Coord ijk(current_voxel_index[0], current_voxel_index[1], current_voxel_index[2]);
 				
-				if (uj < 5)
-				{
-					//std::cout <<  " current contribution"  << " = " << contributions_to_adjacent_voxels[i] << std::endl;
-				}
-				
-				if (uj < 5)
-				{
-					std::cout <<  " current voxel x"  << " = " << current_voxel_index[0] << std::endl;
-					std::cout <<  " current voxel y"  << " = " << current_voxel_index[1] << std::endl;
-					std::cout <<  " current voxel z"  << " = " << current_voxel_index[2] << std::endl;
-				}
-				
 				// write to main grid
 				accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + accessor.getValue(ijk));
 
@@ -343,6 +331,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	}
 	}
 
+	// Associate a scaling transform with the grid that sets the voxel size
+	// to voxel_size units in world space.
 
 	subgrid->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
 
@@ -354,7 +344,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	gs->parent=this;
 	// just like the swap function of the voxelization does pass the grids here to gs->grids
 	gs->grid = subgrid->deepCopy();
-	std::cout << " active voxel count gs grid" << " = " << gs->grid->activeVoxelCount() << std::endl;
 	
 	gs->isovalue=iso_level;
 	gs->adaptivity=adaptivity;
