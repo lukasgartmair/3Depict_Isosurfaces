@@ -223,15 +223,23 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	const float background = 0.0f;	
 
 	// initialize the main grid containing all ions
-	grid = openvdb::FloatGrid::create(background);
+	openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create(background);
 	openvdb::FloatGrid::Accessor accessor = grid->getAccessor();
 
 	// initialize subgrid for one chosen ion species
-	subgrid = openvdb::FloatGrid::create(background);
+	openvdb::FloatGrid::Ptr subgrid = openvdb::FloatGrid::create(background);
 	openvdb::FloatGrid::Accessor subaccessor = subgrid->getAccessor();
 
 	const RangeFile *r = rsdIncoming->rangeFile;
+	
+	// determine the ion id of the enabled ion species
+	// the first one is enough as they all should have the same 
+	int enabled_ion_id = 0;
 
+
+
+	std::cout << " enabled_ion_id " << " = " << enabled_ion_id << std::endl;
+	
 	for(size_t ui=0;ui<dataIn.size();ui++)
 	{
 		if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
@@ -239,9 +247,26 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 		const IonStreamData  *ions; 
 		ions = (const IonStreamData *)dataIn[ui];
+		
+		//Check what Ion type this stream belongs to. Assume all ions
+		//in the stream belong to the same group
+		unsigned int ionID;
+		ionID = getIonstreamIonID(ions,rsdIncoming->rangeFile);
+
+		bool thisIonEnabled;
+		if(ionID!=(unsigned int)-1)
+		{
+			thisIonEnabled=enabledIons[0][ionID];
+			if (thisIonEnabled == true)
+			{
+				enabled_ion_id = ionID;
+				break;
+			}
+		}
 
 		for(size_t uj=0;uj<ions->data.size(); uj++)
 		{
+			
 			const int xyzs = 3;
 			std::vector<float> atom_position(3); 
 			for (int i=0;i<xyzs;i++)
@@ -291,12 +316,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				unsigned int idIon;
 				idIon = r->getIonID(ions->data[uj].getMassToCharge());
 
-				if ((enabledIons[0][ui] == true) && (idIon == 0))
-				{
-					std::cout << " this is supposed not to be written if everything is right"<< std::endl;
-				}
-				
-				if (enabledIons[0][ui] == true)
+				if (idIon == enabled_ion_id)
 				{
 					
 					subaccessor.setValue(ijk, contributions_to_adjacent_voxels[i] + subaccessor.getValue(ijk));
@@ -305,6 +325,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				{
 					subaccessor.setValue(ijk, 0.0 + subaccessor.getValue(ijk));
 				}
+				
 
 
 			}
@@ -325,11 +346,16 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	// composite.h operations modify the first grid and leave the second grid emtpy
 	// compute a = a / b
 	openvdb::tools::compDiv(*subgrid, *grid);
+	
+	// initialize a grid where the division in stored
+	openvdb::FloatGrid::Ptr divgrid = openvdb::FloatGrid::create(background);
+	
+	divgrid = subgrid->deepCopy();
 
 	//check for negative nans and infs introduced by the division
 	//set them to zero in order not to obtain nan mesh coordinates
 
-	for (openvdb::FloatGrid::ValueAllIter iter = subgrid->beginValueAll(); iter; ++iter)
+	for (openvdb::FloatGrid::ValueAllIter iter = divgrid->beginValueAll(); iter; ++iter)
 	{   
 	    if (std::isfinite(iter.getValue()) == false)
 	{
@@ -337,14 +363,14 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	}
 	}
 	
-	subgrid->evalMinMax(minVal,maxVal);
-	std::cout << " eval min max subgrid after division" << " = " << minVal << " , " << maxVal << std::endl;
-	std::cout << " active voxel count subgrid after division" << " = " << subgrid->activeVoxelCount() << std::endl;
+	divgrid->evalMinMax(minVal,maxVal);
+	std::cout << " eval min max divgrid after division" << " = " << minVal << " , " << maxVal << std::endl;
+	std::cout << " active voxel count divgrid after division" << " = " << divgrid->activeVoxelCount() << std::endl;
 
 	// Associate a scaling transform with the grid that sets the voxel size
 	// to voxel_size units in world space.
 
-	subgrid->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
+	divgrid->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
 
 	// volume to mesh conversion is done in Drawables.cpp where the mesh is updated
 
@@ -353,7 +379,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	OpenVDBGridStreamData *gs = new OpenVDBGridStreamData();
 	gs->parent=this;
 	// just like the swap function of the voxelization does pass the grids here to gs->grids
-	gs->grid = subgrid->deepCopy();
+	gs->grid = divgrid->deepCopy();
 	
 	gs->isovalue=iso_level;
 	gs->adaptivity=adaptivity;
@@ -410,7 +436,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	// in my case i only choose the numerator because the denominator is the grid with all ions
 	// rsdIncoming has to be true to start Lukas Analysis
 	// numerator
-	
+	/*
 	if (rsdIncoming) 
 	{
 		string str = "";
@@ -429,7 +455,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 		propertyList.setGroupTitle(curGroup,TRANS("Ranges"));
 		curGroup++;
 	}
-
+	*/
 	// 3rd group representation
 	
 	p.name=TRANS("Representation");
@@ -489,7 +515,7 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			break;
 		}	
 	
-
+/*
 		case KEY_ENABLED_IONSPECIES:
 		{
 			bool b;
@@ -502,7 +528,7 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			clearCache();
 			break;
 		}
-
+*/
 	
 		case KEY_VOXELSIZE: 
 		{

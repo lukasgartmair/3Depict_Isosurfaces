@@ -39,9 +39,6 @@ class LukasAnalysisFilter : public Filter
 		
 		float adaptivity;
 		
-		openvdb::FloatGrid::Ptr grid;
-		openvdb::FloatGrid::Ptr subgrid;
-		
 		//This is the filters enabled ranges
 		RangeStreamData *rsdIncoming;
 			
