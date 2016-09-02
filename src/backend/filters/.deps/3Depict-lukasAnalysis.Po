@@ -1245,7 +1245,7 @@ backend/filters/3Depict-lukasAnalysis.o: \
  /usr/include/wx-3.0/wx/valtext.h \
  backend/filters/../../common/translation.h \
  backend/filters/openvdb_includes.h \
- backend/filters/contribution_transfer_function/CTF_functions.h \
+ backend/filters/contribution_transfer_function_TestSuite/CTF_functions.h \
  backend/filters/filterCommon.h common/xmlHelper.h \
  backend/APT/APTRanges.h /usr/include/qhull/qhull_a.h \
  /usr/include/qhull/libqhull.h /usr/include/qhull/user.h \
@@ -4341,7 +4341,7 @@ backend/filters/../../common/translation.h:
 
 backend/filters/openvdb_includes.h:
 
-backend/filters/contribution_transfer_function/CTF_functions.h:
+backend/filters/contribution_transfer_function_TestSuite/CTF_functions.h:
 
 backend/filters/filterCommon.h:
 

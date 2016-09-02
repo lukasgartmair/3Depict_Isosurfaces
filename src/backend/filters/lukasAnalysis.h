@@ -21,7 +21,7 @@
 #include "../filter.h"
 #include "../../common/translation.h"
 #include "openvdb_includes.h"
-#include "contribution_transfer_function/CTF_functions.h"
+#include "contribution_transfer_function_TestSuite/CTF_functions.h"
 
 
 

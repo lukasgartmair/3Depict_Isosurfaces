@@ -2726,18 +2726,6 @@ void LukasDrawIsoSurface::updateMesh() const
 
 void LukasDrawIsoSurface::draw() const
 {
-/*
-	if(!cacheOK)
-	{
-		//Hmm, we don't have a cached copy of the isosurface mesh.
-		//we will need to compute one, it would seem.
-		updateMesh();
-	}
-*/
-
-	// why is the output of update mesh not visible in this scope? 
-	// the same thing is visible in the voxelize filter
-
 	std::vector<openvdb::Vec3s> points;
   	std::vector<openvdb::Vec3I> triangles;
   	std::vector<openvdb::Vec4I> quads;

@@ -25,7 +25,7 @@
 #include <map>
 
 #include "openvdb_includes.h"
-#include "contribution_transfer_function/CTF_functions.h"
+#include "contribution_transfer_function_TestSuite/CTF_functions.h"
 
 using std::vector;
 using std::string;
@@ -220,7 +220,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
     	// once per program and may safely be called multiple times.
 	openvdb::initialize();
 
-	
 	const float background = 0.0f;	
 
 	// initialize the main grid containing all ions
@@ -259,22 +258,22 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			std::vector<float> contributions_to_adjacent_voxels;
 			bool vertex_corner_coincidence = false;
 			
-			vertex_corner_coincidence = checkVertexCornerCoincidence(position_in_unit_voxel , voxel_size);
+			vertex_corner_coincidence = checkVertexCornerCoincidence(position_in_unit_voxel);
 			
 			// in case of coincidence of atom and voxel the contribution becomes 100 percent
 			if (vertex_corner_coincidence == false)
 			{
-				volumes_of_subcuboids = calcSubvolumes(position_in_unit_voxel, voxel_size);
+				volumes_of_subcuboids = calcSubvolumes(position_in_unit_voxel);
 				contributions_to_adjacent_voxels = calcVoxelContributions(volumes_of_subcuboids);
 			}
 			else
 			{
-				contributions_to_adjacent_voxels = handleVertexCornerCoincidence(position_in_unit_voxel, voxel_size);
+				contributions_to_adjacent_voxels = handleVertexCornerCoincidence(position_in_unit_voxel);
 			}
 			
-			// 3rd step - determine the surrounding voxel indices in the actual grid
+			// 3rd step - determine the adjacent voxel indices in the actual grid
 			std::vector<std::vector<float> > adjacent_voxel_vertices;
-			adjacent_voxel_vertices = determineSurroundingVoxelVertices(atom_position, voxel_size);
+			adjacent_voxel_vertices = determineAdjacentVoxelVertices(atom_position, voxel_size);
 			
 			// 4th step - assign each of the 8 adjacent voxels the corresponding contribution that results from the atom position in the unit voxel
 			const int number_of_adjacent_voxels = 8;
@@ -287,11 +286,16 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				
 				// write to main grid
 				accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + accessor.getValue(ijk));
-
+				
 				// write to sub grid
 				unsigned int idIon;
 				idIon = r->getIonID(ions->data[uj].getMassToCharge());
 
+				if ((enabledIons[0][ui] == true) && (idIon == 0))
+				{
+					std::cout << " this is supposed not to be written if everything is right"<< std::endl;
+				}
+				
 				if (enabledIons[0][ui] == true)
 				{
 					
@@ -301,6 +305,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				{
 					subaccessor.setValue(ijk, 0.0 + subaccessor.getValue(ijk));
 				}
+
+
 			}
 		}
 
@@ -330,6 +336,10 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	    iter.setValue(0.0);
 	}
 	}
+	
+	subgrid->evalMinMax(minVal,maxVal);
+	std::cout << " eval min max subgrid after division" << " = " << minVal << " , " << maxVal << std::endl;
+	std::cout << " active voxel count subgrid after division" << " = " << subgrid->activeVoxelCount() << std::endl;
 
 	// Associate a scaling transform with the grid that sets the voxel size
 	// to voxel_size units in world space.
