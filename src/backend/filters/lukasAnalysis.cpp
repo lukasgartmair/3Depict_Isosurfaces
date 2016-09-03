@@ -39,7 +39,8 @@ enum
 	KEY_COLOUR,
 	KEY_ISOLEVEL,
 	KEY_ADAPTIVITY,
-	KEY_ENABLED_IONSPECIES
+	KEY_ENABLE_NUMERATOR,
+	KEY_ENABLE_DENOMINATOR
 };
 
 typedef struct coords_struct {
@@ -98,8 +99,6 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
 void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &dataOut)
 {
-
-
 	const RangeStreamData *c=0;
 	//Determine if we have an incoming range
 	for (size_t i = 0; i < dataIn.size(); i++) 
@@ -119,23 +118,31 @@ void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *>
 		if(rsdIncoming)
 			delete rsdIncoming;
 		rsdIncoming=0;
+
 		enabledIons[0].clear(); //clear numerator options
+		enabledIons[1].clear(); //clear denominator options
 	}
 	else
 	{
+
+
 		//If we didn't have an incoming rsd, then make one up!
 		if(!rsdIncoming)
 		{
-			rsdIncoming= new RangeStreamData;
+			rsdIncoming = new RangeStreamData;
 			*rsdIncoming=*c;
+
 			//set the numerator to all disabled
 			enabledIons[0].resize(rsdIncoming->rangeFile->getNumIons(),0);
+			//set the denominator to have all enabled
+			enabledIons[1].resize(rsdIncoming->rangeFile->getNumIons(),1);
 		}
 		else
 		{
 
 			//OK, so we have a range incoming already (from last time)
-			//-- the question is, is it the same one we had before ?
+			//-- the question is, is it the same
+			//one we had before 
 			//Do a pointer comparison (its a hack, yes, but it should work)
 			if(rsdIncoming->rangeFile != c->rangeFile)
 			{
@@ -144,14 +151,15 @@ void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *>
 
 				rsdIncoming = new RangeStreamData;
 				*rsdIncoming=*c;
+
 				//set the numerator to all disabled
 				enabledIons[0].resize(rsdIncoming->rangeFile->getNumIons(),0);
+				//set the denominator to have all enabled
+				enabledIons[1].resize(rsdIncoming->rangeFile->getNumIons(),1);
 			}
-
 		}
 
 	}
-
 }
 
 Filter *LukasAnalysisFilter::cloneUncached() const
@@ -173,6 +181,9 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 
 	p->enabledIons[0].resize(enabledIons[0].size());
 	std::copy(enabledIons[0].begin(),enabledIons[0].end(),p->enabledIons[0].begin());
+	
+	p->enabledIons[1].resize(enabledIons[1].size());
+	std::copy(enabledIons[1].begin(),enabledIons[1].end(),p->enabledIons[1].begin());
 
 	if(rsdIncoming)
 	{
@@ -428,34 +439,65 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	
 	curGroup++;
 	
-	// 2nd group ranges
-	
-	// note of course i can just use the ranges checked in the range filter which is in any case set before!
-
-	
-	// in my case i only choose the numerator because the denominator is the grid with all ions
-	// rsdIncoming has to be true to start Lukas Analysis
 	// numerator
-	/*
 	if (rsdIncoming) 
 	{
-		string str = "";
+		p.name=TRANS("Numerator");
+		p.data=boolStrEnc(numeratorAll);
+		p.type=PROPERTY_TYPE_BOOL;
+		p.helpText=TRANS("Parmeter \"a\" used in fraction (a/b) to get voxel value");
+		p.key=KEY_ENABLE_NUMERATOR;
+		propertyList.addProperty(p,curGroup);
+
+		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[0].size());	
+		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[1].size());	
+
+		//Look at the numerator	
 		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
 		{
-			
+			string str;
 			str=boolStrEnc(enabledIons[0][ui]);
+
+			//Append the ion name with a checkbox
+			p.key=muxKey(KEY_ENABLE_NUMERATOR,ui);
+			p.data=str;
+			p.name=rsdIncoming->rangeFile->getName(ui);
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Enable this ion for numerator");
+			propertyList.addProperty(p,curGroup);
 		}
-		//Append the ion name with a checkbox
-		p.name=TRANS("Apply Range Filter");
-		p.data=str;
-		p.key = KEY_ENABLED_IONSPECIES;
-		p.type=PROPERTY_TYPE_BOOL;
-		p.helpText=TRANS("Get the concentration of the ONE ion species assigned in the Range Filter");
-		propertyList.addProperty(p,curGroup);
-		propertyList.setGroupTitle(curGroup,TRANS("Ranges"));
+	
+		propertyList.setGroupTitle(curGroup,TRANS("Numerator"));
 		curGroup++;
 	}
-	*/
+	
+	
+	if (rsdIncoming) 
+	{
+		p.name=TRANS("Denominator");
+		p.data=boolStrEnc(denominatorAll );
+		p.type=PROPERTY_TYPE_BOOL;
+		p.helpText=TRANS("Parameter \"b\" used in fraction (a/b) to get voxel value");
+		p.key=KEY_ENABLE_DENOMINATOR;
+		propertyList.addProperty(p,curGroup);
+
+		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
+		{			
+			string str;
+			str=boolStrEnc(enabledIons[1][ui]);
+
+			//Append the ion name with a checkbox
+			p.key=muxKey(KEY_ENABLE_DENOMINATOR,ui);
+			p.data=str;
+			p.name=rsdIncoming->rangeFile->getName(ui);
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Enable this ion for denominator contribution");
+			propertyList.addProperty(p,curGroup);
+		}
+		propertyList.setGroupTitle(curGroup,TRANS("Denominator"));
+		curGroup++;
+	}
+	
 	// 3rd group representation
 	
 	p.name=TRANS("Representation");
@@ -515,20 +557,36 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			break;
 		}	
 	
-/*
-		case KEY_ENABLED_IONSPECIES:
+
+		case KEY_ENABLE_NUMERATOR:
 		{
 			bool b;
 			if(stream_cast(b,value))
 				return false;
-			//Set them all to enabled or disabled as a group
+			//Set them all to enabled or disabled as a group	
 			for (size_t i = 0; i < enabledIons[0].size(); i++) 
 				enabledIons[0][i] = b;
+			numeratorAll = b;
 			needUpdate=true;
 			clearCache();
 			break;
 		}
-*/
+		case KEY_ENABLE_DENOMINATOR:
+		{
+			bool b;
+			if(stream_cast(b,value))
+				return false;
+	
+			//Set them all to enabled or disabled as a group	
+			for (size_t i = 0; i < enabledIons[1].size(); i++) 
+				enabledIons[1][i] = b;
+			
+			denominatorAll = b;
+			needUpdate=true;			
+			clearCache();
+			break;
+		}
+
 	
 		case KEY_VOXELSIZE: 
 		{
@@ -644,8 +702,19 @@ bool LukasAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsign
 			f << tabs(depth+1) << "<iso_level value=\""<<iso_level<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<adaptivity value=\""<<adaptivity<< "\"/>"  << endl;
 			
+			f << tabs(depth+1) << "<enabledions>" << endl;
+
+			f << tabs(depth+2) << "<numerator>" << endl;
 			for(unsigned int ui=0;ui<enabledIons[0].size(); ui++)
 				f << tabs(depth+3) << "<enabled value=\"" << boolStrEnc(enabledIons[0][ui]) << "\"/>" << endl;
+			f << tabs(depth+2) << "</numerator>" << endl;
+
+			f << tabs(depth+2) << "<denominator>" << endl;
+			for(unsigned int ui=0;ui<enabledIons[1].size(); ui++)
+				f << tabs(depth+3) << "<enabled value=\"" << boolStrEnc(enabledIons[1][ui]) << "\"/>" << endl;
+			f << tabs(depth+2) << "</denominator>" << endl;
+
+			f << tabs(depth+1) << "</enabledions>" << endl;
 				
 			f << tabs(depth) << "</" <<trueName()<< ">" << endl;
 			break;
@@ -701,14 +770,30 @@ bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	if(tmpFloat <= 0.0f)
 		return false;
 	adaptivity=tmpFloat;
+	
 	//--=
-
+	//Look for the enabled ions bit
+	//-------	
+	//
+	
+	
 	if(!XMLHelpFwdToElem(nodePtr,"enabledions"))
 	{
 
 		nodeStack.push(nodePtr);
 		if(!nodePtr->xmlChildrenNode)
 			return false;
+		nodePtr=nodePtr->xmlChildrenNode;
+		
+		//enabled ions for numerator
+		if(XMLHelpFwdToElem(nodePtr,"numerator"))
+			return false;
+
+		nodeStack.push(nodePtr);
+
+		if(!nodePtr->xmlChildrenNode)
+			return false;
+
 		nodePtr=nodePtr->xmlChildrenNode;
 
 		while(nodePtr)
@@ -730,6 +815,41 @@ bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 		nodePtr=nodeStack.top();
 		nodeStack.pop();
 
+		//enabled ions for denominator
+		if(XMLHelpFwdToElem(nodePtr,"denominator"))
+			return false;
+
+
+		if(!nodePtr->xmlChildrenNode)
+			return false;
+
+		nodeStack.push(nodePtr);
+		nodePtr=nodePtr->xmlChildrenNode;
+
+		while(nodePtr)
+		{
+			char c;
+			//Retrieve representation
+			if(!XMLGetNextElemAttrib(nodePtr,c,"enabled","value"))
+				break;
+
+			if(c == '1')
+				enabledIons[1].push_back(true);
+			else
+				enabledIons[1].push_back(false);
+				
+
+			nodePtr=nodePtr->next;
+		}
+
+
+		nodeStack.pop();
+		nodePtr=nodeStack.top();
+		nodeStack.pop();
+
+		//Check that the enabled ions size makes at least some sense...
+		if(enabledIons[0].size() != enabledIons[1].size())
+			return false;
 
 	}
 

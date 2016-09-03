@@ -31,7 +31,7 @@ class LukasAnalysisFilter : public Filter
 	private:
 	
 		//Enabled ions to choose for numerator
-		std::vector<char> enabledIons[1];
+		std::vector<char> enabledIons[2];
 
 		float voxel_size; // declaration here, definition in the source file
 	
@@ -39,6 +39,7 @@ class LukasAnalysisFilter : public Filter
 		
 		float adaptivity;
 		
+		bool numeratorAll, denominatorAll;
 		//This is the filters enabled ranges
 		RangeStreamData *rsdIncoming;
 			
