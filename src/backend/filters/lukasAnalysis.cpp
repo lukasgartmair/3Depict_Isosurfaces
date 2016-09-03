@@ -86,7 +86,9 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
 	rgba=ColourRGBAf(0.5,0.5,0.5,0.9f);
 	iso_level=0.07;
 	voxel_size = 2.0; 
-	adaptivity = 0.1;
+	adaptivity = 0.1;	
+	numeratorAll = false;
+	denominatorAll = true;
 	colourMap=0;
 	autoColourMap=true;
 	colourMapBounds[0]=0;
@@ -174,6 +176,9 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 	return p;
 
 	p->rgba=rgba;
+	
+	p->numeratorAll=numeratorAll;
+	p->denominatorAll=denominatorAll;
 
 	p->iso_level=iso_level;
 	p->voxel_size=voxel_size;
@@ -234,22 +239,14 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	const float background = 0.0f;	
 
 	// initialize the main grid containing all ions
-	openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create(background);
-	openvdb::FloatGrid::Accessor accessor = grid->getAccessor();
+	openvdb::FloatGrid::Ptr denominator_grid = openvdb::FloatGrid::create(background);
+	openvdb::FloatGrid::Accessor denominator_accessor = denominator_grid->getAccessor();
 
 	// initialize subgrid for one chosen ion species
-	openvdb::FloatGrid::Ptr subgrid = openvdb::FloatGrid::create(background);
-	openvdb::FloatGrid::Accessor subaccessor = subgrid->getAccessor();
+	openvdb::FloatGrid::Ptr numerator_grid = openvdb::FloatGrid::create(background);
+	openvdb::FloatGrid::Accessor numerator_accessor = numerator_grid->getAccessor();
 
 	const RangeFile *r = rsdIncoming->rangeFile;
-	
-	// determine the ion id of the enabled ion species
-	// the first one is enough as they all should have the same 
-	int enabled_ion_id = 0;
-
-
-
-	std::cout << " enabled_ion_id " << " = " << enabled_ion_id << std::endl;
 	
 	for(size_t ui=0;ui<dataIn.size();ui++)
 	{
@@ -259,25 +256,33 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 		const IonStreamData  *ions; 
 		ions = (const IonStreamData *)dataIn[ui];
 		
+		//denominator
 		//Check what Ion type this stream belongs to. Assume all ions
 		//in the stream belong to the same group
 		unsigned int ionID;
+		ionID = rsdIncoming->rangeFile->getIonID(ions->data[0].getMassToCharge());
+
+		bool thisDenominatorIonEnabled;
+		if(ionID!=(unsigned int)-1)
+			thisDenominatorIonEnabled=enabledIons[1][ionID];
+		else
+			thisDenominatorIonEnabled=false;
+
+		// numerator
+		//Check what Ion type this stream belongs to. Assume all ions
+		//in the stream belong to the same group
+
 		ionID = getIonstreamIonID(ions,rsdIncoming->rangeFile);
 
-		bool thisIonEnabled;
+		bool thisNumeratorIonEnabled;
 		if(ionID!=(unsigned int)-1)
-		{
-			thisIonEnabled=enabledIons[0][ionID];
-			if (thisIonEnabled == true)
-			{
-				enabled_ion_id = ionID;
-				break;
-			}
-		}
+			thisNumeratorIonEnabled=enabledIons[0][ionID];
+		else
+			thisNumeratorIonEnabled=false;
 
 		for(size_t uj=0;uj<ions->data.size(); uj++)
 		{
-			
+
 			const int xyzs = 3;
 			std::vector<float> atom_position(3); 
 			for (int i=0;i<xyzs;i++)
@@ -319,22 +324,26 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				current_voxel_index = adjacent_voxel_vertices[i];
 				// normalized voxel indices based on 00, 01, 02 etc. // very important otherwise there will be spacings
 				openvdb::Coord ijk(current_voxel_index[0], current_voxel_index[1], current_voxel_index[2]);
-				
-				// write to main grid
-				accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + accessor.getValue(ijk));
-				
-				// write to sub grid
-				unsigned int idIon;
-				idIon = r->getIonID(ions->data[uj].getMassToCharge());
 
-				if (idIon == enabled_ion_id)
+				// write to denominator grid
+				if(thisDenominatorIonEnabled)
 				{
 					
-					subaccessor.setValue(ijk, contributions_to_adjacent_voxels[i] + subaccessor.getValue(ijk));
+					denominator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor.getValue(ijk));
 				}
 				else
 				{
-					subaccessor.setValue(ijk, 0.0 + subaccessor.getValue(ijk));
+					denominator_accessor.setValue(ijk, 0.0 + denominator_accessor.getValue(ijk));
+				}
+
+				// write to numerator grid
+				if(thisNumeratorIonEnabled)
+				{	
+					numerator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor.getValue(ijk));
+				}
+				else
+				{
+					numerator_accessor.setValue(ijk, 0.0 + numerator_accessor.getValue(ijk));
 				}
 				
 
@@ -346,22 +355,22 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 	float minVal = 0.0;
 	float maxVal = 0.0;
-	grid->evalMinMax(minVal,maxVal);
-	std::cout << " eval min max grid" << " = " << minVal << " , " << maxVal << std::endl;
-	std::cout << " active voxel count grid" << " = " << grid->activeVoxelCount() << std::endl;
+	denominator_grid->evalMinMax(minVal,maxVal);
+	std::cout << " eval min max denominator grid" << " = " << minVal << " , " << maxVal << std::endl;
+	std::cout << " active voxel count denominator grid" << " = " << denominator_grid->activeVoxelCount() << std::endl;
 
-	subgrid->evalMinMax(minVal,maxVal);
-	std::cout << " eval min max subgrid" << " = " << minVal << " , " << maxVal << std::endl;
-	std::cout << " active voxel count subgrid" << " = " << subgrid->activeVoxelCount() << std::endl;
+	numerator_grid->evalMinMax(minVal,maxVal);
+	std::cout << " eval min max numerator grid" << " = " << minVal << " , " << maxVal << std::endl;
+	std::cout << " active voxel count numerator grid" << " = " << numerator_grid->activeVoxelCount() << std::endl;
 
-	// composite.h operations modify the first grid and leave the second grid emtpy
+	// composite.h operations modify the first grid and leave the second grid emtpy !!!!!!!!!!!!!!!!!!
 	// compute a = a / b
-	openvdb::tools::compDiv(*subgrid, *grid);
+	openvdb::tools::compDiv(*numerator_grid, *denominator_grid);
 	
 	// initialize a grid where the division in stored
 	openvdb::FloatGrid::Ptr divgrid = openvdb::FloatGrid::create(background);
 	
-	divgrid = subgrid->deepCopy();
+	divgrid = numerator_grid->deepCopy();
 
 	//check for negative nans and infs introduced by the division
 	//set them to zero in order not to obtain nan mesh coordinates
