@@ -43,42 +43,6 @@ enum
 	KEY_ENABLE_DENOMINATOR
 };
 
-typedef struct coords_struct {
-float x;
-float y;
-float z;
-} coord;
-
-// these are not mebers of lukasAnalysis.h
-int roundUp(float numToRound, float multiple)
-{
-    if (multiple == 0)
-        return numToRound;
-    float remainder = fmod(abs(numToRound), multiple);
-    if (remainder == 0)
-        return numToRound;
-    if (numToRound < 0)
-        return -(abs(numToRound) - remainder);
-    else
-        return numToRound + multiple - remainder;
-}
-
-coord GetVoxelIndex(coord *vec, float voxsize)
-{
-    int cx = 0;
-    int cy = 0;
-    int cz = 0;
-
-    cx = roundUp(vec->x, voxsize);
-    cy = roundUp(vec->y, voxsize);
-    cz = roundUp(vec->z, voxsize);
-
-    coord voxel_index = {cx/voxsize, cy/voxsize , cz/voxsize};
-    return voxel_index;
-
-} 
-
-
 LukasAnalysisFilter::LukasAnalysisFilter() : 
 	rsdIncoming(0)
 {
@@ -96,6 +60,54 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
 	cacheOK=false;
 	cache=true; //By default, we should cache, but decision is made higher up
 	rsdIncoming=0;
+}
+
+Filter *LukasAnalysisFilter::cloneUncached() const
+{
+	LukasAnalysisFilter *p=new LukasAnalysisFilter();
+
+	//We are copying whether to cache or not,
+	//not the cache itself
+	p->cache=cache;
+	p->cacheOK=false;
+	p->userString=userString;
+	return p;
+
+	p->rgba=rgba;
+	
+	p->numeratorAll=numeratorAll;
+	p->denominatorAll=denominatorAll;
+
+	p->iso_level=iso_level;
+	p->voxel_size=voxel_size;
+	p->adaptivity=adaptivity;
+
+	p->enabledIons[0].resize(enabledIons[0].size());
+	std::copy(enabledIons[0].begin(),enabledIons[0].end(),p->enabledIons[0].begin());
+	
+	p->enabledIons[1].resize(enabledIons[1].size());
+	std::copy(enabledIons[1].begin(),enabledIons[1].end(),p->enabledIons[1].begin());
+
+	if(rsdIncoming)
+	{
+		p->rsdIncoming=new RangeStreamData();
+		*(p->rsdIncoming) = *rsdIncoming;
+	}
+	else
+		p->rsdIncoming=0;
+
+	p->colourMap = colourMap;
+
+	p->nColours = nColours;
+	p->showColourBar = showColourBar;
+	p->autoColourMap = autoColourMap;
+	p->colourMapBounds[0] = colourMapBounds[0];
+	p->colourMapBounds[1] = colourMapBounds[1];
+
+	p->cache=cache;
+	p->cacheOK=false;
+	p->userString=userString;
+	return p;
 }
 
 void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
@@ -164,53 +176,7 @@ void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *>
 	}
 }
 
-Filter *LukasAnalysisFilter::cloneUncached() const
-{
-	LukasAnalysisFilter *p=new LukasAnalysisFilter();
 
-	//We are copying whether to cache or not,
-	//not the cache itself
-	p->cache=cache;
-	p->cacheOK=false;
-	p->userString=userString;
-	return p;
-
-	p->rgba=rgba;
-	
-	p->numeratorAll=numeratorAll;
-	p->denominatorAll=denominatorAll;
-
-	p->iso_level=iso_level;
-	p->voxel_size=voxel_size;
-	p->adaptivity=adaptivity;
-
-	p->enabledIons[0].resize(enabledIons[0].size());
-	std::copy(enabledIons[0].begin(),enabledIons[0].end(),p->enabledIons[0].begin());
-	
-	p->enabledIons[1].resize(enabledIons[1].size());
-	std::copy(enabledIons[1].begin(),enabledIons[1].end(),p->enabledIons[1].begin());
-
-	if(rsdIncoming)
-	{
-		p->rsdIncoming=new RangeStreamData();
-		*(p->rsdIncoming) = *rsdIncoming;
-	}
-	else
-		p->rsdIncoming=0;
-
-	p->colourMap = colourMap;
-
-	p->nColours = nColours;
-	p->showColourBar = showColourBar;
-	p->autoColourMap = autoColourMap;
-	p->colourMapBounds[0] = colourMapBounds[0];
-	p->colourMapBounds[1] = colourMapBounds[1];
-
-	p->cache=cache;
-	p->cacheOK=false;
-	p->userString=userString;
-	return p;
-}
 
 /// here the actual filter work is done 
 unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
@@ -234,13 +200,14 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	
 	for(size_t ui=0;ui<dataIn.size();ui++)
 	{
+		//Check for ion stream types. Don't use anything else in counting
 		if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
 			continue;
 
 		const IonStreamData  *ions; 
 		ions = (const IonStreamData *)dataIn[ui];
 		
-		//denominator
+		//get the denominator ions
 		unsigned int ionID;
 		ionID = rsdIncoming->rangeFile->getIonID(ions->data[0].getMassToCharge());
 
@@ -250,7 +217,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 		else
 			thisDenominatorIonEnabled=false;
 
-		// numerator
+		// get the numerator ions
 		ionID = getIonstreamIonID(ions,rsdIncoming->rangeFile);
 
 		bool thisNumeratorIonEnabled;
@@ -422,64 +389,60 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	curGroup++;
 	
 	// numerator
-	if (rsdIncoming) 
-	{
 		
-		p.name=TRANS("Numerator");
-		p.data=boolStrEnc(numeratorAll);
-		p.type=PROPERTY_TYPE_BOOL;
-		p.helpText=TRANS("Parmeter \"a\" used in fraction (a/b) to get voxel value");
-		p.key=KEY_ENABLE_NUMERATOR;
-		propertyList.addProperty(p,curGroup);
+	p.name=TRANS("Numerator");
+	p.data=boolStrEnc(numeratorAll);
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Parmeter \"a\" used in fraction (a/b) to get voxel value");
+	p.key=KEY_ENABLE_NUMERATOR;
+	propertyList.addProperty(p,curGroup);
 
-		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[0].size());	
-		ASSERT(rsdIncoming->enabledIons.size()==enabledIons[1].size());	
+	ASSERT(rsdIncoming->enabledIons.size()==enabledIons[0].size());	
+	ASSERT(rsdIncoming->enabledIons.size()==enabledIons[1].size());	
 
-		//Look at the numerator	
-		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
-		{
-			string str;
-			str=boolStrEnc(enabledIons[0][ui]);
-
-			//Append the ion name with a checkbox
-			p.key=muxKey(KEY_ENABLE_NUMERATOR,ui);
-			p.data=str;
-			p.name=rsdIncoming->rangeFile->getName(ui);
-			p.type=PROPERTY_TYPE_BOOL;
-			p.helpText=TRANS("Enable this ion for numerator");
-			propertyList.addProperty(p,curGroup);
-		}
-	
-		propertyList.setGroupTitle(curGroup,TRANS("Numerator"));
-		curGroup++;
-	}
-	
-	
-	if (rsdIncoming) 
+	//Look at the numerator	
+	for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
 	{
-		p.name=TRANS("Denominator");
-		p.data=boolStrEnc(denominatorAll );
+		string str;
+		str=boolStrEnc(enabledIons[0][ui]);
+
+		//Append the ion name with a checkbox
+		p.key=muxKey(KEY_ENABLE_NUMERATOR,ui);
+		p.data=str;
+		p.name=rsdIncoming->rangeFile->getName(ui);
 		p.type=PROPERTY_TYPE_BOOL;
-		p.helpText=TRANS("Parameter \"b\" used in fraction (a/b) to get voxel value");
-		p.key=KEY_ENABLE_DENOMINATOR;
+		p.helpText=TRANS("Enable this ion for numerator");
 		propertyList.addProperty(p,curGroup);
-
-		for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
-		{			
-			string str;
-			str=boolStrEnc(enabledIons[1][ui]);
-
-			//Append the ion name with a checkbox
-			p.key=muxKey(KEY_ENABLE_DENOMINATOR,ui);
-			p.data=str;
-			p.name=rsdIncoming->rangeFile->getName(ui);
-			p.type=PROPERTY_TYPE_BOOL;
-			p.helpText=TRANS("Enable this ion for denominator contribution");
-			propertyList.addProperty(p,curGroup);
-		}
-		propertyList.setGroupTitle(curGroup,TRANS("Denominator"));
-		curGroup++;
 	}
+
+	propertyList.setGroupTitle(curGroup,TRANS("Numerator"));
+	curGroup++;
+	
+	// denominator
+
+	p.name=TRANS("Denominator");
+	p.data=boolStrEnc(denominatorAll );
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Parameter \"b\" used in fraction (a/b) to get voxel value");
+	p.key=KEY_ENABLE_DENOMINATOR;
+	propertyList.addProperty(p,curGroup);
+
+	for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
+	{			
+		string str;
+		str=boolStrEnc(enabledIons[1][ui]);
+
+		//Append the ion name with a checkbox
+		p.key=muxKey(KEY_ENABLE_DENOMINATOR,ui);
+		p.data=str;
+		p.name=rsdIncoming->rangeFile->getName(ui);
+		p.type=PROPERTY_TYPE_BOOL;
+		p.helpText=TRANS("Enable this ion for denominator contribution");
+		propertyList.addProperty(p,curGroup);
+	}
+	propertyList.setGroupTitle(curGroup,TRANS("Denominator"));
+	curGroup++;
+
 	
 	// 3rd group representation
 	
@@ -651,6 +614,44 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 		}
 		default:
 		{
+		
+		// this default entry is important for the independent choice
+		// for the numerators and denominators !!!
+		
+			unsigned int subKeyType,offset;
+			demuxKey(key,subKeyType,offset);
+			
+			//Check for jump to denominator or numerator section
+			// TODO: This is a bit of a hack.
+			if (subKeyType==KEY_ENABLE_DENOMINATOR) {
+				bool b;
+				if(!boolStrDec(value,b))
+					return false;
+
+				enabledIons[1][offset]=b;
+				if (!b) {
+					denominatorAll = false;
+				}
+				needUpdate=true;			
+				clearCache();
+			} else if (subKeyType == KEY_ENABLE_NUMERATOR) {
+				bool b;
+				if(!boolStrDec(value,b))
+					return false;
+				
+				enabledIons[0][offset]=b;
+				if (!b) {
+					numeratorAll = false;
+				}
+				needUpdate=true;			
+					clearCache();
+			}
+			else
+			{
+				ASSERT(false);
+			}
+			break;
+		
 		}
 	}	
 
