@@ -216,21 +216,6 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {	
-	
-	// check whether easy ion count works with refreshing
-	
-	//Count the number of ions input
-	std::string str;
-	size_t numTotalPoints = numElements(dataIn,STREAM_TYPE_IONS);
-			stream_cast(str,numTotalPoints);
-			str=std::string(TRANS("--Counts--") );
-			consoleOutput.push_back(str);
-
-			stream_cast(str,numTotalPoints);
-
-			consoleOutput.push_back(str);
-			consoleOutput.push_back("");
-
 
 	// Initialize the OpenVDB library.  This must be called at least
     	// once per program and may safely be called multiple times.
@@ -238,11 +223,10 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 	const float background = 0.0f;	
 
-	// initialize the main grid containing all ions
+	// initialize grids
 	openvdb::FloatGrid::Ptr denominator_grid = openvdb::FloatGrid::create(background);
 	openvdb::FloatGrid::Accessor denominator_accessor = denominator_grid->getAccessor();
 
-	// initialize subgrid for one chosen ion species
 	openvdb::FloatGrid::Ptr numerator_grid = openvdb::FloatGrid::create(background);
 	openvdb::FloatGrid::Accessor numerator_accessor = numerator_grid->getAccessor();
 
@@ -257,8 +241,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 		ions = (const IonStreamData *)dataIn[ui];
 		
 		//denominator
-		//Check what Ion type this stream belongs to. Assume all ions
-		//in the stream belong to the same group
 		unsigned int ionID;
 		ionID = rsdIncoming->rangeFile->getIonID(ions->data[0].getMassToCharge());
 
@@ -269,9 +251,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			thisDenominatorIonEnabled=false;
 
 		// numerator
-		//Check what Ion type this stream belongs to. Assume all ions
-		//in the stream belong to the same group
-
 		ionID = getIonstreamIonID(ions,rsdIncoming->rangeFile);
 
 		bool thisNumeratorIonEnabled;
@@ -282,9 +261,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 		for(size_t uj=0;uj<ions->data.size(); uj++)
 		{
-
 			const int xyzs = 3;
-			std::vector<float> atom_position(3); 
+			std::vector<float> atom_position(xyzs); 
 			for (int i=0;i<xyzs;i++)
 			{
 				atom_position[i] = ions->data[uj].getPos()[i];
@@ -345,12 +323,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				{
 					numerator_accessor.setValue(ijk, 0.0 + numerator_accessor.getValue(ijk));
 				}
-				
-
-
 			}
 		}
-
 	}
 
 	float minVal = 0.0;
@@ -413,8 +387,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	gs->cached=1;
 	cacheOK=true;
 	filterOutputs.push_back(gs);
-
-
+	
 	//Store the vdbgrid on the output
 	getOut.push_back(gs);
 
@@ -451,6 +424,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	// numerator
 	if (rsdIncoming) 
 	{
+		
 		p.name=TRANS("Numerator");
 		p.data=boolStrEnc(numeratorAll);
 		p.type=PROPERTY_TYPE_BOOL;
@@ -566,7 +540,6 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			break;
 		}	
 	
-
 		case KEY_ENABLE_NUMERATOR:
 		{
 			bool b;
@@ -580,6 +553,7 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			clearCache();
 			break;
 		}
+		
 		case KEY_ENABLE_DENOMINATOR:
 		{
 			bool b;
@@ -596,7 +570,6 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			break;
 		}
 
-	
 		case KEY_VOXELSIZE: 
 		{
 			float f;
@@ -646,6 +619,7 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			}
 			break;
 		}
+		
 		case KEY_COLOUR:
 		{
 			ColourRGBA tmpRGBA;
@@ -679,7 +653,6 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 		{
 		}
 	}	
-
 
 	return true;
 	
@@ -873,13 +846,13 @@ unsigned int LukasAnalysisFilter::getRefreshBlockMask() const
 
 unsigned int LukasAnalysisFilter::getRefreshEmitMask() const
 {
-	//return  STREAM_TYPE_OPENVDBGRID | STREAM_TYPE_DRAW | STREAM_TYPE_RANGE;
-	return 0;
+	return  STREAM_TYPE_OPENVDBGRID | STREAM_TYPE_DRAW | STREAM_TYPE_RANGE;
+	//return 0;
 }
 
 unsigned int LukasAnalysisFilter::getRefreshUseMask() const
 {
-	return  STREAM_TYPE_RANGE |  STREAM_TYPE_OPENVDBGRID ;
+	return  STREAM_TYPE_RANGE |  STREAM_TYPE_OPENVDBGRID | STREAM_TYPE_IONS;
 	//return 0;
 }
 
