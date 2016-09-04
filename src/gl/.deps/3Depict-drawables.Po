@@ -1136,7 +1136,27 @@ gl/3Depict-drawables.o: gl/drawables.cpp /usr/include/stdc-predef.h \
  /usr/include/FTGL/FTGLOutlineFont.h /usr/include/FTGL/FTGLPixmapFont.h \
  /usr/include/FTGL/FTGLPolygonFont.h /usr/include/FTGL/FTGLTextureFont.h \
  /usr/include/FTGL/FTLayout.h /usr/include/FTGL/FTSimpleLayout.h \
- common/colourmap.h gl/glDebug.h
+ common/colourmap.h gl/glDebug.h \
+ gl/../backend/filters/LpCVT/lpcvt_functions.h \
+ gl/../backend/filters/LpCVT/combinatorics/mesh.h \
+ gl/../backend/filters/LpCVT/combinatorics/../common/types.h \
+ gl/../backend/filters/LpCVT/combinatorics/../common/vecg.h \
+ gl/../backend/filters/LpCVT/combinatorics/../common/matrix.h \
+ gl/../backend/filters/LpCVT/combinatorics/../common/plane.h \
+ gl/../backend/filters/LpCVT/combinatorics/symbolic_vertex.h \
+ gl/../backend/filters/LpCVT/combinatorics/../common/containers.h \
+ gl/../backend/filters/LpCVT/combinatorics/delaunay.h \
+ gl/../backend/filters/LpCVT/combinatorics/delaunay_skel.h \
+ gl/../backend/filters/LpCVT/combinatorics/voronoi_cell.h \
+ gl/../backend/filters/LpCVT/combinatorics/RVD.h \
+ gl/../backend/filters/LpCVT/combinatorics/mesh.h \
+ gl/../backend/filters/LpCVT/combinatorics/delaunay.h \
+ gl/../backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h \
+ gl/../backend/filters/LpCVT/combinatorics/exact/../../common/types.h \
+ gl/../backend/filters/LpCVT/algebra/F_Lp.h \
+ gl/../backend/filters/LpCVT/algebra/../common/types.h \
+ gl/../backend/filters/LpCVT/common/line_stream.h \
+ gl/../backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h
 
 /usr/include/stdc-predef.h:
 
@@ -3857,3 +3877,43 @@ gl/../backend/filters/openvdb_includes.h:
 common/colourmap.h:
 
 gl/glDebug.h:
+
+gl/../backend/filters/LpCVT/lpcvt_functions.h:
+
+gl/../backend/filters/LpCVT/combinatorics/mesh.h:
+
+gl/../backend/filters/LpCVT/combinatorics/../common/types.h:
+
+gl/../backend/filters/LpCVT/combinatorics/../common/vecg.h:
+
+gl/../backend/filters/LpCVT/combinatorics/../common/matrix.h:
+
+gl/../backend/filters/LpCVT/combinatorics/../common/plane.h:
+
+gl/../backend/filters/LpCVT/combinatorics/symbolic_vertex.h:
+
+gl/../backend/filters/LpCVT/combinatorics/../common/containers.h:
+
+gl/../backend/filters/LpCVT/combinatorics/delaunay.h:
+
+gl/../backend/filters/LpCVT/combinatorics/delaunay_skel.h:
+
+gl/../backend/filters/LpCVT/combinatorics/voronoi_cell.h:
+
+gl/../backend/filters/LpCVT/combinatorics/RVD.h:
+
+gl/../backend/filters/LpCVT/combinatorics/mesh.h:
+
+gl/../backend/filters/LpCVT/combinatorics/delaunay.h:
+
+gl/../backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h:
+
+gl/../backend/filters/LpCVT/combinatorics/exact/../../common/types.h:
+
+gl/../backend/filters/LpCVT/algebra/F_Lp.h:
+
+gl/../backend/filters/LpCVT/algebra/../common/types.h:
+
+gl/../backend/filters/LpCVT/common/line_stream.h:
+
+gl/../backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h:

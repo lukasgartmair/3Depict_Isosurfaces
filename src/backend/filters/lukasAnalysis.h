@@ -22,6 +22,7 @@
 #include "../../common/translation.h"
 #include "openvdb_includes.h"
 #include "contribution_transfer_function_TestSuite/CTF_functions.h"
+#include "LpCVT/lpcvt_functions.h"
 
 
 
@@ -38,6 +39,8 @@ class LukasAnalysisFilter : public Filter
 		float iso_level;  // declaration here, definition in the source file
 		
 		float adaptivity;
+		
+		bool lpcvt;
 		
 		bool numeratorAll, denominatorAll;
 		//This is the filters enabled ranges

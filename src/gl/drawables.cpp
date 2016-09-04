@@ -32,7 +32,7 @@
 
 #include <math.h> // for sqrt
 
-
+#include "../backend/filters/LpCVT/lpcvt_functions.h"
 
 const float DEPTH_SORT_REORDER_EPSILON = 1e-2;
 
@@ -2731,9 +2731,6 @@ void LukasDrawIsoSurface::draw() const
   	std::vector<openvdb::Vec4I> quads;
 
 	openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*grid, points, triangles, quads, isovalue, adaptivity);
-
-	std::vector<openvdb::Vec3s> rdt_vertices;
-  	std::vector<openvdb::Vec3I> rdt_faces;
 	
 	cacheOK=true;
 
@@ -2741,32 +2738,177 @@ void LukasDrawIsoSurface::draw() const
 	std::cout << "triangles size" << " = " << triangles.size() << std::endl;
 	std::cout << " active voxel count subgrid div" << " = " << grid->activeVoxelCount() << std::endl;
 
-/////////// drawing of the triangles
+	// split the quads to triangles
+	
+	int number_of_splitted_triangles = 2*quads.size();
+	int xyzs = 3;
+	std::vector<std::vector<float> > triangles_from_splitted_quads(number_of_splitted_triangles, std::vector<float>(xyzs));
+	
+	for(unsigned int ui=0;ui<quads.size();ui+=2)
+	{
+		openvdb::Vec3s A = points[quads[ui][0]];
+		openvdb::Vec3s B = points[quads[ui][1]];
+		openvdb::Vec3s C = points[quads[ui][2]];
+		openvdb::Vec3s D = points[quads[ui][3]];
+	
+		float distanceAC = 0;
+		float distanceBD = 0;
+		distanceAC = sqrt((A.x()-C.x())*(A.x()-C.x()) + (A.y()-C.y())*(A.y()-C.y()) +  (A.z()-C.z())*(A.z()-C.z()));
+		distanceBD = sqrt((B.x()-D.x())*(B.x()-D.x()) + (B.y()-D.y())*(B.y()-D.y()) +  (B.z()-D.z())*(B.z()-D.z()));
+		
+		if (distanceAC <= distanceBD)
+		{	
+			//tri 1 ABC
+			triangles_from_splitted_quads[ui][0] = quads[ui][0];
+			triangles_from_splitted_quads[ui][1] = quads[ui][1];
+			triangles_from_splitted_quads[ui][2] = quads[ui][2];
+			//tri2 ACD
+			triangles_from_splitted_quads[ui+1][0] = quads[ui][0];
+			triangles_from_splitted_quads[ui+1][1] = quads[ui][2];
+			triangles_from_splitted_quads[ui+1][2] = quads[ui][3];	
+		}
+		if (distanceAC > distanceBD)
+		{
+			//tri 1 ABC
+			triangles_from_splitted_quads[ui][0] = quads[ui][0];
+			triangles_from_splitted_quads[ui][1] = quads[ui][1];
+			triangles_from_splitted_quads[ui][2] = quads[ui][3];
+			//tri2 ACD
+			triangles_from_splitted_quads[ui+1][0] = quads[ui][3];
+			triangles_from_splitted_quads[ui+1][1] = quads[ui][1];
+			triangles_from_splitted_quads[ui+1][2] = quads[ui][2];
+		}
+	}
+	
+	// combine normal and splitted triangles
+	
+	int number_of_total_triangles = triangles.size() + triangles_from_splitted_quads.size();
+	std::vector<std::vector<float> > triangles_combined(number_of_total_triangles, std::vector<float>(xyzs));
+	
+	int counter_start_from_zero = 0;
+	for(unsigned int ui=0;ui<triangles_combined.size();ui++)
+	{	
+		if (ui < triangles.size())
+		{
+			for(unsigned int uj=0;uj<xyzs;uj++)
+			{
+				triangles_combined[ui][uj] = triangles[ui][uj];
+			}
+		}
+		if (ui >= triangles.size())
+		{
+			
+			for(unsigned int uj=0;uj<xyzs;uj++)
+			{
+				triangles_combined[counter_start_from_zero][uj] = triangles_from_splitted_quads[counter_start_from_zero][uj];
+			}
+			counter_start_from_zero += 1;
+		}
+	}
+	
+	// if remeshing with LpCVT is called it is calculated here
+	
+	if (lpcvt == true)
+	{
+		std::vector<openvdb::Vec3s> rdt_vertices;
+  		std::vector<openvdb::Vec3I> rdt_faces;
+  		
+	
+	
+	}
+	
+
+	
+	
+
+
+	// drawing the normal and the splitted triangles
 
 	glColor4f(r,g,b,a);
 	glPushAttrib(GL_CULL_FACE);
 	glDisable(GL_CULL_FACE);	
 	glBegin(GL_TRIANGLES);	
-	for(unsigned int ui=0;ui<triangles.size();ui++)
+	for(unsigned int ui=0;ui<triangles_combined.size();ui++)
 	{
-
-	openvdb::Vec3s v1 = points[triangles[ui][0]];
-	openvdb::Vec3s v2 = points[triangles[ui][1]];
-	openvdb::Vec3s v3 = points[triangles[ui][2]];
+		openvdb::Vec3s v1 = points[triangles_combined[ui][0]];
+		openvdb::Vec3s v2 = points[triangles_combined[ui][1]];
+		openvdb::Vec3s v3 = points[triangles_combined[ui][2]];
 	
-	// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
-	GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
-	GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
-	GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
+		// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
+		GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
+		GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
+		GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
+	
+		/*
+		// get the normalized normals
+		// just take both the first edge vectors as A and B
+		// http://stackoverflow.com/questions/27690346/calculating-vertex-normals-for-gl-triangle
+		//Nx = Ay*Bz-Az*By;
+		//Ny = Az*Bx-Ax*Bz;
+		//Nz = Ax*By-Ay*Bx;
+	
+		Nx = vertex1[1]*vertex2[2]-vertex1[2]*vertex2[1];
+		Ny = vertex1[2]*vertex2[0]-vertex1[0]*vertex2[2];
+		Nz = vertex1[0]*vertex2[1]-vertex1[1]*vertex2[0];
 
-
-	glVertex3fv(vertex1);
-	glVertex3fv(vertex2);
-	glVertex3fv(vertex3);
+		float len=sqrt(Nx*Nx+Ny*Ny+Nz*Nz);
+		Nx/=len;
+		Ny/=len;
+		Nz/=len;
+		*/
+		//glNormal3fv(Nx);
+		glVertex3fv(vertex1);
+		//glNormal3fv(Ny);
+		glVertex3fv(vertex2);
+		//glNormal3fv(Nz);
+		glVertex3fv(vertex3);
 	}
 	
 	glEnd();
+/*
+	// splitted
+	glBegin(GL_TRIANGLES);	
+	for(unsigned int ui=0;ui<triangles_from_splitted_quads.size();ui++)
+	{
+
+		openvdb::Vec3s v1 = points[triangles_from_splitted_quads[ui][0]];
+		openvdb::Vec3s v2 = points[triangles_from_splitted_quads[ui][1]];
+		openvdb::Vec3s v3 = points[triangles_from_splitted_quads[ui][2]];
 	
+		// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
+		GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
+		GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
+		GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
+	
+		
+		// get the normalized normals
+		// just take both the first edge vectors as A and B
+		// http://stackoverflow.com/questions/27690346/calculating-vertex-normals-for-gl-triangle
+		//Nx = Ay*Bz-Az*By;
+		//Ny = Az*Bx-Ax*Bz;
+		//Nz = Ax*By-Ay*Bx;
+	
+		Nx = vertex1[1]*vertex2[2]-vertex1[2]*vertex2[1];
+		Ny = vertex1[2]*vertex2[0]-vertex1[0]*vertex2[2];
+		Nz = vertex1[0]*vertex2[1]-vertex1[1]*vertex2[0];
+
+		float len=sqrt(Nx*Nx+Ny*Ny+Nz*Nz);
+		Nx/=len;
+		Ny/=len;
+		Nz/=len;
+		
+		//glNormal3fv(Nx);
+		glVertex3fv(vertex1);
+		//glNormal3fv(Ny);
+		glVertex3fv(vertex2);
+		//glNormal3fv(Nz);
+		glVertex3fv(vertex3);
+	}
+	
+	glEnd();
+	glPopAttrib();
+	
+
 ////////// for first check split the quads into triangles
 // http://stackoverflow.com/questions/12239876/fastest-way-of-converting-a-quad-to-a-triangle-strip
 //Given a quad A B C D we can split it into A B C, A C D or A B D, D B C.
@@ -2839,7 +2981,7 @@ void LukasDrawIsoSurface::draw() const
 
 	glEnd();
 	glPopAttrib();
-	
+*/
 }
 		
 

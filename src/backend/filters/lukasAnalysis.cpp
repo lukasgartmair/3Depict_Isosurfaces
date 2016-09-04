@@ -27,6 +27,7 @@
 #include "openvdb_includes.h"
 #include "contribution_transfer_function_TestSuite/CTF_functions.h"
 
+
 using std::vector;
 using std::string;
 using std::pair;
@@ -39,6 +40,7 @@ enum
 	KEY_COLOUR,
 	KEY_ISOLEVEL,
 	KEY_ADAPTIVITY,
+	KEY_LPCVT,
 	KEY_ENABLE_NUMERATOR,
 	KEY_ENABLE_DENOMINATOR
 };
@@ -51,6 +53,7 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
 	iso_level=0.07;
 	voxel_size = 2.0; 
 	adaptivity = 0.1;	
+	lpcvt = false;
 	numeratorAll = false;
 	denominatorAll = true;
 	colourMap=0;
@@ -74,6 +77,8 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 	return p;
 
 	p->rgba=rgba;
+	
+	p->lpcvt=false;
 	
 	p->numeratorAll=numeratorAll;
 	p->denominatorAll=denominatorAll;
@@ -371,7 +376,7 @@ size_t LukasAnalysisFilter::numBytesForCache(size_t nObjects) const
 void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 {
 
-	// 1st group computation
+	// group computation
 
 	FilterProperty p;
 	size_t curGroup=0;
@@ -388,7 +393,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	
 	curGroup++;
 	
-	// numerator
+	// group numerator
 		
 	p.name=TRANS("Numerator");
 	p.data=boolStrEnc(numeratorAll);
@@ -418,7 +423,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.setGroupTitle(curGroup,TRANS("Numerator"));
 	curGroup++;
 	
-	// denominator
+	// group denominator
 
 	p.name=TRANS("Denominator");
 	p.data=boolStrEnc(denominatorAll );
@@ -444,7 +449,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	curGroup++;
 
 	
-	// 3rd group representation
+	// group representation
 	
 	p.name=TRANS("Representation");
 

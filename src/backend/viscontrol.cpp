@@ -378,6 +378,7 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 					ld->setIsovalue(vdbSrc->isovalue);
 					ld->setAdaptivity(vdbSrc->adaptivity);
 					ld->setVoxelsize(vdbSrc->voxelsize);
+					ld->setLPCVT(vdbSrc->lpcvt);
 
 					ld->wantsLight=true;
 
