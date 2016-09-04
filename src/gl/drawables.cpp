@@ -2735,9 +2735,9 @@ void LukasDrawIsoSurface::draw() const
 	
 	cacheOK=true;
 
-	std::cout << "points size" << " = " << points.size() << std::endl;
-	std::cout << "triangles size" << " = " << triangles.size() << std::endl;
-	std::cout << " active voxel count subgrid div" << " = " << grid->activeVoxelCount() << std::endl;
+	//std::cout << "points size" << " = " << points.size() << std::endl;
+	//std::cout << "triangles size" << " = " << triangles.size() << std::endl;
+	//std::cout << " active voxel count subgrid div" << " = " << grid->activeVoxelCount() << std::endl;
 
 	// split the quads to triangles
 	
@@ -2787,7 +2787,7 @@ void LukasDrawIsoSurface::draw() const
 	std::vector<std::vector<float> > triangles_combined(number_of_total_triangles, std::vector<float>(xyzs));
 	
 	int counter_start_from_zero = 0;
-	for(unsigned int ui=0;ui<triangles_combined.size();ui++)
+	for(unsigned int ui=0;ui<number_of_total_triangles;ui++)
 	{	
 		if (ui < triangles.size())
 		{
@@ -2801,7 +2801,7 @@ void LukasDrawIsoSurface::draw() const
 			
 			for(unsigned int uj=0;uj<xyzs;uj++)
 			{
-				triangles_combined[counter_start_from_zero][uj] = triangles_from_splitted_quads[counter_start_from_zero][uj];
+				triangles_combined[ui][uj] = triangles_from_splitted_quads[counter_start_from_zero][uj];
 			}
 			counter_start_from_zero += 1;
 		}
@@ -2811,11 +2811,39 @@ void LukasDrawIsoSurface::draw() const
 	
 	if (lpcvt == true)
 	{
-	
+		std::cout << "lpcvt entered" << std::endl;
 		// convert openvdb points to std::vec
 		// this will be unnecessary if the dart throwing algorithm is introduced instead
+		// but the function has to be changed to get the random points, the actual vertices and the triangles
 		std::vector<std::vector<float> > std_points;
 		std_points = convertOpenVDBVectorToStandardVector(points);
+		
+		//problem nans in points and zeros in triangles! why and how?
+		/*
+		points [0][0] = -19.5
+		points [0][1] = -5.3
+		points [0][2] = -nan
+		standard points [0][0] = -19.5
+		standard points [0][1] = -5.3
+		standard points [0][2] = -nan
+		triangles_combined [0][0] = 0
+		triangles_combined [0][1] = 0
+		triangles_combined [0][2] = 0
+		*/
+
+		
+		std::cout << "points [0][0]" << " = " << points[0].x() << std::endl;
+		std::cout << "points [0][1]" << " = " << points[0].y() << std::endl;
+		std::cout << "points [0][2]" << " = " << points[0].z() << std::endl;
+		
+		std::cout << "standard points [0][0]" << " = " << std_points[0][0] << std::endl;
+		std::cout << "standard points [0][1]" << " = " << std_points[0][1] << std::endl;
+		std::cout << "standard points [0][2]" << " = " << std_points[0][2] << std::endl;
+		
+		std::cout << "triangles_combined [0][0]" << " = " << triangles_combined[triangles.size()+1][0] << std::endl;
+		std::cout << "triangles_combined [0][1]" << " = " << triangles_combined[triangles.size()+1][1] << std::endl;
+		std::cout << "triangles_combined [0][2]" << " = " << triangles_combined[triangles.size()+1][2] << std::endl;
+		
 			
   		int rdt_triangles_size  = Geex::getCombinatorialStructureOfFLp(std_points, triangles_combined);
   		

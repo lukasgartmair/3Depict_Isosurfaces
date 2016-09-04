@@ -349,7 +349,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	
 	gs->isovalue=iso_level;
 	gs->adaptivity=adaptivity;
-	gs->voxelsize = voxel_size;
+	gs->voxelsize=voxel_size;
+	gs->lpcvt=lpcvt;
 	
 	gs->r=rgba.r();
 	gs->g=rgba.g();
@@ -466,6 +467,18 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	//-- 
 	propertyList.setGroupTitle(curGroup,TRANS("Isosurface"));	
 	curGroup++;
+	
+	//-- Remeshing with LpCVT
+	p.name=TRANS("LpCVT");
+	p.data=boolStrEnc(lpcvt);
+	p.type=PROPERTY_TYPE_BOOL;
+	p.helpText=TRANS("Apply remeshing with Lp Centroidal Voronoi Tesselation");
+	p.key=KEY_LPCVT;
+	propertyList.addProperty(p,curGroup);
+	propertyList.setGroupTitle(curGroup,TRANS("Remeshing with LpCVT"));	
+	curGroup++;
+	
+	
 
 	//-- Isosurface appearance --
 	p.name=TRANS("Colour");
@@ -474,6 +487,8 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	p.helpText=TRANS("Colour of isosurface");
 	p.key=KEY_COLOUR;
 	propertyList.addProperty(p,curGroup);
+	propertyList.setGroupTitle(curGroup,TRANS("Appearance"));	
+	curGroup++;
 
 }
 
@@ -502,7 +517,6 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 					OpenVDBGridStreamData *vdbgs;
 					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
 					vdbgs->adaptivity = adaptivity;
-
 				}
 			}
 			break;
@@ -537,6 +551,28 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			clearCache();
 			break;
 		}
+		
+		case KEY_LPCVT: 
+		{
+			bool b;
+			if(stream_cast(b,value))
+				return false;
+			needUpdate=true;
+			lpcvt = b;
+			//Go in and manually adjust the cached
+			//entries to have the new value, rather
+			//than doing a full recomputation
+			if(cacheOK)
+			{
+				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
+				{	
+					OpenVDBGridStreamData *vdbgs;
+					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
+					vdbgs->lpcvt = lpcvt;
+				}
+			}
+			break;
+		}	
 
 		case KEY_VOXELSIZE: 
 		{
@@ -557,7 +593,6 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 					OpenVDBGridStreamData *vdbgs;
 					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
 					vdbgs->voxelsize = voxel_size;
-
 				}
 			}
 			break;
@@ -582,7 +617,6 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 					OpenVDBGridStreamData *vdbgs;
 					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
 					vdbgs->isovalue = iso_level;
-
 				}
 			}
 			break;
@@ -703,6 +737,8 @@ bool LukasAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsign
 			f << tabs(depth+2) << "</denominator>" << endl;
 
 			f << tabs(depth+1) << "</enabledions>" << endl;
+			
+			f << tabs(depth+1) << "<LpCVT=\""<<lpcvt<< "\"/>"  << endl;
 				
 			f << tabs(depth) << "</" <<trueName()<< ">" << endl;
 			break;
@@ -758,6 +794,11 @@ bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	if(tmpFloat <= 0.0f)
 		return false;
 	adaptivity=tmpFloat;
+	
+	bool tmpBool = false;
+	if(!XMLGetNextElemAttrib(nodePtr,tmpBool,"LpCVT","value"))
+		return false;
+	lpcvt=tmpBool;
 	
 	//--=
 	//Look for the enabled ions bit
