@@ -33,6 +33,7 @@
 #include <math.h> // for sqrt
 
 #include "../backend/filters/LpCVT/lpcvt_functions.h"
+#include "../backend/filters/OpenVDB_TestSuite/vdb_functions.h"
 
 const float DEPTH_SORT_REORDER_EPSILON = 1e-2;
 
@@ -2810,17 +2811,18 @@ void LukasDrawIsoSurface::draw() const
 	
 	if (lpcvt == true)
 	{
-		std::vector<openvdb::Vec3s> rdt_vertices;
-  		std::vector<openvdb::Vec3I> rdt_faces;
-  		
 	
+		// convert openvdb points to std::vec
+		// this will be unnecessary if the dart throwing algorithm is introduced instead
+		std::vector<std::vector<float> > std_points;
+		std_points = convertOpenVDBVectorToStandardVector(points);
+			
+  		int rdt_triangles_size  = Geex::getCombinatorialStructureOfFLp(std_points, triangles_combined);
+  		
+		std::cout << "rdt triangles size" << " = " << rdt_triangles_size << std::endl;
 	
 	}
 	
-
-	
-	
-
 
 	// drawing the normal and the splitted triangles
 

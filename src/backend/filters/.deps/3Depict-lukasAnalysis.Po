@@ -1262,10 +1262,10 @@ backend/filters/3Depict-lukasAnalysis.o: \
  backend/filters/LpCVT/combinatorics/delaunay.h \
  backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h \
  backend/filters/LpCVT/combinatorics/exact/../../common/types.h \
+ backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h \
  backend/filters/LpCVT/algebra/F_Lp.h \
  backend/filters/LpCVT/algebra/../common/types.h \
  backend/filters/LpCVT/common/line_stream.h \
- backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h \
  backend/filters/filterCommon.h common/xmlHelper.h \
  backend/APT/APTRanges.h /usr/include/qhull/qhull_a.h \
  /usr/include/qhull/libqhull.h /usr/include/qhull/user.h \
@@ -4395,13 +4395,13 @@ backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h:
 
 backend/filters/LpCVT/combinatorics/exact/../../common/types.h:
 
+backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h:
+
 backend/filters/LpCVT/algebra/F_Lp.h:
 
 backend/filters/LpCVT/algebra/../common/types.h:
 
 backend/filters/LpCVT/common/line_stream.h:
-
-backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h:
 
 backend/filters/filterCommon.h:
 

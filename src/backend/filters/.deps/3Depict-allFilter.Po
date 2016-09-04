@@ -1262,15 +1262,15 @@ backend/filters/3Depict-allFilter.o: backend/filters/allFilter.cpp \
  backend/filters/LpCVT/combinatorics/delaunay.h \
  backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h \
  backend/filters/LpCVT/combinatorics/exact/../../common/types.h \
+ backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h \
  backend/filters/LpCVT/algebra/F_Lp.h \
  backend/filters/LpCVT/algebra/../common/types.h \
- backend/filters/LpCVT/common/line_stream.h \
- backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h \
- backend/filters/boundingBox.h backend/filters/ionDownsample.h \
- backend/filters/dataLoad.h backend/filters/../../common/basics.h \
- backend/filters/profile.h backend/filters/externalProgram.h \
- backend/filters/ionClip.h backend/filters/ionColour.h \
- backend/filters/rangeFile.h backend/filters/clusterAnalysis.h \
+ backend/filters/LpCVT/common/line_stream.h backend/filters/boundingBox.h \
+ backend/filters/ionDownsample.h backend/filters/dataLoad.h \
+ backend/filters/../../common/basics.h backend/filters/profile.h \
+ backend/filters/externalProgram.h backend/filters/ionClip.h \
+ backend/filters/ionColour.h backend/filters/rangeFile.h \
+ backend/filters/clusterAnalysis.h \
  backend/filters/algorithms/K3DTree-mk2.h \
  backend/filters/spatialAnalysis.h backend/filters/spectrumPlot.h \
  backend/filters/transform.h backend/filters/voxelise.h \
@@ -4396,13 +4396,13 @@ backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h:
 
 backend/filters/LpCVT/combinatorics/exact/../../common/types.h:
 
+backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h:
+
 backend/filters/LpCVT/algebra/F_Lp.h:
 
 backend/filters/LpCVT/algebra/../common/types.h:
 
 backend/filters/LpCVT/common/line_stream.h:
-
-backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h:
 
 backend/filters/boundingBox.h:
 

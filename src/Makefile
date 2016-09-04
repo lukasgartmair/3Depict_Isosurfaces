@@ -409,6 +409,8 @@ OBJEXT = o
 OPENMP_FLAGS = 
 OPENVDB_CXXFLAGS = -I/usr/include/openvdb
 OPENVDB_LIBS = -lopenvdb
+VDBFUNCS_CXXFLAGS = -I/OpenVDB_TestSuite/vdb_functions.cpp
+VDBFUNCS_LIBS = -lvdb_functions
 TBB_LIBS = -ltbb
 HALF_LIBS = -lHalf
 CTF_CXXFLAGS = -I/contribution_transfer_function/CTF_functions.cpp
@@ -504,7 +506,7 @@ MSYS_PATH = /c/msys/1.0/local/include/
 3Depict_LDFLAGS = $(LDFLAGS) $(FT_LDFLAGS) $(GSL_LIBS) $(MGL_LIBS)
 3Depict_CXXFLAGS = $(CXXFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) $(WX_CPPFLAGS) \
 	$(GL_FLAGS) $(GSL_CFLAGS) $(MGL_CFLAGS) $(XML_CFLAGS) $(PNG_CFLAGS)  \
-	$(OPENMP_FLAGS) $(DEBUG_FLAGS) $(OPENVDB_CXXFLAGS) $(CTF_CXXFLAGS) $(LpCVT_CXXFLAGS) -pipe 
+	$(OPENMP_FLAGS) $(DEBUG_FLAGS) $(OPENVDB_CXXFLAGS) $(CTF_CXXFLAGS) $(LpCVT_CXXFLAGS) $(VDBFUNCS_CXXFLAGS) -pipe 
 
 3Depict_CFLAGS = $(CFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) \
 	       $(XML_CFLAGS) $(GSL_CFLAGS)  $(MGL_CFLAGS) $(PNG_CFLAGS) $(QHULL_CFLAGS) \
@@ -512,7 +514,7 @@ MSYS_PATH = /c/msys/1.0/local/include/
 
 3Depict_LDADD = $(LIBS) $(GETTEXT_LIBS) $(WX_LIBS) $(MGL_LIBS) \
 	$(FTGL_LIBS) $(FT_LIBS) $(XML_LIBS) $(GSL_LIBS) $(GL_LIBS) \
-	$(GLU_LIBS) $(QHULL_LIBS) $(PNG_LIBS) $(am__append_2) $(OPENVDB_LIBS) $(TBB_LIBS) $(HALF_LIBS) $(CTF_LIBS) $(LpCVT_LIBS)
+	$(GLU_LIBS) $(QHULL_LIBS) $(PNG_LIBS) $(am__append_2) $(OPENVDB_LIBS) $(TBB_LIBS) $(HALF_LIBS) $(CTF_LIBS) $(LpCVT_LIBS) $(VDBFUNCS_LIBS)
 
 #------- Common header files for all sub-modules
 COMMON_SOURCE_FILES = common/pngread.c common/stringFuncs.cpp common/constants.cpp common/xmlHelper.cpp\
