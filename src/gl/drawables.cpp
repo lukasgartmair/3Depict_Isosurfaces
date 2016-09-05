@@ -2723,21 +2723,46 @@ void LukasDrawIsoSurface::getBoundingBox(BoundCube &b) const
 
 void LukasDrawIsoSurface::updateMesh() const
 {
+
+	
 }
 
 void LukasDrawIsoSurface::draw() const
 {
+
+	// update mesh - the best case would be to put this to update mesh function but
+	// i don't know how to make the stuff visible
+	// changing drawables.h takes the longest possible compilation time!
+
 	std::vector<openvdb::Vec3s> points;
   	std::vector<openvdb::Vec3I> triangles;
   	std::vector<openvdb::Vec4I> quads;
 
 	openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*grid, points, triangles, quads, isovalue, adaptivity);
 	
-	// how are the -nans introduced if there is no -nan in grid?! 
+	
+	int non_finites_counter = 0;
+	int xyzs = 3;
+	for (int i=0;i<points.size();i++)
+	{
+		for (int j=0;j<xyzs;j++)
+		{
+		    if (std::isfinite(points[i][j]) == false)
+			{	
+				non_finites_counter += 1;    
+			}
+		}
+	}
+	//std::cout << "points size" << " = " << points.size() << std::endl;
+	//std::cout << "number_of_non_finites" << " = " << non_finites_counter << std::endl;
+	
+	// how are the -nans introduced if there is no -nan existing in the grid?! 
 	// setting only the nan to zero will of course result in large triangles crossing the scene
 	// setting all 3 coordinates to zero is also shit because triangles containing the point are also big
-	// how to overcome this
-	int xyzs = 3;
+	// how to overcome this without discarding them, which would end up in corrupt faces
+	// this behaviour gets check in the vdb test suite
+	
+	xyzs = 3;
 	for(unsigned int ui=0;ui<points.size();ui++)
 	{
 		for(unsigned int uj=0;uj<xyzs;uj++)
@@ -2751,8 +2776,8 @@ void LukasDrawIsoSurface::draw() const
 			}
 		}
 	}
-	
 	/*
+	
 	std::cout << "points [0][0]" << " = " << points[0].x() << std::endl;
 	std::cout << "points [0][1]" << " = " << points[0].y() << std::endl;
 	std::cout << "points [0][2]" << " = " << points[0].z() << std::endl;
@@ -2777,29 +2802,18 @@ void LukasDrawIsoSurface::draw() const
 	std::vector<std::vector<float> > triangles_from_splitted_quads(number_of_splitted_triangles, std::vector<float>(xyzs));
 	
 	triangles_from_splitted_quads = splitQuadsToTriangles(points, quads);
-	
-	/*
-	std::cout << "triangles_splitted [0][0]" << " = " << triangles_from_splitted_quads[0][0] << std::endl;
-	std::cout << "triangles_splitted  [0][1]" << " = " << triangles_from_splitted_quads[0][1] << std::endl;
-	std::cout << "triangles_splitted  [0][2]" << " = " << triangles_from_splitted_quads[0][2] << std::endl;
-	
-	std::cout << "triangles_splitted [1][0]" << " = " << triangles_from_splitted_quads[1][0] << std::endl;
-	std::cout << "triangles_splitted  [1][1]" << " = " << triangles_from_splitted_quads[1][1] << std::endl;
-	std::cout << "triangles_splitted  [1][2]" << " = " << triangles_from_splitted_quads[1][2] << std::endl;
-	*/
-	
 
 	std::vector<std::vector<float> > triangles_combined;
 	triangles_combined = concatenateTriangleVectors(triangles, triangles_from_splitted_quads);
 	
 	if (lpcvt == true)
 	{
-		std::cout << "lpcvt entered" << std::endl;
+		//std::cout << "lpcvt entered" << std::endl;
 		// convert openvdb points to std::vec
 		// this will be unnecessary if the dart throwing algorithm is introduced instead
 		// but the function has to be changed to get the random points, the actual vertices and the triangles
-		std::vector<std::vector<float> > std_points;
-		std_points = convertOpenVDBVectorToStandardVector(points);
+		//std::vector<std::vector<float> > std_points;
+		//std_points = convertOpenVDBVectorToStandardVector(points);
 		
 		/*
 		std::cout << "points [0][0]" << " = " << points[0].x() << std::endl;
@@ -2826,7 +2840,9 @@ void LukasDrawIsoSurface::draw() const
 
 	glColor4f(r,g,b,a);
 	glPushAttrib(GL_CULL_FACE);
-	glDisable(GL_CULL_FACE);	
+	glDisable(GL_CULL_FACE);
+	
+	/*	
 	glBegin(GL_TRIANGLES);	
 	for(unsigned int ui=0;ui<triangles_combined.size();ui++)
 	{
@@ -2838,76 +2854,32 @@ void LukasDrawIsoSurface::draw() const
 		GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
 		GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
 		GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
-	
-		/*
-		// get the normalized normals
-		// just take both the first edge vectors as A and B
-		// http://stackoverflow.com/questions/27690346/calculating-vertex-normals-for-gl-triangle
-		//Nx = Ay*Bz-Az*By;
-		//Ny = Az*Bx-Ax*Bz;
-		//Nz = Ax*By-Ay*Bx;
-	
-		Nx = vertex1[1]*vertex2[2]-vertex1[2]*vertex2[1];
-		Ny = vertex1[2]*vertex2[0]-vertex1[0]*vertex2[2];
-		Nz = vertex1[0]*vertex2[1]-vertex1[1]*vertex2[0];
 
-		float len=sqrt(Nx*Nx+Ny*Ny+Nz*Nz);
-		Nx/=len;
-		Ny/=len;
-		Nz/=len;
-		*/
-		//glNormal3fv(Nx);
 		glVertex3fv(vertex1);
-		//glNormal3fv(Ny);
 		glVertex3fv(vertex2);
-		//glNormal3fv(Nz);
 		glVertex3fv(vertex3);
 	}
 	
 	glEnd();
-	glPopAttrib();
-/*
-	// splitted
-	glBegin(GL_TRIANGLES);	
-	for(unsigned int ui=0;ui<triangles_from_splitted_quads.size();ui++)
-	{
+	*/
 
-		openvdb::Vec3s v1 = points[triangles_from_splitted_quads[ui][0]];
-		openvdb::Vec3s v2 = points[triangles_from_splitted_quads[ui][1]];
-		openvdb::Vec3s v3 = points[triangles_from_splitted_quads[ui][2]];
+	glBegin(GL_TRIANGLES);	
+	for(unsigned int ui=0;ui<triangles.size();ui++)
+	{
+		openvdb::Vec3s v1 = points[triangles[ui][0]];
+		openvdb::Vec3s v2 = points[triangles[ui][1]];
+		openvdb::Vec3s v3 = points[triangles[ui][2]];
 	
 		// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
 		GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
 		GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
 		GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
-	
-		
-		// get the normalized normals
-		// just take both the first edge vectors as A and B
-		// http://stackoverflow.com/questions/27690346/calculating-vertex-normals-for-gl-triangle
-		//Nx = Ay*Bz-Az*By;
-		//Ny = Az*Bx-Ax*Bz;
-		//Nz = Ax*By-Ay*Bx;
-	
-		Nx = vertex1[1]*vertex2[2]-vertex1[2]*vertex2[1];
-		Ny = vertex1[2]*vertex2[0]-vertex1[0]*vertex2[2];
-		Nz = vertex1[0]*vertex2[1]-vertex1[1]*vertex2[0];
 
-		float len=sqrt(Nx*Nx+Ny*Ny+Nz*Nz);
-		Nx/=len;
-		Ny/=len;
-		Nz/=len;
-		
-		//glNormal3fv(Nx);
 		glVertex3fv(vertex1);
-		//glNormal3fv(Ny);
 		glVertex3fv(vertex2);
-		//glNormal3fv(Nz);
 		glVertex3fv(vertex3);
 	}
-	
 	glEnd();
-	glPopAttrib();
 	
 
 ////////// for first check split the quads into triangles
@@ -2936,7 +2908,7 @@ void LukasDrawIsoSurface::draw() const
 	distanceAC = sqrt((A.x()-C.x())*(A.x()-C.x()) + (A.y()-C.y())*(A.y()-C.y()) +  (A.z()-C.z())*(A.z()-C.z()));
 	distanceBD = sqrt((B.x()-D.x())*(B.x()-D.x()) + (B.y()-D.y())*(B.y()-D.y()) +  (B.z()-D.z())*(B.z()-D.z()));
 	
-	if (distanceAC < distanceBD)
+	if (distanceAC <= distanceBD)
 	{	
 		//tri 1 ABC
 		v1 = A;
@@ -2946,7 +2918,6 @@ void LukasDrawIsoSurface::draw() const
 		v4 = A;
 		v5 = C;
 		v6 = D;
-		
 	}
 	if (distanceAC > distanceBD)
 	{
@@ -2958,9 +2929,7 @@ void LukasDrawIsoSurface::draw() const
 		v4 = D;
 		v5 = B;
 		v6 = C;
-	
-	}
-		
+	}	
 	// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
 	GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
 	GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
@@ -2978,11 +2947,7 @@ void LukasDrawIsoSurface::draw() const
 	glVertex3fv(vertex6);
 		
 	}
-	
-
 	glEnd();
-	glPopAttrib();
-*/
 }
 		
 

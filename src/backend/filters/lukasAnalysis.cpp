@@ -457,7 +457,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	//-- Isosurface parameters --
 
 	stream_cast(tmpStr,iso_level);
-	p.name=TRANS("Isovalue");
+	p.name=TRANS("Isovalue [0,1]");
 	p.data=tmpStr;
 	p.type=PROPERTY_TYPE_REAL;
 	p.helpText=TRANS("Scalar value to show as isosurface");
@@ -471,10 +471,10 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	p.name=TRANS("Quad / Triangle Ratio");
 	
 	stream_cast(tmpStr,adaptivity);
-	p.name=TRANS("Adaptivity - [0,1]");
+	p.name=TRANS("Adaptivity [0,1]");
 	p.data=tmpStr;
 	p.type=PROPERTY_TYPE_REAL;
-	p.helpText=TRANS("Scalar value to set the quads triangle ratio. 0 only quads - 1 only triangles");
+	p.helpText=TRANS("Scalar value to set the quads triangle ratio. 0 only quads - 1 increase triangle amount");
 	p.key=KEY_ADAPTIVITY;
 	propertyList.addProperty(p,curGroup);
 
