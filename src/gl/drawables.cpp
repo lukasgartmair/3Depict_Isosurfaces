@@ -2836,15 +2836,14 @@ void LukasDrawIsoSurface::draw() const
 	}
 	
 
-	// drawing the normal and the splitted triangles
 
+	
 	glColor4f(r,g,b,a);
 	glPushAttrib(GL_CULL_FACE);
 	glDisable(GL_CULL_FACE);
-	
-	/*	
+		
 	glBegin(GL_TRIANGLES);	
-	for(unsigned int ui=0;ui<triangles_combined.size();ui++)
+	for(int ui=0;ui<triangles_combined.size();ui++)
 	{
 		openvdb::Vec3s v1 = points[triangles_combined[ui][0]];
 		openvdb::Vec3s v2 = points[triangles_combined[ui][1]];
@@ -2861,10 +2860,10 @@ void LukasDrawIsoSurface::draw() const
 	}
 	
 	glEnd();
-	*/
-
+	
+	/*
 	glBegin(GL_TRIANGLES);	
-	for(unsigned int ui=0;ui<triangles.size();ui++)
+	for(int ui=0;ui<triangles.size();ui++)
 	{
 		openvdb::Vec3s v1 = points[triangles[ui][0]];
 		openvdb::Vec3s v2 = points[triangles[ui][1]];
@@ -2888,7 +2887,7 @@ void LukasDrawIsoSurface::draw() const
 //Compare the length of A-C and B-D and use the shorter for the splitting edge. In other words use A B C, A C D if A-C is shorter and A B D, D B C otherwise.
 
 	glBegin(GL_TRIANGLES);	
-	for(unsigned int ui=0;ui<quads.size();ui++)
+	for(int ui=0;ui<quads.size();ui++)
 	{
 	
 	openvdb::Vec3s v1;
@@ -2948,6 +2947,7 @@ void LukasDrawIsoSurface::draw() const
 		
 	}
 	glEnd();
+	*/
 }
 		
 
