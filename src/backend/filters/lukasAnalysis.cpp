@@ -49,10 +49,10 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
 	rsdIncoming(0)
 {
 
-	rgba=ColourRGBAf(0.5,0.5,0.5,0.9f);
+	rgba=ColourRGBAf(1.0,0.0,0.0,0.9f);
 	iso_level=0.07;
 	voxel_size = 2.0; 
-	adaptivity = 0.1;	
+	adaptivity = 1.0;	
 	lpcvt = false;
 	numeratorAll = false;
 	denominatorAll = true;
@@ -468,6 +468,20 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.setGroupTitle(curGroup,TRANS("Isosurface"));	
 	curGroup++;
 	
+	p.name=TRANS("Quad / Triangle Ratio");
+	
+	stream_cast(tmpStr,adaptivity);
+	p.name=TRANS("Adaptivity - [0,1]");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_REAL;
+	p.helpText=TRANS("Scalar value to set the quads triangle ratio. 0 only quads - 1 only triangles");
+	p.key=KEY_ADAPTIVITY;
+	propertyList.addProperty(p,curGroup);
+
+	//-- 
+	propertyList.setGroupTitle(curGroup,TRANS("Isosurface"));	
+	curGroup++;
+	
 	//-- Remeshing with LpCVT
 	p.name=TRANS("LpCVT");
 	p.data=boolStrEnc(lpcvt);
@@ -503,7 +517,9 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			float f;
 			if(stream_cast(f,value))
 				return false;
-			if(f <= 0.0f)
+			if(f < 0.0f)
+				return false;
+			if(f > 1.0f)
 				return false;
 			needUpdate=true;
 			adaptivity=f;

@@ -2700,7 +2700,7 @@ void DrawIsoSurface::draw() const
 ////////////////////////////////  OPENVDB  /////////////////////////////////////////////
 
 LukasDrawIsoSurface::LukasDrawIsoSurface() : cacheOK(false),
-	 r(0.5f), g(0.5f), b(0.5f), a(0.5f), isovalue(0.07), adaptivity(0.1)
+	 r(1.0f), g(0.0f), b(0.0f), a(0.5f), isovalue(0.07), adaptivity(1.0)
 {
 #ifdef DEBUG
 	voxels=0;
@@ -2734,18 +2734,25 @@ void LukasDrawIsoSurface::draw() const
 	openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*grid, points, triangles, quads, isovalue, adaptivity);
 	
 	// how are the -nans introduced if there is no -nan in grid?! 
+	// setting only the nan to zero will of course result in large triangles crossing the scene
+	// setting all 3 coordinates to zero is also shit because triangles containing the point are also big
+	// how to overcome this
 	int xyzs = 3;
 	for(unsigned int ui=0;ui<points.size();ui++)
 	{
-		
 		for(unsigned int uj=0;uj<xyzs;uj++)
+		{
 			if (std::isfinite(points[ui][uj]) == false)
 			{
-				points[ui][uj] = 0.0;
+				for(unsigned int uk=0;uk<xyzs;uk++)
+				{
+					points[ui][uk] = 0.0;
+				}
 			}
+		}
 	}
 	
-	
+	/*
 	std::cout << "points [0][0]" << " = " << points[0].x() << std::endl;
 	std::cout << "points [0][1]" << " = " << points[0].y() << std::endl;
 	std::cout << "points [0][2]" << " = " << points[0].z() << std::endl;
@@ -2758,7 +2765,7 @@ void LukasDrawIsoSurface::draw() const
 	std::cout << "quads [0][1]" << " = " << quads[0][1] << std::endl;
 	std::cout << "quads [0][2]" << " = " << quads[0][2] << std::endl;
 	std::cout << "quads [0][3]" << " = " << quads[0][3] << std::endl;
-
+	*/
 	cacheOK=true;
 
 	//std::cout << "points size" << " = " << points.size() << std::endl;
@@ -2766,12 +2773,12 @@ void LukasDrawIsoSurface::draw() const
 	//std::cout << " active voxel count subgrid div" << " = " << grid->activeVoxelCount() << std::endl;
 
 	// create a triangular mesh
-	
 	int number_of_splitted_triangles = 2*quads.size();
 	std::vector<std::vector<float> > triangles_from_splitted_quads(number_of_splitted_triangles, std::vector<float>(xyzs));
 	
 	triangles_from_splitted_quads = splitQuadsToTriangles(points, quads);
 	
+	/*
 	std::cout << "triangles_splitted [0][0]" << " = " << triangles_from_splitted_quads[0][0] << std::endl;
 	std::cout << "triangles_splitted  [0][1]" << " = " << triangles_from_splitted_quads[0][1] << std::endl;
 	std::cout << "triangles_splitted  [0][2]" << " = " << triangles_from_splitted_quads[0][2] << std::endl;
@@ -2779,7 +2786,7 @@ void LukasDrawIsoSurface::draw() const
 	std::cout << "triangles_splitted [1][0]" << " = " << triangles_from_splitted_quads[1][0] << std::endl;
 	std::cout << "triangles_splitted  [1][1]" << " = " << triangles_from_splitted_quads[1][1] << std::endl;
 	std::cout << "triangles_splitted  [1][2]" << " = " << triangles_from_splitted_quads[1][2] << std::endl;
-	
+	*/
 	
 
 	std::vector<std::vector<float> > triangles_combined;
@@ -2794,20 +2801,7 @@ void LukasDrawIsoSurface::draw() const
 		std::vector<std::vector<float> > std_points;
 		std_points = convertOpenVDBVectorToStandardVector(points);
 		
-		//problem nans in points and zeros in triangles! why and how?
 		/*
-		points [0][0] = -19.5
-		points [0][1] = -5.3
-		points [0][2] = -nan
-		standard points [0][0] = -19.5
-		standard points [0][1] = -5.3
-		standard points [0][2] = -nan
-		triangles_combined [0][0] = 0
-		triangles_combined [0][1] = 0
-		triangles_combined [0][2] = 0
-		*/
-
-		
 		std::cout << "points [0][0]" << " = " << points[0].x() << std::endl;
 		std::cout << "points [0][1]" << " = " << points[0].y() << std::endl;
 		std::cout << "points [0][2]" << " = " << points[0].z() << std::endl;
@@ -2819,11 +2813,11 @@ void LukasDrawIsoSurface::draw() const
 		std::cout << "triangles_combined [0][0]" << " = " << triangles_combined[triangles.size()+1][0] << std::endl;
 		std::cout << "triangles_combined [0][1]" << " = " << triangles_combined[triangles.size()+1][1] << std::endl;
 		std::cout << "triangles_combined [0][2]" << " = " << triangles_combined[triangles.size()+1][2] << std::endl;
-		
+		*/
 			
-  		int rdt_triangles_size  = Geex::getCombinatorialStructureOfFLp(std_points, triangles_combined);
+  		//int rdt_triangles_size  = Geex::getCombinatorialStructureOfFLp(std_points, triangles_combined);
   		
-		std::cout << "rdt triangles size" << " = " << rdt_triangles_size << std::endl;
+		//std::cout << "rdt triangles size" << " = " << rdt_triangles_size << std::endl;
 	
 	}
 	
@@ -2871,6 +2865,7 @@ void LukasDrawIsoSurface::draw() const
 	}
 	
 	glEnd();
+	glPopAttrib();
 /*
 	// splitted
 	glBegin(GL_TRIANGLES);	
