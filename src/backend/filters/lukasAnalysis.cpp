@@ -619,7 +619,9 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			float f;
 			if(stream_cast(f,value))
 				return false;
-			if(f <= 0.0f)
+			if(f < 0.0f)
+				return false;
+			if(f > 1.0f)
 				return false;
 			needUpdate=true;
 			iso_level=f;
@@ -755,6 +757,9 @@ bool LukasAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsign
 			f << tabs(depth+1) << "</enabledions>" << endl;
 			
 			f << tabs(depth+1) << "<LpCVT=\""<<lpcvt<< "\"/>"  << endl;
+			
+			f << tabs(depth+1) << "<colour r=\"" <<  rgba.r()<< "\" g=\"" << rgba.g() << "\" b=\"" <<rgba.b()
+				<< "\" a=\"" << rgba.a() << "\"/>" <<endl;
 				
 			f << tabs(depth) << "</" <<trueName()<< ">" << endl;
 			break;
@@ -815,6 +820,17 @@ bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	if(!XMLGetNextElemAttrib(nodePtr,tmpBool,"LpCVT","value"))
 		return false;
 	lpcvt=tmpBool;
+	
+	//Retrieve colour
+	//====
+	if(XMLHelpFwdToElem(nodePtr,"colour"))
+		return false;
+	ColourRGBAf tmpRgba;
+	if(!parseXMLColour(nodePtr,tmpRgba))
+		return false;
+	rgba=tmpRgba;
+
+	//====
 	
 	//--=
 	//Look for the enabled ions bit
