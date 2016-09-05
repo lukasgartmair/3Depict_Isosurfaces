@@ -2733,81 +2733,57 @@ void LukasDrawIsoSurface::draw() const
 
 	openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*grid, points, triangles, quads, isovalue, adaptivity);
 	
+	// how are the -nans introduced if there is no -nan in grid?! 
+	int xyzs = 3;
+	for(unsigned int ui=0;ui<points.size();ui++)
+	{
+		
+		for(unsigned int uj=0;uj<xyzs;uj++)
+			if (std::isfinite(points[ui][uj]) == false)
+			{
+				points[ui][uj] = 0.0;
+			}
+	}
+	
+	
+	std::cout << "points [0][0]" << " = " << points[0].x() << std::endl;
+	std::cout << "points [0][1]" << " = " << points[0].y() << std::endl;
+	std::cout << "points [0][2]" << " = " << points[0].z() << std::endl;
+
+	std::cout << "triangles [0][0]" << " = " << triangles[0][0] << std::endl;
+	std::cout << "triangles [0][1]" << " = " << triangles[0][1] << std::endl;
+	std::cout << "triangles [0][2]" << " = " << triangles[0][2] << std::endl;
+	
+	std::cout << "quads [0][0]" << " = " << quads[0][0] << std::endl;
+	std::cout << "quads [0][1]" << " = " << quads[0][1] << std::endl;
+	std::cout << "quads [0][2]" << " = " << quads[0][2] << std::endl;
+	std::cout << "quads [0][3]" << " = " << quads[0][3] << std::endl;
+
 	cacheOK=true;
 
 	//std::cout << "points size" << " = " << points.size() << std::endl;
 	//std::cout << "triangles size" << " = " << triangles.size() << std::endl;
 	//std::cout << " active voxel count subgrid div" << " = " << grid->activeVoxelCount() << std::endl;
 
-	// split the quads to triangles
+	// create a triangular mesh
 	
 	int number_of_splitted_triangles = 2*quads.size();
-	int xyzs = 3;
 	std::vector<std::vector<float> > triangles_from_splitted_quads(number_of_splitted_triangles, std::vector<float>(xyzs));
 	
-	for(unsigned int ui=0;ui<quads.size();ui+=2)
-	{
-		openvdb::Vec3s A = points[quads[ui][0]];
-		openvdb::Vec3s B = points[quads[ui][1]];
-		openvdb::Vec3s C = points[quads[ui][2]];
-		openvdb::Vec3s D = points[quads[ui][3]];
+	triangles_from_splitted_quads = splitQuadsToTriangles(points, quads);
 	
-		float distanceAC = 0;
-		float distanceBD = 0;
-		distanceAC = sqrt((A.x()-C.x())*(A.x()-C.x()) + (A.y()-C.y())*(A.y()-C.y()) +  (A.z()-C.z())*(A.z()-C.z()));
-		distanceBD = sqrt((B.x()-D.x())*(B.x()-D.x()) + (B.y()-D.y())*(B.y()-D.y()) +  (B.z()-D.z())*(B.z()-D.z()));
-		
-		if (distanceAC <= distanceBD)
-		{	
-			//tri 1 ABC
-			triangles_from_splitted_quads[ui][0] = quads[ui][0];
-			triangles_from_splitted_quads[ui][1] = quads[ui][1];
-			triangles_from_splitted_quads[ui][2] = quads[ui][2];
-			//tri2 ACD
-			triangles_from_splitted_quads[ui+1][0] = quads[ui][0];
-			triangles_from_splitted_quads[ui+1][1] = quads[ui][2];
-			triangles_from_splitted_quads[ui+1][2] = quads[ui][3];	
-		}
-		if (distanceAC > distanceBD)
-		{
-			//tri 1 ABC
-			triangles_from_splitted_quads[ui][0] = quads[ui][0];
-			triangles_from_splitted_quads[ui][1] = quads[ui][1];
-			triangles_from_splitted_quads[ui][2] = quads[ui][3];
-			//tri2 ACD
-			triangles_from_splitted_quads[ui+1][0] = quads[ui][3];
-			triangles_from_splitted_quads[ui+1][1] = quads[ui][1];
-			triangles_from_splitted_quads[ui+1][2] = quads[ui][2];
-		}
-	}
+	std::cout << "triangles_splitted [0][0]" << " = " << triangles_from_splitted_quads[0][0] << std::endl;
+	std::cout << "triangles_splitted  [0][1]" << " = " << triangles_from_splitted_quads[0][1] << std::endl;
+	std::cout << "triangles_splitted  [0][2]" << " = " << triangles_from_splitted_quads[0][2] << std::endl;
 	
-	// combine normal and splitted triangles
+	std::cout << "triangles_splitted [1][0]" << " = " << triangles_from_splitted_quads[1][0] << std::endl;
+	std::cout << "triangles_splitted  [1][1]" << " = " << triangles_from_splitted_quads[1][1] << std::endl;
+	std::cout << "triangles_splitted  [1][2]" << " = " << triangles_from_splitted_quads[1][2] << std::endl;
 	
-	int number_of_total_triangles = triangles.size() + triangles_from_splitted_quads.size();
-	std::vector<std::vector<float> > triangles_combined(number_of_total_triangles, std::vector<float>(xyzs));
 	
-	int counter_start_from_zero = 0;
-	for(unsigned int ui=0;ui<number_of_total_triangles;ui++)
-	{	
-		if (ui < triangles.size())
-		{
-			for(unsigned int uj=0;uj<xyzs;uj++)
-			{
-				triangles_combined[ui][uj] = triangles[ui][uj];
-			}
-		}
-		if (ui >= triangles.size())
-		{
-			
-			for(unsigned int uj=0;uj<xyzs;uj++)
-			{
-				triangles_combined[ui][uj] = triangles_from_splitted_quads[counter_start_from_zero][uj];
-			}
-			counter_start_from_zero += 1;
-		}
-	}
-	
-	// if remeshing with LpCVT is called it is calculated here
+
+	std::vector<std::vector<float> > triangles_combined;
+	triangles_combined = concatenateTriangleVectors(triangles, triangles_from_splitted_quads);
 	
 	if (lpcvt == true)
 	{
