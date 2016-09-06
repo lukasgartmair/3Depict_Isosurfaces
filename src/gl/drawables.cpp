@@ -2804,34 +2804,41 @@ void LukasDrawIsoSurface::draw() const
 	std::vector<std::vector<float> > triangles_indices_increased(triangles_combined.size(), std::vector<float>(xyzs));
 	int N = 1;
 	triangles_indices_increased = IncreaseTriangleVertexIndicesByN(triangles_combined, N);
-	
+		
 	if (lpcvt == true)
 	{
 		std::cout << "lpcvt entered" << std::endl;
 		
-		// pass rdt vertices and rdt triangle empty vectors to LpCVT by reference
-		
-		int initialization_size = 0;
-		int number_of_vertex_indices_per_triangle = 3;
-		std::vector<std::vector<float> > rdt_vertices(initialization_size, std::vector<float>(xyzs));
-
-		std::vector<std::vector<float> > rdt_triangles(initialization_size, std::vector<float>(number_of_vertex_indices_per_triangle));
+		// create empty vectors to be filled and resized by reference
+		std::vector<std::vector<float> > rdt_vertices;
+		std::vector<std::vector<float> > rdt_triangles;
 	
+		// pass rdt vertices and rdt triangle empty vectors to LpCVT by reference
 		Geex::getCombinatorialStructureOfFLpByReference(standard_points, triangles_indices_increased,
 			rdt_vertices, rdt_triangles);
 	
 		std::cout << "rdt triangles size" << " = " << rdt_triangles.size() << std::endl;
+		/*
+		std::cout << rdt_vertices[0][0] << " "  << " " << rdt_vertices[0][1] << " " << rdt_vertices[0][2] << std::endl;
+		std::cout << rdt_vertices[1][0] << " "  << " " << rdt_vertices[1][1] << " " << rdt_vertices[1][2] << std::endl;
+		std::cout << rdt_vertices[2000][0] << " "  << " " << rdt_vertices[2000][1] << " " << rdt_vertices[2000][2] << std::endl;
+		
+		
+		std::cout << rdt_triangles[0][0] << " "  << " " << rdt_triangles[0][1] << " " << rdt_triangles[0][2] << std::endl;
+		std::cout << rdt_triangles[1][0] << " "  << " " << rdt_triangles[1][1] << " " << rdt_triangles[1][2] << std::endl;
+		std::cout << rdt_triangles[2][0] << " "  << " " << rdt_triangles[2][1] << " " << rdt_triangles[2][2] << std::endl;
+		*/
 		
 		glColor4f(r,g,b,a);
 		glPushAttrib(GL_CULL_FACE);
 		glDisable(GL_CULL_FACE);
-		
+	
 		glBegin(GL_TRIANGLES);	
 		for(int ui=0;ui<rdt_triangles.size();ui++)
 		{
-			std::vector<float> v1 = rdt_vertices[rdt_triangles[ui][0]];
-			std::vector<float> v2 = rdt_vertices[rdt_triangles[ui][1]];
-			std::vector<float> v3 = rdt_vertices[rdt_triangles[ui][2]];
+			std::vector<float> v1 = rdt_vertices[rdt_triangles[ui][0]-1];
+			std::vector<float> v2 = rdt_vertices[rdt_triangles[ui][1]-1];
+			std::vector<float> v3 = rdt_vertices[rdt_triangles[ui][2]-1];
 
 			GLfloat vertex1[] = {v1[0],v1[1],v1[2]};
 			GLfloat vertex2[] = {v2[0],v2[1],v2[2]};
@@ -2844,6 +2851,7 @@ void LukasDrawIsoSurface::draw() const
 		glEnd();
 		
 	}
+	
 	else
 	{
 		glColor4f(r,g,b,a);
