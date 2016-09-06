@@ -2776,21 +2776,7 @@ void LukasDrawIsoSurface::draw() const
 			}
 		}
 	}
-	/*
-	
-	std::cout << "points [0][0]" << " = " << points[0].x() << std::endl;
-	std::cout << "points [0][1]" << " = " << points[0].y() << std::endl;
-	std::cout << "points [0][2]" << " = " << points[0].z() << std::endl;
 
-	std::cout << "triangles [0][0]" << " = " << triangles[0][0] << std::endl;
-	std::cout << "triangles [0][1]" << " = " << triangles[0][1] << std::endl;
-	std::cout << "triangles [0][2]" << " = " << triangles[0][2] << std::endl;
-	
-	std::cout << "quads [0][0]" << " = " << quads[0][0] << std::endl;
-	std::cout << "quads [0][1]" << " = " << quads[0][1] << std::endl;
-	std::cout << "quads [0][2]" << " = " << quads[0][2] << std::endl;
-	std::cout << "quads [0][3]" << " = " << quads[0][3] << std::endl;
-	*/
 	cacheOK=true;
 
 	//std::cout << "points size" << " = " << points.size() << std::endl;
@@ -2806,148 +2792,77 @@ void LukasDrawIsoSurface::draw() const
 	std::vector<std::vector<float> > triangles_combined;
 	triangles_combined = concatenateTriangleVectors(triangles, triangles_from_splitted_quads);
 	
+	// exploratory work for lpcvt for performance
+	
+	// convert openvdb points to std::vec
+	// this will be unnecessary if the dart throwing algorithm is introduced instead
+	// but the function has to be changed to get the random points, the actual vertices and the triangles
+	std::vector<std::vector<float> > standard_points(points.size(), std::vector<float>(xyzs));
+	standard_points = convertOpenVDBVectorToStandardVector(points);
+	
+	// increase the face vertex indices by one in order to resolve the segmentation fault
+	std::vector<std::vector<float> > triangles_indices_increased(triangles_combined.size(), std::vector<float>(xyzs));
+	int N = 1;
+	triangles_indices_increased = IncreaseTriangleVertexIndicesByN(triangles_combined, N);
+	
 	if (lpcvt == true)
 	{
-		//std::cout << "lpcvt entered" << std::endl;
-		// convert openvdb points to std::vec
-		// this will be unnecessary if the dart throwing algorithm is introduced instead
-		// but the function has to be changed to get the random points, the actual vertices and the triangles
-		//std::vector<std::vector<float> > std_points;
-		//std_points = convertOpenVDBVectorToStandardVector(points);
+		std::cout << "lpcvt entered" << std::endl;
+
+		int rdt_triangles_size  = Geex::getCombinatorialStructureOfFLp(standard_points, triangles_indices_increased);
+	
+		std::cout << "rdt triangles size" << " = " << rdt_triangles_size << std::endl;
 		
 		/*
-		std::cout << "points [0][0]" << " = " << points[0].x() << std::endl;
-		std::cout << "points [0][1]" << " = " << points[0].y() << std::endl;
-		std::cout << "points [0][2]" << " = " << points[0].z() << std::endl;
+		glColor4f(r,g,b,a);
+		glPushAttrib(GL_CULL_FACE);
+		glDisable(GL_CULL_FACE);
 		
-		std::cout << "standard points [0][0]" << " = " << std_points[0][0] << std::endl;
-		std::cout << "standard points [0][1]" << " = " << std_points[0][1] << std::endl;
-		std::cout << "standard points [0][2]" << " = " << std_points[0][2] << std::endl;
-		
-		std::cout << "triangles_combined [0][0]" << " = " << triangles_combined[triangles.size()+1][0] << std::endl;
-		std::cout << "triangles_combined [0][1]" << " = " << triangles_combined[triangles.size()+1][1] << std::endl;
-		std::cout << "triangles_combined [0][2]" << " = " << triangles_combined[triangles.size()+1][2] << std::endl;
+		glBegin(GL_TRIANGLES);	
+		for(int ui=0;ui<triangles_combined.size();ui++)
+		{
+			<std::vector<float> v1 = rdt_vertices[rdt_triangles[ui][0]];
+			<std::vector<float> v2 = rdt_vertices[rdt_triangles[ui][1]];
+			<std::vector<float> v3 = rdt_vertices[rdt_triangles[ui][2]];
+
+			GLfloat vertex1[] = {v1[0],v1[1],v1[2]};
+			GLfloat vertex2[] = {v2[0],v2[1],v2[2]};
+			GLfloat vertex3[] = {v3[0],v3[1],v3[2]};
+
+			glVertex3fv(vertex1);
+			glVertex3fv(vertex2);
+			glVertex3fv(vertex3);
+		}
+	
+		glEnd();
 		*/
-			
-  		//int rdt_triangles_size  = Geex::getCombinatorialStructureOfFLp(std_points, triangles_combined);
-  		
-		//std::cout << "rdt triangles size" << " = " << rdt_triangles_size << std::endl;
-	
 	}
-	
-
-
-	
-	glColor4f(r,g,b,a);
-	glPushAttrib(GL_CULL_FACE);
-	glDisable(GL_CULL_FACE);
+	else
+	{
+		glColor4f(r,g,b,a);
+		glPushAttrib(GL_CULL_FACE);
+		glDisable(GL_CULL_FACE);
 		
-	glBegin(GL_TRIANGLES);	
-	for(int ui=0;ui<triangles_combined.size();ui++)
-	{
-		openvdb::Vec3s v1 = points[triangles_combined[ui][0]];
-		openvdb::Vec3s v2 = points[triangles_combined[ui][1]];
-		openvdb::Vec3s v3 = points[triangles_combined[ui][2]];
+		glBegin(GL_TRIANGLES);	
+		for(int ui=0;ui<triangles_combined.size();ui++)
+		{
+			openvdb::Vec3s v1 = points[triangles_combined[ui][0]];
+			openvdb::Vec3s v2 = points[triangles_combined[ui][1]];
+			openvdb::Vec3s v3 = points[triangles_combined[ui][2]];
 	
-		// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
-		GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
-		GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
-		GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
+			// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
+			GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
+			GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
+			GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
 
-		glVertex3fv(vertex1);
-		glVertex3fv(vertex2);
-		glVertex3fv(vertex3);
+			glVertex3fv(vertex1);
+			glVertex3fv(vertex2);
+			glVertex3fv(vertex3);
+		}
+	
+		glEnd();
 	}
 	
-	glEnd();
-	
-	/*
-	glBegin(GL_TRIANGLES);	
-	for(int ui=0;ui<triangles.size();ui++)
-	{
-		openvdb::Vec3s v1 = points[triangles[ui][0]];
-		openvdb::Vec3s v2 = points[triangles[ui][1]];
-		openvdb::Vec3s v3 = points[triangles[ui][2]];
-	
-		// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
-		GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
-		GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
-		GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
-
-		glVertex3fv(vertex1);
-		glVertex3fv(vertex2);
-		glVertex3fv(vertex3);
-	}
-	glEnd();
-	
-
-////////// for first check split the quads into triangles
-// http://stackoverflow.com/questions/12239876/fastest-way-of-converting-a-quad-to-a-triangle-strip
-//Given a quad A B C D we can split it into A B C, A C D or A B D, D B C.
-//Compare the length of A-C and B-D and use the shorter for the splitting edge. In other words use A B C, A C D if A-C is shorter and A B D, D B C otherwise.
-
-	glBegin(GL_TRIANGLES);	
-	for(int ui=0;ui<quads.size();ui++)
-	{
-	
-	openvdb::Vec3s v1;
-	openvdb::Vec3s v2;
-	openvdb::Vec3s v3;
-	openvdb::Vec3s v4;
-	openvdb::Vec3s v5;
-	openvdb::Vec3s v6;
-	
-	openvdb::Vec3s A = points[quads[ui][0]];
-	openvdb::Vec3s B = points[quads[ui][1]];
-	openvdb::Vec3s C = points[quads[ui][2]];
-	openvdb::Vec3s D = points[quads[ui][3]];
-	
-	float distanceAC = 0;
-	float distanceBD = 0;
-	distanceAC = sqrt((A.x()-C.x())*(A.x()-C.x()) + (A.y()-C.y())*(A.y()-C.y()) +  (A.z()-C.z())*(A.z()-C.z()));
-	distanceBD = sqrt((B.x()-D.x())*(B.x()-D.x()) + (B.y()-D.y())*(B.y()-D.y()) +  (B.z()-D.z())*(B.z()-D.z()));
-	
-	if (distanceAC <= distanceBD)
-	{	
-		//tri 1 ABC
-		v1 = A;
-		v2 = B;
-		v3 = C;
-		//tri2 ACD
-		v4 = A;
-		v5 = C;
-		v6 = D;
-	}
-	if (distanceAC > distanceBD)
-	{
-		//tri 1 ABD
-		v1 = A;
-		v2 = B;
-		v3 = D;
-		//tri2 DBC
-		v4 = D;
-		v5 = B;
-		v6 = C;
-	}	
-	// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
-	GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
-	GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
-	GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
-	GLfloat vertex4[] = {v4.x(),v4.y(),v4.z()};
-	GLfloat vertex5[] = {v5.x(),v5.y(),v5.z()};
-	GLfloat vertex6[] = {v6.x(),v6.y(),v6.z()};
-
-
-	glVertex3fv(vertex1);
-	glVertex3fv(vertex2);
-	glVertex3fv(vertex3);
-	glVertex3fv(vertex4);
-	glVertex3fv(vertex5);
-	glVertex3fv(vertex6);
-		
-	}
-	glEnd();
-	*/
 }
 		
 
