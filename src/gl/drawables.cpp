@@ -2791,23 +2791,23 @@ void LukasDrawIsoSurface::draw() const
 
 	std::vector<std::vector<float> > triangles_combined;
 	triangles_combined = concatenateTriangleVectors(triangles, triangles_from_splitted_quads);
-	
-	// exploratory work for lpcvt for performance
-	
-	// convert openvdb points to std::vec
-	// this will be unnecessary if the dart throwing algorithm is introduced instead
-	// but the function has to be changed to get the random points, the actual vertices and the triangles
-	std::vector<std::vector<float> > standard_points(points.size(), std::vector<float>(xyzs));
-	standard_points = convertOpenVDBVectorToStandardVector(points);
-	
-	// increase the face vertex indices by one in order to resolve the segmentation fault
-	std::vector<std::vector<float> > triangles_indices_increased(triangles_combined.size(), std::vector<float>(xyzs));
-	int N = 1;
-	triangles_indices_increased = IncreaseTriangleVertexIndicesByN(triangles_combined, N);
 		
 	if (lpcvt == true)
 	{
 		std::cout << "lpcvt entered" << std::endl;
+		
+		// exploratory work for lpcvt
+		
+		// convert openvdb points to std::vec
+		// this will be unnecessary if the dart throwing algorithm is introduced instead
+		// but the function has to be changed to get the random points, the actual vertices and the triangles
+		std::vector<std::vector<float> > standard_points(points.size(), std::vector<float>(xyzs));
+		standard_points = convertOpenVDBVectorToStandardVector(points);
+
+		// increase the face vertex indices by one in order to resolve the segmentation fault
+		std::vector<std::vector<float> > triangles_indices_increased(triangles_combined.size(), std::vector<float>(xyzs));
+		int N = 1;
+		triangles_indices_increased = IncreaseTriangleVertexIndicesByN(triangles_combined, N);
 		
 		// create empty vectors to be filled and resized by reference
 		std::vector<std::vector<float> > rdt_vertices;
@@ -2818,16 +2818,18 @@ void LukasDrawIsoSurface::draw() const
 			rdt_vertices, rdt_triangles);
 	
 		std::cout << "rdt triangles size" << " = " << rdt_triangles.size() << std::endl;
-		/*
-		std::cout << rdt_vertices[0][0] << " "  << " " << rdt_vertices[0][1] << " " << rdt_vertices[0][2] << std::endl;
-		std::cout << rdt_vertices[1][0] << " "  << " " << rdt_vertices[1][1] << " " << rdt_vertices[1][2] << std::endl;
-		std::cout << rdt_vertices[2000][0] << " "  << " " << rdt_vertices[2000][1] << " " << rdt_vertices[2000][2] << std::endl;
+
+
+		// it causes a segementation fault without subtracting one from the triangles
+		// maybe this is the same problem as above with the openvdb vertex indices.
+		// minimum face index is one! i.e. for indexing they have to be decreased in order to match
 		
+		// decrease the face vertex indices by one in order to resolve the segmentation fault
+		std::vector<std::vector<float> > rdt_triangles_indices_decreased(rdt_triangles.size(), std::vector<float>(xyzs));
+		N = 1;
+		rdt_triangles_indices_decreased = DecreaseTriangleVertexIndicesByN(rdt_triangles, N);
 		
-		std::cout << rdt_triangles[0][0] << " "  << " " << rdt_triangles[0][1] << " " << rdt_triangles[0][2] << std::endl;
-		std::cout << rdt_triangles[1][0] << " "  << " " << rdt_triangles[1][1] << " " << rdt_triangles[1][2] << std::endl;
-		std::cout << rdt_triangles[2][0] << " "  << " " << rdt_triangles[2][1] << " " << rdt_triangles[2][2] << std::endl;
-		*/
+		// draw the triangles
 		
 		glColor4f(r,g,b,a);
 		glPushAttrib(GL_CULL_FACE);
@@ -2836,9 +2838,9 @@ void LukasDrawIsoSurface::draw() const
 		glBegin(GL_TRIANGLES);	
 		for(int ui=0;ui<rdt_triangles.size();ui++)
 		{
-			std::vector<float> v1 = rdt_vertices[rdt_triangles[ui][0]-1];
-			std::vector<float> v2 = rdt_vertices[rdt_triangles[ui][1]-1];
-			std::vector<float> v3 = rdt_vertices[rdt_triangles[ui][2]-1];
+			std::vector<float> v1 = rdt_vertices[rdt_triangles_indices_decreased[ui][0]];
+			std::vector<float> v2 = rdt_vertices[rdt_triangles_indices_decreased[ui][1]];
+			std::vector<float> v3 = rdt_vertices[rdt_triangles_indices_decreased[ui][2]];
 
 			GLfloat vertex1[] = {v1[0],v1[1],v1[2]};
 			GLfloat vertex2[] = {v2[0],v2[1],v2[2]};
