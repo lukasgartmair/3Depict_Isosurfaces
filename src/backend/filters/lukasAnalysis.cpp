@@ -49,10 +49,10 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
 	rsdIncoming(0)
 {
 
-	rgba=ColourRGBAf(1.0,0.0,0.0,0.9f);
+	rgba=ColourRGBAf(0.5,0.5,0.5,1.0f);
 	iso_level=0.07;
 	voxel_size = 2.0; 
-	adaptivity = 1.0;	
+	adaptivity = 0.0;	
 	lpcvt = false;
 	numeratorAll = false;
 	denominatorAll = true;

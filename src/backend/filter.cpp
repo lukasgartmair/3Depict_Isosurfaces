@@ -835,7 +835,7 @@ void VoxelStreamData::clear()
 ////////////// openvdb ////////////////////////////////////////////////////////////
 
 OpenVDBGridStreamData::OpenVDBGridStreamData() :
-	r(1.0f),g(0.0f),b(0.0f),a(0.5f), isovalue(0.07f), adaptivity(1.0f), voxelsize(2.0f), lpcvt(false)
+	r(0.5f),g(0.5f),b(0.5f),a(0.5f), isovalue(0.07f), adaptivity(0.0f), voxelsize(2.0f), lpcvt(false)
 {
 
 	streamType=STREAM_TYPE_OPENVDBGRID;
@@ -844,7 +844,7 @@ OpenVDBGridStreamData::OpenVDBGridStreamData() :
 }
 
 OpenVDBGridStreamData::OpenVDBGridStreamData(const Filter *f) : FilterStreamData(f),
-	r(1.0f),g(0.0f),b(0.0f),a(0.5f), isovalue(0.07f), adaptivity(1.0f), voxelsize(2.0f), lpcvt(false)
+	r(0.5f),g(0.5f),b(0.5f),a(0.5f), isovalue(0.07f), adaptivity(0.0f), voxelsize(2.0f), lpcvt(false)
 {
 
 	streamType=STREAM_TYPE_OPENVDBGRID;

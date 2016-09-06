@@ -2700,7 +2700,7 @@ void DrawIsoSurface::draw() const
 ////////////////////////////////  OPENVDB  /////////////////////////////////////////////
 
 LukasDrawIsoSurface::LukasDrawIsoSurface() : cacheOK(false),
-	 r(1.0f), g(0.0f), b(0.0f), a(0.5f), isovalue(0.07), adaptivity(1.0)
+	 r(0.5f), g(0.5f), b(0.5f), a(1.0f), isovalue(0.07), adaptivity(0.0)
 {
 #ifdef DEBUG
 	voxels=0;
@@ -2791,7 +2791,12 @@ void LukasDrawIsoSurface::draw() const
 
 	std::vector<std::vector<float> > triangles_combined;
 	triangles_combined = concatenateTriangleVectors(triangles, triangles_from_splitted_quads);
-		
+	
+	// initialize triangle normals vector
+	int vertices_per_triangle = 3;
+	int number_of_triangles = triangles.size();
+	std::vector<std::vector<float> > triangle_normals(number_of_triangles, std::vector<float>(vertices_per_triangle));
+	
 	if (lpcvt == true)
 	{
 		std::cout << "lpcvt entered" << std::endl;
@@ -2829,6 +2834,9 @@ void LukasDrawIsoSurface::draw() const
 		N = 1;
 		rdt_triangles_indices_decreased = DecreaseTriangleVertexIndicesByN(rdt_triangles, N);
 		
+		// calculate triangle normals
+		triangle_normals = ComputeTriangleNormals(points, rdt_triangles_indices_decreased);
+
 		// draw the triangles
 		
 		glColor4f(r,g,b,a);
@@ -2849,6 +2857,10 @@ void LukasDrawIsoSurface::draw() const
 			glVertex3fv(vertex1);
 			glVertex3fv(vertex2);
 			glVertex3fv(vertex3);
+			
+			//http://stackoverflow.com/questions/19795123/glnormal-opengl-square-example
+			glNormal3f(triangle_normals[ui][0], triangle_normals[ui][1], triangle_normals[ui][2]);
+			glColor3f(triangle_normals[ui][0], triangle_normals[ui][1], triangle_normals[ui][2]);
 		}
 		glEnd();
 		
@@ -2856,6 +2868,11 @@ void LukasDrawIsoSurface::draw() const
 	
 	else
 	{
+	
+
+		// calculate triangle normals
+		triangle_normals = ComputeTriangleNormals(points, triangles_combined);	
+	
 		glColor4f(r,g,b,a);
 		glPushAttrib(GL_CULL_FACE);
 		glDisable(GL_CULL_FACE);
@@ -2868,13 +2885,15 @@ void LukasDrawIsoSurface::draw() const
 			openvdb::Vec3s v3 = points[triangles_combined[ui][2]];
 	
 			// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
-			GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
-			GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
-			GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
+			GLfloat vertex4[] = {v1.x(),v1.y(),v1.z()};
+			GLfloat vertex5[] = {v2.x(),v2.y(),v2.z()};
+			GLfloat vertex6[] = {v3.x(),v3.y(),v3.z()};
 
-			glVertex3fv(vertex1);
-			glVertex3fv(vertex2);
-			glVertex3fv(vertex3);
+			glVertex3fv(vertex4);
+			glVertex3fv(vertex5);
+			glVertex3fv(vertex6);
+			glNormal3f(triangle_normals[ui][0], triangle_normals[ui][1], triangle_normals[ui][2]);
+			glColor3f(triangle_normals[ui][0], triangle_normals[ui][1], triangle_normals[ui][2]);
 		}
 	
 		glEnd();
