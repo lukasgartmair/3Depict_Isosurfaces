@@ -2796,108 +2796,45 @@ void LukasDrawIsoSurface::draw() const
 	int vertices_per_triangle = 3;
 	int number_of_triangles = triangles.size();
 	std::vector<std::vector<float> > triangle_normals(number_of_triangles, std::vector<float>(vertices_per_triangle));
+	// calculate triangle normals
+	triangle_normals = ComputeTriangleNormalsVDB(points, triangles_combined);	
 	
-	if (lpcvt == true)
+	
+	//initialize triangle normals vector
+	std::vector<std::vector<float> > vertex_normals(points.size(),std::vector<float>(xyzs));
+	// calculate vertex normals 
+	vertex_normals = ComputeVertexNormals(triangles_combined, points, triangle_normals);
+
+	glColor4f(r,g,b,a);
+	glPushAttrib(GL_CULL_FACE);
+	glDisable(GL_CULL_FACE);
+	
+	glBegin(GL_TRIANGLES);	
+	for(int ui=0;ui<triangles_combined.size();ui++)
 	{
-		std::cout << "lpcvt entered" << std::endl;
-		
-		// exploratory work for lpcvt
-		
-		// convert openvdb points to std::vec
-		// this will be unnecessary if the dart throwing algorithm is introduced instead
-		// but the function has to be changed to get the random points, the actual vertices and the triangles
-		std::vector<std::vector<float> > standard_points(points.size(), std::vector<float>(xyzs));
-		standard_points = convertOpenVDBVectorToStandardVector(points);
+		openvdb::Vec3s v1 = points[triangles_combined[ui][0]];
+		openvdb::Vec3s v2 = points[triangles_combined[ui][1]];
+		openvdb::Vec3s v3 = points[triangles_combined[ui][2]];
 
-		// increase the face vertex indices by one in order to resolve the segmentation fault
-		std::vector<std::vector<float> > triangles_indices_increased(triangles_combined.size(), std::vector<float>(xyzs));
-		int N = 1;
-		triangles_indices_increased = IncreaseTriangleVertexIndicesByN(triangles_combined, N);
+		// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
+		GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
+		GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
+		GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
 		
-		// create empty vectors to be filled and resized by reference
-		std::vector<std::vector<float> > rdt_vertices;
-		std::vector<std::vector<float> > rdt_triangles;
-	
-		// pass rdt vertices and rdt triangle empty vectors to LpCVT by reference
-		Geex::getCombinatorialStructureOfFLpByReference(standard_points, triangles_indices_increased,
-			rdt_vertices, rdt_triangles);
-	
-		std::cout << "rdt triangles size" << " = " << rdt_triangles.size() << std::endl;
+		GLfloat vertex_normal1[] = {vertex_normals[triangles_combined[ui][0]][0], vertex_normals[triangles_combined[ui][0]][1], vertex_normals[triangles_combined[ui][0]][2]};
+		GLfloat vertex_normal2[] = {vertex_normals[triangles_combined[ui][1]][0], vertex_normals[triangles_combined[ui][1]][1], vertex_normals[triangles_combined[ui][1]][2]};
+		GLfloat vertex_normal3[] = {vertex_normals[triangles_combined[ui][2]][0], vertex_normals[triangles_combined[ui][2]][1], vertex_normals[triangles_combined[ui][2]][2]};
 
-
-		// it causes a segementation fault without subtracting one from the triangles
-		// maybe this is the same problem as above with the openvdb vertex indices.
-		// minimum face index is one! i.e. for indexing they have to be decreased in order to match
-		
-		// decrease the face vertex indices by one in order to resolve the segmentation fault
-		std::vector<std::vector<float> > rdt_triangles_indices_decreased(rdt_triangles.size(), std::vector<float>(xyzs));
-		N = 1;
-		rdt_triangles_indices_decreased = DecreaseTriangleVertexIndicesByN(rdt_triangles, N);
-		
-		// calculate triangle normals
-		triangle_normals = ComputeTriangleNormals(points, rdt_triangles_indices_decreased);
-
-		// draw the triangles
-		
-		glColor4f(r,g,b,a);
-		glPushAttrib(GL_CULL_FACE);
-		glDisable(GL_CULL_FACE);
-	
-		glBegin(GL_TRIANGLES);	
-		for(int ui=0;ui<rdt_triangles.size();ui++)
-		{
-			std::vector<float> v1 = rdt_vertices[rdt_triangles_indices_decreased[ui][0]];
-			std::vector<float> v2 = rdt_vertices[rdt_triangles_indices_decreased[ui][1]];
-			std::vector<float> v3 = rdt_vertices[rdt_triangles_indices_decreased[ui][2]];
-
-			GLfloat vertex1[] = {v1[0],v1[1],v1[2]};
-			GLfloat vertex2[] = {v2[0],v2[1],v2[2]};
-			GLfloat vertex3[] = {v3[0],v3[1],v3[2]};
-
-			glVertex3fv(vertex1);
-			glVertex3fv(vertex2);
-			glVertex3fv(vertex3);
-			
-			//http://stackoverflow.com/questions/19795123/glnormal-opengl-square-example
-			glNormal3f(triangle_normals[ui][0], triangle_normals[ui][1], triangle_normals[ui][2]);
-			glColor3f(triangle_normals[ui][0], triangle_normals[ui][1], triangle_normals[ui][2]);
-		}
-		glEnd();
-		
+		glNormal3fv(vertex_normal1);
+		glVertex3fv(vertex1);
+		glNormal3fv(vertex_normal2);
+		glVertex3fv(vertex2);
+		glNormal3fv(vertex_normal3);
+		glVertex3fv(vertex3);
+		//glNormal3f(triangle_normals[ui][0], triangle_normals[ui][1], triangle_normals[ui][2]);
 	}
-	
-	else
-	{
-	
 
-		// calculate triangle normals
-		triangle_normals = ComputeTriangleNormals(points, triangles_combined);	
-	
-		glColor4f(r,g,b,a);
-		glPushAttrib(GL_CULL_FACE);
-		glDisable(GL_CULL_FACE);
-		
-		glBegin(GL_TRIANGLES);	
-		for(int ui=0;ui<triangles_combined.size();ui++)
-		{
-			openvdb::Vec3s v1 = points[triangles_combined[ui][0]];
-			openvdb::Vec3s v2 = points[triangles_combined[ui][1]];
-			openvdb::Vec3s v3 = points[triangles_combined[ui][2]];
-	
-			// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
-			GLfloat vertex4[] = {v1.x(),v1.y(),v1.z()};
-			GLfloat vertex5[] = {v2.x(),v2.y(),v2.z()};
-			GLfloat vertex6[] = {v3.x(),v3.y(),v3.z()};
-
-			glVertex3fv(vertex4);
-			glVertex3fv(vertex5);
-			glVertex3fv(vertex6);
-			glNormal3f(triangle_normals[ui][0], triangle_normals[ui][1], triangle_normals[ui][2]);
-			glColor3f(triangle_normals[ui][0], triangle_normals[ui][1], triangle_normals[ui][2]);
-		}
-	
-		glEnd();
-	}
+	glEnd();
 	
 }
 		
