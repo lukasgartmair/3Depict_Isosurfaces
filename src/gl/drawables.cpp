@@ -2794,16 +2794,48 @@ void LukasDrawIsoSurface::draw() const
 	
 	// initialize triangle normals vector
 	int vertices_per_triangle = 3;
-	int number_of_triangles = triangles.size();
-	std::vector<std::vector<float> > triangle_normals(number_of_triangles, std::vector<float>(vertices_per_triangle));
-	// calculate triangle normals
-	triangle_normals = ComputeTriangleNormalsVDB(points, triangles_combined);	
 	
+	std::cout << "number_of_triangles" << " = " << triangles_combined.size() << std::endl;
+	
+	std::vector<std::vector<float> > triangle_normals(triangles_combined.size(), std::vector<float>(vertices_per_triangle));
+	// calculate triangle normals
+	triangle_normals = ComputeTriangleNormalsVDB(points, triangles_combined);
+	
+	int non_finite_tris_counter = 0;
+	for (int i=0;i<triangle_normals.size();i++)
+	{
+		for (int j=0;j<xyzs;j++)
+		{
+		    if (std::isfinite(triangle_normals[i][j]) == false)
+			{	
+				non_finite_tris_counter += 1; 
+				triangle_normals[i][j] = 0;   
+			}
+		}
+	}	
+	
+	std::cout << "nans in triangle normals" << " = " << non_finite_tris_counter << std::endl;
 	
 	//initialize triangle normals vector
 	std::vector<std::vector<float> > vertex_normals(points.size(),std::vector<float>(xyzs));
 	// calculate vertex normals 
 	vertex_normals = ComputeVertexNormals(triangles_combined, points, triangle_normals);
+	
+	std::cout << "vertex normals size" << " = " << vertex_normals.size() << std::endl;
+	int non_finite_verts_counter = 0;
+	for (int i=0;i<vertex_normals.size();i++)
+	{
+		for (int j=0;j<xyzs;j++)
+		{
+		    if (std::isfinite(vertex_normals[i][j]) == false)
+			{	
+				non_finite_verts_counter += 1;    
+				vertex_normals[i][j] = 0;
+			}
+		}
+	}
+	
+	std::cout << "nans in vertex normals" << " = " << non_finite_tris_counter << std::endl;
 
 	glColor4f(r,g,b,a);
 	glPushAttrib(GL_CULL_FACE);

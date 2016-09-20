@@ -474,7 +474,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	p.name=TRANS("Adaptivity [0,1]");
 	p.data=tmpStr;
 	p.type=PROPERTY_TYPE_REAL;
-	p.helpText=TRANS("Scalar value to set the quads triangle ratio. 0 only quads - 1 increase triangle amount");
+	p.helpText=TRANS("Scalar value determines closely to match the surface when converting to polygons. Higher adaptivities will allow more variation in polygon size, using fewer polygons to express the surface.");
 	p.key=KEY_ADAPTIVITY;
 	propertyList.addProperty(p,curGroup);
 
