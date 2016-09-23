@@ -32,7 +32,6 @@
 
 #include <math.h> // for sqrt
 
-#include "../backend/filters/LpCVT/lpcvt_functions.h"
 #include "../backend/filters/OpenVDB_TestSuite/vdb_functions.h"
 
 const float DEPTH_SORT_REORDER_EPSILON = 1e-2;

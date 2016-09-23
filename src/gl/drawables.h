@@ -1205,7 +1205,6 @@ private:
 	double isovalue;
 	double adaptivity;
 	float voxelsize;
-	bool lpcvt;
 
 	//!Point colour (r,g,b,a) range: [0.0f,1.0f]
 	float r,g,b,a;
@@ -1230,9 +1229,6 @@ public:
 
 	//!Set the adaptivity of isosurface
 	void setAdaptivity(float adapt) {adaptivity=adapt;cacheOK=false;};
-	
-	//!Set the remeshing with LpCVT 
-	void setLPCVT(bool cvt) {lpcvt=cvt;cacheOK=false;};
 	
 	//!Set the voxelsize of the isosurface
 	void setVoxelsize(float voxel_size) {voxelsize=voxel_size;cacheOK=false;};

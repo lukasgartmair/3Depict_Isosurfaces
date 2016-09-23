@@ -337,7 +337,6 @@ public:
 	double isovalue;
 	double adaptivity;
 	float voxelsize;
-	bool lpcvt;
 	//!Apply filter to input data stream	
 	// what is XY in my case?! 
 	openvdb::FloatGrid::Ptr grid;	

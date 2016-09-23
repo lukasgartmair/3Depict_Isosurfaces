@@ -40,8 +40,6 @@ class LukasAnalysisFilter : public Filter
 		
 		float adaptivity;
 		
-		bool lpcvt;
-		
 		bool numeratorAll, denominatorAll;
 		//This is the filters enabled ranges
 		RangeStreamData *rsdIncoming;

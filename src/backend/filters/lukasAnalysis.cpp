@@ -40,7 +40,6 @@ enum
 	KEY_COLOUR,
 	KEY_ISOLEVEL,
 	KEY_ADAPTIVITY,
-	KEY_LPCVT,
 	KEY_ENABLE_NUMERATOR,
 	KEY_ENABLE_DENOMINATOR
 };
@@ -53,7 +52,6 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
 	iso_level=0.07;
 	voxel_size = 2.0; 
 	adaptivity = 0.0;	
-	lpcvt = false;
 	numeratorAll = false;
 	denominatorAll = true;
 	colourMap=0;
@@ -77,8 +75,6 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 	return p;
 
 	p->rgba=rgba;
-	
-	p->lpcvt=false;
 	
 	p->numeratorAll=numeratorAll;
 	p->denominatorAll=denominatorAll;
@@ -350,8 +346,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	gs->isovalue=iso_level;
 	gs->adaptivity=adaptivity;
 	gs->voxelsize=voxel_size;
-	gs->lpcvt=lpcvt;
-	
 	gs->r=rgba.r();
 	gs->g=rgba.g();
 	gs->b=rgba.b();
@@ -481,18 +475,6 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	//-- 
 	propertyList.setGroupTitle(curGroup,TRANS("Isosurface"));	
 	curGroup++;
-	/*
-	//-- Remeshing with LpCVT
-	p.name=TRANS("LpCVT");
-	p.data=boolStrEnc(lpcvt);
-	p.type=PROPERTY_TYPE_BOOL;
-	p.helpText=TRANS("Apply remeshing with Lp Centroidal Voronoi Tesselation");
-	p.key=KEY_LPCVT;
-	propertyList.addProperty(p,curGroup);
-	propertyList.setGroupTitle(curGroup,TRANS("Remeshing with LpCVT"));	
-	curGroup++;
-	*/
-	
 
 	//-- Isosurface appearance --
 	p.name=TRANS("Colour");
@@ -567,29 +549,7 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			clearCache();
 			break;
 		}
-		/*
-		case KEY_LPCVT: 
-		{
-			bool b;
-			if(stream_cast(b,value))
-				return false;
-			needUpdate=true;
-			lpcvt = b;
-			//Go in and manually adjust the cached
-			//entries to have the new value, rather
-			//than doing a full recomputation
-			if(cacheOK)
-			{
-				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
-				{	
-					OpenVDBGridStreamData *vdbgs;
-					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
-					vdbgs->lpcvt = lpcvt;
-				}
-			}
-			break;
-		}	
-		*/
+
 		case KEY_VOXELSIZE: 
 		{
 			float f;
@@ -756,8 +716,6 @@ bool LukasAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsign
 
 			f << tabs(depth+1) << "</enabledions>" << endl;
 			
-			f << tabs(depth+1) << "<LpCVT=\""<<lpcvt<< "\"/>"  << endl;
-			
 			f << tabs(depth+1) << "<colour r=\"" <<  rgba.r()<< "\" g=\"" << rgba.g() << "\" b=\"" <<rgba.b()
 				<< "\" a=\"" << rgba.a() << "\"/>" <<endl;
 				
@@ -815,11 +773,7 @@ bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	if(tmpFloat <= 0.0f)
 		return false;
 	adaptivity=tmpFloat;
-	
-	bool tmpBool = false;
-	if(!XMLGetNextElemAttrib(nodePtr,tmpBool,"LpCVT","value"))
-		return false;
-	lpcvt=tmpBool;
+
 	
 	//Retrieve colour
 	//====
