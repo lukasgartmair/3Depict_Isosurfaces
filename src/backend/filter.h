@@ -91,7 +91,7 @@ extern const char *FILTER_NAMES[];
 //the number of stream types that we can have.
 //Current bitmask using functions are
 //	VisController::safeDeleteFilterList
-const unsigned int NUM_STREAM_TYPES=6;
+const unsigned int NUM_STREAM_TYPES=7;
 const unsigned int STREAMTYPE_MASK_ALL= ((1<<(NUM_STREAM_TYPES)) -1 ) & 0x000000FF;
 enum
 {

@@ -481,7 +481,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	//-- 
 	propertyList.setGroupTitle(curGroup,TRANS("Isosurface"));	
 	curGroup++;
-	
+	/*
 	//-- Remeshing with LpCVT
 	p.name=TRANS("LpCVT");
 	p.data=boolStrEnc(lpcvt);
@@ -491,7 +491,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.addProperty(p,curGroup);
 	propertyList.setGroupTitle(curGroup,TRANS("Remeshing with LpCVT"));	
 	curGroup++;
-	
+	*/
 	
 
 	//-- Isosurface appearance --
@@ -567,7 +567,7 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			clearCache();
 			break;
 		}
-		
+		/*
 		case KEY_LPCVT: 
 		{
 			bool b;
@@ -589,7 +589,7 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 			}
 			break;
 		}	
-
+		*/
 		case KEY_VOXELSIZE: 
 		{
 			float f;
