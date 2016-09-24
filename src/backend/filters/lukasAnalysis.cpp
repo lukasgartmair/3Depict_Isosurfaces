@@ -66,14 +66,7 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
 Filter *LukasAnalysisFilter::cloneUncached() const
 {
 	LukasAnalysisFilter *p=new LukasAnalysisFilter();
-
-	//We are copying whether to cache or not,
-	//not the cache itself
-	p->cache=cache;
-	p->cacheOK=false;
-	p->userString=userString;
-	return p;
-
+	
 	p->rgba=rgba;
 	
 	p->numeratorAll=numeratorAll;
@@ -95,8 +88,9 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 		*(p->rsdIncoming) = *rsdIncoming;
 	}
 	else
+	{
 		p->rsdIncoming=0;
-
+	}
 	p->colourMap = colourMap;
 
 	p->nColours = nColours;
@@ -104,6 +98,9 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 	p->autoColourMap = autoColourMap;
 	p->colourMapBounds[0] = colourMapBounds[0];
 	p->colourMapBounds[1] = colourMapBounds[1];
+
+	//We are copying whether to cache or not,
+	//not the cache itself
 
 	p->cache=cache;
 	p->cacheOK=false;
@@ -131,8 +128,15 @@ size_t LukasAnalysisFilter::numBytesForCache(size_t nObjects) const
 {
 	//Return the number of bytes of memory used by this grid. 
 	// function implemented in OpenVDB
-	//return grid->memUsage();
-	return 0;
+	//size_t num_bytes_for_cache = grid->memUsage();
+	// but how can i get access to the grid from here?
+	// as the function is a template only size_t nObjects can go in
+	// maybe i create a new template in filter.cpp
+	// but then i am still left with the problem that i need to pass the grid somewhere
+	
+	// current size is ca. the result of memUsage of the division grid cu / al + cu
+	size_t num_bytes_for_cache =  2000000;
+	return num_bytes_for_cache;
 }
 
 void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
@@ -221,20 +225,11 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 		return 0;
 	}
 
-
-
 	// Initialize the OpenVDB library.  This must be called at least
     	// once per program and may safely be called multiple times.
 	openvdb::initialize();
 
 	const float background = 0.0f;	
-
-	// initialize grids
-	openvdb::FloatGrid::Ptr denominator_grid = openvdb::FloatGrid::create(background);
-	openvdb::FloatGrid::Accessor denominator_accessor = denominator_grid->getAccessor();
-
-	openvdb::FloatGrid::Ptr numerator_grid = openvdb::FloatGrid::create(background);
-	openvdb::FloatGrid::Accessor numerator_accessor = numerator_grid->getAccessor();
 
 	// initialize a grid where the division result is stored
 	openvdb::FloatGrid::Ptr divgrid = openvdb::FloatGrid::create(background);
@@ -242,6 +237,13 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	// do i have to get the actual entry size or is it just important that it is used/filled?
 	if(vdbCache->activeVoxelCount() == 0)
 	{
+
+		// initialize nominator and denominator grids
+		openvdb::FloatGrid::Ptr denominator_grid = openvdb::FloatGrid::create(background);
+		openvdb::FloatGrid::Accessor denominator_accessor = denominator_grid->getAccessor();
+
+		openvdb::FloatGrid::Ptr numerator_grid = openvdb::FloatGrid::create(background);
+		openvdb::FloatGrid::Accessor numerator_accessor = numerator_grid->getAccessor();
 
 		const RangeFile *r = rsdIncoming->rangeFile;
 	
@@ -371,6 +373,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 		divgrid->evalMinMax(minVal,maxVal);
 		std::cout << " eval min max divgrid after division" << " = " << minVal << " , " << maxVal << std::endl;
 		std::cout << " active voxel count divgrid after division" << " = " << divgrid->activeVoxelCount() << std::endl;
+		std::cout << " memory usage in bytes divgrid after division" << " = " << divgrid->memUsage() << std::endl;
 
 		// Associate a scaling transform with the grid that sets the voxel size
 		// to voxel_size units in world space.
@@ -388,9 +391,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	}
 
 
-
-
-
 	// manage the filter output
 
 	OpenVDBGridStreamData *gs = new OpenVDBGridStreamData();
@@ -406,18 +406,21 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	gs->b=rgba.b();
 	gs->a=rgba.a();
 	
-	gs->cached=1;
-	cacheOK=true;
-	filterOutputs.push_back(gs);
-	
+	if(cache)
+	{
+		gs->cached=1;
+		cacheOK=true;
+		filterOutputs.push_back(gs);
+	}
+	else
+	{
+		gs->cached=0;
+	}
 	//Store the vdbgrid on the output
 	getOut.push_back(gs);
 
 	return 0;
 }
-
-
-
 
 void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 {
@@ -925,19 +928,16 @@ bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 unsigned int LukasAnalysisFilter::getRefreshBlockMask() const
 {
 	return 0;
-	//return STREAMTYPE_MASK_ALL;
 }
 
 unsigned int LukasAnalysisFilter::getRefreshEmitMask() const
 {
-	return  STREAM_TYPE_OPENVDBGRID | STREAM_TYPE_DRAW | STREAM_TYPE_RANGE;
-	//return 0;
+	return 0;
 }
 
 unsigned int LukasAnalysisFilter::getRefreshUseMask() const
 {
-	return  STREAM_TYPE_RANGE |  STREAM_TYPE_OPENVDBGRID | STREAM_TYPE_IONS;
-	//return 0;
+	return STREAM_TYPE_OPENVDBGRID | STREAM_TYPE_RANGE;
 }
 
 
