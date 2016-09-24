@@ -138,6 +138,9 @@ size_t LukasAnalysisFilter::numBytesForCache(size_t nObjects) const
 void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
 				std::vector<const FilterStreamData *> &dataOut)
 {
+
+	
+
 	const RangeStreamData *c=0;
 	//Determine if we have an incoming range
 	for (size_t i = 0; i < dataIn.size(); i++) 
@@ -374,13 +377,14 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 		divgrid->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
 
-
+		vdbCache = divgrid->deepCopy();
+		
 	}
 
 	else
 	{
 		//Use the cached value
-		divgrid = vdbCache;
+		divgrid = vdbCache->deepCopy();
 	}
 
 

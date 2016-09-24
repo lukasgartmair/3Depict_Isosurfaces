@@ -60,9 +60,9 @@ class LukasAnalysisFilter : public Filter
 		// Initialize the OpenVDB Grid Stream
 		OpenVDBGridStreamData *open_vdb_grid_stream;
 		
-		
 		//Cache to use for vdbgrid info
-		openvdb::FloatGrid::Ptr vdbCache;
+		// console warning: non-static data member initializers only available with -std=c++11 or -std=gnu++11
+		openvdb::FloatGrid::Ptr vdbCache = openvdb::FloatGrid::create(0.0);
 
 	public:
 		//!Constructor

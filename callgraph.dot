@@ -1,0 +1,20 @@
+digraph "callgraph" {
+  F56a3708 [label="_dl_runtime_resolve_avx <cycle...\n3 556 604 288"];
+  F56a4698 [label="free\n346 227 130"];
+  F56ca778 [label="operator delete(void*) <cycle ...\n352 851 214"];
+  F5771618 [label="main\n3 029 516 635"];
+  F57aaa48 [label="(below main)\n3 556 598 742"];
+  F58363a8 [label="malloc <cycle 5>\n400 978 944"];
+  F59706f8 [label="_int_free\n250 114 768"];
+  F5972318 [label="_int_malloc\n223 105 909"];
+  Fa206370 [label="<cycle 5>\n3 029 516 624"];
+  F56a3708 -> F57aaa48 [weight=3,label="3 556 598 742 (1x)"];
+  F56a4698 -> F59706f8 [weight=2,label="250 114 768 (3 302 913x)"];
+  F56ca778 -> F56a4698 [weight=2,label="346 227 130 (3 312 041x)"];
+  F5771618 -> Fa206370 [weight=3,label="3 556 016 024 (1x)"];
+  F57aaa48 -> F5771618 [weight=3,label="3 556 016 037 (1x)"];
+  F58363a8 -> F5972318 [weight=2,label="223 105 909 (3 499 651x)"];
+  Fa206370 -> F56a3708 [weight=2,label="527 087 653 (0x)"];
+  Fa206370 -> F56ca778 [weight=2,label="352 851 214 (0x)"];
+  Fa206370 -> F58363a8 [weight=2,label="400 978 944 (0x)"];
+}
