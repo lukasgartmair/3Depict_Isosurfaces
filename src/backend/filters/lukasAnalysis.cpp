@@ -107,8 +107,32 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 
 	p->cache=cache;
 	p->cacheOK=false;
+	
 	p->userString=userString;
 	return p;
+}
+
+void LukasAnalysisFilter::clearCache() 
+{
+	vdbCache->clear();
+	Filter::clearCache();
+}
+
+
+// little workaround as the filter template number of bytes only takes 
+// size_t n objects
+/*
+size_t getGridMemUsage(openvdb::FloatGrid::Ptr grid)
+{
+	return grid->memUsage();
+}
+*/
+size_t LukasAnalysisFilter::numBytesForCache(size_t nObjects) const
+{
+	//Return the number of bytes of memory used by this grid. 
+	// function implemented in OpenVDB
+	//return grid->memUsage();
+	return 0;
 }
 
 void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
@@ -184,6 +208,18 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {	
 
+	//Disallow copying of anything in the blockmask. Copy everything else
+	propagateStreams(dataIn,getOut,getRefreshBlockMask(),true);
+	
+	//use the cached copy if we have it.
+	if(cacheOK)
+	{
+		propagateCache(getOut);
+		return 0;
+	}
+
+
+
 	// Initialize the OpenVDB library.  This must be called at least
     	// once per program and may safely be called multiple times.
 	openvdb::initialize();
@@ -197,144 +233,159 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	openvdb::FloatGrid::Ptr numerator_grid = openvdb::FloatGrid::create(background);
 	openvdb::FloatGrid::Accessor numerator_accessor = numerator_grid->getAccessor();
 
-	const RangeFile *r = rsdIncoming->rangeFile;
+	// initialize a grid where the division result is stored
+	openvdb::FloatGrid::Ptr divgrid = openvdb::FloatGrid::create(background);
 	
-	for(size_t ui=0;ui<dataIn.size();ui++)
+	// do i have to get the actual entry size or is it just important that it is used/filled?
+	if(vdbCache->activeVoxelCount() == 0)
 	{
-		//Check for ion stream types. Don't use anything else in counting
-		if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
-			continue;
 
-		const IonStreamData  *ions; 
-		ions = (const IonStreamData *)dataIn[ui];
-		
-		//get the denominator ions
-		unsigned int ionID;
-		ionID = rsdIncoming->rangeFile->getIonID(ions->data[0].getMassToCharge());
-
-		bool thisDenominatorIonEnabled;
-		if(ionID!=(unsigned int)-1)
-			thisDenominatorIonEnabled=enabledIons[1][ionID];
-		else
-			thisDenominatorIonEnabled=false;
-
-		// get the numerator ions
-		ionID = getIonstreamIonID(ions,rsdIncoming->rangeFile);
-
-		bool thisNumeratorIonEnabled;
-		if(ionID!=(unsigned int)-1)
-			thisNumeratorIonEnabled=enabledIons[0][ionID];
-		else
-			thisNumeratorIonEnabled=false;
-
-		for(size_t uj=0;uj<ions->data.size(); uj++)
-		{
-			const int xyzs = 3;
-			std::vector<float> atom_position(xyzs); 
-			for (int i=0;i<xyzs;i++)
-			{
-				atom_position[i] = ions->data[uj].getPos()[i];
-			}
+		const RangeFile *r = rsdIncoming->rangeFile;
 	
-			// 1st step - project the current atom position to unit voxel i.e. from 0 to 1
-			std::vector<float> position_in_unit_voxel;
-			position_in_unit_voxel = projectAtompositionToUnitvoxel(atom_position, voxel_size);
+		for(size_t ui=0;ui<dataIn.size();ui++)
+		{
+			//Check for ion stream types. Don't use anything else in counting
+			if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
+				continue;
 
-			// 2nd step - determine each contribution to the adjecent 8 voxels outgoining from the position in the unit voxel
-			std::vector<float> volumes_of_subcuboids;
-			std::vector<float> contributions_to_adjacent_voxels;
-			bool vertex_corner_coincidence = false;
-			
-			vertex_corner_coincidence = checkVertexCornerCoincidence(position_in_unit_voxel);
-			
-			// in case of coincidence of atom and voxel the contribution becomes 100 percent
-			if (vertex_corner_coincidence == false)
-			{
-				volumes_of_subcuboids = calcSubvolumes(position_in_unit_voxel);
-				contributions_to_adjacent_voxels = calcVoxelContributions(volumes_of_subcuboids);
-			}
+			const IonStreamData  *ions; 
+			ions = (const IonStreamData *)dataIn[ui];
+		
+			//get the denominator ions
+			unsigned int ionID;
+			ionID = rsdIncoming->rangeFile->getIonID(ions->data[0].getMassToCharge());
+
+			bool thisDenominatorIonEnabled;
+			if(ionID!=(unsigned int)-1)
+				thisDenominatorIonEnabled=enabledIons[1][ionID];
 			else
-			{
-				contributions_to_adjacent_voxels = handleVertexCornerCoincidence(position_in_unit_voxel);
-			}
-			
-			// 3rd step - determine the adjacent voxel indices in the actual grid
-			std::vector<std::vector<float> > adjacent_voxel_vertices;
-			adjacent_voxel_vertices = determineAdjacentVoxelVertices(atom_position, voxel_size);
-			
-			// 4th step - assign each of the 8 adjacent voxels the corresponding contribution that results from the atom position in the unit voxel
-			const int number_of_adjacent_voxels = 8;
-			std::vector<float> current_voxel_index;
-			for (int i=0;i<number_of_adjacent_voxels;i++)
-			{
-				current_voxel_index = adjacent_voxel_vertices[i];
-				// normalized voxel indices based on 00, 01, 02 etc. // very important otherwise there will be spacings
-				openvdb::Coord ijk(current_voxel_index[0], current_voxel_index[1], current_voxel_index[2]);
+				thisDenominatorIonEnabled=false;
 
-				// write to denominator grid
-				if(thisDenominatorIonEnabled)
+			// get the numerator ions
+			ionID = getIonstreamIonID(ions,rsdIncoming->rangeFile);
+
+			bool thisNumeratorIonEnabled;
+			if(ionID!=(unsigned int)-1)
+				thisNumeratorIonEnabled=enabledIons[0][ionID];
+			else
+				thisNumeratorIonEnabled=false;
+
+			for(size_t uj=0;uj<ions->data.size(); uj++)
+			{
+				const int xyzs = 3;
+				std::vector<float> atom_position(xyzs); 
+				for (int i=0;i<xyzs;i++)
 				{
+					atom_position[i] = ions->data[uj].getPos()[i];
+				}
+	
+				// 1st step - project the current atom position to unit voxel i.e. from 0 to 1
+				std::vector<float> position_in_unit_voxel;
+				position_in_unit_voxel = projectAtompositionToUnitvoxel(atom_position, voxel_size);
+
+				// 2nd step - determine each contribution to the adjecent 8 voxels outgoining from the position in the unit voxel
+				std::vector<float> volumes_of_subcuboids;
+				std::vector<float> contributions_to_adjacent_voxels;
+				bool vertex_corner_coincidence = false;
+			
+				vertex_corner_coincidence = checkVertexCornerCoincidence(position_in_unit_voxel);
+			
+				// in case of coincidence of atom and voxel the contribution becomes 100 percent
+				if (vertex_corner_coincidence == false)
+				{
+					volumes_of_subcuboids = calcSubvolumes(position_in_unit_voxel);
+					contributions_to_adjacent_voxels = calcVoxelContributions(volumes_of_subcuboids);
+				}
+				else
+				{
+					contributions_to_adjacent_voxels = handleVertexCornerCoincidence(position_in_unit_voxel);
+				}
+			
+				// 3rd step - determine the adjacent voxel indices in the actual grid
+				std::vector<std::vector<float> > adjacent_voxel_vertices;
+				adjacent_voxel_vertices = determineAdjacentVoxelVertices(atom_position, voxel_size);
+			
+				// 4th step - assign each of the 8 adjacent voxels the corresponding contribution that results from the atom position in the unit voxel
+				const int number_of_adjacent_voxels = 8;
+				std::vector<float> current_voxel_index;
+				for (int i=0;i<number_of_adjacent_voxels;i++)
+				{
+					current_voxel_index = adjacent_voxel_vertices[i];
+					// normalized voxel indices based on 00, 01, 02 etc. // very important otherwise there will be spacings
+					openvdb::Coord ijk(current_voxel_index[0], current_voxel_index[1], current_voxel_index[2]);
+
+					// write to denominator grid
+					if(thisDenominatorIonEnabled)
+					{
 					
-					denominator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor.getValue(ijk));
-				}
-				else
-				{
-					denominator_accessor.setValue(ijk, 0.0 + denominator_accessor.getValue(ijk));
-				}
+						denominator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor.getValue(ijk));
+					}
+					else
+					{
+						denominator_accessor.setValue(ijk, 0.0 + denominator_accessor.getValue(ijk));
+					}
 
-				// write to numerator grid
-				if(thisNumeratorIonEnabled)
-				{	
-					numerator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor.getValue(ijk));
-				}
-				else
-				{
-					numerator_accessor.setValue(ijk, 0.0 + numerator_accessor.getValue(ijk));
+					// write to numerator grid
+					if(thisNumeratorIonEnabled)
+					{	
+						numerator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor.getValue(ijk));
+					}
+					else
+					{
+						numerator_accessor.setValue(ijk, 0.0 + numerator_accessor.getValue(ijk));
+					}
 				}
 			}
 		}
+
+		float minVal = 0.0;
+		float maxVal = 0.0;
+		denominator_grid->evalMinMax(minVal,maxVal);
+		std::cout << " eval min max denominator grid" << " = " << minVal << " , " << maxVal << std::endl;
+		std::cout << " active voxel count denominator grid" << " = " << denominator_grid->activeVoxelCount() << std::endl;
+
+		numerator_grid->evalMinMax(minVal,maxVal);
+		std::cout << " eval min max numerator grid" << " = " << minVal << " , " << maxVal << std::endl;
+		std::cout << " active voxel count numerator grid" << " = " << numerator_grid->activeVoxelCount() << std::endl;
+
+		// composite.h operations modify the first grid and leave the second grid emtpy !!!!!!!!!!!!!!!!!!
+		// compute a = a / b
+		openvdb::tools::compDiv(*numerator_grid, *denominator_grid);
+	
+		divgrid = numerator_grid->deepCopy();
+
+		//check for negative nans and infs introduced by the division
+		//set them to zero in order not to obtain nan mesh coordinates
+
+		for (openvdb::FloatGrid::ValueAllIter iter = divgrid->beginValueAll(); iter; ++iter)
+		{   
+		    if (std::isfinite(iter.getValue()) == false)
+		{
+		    iter.setValue(0.0);
+		}
+		}
+	
+		divgrid->evalMinMax(minVal,maxVal);
+		std::cout << " eval min max divgrid after division" << " = " << minVal << " , " << maxVal << std::endl;
+		std::cout << " active voxel count divgrid after division" << " = " << divgrid->activeVoxelCount() << std::endl;
+
+		// Associate a scaling transform with the grid that sets the voxel size
+		// to voxel_size units in world space.
+
+		divgrid->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
+
+
 	}
 
-	float minVal = 0.0;
-	float maxVal = 0.0;
-	denominator_grid->evalMinMax(minVal,maxVal);
-	std::cout << " eval min max denominator grid" << " = " << minVal << " , " << maxVal << std::endl;
-	std::cout << " active voxel count denominator grid" << " = " << denominator_grid->activeVoxelCount() << std::endl;
-
-	numerator_grid->evalMinMax(minVal,maxVal);
-	std::cout << " eval min max numerator grid" << " = " << minVal << " , " << maxVal << std::endl;
-	std::cout << " active voxel count numerator grid" << " = " << numerator_grid->activeVoxelCount() << std::endl;
-
-	// composite.h operations modify the first grid and leave the second grid emtpy !!!!!!!!!!!!!!!!!!
-	// compute a = a / b
-	openvdb::tools::compDiv(*numerator_grid, *denominator_grid);
-	
-	// initialize a grid where the division in stored
-	openvdb::FloatGrid::Ptr divgrid = openvdb::FloatGrid::create(background);
-	
-	divgrid = numerator_grid->deepCopy();
-
-	//check for negative nans and infs introduced by the division
-	//set them to zero in order not to obtain nan mesh coordinates
-
-	for (openvdb::FloatGrid::ValueAllIter iter = divgrid->beginValueAll(); iter; ++iter)
-	{   
-	    if (std::isfinite(iter.getValue()) == false)
+	else
 	{
-	    iter.setValue(0.0);
+		//Use the cached value
+		divgrid = vdbCache;
 	}
-	}
-	
-	divgrid->evalMinMax(minVal,maxVal);
-	std::cout << " eval min max divgrid after division" << " = " << minVal << " , " << maxVal << std::endl;
-	std::cout << " active voxel count divgrid after division" << " = " << divgrid->activeVoxelCount() << std::endl;
 
-	// Associate a scaling transform with the grid that sets the voxel size
-	// to voxel_size units in world space.
 
-	divgrid->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
 
-	// volume to mesh conversion is done in Drawables.cpp where the mesh is updated
+
 
 	// manage the filter output
 
@@ -362,10 +413,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 }
 
 
-size_t LukasAnalysisFilter::numBytesForCache(size_t nObjects) const
-{
-	return 0;
-}
 
 
 void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const

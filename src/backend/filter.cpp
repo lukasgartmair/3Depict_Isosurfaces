@@ -837,33 +837,36 @@ void VoxelStreamData::clear()
 OpenVDBGridStreamData::OpenVDBGridStreamData() :
 	r(0.5f),g(0.5f),b(0.5f),a(0.5f), isovalue(0.07f), adaptivity(0.0f), voxelsize(2.0f)
 {
-
 	streamType=STREAM_TYPE_OPENVDBGRID;
-	openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create();
-	
+	openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create();	
 }
 
 OpenVDBGridStreamData::OpenVDBGridStreamData(const Filter *f) : FilterStreamData(f),
 	r(0.5f),g(0.5f),b(0.5f),a(0.5f), isovalue(0.07f), adaptivity(0.0f), voxelsize(2.0f)
 {
-
 	streamType=STREAM_TYPE_OPENVDBGRID;
 	openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create();
-
 }
 
 OpenVDBGridStreamData::~OpenVDBGridStreamData()
 {
-	//if(grids)
-	//	delete grids;
+
+//argument given to ‘delete’, expected pointer
+// is grid not recognized as a grid ptr? why?
+/*
+	if(grid)
+		delete grid;
+*/
 }
 
-size_t OpenVDBGridStreamData::getNumBasicObjects() const 
+size_t OpenVDBGridStreamData::getNumBasicObjects() const
 {
-};
+	return grid->activeVoxelCount(); 
+}
 
 void OpenVDBGridStreamData::clear()
 {
+	grid->clear();
 }
 
 

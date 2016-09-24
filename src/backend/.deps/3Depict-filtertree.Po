@@ -1249,31 +1249,11 @@ backend/3Depict-filtertree.o: backend/filtertree.cpp \
  backend/filters/../../common/translation.h \
  backend/filters/openvdb_includes.h \
  backend/filters/contribution_transfer_function_TestSuite/CTF_functions.h \
- backend/filters/LpCVT/lpcvt_functions.h \
- backend/filters/LpCVT/combinatorics/mesh.h \
- backend/filters/LpCVT/combinatorics/../common/types.h \
- backend/filters/LpCVT/combinatorics/../common/vecg.h \
- backend/filters/LpCVT/combinatorics/../common/matrix.h \
- backend/filters/LpCVT/combinatorics/../common/plane.h \
- backend/filters/LpCVT/combinatorics/symbolic_vertex.h \
- backend/filters/LpCVT/combinatorics/../common/containers.h \
- backend/filters/LpCVT/combinatorics/delaunay.h \
- backend/filters/LpCVT/combinatorics/delaunay_skel.h \
- backend/filters/LpCVT/combinatorics/voronoi_cell.h \
- backend/filters/LpCVT/combinatorics/RVD.h \
- backend/filters/LpCVT/combinatorics/mesh.h \
- backend/filters/LpCVT/combinatorics/delaunay.h \
- backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h \
- backend/filters/LpCVT/combinatorics/exact/../../common/types.h \
- backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h \
- backend/filters/LpCVT/algebra/F_Lp.h \
- backend/filters/LpCVT/algebra/../common/types.h \
- backend/filters/LpCVT/common/line_stream.h backend/filters/boundingBox.h \
- backend/filters/ionDownsample.h backend/filters/dataLoad.h \
- backend/filters/../../common/basics.h backend/filters/profile.h \
- backend/filters/externalProgram.h backend/filters/ionClip.h \
- backend/filters/ionColour.h backend/filters/rangeFile.h \
- backend/filters/clusterAnalysis.h \
+ backend/filters/boundingBox.h backend/filters/ionDownsample.h \
+ backend/filters/dataLoad.h backend/filters/../../common/basics.h \
+ backend/filters/profile.h backend/filters/externalProgram.h \
+ backend/filters/ionClip.h backend/filters/ionColour.h \
+ backend/filters/rangeFile.h backend/filters/clusterAnalysis.h \
  backend/filters/algorithms/K3DTree-mk2.h \
  backend/filters/spatialAnalysis.h backend/filters/spectrumPlot.h \
  backend/filters/transform.h backend/filters/voxelise.h \
@@ -4377,46 +4357,6 @@ backend/filters/../../common/translation.h:
 backend/filters/openvdb_includes.h:
 
 backend/filters/contribution_transfer_function_TestSuite/CTF_functions.h:
-
-backend/filters/LpCVT/lpcvt_functions.h:
-
-backend/filters/LpCVT/combinatorics/mesh.h:
-
-backend/filters/LpCVT/combinatorics/../common/types.h:
-
-backend/filters/LpCVT/combinatorics/../common/vecg.h:
-
-backend/filters/LpCVT/combinatorics/../common/matrix.h:
-
-backend/filters/LpCVT/combinatorics/../common/plane.h:
-
-backend/filters/LpCVT/combinatorics/symbolic_vertex.h:
-
-backend/filters/LpCVT/combinatorics/../common/containers.h:
-
-backend/filters/LpCVT/combinatorics/delaunay.h:
-
-backend/filters/LpCVT/combinatorics/delaunay_skel.h:
-
-backend/filters/LpCVT/combinatorics/voronoi_cell.h:
-
-backend/filters/LpCVT/combinatorics/RVD.h:
-
-backend/filters/LpCVT/combinatorics/mesh.h:
-
-backend/filters/LpCVT/combinatorics/delaunay.h:
-
-backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h:
-
-backend/filters/LpCVT/combinatorics/exact/../../common/types.h:
-
-backend/filters/LpCVT/combinatorics/exact/RVD_predicates.h:
-
-backend/filters/LpCVT/algebra/F_Lp.h:
-
-backend/filters/LpCVT/algebra/../common/types.h:
-
-backend/filters/LpCVT/common/line_stream.h:
 
 backend/filters/boundingBox.h:
 

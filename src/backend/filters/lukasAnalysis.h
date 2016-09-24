@@ -22,7 +22,6 @@
 #include "../../common/translation.h"
 #include "openvdb_includes.h"
 #include "contribution_transfer_function_TestSuite/CTF_functions.h"
-#include "LpCVT/lpcvt_functions.h"
 
 
 
@@ -60,13 +59,24 @@ class LukasAnalysisFilter : public Filter
 
 		// Initialize the OpenVDB Grid Stream
 		OpenVDBGridStreamData *open_vdb_grid_stream;
+		
+		
+		//Cache to use for vdbgrid info
+		openvdb::FloatGrid::Ptr vdbCache;
 
 	public:
 		//!Constructor
 		LukasAnalysisFilter();
-
+		~LukasAnalysisFilter() { if(rsdIncoming) delete rsdIncoming;}
 		//!Duplicate filter contents, excluding cache.
 		Filter *cloneUncached() const;
+		
+		virtual void clearCache();
+
+		//!Get approx number of bytes for caching output
+		size_t numBytesForCache(size_t nObjects) const;
+		
+		//size_t getGridMemUsage(openvdb::FloatGrid::Ptr grid);
 
 		//Perform filter intialisation, for pre-detection of range data
 		virtual void initFilter(const std::vector<const FilterStreamData *> &dataIn,
@@ -78,8 +88,6 @@ class LukasAnalysisFilter : public Filter
 		unsigned int refresh(const std::vector<const FilterStreamData *> &dataIn,
 							std::vector<const FilterStreamData *> &dataOut,
 							ProgressData &progress);
-		//!Get (approx) number of bytes required for cache
-		size_t numBytesForCache(size_t nObjects) const;
 
 		//!return type ID
 		unsigned int getType() const { return FILTER_TYPE_LUKAS_ANALYSIS;}
