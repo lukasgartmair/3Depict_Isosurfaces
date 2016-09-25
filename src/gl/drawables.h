@@ -1200,7 +1200,11 @@ private:
 	openvdb::FloatGrid::Ptr grid;
 
 	//!Warning. Although I declare this as const, I do some naughty mutating to the cache.
-	void updateMesh() const;	
+	void updateMesh() const;
+
+	mutable std::vector<openvdb::Vec3s> points;
+  	mutable std::vector<openvdb::Vec3I> triangles;
+  	mutable std::vector<openvdb::Vec4I> quads;	
 	
 	double isovalue;
 	double adaptivity;

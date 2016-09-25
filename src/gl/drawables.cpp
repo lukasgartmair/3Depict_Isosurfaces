@@ -2730,9 +2730,6 @@ void LukasDrawIsoSurface::draw() const
 {
 
 
-	std::vector<openvdb::Vec3s> points;
-  	std::vector<openvdb::Vec3I> triangles;
-  	std::vector<openvdb::Vec4I> quads;
 
 	if(!cacheOK)
 	{
@@ -2741,8 +2738,11 @@ void LukasDrawIsoSurface::draw() const
 		// i don't know how to make the stuff visible
 
 		openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*grid, points, triangles, quads, isovalue, adaptivity);	
+		
 		cacheOK=true;
-	
+		
+		
+
 	}
 
 	int non_finites_counter = 0;
@@ -2840,7 +2840,6 @@ void LukasDrawIsoSurface::draw() const
 	}
 
 	//std::cout << "nans in vertex normals" << " = " << non_finite_tris_counter << std::endl;
-
 
 
 	glColor4f(r,g,b,a);
