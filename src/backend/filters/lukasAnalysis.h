@@ -23,9 +23,6 @@
 #include "openvdb_includes.h"
 #include "contribution_transfer_function_TestSuite/CTF_functions.h"
 
-
-
-//!Ion derived information filter, things like volume, composition, etc.
 class LukasAnalysisFilter : public Filter
 {
 	private:
@@ -56,9 +53,6 @@ class LukasAnalysisFilter : public Filter
 		bool autoColourMap;
 		//Colour map start/end
 		float colourMapBounds[2];
-
-		// Initialize the OpenVDB Grid Stream
-		OpenVDBGridStreamData *open_vdb_grid_stream;
 		
 		//Cache to use for vdbgrid info
 		// console warning: non-static data member initializers only available with -std=c++11 or -std=gnu++11
