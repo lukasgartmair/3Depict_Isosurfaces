@@ -234,7 +234,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	// initialize a grid where the division result is stored
 	openvdb::FloatGrid::Ptr divgrid = openvdb::FloatGrid::create(background);
 	
-	// do i have to get the actual entry size or is it just important that it is used/filled?
+	// do i have to get the actual entry size or is it just important that it is not used/filled?
 	// maybe if memory usage != 0?
 	if(vdbCache->activeVoxelCount() == 0)
 	{
