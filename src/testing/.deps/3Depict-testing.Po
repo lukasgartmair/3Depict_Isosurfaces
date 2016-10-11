@@ -1,6 +1,0 @@
-testing/3Depict-testing.o: testing/testing.cpp /usr/include/stdc-predef.h \
- testing/testing.h
-
-/usr/include/stdc-predef.h:
-
-testing/testing.h:

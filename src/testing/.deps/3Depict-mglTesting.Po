@@ -1,4 +1,0 @@
-testing/3Depict-mglTesting.o: testing/mglTesting.cpp \
- /usr/include/stdc-predef.h
-
-/usr/include/stdc-predef.h:
