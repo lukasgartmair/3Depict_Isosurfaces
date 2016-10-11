@@ -1,0 +1,22 @@
+From 21a4fbabb49b3b1c03d58168690a307e75192cfe Mon Sep 17 00:00:00 2001
+From: D Haley <mycae@gmx.com>
+Date: Tue, 4 Oct 2016 10:59:30 +0100
+Subject: * Fix compilation error, due to bug 	- compiler assertion on stream
+ name count
+
+
+diff --git a/src/backend/filter.cpp b/src/backend/filter.cpp
+index 888ce75..aa320de 100755
+--- a/src/backend/filter.cpp
++++ b/src/backend/filter.cpp
+@@ -55,7 +55,9 @@ const char *STREAM_NAMES[] = { NTRANS("Ion"),
+ 				NTRANS("2D Plot"),
+ 				NTRANS("Draw"),
+ 				NTRANS("Range"),
+-				NTRANS("Voxel")};
++				NTRANS("Voxel"),
++				NTRANS("OpenVDB_voxel")
++				};
+ 
+ //Internal names for each filter
+ const char *FILTER_NAMES[] = { "posload",

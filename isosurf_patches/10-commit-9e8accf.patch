@@ -1,0 +1,56 @@
+From 9e8accf74a6831789db9e36fefc1bde62c92e50e Mon Sep 17 00:00:00 2001
+From: D Haley <mycae@gmx.com>
+Date: Tue, 4 Oct 2016 11:01:14 +0100
+Subject: * Fix bugs caught by assertions 	- unit test crash due to
+ missing rsdIncoming (rangefile) 	- Emit mask not set to match what is
+ actually emitted 	- uninitialised variable copied (showColourBar),
+ caught by ubsan
+
+
+diff --git a/src/backend/filters/lukasAnalysis.cpp b/src/backend/filters/lukasAnalysis.cpp
+index 01513ba..fca4621 100755
+--- a/src/backend/filters/lukasAnalysis.cpp
++++ b/src/backend/filters/lukasAnalysis.cpp
+@@ -59,6 +59,8 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
+ 	autoColourMap=true;
+ 	colourMapBounds[0]=0;
+ 	colourMapBounds[1]=1;
++	showColourBar=false;
++
+ 	cacheOK=false;
+ 	cache=true; //By default, we should cache, but decision is made higher up
+ 	rsdIncoming=0;
+@@ -394,6 +396,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
+ 
+ 
+ 	// manage the filter output
++	std::cerr << "Completing evaluation of VDB grid..." << endl;
+ 
+ 	OpenVDBGridStreamData *gs = new OpenVDBGridStreamData();
+ 	gs->parent=this;
+@@ -426,6 +429,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
+ 
+ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
+ {
++	if(!rsdIncoming)
++		return;
+ 
+ 	// group computation
+ 
+@@ -443,6 +448,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
+ 	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
+ 	
+ 	curGroup++;
++
+ 	
+ 	// group numerator
+ 		
+@@ -934,7 +940,7 @@ unsigned int LukasAnalysisFilter::getRefreshBlockMask() const
+ 
+ unsigned int LukasAnalysisFilter::getRefreshEmitMask() const
+ {
+-	return 0;
++	return STREAM_TYPE_OPENVDBGRID;
+ }
+ 
+ unsigned int LukasAnalysisFilter::getRefreshUseMask() const

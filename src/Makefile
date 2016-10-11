@@ -361,10 +361,10 @@ AM_DEFAULT_VERBOSITY = 1
 AUTOCONF = autoconf
 AUTOHEADER = autoheader
 AUTOMAKE = automake-1.15
-AWK = mawk
+AWK = gawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
-CFLAGS = -g -O2 
+CFLAGS = -g -O2
 CPP = gcc -E
 CPPFLAGS = 
 CXX = g++
@@ -396,9 +396,9 @@ INSTALL_DATA = ${INSTALL} -m 644
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_SCRIPT = ${INSTALL}
 INSTALL_STRIP_PROGRAM = $(install_sh) -c -s
-LDFLAGS =  
+LDFLAGS = 
 LIBOBJS = 
-LIBS = 
+LIBS =  -lopenvdb -ltbb -lHalf -lvdb_functions -lCTF_functions
 LN_S = 
 LTLIBOBJS = 
 MAKEINFO = makeinfo
@@ -407,14 +407,6 @@ MGL_LIBS = -lmgl
 MKDIR_P = /bin/mkdir -p
 OBJEXT = o
 OPENMP_FLAGS = 
-OPENVDB_CXXFLAGS = -I/usr/include/openvdb
-OPENVDB_LIBS = -lopenvdb
-VDBFUNCS_CXXFLAGS = -I/OpenVDB_TestSuite/vdb_functions.cpp
-VDBFUNCS_LIBS = -lvdb_functions
-TBB_LIBS = -ltbb
-HALF_LIBS = -lHalf
-CTF_CXXFLAGS = -I/contribution_transfer_function/CTF_functions.cpp
-CTF_LIBS = -lCTF_functions
 PACKAGE = 3depict
 PACKAGE_BUGREPORT = 
 PACKAGE_NAME = 3Depict
@@ -448,10 +440,10 @@ WX_VERSION = 3.0.2
 XMLCONFIG = xml2-config
 XML_CFLAGS = -I/usr/include/libxml2
 XML_LIBS = -lxml2
-abs_builddir = /home/lgartmair/3Depict/src
-abs_srcdir = /home/lgartmair/3Depict/src
-abs_top_builddir = /home/lgartmair/3Depict
-abs_top_srcdir = /home/lgartmair/3Depict
+abs_builddir = /home/lgartmair/3Depict_Isosurfaces/src
+abs_srcdir = /home/lgartmair/3Depict_Isosurfaces/src
+abs_top_builddir = /home/lgartmair/3Depict_Isosurfaces
+abs_top_srcdir = /home/lgartmair/3Depict_Isosurfaces
 ac_ct_CC = gcc
 ac_ct_CXX = g++
 am__include = include
@@ -479,7 +471,7 @@ host_vendor = unknown
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /home/lgartmair/3Depict/install-sh
+install_sh = ${SHELL} /home/lgartmair/3Depict_Isosurfaces/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale
@@ -504,7 +496,7 @@ MSYS_PATH = /c/msys/1.0/local/include/
 3Depict_LDFLAGS = $(LDFLAGS) $(FT_LDFLAGS) $(GSL_LIBS) $(MGL_LIBS)
 3Depict_CXXFLAGS = $(CXXFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) $(WX_CPPFLAGS) \
 	$(GL_FLAGS) $(GSL_CFLAGS) $(MGL_CFLAGS) $(XML_CFLAGS) $(PNG_CFLAGS)  \
-	$(OPENMP_FLAGS) $(DEBUG_FLAGS) $(OPENVDB_CXXFLAGS) $(CTF_CXXFLAGS) $(VDBFUNCS_CXXFLAGS) -pipe 
+	$(OPENMP_FLAGS) $(DEBUG_FLAGS) -pipe 
 
 3Depict_CFLAGS = $(CFLAGS) $(FT_INCLUDES) $(FTGL_CFLAGS) \
 	       $(XML_CFLAGS) $(GSL_CFLAGS)  $(MGL_CFLAGS) $(PNG_CFLAGS) $(QHULL_CFLAGS) \
@@ -512,7 +504,7 @@ MSYS_PATH = /c/msys/1.0/local/include/
 
 3Depict_LDADD = $(LIBS) $(GETTEXT_LIBS) $(WX_LIBS) $(MGL_LIBS) \
 	$(FTGL_LIBS) $(FT_LIBS) $(XML_LIBS) $(GSL_LIBS) $(GL_LIBS) \
-	$(GLU_LIBS) $(QHULL_LIBS) $(PNG_LIBS) $(am__append_2) $(OPENVDB_LIBS) $(TBB_LIBS) $(HALF_LIBS) $(CTF_LIBS) $(VDBFUNCS_LIBS)
+	$(GLU_LIBS) $(QHULL_LIBS) $(PNG_LIBS) $(am__append_2)
 
 #------- Common header files for all sub-modules
 COMMON_SOURCE_FILES = common/pngread.c common/stringFuncs.cpp common/constants.cpp common/xmlHelper.cpp\
@@ -524,9 +516,7 @@ COMMON_HEADER_FILES = common/pngread.h common/stringFuncs.h  common/constants.h 
 			common/array2D.h common/mesh.h common/gsl_helper.h
 
 
-#----------- 
-
-
+#-----------
 
 #------- "Backend" calculation files (non-ui) ----------
 FILTER_FILES = backend/filters/allFilter.cpp backend/filters/filterCommon.cpp \
@@ -537,7 +527,7 @@ FILTER_FILES = backend/filters/allFilter.cpp backend/filters/filterCommon.cpp \
 		backend/filters/ionColour.cpp backend/filters/boundingBox.cpp  \
 		backend/filters/profile.cpp backend/filters/spatialAnalysis.cpp \
 		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
-		contribution_transfer_function/CTF_functions.cpp\
+		backend/filters/lukasAnalysis.cpp\
 		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp \
 		backend/filters/algorithms/binomial.cpp  backend/filters/algorithms/mass.cpp  
 
@@ -548,7 +538,7 @@ FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h
 		backend/filters/ionColour.h backend/filters/boundingBox.h  \
 		backend/filters/profile.h backend/filters/spatialAnalysis.h \
 		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
-		contribution_transfer_function/CTF_functions.h\
+		backend/filters/lukasAnalysis.h \
 		backend/filters/annotation.h backend/filters/geometryHelpers.h \
 		backend/filters/algorithms/binomial.h backend/filters/algorithms/mass.h
 
@@ -601,16 +591,10 @@ BASE_HEADER_FILES = testing/testing.h  wx/wxcommon.h  wx/wxcomponents.h   wincon
 TEST_SOURCE_FILES = testing/mglTesting.cpp
 TEST_HEADER_FILES = testing/mglTesting.h
 #-----------
-
-#-----------  contribution transfer function
-
-CTF_HEADER_FILES = contribution_transfer_function/CTF_functions.h
-#-----------
-
 SOURCE_FILES = $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(GUI_SOURCE_FILES) $(GUI_HEADER_FILES) \
 	       $(FILTER_FILES) $(FILTER_HEADER_FILES) \
 	       ${BACKEND_SOURCE_FILES} ${BACKEND_HEADER_FILES} $(OPENGL_SOURCE_FILES) $(OPENGL_HEADER_FILES) \
-	       $(COMMON_SOURCE_FILES) $(COMMON_HEADER_FILES) $(TEST_SOURCE_FILES) $(TEST_HEADER_FILES) $(CTF_HEADER_FILES)
+	       $(COMMON_SOURCE_FILES) $(COMMON_HEADER_FILES) $(TEST_SOURCE_FILES) $(TEST_HEADER_FILES)
 
 3Depict_SOURCES = $(SOURCE_FILES) $(am__append_1)
 

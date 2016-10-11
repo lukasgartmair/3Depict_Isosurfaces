@@ -1,0 +1,20 @@
+From 6edc339d72a00f493f63e84c6b1db42884b3e868 Mon Sep 17 00:00:00 2001
+From: D Haley <mycae@gmx.com>
+Date: Mon, 3 Oct 2016 22:35:36 +0100
+Subject: * fix compilation error in debug mode. variable not defined
+
+
+diff --git a/src/gl/drawables.cpp b/src/gl/drawables.cpp
+index d1aca66..09067aa 100755
+--- a/src/gl/drawables.cpp
++++ b/src/gl/drawables.cpp
+@@ -2701,9 +2701,6 @@ void DrawIsoSurface::draw() const
+ LukasDrawIsoSurface::LukasDrawIsoSurface() : cacheOK(false),
+ 	 r(0.5f), g(0.5f), b(0.5f), a(1.0f), isovalue(0.07), adaptivity(0.0)
+ {
+-#ifdef DEBUG
+-	voxels=0;
+-#endif
+ }
+ 
+ LukasDrawIsoSurface::~LukasDrawIsoSurface()

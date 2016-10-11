@@ -1,0 +1,19 @@
+From 31fcc178c48fb642f95e5c4b7a77da8a13dde15a Mon Sep 17 00:00:00 2001
+From: D Haley <mycae@gmx.com>
+Date: Mon, 3 Oct 2016 22:37:33 +0100
+Subject: * Fix bug where opengl property stack was being overflown, due to
+ pushattrib not matched with popattrib
+
+
+diff --git a/src/gl/drawables.cpp b/src/gl/drawables.cpp
+index 09067aa..01f1a1b 100755
+--- a/src/gl/drawables.cpp
++++ b/src/gl/drawables.cpp
+@@ -2862,6 +2862,7 @@ void LukasDrawIsoSurface::draw() const
+ 	}
+ 
+ 	glEnd();
++	glPopAttrib();
+ 	
+ }
+ 		

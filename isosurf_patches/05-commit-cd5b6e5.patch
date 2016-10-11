@@ -1,0 +1,19 @@
+From cd5b6e5f9afb371ef85ebe385f624edf4bbaaa57 Mon Sep 17 00:00:00 2001
+From: D Haley <mycae@gmx.com>
+Date: Mon, 3 Oct 2016 22:34:08 +0100
+Subject: * Fix compilation error due to header path
+
+
+diff --git a/src/gl/drawables.h b/src/gl/drawables.h
+index 3c390b8..5a80355 100755
+--- a/src/gl/drawables.h
++++ b/src/gl/drawables.h
+@@ -31,7 +31,7 @@
+ #include "textures.h"
+ #include "cameras.h"
+ #include "isoSurface.h"
+-#include "../backend/filters/openvdb_includes.h"
++#include "backend/filters/openvdb_includes.h"
+ 
+ template<class T>
+ class Voxels;

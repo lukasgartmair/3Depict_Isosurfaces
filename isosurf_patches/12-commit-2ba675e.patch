@@ -1,0 +1,31 @@
+From 2ba675ea86f31678064ac26f3f9827657cd29558 Mon Sep 17 00:00:00 2001
+From: D Haley <mycae@gmx.com>
+Date: Tue, 4 Oct 2016 11:33:07 +0100
+Subject: * Minor cppcheck fixes
+
+
+diff --git a/src/backend/filters/lukasAnalysis.cpp b/src/backend/filters/lukasAnalysis.cpp
+index fca4621..f062894 100755
+--- a/src/backend/filters/lukasAnalysis.cpp
++++ b/src/backend/filters/lukasAnalysis.cpp
+@@ -249,8 +249,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
+ 		openvdb::FloatGrid::Ptr numerator_grid = openvdb::FloatGrid::create(background);
+ 		openvdb::FloatGrid::Accessor numerator_accessor = numerator_grid->getAccessor();
+ 
+-		const RangeFile *r = rsdIncoming->rangeFile;
+-	
+ 		for(size_t ui=0;ui<dataIn.size();ui++)
+ 		{
+ 			//Check for ion stream types. Don't use anything else in counting
+@@ -295,9 +293,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
+ 				// 2nd step - determine each contribution to the adjecent 8 voxels outgoining from the position in the unit voxel
+ 				std::vector<float> volumes_of_subcuboids;
+ 				std::vector<float> contributions_to_adjacent_voxels;
+-				bool vertex_corner_coincidence = false;
+-			
+-				vertex_corner_coincidence = checkVertexCornerCoincidence(position_in_unit_voxel);
++
++				bool vertex_corner_coincidence = checkVertexCornerCoincidence(position_in_unit_voxel);
+ 			
+ 				// in case of coincidence of atom and voxel the contribution becomes 100 percent
+ 				if (vertex_corner_coincidence == false)

@@ -495,6 +495,13 @@ if test x"$CXX" = xdistcc ; then
 	LIBS="$LIBS -lstdc++"
 fi
 
+use_openvdb="yes"
+if test x"$use_openvdb" = x"yes" ;
+then
+         #Add openvdb link flags
+         LIBS="$LIBS -lopenvdb -ltbb -lHalf"
+fi
+
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
 AC_C_CONST

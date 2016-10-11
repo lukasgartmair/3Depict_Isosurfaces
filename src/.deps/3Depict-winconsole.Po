@@ -1,0 +1,3 @@
+3Depict-winconsole.o: winconsole.cpp /usr/include/stdc-predef.h
+
+/usr/include/stdc-predef.h:

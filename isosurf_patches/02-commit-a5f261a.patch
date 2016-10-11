@@ -1,0 +1,29 @@
+From a5f261ade5d7561601ad25e5bee37a8b853459f1 Mon Sep 17 00:00:00 2001
+From: D Haley <mycae@gmx.com>
+Date: Mon, 3 Oct 2016 22:31:10 +0100
+Subject: * Fix bug in configure.ac
+
+
+diff --git a/configure.ac b/configure.ac
+index 02cd0ab..8da4369 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -420,16 +420,14 @@ then
+ 	then
+ 		#Note that GLIBCXX_DEBUG cannot exist with GLIBCXX_PARALLEL
+ 		DEBUG_FLAGS="-DDEBUG"
+-
+-
+ 	else
+ 		DEBUG_FLAGS="-DDEBUG -D_GLIBCXX_DEBUG"
+ 	fi
+ 
+ 	AC_SUBST(DEBUG_FLAGS)
+ 
+-	if test x"$GCC" = x"yes" ; then
+-		# Strip optimsation flags from debug build
++	if test x"$GCC" == x"yes" ; then
++		# Strip optimisation flags from debug build
+ 		#--
+ 		changequote({,})
+ 		CFLAGS=`echo "$CFLAGS" | sed -e 's/-O[0-9s]*//g'`

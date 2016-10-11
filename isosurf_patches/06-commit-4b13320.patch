@@ -1,0 +1,24 @@
+From 4b133205a852a1928dd98600094f1efaa58d34e5 Mon Sep 17 00:00:00 2001
+From: D Haley <mycae@gmx.com>
+Date: Mon, 3 Oct 2016 22:34:59 +0100
+Subject: * Fix compilation error due to path problem with headers
+
+
+diff --git a/src/gl/drawables.cpp b/src/gl/drawables.cpp
+index 7a12d2c..d1aca66 100755
+--- a/src/gl/drawables.cpp
++++ b/src/gl/drawables.cpp
+@@ -28,11 +28,11 @@
+ 
+ #include "glDebug.h"
+ 
+-#include "../backend/filters/openvdb_includes.h"
++#include "backend/filters/openvdb_includes.h"
+ 
+ #include <math.h> // for sqrt
+ 
+-#include "../backend/filters/OpenVDB_TestSuite/vdb_functions.h"
++#include "backend/filters/OpenVDB_TestSuite/vdb_functions.h"
+ 
+ const float DEPTH_SORT_REORDER_EPSILON = 1e-2;
+ 
