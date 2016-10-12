@@ -46,7 +46,8 @@ enum
 
 LukasAnalysisFilter::LukasAnalysisFilter() : 
 	rsdIncoming(0)
-{
+{ 
+	vdbCache= openvdb::FloatGrid::create(0.0);
 
 	rgba=ColourRGBAf(0.5,0.5,0.5,1.0f);
 	iso_level=0.07;

@@ -56,7 +56,7 @@ class LukasAnalysisFilter : public Filter
 		
 		//Cache to use for vdbgrid info
 		// console warning: non-static data member initializers only available with -std=c++11 or -std=gnu++11
-		openvdb::FloatGrid::Ptr vdbCache = openvdb::FloatGrid::create(0.0);
+		openvdb::FloatGrid::Ptr vdbCache;
 
 	public:
 		//!Constructor

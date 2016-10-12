@@ -2565,9 +2565,6 @@ void DrawField3D::setBoxColours(float rNew, float gNew, float bNew, float aNew)
 DrawIsoSurface::DrawIsoSurface() : cacheOK(false),  drawMode(DRAW_SMOOTH),
 	threshold(0.5f), r(0.5f), g(0.5f), b(0.5f), a(0.5f) 
 {
-#ifdef DEBUG
-	voxels=0;
-#endif
 }
 
 DrawIsoSurface::~DrawIsoSurface()
@@ -2701,9 +2698,7 @@ void DrawIsoSurface::draw() const
 LukasDrawIsoSurface::LukasDrawIsoSurface() : cacheOK(false),
 	 r(0.5f), g(0.5f), b(0.5f), a(1.0f), isovalue(0.07), adaptivity(0.0)
 {
-#ifdef DEBUG
-	voxels=0;
-#endif
+
 }
 
 LukasDrawIsoSurface::~LukasDrawIsoSurface()
@@ -2718,7 +2713,7 @@ unsigned int LukasDrawIsoSurface::getType() const
 
 void LukasDrawIsoSurface::getBoundingBox(BoundCube &b) const
 {
-};
+}
 
 void LukasDrawIsoSurface::updateMesh() const
 {
@@ -2865,6 +2860,7 @@ void LukasDrawIsoSurface::draw() const
 	}
 
 	glEnd();
+	glPopAttrib();
 	
 }
 		

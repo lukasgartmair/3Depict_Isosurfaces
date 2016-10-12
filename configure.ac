@@ -420,16 +420,14 @@ then
 	then
 		#Note that GLIBCXX_DEBUG cannot exist with GLIBCXX_PARALLEL
 		DEBUG_FLAGS="-DDEBUG"
-
-
 	else
 		DEBUG_FLAGS="-DDEBUG -D_GLIBCXX_DEBUG"
 	fi
 
 	AC_SUBST(DEBUG_FLAGS)
 
-	if test x"$GCC" = x"yes" ; then
-		# Strip optimsation flags from debug build
+	if test x"$GCC" == x"yes" ; then
+		# Strip optimisation flags from debug build
 		#--
 		changequote({,})
 		CFLAGS=`echo "$CFLAGS" | sed -e 's/-O[0-9s]*//g'`
