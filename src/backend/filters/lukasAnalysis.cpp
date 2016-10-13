@@ -27,7 +27,6 @@
 #include "openvdb_includes.h"
 #include "contribution_transfer_function_TestSuite/CTF_functions.h"
 
-
 using std::vector;
 using std::string;
 using std::pair;
@@ -59,6 +58,8 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
 	autoColourMap=true;
 	colourMapBounds[0]=0;
 	colourMapBounds[1]=1;
+	showColourBar=false;
+
 	cacheOK=false;
 	cache=true; //By default, we should cache, but decision is made higher up
 	rsdIncoming=0;
@@ -246,8 +247,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 		openvdb::FloatGrid::Ptr numerator_grid = openvdb::FloatGrid::create(background);
 		openvdb::FloatGrid::Accessor numerator_accessor = numerator_grid->getAccessor();
-
-		const RangeFile *r = rsdIncoming->rangeFile;
 	
 		for(size_t ui=0;ui<dataIn.size();ui++)
 		{
@@ -394,6 +393,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 
 	// manage the filter output
+	std::cerr << "Completing evaluation of VDB grid..." << endl;
 
 	OpenVDBGridStreamData *gs = new OpenVDBGridStreamData();
 	gs->parent=this;
@@ -426,6 +426,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 {
+	if(!rsdIncoming)
+		return;
 
 	// group computation
 
@@ -443,6 +445,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
 	
 	curGroup++;
+
 	
 	// group numerator
 		
@@ -934,7 +937,7 @@ unsigned int LukasAnalysisFilter::getRefreshBlockMask() const
 
 unsigned int LukasAnalysisFilter::getRefreshEmitMask() const
 {
-	return 0;
+	return STREAM_TYPE_OPENVDBGRID;
 }
 
 unsigned int LukasAnalysisFilter::getRefreshUseMask() const

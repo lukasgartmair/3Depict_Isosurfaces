@@ -55,7 +55,9 @@ const char *STREAM_NAMES[] = { NTRANS("Ion"),
 				NTRANS("2D Plot"),
 				NTRANS("Draw"),
 				NTRANS("Range"),
-				NTRANS("Voxel")};
+				NTRANS("Voxel"),
+				NTRANS("OpenVDB_voxel")
+				};
 
 //Internal names for each filter
 const char *FILTER_NAMES[] = { "posload",

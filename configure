@@ -7690,20 +7690,13 @@ fi
 
 if test x"$enable_debug_checks" == x"yes" ;
 then
-	if test x"$enable_openmp_parallel" != x"" ;
-	then
-		#Note that GLIBCXX_DEBUG cannot exist with GLIBCXX_PARALLEL
-		DEBUG_FLAGS="-DDEBUG"
 
-
-	else
-		DEBUG_FLAGS="-DDEBUG -D_GLIBCXX_DEBUG"
-	fi
+	DEBUG_FLAGS="-DDEBUG"
 
 
 
-	if test x"$GCC" = x"yes" ; then
-		# Strip optimsation flags from debug build
+	if test x"$GCC" == x"yes" ; then
+		# Strip optimisation flags from debug build
 		#--
 
 		CFLAGS=`echo "$CFLAGS" | sed -e 's/-O[0-9s]*//g'`
@@ -7833,6 +7826,7 @@ then
 	CXXFLAGS="$CXXFLAGS --std=c++11"
 fi
 
+
 if test x"$CXX" = xdistcc ; then
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: \"Adding distcc link flags\"" >&5
 $as_echo "\"Adding distcc link flags\"" >&6; };
@@ -7846,6 +7840,8 @@ then
          #Add openvdb link flags
          LIBS="$LIBS -lopenvdb -ltbb -lHalf"
 fi
+LDFLAGS="$LDFLAGS $VDB_LIBS"
+
 
 # Checks for typedefs, structures, and compiler characteristics.
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for stdbool.h that conforms to C99" >&5

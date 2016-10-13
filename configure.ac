@@ -416,13 +416,8 @@ fi
 
 if test x"$enable_debug_checks" == x"yes" ; 
 then
-	if test x"$enable_openmp_parallel" != x"" ;
-	then
-		#Note that GLIBCXX_DEBUG cannot exist with GLIBCXX_PARALLEL
-		DEBUG_FLAGS="-DDEBUG"
-	else
-		DEBUG_FLAGS="-DDEBUG -D_GLIBCXX_DEBUG"
-	fi
+
+	DEBUG_FLAGS="-DDEBUG"
 
 	AC_SUBST(DEBUG_FLAGS)
 
@@ -487,6 +482,7 @@ then
 	CXXFLAGS="$CXXFLAGS --std=c++11"
 fi
 
+
 if test x"$CXX" = xdistcc ; then
 	AC_MSG_RESULT(["Adding distcc link flags"]);
 	#Add -lstdc++ to libs for distcc
@@ -499,6 +495,8 @@ then
          #Add openvdb link flags
          LIBS="$LIBS -lopenvdb -ltbb -lHalf"
 fi
+LDFLAGS="$LDFLAGS $VDB_LIBS"
+
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL

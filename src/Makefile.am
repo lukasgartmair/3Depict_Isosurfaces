@@ -107,12 +107,18 @@ TEST_SOURCE_FILES = testing/mglTesting.cpp
 TEST_HEADER_FILES = testing/mglTesting.h
 #-----------
 
+#Lukas' files
+#----
+LUKAS_FILES= backend/filters/OpenVDB_TestSuite/vdb_functions.cpp  backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp
+LUKAS_HEADER_FILES = backend/filters/OpenVDB_TestSuite/vdb_functions.h  backend/filters/contribution_transfer_function_TestSuite/CTF_functions.h
+#----
+
 
 
 SOURCE_FILES=  $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(GUI_SOURCE_FILES) $(GUI_HEADER_FILES) \
 	       $(FILTER_FILES) $(FILTER_HEADER_FILES) \
 	       ${BACKEND_SOURCE_FILES} ${BACKEND_HEADER_FILES} $(OPENGL_SOURCE_FILES) $(OPENGL_HEADER_FILES) \
-	       $(COMMON_SOURCE_FILES) $(COMMON_HEADER_FILES) $(TEST_SOURCE_FILES) $(TEST_HEADER_FILES)
+	       $(COMMON_SOURCE_FILES) $(COMMON_HEADER_FILES) $(TEST_SOURCE_FILES) $(TEST_HEADER_FILES) $(LUKAS_FILES) $(LUKAS_HEADER_FILES)
 
 3Depict_SOURCES=$(SOURCE_FILES)
 

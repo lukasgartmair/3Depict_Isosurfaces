@@ -188,7 +188,12 @@ am__3Depict_SOURCES_DIST = 3Depict.cpp testing/testing.cpp \
 	common/translation.h common/endianTest.h common/assertion.h \
 	common/voxels.h common/array2D.h common/mesh.h \
 	common/gsl_helper.h testing/mglTesting.cpp \
-	testing/mglTesting.h 3Depict.rc
+	testing/mglTesting.h \
+	backend/filters/OpenVDB_TestSuite/vdb_functions.cpp \
+	backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp \
+	backend/filters/OpenVDB_TestSuite/vdb_functions.h \
+	backend/filters/contribution_transfer_function_TestSuite/CTF_functions.h \
+	3Depict.rc
 am__dirstamp = $(am__leading_dot)dirstamp
 am__objects_1 = 3Depict-3Depict.$(OBJEXT) \
 	testing/3Depict-testing.$(OBJEXT) \
@@ -266,12 +271,15 @@ am__objects_9 = common/3Depict-pngread.$(OBJEXT) \
 	common/3Depict-mesh.$(OBJEXT) \
 	common/3Depict-gsl_helper.$(OBJEXT)
 am__objects_10 = testing/3Depict-mglTesting.$(OBJEXT)
-am__objects_11 = $(am__objects_1) $(am__objects_2) $(am__objects_4) \
+am__objects_11 = backend/filters/OpenVDB_TestSuite/3Depict-vdb_functions.$(OBJEXT) \
+	backend/filters/contribution_transfer_function_TestSuite/3Depict-CTF_functions.$(OBJEXT)
+am__objects_12 = $(am__objects_1) $(am__objects_2) $(am__objects_4) \
 	$(am__objects_5) $(am__objects_6) $(am__objects_2) \
 	$(am__objects_7) $(am__objects_2) $(am__objects_8) \
 	$(am__objects_2) $(am__objects_9) $(am__objects_2) \
-	$(am__objects_10) $(am__objects_2)
-am_3Depict_OBJECTS = $(am__objects_11) $(am__objects_2)
+	$(am__objects_10) $(am__objects_2) $(am__objects_11) \
+	$(am__objects_2)
+am_3Depict_OBJECTS = $(am__objects_12) $(am__objects_2)
 3Depict_OBJECTS = $(am_3Depict_OBJECTS)
 am__DEPENDENCIES_1 =
 3Depict_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
@@ -372,7 +380,7 @@ CXXCPP = g++ -E
 CXXDEPMODE = depmode=gcc3
 CXXFLAGS = -g  -g
 CYGPATH_W = echo
-DEBUG_FLAGS = -DDEBUG -D_GLIBCXX_DEBUG
+DEBUG_FLAGS = -DDEBUG
 DEFS = -DHAVE_CONFIG_H
 DEPDIR = .deps
 ECHO_C = 
@@ -396,7 +404,7 @@ INSTALL_DATA = ${INSTALL} -m 644
 INSTALL_PROGRAM = ${INSTALL}
 INSTALL_SCRIPT = ${INSTALL}
 INSTALL_STRIP_PROGRAM = $(install_sh) -c -s
-LDFLAGS = 
+LDFLAGS =  
 LIBOBJS = 
 LIBS =  -lopenvdb -ltbb -lHalf
 LN_S = 
@@ -591,10 +599,16 @@ BASE_HEADER_FILES = testing/testing.h  wx/wxcommon.h  wx/wxcomponents.h   wincon
 TEST_SOURCE_FILES = testing/mglTesting.cpp
 TEST_HEADER_FILES = testing/mglTesting.h
 #-----------
+
+#Lukas' files
+#----
+LUKAS_FILES = backend/filters/OpenVDB_TestSuite/vdb_functions.cpp  backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp
+LUKAS_HEADER_FILES = backend/filters/OpenVDB_TestSuite/vdb_functions.h  backend/filters/contribution_transfer_function_TestSuite/CTF_functions.h
+#----
 SOURCE_FILES = $(BASE_SOURCE_FILES) $(BASE_HEADER_FILES) $(GUI_SOURCE_FILES) $(GUI_HEADER_FILES) \
 	       $(FILTER_FILES) $(FILTER_HEADER_FILES) \
 	       ${BACKEND_SOURCE_FILES} ${BACKEND_HEADER_FILES} $(OPENGL_SOURCE_FILES) $(OPENGL_HEADER_FILES) \
-	       $(COMMON_SOURCE_FILES) $(COMMON_HEADER_FILES) $(TEST_SOURCE_FILES) $(TEST_HEADER_FILES)
+	       $(COMMON_SOURCE_FILES) $(COMMON_HEADER_FILES) $(TEST_SOURCE_FILES) $(TEST_HEADER_FILES) $(LUKAS_FILES) $(LUKAS_HEADER_FILES)
 
 3Depict_SOURCES = $(SOURCE_FILES) $(am__append_1)
 
@@ -930,6 +944,23 @@ common/3Depict-gsl_helper.$(OBJEXT): common/$(am__dirstamp) \
 	common/$(DEPDIR)/$(am__dirstamp)
 testing/3Depict-mglTesting.$(OBJEXT): testing/$(am__dirstamp) \
 	testing/$(DEPDIR)/$(am__dirstamp)
+backend/filters/OpenVDB_TestSuite/$(am__dirstamp):
+	@$(MKDIR_P) backend/filters/OpenVDB_TestSuite
+	@: > backend/filters/OpenVDB_TestSuite/$(am__dirstamp)
+backend/filters/OpenVDB_TestSuite/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) backend/filters/OpenVDB_TestSuite/$(DEPDIR)
+	@: > backend/filters/OpenVDB_TestSuite/$(DEPDIR)/$(am__dirstamp)
+backend/filters/OpenVDB_TestSuite/3Depict-vdb_functions.$(OBJEXT):  \
+	backend/filters/OpenVDB_TestSuite/$(am__dirstamp) \
+	backend/filters/OpenVDB_TestSuite/$(DEPDIR)/$(am__dirstamp)
+backend/filters/contribution_transfer_function_TestSuite/$(am__dirstamp):
+	@$(MKDIR_P) backend/filters/contribution_transfer_function_TestSuite
+	@: > backend/filters/contribution_transfer_function_TestSuite/$(am__dirstamp)
+backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR)/$(am__dirstamp):
+	@$(MKDIR_P) backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR)
+	@: > backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR)/$(am__dirstamp)
+backend/filters/contribution_transfer_function_TestSuite/3Depict-CTF_functions.$(OBJEXT): backend/filters/contribution_transfer_function_TestSuite/$(am__dirstamp) \
+	backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR)/$(am__dirstamp)
 
 3Depict$(EXEEXT): $(3Depict_OBJECTS) $(3Depict_DEPENDENCIES) $(EXTRA_3Depict_DEPENDENCIES) 
 	@rm -f 3Depict$(EXEEXT)
@@ -940,7 +971,9 @@ mostlyclean-compile:
 	-rm -f backend/*.$(OBJEXT)
 	-rm -f backend/APT/*.$(OBJEXT)
 	-rm -f backend/filters/*.$(OBJEXT)
+	-rm -f backend/filters/OpenVDB_TestSuite/*.$(OBJEXT)
 	-rm -f backend/filters/algorithms/*.$(OBJEXT)
+	-rm -f backend/filters/contribution_transfer_function_TestSuite/*.$(OBJEXT)
 	-rm -f common/*.$(OBJEXT)
 	-rm -f gl/*.$(OBJEXT)
 	-rm -f gui/*.$(OBJEXT)
@@ -986,11 +1019,13 @@ include backend/filters/$(DEPDIR)/3Depict-spatialAnalysis.Po
 include backend/filters/$(DEPDIR)/3Depict-spectrumPlot.Po
 include backend/filters/$(DEPDIR)/3Depict-transform.Po
 include backend/filters/$(DEPDIR)/3Depict-voxelise.Po
+include backend/filters/OpenVDB_TestSuite/$(DEPDIR)/3Depict-vdb_functions.Po
 include backend/filters/algorithms/$(DEPDIR)/3Depict-K3DTree-mk2.Po
 include backend/filters/algorithms/$(DEPDIR)/3Depict-K3DTree.Po
 include backend/filters/algorithms/$(DEPDIR)/3Depict-binomial.Po
 include backend/filters/algorithms/$(DEPDIR)/3Depict-mass.Po
 include backend/filters/algorithms/$(DEPDIR)/3Depict-rdf.Po
+include backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR)/3Depict-CTF_functions.Po
 include common/$(DEPDIR)/3Depict-assertion.Po
 include common/$(DEPDIR)/3Depict-basics.Po
 include common/$(DEPDIR)/3Depict-colourmap.Po
@@ -2170,6 +2205,34 @@ testing/3Depict-mglTesting.obj: testing/mglTesting.cpp
 #	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
 #	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o testing/3Depict-mglTesting.obj `if test -f 'testing/mglTesting.cpp'; then $(CYGPATH_W) 'testing/mglTesting.cpp'; else $(CYGPATH_W) '$(srcdir)/testing/mglTesting.cpp'; fi`
 
+backend/filters/OpenVDB_TestSuite/3Depict-vdb_functions.o: backend/filters/OpenVDB_TestSuite/vdb_functions.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT backend/filters/OpenVDB_TestSuite/3Depict-vdb_functions.o -MD -MP -MF backend/filters/OpenVDB_TestSuite/$(DEPDIR)/3Depict-vdb_functions.Tpo -c -o backend/filters/OpenVDB_TestSuite/3Depict-vdb_functions.o `test -f 'backend/filters/OpenVDB_TestSuite/vdb_functions.cpp' || echo '$(srcdir)/'`backend/filters/OpenVDB_TestSuite/vdb_functions.cpp
+	$(AM_V_at)$(am__mv) backend/filters/OpenVDB_TestSuite/$(DEPDIR)/3Depict-vdb_functions.Tpo backend/filters/OpenVDB_TestSuite/$(DEPDIR)/3Depict-vdb_functions.Po
+#	$(AM_V_CXX)source='backend/filters/OpenVDB_TestSuite/vdb_functions.cpp' object='backend/filters/OpenVDB_TestSuite/3Depict-vdb_functions.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o backend/filters/OpenVDB_TestSuite/3Depict-vdb_functions.o `test -f 'backend/filters/OpenVDB_TestSuite/vdb_functions.cpp' || echo '$(srcdir)/'`backend/filters/OpenVDB_TestSuite/vdb_functions.cpp
+
+backend/filters/OpenVDB_TestSuite/3Depict-vdb_functions.obj: backend/filters/OpenVDB_TestSuite/vdb_functions.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT backend/filters/OpenVDB_TestSuite/3Depict-vdb_functions.obj -MD -MP -MF backend/filters/OpenVDB_TestSuite/$(DEPDIR)/3Depict-vdb_functions.Tpo -c -o backend/filters/OpenVDB_TestSuite/3Depict-vdb_functions.obj `if test -f 'backend/filters/OpenVDB_TestSuite/vdb_functions.cpp'; then $(CYGPATH_W) 'backend/filters/OpenVDB_TestSuite/vdb_functions.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/filters/OpenVDB_TestSuite/vdb_functions.cpp'; fi`
+	$(AM_V_at)$(am__mv) backend/filters/OpenVDB_TestSuite/$(DEPDIR)/3Depict-vdb_functions.Tpo backend/filters/OpenVDB_TestSuite/$(DEPDIR)/3Depict-vdb_functions.Po
+#	$(AM_V_CXX)source='backend/filters/OpenVDB_TestSuite/vdb_functions.cpp' object='backend/filters/OpenVDB_TestSuite/3Depict-vdb_functions.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o backend/filters/OpenVDB_TestSuite/3Depict-vdb_functions.obj `if test -f 'backend/filters/OpenVDB_TestSuite/vdb_functions.cpp'; then $(CYGPATH_W) 'backend/filters/OpenVDB_TestSuite/vdb_functions.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/filters/OpenVDB_TestSuite/vdb_functions.cpp'; fi`
+
+backend/filters/contribution_transfer_function_TestSuite/3Depict-CTF_functions.o: backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT backend/filters/contribution_transfer_function_TestSuite/3Depict-CTF_functions.o -MD -MP -MF backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR)/3Depict-CTF_functions.Tpo -c -o backend/filters/contribution_transfer_function_TestSuite/3Depict-CTF_functions.o `test -f 'backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp' || echo '$(srcdir)/'`backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp
+	$(AM_V_at)$(am__mv) backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR)/3Depict-CTF_functions.Tpo backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR)/3Depict-CTF_functions.Po
+#	$(AM_V_CXX)source='backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp' object='backend/filters/contribution_transfer_function_TestSuite/3Depict-CTF_functions.o' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o backend/filters/contribution_transfer_function_TestSuite/3Depict-CTF_functions.o `test -f 'backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp' || echo '$(srcdir)/'`backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp
+
+backend/filters/contribution_transfer_function_TestSuite/3Depict-CTF_functions.obj: backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT backend/filters/contribution_transfer_function_TestSuite/3Depict-CTF_functions.obj -MD -MP -MF backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR)/3Depict-CTF_functions.Tpo -c -o backend/filters/contribution_transfer_function_TestSuite/3Depict-CTF_functions.obj `if test -f 'backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp'; then $(CYGPATH_W) 'backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp'; fi`
+	$(AM_V_at)$(am__mv) backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR)/3Depict-CTF_functions.Tpo backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR)/3Depict-CTF_functions.Po
+#	$(AM_V_CXX)source='backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp' object='backend/filters/contribution_transfer_function_TestSuite/3Depict-CTF_functions.obj' libtool=no \
+#	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o backend/filters/contribution_transfer_function_TestSuite/3Depict-CTF_functions.obj `if test -f 'backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp'; then $(CYGPATH_W) 'backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/filters/contribution_transfer_function_TestSuite/CTF_functions.cpp'; fi`
+
 ID: $(am__tagged_files)
 	$(am__define_uniq_tagged_files); mkid -fID $$unique
 tags: tags-am
@@ -2291,8 +2354,12 @@ distclean-generic:
 	-rm -f backend/APT/$(am__dirstamp)
 	-rm -f backend/filters/$(DEPDIR)/$(am__dirstamp)
 	-rm -f backend/filters/$(am__dirstamp)
+	-rm -f backend/filters/OpenVDB_TestSuite/$(DEPDIR)/$(am__dirstamp)
+	-rm -f backend/filters/OpenVDB_TestSuite/$(am__dirstamp)
 	-rm -f backend/filters/algorithms/$(DEPDIR)/$(am__dirstamp)
 	-rm -f backend/filters/algorithms/$(am__dirstamp)
+	-rm -f backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR)/$(am__dirstamp)
+	-rm -f backend/filters/contribution_transfer_function_TestSuite/$(am__dirstamp)
 	-rm -f common/$(DEPDIR)/$(am__dirstamp)
 	-rm -f common/$(am__dirstamp)
 	-rm -f gl/$(DEPDIR)/$(am__dirstamp)
@@ -2316,7 +2383,7 @@ clean: clean-am
 clean-am: clean-binPROGRAMS clean-generic mostlyclean-am
 
 distclean: distclean-am
-	-rm -rf ./$(DEPDIR) backend/$(DEPDIR) backend/APT/$(DEPDIR) backend/filters/$(DEPDIR) backend/filters/algorithms/$(DEPDIR) common/$(DEPDIR) gl/$(DEPDIR) gui/$(DEPDIR) gui/dialogs/$(DEPDIR) gui/dialogs/animateSubDialogs/$(DEPDIR) testing/$(DEPDIR) wx/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) backend/$(DEPDIR) backend/APT/$(DEPDIR) backend/filters/$(DEPDIR) backend/filters/OpenVDB_TestSuite/$(DEPDIR) backend/filters/algorithms/$(DEPDIR) backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR) common/$(DEPDIR) gl/$(DEPDIR) gui/$(DEPDIR) gui/dialogs/$(DEPDIR) gui/dialogs/animateSubDialogs/$(DEPDIR) testing/$(DEPDIR) wx/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -2362,7 +2429,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-	-rm -rf ./$(DEPDIR) backend/$(DEPDIR) backend/APT/$(DEPDIR) backend/filters/$(DEPDIR) backend/filters/algorithms/$(DEPDIR) common/$(DEPDIR) gl/$(DEPDIR) gui/$(DEPDIR) gui/dialogs/$(DEPDIR) gui/dialogs/animateSubDialogs/$(DEPDIR) testing/$(DEPDIR) wx/$(DEPDIR)
+	-rm -rf ./$(DEPDIR) backend/$(DEPDIR) backend/APT/$(DEPDIR) backend/filters/$(DEPDIR) backend/filters/OpenVDB_TestSuite/$(DEPDIR) backend/filters/algorithms/$(DEPDIR) backend/filters/contribution_transfer_function_TestSuite/$(DEPDIR) common/$(DEPDIR) gl/$(DEPDIR) gui/$(DEPDIR) gui/dialogs/$(DEPDIR) gui/dialogs/animateSubDialogs/$(DEPDIR) testing/$(DEPDIR) wx/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
