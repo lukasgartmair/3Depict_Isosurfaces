@@ -2716,15 +2716,33 @@ void LukasDrawIsoSurface::getBoundingBox(BoundCube &b) const
 void LukasDrawIsoSurface::updateMesh() const
 {
 
-	openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*grid, points, triangles, quads, isovalue, adaptivity);	
-	cacheOK=true;
-	
+/*
+	//Not sure this is the right thing to do here.
+	// it looks like there exist cases where volumeToMesh does not work
+	// we should handle this before calling volumeToMesh
+	if(!points.size() || !triangles.size() || !quads.size())
+	{
+		cacheOK=false;
+		return;
+	}	
+*/
+	try
+	{
+		openvdb::tools::volumeToMesh<openvdb::FloatGrid>(*grid, points, triangles, quads, isovalue, adaptivity);	
+		cacheOK=true;
+	}
+	catch(const std::exception &e)
+	{
+		ASSERT(false);
+		cerr << "Exception! :" << e.what() << endl;
+	}
+
 }
 
 void LukasDrawIsoSurface::draw() const
 {
 
-
+	cerr << "Starting lukas draw :" << endl;
 
 	if(!cacheOK)
 	{
