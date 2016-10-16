@@ -23,6 +23,9 @@
 
 #include "../../common/translation.h"
 
+#include "openvdb_includes.h"
+#include "contribution_transfer_function_TestSuite/CTF_functions.h"
+
 //!Filter that does voxelisation for various primitives (copied from CompositionFilter)
 class VoxeliseFilter : public Filter
 {
@@ -34,6 +37,8 @@ private:
 
 	//!Stepping mode - fixed width or fixed number of bins
 	bool fixedWidth;
+
+	float voxel_size; // declaration here, definition in the source file
 
 	//Cache to use for voxel info
 	Voxels<float> voxelCache;

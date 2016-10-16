@@ -333,6 +333,7 @@ public:
 	size_t getNumBasicObjects() const ;
 	void clear();
 
+	unsigned int representationType;
 	float r,g,b,a;
 	double isovalue;
 	double adaptivity;

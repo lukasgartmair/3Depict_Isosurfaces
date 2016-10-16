@@ -34,6 +34,9 @@ enum
 	KEY_WIDTHBINSX,
 	KEY_WIDTHBINSY,
 	KEY_WIDTHBINSZ,
+
+	// vdb
+	KEY_VOXELSIZE,
 	
 	KEY_COUNT_TYPE,
 	KEY_NORMALISE_TYPE,
@@ -188,6 +191,9 @@ VoxeliseFilter::VoxeliseFilter()
 	rgba=ColourRGBAf(0.5,0.5,0.5,0.9f);
 	isoLevel=0.5;
 	
+	// vdb
+	voxel_size = 2.0; 
+
 	filterRatio=3.0;
 	filterMode=VOXELISE_FILTERTYPE_NONE;
 	gaussDev=0.5;	
@@ -398,11 +404,14 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 	// initialize a grid where the division result is stored
 	openvdb::FloatGrid::Ptr divgrid = openvdb::FloatGrid::create(background);
 
-
 	switch(representation)
 	{
 		case VOXEL_REPRESENT_ISOSURF:
+		{
 
+		std::cout << " enter isosurf representation" << std::endl;
+
+			
 		// fill vdb grid here instead of voxel data
 
 			// do i have to get the actual entry size or is it just important that it is not used/filled?
@@ -559,216 +568,17 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 				//Use the cached value
 				divgrid = vdbCache->deepCopy();
 			}
-
-
-
-		case VOXEL_REPRESENT_POINTCLOUD || VOXEL_REPRESENT_AXIAL_SLICE::
-
-
-		Voxels<float> voxelData;
-		if(!voxelCache.getSize())
-		{
-			Point3D minP,maxP;
-
-			bc.setInverseLimits();
 			
-			for (size_t i = 0; i < dataIn.size(); i++) 
-			{
-				//Check for ion stream types. Block others from propagation.
-				if (dataIn[i]->getStreamType() != STREAM_TYPE_IONS) continue;
-
-				const IonStreamData *is = (const IonStreamData *)dataIn[i];
-				//Don't work on empty or single object streams (bounding box needs to be defined)
-				if (is->getNumBasicObjects() < 2) continue;
-		
-				BoundCube bcTmp;
-				IonHit::getBoundCube(is->data,bcTmp);
-
-				//Bounds could be invalid if, for example, we had coplanar axis aligned points
-				if (!bcTmp.isValid()) continue;
-
-				bc.expand(bcTmp);
-			}
-			//No bounding box? Tough cookies
-			if (!bc.isValid() || bc.isFlat()) return VOXELISE_BOUNDS_INVALID_ERR;
-
-			bc.getBounds(minP,maxP);	
-			if (fixedWidth) 
-				calculateNumBinsFromWidths(binWidth, nBins);
-			else
-				calculateWidthsFromNumBins(binWidth, nBins);
-		
-			//Disallow empty bounding boxes (ie, produce no output)
-			if(minP == maxP)
-				return 0;
-	
-			//Rebuild the voxels from the point data
-			Voxels<float> vsDenom;
-			voxelData.init(nBins[0], nBins[1], nBins[2], bc);
-			voxelData.fill(0);
-		
-			if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL ||
-				normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL) {
-				//Check we actually have incoming data
-				ASSERT(rsdIncoming);
-				vsDenom.init(nBins[0], nBins[1], nBins[2], bc);
-				vsDenom.fill(0);
-			}
-
-			const IonStreamData *is;
-			if(rsdIncoming)
-			{
-
-				for (size_t i = 0; i < dataIn.size(); i++) 
-				{
-				
-					//Check for ion stream types. Don't use anything else in counting
-					if (dataIn[i]->getStreamType() != STREAM_TYPE_IONS) continue;
-				
-					is= (const IonStreamData *)dataIn[i];
-
-				
-					//Count the numerator ions	
-					if(is->data.size())
-					{
-						//Check what Ion type this stream belongs to. Assume all ions
-						//in the stream belong to the same group
-						unsigned int ionID;
-						ionID = getIonstreamIonID(is,rsdIncoming->rangeFile);
-
-						bool thisIonEnabled;
-						if(ionID!=(unsigned int)-1)
-							thisIonEnabled=enabledIons[0][ionID];
-						else
-							thisIonEnabled=false;
-
-						if(thisIonEnabled)
-						{
-							countPoints(voxelData,is->data,true);
-						}
-					}
 			
-					//If the user requests normalisation, compute the denominator dataset
-					if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL) {
-						if(is->data.size())
-						{
-							//Check what Ion type this stream belongs to. Assume all ions
-							//in the stream belong to the same group
-							unsigned int ionID;
-							ionID = rsdIncoming->rangeFile->getIonID(is->data[0].getMassToCharge());
-
-							bool thisIonEnabled;
-							if(ionID!=(unsigned int)-1)
-								thisIonEnabled=enabledIons[1][ionID];
-							else
-								thisIonEnabled=false;
-
-							if(thisIonEnabled)
-								countPoints(vsDenom,is->data,true);
-						}
-					} else if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
-					{
-						countPoints(vsDenom,is->data,true);
-					}
-
-					if(*Filter::wantAbort)
-						return VOXELISE_ABORT_ERR;
-				}
-		
-				//Perform normalsiation	
-				if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
-					voxelData.calculateDensity();
-				else if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL ||
-						 normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
-					voxelData /= vsDenom;
-			}
-			else
-			{
-				//No range data.  Just count
-				for (size_t i = 0; i < dataIn.size(); i++) 
-				{
-				
-					if(dataIn[i]->getStreamType() == STREAM_TYPE_IONS)
-					{
-						is= (const IonStreamData *)dataIn[i];
-
-						countPoints(voxelData,is->data,true);
-					
-						if(*Filter::wantAbort)
-							return VOXELISE_ABORT_ERR;
-
-					}
-				}
-				ASSERT(normaliseType != VOXELISE_NORMALISETYPE_COUNT2INVOXEL
-						&& normaliseType!=VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL);
-				if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
-					voxelData.calculateDensity();
-			}	
-
-			vsDenom.clear();
-
-
-			//Perform voxel filtering
-			switch(filterMode)
-			{
-				case VOXELISE_FILTERTYPE_NONE:
-					break;
-				case VOXELISE_FILTERTYPE_GAUSS:
-				{	
-					voxelData.isotropicGaussianSmooth(gaussDev,filterRatio);
-					break;
-				}
-				case VOXELISE_FILTERTYPE_LAPLACE:
-				{
-					voxelData.laplaceOfGaussian(gaussDev,filterRatio);
-					break;
-				}
-				default:
-					ASSERT(false);
-			}
-	
-			voxelCache=voxelData;
-		}
-		else
-		{
-			//Use the cached value
-			voxelData=voxelCache;
-		}
-	
-		float min,max;
-		voxelData.minMax(min,max);
-
-
-		string sMin,sMax;
-		stream_cast(sMin,min);
-		stream_cast(sMax,max);
-		consoleOutput.push_back(std::string(TRANS("Voxel Limits (min,max): (") + sMin + string(","))
-			       	+  sMax + ")");
-
-
-		//Update the bounding cube
-		{
-		Point3D p1,p2;
-		voxelData.getBounds(p1,p2);
-		lastBounds.setBounds(p1,p2);
-		}
-
-	}
-
-
-	switch(representation)
-	{
-		case VOXEL_REPRESENT_ISOSURF:
-		{
-
-			// manage the filter output
+						// manage the filter output
 			std::cerr << "Completing evaluation of VDB grid..." << endl;
 
 			OpenVDBGridStreamData *gs = new OpenVDBGridStreamData();
 			gs->parent=this;
 			// just like the swap function of the voxelization does pass the grids here to gs->grids
 			gs->grid = divgrid->deepCopy();
-			gs->representationType=representation;
+			gs->voxelsize = voxel_size;
+			gs->representationType= representation;
 			gs->isovalue=isoLevel;
 			gs->r=rgba.r();
 			gs->g=rgba.g();
@@ -789,83 +599,281 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			getOut.push_back(gs);
 			break;
 
+			
 		}
-
-
 
 		case VOXEL_REPRESENT_POINTCLOUD:
-		{
-			VoxelStreamData *vs = new VoxelStreamData();
-			vs->parent=this;
-			std::swap(*(vs->data),voxelData);
-			vs->representationType= representation;
-			vs->splatSize = splatSize;
-			vs->isoLevel=isoLevel;
-			vs->r=rgba.r();
-			vs->g=rgba.g();
-			vs->b=rgba.b();
-			vs->a=rgba.a();
-
-			if(cache)
-			{
-				vs->cached=1;
-				cacheOK=true;
-				filterOutputs.push_back(vs);
-			}
-			else
-				vs->cached=0;
-			
-			//Store the voxels on the output
-			getOut.push_back(vs);
-			break;
-		}
 		case VOXEL_REPRESENT_AXIAL_SLICE:
 		{
-			DrawStreamData *d = new DrawStreamData;
-
-			//Create the voxel slice
-			float minV,maxV;
+			Voxels<float> voxelData;
+			if(!voxelCache.getSize())
 			{
-			DrawTexturedQuad *dq = new DrawTexturedQuad();
+				Point3D minP,maxP;
 
-			getTexturedSlice(voxelData,sliceAxis,sliceOffset,
-						sliceInterpolate,minV,maxV,*dq);
+				bc.setInverseLimits();
+			
+				for (size_t i = 0; i < dataIn.size(); i++) 
+				{
+					//Check for ion stream types. Block others from propagation.
+					if (dataIn[i]->getStreamType() != STREAM_TYPE_IONS) continue;
 
-			dq->setColour(1,1,1,rgba.a());
-			dq->canSelect=true;
+					const IonStreamData *is = (const IonStreamData *)dataIn[i];
+					//Don't work on empty or single object streams (bounding box needs to be defined)
+					if (is->getNumBasicObjects() < 2) continue;
+		
+					BoundCube bcTmp;
+					IonHit::getBoundCube(is->data,bcTmp);
+
+					//Bounds could be invalid if, for example, we had coplanar axis aligned points
+					if (!bcTmp.isValid()) continue;
+
+					bc.expand(bcTmp);
+				}
+				//No bounding box? Tough cookies
+				if (!bc.isValid() || bc.isFlat()) return VOXELISE_BOUNDS_INVALID_ERR;
+
+				bc.getBounds(minP,maxP);	
+				if (fixedWidth) 
+					calculateNumBinsFromWidths(binWidth, nBins);
+				else
+					calculateWidthsFromNumBins(binWidth, nBins);
+		
+				//Disallow empty bounding boxes (ie, produce no output)
+				if(minP == maxP)
+					return 0;
+	
+				//Rebuild the voxels from the point data
+				Voxels<float> vsDenom;
+				voxelData.init(nBins[0], nBins[1], nBins[2], bc);
+				voxelData.fill(0);
+		
+				if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL ||
+					normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL) {
+					//Check we actually have incoming data
+					ASSERT(rsdIncoming);
+					vsDenom.init(nBins[0], nBins[1], nBins[2], bc);
+					vsDenom.fill(0);
+				}
+
+				const IonStreamData *is;
+				if(rsdIncoming)
+				{
+
+					for (size_t i = 0; i < dataIn.size(); i++) 
+					{
+				
+						//Check for ion stream types. Don't use anything else in counting
+						if (dataIn[i]->getStreamType() != STREAM_TYPE_IONS) continue;
+				
+						is= (const IonStreamData *)dataIn[i];
+
+				
+						//Count the numerator ions	
+						if(is->data.size())
+						{
+							//Check what Ion type this stream belongs to. Assume all ions
+							//in the stream belong to the same group
+							unsigned int ionID;
+							ionID = getIonstreamIonID(is,rsdIncoming->rangeFile);
+
+							bool thisIonEnabled;
+							if(ionID!=(unsigned int)-1)
+								thisIonEnabled=enabledIons[0][ionID];
+							else
+								thisIonEnabled=false;
+
+							if(thisIonEnabled)
+							{
+								countPoints(voxelData,is->data,true);
+							}
+						}
+			
+						//If the user requests normalisation, compute the denominator dataset
+						if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL) {
+							if(is->data.size())
+							{
+								//Check what Ion type this stream belongs to. Assume all ions
+								//in the stream belong to the same group
+								unsigned int ionID;
+								ionID = rsdIncoming->rangeFile->getIonID(is->data[0].getMassToCharge());
+
+								bool thisIonEnabled;
+								if(ionID!=(unsigned int)-1)
+									thisIonEnabled=enabledIons[1][ionID];
+								else
+									thisIonEnabled=false;
+
+								if(thisIonEnabled)
+									countPoints(vsDenom,is->data,true);
+							}
+						} else if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
+						{
+							countPoints(vsDenom,is->data,true);
+						}
+
+						if(*Filter::wantAbort)
+							return VOXELISE_ABORT_ERR;
+					}
+		
+					//Perform normalsiation	
+					if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
+						voxelData.calculateDensity();
+					else if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL ||
+							 normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
+						voxelData /= vsDenom;
+				}
+				else
+				{
+					//No range data.  Just count
+					for (size_t i = 0; i < dataIn.size(); i++) 
+					{
+				
+						if(dataIn[i]->getStreamType() == STREAM_TYPE_IONS)
+						{
+							is= (const IonStreamData *)dataIn[i];
+
+							countPoints(voxelData,is->data,true);
+					
+							if(*Filter::wantAbort)
+								return VOXELISE_ABORT_ERR;
+
+						}
+					}
+					ASSERT(normaliseType != VOXELISE_NORMALISETYPE_COUNT2INVOXEL
+							&& normaliseType!=VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL);
+					if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
+						voxelData.calculateDensity();
+				}	
+
+				vsDenom.clear();
 
 
-			SelectionDevice *s = new SelectionDevice(this);
-			SelectionBinding b;
-			//Bind translation to sphere left click
-			b.setBinding(SELECT_BUTTON_LEFT,0,DRAW_QUAD_BIND_ORIGIN,
-					BINDING_PLANE_ORIGIN,dq->getOrigin(),dq);
-			b.setInteractionMode(BIND_MODE_POINT3D_TRANSLATE);
-			s->addBinding(b);
-
-			devices.push_back(s);
-
-			d->drawables.push_back(dq);
+				//Perform voxel filtering
+				switch(filterMode)
+				{
+					case VOXELISE_FILTERTYPE_NONE:
+						break;
+					case VOXELISE_FILTERTYPE_GAUSS:
+					{	
+						voxelData.isotropicGaussianSmooth(gaussDev,filterRatio);
+						break;
+					}
+					case VOXELISE_FILTERTYPE_LAPLACE:
+					{
+						voxelData.laplaceOfGaussian(gaussDev,filterRatio);
+						break;
+					}
+					default:
+						ASSERT(false);
+				}
+	
+				voxelCache=voxelData;
 			}
-			
-			
-			if(showColourBar)
-				d->drawables.push_back(makeColourBar(minV,maxV,255,colourMap));
-			d->cached=0;
-			d->parent=this;
-			
-			getOut.push_back(d);
-		
-		
-			cacheOK=false;
-		}
-	}
+			else
+			{
+				//Use the cached value
+				voxelData=voxelCache;
+			}
+	
+			float min,max;
+			voxelData.minMax(min,max);
 
+
+			string sMin,sMax;
+			stream_cast(sMin,min);
+			stream_cast(sMax,max);
+			consoleOutput.push_back(std::string(TRANS("Voxel Limits (min,max): (") + sMin + string(","))
+				       	+  sMax + ")");
+
+
+			//Update the bounding cube
+			{
+			Point3D p1,p2;
+			voxelData.getBounds(p1,p2);
+			lastBounds.setBounds(p1,p2);
+			}
+
+
+		switch(representation)
+		{
+
+			case VOXEL_REPRESENT_POINTCLOUD:
+			{
+				VoxelStreamData *vs = new VoxelStreamData();
+				vs->parent=this;
+				std::swap(*(vs->data),voxelData);
+				vs->representationType= representation;
+				vs->splatSize = splatSize;
+				vs->isoLevel=isoLevel;
+				vs->r=rgba.r();
+				vs->g=rgba.g();
+				vs->b=rgba.b();
+				vs->a=rgba.a();
+
+				if(cache)
+				{
+					vs->cached=1;
+					cacheOK=true;
+					filterOutputs.push_back(vs);
+				}
+				else
+					vs->cached=0;
+				
+				//Store the voxels on the output
+				getOut.push_back(vs);
+				break;
+			}
+			case VOXEL_REPRESENT_AXIAL_SLICE:
+			{
+				DrawStreamData *d = new DrawStreamData;
+
+				//Create the voxel slice
+				float minV,maxV;
+				{
+				DrawTexturedQuad *dq = new DrawTexturedQuad();
+
+				getTexturedSlice(voxelData,sliceAxis,sliceOffset,
+							sliceInterpolate,minV,maxV,*dq);
+
+				dq->setColour(1,1,1,rgba.a());
+				dq->canSelect=true;
+
+
+				SelectionDevice *s = new SelectionDevice(this);
+				SelectionBinding b;
+				//Bind translation to sphere left click
+				b.setBinding(SELECT_BUTTON_LEFT,0,DRAW_QUAD_BIND_ORIGIN,
+						BINDING_PLANE_ORIGIN,dq->getOrigin(),dq);
+				b.setInteractionMode(BIND_MODE_POINT3D_TRANSLATE);
+				s->addBinding(b);
+
+				devices.push_back(s);
+
+				d->drawables.push_back(dq);
+				}
+				
+				
+				if(showColourBar)
+					d->drawables.push_back(makeColourBar(minV,maxV,255,colourMap));
+				d->cached=0;
+				d->parent=this;
+				
+				getOut.push_back(d);
+			
+			
+				cacheOK=false;
+			}
+		}
+
+	}
+}
 
 	
 	//Copy the inputs into the outputs, provided they are not voxels
 	return 0;
 }
+
+
 
 void VoxeliseFilter::setPropFromBinding(const SelectionBinding &b)
 {
@@ -1194,7 +1202,8 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 	
 			curGroup++;
 
-	
+			// each key has to be unique in order to reach 100 % filter progress
+/*
 			// group numerator
 		
 			p.name=TRANS("Numerator");
@@ -1249,7 +1258,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			}
 			propertyList.setGroupTitle(curGroup,TRANS("Denominator"));
 			curGroup++;
-
+*/
 	
 			// group representation
 	
@@ -1257,7 +1266,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 
 			//-- Isosurface parameters --
 
-			stream_cast(tmpStr,iso_level);
+			stream_cast(tmpStr,isoLevel);
 			p.name=TRANS("Isovalue [0,1]");
 			p.data=tmpStr;
 			p.type=PROPERTY_TYPE_REAL;
@@ -1403,6 +1412,32 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
+
+
+		case KEY_VOXELSIZE: 
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			if(f <= 0.0f)
+				return false;
+			needUpdate=true;
+			voxel_size=f;
+			//Go in and manually adjust the cached
+			//entries to have the new value, rather
+			//than doing a full recomputation
+			if(cacheOK)
+			{
+				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
+				{	
+					OpenVDBGridStreamData *vdbgs;
+					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
+					vdbgs->voxelsize = voxel_size;
+				}
+			}
+			break;
+		}
+
 		case KEY_FIXEDWIDTH: 
 		{
 			if(!applyPropertyNow(fixedWidth,value,needUpdate))
@@ -1509,10 +1544,10 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 			if(cacheOK)
 			{
 				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
-				{
-					VoxelStreamData *d;
-					d=(VoxelStreamData*)filterOutputs[ui];
-					d->isoLevel=isoLevel;
+				{	
+					OpenVDBGridStreamData *vdbgs;
+					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
+					vdbgs->isovalue = isoLevel;
 				}
 			}
 			break;
@@ -1537,11 +1572,27 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 			{
 				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
 				{
-					VoxelStreamData *d;
-					d=(VoxelStreamData*)filterOutputs[ui];
-					d->r=rgba.r();
-					d->g=rgba.g();
-					d->b=rgba.b();
+					switch(representation)
+					{
+						case VOXEL_REPRESENT_AXIAL_SLICE:
+						case VOXEL_REPRESENT_POINTCLOUD:
+						{
+
+							VoxelStreamData *d;
+							d=(VoxelStreamData*)filterOutputs[ui];
+							d->r=rgba.r();
+							d->g=rgba.g();
+							d->b=rgba.b();
+						}
+						case VOXEL_REPRESENT_ISOSURF:
+						{
+							OpenVDBGridStreamData *vdbgs;
+							vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
+							vdbgs->r=rgba.r();
+							vdbgs->g=rgba.g();
+							vdbgs->b=rgba.b();
+						}
+					}
 				}
 			}
 			break;
@@ -1564,9 +1615,26 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 			{
 				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
 				{
-					VoxelStreamData *d;
-					d=(VoxelStreamData*)filterOutputs[ui];
-					d->representationType=representation;
+
+					switch(representation)
+					{
+						case VOXEL_REPRESENT_AXIAL_SLICE:
+						case VOXEL_REPRESENT_POINTCLOUD:
+						{
+							VoxelStreamData *d;
+							d=(VoxelStreamData*)filterOutputs[ui];
+							d->representationType=representation;
+
+						}
+
+						case VOXEL_REPRESENT_ISOSURF:
+						{
+							OpenVDBGridStreamData *vdbgs;
+							vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
+							vdbgs->representationType=representation;
+						}	
+					}
+
 				}
 			}
 			else
@@ -1875,6 +1943,7 @@ bool VoxeliseFilter::writeState(std::ostream &f,unsigned int format, unsigned in
 		{	
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\"" << escapeXML(userString) << "\"/>" << endl;
+			f << tabs(depth+1) << "<voxel_size value=\""<<voxel_size<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<fixedwidth value=\""<<fixedWidth << "\"/>"  << endl;
 			f << tabs(depth+1) << "<nbins values=\""<<nBins[0] << ","<<nBins[1]<<","<<nBins[2] << "\"/>"  << endl;
 			f << tabs(depth+1) << "<binwidth values=\""<<binWidth[0] << ","<<binWidth[1]<<","<<binWidth[2] << "\"/>"  << endl;
@@ -1926,6 +1995,15 @@ bool VoxeliseFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 	string tmpStr;
 	xmlChar *xmlString;
 	stack<xmlNodePtr> nodeStack;
+
+	//--=
+	float tmpFloat = 0;
+	if(!XMLGetNextElemAttrib(nodePtr,tmpFloat,"voxel_size","value"))
+		return false;
+	if(tmpFloat <= 0.0f)
+		return false;
+	voxel_size=tmpFloat;
+	//--=
 
 	//Retrieve user string
 	//===
@@ -2144,17 +2222,17 @@ bool VoxeliseFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 unsigned int VoxeliseFilter::getRefreshBlockMask() const
 {
 	//Ions, plots and voxels cannot pass through this filter
-	return STREAM_TYPE_IONS | STREAM_TYPE_PLOT | STREAM_TYPE_VOXEL;
+	return STREAM_TYPE_IONS | STREAM_TYPE_PLOT | STREAM_TYPE_VOXEL | STREAM_TYPE_OPENVDBGRID;
 }
 
 unsigned int VoxeliseFilter::getRefreshEmitMask() const
 {
-	return STREAM_TYPE_VOXEL | STREAM_TYPE_DRAW;
+	return STREAM_TYPE_VOXEL | STREAM_TYPE_DRAW | STREAM_TYPE_OPENVDBGRID;
 }
 
 unsigned int VoxeliseFilter::getRefreshUseMask() const
 {
-	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
+	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE | STREAM_TYPE_OPENVDBGRID ;
 }
 
 void VoxeliseFilter::getTexturedSlice(const Voxels<float> &v, 

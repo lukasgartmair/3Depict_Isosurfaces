@@ -376,7 +376,6 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 					ld->setColour(vdbSrc->r,vdbSrc->g,
 							vdbSrc->b,vdbSrc->a);
 					ld->setIsovalue(vdbSrc->isovalue);
-					ld->setAdaptivity(vdbSrc->adaptivity);
 					ld->setVoxelsize(vdbSrc->voxelsize);
 
 					ld->wantsLight=true;
@@ -413,20 +412,32 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 							sceneDrawables.push_back(d);
 							break;
 						}
+/*
 						case VOXEL_REPRESENT_ISOSURF:
 						{
-							DrawIsoSurface *d = new DrawIsoSurface;
 
-							d->swapVoxels(v);
-							d->setColour(vSrc->r,vSrc->g,
-									vSrc->b,vSrc->a);
-							d->setScalarThresh(vSrc->isoLevel);
+							OpenVDBGridStreamData *vdbSrc = (OpenVDBGridStreamData *)((*it)[ui]);
 
-							d->wantsLight=true;
+							openvdb::initialize();
+					
+							openvdb::FloatGrid::Ptr vis_grid = openvdb::FloatGrid::create();
 
-							sceneDrawables.push_back(d);
+							vis_grid = vdbSrc->grid->deepCopy();
+					
+							LukasDrawIsoSurface *ld = new LukasDrawIsoSurface;
+							ld->setGrid(vis_grid);
+							ld->setColour(vdbSrc->r,vdbSrc->g,
+									vdbSrc->b,vdbSrc->a);
+							ld->setIsovalue(vdbSrc->isovalue);
+							ld->setVoxelsize(vdbSrc->voxelsize);
+
+							ld->wantsLight=true;
+
+							sceneDrawables.push_back(ld);
 							break;
+
 						}
+*/
 						default:
 							ASSERT(false);
 							delete v;

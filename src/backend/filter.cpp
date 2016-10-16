@@ -836,15 +836,15 @@ void VoxelStreamData::clear()
 
 ////////////// openvdb ////////////////////////////////////////////////////////////
 
-OpenVDBGridStreamData::OpenVDBGridStreamData() :
-	r(0.5f),g(0.5f),b(0.5f),a(0.5f), isovalue(0.07f), adaptivity(0.0f), voxelsize(2.0f)
+OpenVDBGridStreamData::OpenVDBGridStreamData() : representationType(VOXEL_REPRESENT_ISOSURF),
+	r(0.5f),g(0.5f),b(0.5f),a(0.5f), isovalue(0.07f), voxelsize(2.0f)
 {
 	streamType=STREAM_TYPE_OPENVDBGRID;
 	openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create();	
 }
 
-OpenVDBGridStreamData::OpenVDBGridStreamData(const Filter *f) : FilterStreamData(f),
-	r(0.5f),g(0.5f),b(0.5f),a(0.5f), isovalue(0.07f), adaptivity(0.0f), voxelsize(2.0f)
+OpenVDBGridStreamData::OpenVDBGridStreamData(const Filter *f) : FilterStreamData(f), representationType(VOXEL_REPRESENT_ISOSURF),
+	r(0.5f),g(0.5f),b(0.5f),a(0.5f), isovalue(0.07f), voxelsize(2.0f)
 {
 	streamType=STREAM_TYPE_OPENVDBGRID;
 	openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create();
