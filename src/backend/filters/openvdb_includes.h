@@ -11,6 +11,7 @@
 #include <openvdb/tools/Composite.h>
 #include <openvdb/tools/VolumeToMesh.h>
 #include <openvdb/io/Stream.h>
+#include <openvdb/math/Coord.h>
 
 #include "OpenVDB_TestSuite/vdb_functions.h"
 

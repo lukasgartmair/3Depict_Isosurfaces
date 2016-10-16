@@ -20,6 +20,9 @@
 #include "common/colourmap.h"
 #include "filterCommon.h"
 
+#include "openvdb_includes.h"
+#include "contribution_transfer_function_TestSuite/CTF_functions.h"
+
 #include <map>
 
 enum
@@ -195,6 +198,9 @@ VoxeliseFilter::VoxeliseFilter()
 	autoColourMap=true;
 	colourMapBounds[0]=0;
 	colourMapBounds[1]=1;
+
+	// vdb cache 
+	vdbCache=openvdb::FloatGrid::create(0.0);
 
 
 	//Fictitious bounds.
@@ -383,199 +389,410 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 		return 0;
 	}
 
+	// Initialize the OpenVDB library.  This must be called at least
+    	// once per program and may safely be called multiple times.
+	openvdb::initialize();
 
-	Voxels<float> voxelData;
-	if(!voxelCache.getSize())
+	const float background = 0.0f;	
+
+	// initialize a grid where the division result is stored
+	openvdb::FloatGrid::Ptr divgrid = openvdb::FloatGrid::create(background);
+
+
+	switch(representation)
 	{
-		Point3D minP,maxP;
+		case VOXEL_REPRESENT_ISOSURF:
 
-		bc.setInverseLimits();
-			
-		for (size_t i = 0; i < dataIn.size(); i++) 
-		{
-			//Check for ion stream types. Block others from propagation.
-			if (dataIn[i]->getStreamType() != STREAM_TYPE_IONS) continue;
+		// fill vdb grid here instead of voxel data
 
-			const IonStreamData *is = (const IonStreamData *)dataIn[i];
-			//Don't work on empty or single object streams (bounding box needs to be defined)
-			if (is->getNumBasicObjects() < 2) continue;
-		
-			BoundCube bcTmp;
-			IonHit::getBoundCube(is->data,bcTmp);
-
-			//Bounds could be invalid if, for example, we had coplanar axis aligned points
-			if (!bcTmp.isValid()) continue;
-
-			bc.expand(bcTmp);
-		}
-		//No bounding box? Tough cookies
-		if (!bc.isValid() || bc.isFlat()) return VOXELISE_BOUNDS_INVALID_ERR;
-
-		bc.getBounds(minP,maxP);	
-		if (fixedWidth) 
-			calculateNumBinsFromWidths(binWidth, nBins);
-		else
-			calculateWidthsFromNumBins(binWidth, nBins);
-		
-		//Disallow empty bounding boxes (ie, produce no output)
-		if(minP == maxP)
-			return 0;
-	
-		//Rebuild the voxels from the point data
-		Voxels<float> vsDenom;
-		voxelData.init(nBins[0], nBins[1], nBins[2], bc);
-		voxelData.fill(0);
-		
-		if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL ||
-			normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL) {
-			//Check we actually have incoming data
-			ASSERT(rsdIncoming);
-			vsDenom.init(nBins[0], nBins[1], nBins[2], bc);
-			vsDenom.fill(0);
-		}
-
-		const IonStreamData *is;
-		if(rsdIncoming)
-		{
-
-			for (size_t i = 0; i < dataIn.size(); i++) 
+			// do i have to get the actual entry size or is it just important that it is not used/filled?
+			// maybe if memory usage != 0?
+			if(vdbCache->activeVoxelCount() == 0)
 			{
-				
-				//Check for ion stream types. Don't use anything else in counting
-				if (dataIn[i]->getStreamType() != STREAM_TYPE_IONS) continue;
-				
-				is= (const IonStreamData *)dataIn[i];
 
-				
-				//Count the numerator ions	
-				if(is->data.size())
+				// initialize nominator and denominator grids
+				openvdb::FloatGrid::Ptr denominator_grid = openvdb::FloatGrid::create(background);
+				openvdb::FloatGrid::Accessor denominator_accessor = denominator_grid->getAccessor();
+
+				openvdb::FloatGrid::Ptr numerator_grid = openvdb::FloatGrid::create(background);
+				openvdb::FloatGrid::Accessor numerator_accessor = numerator_grid->getAccessor();
+	
+				for(size_t ui=0;ui<dataIn.size();ui++)
 				{
-					//Check what Ion type this stream belongs to. Assume all ions
-					//in the stream belong to the same group
+					//Check for ion stream types. Don't use anything else in counting
+					if(dataIn[ui]->getStreamType() != STREAM_TYPE_IONS)
+						continue;
+
+					const IonStreamData  *ions; 
+					ions = (const IonStreamData *)dataIn[ui];
+		
+					//get the denominator ions
 					unsigned int ionID;
-					ionID = getIonstreamIonID(is,rsdIncoming->rangeFile);
+					ionID = rsdIncoming->rangeFile->getIonID(ions->data[0].getMassToCharge());
 
-					bool thisIonEnabled;
+					bool thisDenominatorIonEnabled;
 					if(ionID!=(unsigned int)-1)
-						thisIonEnabled=enabledIons[0][ionID];
+						thisDenominatorIonEnabled=enabledIons[1][ionID];
 					else
-						thisIonEnabled=false;
+						thisDenominatorIonEnabled=false;
 
-					if(thisIonEnabled)
+					// get the numerator ions
+					ionID = getIonstreamIonID(ions,rsdIncoming->rangeFile);
+
+					bool thisNumeratorIonEnabled;
+					if(ionID!=(unsigned int)-1)
+						thisNumeratorIonEnabled=enabledIons[0][ionID];
+					else
+						thisNumeratorIonEnabled=false;
+
+					for(size_t uj=0;uj<ions->data.size(); uj++)
 					{
-						countPoints(voxelData,is->data,true);
+						const int xyzs = 3;
+						std::vector<float> atom_position(xyzs); 
+						for (int i=0;i<xyzs;i++)
+						{
+							atom_position[i] = ions->data[uj].getPos()[i];
+						}
+	
+						// 1st step - project the current atom position to unit voxel i.e. from 0 to 1
+						std::vector<float> position_in_unit_voxel;
+						position_in_unit_voxel = projectAtompositionToUnitvoxel(atom_position, voxel_size);
+
+						// 2nd step - determine each contribution to the adjecent 8 voxels outgoining from the position in the unit voxel
+						std::vector<float> volumes_of_subcuboids;
+						std::vector<float> contributions_to_adjacent_voxels;
+						bool vertex_corner_coincidence = false;
+			
+						vertex_corner_coincidence = checkVertexCornerCoincidence(position_in_unit_voxel);
+			
+						// in case of coincidence of atom and voxel the contribution becomes 100 percent
+						if (vertex_corner_coincidence == false)
+						{
+							volumes_of_subcuboids = calcSubvolumes(position_in_unit_voxel);
+							contributions_to_adjacent_voxels = calcVoxelContributions(volumes_of_subcuboids);
+						}
+						else
+						{
+							contributions_to_adjacent_voxels = handleVertexCornerCoincidence(position_in_unit_voxel);
+						}
+			
+						// 3rd step - determine the adjacent voxel indices in the actual grid
+						std::vector<std::vector<float> > adjacent_voxel_vertices;
+						adjacent_voxel_vertices = determineAdjacentVoxelVertices(atom_position, voxel_size);
+			
+						// 4th step - assign each of the 8 adjacent voxels the corresponding contribution that results from the atom position in the unit voxel
+						const int number_of_adjacent_voxels = 8;
+						std::vector<float> current_voxel_index;
+						for (int i=0;i<number_of_adjacent_voxels;i++)
+						{
+							current_voxel_index = adjacent_voxel_vertices[i];
+							// normalized voxel indices based on 00, 01, 02 etc. // very important otherwise there will be spacings
+							openvdb::Coord ijk(current_voxel_index[0], current_voxel_index[1], current_voxel_index[2]);
+
+							// write to denominator grid
+							if(thisDenominatorIonEnabled)
+							{
+					
+								denominator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor.getValue(ijk));
+							}
+							else
+							{
+								denominator_accessor.setValue(ijk, 0.0 + denominator_accessor.getValue(ijk));
+							}
+
+							// write to numerator grid
+							if(thisNumeratorIonEnabled)
+							{	
+								numerator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor.getValue(ijk));
+							}
+							else
+							{
+								numerator_accessor.setValue(ijk, 0.0 + numerator_accessor.getValue(ijk));
+							}
+						}
 					}
 				}
+
+				float minVal = 0.0;
+				float maxVal = 0.0;
+				denominator_grid->evalMinMax(minVal,maxVal);
+				std::cout << " eval min max denominator grid" << " = " << minVal << " , " << maxVal << std::endl;
+				std::cout << " active voxel count denominator grid" << " = " << denominator_grid->activeVoxelCount() << std::endl;
+
+				numerator_grid->evalMinMax(minVal,maxVal);
+				std::cout << " eval min max numerator grid" << " = " << minVal << " , " << maxVal << std::endl;
+				std::cout << " active voxel count numerator grid" << " = " << numerator_grid->activeVoxelCount() << std::endl;
+
+				// composite.h operations modify the first grid and leave the second grid emtpy !!!!!!!!!!!!!!!!!!
+				// compute a = a / b
+				openvdb::tools::compDiv(*numerator_grid, *denominator_grid);
+	
+				divgrid = numerator_grid->deepCopy();
+
+				//check for negative nans and infs introduced by the division
+				//set them to zero in order not to obtain nan mesh coordinates
+
+				for (openvdb::FloatGrid::ValueAllIter iter = divgrid->beginValueAll(); iter; ++iter)
+				{   
+				    if (std::isfinite(iter.getValue()) == false)
+				{
+				    iter.setValue(0.0);
+				}
+				}
+	
+				divgrid->evalMinMax(minVal,maxVal);
+				std::cout << " eval min max divgrid after division" << " = " << minVal << " , " << maxVal << std::endl;
+				std::cout << " active voxel count divgrid after division" << " = " << divgrid->activeVoxelCount() << std::endl;
+				std::cout << " memory usage in bytes divgrid after division" << " = " << divgrid->memUsage() << std::endl;
+
+				// Associate a scaling transform with the grid that sets the voxel size
+				// to voxel_size units in world space.
+
+				divgrid->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
+
+				vdbCache = divgrid->deepCopy();
+		
+			}
+
+			else
+			{
+				//Use the cached value
+				divgrid = vdbCache->deepCopy();
+			}
+
+
+
+		case VOXEL_REPRESENT_POINTCLOUD || VOXEL_REPRESENT_AXIAL_SLICE::
+
+
+		Voxels<float> voxelData;
+		if(!voxelCache.getSize())
+		{
+			Point3D minP,maxP;
+
+			bc.setInverseLimits();
 			
-				//If the user requests normalisation, compute the denominator dataset
-				if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL) {
+			for (size_t i = 0; i < dataIn.size(); i++) 
+			{
+				//Check for ion stream types. Block others from propagation.
+				if (dataIn[i]->getStreamType() != STREAM_TYPE_IONS) continue;
+
+				const IonStreamData *is = (const IonStreamData *)dataIn[i];
+				//Don't work on empty or single object streams (bounding box needs to be defined)
+				if (is->getNumBasicObjects() < 2) continue;
+		
+				BoundCube bcTmp;
+				IonHit::getBoundCube(is->data,bcTmp);
+
+				//Bounds could be invalid if, for example, we had coplanar axis aligned points
+				if (!bcTmp.isValid()) continue;
+
+				bc.expand(bcTmp);
+			}
+			//No bounding box? Tough cookies
+			if (!bc.isValid() || bc.isFlat()) return VOXELISE_BOUNDS_INVALID_ERR;
+
+			bc.getBounds(minP,maxP);	
+			if (fixedWidth) 
+				calculateNumBinsFromWidths(binWidth, nBins);
+			else
+				calculateWidthsFromNumBins(binWidth, nBins);
+		
+			//Disallow empty bounding boxes (ie, produce no output)
+			if(minP == maxP)
+				return 0;
+	
+			//Rebuild the voxels from the point data
+			Voxels<float> vsDenom;
+			voxelData.init(nBins[0], nBins[1], nBins[2], bc);
+			voxelData.fill(0);
+		
+			if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL ||
+				normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL) {
+				//Check we actually have incoming data
+				ASSERT(rsdIncoming);
+				vsDenom.init(nBins[0], nBins[1], nBins[2], bc);
+				vsDenom.fill(0);
+			}
+
+			const IonStreamData *is;
+			if(rsdIncoming)
+			{
+
+				for (size_t i = 0; i < dataIn.size(); i++) 
+				{
+				
+					//Check for ion stream types. Don't use anything else in counting
+					if (dataIn[i]->getStreamType() != STREAM_TYPE_IONS) continue;
+				
+					is= (const IonStreamData *)dataIn[i];
+
+				
+					//Count the numerator ions	
 					if(is->data.size())
 					{
 						//Check what Ion type this stream belongs to. Assume all ions
 						//in the stream belong to the same group
 						unsigned int ionID;
-						ionID = rsdIncoming->rangeFile->getIonID(is->data[0].getMassToCharge());
+						ionID = getIonstreamIonID(is,rsdIncoming->rangeFile);
 
 						bool thisIonEnabled;
 						if(ionID!=(unsigned int)-1)
-							thisIonEnabled=enabledIons[1][ionID];
+							thisIonEnabled=enabledIons[0][ionID];
 						else
 							thisIonEnabled=false;
 
 						if(thisIonEnabled)
-							countPoints(vsDenom,is->data,true);
+						{
+							countPoints(voxelData,is->data,true);
+						}
 					}
-				} else if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
-				{
-					countPoints(vsDenom,is->data,true);
-				}
+			
+					//If the user requests normalisation, compute the denominator dataset
+					if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL) {
+						if(is->data.size())
+						{
+							//Check what Ion type this stream belongs to. Assume all ions
+							//in the stream belong to the same group
+							unsigned int ionID;
+							ionID = rsdIncoming->rangeFile->getIonID(is->data[0].getMassToCharge());
 
-				if(*Filter::wantAbort)
-					return VOXELISE_ABORT_ERR;
-			}
+							bool thisIonEnabled;
+							if(ionID!=(unsigned int)-1)
+								thisIonEnabled=enabledIons[1][ionID];
+							else
+								thisIonEnabled=false;
+
+							if(thisIonEnabled)
+								countPoints(vsDenom,is->data,true);
+						}
+					} else if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
+					{
+						countPoints(vsDenom,is->data,true);
+					}
+
+					if(*Filter::wantAbort)
+						return VOXELISE_ABORT_ERR;
+				}
 		
-			//Perform normalsiation	
-			if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
-				voxelData.calculateDensity();
-			else if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL ||
-					 normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
-				voxelData /= vsDenom;
+				//Perform normalsiation	
+				if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
+					voxelData.calculateDensity();
+				else if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL ||
+						 normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
+					voxelData /= vsDenom;
+			}
+			else
+			{
+				//No range data.  Just count
+				for (size_t i = 0; i < dataIn.size(); i++) 
+				{
+				
+					if(dataIn[i]->getStreamType() == STREAM_TYPE_IONS)
+					{
+						is= (const IonStreamData *)dataIn[i];
+
+						countPoints(voxelData,is->data,true);
+					
+						if(*Filter::wantAbort)
+							return VOXELISE_ABORT_ERR;
+
+					}
+				}
+				ASSERT(normaliseType != VOXELISE_NORMALISETYPE_COUNT2INVOXEL
+						&& normaliseType!=VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL);
+				if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
+					voxelData.calculateDensity();
+			}	
+
+			vsDenom.clear();
+
+
+			//Perform voxel filtering
+			switch(filterMode)
+			{
+				case VOXELISE_FILTERTYPE_NONE:
+					break;
+				case VOXELISE_FILTERTYPE_GAUSS:
+				{	
+					voxelData.isotropicGaussianSmooth(gaussDev,filterRatio);
+					break;
+				}
+				case VOXELISE_FILTERTYPE_LAPLACE:
+				{
+					voxelData.laplaceOfGaussian(gaussDev,filterRatio);
+					break;
+				}
+				default:
+					ASSERT(false);
+			}
+	
+			voxelCache=voxelData;
 		}
 		else
 		{
-			//No range data.  Just count
-			for (size_t i = 0; i < dataIn.size(); i++) 
-			{
-				
-				if(dataIn[i]->getStreamType() == STREAM_TYPE_IONS)
-				{
-					is= (const IonStreamData *)dataIn[i];
-
-					countPoints(voxelData,is->data,true);
-					
-					if(*Filter::wantAbort)
-						return VOXELISE_ABORT_ERR;
-
-				}
-			}
-			ASSERT(normaliseType != VOXELISE_NORMALISETYPE_COUNT2INVOXEL
-					&& normaliseType!=VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL);
-			if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
-				voxelData.calculateDensity();
-		}	
-
-		vsDenom.clear();
-
-
-		//Perform voxel filtering
-		switch(filterMode)
-		{
-			case VOXELISE_FILTERTYPE_NONE:
-				break;
-			case VOXELISE_FILTERTYPE_GAUSS:
-			{	
-				voxelData.isotropicGaussianSmooth(gaussDev,filterRatio);
-				break;
-			}
-			case VOXELISE_FILTERTYPE_LAPLACE:
-			{
-				voxelData.laplaceOfGaussian(gaussDev,filterRatio);
-				break;
-			}
-			default:
-				ASSERT(false);
+			//Use the cached value
+			voxelData=voxelCache;
 		}
 	
-		voxelCache=voxelData;
-	}
-	else
-	{
-		//Use the cached value
-		voxelData=voxelCache;
-	}
-	
-	float min,max;
-	voxelData.minMax(min,max);
+		float min,max;
+		voxelData.minMax(min,max);
 
 
-	string sMin,sMax;
-	stream_cast(sMin,min);
-	stream_cast(sMax,max);
-	consoleOutput.push_back(std::string(TRANS("Voxel Limits (min,max): (") + sMin + string(","))
-		       	+  sMax + ")");
+		string sMin,sMax;
+		stream_cast(sMin,min);
+		stream_cast(sMax,max);
+		consoleOutput.push_back(std::string(TRANS("Voxel Limits (min,max): (") + sMin + string(","))
+			       	+  sMax + ")");
 
 
-	//Update the bounding cube
-	{
-	Point3D p1,p2;
-	voxelData.getBounds(p1,p2);
-	lastBounds.setBounds(p1,p2);
+		//Update the bounding cube
+		{
+		Point3D p1,p2;
+		voxelData.getBounds(p1,p2);
+		lastBounds.setBounds(p1,p2);
+		}
+
 	}
 
 
 	switch(representation)
 	{
 		case VOXEL_REPRESENT_ISOSURF:
+		{
+
+			// manage the filter output
+			std::cerr << "Completing evaluation of VDB grid..." << endl;
+
+			OpenVDBGridStreamData *gs = new OpenVDBGridStreamData();
+			gs->parent=this;
+			// just like the swap function of the voxelization does pass the grids here to gs->grids
+			gs->grid = divgrid->deepCopy();
+			gs->representationType=representation;
+			gs->isovalue=isoLevel;
+			gs->r=rgba.r();
+			gs->g=rgba.g();
+			gs->b=rgba.b();
+			gs->a=rgba.a();
+	
+			if(cache)
+			{
+				gs->cached=1;
+				cacheOK=true;
+				filterOutputs.push_back(gs);
+			}
+			else
+			{
+				gs->cached=0;
+			}
+			//Store the vdbgrid on the output
+			getOut.push_back(gs);
+			break;
+
+		}
+
+
+
 		case VOXEL_REPRESENT_POINTCLOUD:
 		{
 			VoxelStreamData *vs = new VoxelStreamData();
@@ -957,19 +1174,99 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 		}
 		case VOXEL_REPRESENT_ISOSURF:
 		{
-			//-- Isosurface parameters --
-			propertyList.setGroupTitle(curGroup,TRANS("Surf. param."));
+			if(!rsdIncoming)
+				return;
 
-			stream_cast(tmpStr,isoLevel);
-			p.name=TRANS("Isovalue");
+			// group computation
+
+			FilterProperty p;
+			size_t curGroup=0;
+
+			string tmpStr = "";
+			stream_cast(tmpStr,voxel_size);
+			p.name=TRANS("Voxelsize");
+			p.data=tmpStr;
+			p.key=KEY_VOXELSIZE;
+			p.type=PROPERTY_TYPE_REAL;
+			p.helpText=TRANS("Voxel size in x,y,z direction");
+			propertyList.addProperty(p,curGroup);
+			propertyList.setGroupTitle(curGroup,TRANS("Computation"));
+	
+			curGroup++;
+
+	
+			// group numerator
+		
+			p.name=TRANS("Numerator");
+			p.data=boolStrEnc(numeratorAll);
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Parmeter \"a\" used in fraction (a/b) to get voxel value");
+			p.key=KEY_ENABLE_NUMERATOR;
+			propertyList.addProperty(p,curGroup);
+
+			ASSERT(rsdIncoming->enabledIons.size()==enabledIons[0].size());	
+			ASSERT(rsdIncoming->enabledIons.size()==enabledIons[1].size());	
+
+			//Look at the numerator	
+			for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
+			{
+				string str;
+				str=boolStrEnc(enabledIons[0][ui]);
+
+				//Append the ion name with a checkbox
+				p.key=muxKey(KEY_ENABLE_NUMERATOR,ui);
+				p.data=str;
+				p.name=rsdIncoming->rangeFile->getName(ui);
+				p.type=PROPERTY_TYPE_BOOL;
+				p.helpText=TRANS("Enable this ion for numerator");
+				propertyList.addProperty(p,curGroup);
+			}
+
+			propertyList.setGroupTitle(curGroup,TRANS("Numerator"));
+			curGroup++;
+	
+			// group denominator
+
+			p.name=TRANS("Denominator");
+			p.data=boolStrEnc(denominatorAll );
+			p.type=PROPERTY_TYPE_BOOL;
+			p.helpText=TRANS("Parameter \"b\" used in fraction (a/b) to get voxel value");
+			p.key=KEY_ENABLE_DENOMINATOR;
+			propertyList.addProperty(p,curGroup);
+
+			for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
+			{			
+				string str;
+				str=boolStrEnc(enabledIons[1][ui]);
+
+				//Append the ion name with a checkbox
+				p.key=muxKey(KEY_ENABLE_DENOMINATOR,ui);
+				p.data=str;
+				p.name=rsdIncoming->rangeFile->getName(ui);
+				p.type=PROPERTY_TYPE_BOOL;
+				p.helpText=TRANS("Enable this ion for denominator contribution");
+				propertyList.addProperty(p,curGroup);
+			}
+			propertyList.setGroupTitle(curGroup,TRANS("Denominator"));
+			curGroup++;
+
+	
+			// group representation
+	
+			p.name=TRANS("Representation");
+
+			//-- Isosurface parameters --
+
+			stream_cast(tmpStr,iso_level);
+			p.name=TRANS("Isovalue [0,1]");
 			p.data=tmpStr;
 			p.type=PROPERTY_TYPE_REAL;
 			p.helpText=TRANS("Scalar value to show as isosurface");
 			p.key=KEY_ISOLEVEL;
 			propertyList.addProperty(p,curGroup);
-		
+
 			//-- 
-			propertyList.setGroupTitle(curGroup,TRANS("Surface"));	
+			propertyList.setGroupTitle(curGroup,TRANS("Isosurface"));	
 			curGroup++;
 
 			//-- Isosurface appearance --
@@ -979,16 +1276,8 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			p.helpText=TRANS("Colour of isosurface");
 			p.key=KEY_COLOUR;
 			propertyList.addProperty(p,curGroup);
-
-			stream_cast(tmpStr,1.0-rgba.a());
-			p.name=TRANS("Transparency");
-			p.data=tmpStr;
-			p.type=PROPERTY_TYPE_REAL;
-			p.helpText=TRANS("How \"see through\" each facet is (0 - opaque, 1 - invisible)");
-			p.key=KEY_TRANSPARENCY;
-			propertyList.addProperty(p,curGroup);
-			
-			//----
+			propertyList.setGroupTitle(curGroup,TRANS("Appearance"));	
+			curGroup++;
 			
 			break;
 		}
@@ -998,7 +1287,6 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			propertyList.setGroupTitle(curGroup,TRANS("Slice param."));
 
 			vector<pair<unsigned int, string> > choices;
-			
 			
 			choices.push_back(make_pair(0,"x"));	
 			choices.push_back(make_pair(1,"y"));	
@@ -1011,7 +1299,6 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			propertyList.addProperty(p,curGroup);
 			choices.clear();
 			
-
 			stream_cast(tmpStr,sliceOffset);
 			p.name=TRANS("Slice Coord");
 			p.data=tmpStr;
