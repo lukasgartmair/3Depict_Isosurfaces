@@ -395,7 +395,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 	const float background = 0.0f;	
 
 	// initialize a grid where the division result is stored
-	openvdb::FloatGrid::Ptr divgrid = openvdb::FloatGrid::create(background);
+	openvdb::FloatGrid::Ptr calculation_result_grid = openvdb::FloatGrid::create(background);
 
 	switch(representation)
 	{
@@ -498,6 +498,13 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 							// normalized voxel indices based on 00, 01, 02 etc. // very important otherwise there will be spacings
 							openvdb::Coord ijk(current_voxel_index[0], current_voxel_index[1], current_voxel_index[2]);
 
+
+						/// here the different normalization methods have to be inserted
+						/// 1 raw count 2 volume (density) 3 all ions (conc) 4 ratio (num/denum)
+
+						// concentration
+						if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
+
 							// write to denominator grid
 							if(thisDenominatorIonEnabled)
 							{
@@ -531,42 +538,45 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 				numerator_grid->evalMinMax(minVal,maxVal);
 				std::cout << " eval min max numerator grid" << " = " << minVal << " , " << maxVal << std::endl;
 				std::cout << " active voxel count numerator grid" << " = " << numerator_grid->activeVoxelCount() << std::endl;
-
-				// composite.h operations modify the first grid and leave the second grid emtpy !!!!!!!!!!!!!!!!!!
-				// compute a = a / b
-				openvdb::tools::compDiv(*numerator_grid, *denominator_grid);
-	
-				divgrid = numerator_grid->deepCopy();
-
-				//check for negative nans and infs introduced by the division
-				//set them to zero in order not to obtain nan mesh coordinates
-
-				for (openvdb::FloatGrid::ValueAllIter iter = divgrid->beginValueAll(); iter; ++iter)
-				{   
-				    if (std::isfinite(iter.getValue()) == false)
+				
+				if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
 				{
-				    iter.setValue(0.0);
-				}
-				}
+					// composite.h operations modify the first grid and leave the second grid emtpy !!!!!!!!!!!!!!!!!!
+					// compute a = a / b
+					openvdb::tools::compDiv(*numerator_grid, *denominator_grid);
 	
-				divgrid->evalMinMax(minVal,maxVal);
-				std::cout << " eval min max divgrid after division" << " = " << minVal << " , " << maxVal << std::endl;
-				std::cout << " active voxel count divgrid after division" << " = " << divgrid->activeVoxelCount() << std::endl;
-				std::cout << " memory usage in bytes divgrid after division" << " = " << divgrid->memUsage() << std::endl;
+					calculation_result_grid = numerator_grid->deepCopy();
+
+					//check for negative nans and infs introduced by the division
+					//set them to zero in order not to obtain nan mesh coordinates
+
+					for (openvdb::FloatGrid::ValueAllIter iter = calculation_result_grid->beginValueAll(); iter; ++iter)
+					{   
+					    if (std::isfinite(iter.getValue()) == false)
+					{
+					    iter.setValue(0.0);
+					}
+					}
+				}
+			
+				calculation_result_grid->evalMinMax(minVal,maxVal);
+				std::cout << " eval min max calculation_result_grid after division" << " = " << minVal << " , " << maxVal << std::endl;
+				std::cout << " active voxel count calculation_result_grid after division" << " = " << calculation_result_grid->activeVoxelCount() << std::endl;
+				std::cout << " memory usage in bytes calculation_result_grid after division" << " = " << calculation_result_grid->memUsage() << std::endl;
 
 				// Associate a scaling transform with the grid that sets the voxel size
 				// to voxel_size units in world space.
 
-				divgrid->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
+				calculation_result_grid->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
 
-				vdbCache = divgrid->deepCopy();
+				vdbCache = calculation_result_grid->deepCopy();
 		
 			}
 
 			else
 			{
 				//Use the cached value
-				divgrid = vdbCache->deepCopy();
+				calculation_result_grid = vdbCache->deepCopy();
 			}
 			
 			
@@ -576,7 +586,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			OpenVDBGridStreamData *gs = new OpenVDBGridStreamData();
 			gs->parent=this;
 			// just like the swap function of the voxelization does pass the grids here to gs->grids
-			gs->grid = divgrid->deepCopy();
+			gs->grid = calculation_result_grid->deepCopy();
 			gs->voxelsize = voxel_size;
 			gs->representationType= representation;
 			gs->isovalue=isoLevel;
