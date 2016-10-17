@@ -192,7 +192,7 @@ VoxeliseFilter::VoxeliseFilter()
 	isoLevel=0.5;
 	
 	// vdb
-	voxel_size = 2.0; 
+	voxelsize = 2.0; 
 
 	filterRatio=3.0;
 	filterMode=VOXELISE_FILTERTYPE_NONE;
@@ -217,7 +217,7 @@ VoxeliseFilter::VoxeliseFilter()
 
 	calculateWidthsFromNumBins(binWidth,nBins);
 
-	numeratorAll = false;
+	numeratorAll = true;
 	denominatorAll = true;
 
 	sliceInterpolate=VOX_INTERP_NONE;
@@ -241,6 +241,7 @@ Filter *VoxeliseFilter::cloneUncached() const
 	p->rgba=rgba;
 
 	p->isoLevel=isoLevel;
+	p->voxelsize=voxelsize;
 	
 	p->filterMode=filterMode;
 	p->filterRatio=filterRatio;
@@ -423,6 +424,11 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			if(vdbCache->activeVoxelCount() == 0)
 			{
 
+
+				// clear the calculation results
+	
+				calculation_result_grid->clear();
+
 				// initialize nominator and denominator grids
 				openvdb::FloatGrid::Ptr denominator_grid = openvdb::FloatGrid::create(background);
 				openvdb::FloatGrid::Accessor denominator_accessor = denominator_grid->getAccessor();
@@ -469,7 +475,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 	
 						// 1st step - project the current atom position to unit voxel i.e. from 0 to 1
 						std::vector<float> position_in_unit_voxel;
-						position_in_unit_voxel = projectAtompositionToUnitvoxel(atom_position, voxel_size);
+						position_in_unit_voxel = projectAtompositionToUnitvoxel(atom_position, voxelsize);
 
 						// 2nd step - determine each contribution to the adjecent 8 voxels outgoining from the position in the unit voxel
 						std::vector<float> volumes_of_subcuboids;
@@ -491,7 +497,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			
 						// 3rd step - determine the adjacent voxel indices in the actual grid
 						std::vector<std::vector<float> > adjacent_voxel_vertices;
-						adjacent_voxel_vertices = determineAdjacentVoxelVertices(atom_position, voxel_size);
+						adjacent_voxel_vertices = determineAdjacentVoxelVertices(atom_position, voxelsize);
 			
 						// 4th step - assign each of the 8 adjacent voxels the corresponding contribution that results from the atom position in the unit voxel
 						const int number_of_adjacent_voxels = 8;
@@ -513,7 +519,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 
 								denominator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor.getValue(ijk));
 
-								// write to numerator grid
+								// write selected numerators to numerator grid
 								if(thisNumeratorIonEnabled)
 								{	
 									numerator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor.getValue(ijk));
@@ -563,9 +569,9 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 				std::cout << " memory usage in bytes calculation_result_grid after division" << " = " << calculation_result_grid->memUsage() << std::endl;
 
 				// Associate a scaling transform with the grid that sets the voxel size
-				// to voxel_size units in world space.
+				// to voxelsize units in world space.
 
-				calculation_result_grid->setTransform(openvdb::math::Transform::createLinearTransform(voxel_size));
+				calculation_result_grid->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize));
 
 				vdbCache = calculation_result_grid->deepCopy();
 		
@@ -578,15 +584,15 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			}
 			
 			
-						// manage the filter output
+			// manage the filter output
 			std::cerr << "Completing evaluation of VDB grid..." << endl;
 
 			OpenVDBGridStreamData *gs = new OpenVDBGridStreamData();
 			gs->parent=this;
 			// just like the swap function of the voxelization does pass the grids here to gs->grids
 			gs->grid = calculation_result_grid->deepCopy();
-			gs->voxelsize = voxel_size;
-			gs->representationType= representation;
+			gs->voxelsize = voxelsize;
+			gs->representationType = representation;
 			gs->isovalue=isoLevel;
 			gs->r=rgba.r();
 			gs->g=rgba.g();
@@ -607,7 +613,6 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			getOut.push_back(gs);
 			break;
 
-			
 		}
 
 		case VOXEL_REPRESENT_POINTCLOUD:
@@ -1047,6 +1052,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 	// numerator
 	if (rsdIncoming) 
 	{
+		
 		p.name=TRANS("Numerator");
 		p.data=boolStrEnc(numeratorAll);
 		p.type=PROPERTY_TYPE_BOOL;
@@ -1064,16 +1070,16 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			str=boolStrEnc(enabledIons[0][ui]);
 
 			//Append the ion name with a checkbox
-			p.name=rsdIncoming->rangeFile->getName(ui);
+			p.key=muxKey(KEY_ENABLE_NUMERATOR,ui);
 			p.data=str;
+			p.name=rsdIncoming->rangeFile->getName(ui);
 			p.type=PROPERTY_TYPE_BOOL;
 			p.helpText=TRANS("Enable this ion for numerator");
-			p.key=muxKey(KEY_ENABLE_NUMERATOR,ui);
 			propertyList.addProperty(p,curGroup);
-		}
-	
-		propertyList.setGroupTitle(curGroup,TRANS("Ranges"));
-		curGroup++;
+	}
+
+	propertyList.setGroupTitle(curGroup,TRANS("Numerator"));
+	curGroup++;
 	}
 	
 	
@@ -1207,7 +1213,7 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			size_t curGroup=0;
 
 			string tmpStr = "";
-			stream_cast(tmpStr,voxel_size);
+			stream_cast(tmpStr,voxelsize);
 			p.name=TRANS("Voxelsize");
 			p.data=tmpStr;
 			p.key=KEY_VOXELSIZE;
@@ -1217,64 +1223,6 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			propertyList.setGroupTitle(curGroup,TRANS("Computation"));
 	
 			curGroup++;
-
-			// each key has to be unique in order to reach 100 % filter progress
-/*
-			// group numerator
-		
-			p.name=TRANS("Numerator");
-			p.data=boolStrEnc(numeratorAll);
-			p.type=PROPERTY_TYPE_BOOL;
-			p.helpText=TRANS("Parmeter \"a\" used in fraction (a/b) to get voxel value");
-			p.key=KEY_ENABLE_NUMERATOR;
-			propertyList.addProperty(p,curGroup);
-
-			ASSERT(rsdIncoming->enabledIons.size()==enabledIons[0].size());	
-			ASSERT(rsdIncoming->enabledIons.size()==enabledIons[1].size());	
-
-			//Look at the numerator	
-			for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
-			{
-				string str;
-				str=boolStrEnc(enabledIons[0][ui]);
-
-				//Append the ion name with a checkbox
-				p.key=muxKey(KEY_ENABLE_NUMERATOR,ui);
-				p.data=str;
-				p.name=rsdIncoming->rangeFile->getName(ui);
-				p.type=PROPERTY_TYPE_BOOL;
-				p.helpText=TRANS("Enable this ion for numerator");
-				propertyList.addProperty(p,curGroup);
-			}
-
-			propertyList.setGroupTitle(curGroup,TRANS("Numerator"));
-			curGroup++;
-	
-			// group denominator
-
-			p.name=TRANS("Denominator");
-			p.data=boolStrEnc(denominatorAll );
-			p.type=PROPERTY_TYPE_BOOL;
-			p.helpText=TRANS("Parameter \"b\" used in fraction (a/b) to get voxel value");
-			p.key=KEY_ENABLE_DENOMINATOR;
-			propertyList.addProperty(p,curGroup);
-
-			for(unsigned  int ui=0; ui<rsdIncoming->enabledIons.size(); ui++)
-			{			
-				string str;
-				str=boolStrEnc(enabledIons[1][ui]);
-
-				//Append the ion name with a checkbox
-				p.key=muxKey(KEY_ENABLE_DENOMINATOR,ui);
-				p.data=str;
-				p.name=rsdIncoming->rangeFile->getName(ui);
-				p.type=PROPERTY_TYPE_BOOL;
-				p.helpText=TRANS("Enable this ion for denominator contribution");
-				propertyList.addProperty(p,curGroup);
-			}
-			propertyList.setGroupTitle(curGroup,TRANS("Denominator"));
-			curGroup++;
-*/
 	
 			// group representation
 	
@@ -1438,7 +1386,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 			if(f <= 0.0f)
 				return false;
 			needUpdate=true;
-			voxel_size=f;
+			voxelsize=f;
 			//Go in and manually adjust the cached
 			//entries to have the new value, rather
 			//than doing a full recomputation
@@ -1448,7 +1396,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 				{	
 					OpenVDBGridStreamData *vdbgs;
 					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
-					vdbgs->voxelsize = voxel_size;
+					vdbgs->voxelsize = voxelsize;
 				}
 			}
 			break;
@@ -1489,6 +1437,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 			{
 				needUpdate=true;
 				clearCache();
+				vdbCache->clear();
 				normaliseType=i;
 			}
 			break;
@@ -1656,6 +1605,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 			else
 			{
 				clearCache();
+				vdbCache->clear();
 			}
 			
 			break;
@@ -1671,6 +1621,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 			numeratorAll = b;
 			needUpdate=true;
 			clearCache();
+			vdbCache->clear();
 			break;
 		}
 		case KEY_ENABLE_DENOMINATOR:
@@ -1686,6 +1637,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 			denominatorAll = b;
 			needUpdate=true;			
 			clearCache();
+			vdbCache->clear();
 			break;
 		}
 		case KEY_FILTER_MODE:
@@ -1913,6 +1865,7 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 				}
 				needUpdate=true;			
 				clearCache();
+				vdbCache->clear();
 			} else if (subKeyType == KEY_ENABLE_NUMERATOR) {
 				bool b;
 				if(!boolStrDec(value,b))
@@ -1923,7 +1876,8 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 					numeratorAll = false;
 				}
 				needUpdate=true;			
-					clearCache();
+				clearCache();
+				vdbCache->clear();
 			}
 			else
 			{
@@ -1959,7 +1913,7 @@ bool VoxeliseFilter::writeState(std::ostream &f,unsigned int format, unsigned in
 		{	
 			f << tabs(depth) << "<" << trueName() << ">" << endl;
 			f << tabs(depth+1) << "<userstring value=\"" << escapeXML(userString) << "\"/>" << endl;
-			f << tabs(depth+1) << "<voxel_size value=\""<<voxel_size<< "\"/>"  << endl;
+			f << tabs(depth+1) << "<voxelsize value=\""<<voxelsize<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<fixedwidth value=\""<<fixedWidth << "\"/>"  << endl;
 			f << tabs(depth+1) << "<nbins values=\""<<nBins[0] << ","<<nBins[1]<<","<<nBins[2] << "\"/>"  << endl;
 			f << tabs(depth+1) << "<binwidth values=\""<<binWidth[0] << ","<<binWidth[1]<<","<<binWidth[2] << "\"/>"  << endl;
@@ -2014,11 +1968,11 @@ bool VoxeliseFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 
 	//--=
 	float tmpFloat = 0;
-	if(!XMLGetNextElemAttrib(nodePtr,tmpFloat,"voxel_size","value"))
+	if(!XMLGetNextElemAttrib(nodePtr,tmpFloat,"voxelsize","value"))
 		return false;
 	if(tmpFloat <= 0.0f)
 		return false;
-	voxel_size=tmpFloat;
+	voxelsize=tmpFloat;
 	//--=
 
 	//Retrieve user string
@@ -2248,7 +2202,7 @@ unsigned int VoxeliseFilter::getRefreshEmitMask() const
 
 unsigned int VoxeliseFilter::getRefreshUseMask() const
 {
-	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE ;
+	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE | STREAM_TYPE_OPENVDBGRID;
 }
 
 void VoxeliseFilter::getTexturedSlice(const Voxels<float> &v, 

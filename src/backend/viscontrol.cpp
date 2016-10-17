@@ -372,18 +372,29 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 
 // why does vis_grid = vdbSrc->grid->deepCopy(); now cause the insertMetadata error?!
 					vis_grid = vdbSrc->grid;
+
+
+					if (vdbSrc->representationType == VOXEL_REPRESENT_ISOSURF)
+					{
 					
-					LukasDrawIsoSurface *ld = new LukasDrawIsoSurface;
-					ld->setGrid(vis_grid);
-					ld->setColour(vdbSrc->r,vdbSrc->g,
-							vdbSrc->b,vdbSrc->a);
-					ld->setIsovalue(vdbSrc->isovalue);
-					ld->setVoxelsize(vdbSrc->voxelsize);
+						LukasDrawIsoSurface *ld = new LukasDrawIsoSurface;
+						ld->setGrid(vis_grid);
+						ld->setColour(vdbSrc->r,vdbSrc->g,
+								vdbSrc->b,vdbSrc->a);
+						ld->setIsovalue(vdbSrc->isovalue);
+						ld->setVoxelsize(vdbSrc->voxelsize);
 
-					ld->wantsLight=true;
+						ld->wantsLight=true;
 
-					sceneDrawables.push_back(ld);
-					break;
+						sceneDrawables.push_back(ld);
+						break;
+					}
+					else
+					{
+							ASSERT(false);
+							// delete vis_grid here
+							break;
+					}
 
 				}
 

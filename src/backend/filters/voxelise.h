@@ -38,7 +38,7 @@ private:
 	//!Stepping mode - fixed width or fixed number of bins
 	bool fixedWidth;
 
-	float voxel_size; // declaration here, definition in the source file
+	float voxelsize; // declaration here, definition in the source file
 
 	//Cache to use for voxel info
 	Voxels<float> voxelCache;
