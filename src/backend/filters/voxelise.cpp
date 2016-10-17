@@ -207,6 +207,7 @@ VoxeliseFilter::VoxeliseFilter()
 
 	// vdb cache 
 	vdbCache=openvdb::FloatGrid::create(0.0);
+	vdbCache->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize));
 
 
 	//Fictitious bounds.
@@ -425,9 +426,10 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			{
 
 
-				// clear the calculation results
+				// clear the calculation results andd provide an accessor
 	
 				calculation_result_grid->clear();
+				openvdb::FloatGrid::Accessor calculation_result_accessor = calculation_result_grid->getAccessor();
 
 				// initialize nominator and denominator grids
 				openvdb::FloatGrid::Ptr denominator_grid = openvdb::FloatGrid::create(background);
@@ -512,8 +514,15 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 							/// here the different normalization methods have to be inserted
 							/// 1 raw count 2 volume (density) 3 all ions (conc) 4 ratio (num/denum)
 
+							// raw count
+							if (normaliseType == VOXELISE_NORMALISETYPE_NONE)
+							{
+									calculation_result_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor.getValue(ijk));
+							}
+
+
 							// concentration
-							if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
+							else if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
 							{
 								// write to all ions to the denominator grid
 
@@ -529,6 +538,38 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 									numerator_accessor.setValue(ijk, 0.0 + numerator_accessor.getValue(ijk));
 								}
 							}
+
+							else if (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL)
+							{
+								// write to denominator grid
+								if(thisDenominatorIonEnabled)
+								{
+					
+									denominator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor.getValue(ijk));
+								}
+								else
+								{
+									denominator_accessor.setValue(ijk, 0.0 + denominator_accessor.getValue(ijk));
+								}
+
+								// write to numerator grid
+								if(thisNumeratorIonEnabled)
+								{	
+									numerator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor.getValue(ijk));
+								}
+								else
+								{
+									numerator_accessor.setValue(ijk, 0.0 + numerator_accessor.getValue(ijk));
+								}
+							}
+							else 
+							{}
+
+
+						// how to solve the density calculation problem?
+						// either rewrite function for volume calculation to a vdb version
+						// or get the information somehow from the voxel data
+
 						}
 					}
 				}
@@ -543,7 +584,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 				std::cout << " eval min max numerator grid" << " = " << minVal << " , " << maxVal << std::endl;
 				std::cout << " active voxel count numerator grid" << " = " << numerator_grid->activeVoxelCount() << std::endl;
 				
-				if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
+				if ((normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL) || (normaliseType == VOXELISE_NORMALISETYPE_COUNT2INVOXEL))
 				{
 					// composite.h operations modify the first grid and leave the second grid emtpy !!!!!!!!!!!!!!!!!!
 					// compute a = a / b
@@ -574,6 +615,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 				calculation_result_grid->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize));
 
 				vdbCache = calculation_result_grid->deepCopy();
+				vdbCache->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize));
 		
 			}
 
