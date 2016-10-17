@@ -336,7 +336,6 @@ public:
 	unsigned int representationType;
 	float r,g,b,a;
 	double isovalue;
-	double adaptivity;
 	float voxelsize;
 	//!Apply filter to input data stream	
 	openvdb::FloatGrid::Ptr grid;	

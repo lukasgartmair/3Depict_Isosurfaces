@@ -372,15 +372,15 @@ AUTOMAKE = ${SHELL} /home/lukas/3Depict_Isosurfaces/missing automake-1.15
 AWK = mawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
-CFLAGS = -g  -g
+CFLAGS = -g -O2
 CPP = gcc -E
 CPPFLAGS = 
 CXX = g++
 CXXCPP = g++ -E
 CXXDEPMODE = depmode=gcc3
-CXXFLAGS = -g  -g
+CXXFLAGS = -g -O2
 CYGPATH_W = echo
-DEBUG_FLAGS = -DDEBUG
+DEBUG_FLAGS = 
 DEFS = -DHAVE_CONFIG_H
 DEPDIR = .deps
 ECHO_C = 

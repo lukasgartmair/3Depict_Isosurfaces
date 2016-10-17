@@ -34,8 +34,6 @@ class LukasAnalysisFilter : public Filter
 	
 		float iso_level;  // declaration here, definition in the source file
 		
-		float adaptivity;
-		
 		bool numeratorAll, denominatorAll;
 		//This is the filters enabled ranges
 		RangeStreamData *rsdIncoming;

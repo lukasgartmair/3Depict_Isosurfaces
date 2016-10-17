@@ -387,13 +387,6 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 {
 	//Disallow copying of anything in the blockmask. Copy everything else
 	propagateStreams(dataIn,getOut,getRefreshBlockMask(),true);
-	
-	//use the cached copy if we have it.
-	if(cacheOK)
-	{
-		propagateCache(getOut);
-		return 0;
-	}
 
 	// Initialize the OpenVDB library.  This must be called at least
     	// once per program and may safely be called multiple times.
@@ -409,10 +402,17 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 		case VOXEL_REPRESENT_ISOSURF:
 		{
 
-		std::cout << " enter isosurf representation" << std::endl;
+			//use the cached copy if we have it.
+			if(cacheOK)
+			{
+				propagateCache(getOut);
+				return 0;
+			}
+
+			std::cout << " enter isosurf representation" << std::endl;
 
 			
-		// fill vdb grid here instead of voxel data
+			// fill vdb grid here instead of voxel data
 
 			// do i have to get the actual entry size or is it just important that it is not used/filled?
 			// maybe if memory usage != 0?
@@ -605,6 +605,14 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 		case VOXEL_REPRESENT_POINTCLOUD:
 		case VOXEL_REPRESENT_AXIAL_SLICE:
 		{
+
+			//use the cached copy if we have it.
+			if(cacheOK)
+			{
+				propagateCache(getOut);
+				return 0;
+			}
+
 			Voxels<float> voxelData;
 			if(!voxelCache.getSize())
 			{
@@ -2232,7 +2240,7 @@ unsigned int VoxeliseFilter::getRefreshEmitMask() const
 
 unsigned int VoxeliseFilter::getRefreshUseMask() const
 {
-	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE | STREAM_TYPE_OPENVDBGRID ;
+	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE ;
 }
 
 void VoxeliseFilter::getTexturedSlice(const Voxels<float> &v, 

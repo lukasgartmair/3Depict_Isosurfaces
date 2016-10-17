@@ -38,7 +38,6 @@ enum
 	KEY_VOXELSIZE,
 	KEY_COLOUR,
 	KEY_ISOLEVEL,
-	KEY_ADAPTIVITY,
 	KEY_ENABLE_NUMERATOR,
 	KEY_ENABLE_DENOMINATOR
 };
@@ -50,8 +49,7 @@ LukasAnalysisFilter::LukasAnalysisFilter() :
 
 	rgba=ColourRGBAf(0.5,0.5,0.5,1.0f);
 	iso_level=0.07;
-	voxel_size = 2.0; 
-	adaptivity = 0.0;	
+	voxel_size = 2.0; 	
 	numeratorAll = false;
 	denominatorAll = true;
 	colourMap=0;
@@ -76,7 +74,6 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 
 	p->iso_level=iso_level;
 	p->voxel_size=voxel_size;
-	p->adaptivity=adaptivity;
 
 	p->enabledIons[0].resize(enabledIons[0].size());
 	std::copy(enabledIons[0].begin(),enabledIons[0].end(),p->enabledIons[0].begin());
@@ -401,7 +398,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	gs->grid = divgrid->deepCopy();
 	
 	gs->isovalue=iso_level;
-	gs->adaptivity=adaptivity;
 	gs->voxelsize=voxel_size;
 	gs->r=rgba.r();
 	gs->g=rgba.g();
@@ -520,20 +516,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	//-- 
 	propertyList.setGroupTitle(curGroup,TRANS("Isosurface"));	
 	curGroup++;
-	
-	p.name=TRANS("Quad / Triangle Ratio");
-	
-	stream_cast(tmpStr,adaptivity);
-	p.name=TRANS("Adaptivity [0,1]");
-	p.data=tmpStr;
-	p.type=PROPERTY_TYPE_REAL;
-	p.helpText=TRANS("Scalar value determines closely to match the surface when converting to polygons. Higher adaptivities will allow more variation in polygon size, using fewer polygons to express the surface.");
-	p.key=KEY_ADAPTIVITY;
-	propertyList.addProperty(p,curGroup);
 
-	//-- 
-	propertyList.setGroupTitle(curGroup,TRANS("Isosurface"));	
-	curGroup++;
 
 	//-- Isosurface appearance --
 	p.name=TRANS("Colour");
@@ -553,31 +536,7 @@ bool LukasAnalysisFilter::setProperty(  unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
-		case KEY_ADAPTIVITY: 
-		{
-			float f;
-			if(stream_cast(f,value))
-				return false;
-			if(f < 0.0f)
-				return false;
-			if(f > 1.0f)
-				return false;
-			needUpdate=true;
-			adaptivity=f;
-			//Go in and manually adjust the cached
-			//entries to have the new value, rather
-			//than doing a full recomputation
-			if(cacheOK)
-			{
-				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
-				{	
-					OpenVDBGridStreamData *vdbgs;
-					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
-					vdbgs->adaptivity = adaptivity;
-				}
-			}
-			break;
-		}	
+
 	
 		case KEY_ENABLE_NUMERATOR:
 		{
@@ -759,7 +718,6 @@ bool LukasAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsign
 
 			f << tabs(depth+1) << "<voxel_size value=\""<<voxel_size<< "\"/>"  << endl;
 			f << tabs(depth+1) << "<iso_level value=\""<<iso_level<< "\"/>"  << endl;
-			f << tabs(depth+1) << "<adaptivity value=\""<<adaptivity<< "\"/>"  << endl;
 			
 			f << tabs(depth+1) << "<enabledions>" << endl;
 
@@ -825,13 +783,6 @@ bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	iso_level=tmpFloat;
 	//--=
 	
-	//--
-	tmpFloat = 0;
-	if(!XMLGetNextElemAttrib(nodePtr,tmpFloat,"adaptivity","value"))
-		return false;
-	if(tmpFloat <= 0.0f)
-		return false;
-	adaptivity=tmpFloat;
 
 	
 	//Retrieve colour

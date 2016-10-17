@@ -12,6 +12,7 @@
 #include <openvdb/tools/VolumeToMesh.h>
 #include <openvdb/io/Stream.h>
 #include <openvdb/math/Coord.h>
+#include <openvdb/metadata/MetaMap.h>
 
 #include "OpenVDB_TestSuite/vdb_functions.h"
 

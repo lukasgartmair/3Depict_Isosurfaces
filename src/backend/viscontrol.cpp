@@ -23,6 +23,7 @@
 #include "wx/propertyGridUpdater.h"
 #include "wx/wxcomponents.h"
 #include "common/voxels.h"
+#include "filters/openvdb_includes.h"
 
 using std::list;
 using std::vector;
@@ -369,7 +370,8 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 					
 					openvdb::FloatGrid::Ptr vis_grid = openvdb::FloatGrid::create();
 
-					vis_grid = vdbSrc->grid->deepCopy();
+// why does vis_grid = vdbSrc->grid->deepCopy(); now cause the insertMetadata error?!
+					vis_grid = vdbSrc->grid;
 					
 					LukasDrawIsoSurface *ld = new LukasDrawIsoSurface;
 					ld->setGrid(vis_grid);
@@ -382,7 +384,9 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 
 					sceneDrawables.push_back(ld);
 					break;
+
 				}
+
 				case STREAM_TYPE_VOXEL:
 				{
 					//Technically, we are violating const-ness
@@ -396,55 +400,29 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 					else
 						v->swap(*(vSrc->data));
 
-					switch(vSrc->representationType)
+					if (vSrc->representationType == VOXEL_REPRESENT_POINTCLOUD)
 					{
-						case VOXEL_REPRESENT_POINTCLOUD:
-						{
-							DrawField3D  *d = new DrawField3D;
-							d->setField(v);
-							d->setColourMapID(0);
-							d->setColourMinMax();
-							d->setBoxColours(vSrc->r,vSrc->g,vSrc->b,vSrc->a);
-							d->setPointSize(vSrc->splatSize);
-							d->setAlpha(vSrc->a);
-							d->wantsLight=false;
 
-							sceneDrawables.push_back(d);
-							break;
-						}
-/*
-						case VOXEL_REPRESENT_ISOSURF:
-						{
+						DrawField3D  *d = new DrawField3D;
+						d->setField(v);
+						d->setColourMapID(0);
+						d->setColourMinMax();
+						d->setBoxColours(vSrc->r,vSrc->g,vSrc->b,vSrc->a);
+						d->setPointSize(vSrc->splatSize);
+						d->setAlpha(vSrc->a);
+						d->wantsLight=false;
 
-							OpenVDBGridStreamData *vdbSrc = (OpenVDBGridStreamData *)((*it)[ui]);
-
-							openvdb::initialize();
-					
-							openvdb::FloatGrid::Ptr vis_grid = openvdb::FloatGrid::create();
-
-							vis_grid = vdbSrc->grid->deepCopy();
-					
-							LukasDrawIsoSurface *ld = new LukasDrawIsoSurface;
-							ld->setGrid(vis_grid);
-							ld->setColour(vdbSrc->r,vdbSrc->g,
-									vdbSrc->b,vdbSrc->a);
-							ld->setIsovalue(vdbSrc->isovalue);
-							ld->setVoxelsize(vdbSrc->voxelsize);
-
-							ld->wantsLight=true;
-
-							sceneDrawables.push_back(ld);
-							break;
-
-						}
-*/
-						default:
-							ASSERT(false);
-							delete v;
-							;
+						sceneDrawables.push_back(d);
+						break;
 					}
 
-					break;
+					else
+					{
+							ASSERT(false);
+							delete v;
+							break;
+					}
+
 				}
 			}
 			
