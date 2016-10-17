@@ -415,7 +415,11 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			// fill vdb grid here instead of voxel data
 
 			// do i have to get the actual entry size or is it just important that it is not used/filled?
+
 			// maybe if memory usage != 0?
+			
+			std::cout << "cache = " << cache << std::endl;
+
 			if(vdbCache->activeVoxelCount() == 0)
 			{
 
@@ -499,31 +503,25 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 							openvdb::Coord ijk(current_voxel_index[0], current_voxel_index[1], current_voxel_index[2]);
 
 
-						/// here the different normalization methods have to be inserted
-						/// 1 raw count 2 volume (density) 3 all ions (conc) 4 ratio (num/denum)
+							/// here the different normalization methods have to be inserted
+							/// 1 raw count 2 volume (density) 3 all ions (conc) 4 ratio (num/denum)
 
-						// concentration
-						if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
-
-							// write to denominator grid
-							if(thisDenominatorIonEnabled)
+							// concentration
+							if (normaliseType == VOXELISE_NORMALISETYPE_ALLATOMSINVOXEL)
 							{
-					
+								// write to all ions to the denominator grid
+
 								denominator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor.getValue(ijk));
-							}
-							else
-							{
-								denominator_accessor.setValue(ijk, 0.0 + denominator_accessor.getValue(ijk));
-							}
 
-							// write to numerator grid
-							if(thisNumeratorIonEnabled)
-							{	
-								numerator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor.getValue(ijk));
-							}
-							else
-							{
-								numerator_accessor.setValue(ijk, 0.0 + numerator_accessor.getValue(ijk));
+								// write to numerator grid
+								if(thisNumeratorIonEnabled)
+								{	
+									numerator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor.getValue(ijk));
+								}
+								else
+								{
+									numerator_accessor.setValue(ijk, 0.0 + numerator_accessor.getValue(ijk));
+								}
 							}
 						}
 					}
@@ -552,10 +550,10 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 
 					for (openvdb::FloatGrid::ValueAllIter iter = calculation_result_grid->beginValueAll(); iter; ++iter)
 					{   
-					    if (std::isfinite(iter.getValue()) == false)
-					{
-					    iter.setValue(0.0);
-					}
+						if (std::isfinite(iter.getValue()) == false)
+						{
+				    		iter.setValue(0.0);
+						}
 					}
 				}
 			
@@ -1539,10 +1537,10 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 			if(cacheOK)
 			{
 				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
-				{
-					VoxelStreamData *d;
-					d=(VoxelStreamData*)filterOutputs[ui];
-					d->a=rgba.a();
+				{	
+					OpenVDBGridStreamData *vdbgs;
+					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
+					vdbgs->a = rgba.a();
 				}
 			}
 			break;
@@ -2240,7 +2238,7 @@ bool VoxeliseFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 unsigned int VoxeliseFilter::getRefreshBlockMask() const
 {
 	//Ions, plots and voxels cannot pass through this filter
-	return STREAM_TYPE_IONS | STREAM_TYPE_PLOT | STREAM_TYPE_VOXEL | STREAM_TYPE_OPENVDBGRID;
+	return STREAM_TYPE_IONS | STREAM_TYPE_PLOT | STREAM_TYPE_VOXEL;
 }
 
 unsigned int VoxeliseFilter::getRefreshEmitMask() const
