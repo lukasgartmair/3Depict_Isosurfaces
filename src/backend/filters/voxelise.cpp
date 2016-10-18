@@ -22,6 +22,7 @@
 
 #include "openvdb_includes.h"
 #include "contribution_transfer_function_TestSuite/CTF_functions.h"
+#include <math.h> // pow
 
 #include <map>
 
@@ -422,6 +423,8 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 			
 			std::cout << "cache = " << cache << std::endl;
 
+			double single_voxel_volume = std::pow(voxelsize,3);
+
 			if(vdbCache->activeVoxelCount() == 0)
 			{
 
@@ -562,13 +565,41 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 									numerator_accessor.setValue(ijk, 0.0 + numerator_accessor.getValue(ijk));
 								}
 							}
+	
+							else if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
+							{
+/*
+								Point3D size = maxBound - minBound;
+								// calculate the volume of a voxel
+								double volume = 1.0;
+								for (int i = 0; i < 3; i++)
+									volume *= size[i] / binCount[i];
+
+								// normalise the voxel value based on volume
+							#pragma omp parallel for
+								for(size_t ui=0; ui<voxels.size(); ui++) 
+									voxels[ui] /= volume;
+*/
+
+								// what is bin count?
+								
+								//double volume = 1.0;
+								//volume *= voxelsize / calculation_result_grid->activeVoxelCount(); 
+								// simple case for equal cube edges of the voxel
+								
+								// write to numerator grid
+								if(thisNumeratorIonEnabled)
+								{	
+									numerator_accessor.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor.getValue(ijk));
+								}
+								else
+								{
+									numerator_accessor.setValue(ijk, 0.0 + numerator_accessor.getValue(ijk));
+								}
+							}						
+
 							else 
 							{}
-
-
-						// how to solve the density calculation problem?
-						// either rewrite function for volume calculation to a vdb version
-						// or get the information somehow from the voxel data
 
 						}
 					}
@@ -599,10 +630,31 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 					{   
 						if (std::isfinite(iter.getValue()) == false)
 						{
-				    		iter.setValue(0.0);
+				    			iter.setValue(0.0);
 						}
 					}
 				}
+				
+				else if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
+				{
+					calculation_result_grid = numerator_grid->deepCopy();
+
+					for (openvdb::FloatGrid::ValueAllIter iter = calculation_result_grid->beginValueAll(); iter; ++iter)
+					{   
+				    		iter.setValue(iter.getValue() / single_voxel_volume);
+					}
+
+					//normalize these values again in order to obtain values from zero to one
+					// so the isovalue still matches
+					calculation_result_grid->evalMinMax(minVal,maxVal);
+
+					for (openvdb::FloatGrid::ValueAllIter iter = calculation_result_grid->beginValueAll(); iter; ++iter)
+					{   
+				    		iter.setValue((iter.getValue() - minVal) / (maxVal - minVal));
+					}
+	
+				}
+
 			
 				calculation_result_grid->evalMinMax(minVal,maxVal);
 				std::cout << " eval min max calculation_result_grid after division" << " = " << minVal << " , " << maxVal << std::endl;
