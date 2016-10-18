@@ -387,7 +387,6 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 						ld->wantsLight=true;
 
 						sceneDrawables.push_back(ld);
-						break;
 					}
 					else
 					{
@@ -396,6 +395,9 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 							delete &vis_grid;
 							break;
 					}
+
+					break;
+				
 
 				}
 
@@ -425,7 +427,6 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 						d->wantsLight=false;
 
 						sceneDrawables.push_back(d);
-						break;
 					}
 
 					else
@@ -434,6 +435,8 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 							delete v;
 							break;
 					}
+					
+					break;
 
 				}
 			}
