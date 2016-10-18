@@ -511,7 +511,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 							openvdb::Coord ijk(current_voxel_index[0], current_voxel_index[1], current_voxel_index[2]);
 
 
-							/// here the different normalization methods have to be inserted
+							/// normalization methods
 							/// 1 raw count 2 volume (density) 3 all ions (conc) 4 ratio (num/denum)
 
 							// raw count
@@ -611,11 +611,30 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 
 				// Associate a scaling transform with the grid that sets the voxel size
 				// to voxelsize units in world space.
+	
+				openvdb::math::Transform::Ptr linearTransform = openvdb::math::Transform::createLinearTransform(voxelsize);
+				calculation_result_grid->setTransform(linearTransform);
 
-				calculation_result_grid->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize));
+
+				/*
+
+				// experiment: trying to apply some arbitrary scale map in order to reproduce arbitrary voxel sizes
+
+				bool has_uniformly_sized_voxels = linearTransform->hasUniformScale();
+				std::cout << "has uniformly sized voxel cubes" << " = " << has_uniformly_sized_voxels << std::endl;
+
+				openvdb::Vec3d scale_vector = openvdb::Vec3d(1.0,2.0,1.0);
+
+				openvdb::math::ScaleMap scaleMap(scale_vector);
+				
+				// scalemap.apply takes a vec3d -> how can i apply this to a whole grid
+				openvdb::math::Vec3d mapResult = scaleMap.applyMap();
+
+				*/
 
 				vdbCache = calculation_result_grid->deepCopy();
-				vdbCache->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize));
+				vdbCache->setTransform(linearTransform);
+				
 		
 			}
 
@@ -2239,12 +2258,37 @@ unsigned int VoxeliseFilter::getRefreshBlockMask() const
 
 unsigned int VoxeliseFilter::getRefreshEmitMask() const
 {
-	return STREAM_TYPE_VOXEL | STREAM_TYPE_DRAW | STREAM_TYPE_OPENVDBGRID;
+
+	switch(representation)
+	{
+		case VOXEL_REPRESENT_ISOSURF:
+			{
+				return STREAM_TYPE_OPENVDBGRID;
+			}
+
+		case VOXEL_REPRESENT_POINTCLOUD:
+		case VOXEL_REPRESENT_AXIAL_SLICE:
+			{
+				return STREAM_TYPE_VOXEL | STREAM_TYPE_DRAW;
+			}
+	}
 }
 
 unsigned int VoxeliseFilter::getRefreshUseMask() const
 {
-	return STREAM_TYPE_IONS | STREAM_TYPE_RANGE | STREAM_TYPE_OPENVDBGRID;
+	switch(representation)
+	{
+		case VOXEL_REPRESENT_ISOSURF:
+			{
+				return STREAM_TYPE_OPENVDBGRID, STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
+			}
+
+		case VOXEL_REPRESENT_POINTCLOUD:
+		case VOXEL_REPRESENT_AXIAL_SLICE:
+			{
+				return STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
+			}
+	}
 }
 
 void VoxeliseFilter::getTexturedSlice(const Voxels<float> &v, 

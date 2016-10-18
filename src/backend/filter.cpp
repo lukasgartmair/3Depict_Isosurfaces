@@ -852,12 +852,14 @@ OpenVDBGridStreamData::OpenVDBGridStreamData(const Filter *f) : FilterStreamData
 
 OpenVDBGridStreamData::~OpenVDBGridStreamData()
 {
-
+/*
 //argument given to ‘delete’, expected pointer
 // is grid not recognized as a grid ptr? why?
-/*
+
 	if(grid)
-		delete grid;
+	{
+		delete &grid;
+	}
 */
 }
 

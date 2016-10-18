@@ -370,8 +370,8 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 					
 					openvdb::FloatGrid::Ptr vis_grid = openvdb::FloatGrid::create();
 
-// why does vis_grid = vdbSrc->grid->deepCopy(); now cause the insertMetadata error?!
-					vis_grid = vdbSrc->grid;
+					// why does vis_grid = vdbSrc->grid->deepCopy(); sometimes cause the insertMetadata error?! interesting to see
+					vis_grid = vdbSrc->grid->deepCopy();
 
 
 					if (vdbSrc->representationType == VOXEL_REPRESENT_ISOSURF)
@@ -392,7 +392,8 @@ void VisController::updateScene(list<vector<const FilterStreamData *> > &sceneDa
 					else
 					{
 							ASSERT(false);
-							// delete vis_grid here
+							// is this really the correct way to delete an openvdb grid object ptr? 
+							delete &vis_grid;
 							break;
 					}
 
