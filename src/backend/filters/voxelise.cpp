@@ -110,8 +110,8 @@ enum
 // when _KEEPCACHE [] is true for both representations
 const bool VOXEL_REPRESENT_KEEPCACHE[] = {
 	true,
-	true,
-	false
+	false,
+	true
 };
 
 const char *NORMALISE_TYPE_STRING[] = {
@@ -427,6 +427,10 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 
 			if(vdbCache->activeVoxelCount() == 0)
 			{
+
+				//FIXME: Handle no-range case
+				if(!rsdIncoming)
+					break;
 
 
 				// clear the calculation results andd provide an accessor
@@ -1183,16 +1187,16 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			str=boolStrEnc(enabledIons[0][ui]);
 
 			//Append the ion name with a checkbox
-			p.key=muxKey(KEY_ENABLE_NUMERATOR,ui);
-			p.data=str;
 			p.name=rsdIncoming->rangeFile->getName(ui);
+			p.data=str;
 			p.type=PROPERTY_TYPE_BOOL;
 			p.helpText=TRANS("Enable this ion for numerator");
+			p.key=muxKey(KEY_ENABLE_NUMERATOR,ui);
 			propertyList.addProperty(p,curGroup);
-	}
+		}
 
-	propertyList.setGroupTitle(curGroup,TRANS("Numerator"));
-	curGroup++;
+		propertyList.setGroupTitle(curGroup,TRANS("Numerator"));
+		curGroup++;
 	}
 	
 	
@@ -1318,14 +1322,9 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 		case VOXEL_REPRESENT_ISOSURF:
 		{
 			if(!rsdIncoming)
-				return;
+				break;
 
 			// group computation
-
-			FilterProperty p;
-			size_t curGroup=0;
-
-			string tmpStr = "";
 			stream_cast(tmpStr,voxelsize);
 			p.name=TRANS("Voxelsize");
 			p.data=tmpStr;
@@ -1333,14 +1332,11 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			p.type=PROPERTY_TYPE_REAL;
 			p.helpText=TRANS("Voxel size in x,y,z direction");
 			propertyList.addProperty(p,curGroup);
+
 			propertyList.setGroupTitle(curGroup,TRANS("Computation"));
-	
 			curGroup++;
 	
-			// group representation
 	
-			p.name=TRANS("Representation");
-
 			//-- Isosurface parameters --
 
 			stream_cast(tmpStr,isoLevel);
@@ -1362,8 +1358,6 @@ void VoxeliseFilter::getProperties(FilterPropGroup &propertyList) const
 			p.helpText=TRANS("Colour of isosurface");
 			p.key=KEY_COLOUR;
 			propertyList.addProperty(p,curGroup);
-			propertyList.setGroupTitle(curGroup,TRANS("Appearance"));	
-			curGroup++;
 			
 			break;
 		}
