@@ -2711,6 +2711,21 @@ unsigned int LukasDrawIsoSurface::getType() const
 
 void LukasDrawIsoSurface::getBoundingBox(BoundCube &b) const
 {
+
+	//obtain the bounding box from the openvdb grid
+	openvdb::CoordBBox box;
+	box=grid->evalActiveVoxelBoundingBox();
+	openvdb::Coord cStart,cEnd;
+	cStart=box.getStart();
+	cEnd=box.getEnd();
+
+	//set the bounds
+	for(unsigned int ui=0;ui<3;ui++)
+	{
+		b.setBound(ui,0,cStart[ui]);
+		b.setBound(ui,1,cEnd[ui]);
+	}
+
 }
 
 void LukasDrawIsoSurface::updateMesh() const
@@ -2748,6 +2763,7 @@ void LukasDrawIsoSurface::draw() const
 
 	if(!cacheOK)
 	{
+		cerr << "Recalculation of the mesh!" << endl;
 		updateMesh();
 	}
 
