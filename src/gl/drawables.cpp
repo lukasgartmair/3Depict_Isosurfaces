@@ -2937,6 +2937,8 @@ void LukasDrawIsoSurface::draw() const
 	triangle_areas = ComputeTriangleAreas(points, triangles_combined);
 	ExportTriangleAreas(triangle_areas);
 	*/
+
+	ExportTriangleMeshAsObj(points, triangles_combined);
 }
 		
 
