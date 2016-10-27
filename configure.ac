@@ -456,9 +456,7 @@ then
 			fi
 			
 			if test x"$USE_UBSAN_GCC6" == x"yes" ; then
-				CFLAGS="$CFLAGS -fsanitize=bounds-strict" 
-				CXXFLAGS="$CXXFLAGS  -fsanitize=bounds-strict"
-				LDFLAGS="$LDFLAGS  -fsanitize=bounds-strict"
+
 				AC_MSG_RESULT(["Enabling More Gcc-UbSan (gcc6)"]);
 			fi
 		fi

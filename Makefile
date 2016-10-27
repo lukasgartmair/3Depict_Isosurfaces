@@ -212,7 +212,7 @@ AM_DEFAULT_VERBOSITY = 1
 AUTOCONF = ${SHELL} /home/lukas/3Depict_Isosurfaces/missing autoconf
 AUTOHEADER = ${SHELL} /home/lukas/3Depict_Isosurfaces/missing autoheader
 AUTOMAKE = ${SHELL} /home/lukas/3Depict_Isosurfaces/missing automake-1.15
-AWK = mawk
+AWK = gawk
 CC = gcc
 CCDEPMODE = depmode=gcc3
 CFLAGS = -g -O2

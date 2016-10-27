@@ -2863,39 +2863,80 @@ void LukasDrawIsoSurface::draw() const
 
 	//std::cout << "nans in vertex normals" << " = " << non_finite_tris_counter << std::endl;
 
+	// this is for visual comparisons of the face distribution
+	bool flat_shading = true;
 
-	glColor4f(r,g,b,a);
-	glPushAttrib(GL_CULL_FACE);
-	glDisable(GL_CULL_FACE);
-	
-	glBegin(GL_TRIANGLES);	
-	for(int ui=0;ui<triangles_combined.size();ui++)
+	if (flat_shading == true)
 	{
-		openvdb::Vec3s v1 = points[triangles_combined[ui][0]];
-		openvdb::Vec3s v2 = points[triangles_combined[ui][1]];
-		openvdb::Vec3s v3 = points[triangles_combined[ui][2]];
 
-		// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
-		GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
-		GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
-		GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
-		
-		GLfloat vertex_normal1[] = {vertex_normals[triangles_combined[ui][0]][0], vertex_normals[triangles_combined[ui][0]][1], vertex_normals[triangles_combined[ui][0]][2]};
-		GLfloat vertex_normal2[] = {vertex_normals[triangles_combined[ui][1]][0], vertex_normals[triangles_combined[ui][1]][1], vertex_normals[triangles_combined[ui][1]][2]};
-		GLfloat vertex_normal3[] = {vertex_normals[triangles_combined[ui][2]][0], vertex_normals[triangles_combined[ui][2]][1], vertex_normals[triangles_combined[ui][2]][2]};
+		glColor4f(r,g,b,a);
+		glPushAttrib(GL_CULL_FACE);
+		glDisable(GL_CULL_FACE);
+	
+		glBegin(GL_TRIANGLES);	
+		for(int ui=0;ui<triangles_combined.size();ui++)
+		{
+			openvdb::Vec3s v1 = points[triangles_combined[ui][0]];
+			openvdb::Vec3s v2 = points[triangles_combined[ui][1]];
+			openvdb::Vec3s v3 = points[triangles_combined[ui][2]];
 
-		glNormal3fv(vertex_normal1);
-		glVertex3fv(vertex1);
-		glNormal3fv(vertex_normal2);
-		glVertex3fv(vertex2);
-		glNormal3fv(vertex_normal3);
-		glVertex3fv(vertex3);
-		//glNormal3f(triangle_normals[ui][0], triangle_normals[ui][1], triangle_normals[ui][2]);
+			// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
+			GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
+			GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
+			GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
+
+			glVertex3fv(vertex1);
+			glVertex3fv(vertex2);
+			glVertex3fv(vertex3);
+			glNormal3f(triangle_normals[ui][0], triangle_normals[ui][1], triangle_normals[ui][2]);
+		}
+
+		glEnd();
+		glPopAttrib();
+
 	}
 
-	glEnd();
-	glPopAttrib();
+	else
+	{
+		glColor4f(r,g,b,a);
+		glPushAttrib(GL_CULL_FACE);
+		glDisable(GL_CULL_FACE);
 	
+		glBegin(GL_TRIANGLES);	
+		for(int ui=0;ui<triangles_combined.size();ui++)
+		{
+			openvdb::Vec3s v1 = points[triangles_combined[ui][0]];
+			openvdb::Vec3s v2 = points[triangles_combined[ui][1]];
+			openvdb::Vec3s v3 = points[triangles_combined[ui][2]];
+
+			// conversion guessed but from here https://www.opengl.org/wiki/Common_Mistakes
+			GLfloat vertex1[] = {v1.x(),v1.y(),v1.z()};
+			GLfloat vertex2[] = {v2.x(),v2.y(),v2.z()};
+			GLfloat vertex3[] = {v3.x(),v3.y(),v3.z()};
+		
+			GLfloat vertex_normal1[] = {vertex_normals[triangles_combined[ui][0]][0], vertex_normals[triangles_combined[ui][0]][1], vertex_normals[triangles_combined[ui][0]][2]};
+			GLfloat vertex_normal2[] = {vertex_normals[triangles_combined[ui][1]][0], vertex_normals[triangles_combined[ui][1]][1], vertex_normals[triangles_combined[ui][1]][2]};
+			GLfloat vertex_normal3[] = {vertex_normals[triangles_combined[ui][2]][0], vertex_normals[triangles_combined[ui][2]][1], vertex_normals[triangles_combined[ui][2]][2]};
+
+			glNormal3fv(vertex_normal1);
+			glVertex3fv(vertex1);
+			glNormal3fv(vertex_normal2);
+			glVertex3fv(vertex2);
+			glNormal3fv(vertex_normal3);
+			glVertex3fv(vertex3);
+			//glNormal3f(triangle_normals[ui][0], triangle_normals[ui][1], triangle_normals[ui][2]);
+		}
+
+		glEnd();
+		glPopAttrib();
+	}
+
+	// for evaluation puposes
+	/*
+	std::vector<float> triangle_areas(triangles_combined.size());
+	triangle_areas = ComputeTriangleAreas(points, triangles_combined);
+	ExportTriangleAreas(triangle_areas);
+	*/
 }
 		
 

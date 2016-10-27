@@ -7799,9 +7799,7 @@ $as_echo "\"Enabling Gcc-UbSan\"" >&6; };
 			fi
 			
 			if test x"$USE_UBSAN_GCC6" == x"yes" ; then
-				CFLAGS="$CFLAGS -fsanitize=bounds-strict" 
-				CXXFLAGS="$CXXFLAGS  -fsanitize=bounds-strict"
-				LDFLAGS="$LDFLAGS  -fsanitize=bounds-strict"
+
 				{ $as_echo "$as_me:${as_lineno-$LINENO}: result: \"Enabling More Gcc-UbSan (gcc6)\"" >&5
 $as_echo "\"Enabling More Gcc-UbSan (gcc6)\"" >&6; };
 			fi
