@@ -609,7 +609,6 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 				
 				else if (normaliseType == VOXELISE_NORMALISETYPE_VOLUME)
 				{
-					calculation_result_grid = numerator_grid->deepCopy();
 
 					for (openvdb::FloatGrid::ValueAllIter iter = calculation_result_grid->beginValueAll(); iter; ++iter)
 					{   
