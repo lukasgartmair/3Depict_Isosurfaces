@@ -2767,6 +2767,8 @@ void LukasDrawIsoSurface::draw() const
 		updateMesh();
 	}
 
+	// checking the mesh for nonfinite coordinates like -nan and inf
+
 	int non_finites_counter = 0;
 	int xyzs = 3;
 	for (int i=0;i<points.size();i++)
@@ -2803,8 +2805,6 @@ void LukasDrawIsoSurface::draw() const
 		}
 	}
 
-
-
 	//std::cout << "points size" << " = " << points.size() << std::endl;
 	//std::cout << "triangles size" << " = " << triangles.size() << std::endl;
 	//std::cout << " active voxel count subgrid div" << " = " << grid->activeVoxelCount() << std::endl;
@@ -2824,6 +2824,7 @@ void LukasDrawIsoSurface::draw() const
 	std::cout << "number_of_triangles" << " = " << triangles_combined.size() << std::endl;
 
 	std::vector<std::vector<float> > triangle_normals(triangles_combined.size(), std::vector<float>(vertices_per_triangle));
+
 	// calculate triangle normals
 	triangle_normals = ComputeTriangleNormalsVDB(points, triangles_combined);
 
@@ -2842,12 +2843,15 @@ void LukasDrawIsoSurface::draw() const
 
 	std::cout << "nans in triangle normals" << " = " << non_finite_tris_counter << std::endl;
 
-	//initialize triangle normals vector
+	//initialize vertex normals vector
 	std::vector<std::vector<float> > vertex_normals(points.size(),std::vector<float>(xyzs));
 	// calculate vertex normals 
 	vertex_normals = ComputeVertexNormals(triangles_combined, points, triangle_normals);
 
 	std::cout << "vertex normals size" << " = " << vertex_normals.size() << std::endl;
+	
+	// check for corrupt vertex normals and if so set them to zero
+
 	int non_finite_verts_counter = 0;
 	for (int i=0;i<vertex_normals.size();i++)
 	{
@@ -2863,7 +2867,7 @@ void LukasDrawIsoSurface::draw() const
 
 	//std::cout << "nans in vertex normals" << " = " << non_finite_tris_counter << std::endl;
 
-	// this is for visual comparisons of the face distribution
+	// this is for visual comparisons with Marching Cubes
 	bool flat_shading = true;
 
 	if (flat_shading == true)
@@ -2893,7 +2897,6 @@ void LukasDrawIsoSurface::draw() const
 
 		glEnd();
 		glPopAttrib();
-
 	}
 
 	else
@@ -2924,7 +2927,6 @@ void LukasDrawIsoSurface::draw() const
 			glVertex3fv(vertex2);
 			glNormal3fv(vertex_normal3);
 			glVertex3fv(vertex3);
-			//glNormal3f(triangle_normals[ui][0], triangle_normals[ui][1], triangle_normals[ui][2]);
 		}
 
 		glEnd();
@@ -2938,11 +2940,8 @@ void LukasDrawIsoSurface::draw() const
 	ExportTriangleAreas(triangle_areas);
 	*/
 
-	ExportTriangleMeshAsObj(points, triangles_combined);
+	//ExportTriangleMeshAsObj(points, triangles_combined);
 }
-		
-
-///////////////////////////////////////////////////////////////////////////////////////////////
 
 DrawAxis::DrawAxis()
 {
