@@ -21,16 +21,13 @@
 #include "../filter.h"
 #include "../../common/translation.h"
 #include "openvdb_includes.h"
-#include "contribution_transfer_function_TestSuite/CTF_functions.h"
 
 class LukasAnalysisFilter : public Filter
 {
 	private:
 	
-		//Enabled ions to choose for numerator
+		//Enabled ions to choose for proxigram
 		std::vector<char> enabledIons[2];
-
-		float voxel_size; // declaration here, definition in the source file
 	
 		float iso_level;  // declaration here, definition in the source file
 		
@@ -51,10 +48,8 @@ class LukasAnalysisFilter : public Filter
 		bool autoColourMap;
 		//Colour map start/end
 		float colourMapBounds[2];
-		
-		//Cache to use for vdbgrid info
-		// console warning: non-static data member initializers only available with -std=c++11 or -std=gnu++11
-		openvdb::FloatGrid::Ptr vdbCache;
+
+		// proxigram cache here
 
 	public:
 		//!Constructor

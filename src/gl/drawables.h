@@ -1207,7 +1207,6 @@ private:
   	mutable std::vector<openvdb::Vec4I> quads;	
 	
 	double isovalue;
-	double adaptivity;
 	float voxelsize;
 
 	//!Point colour (r,g,b,a) range: [0.0f,1.0f]
@@ -1221,7 +1220,6 @@ public:
 	//!Get the bouding box (of the entire scalar field)	
 	void getBoundingBox(BoundCube &b) const ;
 
-
 	//Draw
 	void draw() const;
 	
@@ -1230,9 +1228,6 @@ public:
 
 	//!Set the isosurface value
 	void setIsovalue(float iso) {isovalue=iso;cacheOK=false;};
-
-	//!Set the adaptivity of isosurface
-	void setAdaptivity(float adapt) {adaptivity=adapt;cacheOK=false;};
 	
 	//!Set the voxelsize of the isosurface
 	void setVoxelsize(float voxel_size) {voxelsize=voxel_size;cacheOK=false;};

@@ -2694,7 +2694,7 @@ void DrawIsoSurface::draw() const
 ////////////////////////////////  OPENVDB  /////////////////////////////////////////////
 
 LukasDrawIsoSurface::LukasDrawIsoSurface() : cacheOK(false),
-	 r(0.5f), g(0.5f), b(0.5f), a(1.0f), isovalue(0.07), adaptivity(0.0)
+	 r(0.5f), g(0.5f), b(0.5f), a(1.0f), isovalue(0.07)
 {
 
 }

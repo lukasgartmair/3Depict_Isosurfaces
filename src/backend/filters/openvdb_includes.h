@@ -10,6 +10,7 @@
 #include <openvdb/Grid.h>
 #include <openvdb/tools/Composite.h>
 #include <openvdb/tools/VolumeToMesh.h>
+#include <openvdb/tools/MeshToVolume.h>
 #include <openvdb/io/Stream.h>
 #include <openvdb/math/Coord.h>
 #include <openvdb/metadata/MetaMap.h>
