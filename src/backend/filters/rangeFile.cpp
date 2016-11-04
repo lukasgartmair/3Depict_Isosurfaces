@@ -1294,12 +1294,12 @@ void RangeFileFilter::getStateOverrides(std::vector<string> &externalAttribs) co
 
 unsigned int RangeFileFilter::getRefreshBlockMask() const
 {
-	return STREAM_TYPE_RANGE | STREAM_TYPE_IONS ;
+	return STREAM_TYPE_IONS;
 }
 
 unsigned int RangeFileFilter::getRefreshEmitMask() const
 {
-	unsigned int retmask=  STREAM_TYPE_RANGE | STREAM_TYPE_IONS;
+	unsigned int retmask=  STREAM_TYPE_RANGE | STREAM_TYPE_IONS | STREAM_TYPE_OPENVDBGRID;
 	if(showLegend)
 		retmask |= STREAM_TYPE_DRAW;
 	return retmask;
@@ -1307,7 +1307,7 @@ unsigned int RangeFileFilter::getRefreshEmitMask() const
 
 unsigned int RangeFileFilter::getRefreshUseMask() const
 {
-	return STREAM_TYPE_IONS ;
+	return STREAM_TYPE_IONS | STREAM_TYPE_OPENVDBGRID;
 }
 
 void RangeFileFilter::setPropFromRegion(unsigned int method, unsigned int regionID, float newPos)

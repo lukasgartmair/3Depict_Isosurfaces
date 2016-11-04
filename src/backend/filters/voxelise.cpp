@@ -16,6 +16,7 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "lukasAnalysis.h"
 #include "voxelise.h"
 #include "common/colourmap.h"
 #include "filterCommon.h"
@@ -2266,7 +2267,7 @@ bool VoxeliseFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFile
 unsigned int VoxeliseFilter::getRefreshBlockMask() const
 {
 	//Ions, plots and voxels cannot pass through this filter
-	return STREAM_TYPE_IONS | STREAM_TYPE_PLOT | STREAM_TYPE_VOXEL;
+	return STREAM_TYPE_PLOT | STREAM_TYPE_VOXEL;
 }
 
 unsigned int VoxeliseFilter::getRefreshEmitMask() const
@@ -2276,7 +2277,7 @@ unsigned int VoxeliseFilter::getRefreshEmitMask() const
 	{
 		case VOXEL_REPRESENT_ISOSURF:
 			{
-				return STREAM_TYPE_OPENVDBGRID;
+				return STREAM_TYPE_OPENVDBGRID | STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
 			}
 
 		case VOXEL_REPRESENT_POINTCLOUD:
@@ -2293,7 +2294,7 @@ unsigned int VoxeliseFilter::getRefreshUseMask() const
 	{
 		case VOXEL_REPRESENT_ISOSURF:
 			{
-				return STREAM_TYPE_OPENVDBGRID, STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
+				return STREAM_TYPE_OPENVDBGRID| STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
 			}
 
 		case VOXEL_REPRESENT_POINTCLOUD:

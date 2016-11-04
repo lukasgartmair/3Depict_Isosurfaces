@@ -692,7 +692,7 @@ configure:8049: gcc -o conftest -g -O2    conftest.c  -lopenvdb -ltbb -lHalf >&5
 conftest.c:58:6: warning: conflicting types for built-in function 'sqrt'
  char sqrt ();
       ^
-/tmp/cc90D0I4.o: In function `main':
+/tmp/ccrUuzZJ.o: In function `main':
 /home/lukas/3Depict_Isosurfaces/conftest.c:69: undefined reference to `sqrt'
 collect2: error: ld returned 1 exit status
 configure:8049: $? = 1
@@ -775,7 +775,7 @@ configure:8061: gcc -o conftest -g -O2    conftest.c  -lopenvdb -ltbb -lHalf >&5
 conftest.c:58:6: warning: conflicting types for built-in function 'floor'
  char floor ();
       ^
-/tmp/ccBKhbY8.o: In function `main':
+/tmp/cc3wAVtJ.o: In function `main':
 /home/lukas/3Depict_Isosurfaces/conftest.c:69: undefined reference to `floor'
 collect2: error: ld returned 1 exit status
 configure:8061: $? = 1
@@ -880,7 +880,7 @@ configure:8073: gcc -o conftest -g -O2    conftest.c  -lopenvdb -ltbb -lHalf >&5
 conftest.c:62:6: warning: conflicting types for built-in function 'pow'
  char pow ();
       ^
-/tmp/cc9iK8Gh.o: In function `main':
+/tmp/ccVdW4IT.o: In function `main':
 /home/lukas/3Depict_Isosurfaces/conftest.c:73: undefined reference to `pow'
 collect2: error: ld returned 1 exit status
 configure:8073: $? = 1
