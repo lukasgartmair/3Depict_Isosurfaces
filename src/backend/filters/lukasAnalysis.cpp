@@ -476,8 +476,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 							denominator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor_proxi.getValue(ijk));
 							denom_counter += 1;
 							// write to numerator grid
-							//if(thisNumeratorIonEnabled)
-							if(ionID == 1)								
+							if(thisNumeratorIonEnabled)
+							// test case //if(ionID == 1)								
 							{	
 								numerator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor_proxi.getValue(ijk));
 							}
