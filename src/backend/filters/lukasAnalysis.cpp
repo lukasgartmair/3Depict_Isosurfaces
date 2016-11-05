@@ -395,11 +395,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
     	// once per program and may safely be called multiple times.
 	openvdb::initialize();
 
-	switch(representation)
-	{
-		case VOXEL_REPRESENT_ISOSURF:
-		{
-
 			//use the cached copy if we have it.
 			if(cacheOK)
 			{
@@ -893,19 +888,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			getOut.push_back(d);
 
-			break;
-
-		}
-
-		case VOXEL_REPRESENT_POINTCLOUD:
-		case VOXEL_REPRESENT_AXIAL_SLICE:
-		{
-
-
-		}
-	} // switch represntation close
-
 	
+
 	//Copy the inputs into the outputs, provided they are not voxels
 	return 0;
 }
