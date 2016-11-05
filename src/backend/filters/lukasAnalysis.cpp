@@ -1178,180 +1178,41 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	p.key=KEY_VOXEL_REPRESENTATION_MODE;
 	propertyList.addProperty(p,curGroup);
 
-	switch(representation)
-	{
-		case VOXEL_REPRESENT_POINTCLOUD:
-		{
-			propertyList.setGroupTitle(curGroup,TRANS("Appearance"));
+	// group computation
+	stream_cast(tmpStr,voxelsize);
+	p.name=TRANS("Voxelsize");
+	p.data=tmpStr;
+	p.key=KEY_VOXELSIZE;
+	p.type=PROPERTY_TYPE_REAL;
+	p.helpText=TRANS("Voxel size in x,y,z direction");
+	propertyList.addProperty(p,curGroup);
 
-			stream_cast(tmpStr,splatSize);
-			p.name=TRANS("Spot size");
-			p.data=tmpStr;
-			p.type=PROPERTY_TYPE_REAL;
-			p.helpText=TRANS("Size of the spots to use for display");
-			p.key=KEY_SPOTSIZE;
-			propertyList.addProperty(p,curGroup);
+	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
+	curGroup++;
 
-			stream_cast(tmpStr,1.0-rgba.a());
-			p.name=TRANS("Transparency");
-			p.data=tmpStr;
-			p.type=PROPERTY_TYPE_REAL;
-			p.helpText=TRANS("How \"see through\" each point is (0 - opaque, 1 - invisible)");
-			p.key=KEY_TRANSPARENCY;
-			propertyList.addProperty(p,curGroup);
-			
-			break;
-		}
-		case VOXEL_REPRESENT_ISOSURF:
-		{
-			if(!rsdIncoming)
-				break;
 
-			// group computation
-			stream_cast(tmpStr,voxelsize);
-			p.name=TRANS("Voxelsize");
-			p.data=tmpStr;
-			p.key=KEY_VOXELSIZE;
-			p.type=PROPERTY_TYPE_REAL;
-			p.helpText=TRANS("Voxel size in x,y,z direction");
-			propertyList.addProperty(p,curGroup);
+	//-- Isosurface parameters --
 
-			propertyList.setGroupTitle(curGroup,TRANS("Computation"));
-			curGroup++;
-	
-	
-			//-- Isosurface parameters --
+	stream_cast(tmpStr,isoLevel);
+	p.name=TRANS("Isovalue [0,1]");
+	p.data=tmpStr;
+	p.type=PROPERTY_TYPE_REAL;
+	p.helpText=TRANS("Scalar value to show as isosurface");
+	p.key=KEY_ISOLEVEL;
+	propertyList.addProperty(p,curGroup);
 
-			stream_cast(tmpStr,isoLevel);
-			p.name=TRANS("Isovalue [0,1]");
-			p.data=tmpStr;
-			p.type=PROPERTY_TYPE_REAL;
-			p.helpText=TRANS("Scalar value to show as isosurface");
-			p.key=KEY_ISOLEVEL;
-			propertyList.addProperty(p,curGroup);
+	//-- 
+	propertyList.setGroupTitle(curGroup,TRANS("Isosurface"));	
+	curGroup++;
 
-			//-- 
-			propertyList.setGroupTitle(curGroup,TRANS("Isosurface"));	
-			curGroup++;
+	//-- Isosurface appearance --
+	p.name=TRANS("Colour");
+	p.data=rgba.toColourRGBA().rgbString();
+	p.type=PROPERTY_TYPE_COLOUR;
+	p.helpText=TRANS("Colour of isosurface");
+	p.key=KEY_COLOUR;
+	propertyList.addProperty(p,curGroup);
 
-			//-- Isosurface appearance --
-			p.name=TRANS("Colour");
-			p.data=rgba.toColourRGBA().rgbString();
-			p.type=PROPERTY_TYPE_COLOUR;
-			p.helpText=TRANS("Colour of isosurface");
-			p.key=KEY_COLOUR;
-			propertyList.addProperty(p,curGroup);
-			
-			break;
-		}
-		case VOXEL_REPRESENT_AXIAL_SLICE:
-		{
-			//-- Slice parameters --
-			propertyList.setGroupTitle(curGroup,TRANS("Slice param."));
-
-			vector<pair<unsigned int, string> > choices;
-			
-			choices.push_back(make_pair(0,"x"));	
-			choices.push_back(make_pair(1,"y"));	
-			choices.push_back(make_pair(2,"z"));	
-			p.name=TRANS("Slice Axis");
-			p.data=choiceString(choices,sliceAxis);
-			p.type=PROPERTY_TYPE_CHOICE;
-			p.helpText=TRANS("Normal for the planar slice");
-			p.key=KEY_VOXEL_SLICE_AXIS;
-			propertyList.addProperty(p,curGroup);
-			choices.clear();
-			
-			stream_cast(tmpStr,sliceOffset);
-			p.name=TRANS("Slice Coord");
-			p.data=tmpStr;
-			p.type=PROPERTY_TYPE_REAL;
-			p.helpText=TRANS("Fractional coordinate that slice plane passes through");
-			p.key=KEY_VOXEL_SLICE_OFFSET;
-			propertyList.addProperty(p,curGroup);
-		
-			
-			p.name=TRANS("Interp. Mode");
-			for(unsigned int ui=0;ui<VOX_INTERP_ENUM_END;ui++)
-			{
-				choices.push_back(make_pair(ui,
-					TRANS(LukasAnalysis_SLICE_INTERP_STRING[ui])));
-			}
-			p.data=choiceString(choices,sliceInterpolate);
-			p.type=PROPERTY_TYPE_CHOICE;
-			p.helpText=TRANS("Interpolation mode for direction normal to slice");
-			p.key=KEY_VOXEL_SLICE_INTERP;
-			propertyList.addProperty(p,curGroup);
-			choices.clear();
-			// ---	
-			propertyList.setGroupTitle(curGroup,TRANS("Surface"));	
-			curGroup++;
-
-			
-
-			//-- Slice visualisation parameters --
-			for(unsigned int ui=0;ui<NUM_COLOURMAPS; ui++)
-				choices.push_back(make_pair(ui,getColourMapName(ui)));
-
-			tmpStr=choiceString(choices,colourMap);
-
-			p.name=TRANS("Colour mode");
-			p.data=tmpStr;
-			p.type=PROPERTY_TYPE_CHOICE;
-			p.helpText=TRANS("Colour scheme used to assign points colours by value");
-			p.key=KEY_VOXEL_COLOURMODE;
-			propertyList.addProperty(p,curGroup);
-			
-			stream_cast(tmpStr,1.0-rgba.a());
-			p.name=TRANS("Transparency");
-			p.data=tmpStr;
-			p.type=PROPERTY_TYPE_REAL;
-			p.helpText=TRANS("How \"see through\" each facet is (0 - opaque, 1 - invisible)");
-			p.key=KEY_TRANSPARENCY;
-			propertyList.addProperty(p,curGroup);
-
-			tmpStr=boolStrEnc(showColourBar);
-			p.name=TRANS("Show Bar");
-			p.key=KEY_SHOW_COLOURBAR;
-			p.data=tmpStr;
-			p.type=PROPERTY_TYPE_BOOL;
-			propertyList.addProperty(p,curGroup);
-
-			tmpStr=boolStrEnc(autoColourMap);
-			p.name=TRANS("Auto Bounds");
-			p.helpText=TRANS("Auto-compute min/max values in map"); 
-			p.data= tmpStr;
-			p.key=KEY_VOXEL_SLICE_COLOURAUTO;;
-			p.type=PROPERTY_TYPE_BOOL;
-			propertyList.addProperty(p,curGroup);
-
-			if(!autoColourMap)
-			{
-
-				stream_cast(tmpStr,colourMapBounds[0]);
-				p.name=TRANS("Map start");
-				p.helpText=TRANS("Assign points with this value to the first colour in map"); 
-				p.data= tmpStr;
-				p.key=KEY_MAPSTART;;
-				p.type=PROPERTY_TYPE_REAL;
-				propertyList.addProperty(p,curGroup);
-
-				stream_cast(tmpStr,colourMapBounds[1]);
-				p.name=TRANS("Map end");
-				p.helpText=TRANS("Assign points with this value to the last colour in map"); 
-				p.data= tmpStr;
-				p.key=KEY_MAPEND;
-				p.type=PROPERTY_TYPE_REAL;
-				propertyList.addProperty(p,curGroup);
-			}
-			// ---	
-
-			break;
-		}
-		default:
-			ASSERT(false);
-			;
-	}
 	
 	propertyList.setGroupTitle(curGroup,TRANS("Appearance"));	
 	curGroup++;
