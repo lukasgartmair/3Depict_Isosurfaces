@@ -476,8 +476,9 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 							denominator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor_proxi.getValue(ijk));
 							denom_counter += 1;
 							// write to numerator grid
-							if(thisNumeratorIonEnabled)
-							// test case //if(ionID == 1)								
+							//if(thisNumeratorIonEnabled)
+							// test case 								
+							if(ionID == 1)								
 							{	
 								numerator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor_proxi.getValue(ijk));
 							}
@@ -540,6 +541,10 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			std::cout << " bounding box sdf " << " = " << bounding_box1 << std::endl;
 			std::cout << " bounding box denominator_grid _proxi " << " = " << bounding_box2 << std::endl;
 
+			// get the shell statistics (hellman, seidman 99)
+			// i.e. number of atoms / bin
+			
+			std::vector<float> number_of_atoms(number_of_proximity_ranges);
 
 			for (int i=0;i<number_of_proximity_ranges;i++)
 			{	
@@ -567,6 +572,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 				}
 				concentrations[i] = numerator_total / denominator_total;
+				// only works if all atoms contribute to the denominator grid
+				number_of_atoms[i] += denominator_total;
 			}
 
 /*
@@ -613,6 +620,11 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			for (int i=0;i<number_of_proximity_ranges;i++)
 			{
 				std::cout << " concentrations " << i << " = " << concentrations[i] << std::endl;
+			}
+
+			for (int i=0;i<number_of_proximity_ranges;i++)
+			{
+				std::cout << " number of atoms in shell " << i << " = " << number_of_atoms[i] << std::endl;
 			}
 
 			// manage the filter output
