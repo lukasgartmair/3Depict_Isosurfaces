@@ -516,6 +516,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// another time saver would be not to iterate again over the whole volume, but only over
 			// the next bigger shell minus the last biggest shells
 
+			// i guess the distances of the sdf are [voxels] -> openvdbtestsuite
+			// so in order to convert the proximities they should be taken times the voxelsize
 			proximity_ranges[0] = -1;
 			proximity_ranges[1] = -0.5;
 			proximity_ranges[2] = 1;
