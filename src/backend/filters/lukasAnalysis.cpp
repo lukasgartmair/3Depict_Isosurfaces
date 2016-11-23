@@ -518,6 +518,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			// i guess the distances of the sdf are [voxels] -> openvdbtestsuite
 			// so in order to convert the proximities they should be taken times the voxelsize
+			// these proximities are given in nm the conversion is done on the whole sdf grid
 			proximity_ranges[0] = -1;
 			proximity_ranges[1] = -0.5;
 			proximity_ranges[2] = 1;
@@ -525,6 +526,14 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			proximity_ranges[4] = 8;
 			proximity_ranges[5] = 25;	
 
+			// conversion of the sdf, which is given in voxel units to real world units
+			// by multiplication with the higher resolution voxelsize
+
+			for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
+			{   
+					iter.setValue(iter.getValue() * voxelsize_levelset);
+			}
+	
 			std::cout << " eval min max sdf" << " = " << minVal << " , " << maxVal << std::endl;
 			std::cout << " active voxel count sdf " << " = " << sdf->activeVoxelCount() << std::endl;
 
@@ -542,9 +551,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			std::cout << " bounding box sdf " << " = " << bounding_box1 << std::endl;
 			std::cout << " bounding box denominator_grid _proxi " << " = " << bounding_box2 << std::endl;
-
-			// get the shell statistics (hellman, seidman 99)
-			// i.e. number of atoms / bin
 			
 			std::vector<float> number_of_atoms(number_of_proximity_ranges);
 
@@ -649,6 +655,9 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				d->xyData[ui].first = proximity_ranges[ui];
 				d->xyData[ui].second = concentrations[ui];
 			}
+
+			d->xLabel=TRANS("distance / nm"); 	
+			d->yLabel=TRANS("concentration "); 
 
 			d->autoSetHardBounds();
 
