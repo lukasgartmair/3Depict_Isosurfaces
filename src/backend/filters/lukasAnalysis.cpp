@@ -248,7 +248,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// maximum distance below, which is is nm 
 			// if i want to calc the max distance 15 nm for example and vs_levelset is only 0.1
 			// i have to provide 150 voxels in the outside bandwidth in order to
-			// provide the information
+			// provide the information of this regions
 			float in_bandwidth = max_distance / voxelsize_levelset;
 			float ex_bandwidth = max_distance / voxelsize_levelset;
 
@@ -291,7 +291,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			openvdb::FloatGrid::Accessor voxelstate_accessor = voxelstate_grid->getAccessor();
 			int active_voxel_state_value = 1.0;
 
-			int voxel_counter = 0;
 			for (openvdb::FloatGrid::ValueOnIter iter = numerator_grid_proxi->beginValueOn(); iter; ++iter)
 			{   
 					iter.setValue(0.0);
@@ -301,8 +300,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 					// set the reference active / passive grid's values
 
 					voxelstate_accessor.setValue(hkl, active_voxel_state_value);
-
-					voxel_counter += 1;
 			}
 			for (openvdb::FloatGrid::ValueOnIter iter = denominator_grid_proxi->beginValueOn(); iter; ++iter)
 			{   
@@ -321,10 +318,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			{
 				std::cout << " data stream " << ui << " = " << dataIn[ui]->getStreamType() << std::endl;
 			}
-
-			int denom_counter = 0;
-			int cu_counter = 0;
-
 
 			//reinitialize the range stream
 
@@ -475,7 +468,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 							// write to denominator grid
 
 							denominator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor_proxi.getValue(ijk));
-							denom_counter += 1;
 							// write to numerator grid
 							//if(thisNumeratorIonEnabled)
 							// test case 								
@@ -486,7 +478,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 							else
 							{
 								numerator_accessor_proxi.setValue(ijk, 0.0 + numerator_accessor_proxi.getValue(ijk));
-								cu_counter += 1;
+								
 							}
 						}
 					}
@@ -496,14 +488,11 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			float minVal = 0.0;
 			float maxVal = 0.0;
 
-			std::cout << "denom counter" << " = " << denom_counter << std::endl;
-			std::cout << "cu counter " << " = " << cu_counter << std::endl;
-
 			// now there is a grid with ion information and one grid with distance information
 			// now take discrete distances and calculate the mean concentration in that shell
 			// this is done by checking all voxels in the narrow band whether they are inside or outside the 
 			// proximity range and then add up the entries both from the numerator grid and the denominator grid
-			// the division will provide the concentration in that promximity shell
+			// the division will provide the concentration in that prosximity shell
 
 			sdf->evalMinMax(minVal,maxVal);
 
@@ -527,7 +516,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			sdf->evalMinMax(minVal,maxVal);
 
 			float ceiled_minVal = ceil(minVal);
-			int number_of_proximity_ranges = ceil(max_distance / shell_width) + ceil(abs(ceiled_minVal) / shell_width);
+			int number_of_proximity_ranges = floor(max_distance / shell_width) + floor(abs(ceiled_minVal) / shell_width);
 
 			std::vector<float> proximity_ranges(number_of_proximity_ranges);
 
@@ -550,7 +539,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			denominator_grid_proxi->evalMinMax(minVal,maxVal);
 			std::cout << " eval min max denominator_grid" << " = " << minVal << " , " << maxVal << std::endl;
 			std::cout << " active voxel count denominator_grid " << " = " << denominator_grid_proxi->activeVoxelCount() << std::endl;
-
 
 			openvdb::math::CoordBBox bounding_box1 = sdf->evalActiveVoxelBoundingBox();
 			openvdb::math::CoordBBox bounding_box2 = denominator_grid_proxi->evalActiveVoxelBoundingBox();
@@ -576,18 +564,10 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				    			numerator_total += numerator_accessor_proxi.getValue(abc);
 							denominator_total += denominator_accessor_proxi.getValue(abc);
 						}
-/*
-						if ((iter.getValue() >= proximity_ranges[i-1]) && (iter.getValue() < proximity_ranges[i]))
-						{
-							openvdb::Coord abc = iter.getCoord();
-		
-				    			numerator_total += numerator_accessor_proxi.getValue(abc);
-							denominator_total += denominator_accessor_proxi.getValue(abc);
-						}
-*/
 					}
 					concentrations[i] = numerator_total / denominator_total;
 					// only works if all atoms contribute to the denominator grid
+					// i.e. not with ratio
 					number_of_atoms[i] += denominator_total;
 				}
 			}
