@@ -181,7 +181,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			}
 
 			int xyzs = 3;
-		
 
 			std::vector<openvdb::Vec3s> points;
 			std::vector<openvdb::Vec3I> triangles;
@@ -247,15 +246,12 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// the bandwidths have to correlate with the voxelsize of the levelset and the
 			// maximum distance below, which is is nm 
 			// if i want to calc the max distance 15 nm for example and vs_levelset is only 0.1
-			// i have to provide 150 voxels in the outside bandwidth in order to
-			// provide the information of this regions
+			// i need 150 voxels in the outside bandwidth in order to
+			// provide the desired information of this regions
 			float in_bandwidth = max_distance / voxelsize_levelset;
 			float ex_bandwidth = max_distance / voxelsize_levelset;
 
 			// signed distance field
-
-			//openvdb::FloatGrid::Ptr sdf = openvdb::tools::meshToUnsignedDistanceField<openvdb::FloatGrid>(openvdb::math::Transform(), points, triangles, quads, bandwidth);
-
 			openvdb::FloatGrid::Ptr sdf = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(openvdb::math::Transform(), points, triangles, quads, ex_bandwidth, in_bandwidth);
 
 			sdf->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
@@ -264,12 +260,13 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// extractActiveVoxelSegmentMasks - 	Return a mask for each connected component of the given grid's active voxels. More...
 			// extractIsosurfaceMask - 	Return a mask of the voxels that intersect the implicit surface with the given isovalue. More...	
 
+			// at the moment there are small artefacts which crash the calculation of the precipitation inside
+
 			// now get a copy of that grid, set all its active values from the narrow band to zero and fill only them with ions of interest
 			openvdb::FloatGrid::Ptr numerator_grid_proxi = sdf->deepCopy();
 			openvdb::FloatGrid::Ptr denominator_grid_proxi = sdf->deepCopy();
 
-			// initialize another grid with signed distance fields active voxels give all actives a certain value, which can be aseked for in order to retrieve the voxel state
-
+			// initialize another grid with signed distance fields active voxels give all actives a certain value, which can be asked for in order to retrieve the voxel state
 			openvdb::FloatGrid::Ptr voxelstate_grid = sdf->deepCopy();
 
 			// set the identical transforms for the ion information grid
@@ -279,8 +276,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// only iterate the active voxels
 			// so both the active and inactive voxels should have the value zero
 			// but nevertheless different activation states - is that possible?
-			// another possibility is to set the initial active value to one or something 
-			// unequal to zero and just overwrite it the first time of writing 
 			// -> yes the result is in the test suite
 
 			// i do have to store the coordinates of all active voxels once here
@@ -294,18 +289,14 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			for (openvdb::FloatGrid::ValueOnIter iter = numerator_grid_proxi->beginValueOn(); iter; ++iter)
 			{   
 					iter.setValue(0.0);
-
 					hkl = iter.getCoord();
-
 					// set the reference active / passive grid's values
-
 					voxelstate_accessor.setValue(hkl, active_voxel_state_value);
 			}
 			for (openvdb::FloatGrid::ValueOnIter iter = denominator_grid_proxi->beginValueOn(); iter; ++iter)
 			{   
 					iter.setValue(0.0);
 			}
-
 
 			// now run through all ions but only once, and in case they are inside a active voxel write only to them
 
@@ -461,10 +452,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 						// normalized voxel indices based on 00, 01, 02 etc. // very important otherwise there will be spacings
 						openvdb::Coord ijk(current_voxel_index[0], current_voxel_index[1], current_voxel_index[2]);
 
-
 						if(voxelstate_accessor.getValue(ijk) == active_voxel_state_value)
 						{
-
 							// write to denominator grid
 
 							denominator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor_proxi.getValue(ijk));
@@ -492,7 +481,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// now take discrete distances and calculate the mean concentration in that shell
 			// this is done by checking all voxels in the narrow band whether they are inside or outside the 
 			// proximity range and then add up the entries both from the numerator grid and the denominator grid
-			// the division will provide the concentration in that prosximity shell
+			// the division will provide the concentration in that proximity shell
 
 			sdf->evalMinMax(minVal,maxVal);
 
@@ -515,14 +504,25 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			sdf->evalMinMax(minVal,maxVal);
 
+			// calculation of the proximity ranges
+			// everything is already converted from voxel units to nm isn't it?
 			float ceiled_minVal = ceil(minVal);
+			
+			// example minimum nm value is -4.2 and maximum value is 15.
+			// that is with a shell width of 1 nm there have to be
+			// the shells -4 to -3, -3 to -2 ... and 14 to 15 which is summed up
+			// 18 shells implicitely given by 19 values from -4 to 15.
+			// so in this case 15/1 + 4/1 = 19 is correct 
+
 			int number_of_proximity_ranges = floor(max_distance / shell_width) + floor(abs(ceiled_minVal) / shell_width);
 
 			std::vector<float> proximity_ranges(number_of_proximity_ranges);
 
 			std::vector<float> concentrations(number_of_proximity_ranges);
-
-			float current_distance = ceiled_minVal;
+			// just shifts the bins to the same spots as the IVAS data i have
+			// better comparison of the results
+			float ivas_correction_factor = 0.5;
+			float current_distance = ceiled_minVal + ivas_correction_factor;
 			for (int i=0;i<number_of_proximity_ranges;i++)
 			{
 				proximity_ranges[i] = current_distance;
@@ -559,7 +559,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 					{   
 
 // straight exclusive shells
-
 						if ((iter.getValue() < proximity_ranges[i]) && (iter.getValue() >= proximity_ranges[i-1]))
 						{
 							openvdb::Coord abc = iter.getCoord();
