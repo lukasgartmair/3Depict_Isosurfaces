@@ -557,6 +557,9 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				{
 					for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
 					{   
+
+// straight exclusive shells
+
 						if ((iter.getValue() < proximity_ranges[i]) && (iter.getValue() >= proximity_ranges[i-1]))
 						{
 							openvdb::Coord abc = iter.getCoord();
@@ -564,6 +567,25 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				    			numerator_total += numerator_accessor_proxi.getValue(abc);
 							denominator_total += denominator_accessor_proxi.getValue(abc);
 						}
+
+/*
+// with growing shells
+						if ((proximity_ranges[i] < iter.getValue()) && (iter.getValue() <= 0))
+						{
+							openvdb::Coord abc = iter.getCoord();
+			
+				    			numerator_total += numerator_accessor_proxi.getValue(abc);
+							denominator_total += denominator_accessor_proxi.getValue(abc);
+						}
+						if ((0 < iter.getValue()) && (iter.getValue() < proximity_ranges[i]))
+						{
+							openvdb::Coord abc = iter.getCoord();
+			
+				    			numerator_total += numerator_accessor_proxi.getValue(abc);
+							denominator_total += denominator_accessor_proxi.getValue(abc);
+						}
+
+*/
 					}
 					concentrations[i] = numerator_total / denominator_total;
 					// only works if all atoms contribute to the denominator grid
@@ -571,7 +593,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 					number_of_atoms[i] += denominator_total;
 				}
 			}
-
 
 			for (int i=0;i<number_of_proximity_ranges;i++)
 			{

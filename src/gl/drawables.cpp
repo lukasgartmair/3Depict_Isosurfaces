@@ -2868,7 +2868,7 @@ void LukasDrawIsoSurface::draw() const
 	//std::cout << "nans in vertex normals" << " = " << non_finite_tris_counter << std::endl;
 
 	// this is for visual comparisons with Marching Cubes
-	bool flat_shading = true;
+	bool flat_shading = false;
 
 	if (flat_shading == true)
 	{
