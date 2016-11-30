@@ -159,7 +159,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				return 0;
 			}
 
-			const float voxelsize_levelset = 0.3;
+			const float voxelsize_levelset = 0.5;
 
 			// get the vdb grid from the stream	
 			const float background_proxi = 0.0;
@@ -506,11 +506,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			sdf->evalMinMax(minVal,maxVal);
 
-			int number_of_proximity_ranges = 6;
-			std::vector<float> proximity_ranges(number_of_proximity_ranges);
-
-			std::vector<float> concentrations(number_of_proximity_ranges);
-
 			// the algorithm has to look like this:
 			// only iterate once over the sdf grid and in this one iteration check the several conditions
 			// another time saver would be not to iterate again over the whole volume, but only over
@@ -519,12 +514,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// i guess the distances of the sdf are [voxels] -> openvdbtestsuite
 			// so in order to convert the proximities they should be taken times the voxelsize
 			// these proximities are given in nm the conversion is done on the whole sdf grid
-			proximity_ranges[0] = -1;
-			proximity_ranges[1] = -0.5;
-			proximity_ranges[2] = 1;
-			proximity_ranges[3] = 1.5;
-			proximity_ranges[4] = 8;
-			proximity_ranges[5] = 25;	
 
 			// conversion of the sdf, which is given in voxel units to real world units
 			// by multiplication with the higher resolution voxelsize
@@ -532,6 +521,24 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
 			{   
 					iter.setValue(iter.getValue() * voxelsize_levelset);
+			}
+
+			sdf->evalMinMax(minVal,maxVal);
+
+			float max_distance = 15; // nm
+			float shell_width = 0.5;
+			int delta_proximities = max_distance + abs(ceil(minVal)); 
+			int number_of_proximity_ranges = floor(max_distance / shell_width) + floor(abs(ceil(minVal) / shell_width));
+
+			std::vector<float> proximity_ranges(number_of_proximity_ranges);
+
+			std::vector<float> concentrations(number_of_proximity_ranges);
+
+			float current_distance = ceil(minVal);
+			for (int i=0;i<number_of_proximity_ranges;i++)
+			{
+				proximity_ranges[i] = current_distance;
+				current_distance += shell_width;
 			}
 	
 			std::cout << " eval min max sdf" << " = " << minVal << " , " << maxVal << std::endl;
@@ -560,70 +567,34 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				float numerator_total = 0;
 				float denominator_total = 0;
 
-				for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
-				{   
-					// a proximity of zero should theoretically depict the isosurface
-					if ((proximity_ranges[i] < iter.getValue()) && (iter.getValue() <= 0))
-					{
-						openvdb::Coord abc = iter.getCoord();
-		
-			    			numerator_total += numerator_accessor_proxi.getValue(abc);
-						denominator_total += denominator_accessor_proxi.getValue(abc);
-					}
-					if ((0 < iter.getValue()) && (iter.getValue() < proximity_ranges[i]))
-					{
-						openvdb::Coord abc = iter.getCoord();
-		
-			    			numerator_total += numerator_accessor_proxi.getValue(abc);
-						denominator_total += denominator_accessor_proxi.getValue(abc);
-					}
-
-				}
-				concentrations[i] = numerator_total / denominator_total;
-				// only works if all atoms contribute to the denominator grid
-				number_of_atoms[i] += denominator_total;
-			}
-
-/*
-
-// probably more clever only iterating once over the whole grid and do the binning
-// but in the end it should not matter whether to do x times n mio checks 
-// or vice versa n mio times x checks  
-
-			std::vector<float> numerators(number_of_proximity_ranges);
-			std::vector<float> denominators(number_of_proximity_ranges);
-
-			for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
-			{
-
-				for (int i=0;i<number_of_proximity_ranges;i++)
+				if (i>0) // in order to ask for the i-1 entry
 				{
+					for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
+					{   
 
-					if ((proximity_ranges[i] < iter.getValue()) && (iter.getValue() <= 0))
-					{
-						openvdb::Coord abc = iter.getCoord();
+						if ((iter.getValue() < proximity_ranges[i]) && (iter.getValue() >= proximity_ranges[i-1]))
+						{
+							openvdb::Coord abc = iter.getCoord();
 		
-			    			numerators[i] += numerator_accessor_proxi.getValue(abc);
-						denominators[i] += denominator_accessor_proxi.getValue(abc);
-					}
-					if ((0 < iter.getValue()) && (iter.getValue() < proximity_ranges[i]))
-					{
-						openvdb::Coord abc = iter.getCoord();
+				    			numerator_total += numerator_accessor_proxi.getValue(abc);
+							denominator_total += denominator_accessor_proxi.getValue(abc);
+						}
+/*
+						if ((iter.getValue() >= proximity_ranges[i-1]) && (iter.getValue() < proximity_ranges[i]))
+						{
+							openvdb::Coord abc = iter.getCoord();
 		
-			    			numerators[i] += numerator_accessor_proxi.getValue(abc);
-						denominators[i] += denominator_accessor_proxi.getValue(abc);
-					}
-
-				}
-				
-
-			}
-
-			for (int i=0;i<number_of_proximity_ranges;i++)
-			{
-				concentrations[i] = numerators[i] / denominators[i];
-			}
+				    			numerator_total += numerator_accessor_proxi.getValue(abc);
+							denominator_total += denominator_accessor_proxi.getValue(abc);
+						}
 */
+					}
+					concentrations[i] = numerator_total / denominator_total;
+					// only works if all atoms contribute to the denominator grid
+					number_of_atoms[i] += denominator_total;
+				}
+			}
+
 
 			for (int i=0;i<number_of_proximity_ranges;i++)
 			{
@@ -647,8 +618,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			d->index=0;
 			d->parent=this;
-
-
 
 			for(unsigned int ui=0;ui<number_of_proximity_ranges;ui++)
 			{
