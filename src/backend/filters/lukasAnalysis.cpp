@@ -159,7 +159,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				return 0;
 			}
 
-			const float voxelsize_levelset = 0.5;
+			const float voxelsize_levelset = 0.2;
 
 			// get the vdb grid from the stream	
 			const float background_proxi = 0.0;
@@ -236,14 +236,21 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				}
 			}
 
-		// here is no conversion to triangles needed in contrast to drawables, as meshtosigneddistancefield takes quads and triangles
+		        // here is no conversion to triangles needed in contrast to drawables, as meshtosigneddistancefield takes quads and triangles
 
 			// calculate a signed distance field
 
+			float max_distance = 15; // nm
+			float shell_width = 1.0; // nm
+
 			// bandwidths are in voxel units
-			float bandwidth = 30;
-			float in_bandwidth = 30;
-			float ex_bandwidth = 30;
+			// the bandwidths have to correlate with the voxelsize of the levelset and the
+			// maximum distance below, which is is nm 
+			// if i want to calc the max distance 15 nm for example and vs_levelset is only 0.1
+			// i have to provide 150 voxels in the outside bandwidth in order to
+			// provide the information
+			float in_bandwidth = max_distance / voxelsize_levelset;
+			float ex_bandwidth = max_distance / voxelsize_levelset;
 
 			// signed distance field
 
@@ -278,8 +285,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			// i do have to store the coordinates of all active voxels once here
 			// as i cannot find a method to evaluate whether a single voxel is active or inactive 
-
-			std::vector<std::vector<float> > active_voxel_indices(sdf->activeVoxelCount(), std::vector<float>(xyzs));
 			openvdb::Coord hkl;
 
 			// set all active voxels in the voxelstate grid to n
@@ -292,12 +297,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 					iter.setValue(0.0);
 
 					hkl = iter.getCoord();
-					active_voxel_indices[voxel_counter][0] = hkl.x();
-					active_voxel_indices[voxel_counter][1] = hkl.y();
-					active_voxel_indices[voxel_counter][2] = hkl.z();
 
 					// set the reference active / passive grid's values
-
 
 					voxelstate_accessor.setValue(hkl, active_voxel_state_value);
 
@@ -525,16 +526,14 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			sdf->evalMinMax(minVal,maxVal);
 
-			float max_distance = 15; // nm
-			float shell_width = 0.5;
-			int delta_proximities = max_distance + abs(ceil(minVal)); 
-			int number_of_proximity_ranges = floor(max_distance / shell_width) + floor(abs(ceil(minVal) / shell_width));
+			float ceiled_minVal = ceil(minVal);
+			int number_of_proximity_ranges = ceil(max_distance / shell_width) + ceil(abs(ceiled_minVal) / shell_width);
 
 			std::vector<float> proximity_ranges(number_of_proximity_ranges);
 
 			std::vector<float> concentrations(number_of_proximity_ranges);
 
-			float current_distance = ceil(minVal);
+			float current_distance = ceiled_minVal;
 			for (int i=0;i<number_of_proximity_ranges;i++)
 			{
 				proximity_ranges[i] = current_distance;
@@ -563,7 +562,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			for (int i=0;i<number_of_proximity_ranges;i++)
 			{	
-
 				float numerator_total = 0;
 				float denominator_total = 0;
 
@@ -571,7 +569,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				{
 					for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
 					{   
-
 						if ((iter.getValue() < proximity_ranges[i]) && (iter.getValue() >= proximity_ranges[i-1]))
 						{
 							openvdb::Coord abc = iter.getCoord();
