@@ -239,7 +239,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			// calculate a signed distance field
 
-			float max_distance = 15; // nm
+			float max_distance = 5; // nm
 			float shell_width = 1.0; // nm
 
 			// bandwidths are in voxel units
@@ -504,31 +504,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			sdf->evalMinMax(minVal,maxVal);
 
-			// calculation of the proximity ranges
-			// everything is already converted from voxel units to nm isn't it?
-			float ceiled_minVal = ceil(minVal);
-			
-			// example minimum nm value is -4.2 and maximum value is 15.
-			// that is with a shell width of 1 nm there have to be
-			// the shells -4 to -3, -3 to -2 ... and 14 to 15 which is summed up
-			// 18 shells implicitely given by 19 values from -4 to 15.
-			// so in this case 15/1 + 4/1 = 19 is correct 
-
-			int number_of_proximity_ranges = floor(max_distance / shell_width) + floor(abs(ceiled_minVal) / shell_width);
-
-			std::vector<float> proximity_ranges(number_of_proximity_ranges);
-
-			//std::vector<float> concentrations(number_of_proximity_ranges);
-			// just shifts the bins to the same spots as the IVAS data i have
-			// better comparison of the results
-			float ivas_correction_factor = 0.5;
-			float current_distance = ceiled_minVal + ivas_correction_factor;
-			for (int i=0;i<number_of_proximity_ranges;i++)
-			{
-				proximity_ranges[i] = current_distance;
-				current_distance += shell_width;
-			}
-	
 			std::cout << " eval min max sdf" << " = " << minVal << " , " << maxVal << std::endl;
 			std::cout << " active voxel count sdf " << " = " << sdf->activeVoxelCount() << std::endl;
 
@@ -545,14 +520,13 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			std::cout << " bounding box sdf " << " = " << bounding_box1 << std::endl;
 			std::cout << " bounding box denominator_grid _proxi " << " = " << bounding_box2 << std::endl;
-			
-			std::vector<float> number_of_atoms(number_of_proximity_ranges);
 
 			// let's do another approach
 			// just get all existing voxel distances of the sdf
 			// then get the unique distances
 			// then get the appearances of each distance -> simple histogram
 			// then get the atom count statistics for each unique distance
+			// get the numerators and the denominators
 			// then calculate the concentration for each unique distance
 			// then plot concentration over the unique distances
 			// maybe adding small distances to bigger distances for statistics would make sense
@@ -565,18 +539,27 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
 			{   
-				float current_value = iter.getValue();
+				float current_distance = iter.getValue();
 
-				all_distances.push_back(current_value);
+				all_distances.push_back(current_distance);
 
-				if(std::find(unique_distances.begin(), unique_distances.end(), current_value) != unique_distances.end()) 
+				if(std::find(unique_distances.begin(), unique_distances.end(), current_distance) != unique_distances.end()) 
 				{
 				    // v contains x 
 				} else {
 				    // v does not contain x 
-					unique_distances.push_back(current_value);
+					unique_distances.push_back(current_distance);
 				}
 			}
+
+
+			// sort the unique distances in ascending order
+			// doing this directly here is the workaround to
+			// avoid sorting two corresponding lists afterwards
+	
+			std::sort(unique_distances.begin(), unique_distances.end());
+
+			std::cout << " number of unique distances " << " = " << unique_distances.size() << std::endl;
 
 			std::vector<float> count_distances(unique_distances.size());
 
@@ -604,7 +587,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// 4th atom count statistics for each unique distance from the denominator grid which holds
 			// all atom information (could also be done at the same time as step 3 - separated for better understanding)
 
-			std::vector<float> atom_counts_distances(unique_distances.size());
+			std::vector<float> atomcounts_distances(unique_distances.size());
 
 			for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
 			{
@@ -612,90 +595,30 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				// find the key in the map to the distance
 				int current_index = indicesMap[current_distance];
 				openvdb::Coord abc = iter.getCoord();
-				count_distances[current_index] += denominator_accessor_proxi.getValue(abc);
+				atomcounts_distances[current_index] += denominator_accessor_proxi.getValue(abc);
 			}
 
-			// 5th calculate the concentration for each unique distance
+			// 5th get the numerator and the denominator information for the distances
+
+			std::vector<float> numerators(unique_distances.size());
+			std::vector<float> denominators(unique_distances.size());
+
+			for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
+ 			{
+				float current_distance = iter.getValue();
+				int current_index = indicesMap[current_distance];
+				openvdb::Coord abc = iter.getCoord();
+				numerators[current_index] += numerator_accessor_proxi.getValue(abc);
+				denominators[current_index] += denominator_accessor_proxi.getValue(abc);
+			}
+
+			// 6th calculate the concentration for each unique distance
 
 			std::vector<float> concentrations(unique_distances.size());
-
-			for (int i=0;i<unique_distances.size();i++)
+			for (int i=0;i<concentrations.size();i++)
 			{
-				float current_numerator = 0;
-				float current_denominator = 0;
-				
-				for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
-				{
-					float current_distance = iter.getValue();
-					if (current_distance == unique_distances[i])
-					{
-						openvdb::Coord abc = iter.getCoord();
-			    			current_numerator += numerator_accessor_proxi.getValue(abc);
-						current_denominator += denominator_accessor_proxi.getValue(abc);
-					}				
-				}
-
-				concentrations[i] = current_numerator / current_denominator;
+				concentrations[i] = numerators[i] / denominators[i];
 			}
-
-/*
-			for (int i=0;i<number_of_proximity_ranges;i++)
-			{	
-				float numerator_total = 0;
-				float denominator_total = 0;
-
-				if (i>0) // in order to ask for the i-1 entry
-				{
-					for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
-					{   
-
-// straight exclusive shells
-						if ((iter.getValue() < proximity_ranges[i]) && (iter.getValue() >= proximity_ranges[i-1]))
-						{
-							openvdb::Coord abc = iter.getCoord();
-		
-				    			numerator_total += numerator_accessor_proxi.getValue(abc);
-							denominator_total += denominator_accessor_proxi.getValue(abc);
-						}
-
-/*
-// with growing shells
-						if ((proximity_ranges[i] < iter.getValue()) && (iter.getValue() <= 0))
-						{
-							openvdb::Coord abc = iter.getCoord();
-			
-				    			numerator_total += numerator_accessor_proxi.getValue(abc);
-							denominator_total += denominator_accessor_proxi.getValue(abc);
-						}
-						if ((0 < iter.getValue()) && (iter.getValue() < proximity_ranges[i]))
-						{
-							openvdb::Coord abc = iter.getCoord();
-			
-				    			numerator_total += numerator_accessor_proxi.getValue(abc);
-							denominator_total += denominator_accessor_proxi.getValue(abc);
-						}
-
-
-					}
-					concentrations[i] = numerator_total / denominator_total;
-					// only works if all atoms contribute to the denominator grid
-					// i.e. not with ratio
-					number_of_atoms[i] += denominator_total;
-				}
-			}
-
-
-			for (int i=0;i<number_of_proximity_ranges;i++)
-			{
-				std::cout << " concentrations " << i << " = " << concentrations[i] << std::endl;
-			}
-
-			for (int i=0;i<number_of_proximity_ranges;i++)
-			{
-				std::cout << " number of atoms in shell " << i << " = " << number_of_atoms[i] << std::endl;
-			}
-
-*/
 
 			// manage the filter output
 
