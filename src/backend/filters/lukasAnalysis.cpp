@@ -239,7 +239,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			// calculate a signed distance field
 
-			float max_distance = 5; // nm
+			float max_distance = 10; // nm
 			float shell_width = 1.0; // nm
 
 			// bandwidths are in voxel units
@@ -611,21 +611,68 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				numerators[current_index] += numerator_accessor_proxi.getValue(abc);
 				denominators[current_index] += denominator_accessor_proxi.getValue(abc);
 			}
+			// 5.5th
+			// high fluctuation of the concentration values so lets do the binning now
+			// by summarizing the values
+			// calculation of the proximity ranges
+			// everything is already converted from voxel units to nm isn't it?
+			float min_distance = *std::min_element(unique_distances.begin(),unique_distances.end());
+			float ceiled_minVal = ceil(min_distance);
+			
+			// example minimum nm value is -4.2 and maximum value is 15.
+			// that is with a shell width of 1 nm there have to be
+			// the shells -4 to -3, -3 to -2 ... and 14 to 15 which is summed up
+			// 18 shells implicitely given by 19 values from -4 to 15.
+			// so in this case 15/1 + 4/1 = 19 is correct 
+
+			int number_of_proximity_ranges = floor(max_distance / shell_width) + floor(abs(ceiled_minVal) / shell_width);
+
+			std::vector<float> summarized_numerators(number_of_proximity_ranges+1);
+			std::vector<float> summarized_denominators(number_of_proximity_ranges+1);
+
+			std::vector<float> proximity_ranges(number_of_proximity_ranges);
+
+			// just shifts the bins to the same spots as the IVAS data i have
+			// better comparison of the results
+			float ivas_correction_factor = 0.5;
+			float current_distance = ceiled_minVal + ivas_correction_factor;
+			for (int i=0;i<number_of_proximity_ranges;i++)
+			{
+				proximity_ranges[i] = current_distance;
+				current_distance += shell_width;
+			}
+	
+
+			current_distance = 0;
+			int proximity_range_index = 0;
+			for (int i=0;i<unique_distances.size();i++)
+			{
+				current_distance = unique_distances[i];
+				if (current_distance >= proximity_ranges[proximity_range_index])
+				{
+					proximity_range_index += 1;				
+				}
+				
+				summarized_numerators[proximity_range_index] += numerators[i];
+				summarized_denominators[proximity_range_index] += summarized_denominators[i];
+						
+			}
 
 			// 6th calculate the concentration for each unique distance
 
-			std::vector<float> concentrations(unique_distances.size());
+			std::vector<float> concentrations(number_of_proximity_ranges);
 			for (int i=0;i<concentrations.size();i++)
 			{
-				concentrations[i] = numerators[i] / denominators[i];
+				concentrations[i] = summarized_numerators[i] / summarized_denominators[i];
 			}
+	
 
 			// manage the filter output
 
 			PlotStreamData *d;
 			d=new PlotStreamData;
 
-			d->xyData.resize(unique_distances.size());
+			d->xyData.resize(number_of_proximity_ranges);
 
 			d->plotStyle = 0;
 			d->plotMode=PLOT_MODE_2D;
@@ -635,7 +682,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			for(unsigned int ui=0;ui<unique_distances.size();ui++)
 			{
-				d->xyData[ui].first = unique_distances[ui];
+				d->xyData[ui].first = proximity_ranges[ui];
 				d->xyData[ui].second = concentrations[ui];
 			}
 
