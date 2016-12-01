@@ -159,7 +159,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				return 0;
 			}
 
-			const float voxelsize_levelset = 0.2;
+			const float voxelsize_levelset = 2;
 
 			// get the vdb grid from the stream	
 			const float background_proxi = 0.0;
