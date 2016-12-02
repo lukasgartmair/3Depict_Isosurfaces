@@ -159,7 +159,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				return 0;
 			}
 
-			const float voxelsize_levelset = 2;
+			const float voxelsize_levelset = 1;
 
 			// get the vdb grid from the stream	
 			const float background_proxi = 0.0;
@@ -607,7 +607,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
  			{
 				float current_distance = iter.getValue();
 				int current_index = indicesMap[current_distance];
-				openvdb::Coord abc = iter.getCoord();
+				openvdb::Coord abc;
+				abc = iter.getCoord();
 				numerators[current_index] += numerator_accessor_proxi.getValue(abc);
 				denominators[current_index] += denominator_accessor_proxi.getValue(abc);
 			}
@@ -615,7 +616,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// high fluctuation of the concentration values so lets do the binning now
 			// by summarizing the values
 			// calculation of the proximity ranges
-			// everything is already converted from voxel units to nm isn't it?
+			// everything is already converted from voxel units to nm
 			float min_distance_calculation = 0;
 			float min_distance_sdf = *std::min_element(unique_distances.begin(),unique_distances.end());
 		
@@ -643,7 +644,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// 18 shells implicitely given by 19 values from -4 to 15.
 			// so in this case 15/1 + 4/1 = 19 is correct 
 
-
 			int number_of_proximity_ranges = floor(max_distance / shell_width) + floor(abs(ceiled_minVal) / shell_width);
 
 			std::vector<float> summarized_numerators(number_of_proximity_ranges);
@@ -661,7 +661,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	std::cout << " proximity_ranges_ends[0] " << " = " << proximity_ranges_ends[0] << std::endl;
 	std::cout << " proximity_ranges_ends[number_of_proximity_ranges-1] " << " = " << proximity_ranges_ends[number_of_proximity_ranges-1] << std::endl;
 */
-			current_distance = 0;
 			int proximity_range_index = 0;
 			for (int i=0;i<unique_distances.size();i++)
 			{
@@ -679,14 +678,13 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			*/
 
 				if (proximity_range_index < number_of_proximity_ranges)
+
 				{
-					// not cumulative like +=
-					current_distance = unique_distances[i];
 /*
 					std::cout << " proximity_range_index " << " = " << proximity_range_index << std::endl;
 					std::cout << " number_of_proximity_ranges " << " = " << number_of_proximity_ranges << std::endl;
 */
-					if (current_distance > proximity_ranges_ends[proximity_range_index])
+					if (unique_distances[i] > proximity_ranges_ends[proximity_range_index])
 					{
 						proximity_range_index += 1;				
 					}
