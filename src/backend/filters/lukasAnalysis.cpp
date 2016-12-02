@@ -240,8 +240,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// calculate a signed distance field
 
 			float max_distance = 10; // nm
-			float min_distance = 5; // nm
-			float shell_width = 1.0; // nm
+			float min_distance = -10; // nm
+			float shell_width = 0.5; // nm
 
 			// bandwidths are in voxel units
 			// the bandwidths have to correlate with the voxelsize of the levelset and the
@@ -249,7 +249,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// if i want to calc the max distance 15 nm for example and vs_levelset is only 0.1
 			// i need 150 voxels in the outside bandwidth in order to
 			// provide the desired information of this regions
-			float in_bandwidth = ceil(min_distance / voxelsize_levelset);
+			float in_bandwidth = ceil(abs(min_distance) / voxelsize_levelset);
 			float ex_bandwidth = ceil(max_distance / voxelsize_levelset);
 
 			// signed distance field
@@ -616,47 +616,85 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// by summarizing the values
 			// calculation of the proximity ranges
 			// everything is already converted from voxel units to nm isn't it?
-			float min_distance = *std::min_element(unique_distances.begin(),unique_distances.end());
-			float ceiled_minVal = ceil(min_distance);
+			float min_distance_calculation = 0;
+			float min_distance_sdf = *std::min_element(unique_distances.begin(),unique_distances.end());
+		
+			if (min_distance_sdf < min_distance)
+			{
+				min_distance_calculation = min_distance;
+			}
+			if (min_distance_sdf >= min_distance)
+			{
+				min_distance_calculation = floor(min_distance_sdf);
+			}
+			std::cout << " min_distance_sdf " << " = " << min_distance_sdf << std::endl;
+			std::cout << " min_distance " << " = " << min_distance << std::endl;
+			std::cout << " min_distance_calculation " << " = " << min_distance_calculation << std::endl;
+/*
+			float max_distance_sdf = *std::max_element(unique_distances.begin(),unique_distances.end());
+
+			std::cout << " max_distance_sdf " << " = " << max_distance_sdf << std::endl;
+*/
+			float ceiled_minVal = ceil(min_distance_calculation);
 			
 			// example minimum nm value is -4.2 and maximum value is 15.
 			// that is with a shell width of 1 nm there have to be
 			// the shells -4 to -3, -3 to -2 ... and 14 to 15 which is summed up
 			// 18 shells implicitely given by 19 values from -4 to 15.
 			// so in this case 15/1 + 4/1 = 19 is correct 
-			// by storing only the range ends -> -1 starting from the value -3 to 15
-			// so 18 endpoints of proximity ranges
 
-			int number_of_proximity_ranges = floor(max_distance / shell_width) + floor(abs(ceiled_minVal) / shell_width) -1 ;
+
+			int number_of_proximity_ranges = floor(max_distance / shell_width) + floor(abs(ceiled_minVal) / shell_width);
 
 			std::vector<float> summarized_numerators(number_of_proximity_ranges);
 			std::vector<float> summarized_denominators(number_of_proximity_ranges);
 
 			std::vector<float> proximity_ranges_ends(number_of_proximity_ranges);
 
-			// just shifts the bins to the same spots as the IVAS data i have
-			// better comparison of the results
-			float ivas_correction_factor = 0;
-			float current_distance = ceiled_minVal + ivas_correction_factor;
+			float current_distance = min_distance_calculation;
 			for (int i=0;i<number_of_proximity_ranges;i++)
 			{
 				current_distance += shell_width;
 				proximity_ranges_ends[i] = current_distance;				
 			}
-	
+/*
+	std::cout << " proximity_ranges_ends[0] " << " = " << proximity_ranges_ends[0] << std::endl;
+	std::cout << " proximity_ranges_ends[number_of_proximity_ranges-1] " << " = " << proximity_ranges_ends[number_of_proximity_ranges-1] << std::endl;
+*/
 			current_distance = 0;
 			int proximity_range_index = 0;
 			for (int i=0;i<unique_distances.size();i++)
 			{
-				current_distance = unique_distances[i];
 
-				if (current_distance >= proximity_ranges_ends[proximity_range_index])
+			/*
+			why does this happen?!
+						 proximity_range_index  = 13
+			 number_of_proximity_ranges  = 14
+			 proximity_range_index  = 14
+			 number_of_proximity_ranges  = 14
+			 proximity_range_index  = 15
+			 number_of_proximity_ranges  = 14
+			 proximity_range_index  = 16
+			 number_of_proximity_ranges  = 14
+			*/
+
+				if (proximity_range_index < number_of_proximity_ranges)
 				{
-					proximity_range_index += 1;				
-				}
+					// not cumulative like +=
+					current_distance = unique_distances[i];
+/*
+					std::cout << " proximity_range_index " << " = " << proximity_range_index << std::endl;
+					std::cout << " number_of_proximity_ranges " << " = " << number_of_proximity_ranges << std::endl;
+*/
+					if (current_distance > proximity_ranges_ends[proximity_range_index])
+					{
+						proximity_range_index += 1;				
+					}
 				
-				summarized_numerators[proximity_range_index] += numerators[i];
-				summarized_denominators[proximity_range_index] += denominators[i];		
+					summarized_numerators[proximity_range_index] += numerators[i];
+					summarized_denominators[proximity_range_index] += denominators[i];	
+
+				}	
 			}
 
 			// 6th calculate the concentration for each unique distance
@@ -666,7 +704,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			{
 				concentrations[i] = summarized_numerators[i] / summarized_denominators[i];
 			}
-	
 
 			// manage the filter output
 
@@ -685,6 +722,10 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			{
 				d->xyData[ui].first = proximity_ranges_ends[ui];
 				d->xyData[ui].second = concentrations[ui];
+
+				std::cout << " proximity_ranges_ends[ui] " << " = " << proximity_ranges_ends[ui] << std::endl;
+				std::cout << " concentrations[ui-1] " << " = " << concentrations[ui] << std::endl;
+
 			}
 
 			d->xLabel=TRANS("distance / nm"); 	
@@ -694,7 +735,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			getOut.push_back(d);
 
-	
 
 	//Copy the inputs into the outputs, provided they are not voxels
 	return 0;
