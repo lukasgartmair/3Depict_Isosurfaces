@@ -240,6 +240,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// calculate a signed distance field
 
 			float max_distance = 10; // nm
+			float min_distance = 5; // nm
 			float shell_width = 1.0; // nm
 
 			// bandwidths are in voxel units
@@ -248,8 +249,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// if i want to calc the max distance 15 nm for example and vs_levelset is only 0.1
 			// i need 150 voxels in the outside bandwidth in order to
 			// provide the desired information of this regions
-			float in_bandwidth = max_distance / voxelsize_levelset;
-			float ex_bandwidth = max_distance / voxelsize_levelset;
+			float in_bandwidth = ceil(min_distance / voxelsize_levelset);
+			float ex_bandwidth = ceil(max_distance / voxelsize_levelset);
 
 			// signed distance field
 			openvdb::FloatGrid::Ptr sdf = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(openvdb::math::Transform(), points, triangles, quads, ex_bandwidth, in_bandwidth);
@@ -554,7 +555,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 
 			// sort the unique distances in ascending order
-			// doing this directly here is the workaround to
+			// doing this directly here and mapping the indices is the workaround to
 			// avoid sorting two corresponding lists afterwards
 	
 			std::sort(unique_distances.begin(), unique_distances.end());
@@ -581,7 +582,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				// find the key in the map to the distance
 				int current_index = indicesMap[current_distance];
 				count_distances[current_index] += 1;
-
 			}
 
 			// 4th atom count statistics for each unique distance from the denominator grid which holds
@@ -624,38 +624,39 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// the shells -4 to -3, -3 to -2 ... and 14 to 15 which is summed up
 			// 18 shells implicitely given by 19 values from -4 to 15.
 			// so in this case 15/1 + 4/1 = 19 is correct 
+			// by storing only the range ends -> -1 starting from the value -3 to 15
+			// so 18 endpoints of proximity ranges
 
-			int number_of_proximity_ranges = floor(max_distance / shell_width) + floor(abs(ceiled_minVal) / shell_width);
+			int number_of_proximity_ranges = floor(max_distance / shell_width) + floor(abs(ceiled_minVal) / shell_width) -1 ;
 
-			std::vector<float> summarized_numerators(number_of_proximity_ranges+1);
-			std::vector<float> summarized_denominators(number_of_proximity_ranges+1);
+			std::vector<float> summarized_numerators(number_of_proximity_ranges);
+			std::vector<float> summarized_denominators(number_of_proximity_ranges);
 
-			std::vector<float> proximity_ranges(number_of_proximity_ranges);
+			std::vector<float> proximity_ranges_ends(number_of_proximity_ranges);
 
 			// just shifts the bins to the same spots as the IVAS data i have
 			// better comparison of the results
-			float ivas_correction_factor = 0.5;
+			float ivas_correction_factor = 0;
 			float current_distance = ceiled_minVal + ivas_correction_factor;
 			for (int i=0;i<number_of_proximity_ranges;i++)
 			{
-				proximity_ranges[i] = current_distance;
 				current_distance += shell_width;
+				proximity_ranges_ends[i] = current_distance;				
 			}
 	
-
 			current_distance = 0;
 			int proximity_range_index = 0;
 			for (int i=0;i<unique_distances.size();i++)
 			{
 				current_distance = unique_distances[i];
-				if (current_distance >= proximity_ranges[proximity_range_index])
+
+				if (current_distance >= proximity_ranges_ends[proximity_range_index])
 				{
 					proximity_range_index += 1;				
 				}
 				
 				summarized_numerators[proximity_range_index] += numerators[i];
-				summarized_denominators[proximity_range_index] += summarized_denominators[i];
-						
+				summarized_denominators[proximity_range_index] += denominators[i];		
 			}
 
 			// 6th calculate the concentration for each unique distance
@@ -680,13 +681,13 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			d->index=0;
 			d->parent=this;
 
-			for(unsigned int ui=0;ui<unique_distances.size();ui++)
+			for(unsigned int ui=0;ui<number_of_proximity_ranges;ui++)
 			{
-				d->xyData[ui].first = proximity_ranges[ui];
+				d->xyData[ui].first = proximity_ranges_ends[ui];
 				d->xyData[ui].second = concentrations[ui];
 			}
 
-			d->xLabel=TRANS("unqiue distance / nm"); 	
+			d->xLabel=TRANS("distance / nm"); 	
 			d->yLabel=TRANS("concentration "); 
 
 			d->autoSetHardBounds();
