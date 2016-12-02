@@ -159,7 +159,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				return 0;
 			}
 
-			const float voxelsize_levelset = 1;
+			// very important and critical parameter for the proxigram
+			const float voxelsize_levelset = 2;
 
 			// get the vdb grid from the stream	
 			const float background_proxi = 0.0;
@@ -240,8 +241,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// calculate a signed distance field
 
 			float max_distance = 10; // nm
-			float min_distance = -10; // nm
-			float shell_width = 0.5; // nm
+			float min_distance = -5; // nm
+			float shell_width = 1; // nm
 
 			// bandwidths are in voxel units
 			// the bandwidths have to correlate with the voxelsize of the levelset and the
@@ -528,9 +529,9 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// then get the appearances of each distance -> simple histogram
 			// then get the atom count statistics for each unique distance
 			// get the numerators and the denominators
-			// then calculate the concentration for each unique distance
+			// summarize the distances
+			// then calculate the concentration for each summarized distance
 			// then plot concentration over the unique distances
-			// maybe adding small distances to bigger distances for statistics would make sense
 
 			// dynamic arrays
 			std::vector<float> all_distances;
