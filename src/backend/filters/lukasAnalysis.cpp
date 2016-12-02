@@ -262,8 +262,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// extractActiveVoxelSegmentMasks - 	Return a mask for each connected component of the given grid's active voxels. More...
 			// extractIsosurfaceMask - 	Return a mask of the voxels that intersect the implicit surface with the given isovalue. More...	
 
-			// at the moment there are small artefacts which crash the calculation of the precipitation inside
-
 			// now get a copy of that grid, set all its active values from the narrow band to zero and fill only them with ions of interest
 			openvdb::FloatGrid::Ptr numerator_grid_proxi = sdf->deepCopy();
 			openvdb::FloatGrid::Ptr denominator_grid_proxi = sdf->deepCopy();
@@ -451,7 +449,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 					for (int i=0;i<number_of_adjacent_voxels;i++)
 					{
 						current_voxel_index = adjacent_voxel_vertices[i];
-						// normalized voxel indices based on 00, 01, 02 etc. // very important otherwise there will be spacings
 						openvdb::Coord ijk(current_voxel_index[0], current_voxel_index[1], current_voxel_index[2]);
 
 						if(voxelstate_accessor.getValue(ijk) == active_voxel_state_value)
@@ -480,17 +477,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			float maxVal = 0.0;
 
 			// now there is a grid with ion information and one grid with distance information
-			// now take discrete distances and calculate the mean concentration in that shell
-			// this is done by checking all voxels in the narrow band whether they are inside or outside the 
-			// proximity range and then add up the entries both from the numerator grid and the denominator grid
-			// the division will provide the concentration in that proximity shell
 
 			sdf->evalMinMax(minVal,maxVal);
-
-			// the algorithm has to look like this:
-			// only iterate once over the sdf grid and in this one iteration check the several conditions
-			// another time saver would be not to iterate again over the whole volume, but only over
-			// the next bigger shell minus the last biggest shells
 
 			// i guess the distances of the sdf are [voxels] -> openvdbtestsuite
 			// so in order to convert the proximities they should be taken times the voxelsize
@@ -523,7 +511,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			std::cout << " bounding box sdf " << " = " << bounding_box1 << std::endl;
 			std::cout << " bounding box denominator_grid _proxi " << " = " << bounding_box2 << std::endl;
 
-			// let's do another approach
 			// just get all existing voxel distances of the sdf
 			// then get the unique distances
 			// then get the appearances of each distance -> simple histogram
