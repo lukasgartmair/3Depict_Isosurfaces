@@ -594,7 +594,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				float current_distance = iter.getValue();
 				// find the key in the map to the distance
 				int current_index = indicesMap[current_distance];
-				openvdb::Coord abc = iter.getCoord();
+				openvdb::Coord abc;
+				abc = iter.getCoord();
 				atomcounts_distances[current_index] += denominator_accessor_proxi.getValue(abc);
 			}
 
@@ -665,18 +666,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			for (int i=0;i<unique_distances.size();i++)
 			{
 
-			/*
-			why does this happen?!
-						 proximity_range_index  = 13
-			 number_of_proximity_ranges  = 14
-			 proximity_range_index  = 14
-			 number_of_proximity_ranges  = 14
-			 proximity_range_index  = 15
-			 number_of_proximity_ranges  = 14
-			 proximity_range_index  = 16
-			 number_of_proximity_ranges  = 14
-			*/
-
 				if (proximity_range_index < number_of_proximity_ranges)
 
 				{
@@ -720,9 +709,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			{
 				d->xyData[ui].first = proximity_ranges_ends[ui];
 				d->xyData[ui].second = concentrations[ui];
-
-				std::cout << " proximity_ranges_ends[ui] " << " = " << proximity_ranges_ends[ui] << std::endl;
-				std::cout << " concentrations[ui-1] " << " = " << concentrations[ui] << std::endl;
 
 			}
 
