@@ -34,6 +34,9 @@ private:
 
 	//Enabled ions for numerator/denom
 	std::vector<char> enabledIons[2];
+
+	float voxelsize_levelset;
+	float shell_width;
 	
 	//!density-based or count-based	
 	unsigned int normaliseType;

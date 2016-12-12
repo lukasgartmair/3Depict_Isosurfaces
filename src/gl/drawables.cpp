@@ -2868,7 +2868,7 @@ void LukasDrawIsoSurface::draw() const
 	//std::cout << "nans in vertex normals" << " = " << non_finite_tris_counter << std::endl;
 
 	// this is for visual comparisons with Marching Cubes
-	bool flat_shading = false;
+	bool flat_shading = true;
 
 	if (flat_shading == true)
 	{
@@ -2940,7 +2940,8 @@ void LukasDrawIsoSurface::draw() const
 	ExportTriangleAreas(triangle_areas);
 	*/
 
-	//ExportTriangleMeshAsObj(points, triangles_combined);
+	ExportTriangleMeshAsObj(points, triangles_combined);
+	ExportVDBMeshAsObj(points, triangles, quads);
 }
 
 DrawAxis::DrawAxis()

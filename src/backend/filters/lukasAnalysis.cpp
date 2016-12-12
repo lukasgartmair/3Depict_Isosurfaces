@@ -29,12 +29,24 @@
 enum
 {
 	KEY_ENABLE_NUMERATOR,
-	KEY_ENABLE_DENOMINATOR
+	KEY_ENABLE_DENOMINATOR,
+	KEY_VOXELSIZE_LEVELSET,
+	KEY_SHELL_WIDTH
 };
 
 // == Voxels filter ==
 LukasAnalysisFilter::LukasAnalysisFilter() 
 {
+
+
+	// these two parameters have to make a lot of sense!
+	// otherwise the transition may be falsified
+	// a coarse estimation may be an initial voxelization of 2 nm
+	// the voxelsize for the proxigram should be maybe half the shell size?
+
+	voxelsize_levelset = 1; // nm
+	shell_width = 0.5; // nm
+	
 	numeratorAll = true;
 	denominatorAll = true;
 	rsdIncoming=0;
@@ -47,6 +59,9 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 
 	p->numeratorAll=numeratorAll;
 	p->denominatorAll=denominatorAll;
+
+	p->voxelsize_levelset = voxelsize_levelset;
+	p->shell_width = shell_width;
 
 	p->enabledIons[0].resize(enabledIons[0].size());
 	std::copy(enabledIons[0].begin(),enabledIons[0].end(),p->enabledIons[0].begin());
@@ -159,9 +174,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				return 0;
 			}
 
-			// very important and critical parameter for the proxigram
-			const float voxelsize_levelset = 2;
-
 			// get the vdb grid from the stream	
 			const float background_proxi = 0.0;
 			openvdb::FloatGrid::Ptr grid = openvdb::FloatGrid::create(background_proxi);
@@ -197,6 +209,13 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				ASSERT(false);
 				cerr << "Exception! :" << e.what() << endl;
 			}
+
+			openvdb::io::File file("initial_voxelgrid.vdb");
+			openvdb::GridPtrVec grids;
+			grids.push_back(grid);
+
+			file.write(grids);
+			file.close();
 
 			// checking the mesh for nonfinite coordinates like -nan and inf
 
@@ -240,9 +259,12 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			// calculate a signed distance field
 
-			float max_distance = 10; // nm
-			float min_distance = -5; // nm
-			float shell_width = 1; // nm
+			float max_distance = 2; // nm
+			float min_distance = -2; // nm
+
+
+			std::cout << "voxelsize levelset" << " = " << voxelsize_levelset << std::endl;
+			std::cout << "shell width" << " = " << shell_width << std::endl;
 
 			// bandwidths are in voxel units
 			// the bandwidths have to correlate with the voxelsize of the levelset and the
@@ -257,6 +279,15 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			openvdb::FloatGrid::Ptr sdf = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(openvdb::math::Transform(), points, triangles, quads, ex_bandwidth, in_bandwidth);
 
 			sdf->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
+
+
+			openvdb::io::File file3("sdf_voxelgrid.vdb");
+			openvdb::GridPtrVec grids3;
+			grids3.push_back(sdf);
+
+			file3.write(grids3);
+			file3.close();
+
 
 			// two very intgeresting functions in this case are
 			// extractActiveVoxelSegmentMasks - 	Return a mask for each connected component of the given grid's active voxels. More...
@@ -473,6 +504,14 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				}
 			}
 
+
+			openvdb::io::File file2("denominator_grid_proxi.vdb");
+			openvdb::GridPtrVec grids2;
+			grids2.push_back(denominator_grid_proxi);
+
+			file2.write(grids2);
+			file2.close();
+
 			float minVal = 0.0;
 			float maxVal = 0.0;
 
@@ -549,6 +588,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			std::sort(unique_distances.begin(), unique_distances.end());
 
 			std::cout << " number of unique distances " << " = " << unique_distances.size() << std::endl;
+			std::cout << " minimum unique distances " << " = " << *std::min_element(unique_distances.begin(), unique_distances.end()) << std::endl;
+			std::cout << " maximum unique distances " << " = " << *std::max_element(unique_distances.begin(), unique_distances.end()) << std::endl;
 
 			std::vector<float> count_distances(unique_distances.size());
 
@@ -655,7 +696,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			{
 
 				if (proximity_range_index < number_of_proximity_ranges)
-
 				{
 /*
 					std::cout << " proximity_range_index " << " = " << proximity_range_index << std::endl;
@@ -677,8 +717,21 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			std::vector<float> concentrations(number_of_proximity_ranges);
 			for (int i=0;i<concentrations.size();i++)
 			{
-				concentrations[i] = summarized_numerators[i] / summarized_denominators[i];
+				float concentration = summarized_numerators[i] / summarized_denominators[i];
+				concentrations[i] = concentration;
 			}
+
+
+			// write the data to file
+			bool export_proxi = true;
+			if (export_proxi == true)
+			{
+				FILE* f = fopen("proxigram_data_3depict.txt","wt");
+				fprintf(f, "%s %s \n", "distance/nm" , "concentration ");
+				for(int i=0;i<concentrations.size();i++) fprintf(f, "%f %f \n", proximity_ranges_ends[i], concentrations[i]);
+				fclose(f);
+			}
+		 
 
 			// manage the filter output
 
@@ -727,6 +780,31 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	size_t curGroup=0;
 
 	string tmpStr;
+
+
+	// group computation
+	stream_cast(tmpStr,voxelsize_levelset);
+	p.name=TRANS("Voxelsize Levelset");
+	p.data=tmpStr;
+	p.key=KEY_VOXELSIZE_LEVELSET;
+	p.type=PROPERTY_TYPE_REAL;
+	p.helpText=TRANS("Voxel size of the levelset in x,y,z direction");
+	propertyList.addProperty(p,curGroup);
+
+	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
+	curGroup++;
+
+	// group computation
+	stream_cast(tmpStr,shell_width);
+	p.name=TRANS("Shell width");
+	p.data=tmpStr;
+	p.key=KEY_SHELL_WIDTH;
+	p.type=PROPERTY_TYPE_REAL;
+	p.helpText=TRANS("Proximity shell width");
+	propertyList.addProperty(p,curGroup);
+
+	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
+	curGroup++;
 
 	// numerator
 	if (rsdIncoming) 
@@ -794,6 +872,31 @@ bool LukasAnalysisFilter::setProperty(unsigned int key,
 	needUpdate=false;
 	switch(key)
 	{
+
+		case KEY_VOXELSIZE_LEVELSET:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			if(f <= 0.0f)
+				return false;
+			needUpdate=true;
+			voxelsize_levelset=f;
+			break;
+		}
+
+		case KEY_SHELL_WIDTH:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			if(f <= 0.0f)
+				return false;
+			needUpdate=true;
+			shell_width=f;
+			break;
+		}
+
 		case KEY_ENABLE_NUMERATOR:
 		{
 			bool b;
@@ -890,6 +993,8 @@ bool LukasAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsign
 			f << tabs(depth+2) << "</denominator>" << endl;
 
 			f << tabs(depth+1) << "</enabledions>" << endl;
+			f << tabs(depth+1) << "<voxelsize_levelset value=\""<<voxelsize_levelset << "\"/>" << endl;
+			f << tabs(depth+1) << "<shell_width value=\""<<shell_width << "\"/>" << endl;
 
 			f << tabs(depth) << "</" << trueName() <<">" << endl;
 			break;
@@ -919,6 +1024,26 @@ bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 		return false;
 	userString=(char *)xmlString;
 	xmlFree(xmlString);
+
+
+	//--=
+	float tmpFloat = 0;
+	if(!XMLGetNextElemAttrib(nodePtr,tmpFloat,"voxelsize_levelset","value"))
+		return false;
+	if(tmpFloat <= 0.0f)
+		return false;
+	voxelsize_levelset=tmpFloat;
+	//--=
+
+	//--=
+	tmpFloat = 0;
+	if(!XMLGetNextElemAttrib(nodePtr,tmpFloat,"shell_width","value"))
+		return false;
+	if(tmpFloat <= 0.0f)
+		return false;
+	shell_width=tmpFloat;
+	//--=
+
 
 
 	//Look for the enabled ions bit
