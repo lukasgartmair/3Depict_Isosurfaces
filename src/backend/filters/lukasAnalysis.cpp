@@ -199,6 +199,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			std::vector<openvdb::Vec3I> triangles;
 			std::vector<openvdb::Vec4I> quads;
 
+			// this is done on the coarse grid
 			// recalculate the isosurface mesh to perform calculations based on it
 			try
 			{
@@ -262,7 +263,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			float max_distance = 2; // nm
 			float min_distance = -2; // nm
 
-
 			std::cout << "voxelsize levelset" << " = " << voxelsize_levelset << std::endl;
 			std::cout << "shell width" << " = " << shell_width << std::endl;
 
@@ -272,14 +272,15 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// if i want to calc the max distance 15 nm for example and vs_levelset is only 0.1
 			// i need 150 voxels in the outside bandwidth in order to
 			// provide the desired information of this regions
-			float in_bandwidth = ceil(abs(min_distance) / voxelsize_levelset);
-			float ex_bandwidth = ceil(max_distance / voxelsize_levelset);
+
+			// mesh to signed distance takes floats as input
+			float in_bandwidth = abs(min_distance) / voxelsize_levelset;
+			float ex_bandwidth = max_distance / voxelsize_levelset;
 
 			// signed distance field
 			openvdb::FloatGrid::Ptr sdf = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(openvdb::math::Transform(), points, triangles, quads, ex_bandwidth, in_bandwidth);
 
 			sdf->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
-
 
 			openvdb::io::File file3("sdf_voxelgrid.vdb");
 			openvdb::GridPtrVec grids3;
@@ -301,9 +302,11 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			openvdb::FloatGrid::Ptr voxelstate_grid = sdf->deepCopy();
 
 			// set the identical transforms for the ion information grid
+
 			numerator_grid_proxi->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
 			denominator_grid_proxi->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
 			voxelstate_grid->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
+
 			// only iterate the active voxels
 			// so both the active and inactive voxels should have the value zero
 			// but nevertheless different activation states - is that possible?
@@ -317,12 +320,14 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			openvdb::FloatGrid::Accessor voxelstate_accessor = voxelstate_grid->getAccessor();
 			int active_voxel_state_value = 1.0;
 
+			for (openvdb::FloatGrid::ValueOnIter iter = voxelstate_grid->beginValueOn(); iter; ++iter)
+			{
+				iter.setValue(active_voxel_state_value);
+			}
+
 			for (openvdb::FloatGrid::ValueOnIter iter = numerator_grid_proxi->beginValueOn(); iter; ++iter)
 			{   
 					iter.setValue(0.0);
-					hkl = iter.getCoord();
-					// set the reference active / passive grid's values
-					voxelstate_accessor.setValue(hkl, active_voxel_state_value);
 			}
 			for (openvdb::FloatGrid::ValueOnIter iter = denominator_grid_proxi->beginValueOn(); iter; ++iter)
 			{   
@@ -519,6 +524,8 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			sdf->evalMinMax(minVal,maxVal);
 
+			std::cout << " eval min max sdf" << " = " << minVal << " , " << maxVal << std::endl;
+
 			// i guess the distances of the sdf are [voxels] -> openvdbtestsuite
 			// so in order to convert the proximities they should be taken times the voxelsize
 			// these proximities are given in nm the conversion is done on the whole sdf grid
@@ -526,15 +533,17 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// conversion of the sdf, which is given in voxel units to real world units
 			// by multiplication with the higher resolution voxelsize
 
-			for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
+			openvdb::FloatGrid::Ptr sdf_nm = sdf->deepCopy();
+
+			for (openvdb::FloatGrid::ValueOnIter iter = sdf_nm->beginValueOn(); iter; ++iter)
 			{   
 					iter.setValue(iter.getValue() * voxelsize_levelset);
 			}
 
 			sdf->evalMinMax(minVal,maxVal);
 
-			std::cout << " eval min max sdf" << " = " << minVal << " , " << maxVal << std::endl;
-			std::cout << " active voxel count sdf " << " = " << sdf->activeVoxelCount() << std::endl;
+			std::cout << " eval min max sdf_nm" << " = " << minVal << " , " << maxVal << std::endl;
+			std::cout << " active voxel count sdf_nm " << " = " << sdf_nm->activeVoxelCount() << std::endl;
 
 			numerator_grid_proxi->evalMinMax(minVal,maxVal);
 			std::cout << " eval min max numerator_grid" << " = " << minVal << " , " << maxVal << std::endl;
@@ -544,10 +553,10 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			std::cout << " eval min max denominator_grid" << " = " << minVal << " , " << maxVal << std::endl;
 			std::cout << " active voxel count denominator_grid " << " = " << denominator_grid_proxi->activeVoxelCount() << std::endl;
 
-			openvdb::math::CoordBBox bounding_box1 = sdf->evalActiveVoxelBoundingBox();
+			openvdb::math::CoordBBox bounding_box1 = sdf_nm->evalActiveVoxelBoundingBox();
 			openvdb::math::CoordBBox bounding_box2 = denominator_grid_proxi->evalActiveVoxelBoundingBox();
 
-			std::cout << " bounding box sdf " << " = " << bounding_box1 << std::endl;
+			std::cout << " bounding box sdf_nm " << " = " << bounding_box1 << std::endl;
 			std::cout << " bounding box denominator_grid _proxi " << " = " << bounding_box2 << std::endl;
 
 			// just get all existing voxel distances of the sdf
@@ -565,7 +574,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			// 1st get all existing voxel distances of the sdf + 2nd get the unique distances
 
-			for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
+			for (openvdb::FloatGrid::ValueOnIter iter = sdf_nm->beginValueOn(); iter; ++iter)
 			{   
 				float current_distance = iter.getValue();
 
@@ -605,7 +614,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				indicesMap.insert(std::make_pair(unique_distances[i], i));
 			}
 
-			for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
+			for (openvdb::FloatGrid::ValueOnIter iter = sdf_nm->beginValueOn(); iter; ++iter)
 			{   
 				float current_distance = iter.getValue();
 				// find the key in the map to the distance
@@ -618,7 +627,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			std::vector<float> atomcounts_distances(unique_distances.size());
 
-			for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
+			for (openvdb::FloatGrid::ValueOnIter iter = sdf_nm->beginValueOn(); iter; ++iter)
 			{
 				float current_distance = iter.getValue();
 				// find the key in the map to the distance
@@ -633,7 +642,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			std::vector<float> numerators(unique_distances.size());
 			std::vector<float> denominators(unique_distances.size());
 
-			for (openvdb::FloatGrid::ValueOnIter iter = sdf->beginValueOn(); iter; ++iter)
+			for (openvdb::FloatGrid::ValueOnIter iter = sdf_nm->beginValueOn(); iter; ++iter)
  			{
 				float current_distance = iter.getValue();
 				int current_index = indicesMap[current_distance];
