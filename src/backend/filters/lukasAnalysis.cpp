@@ -295,44 +295,16 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// extractIsosurfaceMask - 	Return a mask of the voxels that intersect the implicit surface with the given isovalue. More...	
 
 			// now get a copy of that grid, set all its active values from the narrow band to zero and fill only them with ions of interest
-			openvdb::FloatGrid::Ptr numerator_grid_proxi = sdf->deepCopy();
-			openvdb::FloatGrid::Ptr denominator_grid_proxi = sdf->deepCopy();
+			//openvdb::FloatGrid::Ptr numerator_grid_proxi = sdf->deepCopy();
+			//openvdb::FloatGrid::Ptr denominator_grid_proxi = sdf->deepCopy();
 
-			// initialize another grid with signed distance fields active voxels give all actives a certain value, which can be asked for in order to retrieve the voxel state
-			openvdb::FloatGrid::Ptr voxelstate_grid = sdf->deepCopy();
+			openvdb::FloatGrid::Ptr numerator_grid_proxi = openvdb::FloatGrid::create(background_proxi);
+			openvdb::FloatGrid::Ptr denominator_grid_proxi = openvdb::FloatGrid::create(background_proxi);
 
 			// set the identical transforms for the ion information grid
 
 			numerator_grid_proxi->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
 			denominator_grid_proxi->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
-			voxelstate_grid->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
-
-			// only iterate the active voxels
-			// so both the active and inactive voxels should have the value zero
-			// but nevertheless different activation states - is that possible?
-			// -> yes the result is in the test suite
-
-			// i do have to store the coordinates of all active voxels once here
-			// as i cannot find a method to evaluate whether a single voxel is active or inactive 
-			openvdb::Coord hkl;
-
-			// set all active voxels in the voxelstate grid to n
-			openvdb::FloatGrid::Accessor voxelstate_accessor = voxelstate_grid->getAccessor();
-			int active_voxel_state_value = 1.0;
-
-			for (openvdb::FloatGrid::ValueOnIter iter = voxelstate_grid->beginValueOn(); iter; ++iter)
-			{
-				iter.setValue(active_voxel_state_value);
-			}
-
-			for (openvdb::FloatGrid::ValueOnIter iter = numerator_grid_proxi->beginValueOn(); iter; ++iter)
-			{   
-					iter.setValue(0.0);
-			}
-			for (openvdb::FloatGrid::ValueOnIter iter = denominator_grid_proxi->beginValueOn(); iter; ++iter)
-			{   
-					iter.setValue(0.0);
-			}
 
 			// now run through all ions but only once, and in case they are inside a active voxel write only to them
 
@@ -487,24 +459,22 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 						current_voxel_index = adjacent_voxel_vertices[i];
 						openvdb::Coord ijk(current_voxel_index[0], current_voxel_index[1], current_voxel_index[2]);
 
-						if(voxelstate_accessor.getValue(ijk) == active_voxel_state_value)
-						{
-							// write to denominator grid
+						// write to denominator grid
 
-							denominator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor_proxi.getValue(ijk));
-							// write to numerator grid
-							//if(thisNumeratorIonEnabled)
-							// test case 								
-							if(ionID == 1)								
-							{	
-								numerator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor_proxi.getValue(ijk));
-							}
-							else
-							{
-								numerator_accessor_proxi.setValue(ijk, 0.0 + numerator_accessor_proxi.getValue(ijk));
-								
-							}
+						denominator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor_proxi.getValue(ijk));
+						// write to numerator grid
+						//if(thisNumeratorIonEnabled)
+						// test case 								
+						if(ionID == 1)								
+						{	
+							numerator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor_proxi.getValue(ijk));
 						}
+						else
+						{
+							numerator_accessor_proxi.setValue(ijk, 0.0 + numerator_accessor_proxi.getValue(ijk));
+							
+						}
+
 					}
 				}
 			}
@@ -558,6 +528,9 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			std::cout << " bounding box sdf_nm " << " = " << bounding_box1 << std::endl;
 			std::cout << " bounding box denominator_grid _proxi " << " = " << bounding_box2 << std::endl;
+
+			// for comparison between the coord center of the sampled precipitation and the voxelized one
+			std::cout << " bounding_box.getCenter() sdf " << " = " << bounding_box1.getCenter() << std::endl;
 
 			// just get all existing voxel distances of the sdf
 			// then get the unique distances
