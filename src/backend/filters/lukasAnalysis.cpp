@@ -714,6 +714,26 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				fclose(f);
 			}
 		 
+		
+			// rearranging the range contents for plotting
+			// maybe this was shit here
+			// the point - 0.5 should describe the bin content from 0 to -0.5 
+			// and the point 0.5 should describe the content from 0 to 0.5?
+			// at the moment the value at 0 describes the content from -0.5 to zero
+
+			std::vector<float> proximity_ranges_plotting(number_of_proximity_ranges);
+
+			for (int i=0;i<proximity_ranges_plotting.size();i++)
+			{
+				if (proximity_ranges_ends[i] <= 0)
+				{
+					proximity_ranges_plotting[i] = proximity_ranges_ends[i] - shell_width;
+				}			
+				else
+				{
+					proximity_ranges_plotting[i] = proximity_ranges_ends[i];		
+				}			
+			}	
 
 			// manage the filter output
 
@@ -728,9 +748,9 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			d->index=0;
 			d->parent=this;
 
-			for(unsigned int ui=0;ui<number_of_proximity_ranges;ui++)
+			for(unsigned int ui=0;ui<proximity_ranges_plotting.size();ui++)
 			{
-				d->xyData[ui].first = proximity_ranges_ends[ui];
+				d->xyData[ui].first = proximity_ranges_plotting[ui];
 				d->xyData[ui].second = concentrations[ui];
 
 			}
