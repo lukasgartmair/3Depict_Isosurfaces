@@ -31,22 +31,20 @@ enum
 	KEY_ENABLE_NUMERATOR,
 	KEY_ENABLE_DENOMINATOR,
 	KEY_VOXELSIZE_LEVELSET,
-	KEY_SHELL_WIDTH
+	KEY_SHELL_WIDTH,
+	KEY_MIN_DISTANCE,
+	KEY_MAX_DISTANCE
 };
 
 // == Voxels filter ==
 LukasAnalysisFilter::LukasAnalysisFilter() 
 {
 
-
-	// these two parameters have to make a lot of sense!
-	// otherwise the transition may be falsified
-	// a coarse estimation may be an initial voxelization of 2 nm
-	// the voxelsize for the proxigram should be maybe half the shell size?
-
+	// voxelsize levelset of 1 has about maximum 8 atoms of contribution
 	voxelsize_levelset = 1; // nm
 	shell_width = 0.5; // nm
-	
+	min_distance = -2; // nm
+	max_distance = 2; // nm
 	numeratorAll = true;
 	denominatorAll = true;
 	rsdIncoming=0;
@@ -62,6 +60,8 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 
 	p->voxelsize_levelset = voxelsize_levelset;
 	p->shell_width = shell_width;
+	p->min_distance = -2;
+	p->max_distance = 2;
 
 	p->enabledIons[0].resize(enabledIons[0].size());
 	std::copy(enabledIons[0].begin(),enabledIons[0].end(),p->enabledIons[0].begin());
@@ -259,9 +259,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 		        // here is no conversion to triangles needed in contrast to drawables, as meshtosigneddistancefield takes quads and triangles
 
 			// calculate a signed distance field
-
-			float max_distance = 2; // nm
-			float min_distance = -2; // nm
 
 			std::cout << "voxelsize levelset" << " = " << voxelsize_levelset << std::endl;
 			std::cout << "shell width" << " = " << shell_width << std::endl;
@@ -808,6 +805,30 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
 	curGroup++;
 
+	// group computation
+	stream_cast(tmpStr,min_distance);
+	p.name=TRANS("Minimal inside distance");
+	p.data=tmpStr;
+	p.key=KEY_MIN_DISTANCE;
+	p.type=PROPERTY_TYPE_REAL;
+	p.helpText=TRANS("Minimal inside distance");
+	propertyList.addProperty(p,curGroup);
+
+	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
+	curGroup++;
+
+	// group computation
+	stream_cast(tmpStr,max_distance);
+	p.name=TRANS("Maximal outside distance");
+	p.data=tmpStr;
+	p.key=KEY_MAX_DISTANCE;
+	p.type=PROPERTY_TYPE_REAL;
+	p.helpText=TRANS("Maximal outside distance");
+	propertyList.addProperty(p,curGroup);
+
+	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
+	curGroup++;
+
 	// numerator
 	if (rsdIncoming) 
 	{
@@ -896,6 +917,26 @@ bool LukasAnalysisFilter::setProperty(unsigned int key,
 				return false;
 			needUpdate=true;
 			shell_width=f;
+			break;
+		}
+
+		case KEY_MIN_DISTANCE:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			needUpdate=true;
+			min_distance=f;
+			break;
+		}
+
+		case KEY_MAX_DISTANCE:
+		{
+			float f;
+			if(stream_cast(f,value))
+				return false;
+			needUpdate=true;
+			max_distance=f;
 			break;
 		}
 
@@ -998,6 +1039,9 @@ bool LukasAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsign
 			f << tabs(depth+1) << "<voxelsize_levelset value=\""<<voxelsize_levelset << "\"/>" << endl;
 			f << tabs(depth+1) << "<shell_width value=\""<<shell_width << "\"/>" << endl;
 
+			f << tabs(depth+1) << "<min_distance value=\""<<min_distance << "\"/>" << endl;
+			f << tabs(depth+1) << "<max_distance value=\""<<max_distance << "\"/>" << endl;
+
 			f << tabs(depth) << "</" << trueName() <<">" << endl;
 			break;
 		}
@@ -1044,6 +1088,24 @@ bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	if(tmpFloat <= 0.0f)
 		return false;
 	shell_width=tmpFloat;
+	//--=
+
+	//--=
+	tmpFloat = 0;
+	if(!XMLGetNextElemAttrib(nodePtr,tmpFloat,"min_distance","value"))
+		return false;
+	if(tmpFloat <= 0.0f)
+		return false;
+	min_distance=tmpFloat;
+	//--=
+
+	//--=
+	tmpFloat = 0;
+	if(!XMLGetNextElemAttrib(nodePtr,tmpFloat,"max_distance","value"))
+		return false;
+	if(tmpFloat <= 0.0f)
+		return false;
+	max_distance=tmpFloat;
 	//--=
 
 

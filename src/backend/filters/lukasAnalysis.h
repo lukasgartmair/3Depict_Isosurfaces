@@ -35,6 +35,9 @@ private:
 	//Enabled ions for numerator/denom
 	std::vector<char> enabledIons[2];
 
+	float min_distance; // nm
+	float max_distance; // nm
+
 	float voxelsize_levelset;
 	float shell_width;
 	
