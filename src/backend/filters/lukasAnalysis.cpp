@@ -670,23 +670,42 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	std::cout << " proximity_ranges_ends[0] " << " = " << proximity_ranges_ends[0] << std::endl;
 	std::cout << " proximity_ranges_ends[number_of_proximity_ranges-1] " << " = " << proximity_ranges_ends[number_of_proximity_ranges-1] << std::endl;
 */
+
+			float voxel_diagonal = sqrt(3)*voxelsize_levelset;
+			float half_voxel_diagonal = voxel_diagonal / 2;
+
 			int proximity_range_index = 0;
 			for (int i=0;i<unique_distances.size();i++)
 			{
 
 				if (proximity_range_index < number_of_proximity_ranges)
 				{
-/*
-					std::cout << " proximity_range_index " << " = " << proximity_range_index << std::endl;
-					std::cout << " number_of_proximity_ranges " << " = " << number_of_proximity_ranges << std::endl;
-*/
+
 					if (unique_distances[i] > proximity_ranges_ends[proximity_range_index])
 					{
 						proximity_range_index += 1;				
 					}
+
+					// another approach is to ignore voxels that lie in the transition zone
+					// and just consider the ones that have at least 3/4 of the 
+					// voxelsize or something right content in both directions
+					// horizontal or diagonal?!
+					
+					if (abs(unique_distances[i]) >= half_voxel_diagonal)
+					{
+						summarized_numerators[proximity_range_index] += numerators[i];
+						summarized_denominators[proximity_range_index] += denominators[i];	
 				
-					summarized_numerators[proximity_range_index] += numerators[i];
-					summarized_denominators[proximity_range_index] += denominators[i];	
+					}
+					if (abs(unique_distances[i]) < half_voxel_diagonal)
+					{
+						float weight_factor_based_on_distance = (abs(unique_distances[i])) / half_voxel_diagonal;
+
+						summarized_numerators[proximity_range_index] += (numerators[i] * weight_factor_based_on_distance);
+						summarized_denominators[proximity_range_index] += (denominators[i] * weight_factor_based_on_distance);	
+				
+					}
+
 
 				}	
 			}
