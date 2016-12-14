@@ -44,7 +44,7 @@ LukasAnalysisFilter::LukasAnalysisFilter()
 	// which is maybe way too much to describe a transition of sharpness 0.1 nm
 	// why is the voxelization messed up with smaller and bigger voxelsizes than 1?!
  
-	voxelsize_levelset = 1; // nm
+	voxelsize_levelset = 0.5; // nm
 	shell_width = 0.1; // nm
 	min_distance = -2; // nm
 	max_distance = 2; // nm
@@ -293,15 +293,43 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// extractIsosurfaceMask - 	Return a mask of the voxels that intersect the implicit surface with the given isovalue. More...	
 
 			// now get a copy of that grid, set all its active values from the narrow band to zero and fill only them with ions of interest
-			//openvdb::FloatGrid::Ptr numerator_grid_proxi = sdf->deepCopy();
-			//openvdb::FloatGrid::Ptr denominator_grid_proxi = sdf->deepCopy();
+			openvdb::FloatGrid::Ptr numerator_grid_proxi = sdf->deepCopy();
+			openvdb::FloatGrid::Ptr denominator_grid_proxi = sdf->deepCopy();
 
-			// create a whole new grid - seems faster
-			openvdb::FloatGrid::Ptr numerator_grid_proxi = openvdb::FloatGrid::create(background_proxi);
-			openvdb::FloatGrid::Ptr denominator_grid_proxi = openvdb::FloatGrid::create(background_proxi);
+			// initialize another grid with signed distance fields active voxels 
+			//give all actives a certain value, which can be asked for in order to retrieve the voxel state
+			openvdb::FloatGrid::Ptr voxelstate_grid = sdf->deepCopy();
+
+			// only iterate the active voxels
+			// so both the active and inactive voxels should have the value zero
+			// but nevertheless different activation states - is that possible?
+			// -> yes the result is in the test suite
+
+			// i do have to store the coordinates of all active voxels once here
+			// as i cannot find a method to evaluate whether a single voxel is active or inactive 
+			openvdb::Coord hkl;
+
+			// set all active voxels in the voxelstate grid to n
+			openvdb::FloatGrid::Accessor voxelstate_accessor = voxelstate_grid->getAccessor();
+			int active_voxel_state_value = 1.0;
+
+			for (openvdb::FloatGrid::ValueOnIter iter = voxelstate_grid->beginValueOn(); iter; ++iter)
+			{
+				iter.setValue(active_voxel_state_value);
+			}
+
+			for (openvdb::FloatGrid::ValueOnIter iter = numerator_grid_proxi->beginValueOn(); iter; ++iter)
+			{   
+					iter.setValue(0.0);
+			}
+			for (openvdb::FloatGrid::ValueOnIter iter = denominator_grid_proxi->beginValueOn(); iter; ++iter)
+			{   
+					iter.setValue(0.0);
+			}
 
 			// set the identical transforms for the ion information grid
 
+			voxelstate_grid->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
 			numerator_grid_proxi->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
 			denominator_grid_proxi->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
 
@@ -459,21 +487,22 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 						openvdb::Coord ijk(current_voxel_index[0], current_voxel_index[1], current_voxel_index[2]);
 
 						// write to denominator grid
-
-						denominator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor_proxi.getValue(ijk));
-						// write to numerator grid
-						//if(thisNumeratorIonEnabled)
-						// test case 								
-						if(ionID == 1)								
-						{	
-							numerator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor_proxi.getValue(ijk));
-						}
-						else
+						if(voxelstate_accessor.getValue(ijk) == active_voxel_state_value)
 						{
-							numerator_accessor_proxi.setValue(ijk, 0.0 + numerator_accessor_proxi.getValue(ijk));
+							denominator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + denominator_accessor_proxi.getValue(ijk));
+							// write to numerator grid
+							//if(thisNumeratorIonEnabled)
+							// test case 								
+							if(ionID == 1)								
+							{	
+								numerator_accessor_proxi.setValue(ijk, contributions_to_adjacent_voxels[i] + numerator_accessor_proxi.getValue(ijk));
+							}
+							else
+							{
+								numerator_accessor_proxi.setValue(ijk, 0.0 + numerator_accessor_proxi.getValue(ijk));
 							
+							}
 						}
-
 					}
 				}
 			}
