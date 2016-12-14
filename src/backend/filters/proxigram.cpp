@@ -16,7 +16,7 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "lukasAnalysis.h"
+#include "proxigram.h"
 #include "common/colourmap.h"
 #include "filterCommon.h"
 #include "../plot.h"
@@ -37,7 +37,7 @@ enum
 };
 
 // == Voxels filter ==
-LukasAnalysisFilter::LukasAnalysisFilter() 
+ProxigramFilter::ProxigramFilter() 
 {
 
 	// voxelsize levelset of 1 has about maximum 8 atoms of contribution
@@ -54,9 +54,9 @@ LukasAnalysisFilter::LukasAnalysisFilter()
 }
 
 
-Filter *LukasAnalysisFilter::cloneUncached() const
+Filter *ProxigramFilter::cloneUncached() const
 {
-	LukasAnalysisFilter *p=new LukasAnalysisFilter();
+	ProxigramFilter *p=new ProxigramFilter();
 
 	p->numeratorAll=numeratorAll;
 	p->denominatorAll=denominatorAll;
@@ -83,17 +83,17 @@ Filter *LukasAnalysisFilter::cloneUncached() const
 	return p;
 }
 
-void LukasAnalysisFilter::clearCache() 
+void ProxigramFilter::clearCache() 
 {
 	Filter::clearCache();
 }
 
-size_t LukasAnalysisFilter::numBytesForCache(size_t nObjects) const
+size_t ProxigramFilter::numBytesForCache(size_t nObjects) const
 {
 	return 0;
 }
 
-void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
+void ProxigramFilter::initFilter(const std::vector<const FilterStreamData *> &dataIn,
 						std::vector<const FilterStreamData *> &dataOut)
 {
 	const RangeStreamData *c=0;
@@ -160,7 +160,7 @@ void LukasAnalysisFilter::initFilter(const std::vector<const FilterStreamData *>
 	}
 }
 
-unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
+unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *> &dataIn,
 		  std::vector<const FilterStreamData *> &getOut, ProgressData &progress)
 {
 	//Disallow copying of anything in the blockmask. Copy everything else
@@ -803,7 +803,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 	return 0;
 }
 
-void LukasAnalysisFilter::setPropFromBinding(const SelectionBinding &b)
+void ProxigramFilter::setPropFromBinding(const SelectionBinding &b)
 {
 	switch(b.getID())
 	{
@@ -812,7 +812,7 @@ void LukasAnalysisFilter::setPropFromBinding(const SelectionBinding &b)
 
 }
 
-void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
+void ProxigramFilter::getProperties(FilterPropGroup &propertyList) const
 {
 	FilterProperty p;
 	size_t curGroup=0;
@@ -927,7 +927,7 @@ void LukasAnalysisFilter::getProperties(FilterPropGroup &propertyList) const
 
 }
 
-bool LukasAnalysisFilter::setProperty(unsigned int key,
+bool ProxigramFilter::setProperty(unsigned int key,
 		  const std::string &value, bool &needUpdate)
 {
 	
@@ -1052,12 +1052,12 @@ bool LukasAnalysisFilter::setProperty(unsigned int key,
 	return true;
 }
 
-std::string LukasAnalysisFilter::getSpecificErrString(unsigned int code) const
+std::string ProxigramFilter::getSpecificErrString(unsigned int code) const
 {
 	return "";
 }
 
-bool LukasAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
+bool ProxigramFilter::writeState(std::ostream &f,unsigned int format, unsigned int depth) const
 {
 	using std::endl;
 	switch(format)
@@ -1096,7 +1096,7 @@ bool LukasAnalysisFilter::writeState(std::ostream &f,unsigned int format, unsign
 	return true;
 }
 
-bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileDir)
+bool ProxigramFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFileDir)
 {
 	using std::string;
 	string tmpStr;
@@ -1237,20 +1237,20 @@ bool LukasAnalysisFilter::readState(xmlNodePtr &nodePtr, const std::string &stat
 	
 }
 
-unsigned int LukasAnalysisFilter::getRefreshBlockMask() const
+unsigned int ProxigramFilter::getRefreshBlockMask() const
 {
 	//Ions, plots and voxels cannot pass through this filter
 	return STREAM_TYPE_PLOT | STREAM_TYPE_VOXEL;
 }
 
-unsigned int LukasAnalysisFilter::getRefreshEmitMask() const
+unsigned int ProxigramFilter::getRefreshEmitMask() const
 {
 
 	return STREAM_TYPE_OPENVDBGRID | STREAM_TYPE_IONS | STREAM_TYPE_RANGE | STREAM_TYPE_PLOT;
 
 }
 
-unsigned int LukasAnalysisFilter::getRefreshUseMask() const
+unsigned int ProxigramFilter::getRefreshUseMask() const
 {
 
 	return STREAM_TYPE_OPENVDBGRID| STREAM_TYPE_IONS | STREAM_TYPE_RANGE;

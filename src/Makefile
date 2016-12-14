@@ -143,7 +143,7 @@ am__3Depict_SOURCES_DIST = 3Depict.cpp testing/testing.cpp \
 	backend/filters/boundingBox.cpp backend/filters/profile.cpp \
 	backend/filters/spatialAnalysis.cpp \
 	backend/filters/clusterAnalysis.cpp \
-	backend/filters/ionInfo.cpp backend/filters/lukasAnalysis.cpp \
+	backend/filters/ionInfo.cpp backend/filters/proxigram.cpp \
 	backend/filters/annotation.cpp \
 	backend/filters/geometryHelpers.cpp \
 	backend/filters/algorithms/binomial.cpp \
@@ -156,7 +156,7 @@ am__3Depict_SOURCES_DIST = 3Depict.cpp testing/testing.cpp \
 	backend/filters/ionColour.h backend/filters/boundingBox.h \
 	backend/filters/profile.h backend/filters/spatialAnalysis.h \
 	backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
-	backend/filters/lukasAnalysis.h backend/filters/annotation.h \
+	backend/filters/proxigram.h backend/filters/annotation.h \
 	backend/filters/geometryHelpers.h \
 	backend/filters/algorithms/binomial.h \
 	backend/filters/algorithms/mass.h backend/animator.cpp \
@@ -234,7 +234,7 @@ am__objects_6 = backend/filters/3Depict-allFilter.$(OBJEXT) \
 	backend/filters/3Depict-spatialAnalysis.$(OBJEXT) \
 	backend/filters/3Depict-clusterAnalysis.$(OBJEXT) \
 	backend/filters/3Depict-ionInfo.$(OBJEXT) \
-	backend/filters/3Depict-lukasAnalysis.$(OBJEXT) \
+	backend/filters/3Depict-proxigram.$(OBJEXT) \
 	backend/filters/3Depict-annotation.$(OBJEXT) \
 	backend/filters/3Depict-geometryHelpers.$(OBJEXT) \
 	backend/filters/algorithms/3Depict-binomial.$(OBJEXT) \
@@ -535,7 +535,7 @@ FILTER_FILES = backend/filters/allFilter.cpp backend/filters/filterCommon.cpp \
 		backend/filters/ionColour.cpp backend/filters/boundingBox.cpp  \
 		backend/filters/profile.cpp backend/filters/spatialAnalysis.cpp \
 		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
-		backend/filters/lukasAnalysis.cpp\
+		backend/filters/proxigram.cpp\
 		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp \
 		backend/filters/algorithms/binomial.cpp  backend/filters/algorithms/mass.cpp  
 
@@ -546,7 +546,7 @@ FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h
 		backend/filters/ionColour.h backend/filters/boundingBox.h  \
 		backend/filters/profile.h backend/filters/spatialAnalysis.h \
 		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
-		backend/filters/lukasAnalysis.h \
+		backend/filters/proxigram.h \
 		backend/filters/annotation.h backend/filters/geometryHelpers.h \
 		backend/filters/algorithms/binomial.h backend/filters/algorithms/mass.h
 
@@ -823,7 +823,7 @@ backend/filters/3Depict-clusterAnalysis.$(OBJEXT):  \
 backend/filters/3Depict-ionInfo.$(OBJEXT):  \
 	backend/filters/$(am__dirstamp) \
 	backend/filters/$(DEPDIR)/$(am__dirstamp)
-backend/filters/3Depict-lukasAnalysis.$(OBJEXT):  \
+backend/filters/3Depict-proxigram.$(OBJEXT):  \
 	backend/filters/$(am__dirstamp) \
 	backend/filters/$(DEPDIR)/$(am__dirstamp)
 backend/filters/3Depict-annotation.$(OBJEXT):  \
@@ -1012,8 +1012,8 @@ include backend/filters/$(DEPDIR)/3Depict-ionClip.Po
 include backend/filters/$(DEPDIR)/3Depict-ionColour.Po
 include backend/filters/$(DEPDIR)/3Depict-ionDownsample.Po
 include backend/filters/$(DEPDIR)/3Depict-ionInfo.Po
-include backend/filters/$(DEPDIR)/3Depict-lukasAnalysis.Po
 include backend/filters/$(DEPDIR)/3Depict-profile.Po
+include backend/filters/$(DEPDIR)/3Depict-proxigram.Po
 include backend/filters/$(DEPDIR)/3Depict-rangeFile.Po
 include backend/filters/$(DEPDIR)/3Depict-spatialAnalysis.Po
 include backend/filters/$(DEPDIR)/3Depict-spectrumPlot.Po
@@ -1645,19 +1645,19 @@ backend/filters/3Depict-ionInfo.obj: backend/filters/ionInfo.cpp
 #	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
 #	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o backend/filters/3Depict-ionInfo.obj `if test -f 'backend/filters/ionInfo.cpp'; then $(CYGPATH_W) 'backend/filters/ionInfo.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/filters/ionInfo.cpp'; fi`
 
-backend/filters/3Depict-lukasAnalysis.o: backend/filters/lukasAnalysis.cpp
-	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT backend/filters/3Depict-lukasAnalysis.o -MD -MP -MF backend/filters/$(DEPDIR)/3Depict-lukasAnalysis.Tpo -c -o backend/filters/3Depict-lukasAnalysis.o `test -f 'backend/filters/lukasAnalysis.cpp' || echo '$(srcdir)/'`backend/filters/lukasAnalysis.cpp
-	$(AM_V_at)$(am__mv) backend/filters/$(DEPDIR)/3Depict-lukasAnalysis.Tpo backend/filters/$(DEPDIR)/3Depict-lukasAnalysis.Po
-#	$(AM_V_CXX)source='backend/filters/lukasAnalysis.cpp' object='backend/filters/3Depict-lukasAnalysis.o' libtool=no \
+backend/filters/3Depict-proxigram.o: backend/filters/proxigram.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT backend/filters/3Depict-proxigram.o -MD -MP -MF backend/filters/$(DEPDIR)/3Depict-proxigram.Tpo -c -o backend/filters/3Depict-proxigram.o `test -f 'backend/filters/proxigram.cpp' || echo '$(srcdir)/'`backend/filters/proxigram.cpp
+	$(AM_V_at)$(am__mv) backend/filters/$(DEPDIR)/3Depict-proxigram.Tpo backend/filters/$(DEPDIR)/3Depict-proxigram.Po
+#	$(AM_V_CXX)source='backend/filters/proxigram.cpp' object='backend/filters/3Depict-proxigram.o' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
-#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o backend/filters/3Depict-lukasAnalysis.o `test -f 'backend/filters/lukasAnalysis.cpp' || echo '$(srcdir)/'`backend/filters/lukasAnalysis.cpp
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o backend/filters/3Depict-proxigram.o `test -f 'backend/filters/proxigram.cpp' || echo '$(srcdir)/'`backend/filters/proxigram.cpp
 
-backend/filters/3Depict-lukasAnalysis.obj: backend/filters/lukasAnalysis.cpp
-	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT backend/filters/3Depict-lukasAnalysis.obj -MD -MP -MF backend/filters/$(DEPDIR)/3Depict-lukasAnalysis.Tpo -c -o backend/filters/3Depict-lukasAnalysis.obj `if test -f 'backend/filters/lukasAnalysis.cpp'; then $(CYGPATH_W) 'backend/filters/lukasAnalysis.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/filters/lukasAnalysis.cpp'; fi`
-	$(AM_V_at)$(am__mv) backend/filters/$(DEPDIR)/3Depict-lukasAnalysis.Tpo backend/filters/$(DEPDIR)/3Depict-lukasAnalysis.Po
-#	$(AM_V_CXX)source='backend/filters/lukasAnalysis.cpp' object='backend/filters/3Depict-lukasAnalysis.obj' libtool=no \
+backend/filters/3Depict-proxigram.obj: backend/filters/proxigram.cpp
+	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT backend/filters/3Depict-proxigram.obj -MD -MP -MF backend/filters/$(DEPDIR)/3Depict-proxigram.Tpo -c -o backend/filters/3Depict-proxigram.obj `if test -f 'backend/filters/proxigram.cpp'; then $(CYGPATH_W) 'backend/filters/proxigram.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/filters/proxigram.cpp'; fi`
+	$(AM_V_at)$(am__mv) backend/filters/$(DEPDIR)/3Depict-proxigram.Tpo backend/filters/$(DEPDIR)/3Depict-proxigram.Po
+#	$(AM_V_CXX)source='backend/filters/proxigram.cpp' object='backend/filters/3Depict-proxigram.obj' libtool=no \
 #	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) \
-#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o backend/filters/3Depict-lukasAnalysis.obj `if test -f 'backend/filters/lukasAnalysis.cpp'; then $(CYGPATH_W) 'backend/filters/lukasAnalysis.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/filters/lukasAnalysis.cpp'; fi`
+#	$(AM_V_CXX_no)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -c -o backend/filters/3Depict-proxigram.obj `if test -f 'backend/filters/proxigram.cpp'; then $(CYGPATH_W) 'backend/filters/proxigram.cpp'; else $(CYGPATH_W) '$(srcdir)/backend/filters/proxigram.cpp'; fi`
 
 backend/filters/3Depict-annotation.o: backend/filters/annotation.cpp
 	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(3Depict_CXXFLAGS) $(CXXFLAGS) -MT backend/filters/3Depict-annotation.o -MD -MP -MF backend/filters/$(DEPDIR)/3Depict-annotation.Tpo -c -o backend/filters/3Depict-annotation.o `test -f 'backend/filters/annotation.cpp' || echo '$(srcdir)/'`backend/filters/annotation.cpp

@@ -15,8 +15,8 @@
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef LukasAnalysis_H
-#define LukasAnalysis_H
+#ifndef Proxigram_H
+#define Proxigram_H
 #include "../filter.h"
 
 #include "common/voxels.h"
@@ -27,7 +27,7 @@
 #include "contribution_transfer_function_TestSuite/CTF_functions.h"
 
 //!Filter that does voxelisation for various primitives (copied from CompositionFilter)
-class LukasAnalysisFilter : public Filter
+class ProxigramFilter : public Filter
 {
 private:
 	const static size_t INDEX_LENGTH = 3;
@@ -48,8 +48,8 @@ private:
 	RangeStreamData *rsdIncoming;
 
 public:
-	LukasAnalysisFilter();
-	~LukasAnalysisFilter() { if(rsdIncoming) delete rsdIncoming;}
+	ProxigramFilter();
+	~ProxigramFilter() { if(rsdIncoming) delete rsdIncoming;}
 	//!Duplicate filter contents, excluding cache.
 	Filter *cloneUncached() const;
 
@@ -58,7 +58,7 @@ public:
 	//!Get approx number of bytes for caching output
 	size_t numBytesForCache(size_t nObjects) const;
 
-	unsigned int getType() const { return FILTER_TYPE_LUKAS_ANALYSIS;};
+	unsigned int getType() const { return FILTER_TYPE_PROXIGRAM;};
 	
 	virtual void initFilter(const std::vector<const FilterStreamData *> &dataIn,
 					std::vector<const FilterStreamData *> &dataOut);

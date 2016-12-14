@@ -104,8 +104,8 @@ Filter *makeFilter(unsigned int ui)
 		case FILTER_TYPE_ANNOTATION:
 			f = new AnnotateFilter;
 			break;	
-		case FILTER_TYPE_LUKAS_ANALYSIS:
-			f = new LukasAnalysisFilter;
+		case FILTER_TYPE_PROXIGRAM:
+			f = new ProxigramFilter;
 			break;	
 		default:
 			ASSERT(false);

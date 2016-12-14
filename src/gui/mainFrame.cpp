@@ -153,7 +153,7 @@ const char * comboFilters_choices[FILTER_DROP_COUNT] =
 	NTRANS("Range File"),
 	NTRANS("Spat. Analysis"),
 	NTRANS("Voxelisation"),
-	NTRANS("Lukas Analysis"),
+	NTRANS("Proxigram"),
 };
 
 //Mapping between filter ID and combo position
@@ -172,7 +172,7 @@ const unsigned int comboFiltersTypeMapping[FILTER_DROP_COUNT] = {
 	FILTER_TYPE_RANGEFILE,
 	FILTER_TYPE_SPATIAL_ANALYSIS,
 	FILTER_TYPE_VOXELS,
-	FILTER_TYPE_LUKAS_ANALYSIS,
+	FILTER_TYPE_PROXIGRAM,
  };
 //----
 

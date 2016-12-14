@@ -38,7 +38,7 @@ FILTER_FILES = backend/filters/allFilter.cpp backend/filters/filterCommon.cpp \
 		backend/filters/ionColour.cpp backend/filters/boundingBox.cpp  \
 		backend/filters/profile.cpp backend/filters/spatialAnalysis.cpp \
 		backend/filters/clusterAnalysis.cpp backend/filters/ionInfo.cpp \
-		backend/filters/lukasAnalysis.cpp\
+		backend/filters/proxigram.cpp\
 		backend/filters/annotation.cpp backend/filters/geometryHelpers.cpp \
 		backend/filters/algorithms/binomial.cpp  backend/filters/algorithms/mass.cpp  
 
@@ -49,7 +49,7 @@ FILTER_HEADER_FILES = backend/filters/allFilter.h backend/filters/filterCommon.h
 		backend/filters/ionColour.h backend/filters/boundingBox.h  \
 		backend/filters/profile.h backend/filters/spatialAnalysis.h \
 		backend/filters/clusterAnalysis.h backend/filters/ionInfo.h \
-		backend/filters/lukasAnalysis.h \
+		backend/filters/proxigram.h \
 		backend/filters/annotation.h backend/filters/geometryHelpers.h \
 		backend/filters/algorithms/binomial.h backend/filters/algorithms/mass.h
 

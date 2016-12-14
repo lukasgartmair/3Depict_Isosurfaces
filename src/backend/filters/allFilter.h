@@ -17,7 +17,7 @@
 */
 #ifndef ALLFILTER_H
 #define ALLFILTER_H
-#include "lukasAnalysis.h"
+#include "proxigram.h"
 #include "boundingBox.h"
 #include "ionDownsample.h"
 #include "dataLoad.h"

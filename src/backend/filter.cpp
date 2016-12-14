@@ -75,7 +75,7 @@ const char *FILTER_NAMES[] = { "posload",
 				"voxelise",
 				"ioninfo",
 				"annotation",
-				"lukasanalysis"
+				"proxigram"
 				};
 
 size_t numElements(const vector<const FilterStreamData *> &v, unsigned int mask)
