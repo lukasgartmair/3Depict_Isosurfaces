@@ -278,23 +278,15 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			float in_bandwidth = abs(min_distance) / voxelsize_levelset;
 			float ex_bandwidth = max_distance / voxelsize_levelset;
 
-/*
-			// signed distance field
-			openvdb::FloatGrid::Ptr sdf = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(openvdb::math::Transform(), points, triangles, quads, ex_bandwidth, in_bandwidth);
-
-			sdf->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
-*/
-
-
 			openvdb::math::Transform::Ptr trans = openvdb::math::Transform::createLinearTransform(voxelsize_levelset);
 			openvdb::FloatGrid::Ptr sdf = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*trans, points, triangles, quads, ex_bandwidth, in_bandwidth);
+
 			openvdb::io::File file3("sdf_voxelgrid.vdb");
 			openvdb::GridPtrVec grids3;
 			grids3.push_back(sdf);
 
 			file3.write(grids3);
 			file3.close();
-
 
 			// two very intgeresting functions in this case are
 			// extractActiveVoxelSegmentMasks - 	Return a mask for each connected component of the given grid's active voxels. More...
