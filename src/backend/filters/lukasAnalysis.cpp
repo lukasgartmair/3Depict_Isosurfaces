@@ -41,8 +41,11 @@ LukasAnalysisFilter::LukasAnalysisFilter()
 {
 
 	// voxelsize levelset of 1 has about maximum 8 atoms of contribution
+	// which is maybe way too much to describe a transition of sharpness 0.1 nm
+	// why is the voxelization messed up with smaller and bigger voxelsizes than 1?!
+ 
 	voxelsize_levelset = 1; // nm
-	shell_width = 0.5; // nm
+	shell_width = 0.1; // nm
 	min_distance = -2; // nm
 	max_distance = 2; // nm
 	numeratorAll = true;
@@ -271,14 +274,20 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			// provide the desired information of this regions
 
 			// mesh to signed distance takes floats as input
+
 			float in_bandwidth = abs(min_distance) / voxelsize_levelset;
 			float ex_bandwidth = max_distance / voxelsize_levelset;
 
+/*
 			// signed distance field
 			openvdb::FloatGrid::Ptr sdf = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(openvdb::math::Transform(), points, triangles, quads, ex_bandwidth, in_bandwidth);
 
 			sdf->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
+*/
 
+
+			openvdb::math::Transform::Ptr trans = openvdb::math::Transform::createLinearTransform(voxelsize_levelset);
+			openvdb::FloatGrid::Ptr sdf = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*trans, points, triangles, quads, ex_bandwidth, in_bandwidth);
 			openvdb::io::File file3("sdf_voxelgrid.vdb");
 			openvdb::GridPtrVec grids3;
 			grids3.push_back(sdf);
@@ -295,6 +304,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 			//openvdb::FloatGrid::Ptr numerator_grid_proxi = sdf->deepCopy();
 			//openvdb::FloatGrid::Ptr denominator_grid_proxi = sdf->deepCopy();
 
+			// create a whole new grid - seems faster
 			openvdb::FloatGrid::Ptr numerator_grid_proxi = openvdb::FloatGrid::create(background_proxi);
 			openvdb::FloatGrid::Ptr denominator_grid_proxi = openvdb::FloatGrid::create(background_proxi);
 
@@ -666,10 +676,7 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				current_distance += shell_width;
 				proximity_ranges_ends[i] = current_distance;				
 			}
-/*
-	std::cout << " proximity_ranges_ends[0] " << " = " << proximity_ranges_ends[0] << std::endl;
-	std::cout << " proximity_ranges_ends[number_of_proximity_ranges-1] " << " = " << proximity_ranges_ends[number_of_proximity_ranges-1] << std::endl;
-*/
+
 
 			float voxel_diagonal = sqrt(3)*voxelsize_levelset;
 			float half_voxel_diagonal = voxel_diagonal / 2;
@@ -719,7 +726,6 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 				fclose(f);
 			}
 		 
-		
 			// rearranging the range contents for plotting
 			// maybe this was shit here
 			// the point - 0.5 should describe the bin content from 0 to -0.5 
@@ -730,9 +736,13 @@ unsigned int LukasAnalysisFilter::refresh(const std::vector<const FilterStreamDa
 
 			for (int i=0;i<proximity_ranges_plotting.size();i++)
 			{
-				if (proximity_ranges_ends[i] <= 0)
+				if (proximity_ranges_ends[i] < 0.0)
 				{
 					proximity_ranges_plotting[i] = proximity_ranges_ends[i] - shell_width;
+				}		
+				else if (proximity_ranges_ends[i] == 0.0)
+				{
+					proximity_ranges_plotting[i] =  -shell_width;
 				}			
 				else
 				{
@@ -933,6 +943,8 @@ bool LukasAnalysisFilter::setProperty(unsigned int key,
 			float f;
 			if(stream_cast(f,value))
 				return false;
+			if(f >= 0.0f)
+				return false;
 			needUpdate=true;
 			min_distance=f;
 			break;
@@ -942,6 +954,8 @@ bool LukasAnalysisFilter::setProperty(unsigned int key,
 		{
 			float f;
 			if(stream_cast(f,value))
+				return false;
+			if(f <= 0.0f)
 				return false;
 			needUpdate=true;
 			max_distance=f;
