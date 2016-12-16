@@ -40,6 +40,7 @@ private:
 
 	float voxelsize_levelset;
 	float shell_width;
+	bool weight_factor;
 	
 	//!density-based or count-based	
 	unsigned int normaliseType;

@@ -33,7 +33,8 @@ enum
 	KEY_VOXELSIZE_LEVELSET,
 	KEY_SHELL_WIDTH,
 	KEY_MIN_DISTANCE,
-	KEY_MAX_DISTANCE
+	KEY_MAX_DISTANCE,
+	KEY_WEIGHT_FACTOR
 };
 
 // == Voxels filter ==
@@ -51,6 +52,7 @@ ProxigramFilter::ProxigramFilter()
 	numeratorAll = true;
 	denominatorAll = true;
 	rsdIncoming=0;
+	weight_factor = false;
 }
 
 
@@ -65,6 +67,7 @@ Filter *ProxigramFilter::cloneUncached() const
 	p->shell_width = shell_width;
 	p->min_distance = -2;
 	p->max_distance = 2;
+	p->weight_factor = false;
 
 	p->enabledIons[0].resize(enabledIons[0].size());
 	std::copy(enabledIons[0].begin(),enabledIons[0].end(),p->enabledIons[0].begin());
@@ -716,9 +719,12 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 					
 					float weight_factor_based_on_distance = 1;					
 
-					if (abs(unique_distances[i]) < half_voxel_diagonal)
+					if (weight_factor == true)
 					{
-						 weight_factor_based_on_distance = (abs(unique_distances[i])) / half_voxel_diagonal;
+						if (abs(unique_distances[i]) < half_voxel_diagonal)
+						{
+							 weight_factor_based_on_distance = (abs(unique_distances[i])) / half_voxel_diagonal;
+						}
 					}
 					
 					summarized_numerators[proximity_range_index] += (numerators[i] * weight_factor_based_on_distance);
@@ -735,17 +741,6 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 				float concentration = summarized_numerators[i] / summarized_denominators[i];
 				concentrations[i] = concentration;
 			}
-
-
-			// write the data to file
-			bool export_proxi = true;
-			if (export_proxi == true)
-			{
-				FILE* f = fopen("proxigram_data_3depict.txt","wt");
-				fprintf(f, "%s %s \n", "distance/nm" , "concentration ");
-				for(int i=0;i<concentrations.size();i++) fprintf(f, "%f %f \n", proximity_ranges_ends[i], concentrations[i]);
-				fclose(f);
-			}
 		 
 			// rearranging the range contents for plotting
 			// maybe this was shit here
@@ -761,7 +756,7 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 				{
 					proximity_ranges_plotting[i] = proximity_ranges_ends[i] - shell_width;
 				}		
-				else if (proximity_ranges_ends[i] == 0.0)
+				else if (proximity_ranges_ends[i] < shell_width)
 				{
 					proximity_ranges_plotting[i] =  -shell_width;
 				}			
@@ -770,6 +765,17 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 					proximity_ranges_plotting[i] = proximity_ranges_ends[i];		
 				}			
 			}	
+
+
+			// write the data to file
+			bool export_proxi = true;
+			if (export_proxi == true)
+			{
+				FILE* f = fopen("proxigram_data_3depict.txt","wt");
+				fprintf(f, "%s %s \n", "distance/nm" , "concentration ");
+				for(int i=0;i<concentrations.size();i++) fprintf(f, "%f %f \n", proximity_ranges_plotting[i], concentrations[i]);
+				fclose(f);
+			}
 
 			// manage the filter output
 
@@ -868,6 +874,18 @@ void ProxigramFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
 	curGroup++;
 
+	// group computation
+	stream_cast(tmpStr,weight_factor);
+	p.name=TRANS("Distance weight factor");
+	p.data=tmpStr;
+	p.key=KEY_WEIGHT_FACTOR;
+	p.type=PROPERTY_TYPE_REAL;
+	p.helpText=TRANS("Distance weight factor");
+	propertyList.addProperty(p,curGroup);
+
+	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
+	curGroup++;
+
 	// numerator
 	if (rsdIncoming) 
 	{
@@ -944,6 +962,17 @@ bool ProxigramFilter::setProperty(unsigned int key,
 				return false;
 			needUpdate=true;
 			voxelsize_levelset=f;
+			break;
+		}
+
+		case KEY_WEIGHT_FACTOR:
+		{
+			bool b;
+			if(stream_cast(b,value))
+				return false;
+			weight_factor = b;
+			needUpdate=true;
+			clearCache();
 			break;
 		}
 
@@ -1084,6 +1113,7 @@ bool ProxigramFilter::writeState(std::ostream &f,unsigned int format, unsigned i
 
 			f << tabs(depth+1) << "<min_distance value=\""<<min_distance << "\"/>" << endl;
 			f << tabs(depth+1) << "<max_distance value=\""<<max_distance << "\"/>" << endl;
+			f << tabs(depth+1) << "<weight_factor value=\""<<weight_factor << "\"/>" << endl;
 
 			f << tabs(depth) << "</" << trueName() <<">" << endl;
 			break;
@@ -1149,6 +1179,13 @@ bool ProxigramFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	if(tmpFloat <= 0.0f)
 		return false;
 	max_distance=tmpFloat;
+	//--=
+
+	//--=
+	bool tmpBool = false;
+	if(!XMLGetNextElemAttrib(nodePtr,tmpFloat,"weight_factor","value"))
+		return false;
+	weight_factor=tmpBool;
 	//--=
 
 
