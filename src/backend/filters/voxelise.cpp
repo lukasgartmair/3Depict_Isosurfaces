@@ -497,7 +497,7 @@ unsigned int VoxeliseFilter::refresh(const std::vector<const FilterStreamData *>
 						if (vertex_corner_coincidence == false)
 						{
 							volumes_of_subcuboids = calcSubvolumes(position_in_unit_voxel);
-							contributions_to_adjacent_voxels = calcVoxelContributions(volumes_of_subcuboids);
+							contributions_to_adjacent_voxels = HellmanContributions(volumes_of_subcuboids);
 						}
 						else
 						{
