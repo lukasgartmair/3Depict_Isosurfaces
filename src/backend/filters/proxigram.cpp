@@ -702,13 +702,21 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 			}
 
 
-			float voxel_diagonal = sqrt(3)*voxelsize_levelset;
-			float half_voxel_diagonal = voxel_diagonal / 2;
+			// the theory is describe in 3.3 Internal structure of the proxigram filter
+			// example voxelsize 0.3
+			// half voxel diagonal = maximal_contribution_distance = (sqrt(3)*0.3)/2 = 0.26
+			// half voxel edge = minimal_contribution_distance = (0.3)/2 = 0.15
+			// mean_contribution_distance = 0.205
+			// a perfectly parallel aligned voxel with distance 0.075 would have right contribution of 
+
+
+			float minimal_contribution_distance = voxelsize_levelset / 2;
+			float maximal_contribution_distance = (sqrt(3)*voxelsize_levelset) / 2;
+			float mean_contribution_distance = (minimal_contribution_distance + maximal_contribution_distance) / 2;
 
 			int proximity_range_index = 0;
 			for (int i=0;i<unique_distances.size();i++)
 			{
-
 				if (proximity_range_index < number_of_proximity_ranges)
 				{
 
@@ -721,12 +729,12 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 
 					if (weight_factor == true)
 					{
-						if (abs(unique_distances[i]) < half_voxel_diagonal)
+						if (abs(unique_distances[i]) < mean_contribution_distance)
 						{
-							 weight_factor_based_on_distance = (abs(unique_distances[i])) / half_voxel_diagonal;
+							 weight_factor_based_on_distance = (abs(unique_distances[i])) / mean_contribution_distance;
 						}
 					}
-					
+
 					summarized_numerators[proximity_range_index] += (numerators[i] * weight_factor_based_on_distance);
 					summarized_denominators[proximity_range_index] += (denominators[i] * weight_factor_based_on_distance);	
 
