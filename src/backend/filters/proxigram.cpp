@@ -731,13 +731,17 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 					{
 						if (abs(unique_distances[i]) < mean_contribution_distance)
 						{
-							 weight_factor_based_on_distance = (abs(unique_distances[i])) / mean_contribution_distance;
-						}
+							 float x = abs(unique_distances[i];
+							 weight_factor_based_on_distance = (-0.41 * pow(x,3)) - (0.19 * pow(x,2)) + (0.92 * x) + 0.59;
+						}	
+						else
+						{
+							weight_factor_based_on_distance = 1;
+						}				
 					}
 
 					summarized_numerators[proximity_range_index] += (numerators[i] * weight_factor_based_on_distance);
 					summarized_denominators[proximity_range_index] += (denominators[i] * weight_factor_based_on_distance);	
-
 				}	
 			}
 
