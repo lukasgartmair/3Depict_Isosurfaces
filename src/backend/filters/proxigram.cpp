@@ -731,7 +731,7 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 					{
 						if (abs(unique_distances[i]) < mean_contribution_distance)
 						{
-							 float x = abs(unique_distances[i];
+							 float x = abs(unique_distances[i]);
 							 weight_factor_based_on_distance = (-0.41 * pow(x,3)) - (0.19 * pow(x,2)) + (0.92 * x) + 0.59;
 						}	
 						else
