@@ -733,10 +733,6 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 						{
 							 float x = abs(unique_distances[i]);
 							 weight_factor_based_on_distance = (-0.41 * pow(x,3)) - (0.19 * pow(x,2)) + (0.92 * x) + 0.59;
-						}	
-						else
-						{
-							weight_factor_based_on_distance = 1;
 						}				
 					}
 
@@ -886,17 +882,17 @@ void ProxigramFilter::getProperties(FilterPropGroup &propertyList) const
 	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
 	curGroup++;
 
-	// group computation
-	stream_cast(tmpStr,weight_factor);
+	stream_cast(tmpStr, weight_factor);
 	p.name=TRANS("Distance weight factor");
 	p.data=tmpStr;
 	p.key=KEY_WEIGHT_FACTOR;
-	p.type=PROPERTY_TYPE_REAL;
+	p.type=PROPERTY_TYPE_BOOL;
 	p.helpText=TRANS("Distance weight factor");
 	propertyList.addProperty(p,curGroup);
 
 	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
 	curGroup++;
+
 
 	// numerator
 	if (rsdIncoming) 
