@@ -1,17 +1,14 @@
 /*
- *	LukasAnalysis.cpp - Compute 3D binning (voxelisation) of point clouds
+ *	Proxigram.cpp - Compute proxigrams based on isosurfaces
  *	Copyright (C) 2015, D Haley 
-
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
  *	the Free Software Foundation, either version 3 of the License, or
  *	(at your option) any later version.
-
  *	This program is distributed in the hope that it will be useful,
  *	but WITHOUT ANY WARRANTY; without even the implied warranty of
  *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *	GNU General Public License for more details.
-
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
@@ -37,13 +34,9 @@ enum
 	KEY_WEIGHT_FACTOR
 };
 
-// == Voxels filter ==
+// == Proxigram filter ==
 ProxigramFilter::ProxigramFilter() 
 {
-
-	// voxelsize levelset of 1 has about maximum 8 atoms of contribution
-	// which is maybe way too much to describe a transition of sharpness 0.1 nm
-	// why is the voxelization messed up with smaller and bigger voxelsizes than 1?!
  
 	voxelsize_levelset = 0.5; // nm
 	shell_width = 0.1; // nm
@@ -52,7 +45,7 @@ ProxigramFilter::ProxigramFilter()
 	numeratorAll = true;
 	denominatorAll = true;
 	rsdIncoming=0;
-	weight_factor = false;
+	weight_factor = true;
 }
 
 
@@ -65,9 +58,9 @@ Filter *ProxigramFilter::cloneUncached() const
 
 	p->voxelsize_levelset = voxelsize_levelset;
 	p->shell_width = shell_width;
-	p->min_distance = -2;
-	p->max_distance = 2;
-	p->weight_factor = false;
+	p->min_distance = min_distance;
+	p->max_distance = max_distance;
+	p->weight_factor = weight_factor;
 
 	p->enabledIons[0].resize(enabledIons[0].size());
 	std::copy(enabledIons[0].begin(),enabledIons[0].end(),p->enabledIons[0].begin());
@@ -199,7 +192,7 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 
 			}
 
-			int xyzs = 3;
+			const int xyzs = 3;
 
 			std::vector<openvdb::Vec3s> points;
 			std::vector<openvdb::Vec3I> triangles;
@@ -281,8 +274,8 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 			float in_bandwidth = abs(min_distance) / voxelsize_levelset;
 			float ex_bandwidth = max_distance / voxelsize_levelset;
 
-			openvdb::math::Transform::Ptr trans = openvdb::math::Transform::createLinearTransform(voxelsize_levelset);
-			openvdb::FloatGrid::Ptr sdf = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*trans, points, triangles, quads, ex_bandwidth, in_bandwidth);
+			openvdb::math::Transform::Ptr transform = openvdb::math::Transform::createLinearTransform(voxelsize_levelset);
+			openvdb::FloatGrid::Ptr sdf = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*transform, points, triangles, quads, ex_bandwidth, in_bandwidth);
 
 			openvdb::io::File file3("sdf_voxelgrid.vdb");
 			openvdb::GridPtrVec grids3;
@@ -330,11 +323,11 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 					iter.setValue(0.0);
 			}
 
-			// set the identical transforms for the ion information grid
+			// set the identical transforms for the other grids if this is even necessary
 
-			voxelstate_grid->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
-			numerator_grid_proxi->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
-			denominator_grid_proxi->setTransform(openvdb::math::Transform::createLinearTransform(voxelsize_levelset));
+			voxelstate_grid->setTransform(transform);
+			numerator_grid_proxi->setTransform(transform);
+			denominator_grid_proxi->setTransform(transform);
 
 			// now run through all ions but only once, and in case they are inside a active voxel write only to them
 
@@ -527,7 +520,7 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 
 			std::cout << " eval min max sdf" << " = " << minVal << " , " << maxVal << std::endl;
 
-			// i guess the distances of the sdf are [voxels] -> openvdbtestsuite
+			// i guess the distances of the sdf are [voxels] -> openvdbtestsuite -> yes it is in the docs of vdb
 			// so in order to convert the proximities they should be taken times the voxelsize
 			// these proximities are given in nm the conversion is done on the whole sdf grid
 
@@ -676,7 +669,6 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 			std::cout << " min_distance_calculation " << " = " << min_distance_calculation << std::endl;
 /*
 			float max_distance_sdf = *std::max_element(unique_distances.begin(),unique_distances.end());
-
 			std::cout << " max_distance_sdf " << " = " << max_distance_sdf << std::endl;
 */
 			float ceiled_minVal = ceil(min_distance_calculation);
@@ -732,6 +724,7 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 						if (abs(unique_distances[i]) < mean_contribution_distance)
 						{
 							 float x = abs(unique_distances[i]);
+							 weight_factor_based_on_distance = 0;
 							 weight_factor_based_on_distance = (-0.41 * pow(x,3)) - (0.19 * pow(x,2)) + (0.92 * x) + 0.59;
 						}				
 					}
@@ -751,10 +744,8 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 			}
 		 
 			// rearranging the range contents for plotting
-			// maybe this was shit here
 			// the point - 0.5 should describe the bin content from 0 to -0.5 
 			// and the point 0.5 should describe the content from 0 to 0.5?
-			// at the moment the value at 0 describes the content from -0.5 to zero
 
 			std::vector<float> proximity_ranges_plotting(number_of_proximity_ranges);
 
@@ -1300,5 +1291,3 @@ unsigned int ProxigramFilter::getRefreshUseMask() const
 
 	return STREAM_TYPE_OPENVDBGRID| STREAM_TYPE_IONS | STREAM_TYPE_RANGE;
 }
-
-
