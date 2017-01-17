@@ -29,7 +29,6 @@ enum
 	KEY_ENABLE_DENOMINATOR,
 	KEY_VOXELSIZE_LEVELSET,
 	KEY_SHELL_WIDTH,
-	KEY_MIN_DISTANCE,
 	KEY_MAX_DISTANCE,
 	KEY_WEIGHT_FACTOR
 };
@@ -40,7 +39,6 @@ ProxigramFilter::ProxigramFilter()
  
 	voxelsize_levelset = 0.5; // nm
 	shell_width = 0.1; // nm
-	min_distance = -2; // nm
 	max_distance = 2; // nm
 	numeratorAll = true;
 	denominatorAll = true;
@@ -58,7 +56,6 @@ Filter *ProxigramFilter::cloneUncached() const
 
 	p->voxelsize_levelset = voxelsize_levelset;
 	p->shell_width = shell_width;
-	p->min_distance = min_distance;
 	p->max_distance = max_distance;
 	p->weight_factor = weight_factor;
 
@@ -262,6 +259,7 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 			std::cout << "voxelsize levelset" << " = " << voxelsize_levelset << std::endl;
 			std::cout << "shell width" << " = " << shell_width << std::endl;
 
+
 			// bandwidths are in voxel units
 			// the bandwidths have to correlate with the voxelsize of the levelset and the
 			// maximum distance below, which is is nm 
@@ -270,9 +268,11 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 			// provide the desired information of this regions
 
 			// mesh to signed distance takes floats as input
+			// the max distance in the bandwidths has to be greater half the shell width to each side in
+			// order to provide the right distances referring to the proximity ranges
 
-			float in_bandwidth = abs(min_distance) / voxelsize_levelset;
-			float ex_bandwidth = max_distance / voxelsize_levelset;
+			float in_bandwidth = (max_distance + (shell_width/2) ) / voxelsize_levelset;
+			float ex_bandwidth = (max_distance + (shell_width/2) ) / voxelsize_levelset;
 
 			openvdb::math::Transform::Ptr transform = openvdb::math::Transform::createLinearTransform(voxelsize_levelset);
 			openvdb::FloatGrid::Ptr sdf = openvdb::tools::meshToSignedDistanceField<openvdb::FloatGrid>(*transform, points, triangles, quads, ex_bandwidth, in_bandwidth);
@@ -648,51 +648,58 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 				numerators[current_index] += numerator_accessor_proxi.getValue(abc);
 				denominators[current_index] += denominator_accessor_proxi.getValue(abc);
 			}
-			// 5.5th
-			// high fluctuation of the concentration values so lets do the binning now
-			// by summarizing the values
-			// calculation of the proximity ranges
-			// everything is already converted from voxel units to nm
-			float min_distance_calculation = 0;
-			float min_distance_sdf = *std::min_element(unique_distances.begin(),unique_distances.end());
-		
-			if (min_distance_sdf < min_distance)
-			{
-				min_distance_calculation = min_distance;
-			}
-			if (min_distance_sdf >= min_distance)
-			{
-				min_distance_calculation = floor(min_distance_sdf);
-			}
-			std::cout << " min_distance_sdf " << " = " << min_distance_sdf << std::endl;
-			std::cout << " min_distance " << " = " << min_distance << std::endl;
-			std::cout << " min_distance_calculation " << " = " << min_distance_calculation << std::endl;
-/*
-			float max_distance_sdf = *std::max_element(unique_distances.begin(),unique_distances.end());
-			std::cout << " max_distance_sdf " << " = " << max_distance_sdf << std::endl;
-*/
-			float ceiled_minVal = ceil(min_distance_calculation);
-			
-			// example minimum nm value is -4.2 and maximum value is 15.
-			// that is with a shell width of 1 nm there have to be
-			// the shells -4 to -3, -3 to -2 ... and 14 to 15 which is summed up
-			// 18 shells implicitely given by 19 values from -4 to 15.
-			// so in this case 15/1 + 4/1 = 19 is correct 
 
-			int number_of_proximity_ranges = floor(max_distance / shell_width) + floor(abs(ceiled_minVal) / shell_width);
+			// calculation of the proximity shells
+			// with a given shell with of 1 and a max distance of 2 i want to end up with
+			// the proximity ends of -1.5,-0.5,0.5,1,5 -1.5, 2.5 
+			// so the narrowband has to include the distance -2.5 to 2.5
+			// the centers lie at -2,-1,0,1,2
 
-			std::vector<float> summarized_numerators(number_of_proximity_ranges);
-			std::vector<float> summarized_denominators(number_of_proximity_ranges);
+			std::vector<float> proximity_ranges_limits;
+			std::vector<float> proximity_ranges_centers;
 
-			std::vector<float> proximity_ranges_ends(number_of_proximity_ranges);
+			int rescue_counter = 10000;
+			float current_end = shell_width/2;
+			// 1st entries
+			proximity_ranges_limits.push_back(current_end);
+			proximity_ranges_limits.push_back(-current_end);
 
-			float current_distance = min_distance_calculation;
-			for (int i=0;i<number_of_proximity_ranges;i++)
-			{
-				current_distance += shell_width;
-				proximity_ranges_ends[i] = current_distance;				
+			int counter = 0;
+			while (current_end < max_distance)
+			{	
+				proximity_ranges_limits.push_back(current_end + shell_width);
+				proximity_ranges_limits.push_back(-(current_end + shell_width));
+				current_end += shell_width;
+				counter += 1;
+				if (counter > rescue_counter)
+				{
+					break;			
+				}
 			}
 
+			// now sort the ends
+			std::sort(proximity_ranges_limits.begin(), proximity_ranges_limits.end());
+
+			counter = 0;
+			float current_center = 0;
+			// 1st entry
+			proximity_ranges_centers.push_back(current_center);
+			while (current_center < max_distance)
+			{	
+				proximity_ranges_centers.push_back(current_center + shell_width);
+				proximity_ranges_centers.push_back(-(current_center + shell_width));
+				current_center += shell_width;
+				counter += 1;
+				if (counter > rescue_counter)
+				{
+					break;			
+				}
+			}
+
+			// now sort the centers
+			std::sort(proximity_ranges_centers.begin(), proximity_ranges_centers.end());
+
+			int number_of_proximity_ranges = proximity_ranges_centers.size();
 
 			// the theory is describe in 3.3 Internal structure of the proxigram filter
 			// example voxelsize 0.3
@@ -700,6 +707,9 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 			// half voxel edge = minimal_contribution_distance = (0.3)/2 = 0.15
 			// mean_contribution_distance = 0.205
 			// a perfectly parallel aligned voxel with distance 0.075 would have right contribution of 
+			
+			std::vector<float> summarized_numerators(number_of_proximity_ranges);
+			std::vector<float> summarized_denominators(number_of_proximity_ranges);
 
 
 			float minimal_contribution_distance = voxelsize_levelset / 2;
@@ -709,14 +719,14 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 			int proximity_range_index = 0;
 			for (int i=0;i<unique_distances.size();i++)
 			{
-				if (proximity_range_index < number_of_proximity_ranges)
+				if ((unique_distances[i] >= proximity_ranges_limits[proximity_range_index]))
 				{
 
-					if (unique_distances[i] > proximity_ranges_ends[proximity_range_index])
+					if (unique_distances[i] > proximity_ranges_limits[proximity_range_index+1])
 					{
 						proximity_range_index += 1;				
 					}
-					
+				
 					float weight_factor_based_on_distance = 1;					
 
 					if (weight_factor == true)
@@ -724,16 +734,15 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 						if (abs(unique_distances[i]) < mean_contribution_distance)
 						{
 							 float x = abs(unique_distances[i]);
-							 weight_factor_based_on_distance = 0;
 							 weight_factor_based_on_distance = (-0.41 * pow(x,3)) - (0.19 * pow(x,2)) + (0.92 * x) + 0.59;
 						}				
 					}
 
 					summarized_numerators[proximity_range_index] += (numerators[i] * weight_factor_based_on_distance);
 					summarized_denominators[proximity_range_index] += (denominators[i] * weight_factor_based_on_distance);	
-				}	
-			}
-
+				}
+			}	
+			
 			// 6th calculate the concentration for each unique distance
 
 			std::vector<float> concentrations(number_of_proximity_ranges);
@@ -742,37 +751,14 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 				float concentration = summarized_numerators[i] / summarized_denominators[i];
 				concentrations[i] = concentration;
 			}
-		 
-			// rearranging the range contents for plotting
-			// the point - 0.5 should describe the bin content from 0 to -0.5 
-			// and the point 0.5 should describe the content from 0 to 0.5?
-
-			std::vector<float> proximity_ranges_plotting(number_of_proximity_ranges);
-
-			for (int i=0;i<proximity_ranges_plotting.size();i++)
-			{
-				if (proximity_ranges_ends[i] < 0.0)
-				{
-					proximity_ranges_plotting[i] = proximity_ranges_ends[i] - shell_width;
-				}		
-				else if (proximity_ranges_ends[i] < shell_width)
-				{
-					proximity_ranges_plotting[i] =  -shell_width;
-				}			
-				else
-				{
-					proximity_ranges_plotting[i] = proximity_ranges_ends[i];		
-				}			
-			}	
-
 
 			// write the data to file
 			bool export_proxi = true;
 			if (export_proxi == true)
 			{
 				FILE* f = fopen("proxigram_data_3depict.txt","wt");
-				fprintf(f, "%s %s \n", "distance/nm" , "concentration ");
-				for(int i=0;i<concentrations.size();i++) fprintf(f, "%f %f \n", proximity_ranges_plotting[i], concentrations[i]);
+				fprintf(f, "%s %s %s \n", "distance/nm" , "concentration", "atomcounts");
+				for(int i=0;i<concentrations.size();i++) fprintf(f, "%f %f %f\n", proximity_ranges_centers[i], concentrations[i], summarized_denominators[i]);
 				fclose(f);
 			}
 
@@ -789,9 +775,9 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 			d->index=0;
 			d->parent=this;
 
-			for(unsigned int ui=0;ui<proximity_ranges_plotting.size();ui++)
+			for(unsigned int ui=0;ui<number_of_proximity_ranges;ui++)
 			{
-				d->xyData[ui].first = proximity_ranges_plotting[ui];
+				d->xyData[ui].first = proximity_ranges_centers[ui];
 				d->xyData[ui].second = concentrations[ui];
 
 			}
@@ -827,7 +813,7 @@ void ProxigramFilter::getProperties(FilterPropGroup &propertyList) const
 
 	// group computation
 	stream_cast(tmpStr,voxelsize_levelset);
-	p.name=TRANS("Voxelsize Levelset");
+	p.name=TRANS("Voxelsize Levelset / nm");
 	p.data=tmpStr;
 	p.key=KEY_VOXELSIZE_LEVELSET;
 	p.type=PROPERTY_TYPE_REAL;
@@ -839,7 +825,7 @@ void ProxigramFilter::getProperties(FilterPropGroup &propertyList) const
 
 	// group computation
 	stream_cast(tmpStr,shell_width);
-	p.name=TRANS("Shell width");
+	p.name=TRANS("Shell width / nm");
 	p.data=tmpStr;
 	p.key=KEY_SHELL_WIDTH;
 	p.type=PROPERTY_TYPE_REAL;
@@ -850,24 +836,12 @@ void ProxigramFilter::getProperties(FilterPropGroup &propertyList) const
 	curGroup++;
 
 	// group computation
-	stream_cast(tmpStr,min_distance);
-	p.name=TRANS("Minimal inside distance");
-	p.data=tmpStr;
-	p.key=KEY_MIN_DISTANCE;
-	p.type=PROPERTY_TYPE_REAL;
-	p.helpText=TRANS("Minimal inside distance");
-	propertyList.addProperty(p,curGroup);
-
-	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
-	curGroup++;
-
-	// group computation
 	stream_cast(tmpStr,max_distance);
-	p.name=TRANS("Maximal outside distance");
+	p.name=TRANS("Maximal distance / nm");
 	p.data=tmpStr;
 	p.key=KEY_MAX_DISTANCE;
 	p.type=PROPERTY_TYPE_REAL;
-	p.helpText=TRANS("Maximal outside distance");
+	p.helpText=TRANS("Limiting calculation distance");
 	propertyList.addProperty(p,curGroup);
 
 	propertyList.setGroupTitle(curGroup,TRANS("Computation"));
@@ -987,17 +961,6 @@ bool ProxigramFilter::setProperty(unsigned int key,
 			break;
 		}
 
-		case KEY_MIN_DISTANCE:
-		{
-			float f;
-			if(stream_cast(f,value))
-				return false;
-			if(f >= 0.0f)
-				return false;
-			needUpdate=true;
-			min_distance=f;
-			break;
-		}
 
 		case KEY_MAX_DISTANCE:
 		{
@@ -1110,7 +1073,6 @@ bool ProxigramFilter::writeState(std::ostream &f,unsigned int format, unsigned i
 			f << tabs(depth+1) << "<voxelsize_levelset value=\""<<voxelsize_levelset << "\"/>" << endl;
 			f << tabs(depth+1) << "<shell_width value=\""<<shell_width << "\"/>" << endl;
 
-			f << tabs(depth+1) << "<min_distance value=\""<<min_distance << "\"/>" << endl;
 			f << tabs(depth+1) << "<max_distance value=\""<<max_distance << "\"/>" << endl;
 			f << tabs(depth+1) << "<weight_factor value=\""<<weight_factor << "\"/>" << endl;
 
@@ -1160,15 +1122,6 @@ bool ProxigramFilter::readState(xmlNodePtr &nodePtr, const std::string &stateFil
 	if(tmpFloat <= 0.0f)
 		return false;
 	shell_width=tmpFloat;
-	//--=
-
-	//--=
-	tmpFloat = 0;
-	if(!XMLGetNextElemAttrib(nodePtr,tmpFloat,"min_distance","value"))
-		return false;
-	if(tmpFloat <= 0.0f)
-		return false;
-	min_distance=tmpFloat;
 	//--=
 
 	//--=
