@@ -719,6 +719,12 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 			int proximity_range_index = 0;
 			for (int i=0;i<unique_distances.size();i++)
 			{
+
+				if ((unique_distances[i] >= proximity_ranges_limits[proximity_ranges_limits.size()-1]))
+				{
+					break;
+				}
+
 				if ((unique_distances[i] >= proximity_ranges_limits[proximity_range_index]))
 				{
 
@@ -728,15 +734,6 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 					}
 				
 					float weight_factor_based_on_distance = 1;					
-
-					if (weight_factor == true)
-					{
-						if (abs(unique_distances[i]) < mean_contribution_distance)
-						{
-							 float x = abs(unique_distances[i]);
-							 weight_factor_based_on_distance = (-0.41 * pow(x,3)) - (0.19 * pow(x,2)) + (0.92 * x) + 0.59;
-						}				
-					}
 
 					summarized_numerators[proximity_range_index] += (numerators[i] * weight_factor_based_on_distance);
 					summarized_denominators[proximity_range_index] += (denominators[i] * weight_factor_based_on_distance);	
