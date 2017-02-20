@@ -1464,16 +1464,13 @@ bool VoxeliseFilter::setProperty(unsigned int key,
 			//Go in and manually adjust the cached
 			//entries to have the new value, rather
 			//than doing a full recomputation
-			if(cacheOK)
-			{
-				for(unsigned int ui=0;ui<filterOutputs.size();ui++)
-				{	
-					OpenVDBGridStreamData *vdbgs;
-					vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
-					vdbgs->voxelsize = voxelsize;
-				}
-			}
-			break;
+
+			for(unsigned int ui=0;ui<filterOutputs.size();ui++)
+			{	
+				OpenVDBGridStreamData *vdbgs;
+				vdbgs = (OpenVDBGridStreamData*)filterOutputs[ui];
+				vdbgs->voxelsize = voxelsize;
+			}			break;
 		}
 
 		case KEY_FIXEDWIDTH: 

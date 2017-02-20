@@ -38,8 +38,9 @@ ProxigramFilter::ProxigramFilter()
 {
  
 	voxelsize_levelset = 0.5; // nm
-	shell_width = 0.1; // nm
-	max_distance = 2; // nm
+	// the shell width is determined so that in the worst case a voxel is rotated 90 and in the best case 0 degree
+	shell_width = (voxelsize_levelset + (sqrt(3)*voxelsize_levelset)) / 2 ; // nm
+	max_distance = 0.5; // nm
 	numeratorAll = true;
 	denominatorAll = true;
 	rsdIncoming=0;
@@ -712,31 +713,25 @@ unsigned int ProxigramFilter::refresh(const std::vector<const FilterStreamData *
 			std::vector<float> summarized_denominators(number_of_proximity_ranges);
 
 
-			float minimal_contribution_distance = voxelsize_levelset / 2;
-			float maximal_contribution_distance = (sqrt(3)*voxelsize_levelset) / 2;
-			float mean_contribution_distance = (minimal_contribution_distance + maximal_contribution_distance) / 2;
-
 			int proximity_range_index = 0;
 			for (int i=0;i<unique_distances.size();i++)
 			{
 
-				if ((unique_distances[i] >= proximity_ranges_limits[proximity_ranges_limits.size()-1]))
+				if ((unique_distances[i] >= proximity_ranges_centers[proximity_ranges_limits.size()-1]) && (unique_distances[i] >= proximity_ranges_limits[proximity_ranges_limits.size()-1]))
 				{
 					break;
 				}
 
-				if ((unique_distances[i] >= proximity_ranges_limits[proximity_range_index]))
+				if (unique_distances[i] >= proximity_ranges_limits[proximity_range_index])
 				{
 
 					if (unique_distances[i] > proximity_ranges_limits[proximity_range_index+1])
 					{
 						proximity_range_index += 1;				
-					}
-				
-					float weight_factor_based_on_distance = 1;					
+					}				
 
-					summarized_numerators[proximity_range_index] += (numerators[i] * weight_factor_based_on_distance);
-					summarized_denominators[proximity_range_index] += (denominators[i] * weight_factor_based_on_distance);	
+					summarized_numerators[proximity_range_index] += numerators[i] ;
+					summarized_denominators[proximity_range_index] += denominators[i];	
 				}
 			}	
 			
